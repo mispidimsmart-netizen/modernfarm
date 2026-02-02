@@ -311,6 +311,7 @@ export type Database = {
         Row: {
           alarm_on: boolean
           fan_on: boolean
+          fan_speed: string
           id: string
           light_on: boolean
           manual_override: boolean
@@ -322,6 +323,7 @@ export type Database = {
         Insert: {
           alarm_on?: boolean
           fan_on?: boolean
+          fan_speed?: string
           id?: string
           light_on?: boolean
           manual_override?: boolean
@@ -333,6 +335,7 @@ export type Database = {
         Update: {
           alarm_on?: boolean
           fan_on?: boolean
+          fan_speed?: string
           id?: string
           light_on?: boolean
           manual_override?: boolean
@@ -476,6 +479,11 @@ export type Database = {
         Row: {
           ammonia_max: number
           created_at: string
+          fan_high_temp_min: number
+          fan_low_temp_max: number
+          fan_low_temp_min: number
+          fan_medium_temp_max: number
+          fan_medium_temp_min: number
           hsi_automation_enabled: boolean
           hsi_emergency_threshold: number
           hsi_mild_threshold: number
@@ -492,6 +500,11 @@ export type Database = {
         Insert: {
           ammonia_max?: number
           created_at?: string
+          fan_high_temp_min?: number
+          fan_low_temp_max?: number
+          fan_low_temp_min?: number
+          fan_medium_temp_max?: number
+          fan_medium_temp_min?: number
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -508,6 +521,11 @@ export type Database = {
         Update: {
           ammonia_max?: number
           created_at?: string
+          fan_high_temp_min?: number
+          fan_low_temp_max?: number
+          fan_low_temp_min?: number
+          fan_medium_temp_max?: number
+          fan_medium_temp_min?: number
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
