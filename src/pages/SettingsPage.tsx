@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, 
   ChevronRight, Shield, Zap, Thermometer, Droplets, Wind, 
-  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X
+  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { generateDeviceToken } from '@/lib/esp32Api';
 import { supabase } from '@/integrations/supabase/client';
@@ -92,6 +93,7 @@ export function SettingsPage() {
   const updateProfile = useUpdateProfile();
   const { data: userRole } = useUserRole();
   const isOwner = userRole?.role === 'owner';
+  const { isSuperAdmin } = useSuperAdmin();
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -315,7 +317,25 @@ export function SettingsPage() {
           <InstallPromptCard />
 
           {/* Quick Actions Grid */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {/* Super Admin Link */}
+            {isSuperAdmin && (
+              <motion.a
+                href="/admin"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 p-4 shadow-sm transition-colors hover:from-purple-700 hover:to-purple-800 text-white"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
+                  <Crown size={20} />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{language === 'bn' ? 'অ্যাডমিন' : 'Admin'}</p>
+                  <p className="text-xs text-purple-200">{language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}</p>
+                </div>
+              </motion.a>
+            )}
+            
             <motion.a
               href="/reports"
               whileHover={{ scale: 1.02 }}

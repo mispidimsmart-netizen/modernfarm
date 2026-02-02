@@ -19,6 +19,7 @@ const ReportsPage = lazy(() => import("./pages/ReportsPage").then(m => ({ defaul
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
 const ApiDocsPage = lazy(() => import("./pages/ApiDocsPage").then(m => ({ default: m.ApiDocsPage })));
 const FarmManagementPage = lazy(() => import("./pages/FarmManagementPage").then(m => ({ default: m.FarmManagementPage })));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Lazy load QuickActionWidget since it's only shown after auth
@@ -163,6 +164,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <FarmManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
             </ProtectedRoute>
           }
         />
