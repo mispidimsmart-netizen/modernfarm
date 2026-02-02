@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Egg, Droplet, Thermometer } from 'lucide-react';
+import { Egg, Droplet, Thermometer, BarChart3, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSensorReadings, useDailyReports, useUpsertDailyReport } from '@/hooks/useFarmData';
 import { useLiveSensorData } from '@/hooks/useSensorData';
@@ -9,7 +9,9 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
+import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 
 export function ReportsPage() {
   const { language } = useAuth();
@@ -19,6 +21,7 @@ export function ReportsPage() {
   const upsertReport = useUpsertDailyReport();
   
   const [eggCount, setEggCount] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
   const todayReport = dailyReports?.find(r => r.report_date === new Date().toISOString().split('T')[0]);
 
   // Generate chart data from sensor readings or mock data
@@ -77,137 +80,159 @@ export function ReportsPage() {
         >
           <h2 className="section-title">{translations.reports.title[language]}</h2>
 
-          {/* Daily Summary Cards */}
-          <div className="mb-6 grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-card p-3 text-center shadow-card">
-              <Thermometer size={20} className="mx-auto mb-1 text-sensor-temperature" />
-              <p className="text-lg font-bold">{dailyAvgTemp.toFixed(1)}°</p>
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'গড় তাপ' : 'Avg Temp'}
-              </p>
-            </div>
-            <div className="rounded-xl bg-card p-3 text-center shadow-card">
-              <Droplet size={20} className="mx-auto mb-1 text-sensor-water" />
-              <p className="text-lg font-bold">{totalWater}L</p>
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'মোট পানি' : 'Total Water'}
-              </p>
-            </div>
-            <div className="rounded-xl bg-card p-3 text-center shadow-card">
-              <Egg size={20} className="mx-auto mb-1 text-secondary" />
-              <p className="text-lg font-bold">{todayReport?.egg_production ?? '—'}</p>
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'ডিম' : 'Eggs'}
-              </p>
-            </div>
-          </div>
+          {/* Tabs for Overview and Cost Analytics */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="overview" className="gap-2">
+                <TrendingUp size={16} />
+                {language === 'bn' ? 'ওভারভিউ' : 'Overview'}
+              </TabsTrigger>
+              <TabsTrigger value="costs" className="gap-2">
+                <BarChart3 size={16} />
+                {language === 'bn' ? 'খরচ বিশ্লেষণ' : 'Cost Analytics'}
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Temperature Chart */}
-          <div className="mb-6 rounded-2xl bg-card p-4 shadow-card">
-            <h3 className="mb-4 font-medium">
-              {translations.reports.last24Hours[language]} - {translations.sensors.temperature[language]}
-            </h3>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="time" 
-                    tick={{ fontSize: 10 }} 
-                    stroke="hsl(var(--muted-foreground))"
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 10 }} 
-                    stroke="hsl(var(--muted-foreground))"
-                    tickLine={false}
-                    domain={['dataMin - 2', 'dataMax + 2']}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="temperature"
-                    stroke="hsl(var(--sensor-temperature))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="mt-4 space-y-6">
+              {/* Daily Summary Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-card p-3 text-center shadow-card">
+                  <Thermometer size={20} className="mx-auto mb-1 text-sensor-temperature" />
+                  <p className="text-lg font-bold">{dailyAvgTemp.toFixed(1)}°</p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'গড় তাপ' : 'Avg Temp'}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-card p-3 text-center shadow-card">
+                  <Droplet size={20} className="mx-auto mb-1 text-sensor-water" />
+                  <p className="text-lg font-bold">{totalWater}L</p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'মোট পানি' : 'Total Water'}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-card p-3 text-center shadow-card">
+                  <Egg size={20} className="mx-auto mb-1 text-secondary" />
+                  <p className="text-lg font-bold">{todayReport?.egg_production ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'ডিম' : 'Eggs'}
+                  </p>
+                </div>
+              </div>
 
-          {/* Humidity Chart */}
-          <div className="mb-6 rounded-2xl bg-card p-4 shadow-card">
-            <h3 className="mb-4 font-medium">
-              {translations.reports.last24Hours[language]} - {translations.sensors.humidity[language]}
-            </h3>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="time" 
-                    tick={{ fontSize: 10 }} 
-                    stroke="hsl(var(--muted-foreground))"
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 10 }} 
-                    stroke="hsl(var(--muted-foreground))"
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="humidity"
-                    stroke="hsl(var(--sensor-humidity))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+              {/* Temperature Chart */}
+              <div className="rounded-2xl bg-card p-4 shadow-card">
+                <h3 className="mb-4 font-medium">
+                  {translations.reports.last24Hours[language]} - {translations.sensors.temperature[language]}
+                </h3>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="time" 
+                        tick={{ fontSize: 10 }} 
+                        stroke="hsl(var(--muted-foreground))"
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 10 }} 
+                        stroke="hsl(var(--muted-foreground))"
+                        tickLine={false}
+                        domain={['dataMin - 2', 'dataMax + 2']}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="temperature"
+                        stroke="hsl(var(--sensor-temperature))"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
-          {/* Egg Production Input */}
-          <div className="rounded-2xl bg-card p-4 shadow-card">
-            <h3 className="mb-4 font-medium">
-              {translations.reports.eggProduction[language]}
-            </h3>
-            <div className="flex gap-3">
-              <Input
-                type="number"
-                value={eggCount}
-                onChange={(e) => setEggCount(e.target.value)}
-                placeholder={translations.reports.enterCount[language]}
-                className="h-12 flex-1 text-lg"
-              />
-              <Button 
-                onClick={handleSaveEggs} 
-                className="h-12 px-6"
-                disabled={upsertReport.isPending}
-              >
-                {translations.common.save[language]}
-              </Button>
-            </div>
-            {todayReport?.egg_production !== undefined && (
-              <p className="mt-3 text-center text-sm text-muted-foreground">
-                {translations.common.today[language]}: {todayReport.egg_production} {translations.reports.eggs[language]}
-              </p>
-            )}
-          </div>
+              {/* Humidity Chart */}
+              <div className="rounded-2xl bg-card p-4 shadow-card">
+                <h3 className="mb-4 font-medium">
+                  {translations.reports.last24Hours[language]} - {translations.sensors.humidity[language]}
+                </h3>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="time" 
+                        tick={{ fontSize: 10 }} 
+                        stroke="hsl(var(--muted-foreground))"
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 10 }} 
+                        stroke="hsl(var(--muted-foreground))"
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="humidity"
+                        stroke="hsl(var(--sensor-humidity))"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Egg Production Input */}
+              <div className="rounded-2xl bg-card p-4 shadow-card">
+                <h3 className="mb-4 font-medium">
+                  {translations.reports.eggProduction[language]}
+                </h3>
+                <div className="flex gap-3">
+                  <Input
+                    type="number"
+                    value={eggCount}
+                    onChange={(e) => setEggCount(e.target.value)}
+                    placeholder={translations.reports.enterCount[language]}
+                    className="h-12 flex-1 text-lg"
+                  />
+                  <Button 
+                    onClick={handleSaveEggs} 
+                    className="h-12 px-6"
+                    disabled={upsertReport.isPending}
+                  >
+                    {translations.common.save[language]}
+                  </Button>
+                </div>
+                {todayReport?.egg_production !== undefined && (
+                  <p className="mt-3 text-center text-sm text-muted-foreground">
+                    {translations.common.today[language]}: {todayReport.egg_production} {translations.reports.eggs[language]}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Cost Analytics Tab */}
+            <TabsContent value="costs" className="mt-4">
+              <CostAnalyticsDashboard />
+            </TabsContent>
+          </Tabs>
         </motion.div>
       </main>
 
