@@ -16,6 +16,7 @@ import { DeviceManagementSheet } from '@/components/device/DeviceManagementSheet
 import { WeatherCard } from '@/components/weather/WeatherCard';
 import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
+import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -140,6 +141,11 @@ export function Dashboard() {
             label={translations.sensors.water[language]}
             status={statusLevels.water}
           />
+        </div>
+
+        {/* Farm Summary Cards */}
+        <div className="mt-6">
+          <FarmSummaryCards />
         </div>
 
         {/* Weather Card */}
