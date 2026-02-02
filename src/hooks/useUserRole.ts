@@ -272,6 +272,39 @@ export function useRemoveWorker() {
   });
 }
 
+export function usePromoteToOwner() {
+  const { language } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (workerId: string) => {
+      // Simply remove the worker role - they become an owner automatically
+      // since owners are users without a worker role entry
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('id', workerId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workers'] });
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'কর্মী এখন মালিক হয়েছেন' : 'Worker promoted to owner',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useDeleteInvitation() {
   const { language } = useAuth();
   const queryClient = useQueryClient();
