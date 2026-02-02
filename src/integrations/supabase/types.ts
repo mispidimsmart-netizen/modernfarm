@@ -23,6 +23,7 @@ export type Database = {
           message: string
           message_bn: string
           severity: Database["public"]["Enums"]["alert_severity"]
+          shed_id: string | null
           user_id: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           message: string
           message_bn: string
           severity: Database["public"]["Enums"]["alert_severity"]
+          shed_id?: string | null
           user_id: string
         }
         Update: {
@@ -43,9 +45,18 @@ export type Database = {
           message?: string
           message_bn?: string
           severity?: Database["public"]["Enums"]["alert_severity"]
+          shed_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "alerts_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       automation_rules: {
         Row: {
@@ -218,6 +229,84 @@ export type Database = {
         }
         Relationships: []
       }
+      device_health: {
+        Row: {
+          battery_percentage: number | null
+          cpu_temperature: number | null
+          created_at: string
+          device_token_id: string
+          error_count: number | null
+          firmware_version: string | null
+          free_memory_bytes: number | null
+          id: string
+          is_online: boolean | null
+          last_error_message: string | null
+          last_restart_at: string | null
+          last_seen_at: string | null
+          power_source: string | null
+          shed_id: string | null
+          updated_at: string
+          uptime_seconds: number | null
+          user_id: string
+          wifi_signal_strength: number | null
+        }
+        Insert: {
+          battery_percentage?: number | null
+          cpu_temperature?: number | null
+          created_at?: string
+          device_token_id: string
+          error_count?: number | null
+          firmware_version?: string | null
+          free_memory_bytes?: number | null
+          id?: string
+          is_online?: boolean | null
+          last_error_message?: string | null
+          last_restart_at?: string | null
+          last_seen_at?: string | null
+          power_source?: string | null
+          shed_id?: string | null
+          updated_at?: string
+          uptime_seconds?: number | null
+          user_id: string
+          wifi_signal_strength?: number | null
+        }
+        Update: {
+          battery_percentage?: number | null
+          cpu_temperature?: number | null
+          created_at?: string
+          device_token_id?: string
+          error_count?: number | null
+          firmware_version?: string | null
+          free_memory_bytes?: number | null
+          id?: string
+          is_online?: boolean | null
+          last_error_message?: string | null
+          last_restart_at?: string | null
+          last_seen_at?: string | null
+          power_source?: string | null
+          shed_id?: string | null
+          updated_at?: string
+          uptime_seconds?: number | null
+          user_id?: string
+          wifi_signal_strength?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_health_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_health_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_status: {
         Row: {
           alarm_on: boolean
@@ -226,6 +315,7 @@ export type Database = {
           light_on: boolean
           manual_override: boolean
           power_on: boolean
+          shed_id: string | null
           updated_at: string
           user_id: string
         }
@@ -236,6 +326,7 @@ export type Database = {
           light_on?: boolean
           manual_override?: boolean
           power_on?: boolean
+          shed_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -246,10 +337,19 @@ export type Database = {
           light_on?: boolean
           manual_override?: boolean
           power_on?: boolean
+          shed_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "device_status_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       device_tokens: {
         Row: {
@@ -258,6 +358,7 @@ export type Database = {
           id: string
           is_active: boolean
           last_seen_at: string | null
+          shed_id: string | null
           token: string
           user_id: string
         }
@@ -267,6 +368,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
+          shed_id?: string | null
           token: string
           user_id: string
         }
@@ -276,10 +378,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
+          shed_id?: string | null
           token?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "device_tokens_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       egg_production: {
         Row: {
@@ -291,6 +402,7 @@ export type Database = {
           id: string
           notes: string | null
           production_date: string
+          shed_id: string | null
           total_eggs: number
           user_id: string
         }
@@ -303,6 +415,7 @@ export type Database = {
           id?: string
           notes?: string | null
           production_date?: string
+          shed_id?: string | null
           total_eggs?: number
           user_id: string
         }
@@ -315,10 +428,19 @@ export type Database = {
           id?: string
           notes?: string | null
           production_date?: string
+          shed_id?: string | null
           total_eggs?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "egg_production_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {
@@ -459,6 +581,7 @@ export type Database = {
           created_at: string
           id: string
           purchase_date: string | null
+          shed_id: string | null
           total_birds: number
           updated_at: string
           user_id: string
@@ -469,6 +592,7 @@ export type Database = {
           created_at?: string
           id?: string
           purchase_date?: string | null
+          shed_id?: string | null
           total_birds?: number
           updated_at?: string
           user_id: string
@@ -479,11 +603,20 @@ export type Database = {
           created_at?: string
           id?: string
           purchase_date?: string | null
+          shed_id?: string | null
           total_birds?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flock_info_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       income: {
         Row: {
@@ -560,6 +693,7 @@ export type Database = {
           id: string
           notes: string | null
           record_date: string
+          shed_id: string | null
           user_id: string
         }
         Insert: {
@@ -570,6 +704,7 @@ export type Database = {
           id?: string
           notes?: string | null
           record_date?: string
+          shed_id?: string | null
           user_id: string
         }
         Update: {
@@ -580,6 +715,48 @@ export type Database = {
           id?: string
           notes?: string | null
           record_date?: string
+          shed_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mortality_records_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offline_sync_queue: {
+        Row: {
+          created_at: string
+          id: string
+          operation: string
+          record_data: Json
+          synced: boolean | null
+          synced_at: string | null
+          table_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operation: string
+          record_data: Json
+          synced?: boolean | null
+          synced_at?: string | null
+          table_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operation?: string
+          record_data?: Json
+          synced?: boolean | null
+          synced_at?: string | null
+          table_name?: string
           user_id?: string
         }
         Relationships: []
@@ -642,6 +819,7 @@ export type Database = {
           humidity: number
           id: string
           power_status: string
+          shed_id: string | null
           temperature: number
           timestamp: string
           user_id: string
@@ -653,6 +831,7 @@ export type Database = {
           humidity: number
           id?: string
           power_status?: string
+          shed_id?: string | null
           temperature: number
           timestamp?: string
           user_id: string
@@ -664,12 +843,21 @@ export type Database = {
           humidity?: number
           id?: string
           power_status?: string
+          shed_id?: string | null
           temperature?: number
           timestamp?: string
           user_id?: string
           water_flow?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sensor_logs_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sensor_readings: {
         Row: {
@@ -677,6 +865,7 @@ export type Database = {
           humidity: number
           id: string
           recorded_at: string
+          shed_id: string | null
           temperature: number
           user_id: string
           water_usage: number
@@ -686,6 +875,7 @@ export type Database = {
           humidity: number
           id?: string
           recorded_at?: string
+          shed_id?: string | null
           temperature: number
           user_id: string
           water_usage: number
@@ -695,9 +885,54 @@ export type Database = {
           humidity?: number
           id?: string
           recorded_at?: string
+          shed_id?: string | null
           temperature?: number
           user_id?: string
           water_usage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensor_readings_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sheds: {
+        Row: {
+          bird_capacity: number | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_en: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bird_capacity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_en?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bird_capacity?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_en?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

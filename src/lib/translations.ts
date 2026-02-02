@@ -119,6 +119,35 @@ export const translations = {
     today: { bn: 'আজ', en: 'Today' },
     hours: { bn: 'ঘন্টা', en: 'hours' },
   },
+
+  // Shed Management
+  sheds: {
+    title: { bn: 'শেড ম্যানেজমেন্ট', en: 'Shed Management' },
+    addNew: { bn: 'নতুন শেড যোগ করুন', en: 'Add New Shed' },
+    name: { bn: 'শেডের নাম', en: 'Shed Name' },
+    capacity: { bn: 'ধারণক্ষমতা', en: 'Capacity' },
+    active: { bn: 'সক্রিয়', en: 'Active' },
+    inactive: { bn: 'নিষ্ক্রিয়', en: 'Inactive' },
+  },
+
+  // Device Management
+  devices: {
+    title: { bn: 'ডিভাইস ম্যানেজমেন্ট', en: 'Device Management' },
+    addNew: { bn: 'নতুন ডিভাইস যোগ করুন', en: 'Add New Device' },
+    online: { bn: 'অনলাইন', en: 'Online' },
+    offline: { bn: 'অফলাইন', en: 'Offline' },
+    signal: { bn: 'সিগনাল', en: 'Signal' },
+    uptime: { bn: 'আপটাইম', en: 'Uptime' },
+    token: { bn: 'টোকেন', en: 'Token' },
+  },
+
+  // Offline Mode
+  offline: {
+    title: { bn: 'অফলাইন মোড', en: 'Offline Mode' },
+    syncing: { bn: 'সিঙ্ক হচ্ছে...', en: 'Syncing...' },
+    pending: { bn: 'পেন্ডিং', en: 'Pending' },
+    syncNow: { bn: 'সিঙ্ক করুন', en: 'Sync Now' },
+  },
 } as const;
 
 export type Language = 'bn' | 'en';
