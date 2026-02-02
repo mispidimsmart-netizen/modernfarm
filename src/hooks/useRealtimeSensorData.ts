@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
 import { useFarmSettings, useDeviceStatus } from './useFarmData';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNotificationSound } from './useNotificationSound';
+import { areSoundsEnabled } from '@/components/settings/NotificationSoundCard';
 
 // Realtime sensor data with Supabase subscriptions
 export function useRealtimeSensorData() {
@@ -127,10 +129,12 @@ export function useRealtimeDeviceStatus() {
   return { status, manualOverride, isLoading };
 }
 
-// Realtime alerts subscription
+// Realtime alerts subscription with sound support
 export function useRealtimeAlerts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { playSound } = useNotificationSound();
+  const lastAlertIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -140,7 +144,46 @@ export function useRealtimeAlerts() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'alerts',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Play sound for new alerts if enabled
+          const newAlert = payload.new as { id: string; severity: string };
+          
+          // Avoid duplicate sounds for the same alert
+          if (newAlert.id !== lastAlertIdRef.current && areSoundsEnabled()) {
+            lastAlertIdRef.current = newAlert.id;
+            
+            // Play appropriate sound based on severity
+            if (newAlert.severity === 'danger') {
+              playSound('danger');
+            } else {
+              playSound('warning');
+            }
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['alerts'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'alerts',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['alerts'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
           schema: 'public',
           table: 'alerts',
           filter: `user_id=eq.${user.id}`,
@@ -154,7 +197,7 @@ export function useRealtimeAlerts() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id, queryClient, playSound]);
 }
 
 // Get status levels based on farm settings (same as before)
