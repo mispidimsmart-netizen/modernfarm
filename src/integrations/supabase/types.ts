@@ -291,8 +291,10 @@ export type Database = {
           error_count: number | null
           failsafe_activated_at: string | null
           failsafe_mode: boolean | null
+          farm_id: string | null
           firmware_version: string | null
           free_memory_bytes: number | null
+          hsi: number | null
           id: string
           is_online: boolean | null
           last_cloud_sync_at: string | null
@@ -300,6 +302,7 @@ export type Database = {
           last_power_outage_id: string | null
           last_restart_at: string | null
           last_seen_at: string | null
+          mode: string | null
           power_consumption_w: number | null
           power_source: string | null
           shed_id: string | null
@@ -318,8 +321,10 @@ export type Database = {
           error_count?: number | null
           failsafe_activated_at?: string | null
           failsafe_mode?: boolean | null
+          farm_id?: string | null
           firmware_version?: string | null
           free_memory_bytes?: number | null
+          hsi?: number | null
           id?: string
           is_online?: boolean | null
           last_cloud_sync_at?: string | null
@@ -327,6 +332,7 @@ export type Database = {
           last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
+          mode?: string | null
           power_consumption_w?: number | null
           power_source?: string | null
           shed_id?: string | null
@@ -345,8 +351,10 @@ export type Database = {
           error_count?: number | null
           failsafe_activated_at?: string | null
           failsafe_mode?: boolean | null
+          farm_id?: string | null
           firmware_version?: string | null
           free_memory_bytes?: number | null
+          hsi?: number | null
           id?: string
           is_online?: boolean | null
           last_cloud_sync_at?: string | null
@@ -354,6 +362,7 @@ export type Database = {
           last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
+          mode?: string | null
           power_consumption_w?: number | null
           power_source?: string | null
           shed_id?: string | null
@@ -368,6 +377,13 @@ export type Database = {
             columns: ["device_token_id"]
             isOneToOne: false
             referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_health_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
@@ -389,11 +405,16 @@ export type Database = {
       device_status: {
         Row: {
           alarm_on: boolean
+          device_id: string | null
           fan_on: boolean
           fan_speed: string
+          farm_id: string | null
+          hsi: number | null
           id: string
+          last_cloud_sync: string | null
           light_on: boolean
           manual_override: boolean
+          mode: string | null
           power_on: boolean
           shed_id: string | null
           updated_at: string
@@ -401,11 +422,16 @@ export type Database = {
         }
         Insert: {
           alarm_on?: boolean
+          device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
+          farm_id?: string | null
+          hsi?: number | null
           id?: string
+          last_cloud_sync?: string | null
           light_on?: boolean
           manual_override?: boolean
+          mode?: string | null
           power_on?: boolean
           shed_id?: string | null
           updated_at?: string
@@ -413,17 +439,29 @@ export type Database = {
         }
         Update: {
           alarm_on?: boolean
+          device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
+          farm_id?: string | null
+          hsi?: number | null
           id?: string
+          last_cloud_sync?: string | null
           light_on?: boolean
           manual_override?: boolean
+          mode?: string | null
           power_on?: boolean
           shed_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "device_status_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "device_status_shed_id_fkey"
             columns: ["shed_id"]
@@ -620,6 +658,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           water_anomaly_threshold?: number
+        }
+        Relationships: []
+      }
+      farms: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          location: string | null
+          name: string
+          name_en: string
+          owner_id: string
+          total_sheds: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          name?: string
+          name_en?: string
+          owner_id: string
+          total_sheds?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          name?: string
+          name_en?: string
+          owner_id?: string
+          total_sheds?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1261,6 +1335,8 @@ export type Database = {
         Row: {
           ammonia: number
           device_id: string
+          farm_id: string | null
+          hsi: number | null
           humidity: number
           id: string
           power_status: string
@@ -1273,6 +1349,8 @@ export type Database = {
         Insert: {
           ammonia: number
           device_id?: string
+          farm_id?: string | null
+          hsi?: number | null
           humidity: number
           id?: string
           power_status?: string
@@ -1285,6 +1363,8 @@ export type Database = {
         Update: {
           ammonia?: number
           device_id?: string
+          farm_id?: string | null
+          hsi?: number | null
           humidity?: number
           id?: string
           power_status?: string
@@ -1295,6 +1375,13 @@ export type Database = {
           water_flow?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sensor_logs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sensor_logs_shed_id_fkey"
             columns: ["shed_id"]
@@ -1307,6 +1394,9 @@ export type Database = {
       sensor_readings: {
         Row: {
           ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
           humidity: number
           id: string
           recorded_at: string
@@ -1317,6 +1407,9 @@ export type Database = {
         }
         Insert: {
           ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
           humidity: number
           id?: string
           recorded_at?: string
@@ -1327,6 +1420,9 @@ export type Database = {
         }
         Update: {
           ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
           humidity?: number
           id?: string
           recorded_at?: string
@@ -1336,6 +1432,13 @@ export type Database = {
           water_usage?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sensor_readings_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sensor_readings_shed_id_fkey"
             columns: ["shed_id"]
@@ -1350,6 +1453,7 @@ export type Database = {
           bird_capacity: number | null
           created_at: string
           description: string | null
+          farm_id: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -1361,6 +1465,7 @@ export type Database = {
           bird_capacity?: number | null
           created_at?: string
           description?: string | null
+          farm_id?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
@@ -1372,6 +1477,7 @@ export type Database = {
           bird_capacity?: number | null
           created_at?: string
           description?: string | null
+          farm_id?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
@@ -1379,7 +1485,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sheds_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sms_alert_settings: {
         Row: {
@@ -1703,6 +1817,7 @@ export type Database = {
       alert_severity: "warning" | "danger"
       alert_type: "temperature" | "ammonia" | "power" | "water"
       app_role: "owner" | "worker"
+      device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
       sensor_type: "temperature" | "humidity" | "ammonia"
@@ -1836,6 +1951,7 @@ export const Constants = {
       alert_severity: ["warning", "danger"],
       alert_type: ["temperature", "ammonia", "power", "water"],
       app_role: ["owner", "worker"],
+      device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
       sensor_type: ["temperature", "humidity", "ammonia"],
