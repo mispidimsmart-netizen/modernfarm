@@ -65,6 +65,23 @@ Deno.serve(async (req) => {
         deviceToken = bodyData.device_token;
       }
     }
+
+    // For GET requests, support device_id from query params
+    if (req.method === 'GET' && !deviceToken) {
+      const queryDeviceId = url.searchParams.get('device_id');
+      if (queryDeviceId) {
+        const { data: deviceByName } = await supabase
+          .from('device_tokens')
+          .select('token')
+          .eq('device_name', queryDeviceId)
+          .eq('is_active', true)
+          .single();
+        
+        if (deviceByName) {
+          deviceToken = deviceByName.token;
+        }
+      }
+    }
     
     if (!deviceToken) {
       return new Response(
@@ -122,6 +139,15 @@ Deno.serve(async (req) => {
 
     if (req.method === 'GET' && path === 'lighting-schedule') {
       return await getLightingSchedule(supabase, userId);
+    }
+
+    if (req.method === 'GET' && path === 'commands') {
+      const deviceName = url.searchParams.get('device_id') || bodyData?.device_id;
+      return await getDeviceCommands(supabase, userId, deviceName);
+    }
+
+    if (req.method === 'POST' && path === 'commands-ack') {
+      return await acknowledgeCommands(bodyData, supabase, userId);
     }
 
     return new Response(
@@ -397,5 +423,74 @@ async function getLightingSchedule(supabase: any, userId: string) {
   return new Response(
     JSON.stringify({ success: true, data }),
     { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+  );
+}
+
+async function getDeviceCommands(supabase: any, userId: string, deviceName: string | null) {
+  // Get pending (unexecuted) commands for this device
+  let query = supabase
+    .from('device_commands')
+    .select('id, command_type, command_value, created_at')
+    .eq('user_id', userId)
+    .eq('executed', false)
+    .order('created_at', { ascending: true });
+
+  if (deviceName) {
+    query = query.eq('device_name', deviceName);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching device commands:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to get commands', code: 'FETCH_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log(`Returning ${data?.length || 0} pending commands for device ${deviceName || 'all'}`);
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      commands: data || [],
+      device_id: deviceName,
+      timestamp: new Date().toISOString()
+    }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+async function acknowledgeCommands(body: { command_ids: string[] }, supabase: any, userId: string) {
+  if (!body.command_ids || !Array.isArray(body.command_ids) || body.command_ids.length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'Missing command_ids array', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const { error } = await supabase
+    .from('device_commands')
+    .update({ 
+      executed: true, 
+      executed_at: new Date().toISOString() 
+    })
+    .eq('user_id', userId)
+    .in('id', body.command_ids);
+
+  if (error) {
+    console.error('Error acknowledging commands:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to acknowledge commands', code: 'UPDATE_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log(`Acknowledged ${body.command_ids.length} commands`);
+
+  return new Response(
+    JSON.stringify({ success: true, acknowledged: body.command_ids.length }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
