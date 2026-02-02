@@ -7,9 +7,11 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { ControlPage } from "./pages/ControlPage";
+import { LightingPage } from "./pages/LightingPage";
 import { AutomationPage } from "./pages/AutomationPage";
 import { AlertsPage } from "./pages/AlertsPage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -72,6 +74,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/lighting"
+        element={
+          <ProtectedRoute>
+            <LightingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/automation"
         element={
           <ProtectedRoute>
@@ -92,6 +102,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ReportsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         }
       />

@@ -1,5 +1,6 @@
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Power, Zap, RefreshCw } from 'lucide-react';
+import { Power, RefreshCw, BarChart3, Settings, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useLiveSensorData, useStatusLevels, useDeviceControl } from '@/hooks/useSensorData';
@@ -130,6 +131,39 @@ export function Dashboard() {
               </div>
             ))}
           </div>
+        </motion.div>
+
+        {/* Quick Links */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-6 grid grid-cols-2 gap-3"
+        >
+          <Link
+            to="/reports"
+            className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card transition-transform active:scale-[0.98]"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <BarChart3 size={20} />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium">{translations.reports.title[language]}</p>
+            </div>
+            <ChevronRight size={18} className="text-muted-foreground" />
+          </Link>
+          <Link
+            to="/settings"
+            className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card transition-transform active:scale-[0.98]"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+              <Settings size={20} />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium">{language === 'bn' ? 'সেটিংস' : 'Settings'}</p>
+            </div>
+            <ChevronRight size={18} className="text-muted-foreground" />
+          </Link>
         </motion.div>
       </main>
 
