@@ -3,13 +3,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/context/AuthContext';
-import { useAllDeviceHealth, formatUptime } from '@/hooks/useDeviceHealth';
+import { useAllDeviceHealth, formatUptime, DeviceHealth } from '@/hooks/useDeviceHealth';
+import { useSelectedShed } from '@/hooks/useSheds';
 import { formatDistanceToNow } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
+
+// Get primary device for a specific shed (each shed = independent fail-safe unit)
+function getDeviceForShed(devices: DeviceHealth[] | undefined, shedId: string | null): DeviceHealth | null {
+  if (!devices || devices.length === 0) return null;
+  
+  // Filter by shed if selected
+  const shedDevices = shedId 
+    ? devices.filter(d => d.shed_id === shedId)
+    : devices;
+  
+  if (shedDevices.length === 0) return null;
+  
+  // Return most recently seen device for this shed
+  return shedDevices.reduce((latest, device) => {
+    if (!latest.last_seen_at) return device;
+    if (!device.last_seen_at) return latest;
+    return new Date(device.last_seen_at) > new Date(latest.last_seen_at) ? device : latest;
+  });
+}
 
 export function FailsafeStatusCard() {
   const { language } = useAuth();
   const { data: healthData, isLoading } = useAllDeviceHealth();
+  const { selectedShedId } = useSelectedShed();
 
   const t = {
     title: { bn: 'ফেইলসেফ সিস্টেম', en: 'Fail-Safe System' },
@@ -21,16 +42,17 @@ export function FailsafeStatusCard() {
     cachedSettings: { bn: 'ক্যাশড সেটিংস', en: 'Cached Settings' },
     localRules: { bn: 'লোকাল রুলস', en: 'Local Rules' },
     active: { bn: 'সক্রিয়', en: 'Active' },
-    noDevice: { bn: 'কোনো ডিভাইস নেই', en: 'No device connected' },
+    noDevice: { bn: 'এই শেডে কোনো ডিভাইস নেই', en: 'No device in this shed' },
     cloudConnected: { bn: 'ক্লাউড সংযুক্ত', en: 'Cloud Connected' },
     runningLocal: { bn: 'লোকাল অটোমেশন চলছে', en: 'Running Local Automation' },
     description: { 
-      bn: 'ইন্টারনেট না থাকলেও ESP32 স্বয়ংক্রিয়ভাবে লোকাল রুলস ফলো করে', 
-      en: 'ESP32 automatically follows local rules when internet is unavailable' 
+      bn: 'ইন্টারনেট না থাকলেও এই শেডের ESP32 স্বয়ংক্রিয়ভাবে লোকাল রুলস ফলো করে', 
+      en: 'This shed\'s ESP32 follows local rules when internet is unavailable' 
     },
     settingsVersion: { bn: 'সেটিংস ভার্সন', en: 'Settings Version' },
     wifiSignal: { bn: 'ওয়াইফাই সিগন্যাল', en: 'WiFi Signal' },
     batteryBackup: { bn: 'ব্যাটারি ব্যাকআপ', en: 'Battery Backup' },
+    independentUnit: { bn: 'স্বাধীন ইউনিট', en: 'Independent Unit' },
   };
 
   if (isLoading) {
@@ -49,7 +71,10 @@ export function FailsafeStatusCard() {
     );
   }
 
-  if (!healthData || healthData.length === 0) {
+  // Each shed = independent fail-safe unit
+  const device = getDeviceForShed(healthData, selectedShedId);
+
+  if (!device) {
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -68,7 +93,6 @@ export function FailsafeStatusCard() {
     );
   }
 
-  const device = healthData[0];
   const isFailsafe = device.failsafe_mode;
   const isOnline = device.is_online;
 
