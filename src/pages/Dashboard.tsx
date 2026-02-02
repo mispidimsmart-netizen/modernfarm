@@ -25,6 +25,8 @@ import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet'
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
+import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
+import { SystemModeCard } from '@/components/dashboard/SystemModeCard';
 import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
@@ -182,6 +184,21 @@ export function Dashboard() {
             status={statusLevels.water}
           />
         </div>
+
+        {/* Heat Stress Status & System Mode - NEW PROMINENT CARDS */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06 }}
+          className="mt-4 grid grid-cols-1 gap-3"
+        >
+          <HeatStressStatusCard 
+            hsiResult={hsiResult}
+            temperature={sensorData.temperature}
+            humidity={sensorData.humidity}
+          />
+          <SystemModeCard />
+        </motion.div>
 
         {/* Smart Mode Quick Access */}
         <motion.div
