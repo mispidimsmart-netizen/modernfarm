@@ -284,14 +284,18 @@ export type Database = {
         Row: {
           battery_capacity_wh: number | null
           battery_percentage: number | null
+          cached_settings_version: number | null
           cpu_temperature: number | null
           created_at: string
           device_token_id: string
           error_count: number | null
+          failsafe_activated_at: string | null
+          failsafe_mode: boolean | null
           firmware_version: string | null
           free_memory_bytes: number | null
           id: string
           is_online: boolean | null
+          last_cloud_sync_at: string | null
           last_error_message: string | null
           last_power_outage_id: string | null
           last_restart_at: string | null
@@ -307,14 +311,18 @@ export type Database = {
         Insert: {
           battery_capacity_wh?: number | null
           battery_percentage?: number | null
+          cached_settings_version?: number | null
           cpu_temperature?: number | null
           created_at?: string
           device_token_id: string
           error_count?: number | null
+          failsafe_activated_at?: string | null
+          failsafe_mode?: boolean | null
           firmware_version?: string | null
           free_memory_bytes?: number | null
           id?: string
           is_online?: boolean | null
+          last_cloud_sync_at?: string | null
           last_error_message?: string | null
           last_power_outage_id?: string | null
           last_restart_at?: string | null
@@ -330,14 +338,18 @@ export type Database = {
         Update: {
           battery_capacity_wh?: number | null
           battery_percentage?: number | null
+          cached_settings_version?: number | null
           cpu_temperature?: number | null
           created_at?: string
           device_token_id?: string
           error_count?: number | null
+          failsafe_activated_at?: string | null
+          failsafe_mode?: boolean | null
           firmware_version?: string | null
           free_memory_bytes?: number | null
           id?: string
           is_online?: boolean | null
+          last_cloud_sync_at?: string | null
           last_error_message?: string | null
           last_power_outage_id?: string | null
           last_restart_at?: string | null
