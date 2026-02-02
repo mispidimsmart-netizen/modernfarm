@@ -8,3 +8,15 @@ verify_jwt = false
 
 [functions.fetch-weather]
 verify_jwt = false
+
+[functions.health-score]
+verify_jwt = false
+
+[functions.water-trend]
+verify_jwt = false
+
+[functions.heat-risk]
+verify_jwt = false
+
+[functions.mode-profile]
+verify_jwt = false
