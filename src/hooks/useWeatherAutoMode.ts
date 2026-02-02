@@ -94,8 +94,10 @@ export function useUpdateWeatherAutoModeConfig() {
       localStorage.setItem(`weather_auto_mode_${user.id}`, JSON.stringify(newConfig));
       return newConfig;
     },
-    onSuccess: (newConfig) => {
-      queryClient.invalidateQueries({ queryKey: ['weather_auto_mode_config'] });
+    onSuccess: (newConfig, _, __) => {
+      // Invalidate with correct query key including user id
+      queryClient.setQueryData(['weather_auto_mode_config', user?.id], newConfig);
+      queryClient.invalidateQueries({ queryKey: ['weather_auto_mode_config', user?.id] });
       toast({
         title: language === 'bn' ? 'সেটিংস সেভ হয়েছে' : 'Settings saved',
         description: newConfig.enabled 
