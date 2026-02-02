@@ -29,6 +29,8 @@ import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
+import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
+import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -285,11 +287,31 @@ export function Dashboard() {
           <WeatherCard />
         </motion.div>
 
-        {/* Quick Device Status */}
+        {/* Automation Status */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          className="mt-6"
+        >
+          <AutomationStatusCard />
+        </motion.div>
+
+        {/* Egg Production Correlation */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="mt-6"
+        >
+          <EggCorrelationCard />
+        </motion.div>
+
+        {/* Quick Device Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
           className="mt-6"
         >
           <div className="mb-3 flex items-center justify-between">
