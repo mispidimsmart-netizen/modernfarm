@@ -80,6 +80,14 @@ bool alarmOn = false;
 String fanSpeed = "OFF";
 int lightBrightness = 0;
 
+// 🔧 FAN RELAY HEALTH CHECK (Watchdog)
+bool fanRelayHealthy = true;
+unsigned long lastFanToggleTime = 0;
+bool expectedFanState = false;
+int fanHealthCheckFailCount = 0;
+const int FAN_HEALTH_CHECK_INTERVAL = 60000;  // Check every 60 seconds
+const int MAX_FAN_HEALTH_FAILURES = 3;        // 3 failures = relay problem
+
 // ================ CACHED SETTINGS (EEPROM) ================
 struct CachedSettings {
   // Temperature thresholds
@@ -528,6 +536,9 @@ void logFailsafeEvent(String eventType, String message) {
 void runAutomation() {
   if (failsafeMode) {
     runLocalAutomation();
+    
+    // 🔧 Run fan relay health check in failsafe mode
+    checkFanRelayHealth();
   }
   // Cloud mode automation is handled in handleCloudResponse
 }
@@ -541,9 +552,7 @@ void runLocalAutomation() {
   bool sensorError = isnan(temperature) || isnan(humidity);
   if (sensorError) {
     Serial.println("⚠️ SENSOR ERROR → Fan ON (Safe Mode)");
-    fanOn = true;
-    fanSpeed = "HIGH";
-    digitalWrite(FAN_RELAY_PIN, HIGH);
+    setFanState(true, "HIGH");
     return;  // Don't process other rules with bad data
   }
   
@@ -563,10 +572,8 @@ void runLocalAutomation() {
   // ========================================
   if (ammonia >= cachedSettings.ammoniaMax) {  // Default: 25 ppm
     Serial.printf("🟡 AMMONIA HIGH (%.1f ppm) → Fan ON + Alarm\n", ammonia);
-    fanOn = true;
-    fanSpeed = "HIGH";
+    setFanState(true, "HIGH");
     alarmOn = true;
-    digitalWrite(FAN_RELAY_PIN, HIGH);
     digitalWrite(ALARM_RELAY_PIN, HIGH);
   }
   
@@ -575,9 +582,7 @@ void runLocalAutomation() {
   // ========================================
   else if (temperature >= cachedSettings.fanHighTempMin) {  // Default: 33°C
     Serial.printf("🔥 TEMP CRITICAL (%.1f°C) → Fan HIGH\n", temperature);
-    fanOn = true;
-    fanSpeed = "HIGH";
-    digitalWrite(FAN_RELAY_PIN, HIGH);
+    setFanState(true, "HIGH");
   }
   
   // ========================================
@@ -585,9 +590,7 @@ void runLocalAutomation() {
   // ========================================
   else if (temperature >= cachedSettings.fanMedTempMin) {  // Default: 30°C
     Serial.printf("🌡️ TEMP HIGH (%.1f°C) → Fan ON (Medium)\n", temperature);
-    fanOn = true;
-    fanSpeed = "MEDIUM";
-    digitalWrite(FAN_RELAY_PIN, HIGH);
+    setFanState(true, "MEDIUM");
   }
   
   // ========================================
@@ -596,14 +599,10 @@ void runLocalAutomation() {
   else {
     // Only turn off if conditions are truly safe
     if (temperature < cachedSettings.fanLowTempMin && ammonia < cachedSettings.ammoniaMax) {
-      fanOn = false;
-      fanSpeed = "OFF";
-      digitalWrite(FAN_RELAY_PIN, LOW);
+      setFanState(false, "OFF");
     } else if (temperature >= cachedSettings.fanLowTempMin) {
       // Keep fan on LOW for borderline temps (28-30°C)
-      fanOn = true;
-      fanSpeed = "LOW";
-      digitalWrite(FAN_RELAY_PIN, HIGH);
+      setFanState(true, "LOW");
     }
   }
   
@@ -618,33 +617,25 @@ void runLocalAutomation() {
   // HSI > 40: DANGER → Fan HIGH + Alert
   if (hsi > cachedSettings.hsiDanger) {
     Serial.printf("🚨 HSI DANGER (%.1f > 40) → Fan HIGH + ALERT!\n", hsi);
-    fanOn = true;
-    fanSpeed = "HIGH";
+    setFanState(true, "HIGH");
     alarmOn = true;
-    digitalWrite(FAN_RELAY_PIN, HIGH);
     digitalWrite(ALARM_RELAY_PIN, HIGH);
   }
   // HSI 35-40: HIGH STRESS → Fan HIGH
   else if (hsi >= cachedSettings.hsiMild) {
     Serial.printf("⚠️ HSI HIGH STRESS (%.1f) → Fan HIGH\n", hsi);
-    fanOn = true;
-    fanSpeed = "HIGH";
-    digitalWrite(FAN_RELAY_PIN, HIGH);
+    setFanState(true, "HIGH");
   }
   // HSI 30-35: MILD STRESS → Fan LOW
   else if (hsi >= cachedSettings.hsiNormal) {
     Serial.printf("🌡️ HSI MILD STRESS (%.1f) → Fan LOW\n", hsi);
-    fanOn = true;
-    fanSpeed = "LOW";
-    digitalWrite(FAN_RELAY_PIN, HIGH);
+    setFanState(true, "LOW");
   }
   // HSI < 30: NORMAL → Fan OFF (if no other concerns)
   else {
     if (ammonia < cachedSettings.ammoniaMax && powerOn) {
       Serial.printf("✅ HSI NORMAL (%.1f) → Fan OFF\n", hsi);
-      fanOn = false;
-      fanSpeed = "OFF";
-      digitalWrite(FAN_RELAY_PIN, LOW);
+      setFanState(false, "OFF");
     }
   }
   
@@ -848,6 +839,83 @@ void saveCachedSettings() {
   preferences.end();
   
   Serial.println("✓ Settings saved to EEPROM");
+}
+
+// ================ FAN RELAY HEALTH CHECK ================
+// 🔧 Tests if the fan relay is actually responding
+// This detects "stuck relay" problems
+
+void checkFanRelayHealth() {
+  static unsigned long lastHealthCheck = 0;
+  unsigned long now = millis();
+  
+  // Run health check periodically
+  if (now - lastHealthCheck < FAN_HEALTH_CHECK_INTERVAL) return;
+  lastHealthCheck = now;
+  
+  // Only check in failsafe mode or when critical
+  if (!failsafeMode && temperature < 35.0) return;
+  
+  Serial.println("\n🔧 FAN RELAY HEALTH CHECK...");
+  
+  // Read actual GPIO state
+  bool actualState = digitalRead(FAN_RELAY_PIN) == HIGH;
+  
+  // Compare expected vs actual
+  if (actualState != expectedFanState) {
+    fanHealthCheckFailCount++;
+    Serial.printf("❌ MISMATCH! Expected: %s, Actual: %s (Fail #%d)\n",
+                  expectedFanState ? "ON" : "OFF",
+                  actualState ? "ON" : "OFF",
+                  fanHealthCheckFailCount);
+    
+    // Try to force correct state
+    digitalWrite(FAN_RELAY_PIN, expectedFanState ? HIGH : LOW);
+    delay(100);
+    
+    // Re-check
+    actualState = digitalRead(FAN_RELAY_PIN) == HIGH;
+    if (actualState == expectedFanState) {
+      Serial.println("✓ Relay recovered after retry");
+    }
+  } else {
+    // Reset fail count on success
+    if (fanHealthCheckFailCount > 0) {
+      fanHealthCheckFailCount = 0;
+      Serial.println("✓ Fan relay operating normally");
+    }
+  }
+  
+  // Check for stuck relay
+  if (fanHealthCheckFailCount >= MAX_FAN_HEALTH_FAILURES) {
+    fanRelayHealthy = false;
+    Serial.println("\n🚨🚨🚨 FAN RELAY STUCK! 🚨🚨🚨");
+    Serial.println("Hardware problem detected!");
+    
+    // Trigger alarm for stuck relay
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    
+    // Log the issue
+    logFailsafeEvent("RELAY_STUCK", "Fan relay not responding after 3 attempts");
+    
+    // Try GSM SMS if available
+    #ifdef GSM_ENABLED
+    sendGsmSms("⚠️ HARDWARE ALERT: Fan relay stuck! Manual intervention required.");
+    #endif
+  }
+}
+
+// Update expected state when setting fan
+void setFanState(bool state, String speed) {
+  fanOn = state;
+  fanSpeed = speed;
+  expectedFanState = state;
+  lastFanToggleTime = millis();
+  
+  digitalWrite(FAN_RELAY_PIN, state ? HIGH : LOW);
+  
+  Serial.printf("🌀 Fan → %s (%s)\n", state ? "ON" : "OFF", speed.c_str());
 }
 
 // ================ UTILITY FUNCTIONS ================
