@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Sun, Moon, Clock, Lightbulb, RefreshCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useLightingSchedule, useUpdateLightingSchedule } from '@/hooks/useFarmData';
+import { useLightingCurve } from '@/hooks/useLightingCurve';
 import { translations } from '@/lib/translations';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -10,10 +11,13 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
+import { LightingCurveCard } from '@/components/lighting/LightingCurveCard';
+import { LightingCurveSettings } from '@/components/lighting/LightingCurveSettings';
 
 export function LightingPage() {
   const { language } = useAuth();
   const { data: schedule, isLoading } = useLightingSchedule();
+  const { currentState } = useLightingCurve();
   const updateSchedule = useUpdateLightingSchedule();
   const { toast } = useToast();
   
@@ -76,7 +80,10 @@ export function LightingPage() {
   const currentHour = new Date().getHours();
   const isLightOn = schedule?.manual_override 
     ? true 
-    : (currentHour >= startHour && currentHour < endHour);
+    : currentState?.isActive ?? (currentHour >= startHour && currentHour < endHour);
+  
+  // Get brightness from curve
+  const currentBrightness = currentState?.brightness ?? (isLightOn ? 100 : 0);
 
   if (isLoading) {
     return (
@@ -103,6 +110,11 @@ export function LightingPage() {
         >
           <h2 className="section-title">{translations.lighting.title[language]}</h2>
 
+          {/* Smart Lighting Curve Card */}
+          <div className="mb-6">
+            <LightingCurveCard />
+          </div>
+
           {/* Current Status */}
           <div className="mb-6 rounded-2xl bg-card p-6 shadow-card">
             <div className="flex items-center justify-between">
@@ -115,14 +127,18 @@ export function LightingPage() {
                 <div>
                   <p className="text-lg font-semibold">
                     {isLightOn 
-                      ? (language === 'bn' ? 'লাইট চালু' : 'Lights ON') 
+                      ? (language === 'bn' ? `লাইট চালু (${currentBrightness}%)` : `Lights ON (${currentBrightness}%)`) 
                       : (language === 'bn' ? 'লাইট বন্ধ' : 'Lights OFF')
                     }
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {schedule?.manual_override 
                       ? (language === 'bn' ? 'ম্যানুয়াল মোড' : 'Manual Mode')
-                      : (language === 'bn' ? 'অটো মোড' : 'Auto Mode')
+                      : currentState?.phase === 'fade-in' 
+                        ? (language === 'bn' ? 'ফেড ইন মোড' : 'Fade In Mode')
+                        : currentState?.phase === 'fade-out'
+                          ? (language === 'bn' ? 'ফেড আউট মোড' : 'Fade Out Mode')
+                          : (language === 'bn' ? 'অটো মোড' : 'Auto Mode')
                     }
                   </p>
                 </div>
@@ -288,6 +304,11 @@ export function LightingPage() {
             </Button>
           </div>
 
+          {/* Smart Lighting Curve Settings */}
+          <div className="mb-6">
+            <LightingCurveSettings />
+          </div>
+
           {/* Info Card */}
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <h4 className="mb-2 font-medium text-primary">
@@ -295,8 +316,8 @@ export function LightingPage() {
             </h4>
             <p className="text-sm text-muted-foreground">
               {language === 'bn' 
-                ? 'সর্বোত্তম ডিম উৎপাদনের জন্য লেয়ার মুরগির দৈনিক ১৪-১৬ ঘন্টা আলো প্রয়োজন। এর কম বা বেশি আলো উৎপাদনে প্রভাব ফেলতে পারে।'
-                : 'Layer hens require 14-16 hours of light daily for optimal egg production. Less or more light can affect production.'
+                ? 'সর্বোত্তম ডিম উৎপাদনের জন্য লেয়ার মুরগির দৈনিক ১৪-১৬ ঘন্টা আলো প্রয়োজন। গ্র্যাজুয়াল মোড স্ট্রেস কমায় এবং ডিম পাড়ার ধারাবাহিকতা বাড়ায়।'
+                : 'Layer hens require 14-16 hours of light daily for optimal egg production. Gradual mode reduces stress and improves egg laying consistency.'
               }
             </p>
           </div>
