@@ -1609,6 +1609,27 @@ export type Database = {
         }
         Relationships: []
       }
+      super_admins: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1815,11 +1836,12 @@ export type Database = {
         Returns: boolean
       }
       is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       alert_severity: "warning" | "danger"
       alert_type: "temperature" | "ammonia" | "power" | "water"
-      app_role: "owner" | "worker"
+      app_role: "owner" | "worker" | "super_admin"
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
@@ -1953,7 +1975,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["warning", "danger"],
       alert_type: ["temperature", "ammonia", "power", "water"],
-      app_role: ["owner", "worker"],
+      app_role: ["owner", "worker", "super_admin"],
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
