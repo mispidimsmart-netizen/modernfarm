@@ -18,7 +18,7 @@ import { HSISettingsCard } from '@/components/settings/HSISettingsCard';
 import { FanSpeedSettingsCard } from '@/components/settings/FanSpeedSettingsCard';
 import { WaterAnomalySettingsCard } from '@/components/settings/WaterAnomalySettingsCard';
 import { SmartModeCard } from '@/components/settings/SmartModeCard';
-
+import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
 export function SettingsPage() {
   const { language, user } = useAuth();
   const { data: profile } = useProfile();
@@ -168,6 +168,11 @@ export function SettingsPage() {
           {/* Smart Mode Profiles */}
           <div className="mb-6">
             <SmartModeCard />
+          </div>
+
+          {/* Weather Auto Mode */}
+          <div className="mb-6">
+            <WeatherAutoModeCard />
           </div>
 
           {/* Threshold Settings */}
