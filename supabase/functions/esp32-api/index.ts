@@ -133,6 +133,10 @@ Deno.serve(async (req) => {
       return await getSettings(supabase, userId);
     }
 
+    if (req.method === 'GET' && path === 'latest-data') {
+      return await getLatestSensorData(supabase, userId);
+    }
+
     if (req.method === 'GET' && path === 'automation-rules') {
       return await getAutomationRules(supabase, userId);
     }
@@ -813,6 +817,83 @@ async function handleManualControl(body: ManualControlPayload, supabase: any, us
       status_updated: statusUpdate,
       commands_queued: commands.length,
       manual_override: statusUpdate.manual_override
+    }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+async function getLatestSensorData(supabase: any, userId: string) {
+  // Get latest sensor reading
+  const { data: sensorData, error: sensorError } = await supabase
+    .from('sensor_readings')
+    .select('temperature, humidity, ammonia, water_usage, recorded_at')
+    .eq('user_id', userId)
+    .order('recorded_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  // Get device status
+  const { data: deviceStatus, error: statusError } = await supabase
+    .from('device_status')
+    .select('power_on, fan_on, light_on, alarm_on, manual_override, updated_at')
+    .eq('user_id', userId)
+    .single();
+
+  // Get farm settings for thresholds
+  const { data: settings } = await supabase
+    .from('farm_settings')
+    .select('temperature_min, temperature_max, humidity_min, humidity_max, ammonia_max')
+    .eq('user_id', userId)
+    .single();
+
+  // Calculate status levels
+  let temperatureStatus = 'normal';
+  let humidityStatus = 'normal';
+  let ammoniaStatus = 'normal';
+
+  if (sensorData && settings) {
+    if (sensorData.temperature > settings.temperature_max + 5) {
+      temperatureStatus = 'danger';
+    } else if (sensorData.temperature > settings.temperature_max || sensorData.temperature < settings.temperature_min) {
+      temperatureStatus = 'warning';
+    }
+
+    if (sensorData.humidity > settings.humidity_max || sensorData.humidity < settings.humidity_min) {
+      humidityStatus = 'warning';
+    }
+
+    if (sensorData.ammonia > settings.ammonia_max + 10) {
+      ammoniaStatus = 'danger';
+    } else if (sensorData.ammonia > settings.ammonia_max) {
+      ammoniaStatus = 'warning';
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      sensor_data: sensorData ? {
+        temperature: sensorData.temperature,
+        humidity: sensorData.humidity,
+        ammonia: sensorData.ammonia,
+        water_usage: sensorData.water_usage,
+        recorded_at: sensorData.recorded_at,
+        status: {
+          temperature: temperatureStatus,
+          humidity: humidityStatus,
+          ammonia: ammoniaStatus
+        }
+      } : null,
+      device_status: deviceStatus ? {
+        power: deviceStatus.power_on,
+        fan: deviceStatus.fan_on,
+        light: deviceStatus.light_on,
+        alarm: deviceStatus.alarm_on,
+        manual_override: deviceStatus.manual_override,
+        updated_at: deviceStatus.updated_at
+      } : null,
+      thresholds: settings || null,
+      timestamp: new Date().toISOString()
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
