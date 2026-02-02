@@ -465,6 +465,9 @@ void logFailsafeEvent(String eventType, String message) {
 }
 
 // ================ AUTOMATION FUNCTIONS ================
+// 🔐 LOCAL SAFE RULES - "সন্দেহ হলে Fan ON — Always safer"
+// These rules run when cloud is unavailable
+
 void runAutomation() {
   if (failsafeMode) {
     runLocalAutomation();
@@ -473,62 +476,118 @@ void runAutomation() {
 }
 
 void runLocalAutomation() {
-  // Calculate Heat Stress Index
-  float hsi = calculateHSI(temperature, humidity);
+  Serial.println("\n🔐 Running LOCAL SAFE RULES...");
   
-  // ======== FAN CONTROL ========
-  String newFanSpeed = "OFF";
-  bool shouldFanOn = false;
-  
-  if (temperature >= cachedSettings.fanHighTempMin || hsi >= cachedSettings.hsiSevere) {
-    newFanSpeed = "HIGH";
-    shouldFanOn = true;
-  } else if (temperature >= cachedSettings.fanMedTempMin) {
-    newFanSpeed = "MEDIUM";
-    shouldFanOn = true;
-  } else if (temperature >= cachedSettings.fanLowTempMin) {
-    newFanSpeed = "LOW";
-    shouldFanOn = true;
+  // ========================================
+  // RULE 0: SENSOR ERROR = FAN ON (Safe Mode)
+  // ========================================
+  bool sensorError = isnan(temperature) || isnan(humidity);
+  if (sensorError) {
+    Serial.println("⚠️ SENSOR ERROR → Fan ON (Safe Mode)");
+    fanOn = true;
+    fanSpeed = "HIGH";
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    return;  // Don't process other rules with bad data
   }
   
-  // Emergency: Always run fan on HIGH
-  if (hsi >= cachedSettings.hsiEmergency) {
-    newFanSpeed = "HIGH";
-    shouldFanOn = true;
+  // ========================================
+  // RULE 1: POWER OFF = ALARM ON
+  // ========================================
+  if (!powerOn) {
+    Serial.println("🔴 POWER OFF → Alarm ON");
     if (!alarmOn) {
       alarmOn = true;
       digitalWrite(ALARM_RELAY_PIN, HIGH);
-      Serial.println("🚨 EMERGENCY: Heat stress alarm activated!");
     }
   }
   
-  if (fanOn != shouldFanOn || fanSpeed != newFanSpeed) {
-    fanOn = shouldFanOn;
-    fanSpeed = newFanSpeed;
-    digitalWrite(FAN_RELAY_PIN, fanOn ? HIGH : LOW);
-    Serial.printf("→ Fan: %s (%s)\n", fanOn ? "ON" : "OFF", fanSpeed.c_str());
+  // ========================================
+  // RULE 2: AMMONIA ≥ 25 ppm = FAN ON + ALARM
+  // ========================================
+  if (ammonia >= cachedSettings.ammoniaMax) {  // Default: 25 ppm
+    Serial.printf("🟡 AMMONIA HIGH (%.1f ppm) → Fan ON + Alarm\n", ammonia);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    alarmOn = true;
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
   }
   
-  // ======== AMMONIA CONTROL ========
-  if (ammonia > cachedSettings.ammoniaMax) {
-    if (!fanOn) {
+  // ========================================
+  // RULE 3: TEMP ≥ 33°C = FAN HIGH
+  // ========================================
+  else if (temperature >= cachedSettings.fanHighTempMin) {  // Default: 33°C
+    Serial.printf("🔥 TEMP CRITICAL (%.1f°C) → Fan HIGH\n", temperature);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+  }
+  
+  // ========================================
+  // RULE 4: TEMP ≥ 30°C = FAN ON (Medium)
+  // ========================================
+  else if (temperature >= cachedSettings.fanMedTempMin) {  // Default: 30°C
+    Serial.printf("🌡️ TEMP HIGH (%.1f°C) → Fan ON (Medium)\n", temperature);
+    fanOn = true;
+    fanSpeed = "MEDIUM";
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+  }
+  
+  // ========================================
+  // RULE 5: TEMP < 30°C = Normal operation
+  // ========================================
+  else {
+    // Only turn off if conditions are truly safe
+    if (temperature < cachedSettings.fanLowTempMin && ammonia < cachedSettings.ammoniaMax) {
+      fanOn = false;
+      fanSpeed = "OFF";
+      digitalWrite(FAN_RELAY_PIN, LOW);
+    } else if (temperature >= cachedSettings.fanLowTempMin) {
+      // Keep fan on LOW for borderline temps (28-30°C)
       fanOn = true;
-      fanSpeed = "HIGH";
+      fanSpeed = "LOW";
       digitalWrite(FAN_RELAY_PIN, HIGH);
-      Serial.println("→ High ammonia detected - Fan forced ON");
     }
   }
   
-  // ======== LIGHTING CONTROL ========
-  controlLighting();
+  // ========================================
+  // RULE 6: HEAT STRESS INDEX CHECK
+  // ========================================
+  float hsi = calculateHSI(temperature, humidity);
+  if (hsi >= cachedSettings.hsiEmergency) {  // Default: 85
+    Serial.printf("🚨 HSI EMERGENCY (%.1f) → Fan HIGH + Alarm\n", hsi);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    alarmOn = true;
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+  } else if (hsi >= cachedSettings.hsiSevere) {  // Default: 80
+    Serial.printf("⚠️ HSI SEVERE (%.1f) → Fan HIGH\n", hsi);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+  }
   
-  // ======== ALARM CONTROL ========
-  // Auto-clear alarm if conditions improve
-  if (alarmOn && hsi < cachedSettings.hsiSevere && ammonia < cachedSettings.ammoniaMax) {
+  // ========================================
+  // ALARM AUTO-CLEAR (only if ALL conditions safe)
+  // ========================================
+  if (alarmOn && powerOn && ammonia < cachedSettings.ammoniaMax && 
+      hsi < cachedSettings.hsiSevere && temperature < cachedSettings.fanHighTempMin) {
     alarmOn = false;
     digitalWrite(ALARM_RELAY_PIN, LOW);
-    Serial.println("✓ Conditions improved - Alarm cleared");
+    Serial.println("✅ All conditions safe → Alarm cleared");
   }
+  
+  // ========================================
+  // LIGHTING CONTROL (continues regardless)
+  // ========================================
+  controlLighting();
+  
+  // Log current state
+  Serial.printf("📊 State: Fan=%s(%s), Alarm=%s, Light=%s(%d%%)\n",
+                fanOn ? "ON" : "OFF", fanSpeed.c_str(),
+                alarmOn ? "ON" : "OFF",
+                lightOn ? "ON" : "OFF", lightBrightness);
 }
 
 float calculateHSI(float temp, float hum) {
