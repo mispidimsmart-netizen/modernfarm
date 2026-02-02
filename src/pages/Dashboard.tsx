@@ -31,6 +31,7 @@ import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
 import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
+import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -180,6 +181,16 @@ export function Dashboard() {
             status={statusLevels.water}
           />
         </div>
+
+        {/* Smart Mode Quick Access */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="mt-4"
+        >
+          <SmartModeWidget />
+        </motion.div>
 
         {/* Farm Summary Cards */}
         <div className="mt-6">
