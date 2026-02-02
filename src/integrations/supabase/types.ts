@@ -693,8 +693,13 @@ export type Database = {
       lighting_schedule: {
         Row: {
           end_time: string
+          fade_in_minutes: number
+          fade_out_minutes: number
+          gradual_enabled: boolean
           id: string
           manual_override: boolean
+          max_brightness: number
+          min_brightness: number
           start_time: string
           total_hours: number
           updated_at: string
@@ -702,8 +707,13 @@ export type Database = {
         }
         Insert: {
           end_time?: string
+          fade_in_minutes?: number
+          fade_out_minutes?: number
+          gradual_enabled?: boolean
           id?: string
           manual_override?: boolean
+          max_brightness?: number
+          min_brightness?: number
           start_time?: string
           total_hours?: number
           updated_at?: string
@@ -711,8 +721,13 @@ export type Database = {
         }
         Update: {
           end_time?: string
+          fade_in_minutes?: number
+          fade_out_minutes?: number
+          gradual_enabled?: boolean
           id?: string
           manual_override?: boolean
+          max_brightness?: number
+          min_brightness?: number
           start_time?: string
           total_hours?: number
           updated_at?: string
