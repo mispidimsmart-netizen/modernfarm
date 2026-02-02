@@ -86,6 +86,39 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_rules_new: {
+        Row: {
+          action: string
+          condition: string
+          created_at: string
+          enabled: boolean
+          id: string
+          parameter: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          action: string
+          condition: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          parameter: string
+          user_id: string
+          value: number
+        }
+        Update: {
+          action?: string
+          condition?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          parameter?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
       daily_reports: {
         Row: {
           avg_humidity: number | null
@@ -148,6 +181,39 @@ export type Database = {
           executed?: boolean
           executed_at?: string | null
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      device_control: {
+        Row: {
+          alarm: boolean
+          device_id: string
+          fan: boolean
+          id: string
+          light: boolean
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alarm?: boolean
+          device_id?: string
+          fan?: boolean
+          id?: string
+          light?: boolean
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alarm?: boolean
+          device_id?: string
+          fan?: boolean
+          id?: string
+          light?: boolean
+          mode?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -329,6 +395,42 @@ export type Database = {
           id?: string
           p256dh?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      sensor_logs: {
+        Row: {
+          ammonia: number
+          device_id: string
+          humidity: number
+          id: string
+          power_status: string
+          temperature: number
+          timestamp: string
+          user_id: string
+          water_flow: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string
+          humidity: number
+          id?: string
+          power_status?: string
+          temperature: number
+          timestamp?: string
+          user_id: string
+          water_flow?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string
+          humidity?: number
+          id?: string
+          power_status?: string
+          temperature?: number
+          timestamp?: string
+          user_id?: string
+          water_flow?: number
         }
         Relationships: []
       }
