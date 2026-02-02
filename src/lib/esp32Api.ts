@@ -47,6 +47,14 @@ interface LightingSchedule {
   end_time: string;
   total_hours: number;
   manual_override: boolean;
+  gradual_enabled: boolean;
+  fade_in_minutes: number;
+  fade_out_minutes: number;
+  min_brightness: number;
+  max_brightness: number;
+  current_brightness: number;  // 0-100 percentage
+  current_phase: 'off' | 'fade-in' | 'on' | 'fade-out' | 'manual';
+  pwm_value: number;           // 0-255 for ESP32 PWM
 }
 
 class ESP32ApiError extends Error {
