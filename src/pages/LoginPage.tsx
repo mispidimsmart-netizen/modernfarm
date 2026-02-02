@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Egg, User, Sparkles, Leaf, Phone } from 'lucide-react';
+import { Mail, Lock, Egg, User, Sparkles, Leaf, Phone, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { translations } from '@/lib/translations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 type LoginMethod = 'email' | 'phone';
+type FarmType = 'layer' | 'broiler';
 
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
@@ -17,6 +19,9 @@ export function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [farmName, setFarmName] = useState('');
+  const [userName, setUserName] = useState('');
+  const [email, setEmail] = useState('');
+  const [farmType, setFarmType] = useState<FarmType>('layer');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
@@ -41,9 +46,20 @@ export function LoginPage() {
       }
     }
 
+    // Validate required fields for signup
+    if (isSignUp && !userName.trim()) {
+      toast({
+        title: translations.common.error[language],
+        description: language === 'bn' ? 'আপনার নাম দিন' : 'Please enter your name',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       if (isSignUp) {
-        const { error } = await signUp(identifier, password, farmName, isPhone);
+        const { error } = await signUp(identifier, password, farmName || (language === 'bn' ? 'আমার ফার্ম' : 'My Farm'), isPhone);
         if (error) {
           toast({
             title: translations.common.error[language],
@@ -51,12 +67,30 @@ export function LoginPage() {
             variant: 'destructive',
           });
         } else {
-          // For phone signup, auto-login after signup
+          // For phone signup, auto-login after signup and update profile
           if (isPhone) {
             const { error: signInError } = await signIn(identifier, password, isPhone);
             if (!signInError) {
+              // Update profile with additional info
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await supabase.from('profiles').update({
+                  user_name: userName.trim(),
+                  email: email.trim() || null,
+                  farm_type: farmType,
+                  farm_name: farmName.trim() || (language === 'bn' ? 'আমার ফার্ম' : 'My Farm'),
+                }).eq('id', user.id);
+              }
               navigate('/');
             }
+          } else {
+            // For email signup, show success message
+            toast({
+              title: language === 'bn' ? 'সফল!' : 'Success!',
+              description: language === 'bn' 
+                ? 'অ্যাকাউন্ট তৈরি হয়েছে। ইমেইল যাচাই করুন।' 
+                : 'Account created. Please verify your email.',
+            });
           }
         }
       } else {
@@ -304,23 +338,100 @@ export function LoginPage() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="space-y-2 overflow-hidden"
+                className="space-y-4 overflow-hidden"
               >
-                <label className="text-sm font-medium text-foreground">
-                  {translations.auth.farmName[language]}
-                </label>
-                <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
-                    <User className="h-4 w-4 text-secondary" />
+                {/* User Name */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {language === 'bn' ? 'আপনার নাম *' : 'Your Name *'}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
+                      <User className="h-4 w-4 text-secondary" />
+                    </div>
+                    <Input
+                      type="text"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      placeholder={language === 'bn' ? 'আপনার পুরো নাম' : 'Your full name'}
+                      className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
+                      required
+                    />
                   </div>
-                  <Input
-                    type="text"
-                    value={farmName}
-                    onChange={(e) => setFarmName(e.target.value)}
-                    placeholder={language === 'bn' ? 'আমার লেয়ার ফার্ম' : 'My Layer Farm'}
-                    className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
-                  />
                 </div>
+
+                {/* Farm Name */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {translations.auth.farmName[language]}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
+                      <Building2 className="h-4 w-4 text-secondary" />
+                    </div>
+                    <Input
+                      type="text"
+                      value={farmName}
+                      onChange={(e) => setFarmName(e.target.value)}
+                      placeholder={language === 'bn' ? 'আমার ফার্ম' : 'My Farm'}
+                      className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
+                    />
+                  </div>
+                </div>
+
+                {/* Farm Type */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {language === 'bn' ? 'ফার্মের ধরণ' : 'Farm Type'}
+                  </label>
+                  <div className="flex rounded-2xl bg-muted/50 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setFarmType('layer')}
+                      className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+                        farmType === 'layer'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Egg className="h-4 w-4" />
+                      {language === 'bn' ? 'লেয়ার' : 'Layer'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFarmType('broiler')}
+                      className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+                        farmType === 'broiler'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      🐔
+                      {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email (Optional) */}
+                {loginMethod === 'phone' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      {language === 'bn' ? 'ইমেইল (ঐচ্ছিক)' : 'Email (Optional)'}
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
+                        <Mail className="h-4 w-4 text-secondary" />
+                      </div>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="example@email.com"
+                        className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
+                      />
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
