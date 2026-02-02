@@ -28,6 +28,7 @@ import { SmartModeCard } from '@/components/settings/SmartModeCard';
 import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
 import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
+import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -212,9 +213,7 @@ export function SettingsPage() {
             <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-white/10" />
             
             <div className="relative flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-                <User size={32} className="text-white" />
-              </div>
+              <ProfileAvatarUpload />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-bold text-white">{profile?.farm_name || 'Smart Farm'}</p>
