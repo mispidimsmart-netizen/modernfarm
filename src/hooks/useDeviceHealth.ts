@@ -14,6 +14,8 @@ export interface DeviceHealth {
   cpu_temperature: number | null;
   power_source: string;
   battery_percentage: number | null;
+  battery_capacity_wh: number | null;
+  power_consumption_w: number | null;
   firmware_version: string | null;
   last_restart_at: string | null;
   error_count: number;

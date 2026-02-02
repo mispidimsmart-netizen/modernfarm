@@ -19,6 +19,8 @@ import { FanSpeedSettingsCard } from '@/components/settings/FanSpeedSettingsCard
 import { WaterAnomalySettingsCard } from '@/components/settings/WaterAnomalySettingsCard';
 import { SmartModeCard } from '@/components/settings/SmartModeCard';
 import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
+import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
+
 export function SettingsPage() {
   const { language, user } = useAuth();
   const { data: profile } = useProfile();
@@ -193,6 +195,11 @@ export function SettingsPage() {
           {/* Water Anomaly Settings */}
           <div className="mb-6">
             <WaterAnomalySettingsCard />
+          </div>
+
+          {/* Battery Backup Settings */}
+          <div className="mb-6">
+            <BatterySettingsCard />
           </div>
 
           {/* ESP32 Device Tokens */}
