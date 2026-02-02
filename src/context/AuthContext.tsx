@@ -10,12 +10,30 @@ interface AuthContextType {
   isLoading: boolean;
   language: Language;
   setLanguage: (lang: Language) => void;
-  signUp: (email: string, password: string, farmName?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (identifier: string, password: string, farmName?: string, isPhone?: boolean) => Promise<{ error: Error | null }>;
+  signIn: (identifier: string, password: string, isPhone?: boolean) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper to format phone number for Supabase (needs +880 format for Bangladesh)
+const formatPhoneNumber = (phone: string): string => {
+  // Remove all non-digit characters
+  let cleaned = phone.replace(/\D/g, '');
+  
+  // If starts with 0, replace with +880
+  if (cleaned.startsWith('0')) {
+    cleaned = '880' + cleaned.substring(1);
+  }
+  
+  // If doesn't start with 880, add it
+  if (!cleaned.startsWith('880')) {
+    cleaned = '880' + cleaned;
+  }
+  
+  return '+' + cleaned;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -44,34 +62,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, farmName?: string) => {
+  const signUp = async (identifier: string, password: string, farmName?: string, isPhone?: boolean) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            farm_name: farmName || 'আমার লেয়ার ফার্ম',
+      if (isPhone) {
+        // Phone signup with password
+        const formattedPhone = formatPhoneNumber(identifier);
+        
+        const { error } = await supabase.auth.signUp({
+          phone: formattedPhone,
+          password,
+          options: {
+            data: {
+              farm_name: farmName || 'আমার লেয়ার ফার্ম',
+            }
           }
-        }
-      });
+        });
 
-      if (error) {
-        if (error.message.includes('User already registered')) {
-          return { error: new Error(language === 'bn' ? 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'An account with this email already exists') };
+        if (error) {
+          if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
+            return { error: new Error(language === 'bn' ? 'এই নম্বর দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'An account with this phone already exists') };
+          }
+          return { error };
         }
-        return { error };
+
+        toast({
+          title: language === 'bn' ? 'সফল!' : 'Success!',
+          description: language === 'bn' 
+            ? 'অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।' 
+            : 'Account created. Please login now.',
+        });
+      } else {
+        // Email signup
+        const { error } = await supabase.auth.signUp({
+          email: identifier,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              farm_name: farmName || 'আমার লেয়ার ফার্ম',
+            }
+          }
+        });
+
+        if (error) {
+          if (error.message.includes('User already registered')) {
+            return { error: new Error(language === 'bn' ? 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'An account with this email already exists') };
+          }
+          return { error };
+        }
+
+        toast({
+          title: language === 'bn' ? 'সফল!' : 'Success!',
+          description: language === 'bn' 
+            ? 'অ্যাকাউন্ট তৈরি হয়েছে। ইমেইল যাচাই করুন।' 
+            : 'Account created. Please verify your email.',
+        });
       }
-
-      toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' 
-          ? 'অ্যাকাউন্ট তৈরি হয়েছে। ইমেইল যাচাই করুন।' 
-          : 'Account created. Please verify your email.',
-      });
 
       return { error: null };
     } catch (error) {
@@ -79,21 +127,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string, isPhone?: boolean) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (isPhone) {
+        const formattedPhone = formatPhoneNumber(identifier);
+        
+        const { error } = await supabase.auth.signInWithPassword({
+          phone: formattedPhone,
+          password,
+        });
 
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          return { error: new Error(language === 'bn' ? 'ভুল ইমেইল বা পাসওয়ার্ড' : 'Invalid email or password') };
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            return { error: new Error(language === 'bn' ? 'ভুল মোবাইল নম্বর বা পাসওয়ার্ড' : 'Invalid phone or password') };
+          }
+          return { error };
         }
-        if (error.message.includes('Email not confirmed')) {
-          return { error: new Error(language === 'bn' ? 'অনুগ্রহ করে আপনার ইমেইল যাচাই করুন' : 'Please verify your email first') };
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: identifier,
+          password,
+        });
+
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            return { error: new Error(language === 'bn' ? 'ভুল ইমেইল বা পাসওয়ার্ড' : 'Invalid email or password') };
+          }
+          if (error.message.includes('Email not confirmed')) {
+            return { error: new Error(language === 'bn' ? 'অনুগ্রহ করে আপনার ইমেইল যাচাই করুন' : 'Please verify your email first') };
+          }
+          return { error };
         }
-        return { error };
       }
 
       return { error: null };
