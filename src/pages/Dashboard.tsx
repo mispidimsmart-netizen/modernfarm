@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Power, RefreshCw, BarChart3, Settings, ChevronRight } from 'lucide-react';
+import { Power, RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
-import { useLiveSensorData, useStatusLevels, useDeviceControl } from '@/hooks/useSensorData';
+import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -13,10 +13,13 @@ import { StatusLevel } from '@/lib/types';
 
 export function Dashboard() {
   const { language } = useAuth();
-  const sensorData = useLiveSensorData();
-  const statusLevels = useStatusLevels(sensorData);
-  const { status: deviceStatus, manualOverride } = useDeviceControl();
+  const { sensorData, isConnected } = useRealtimeSensorData();
+  const statusLevels = useRealtimeStatusLevels(sensorData);
+  const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   const { data: farmSettings } = useFarmSettings();
+  
+  // Subscribe to realtime alerts
+  useRealtimeAlerts();
 
   const statusText = {
     bn: { normal: 'স্বাভাবিক', warning: 'সতর্কতা', danger: 'বিপদ' },
@@ -52,6 +55,17 @@ export function Dashboard() {
                 <span className="flex items-center gap-1 rounded-full bg-secondary/20 px-2 py-0.5 text-xs font-medium text-secondary">
                   <RefreshCw size={10} />
                   {translations.controls.manualOverride[language]}
+                </span>
+              )}
+              {isConnected ? (
+                <span className="flex items-center gap-1 rounded-full bg-status-normal/20 px-2 py-0.5 text-xs font-medium text-status-normal">
+                  <Wifi size={10} />
+                  {language === 'bn' ? 'লাইভ' : 'Live'}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  <WifiOff size={10} />
+                  {language === 'bn' ? 'অফলাইন' : 'Offline'}
                 </span>
               )}
             </div>
