@@ -5,6 +5,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
+import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
+import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -18,6 +20,7 @@ import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
+import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -28,9 +31,18 @@ export function Dashboard() {
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   const { data: farmSettings } = useFarmSettings();
   const { data: deviceHealth } = useAllDeviceHealth();
+  const { selectedShedId } = useSelectedShed();
   
   // Subscribe to realtime alerts
   useRealtimeAlerts();
+  
+  // Heat Stress Index automation
+  const hsiResult = useHeatStressAutomation({
+    temperature: sensorData.temperature,
+    humidity: sensorData.humidity,
+    shedId: selectedShedId,
+    enabled: true,
+  });
 
   // Count online devices
   const onlineDeviceCount = deviceHealth?.filter(d => d.is_online).length || 0;
@@ -153,6 +165,23 @@ export function Dashboard() {
         <div className="mt-6">
           <SensorCharts />
         </div>
+
+        {/* Heat Stress Index Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="mt-6"
+        >
+          <h2 className="section-title">
+            {language === 'bn' ? 'হিট স্ট্রেস মনিটরিং' : 'Heat Stress Monitoring'}
+          </h2>
+          <HeatStressCard 
+            hsiResult={hsiResult}
+            temperature={sensorData.temperature}
+            humidity={sensorData.humidity}
+          />
+        </motion.div>
 
         {/* Weather Card */}
         <motion.div
