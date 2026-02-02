@@ -6,6 +6,7 @@ import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
+import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
@@ -21,6 +22,7 @@ import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet'
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
+import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -42,6 +44,13 @@ export function Dashboard() {
     humidity: sensorData.humidity,
     shedId: selectedShedId,
     enabled: true,
+  });
+
+  // Fan Speed automation based on temperature
+  const fanSpeedResult = useFanSpeedAutomation({
+    temperature: sensorData.temperature,
+    shedId: selectedShedId,
+    enabled: !manualOverride, // Only auto-control when not in manual override
   });
 
   // Count online devices
@@ -165,6 +174,23 @@ export function Dashboard() {
         <div className="mt-6">
           <SensorCharts />
         </div>
+
+        {/* Fan Speed Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.11 }}
+          className="mt-6"
+        >
+          <h2 className="section-title">
+            {language === 'bn' ? 'ফ্যান কন্ট্রোল' : 'Fan Control'}
+          </h2>
+          <FanSpeedCard 
+            temperature={sensorData.temperature}
+            fanSpeed={fanSpeedResult?.speed || 'OFF'}
+            message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')}
+          />
+        </motion.div>
 
         {/* Heat Stress Index Card */}
         <motion.div

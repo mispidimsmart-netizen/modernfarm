@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { HSISettingsCard } from '@/components/settings/HSISettingsCard';
+import { FanSpeedSettingsCard } from '@/components/settings/FanSpeedSettingsCard';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -165,6 +166,11 @@ export function SettingsPage() {
           {/* Threshold Settings */}
           <div className="mb-6">
             <ThresholdSettingsCard />
+          </div>
+
+          {/* Fan Speed Settings */}
+          <div className="mb-6">
+            <FanSpeedSettingsCard />
           </div>
 
           {/* HSI Settings */}
