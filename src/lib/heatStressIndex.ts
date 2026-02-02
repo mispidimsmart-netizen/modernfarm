@@ -5,14 +5,28 @@
  * THI = 0.8 × T + (RH/100) × (T - 14.4) + 46.4
  * 
  * Heat Stress Levels for Layer Chickens:
- * - Normal: HSI < 70
- * - Mild Stress: 70 ≤ HSI < 75
- * - Moderate Stress: 75 ≤ HSI < 80
- * - Severe Stress: 80 ≤ HSI < 85
- * - Emergency: HSI ≥ 85
+ * - Normal: HSI < mild threshold (default 70)
+ * - Mild Stress: mild ≤ HSI < moderate
+ * - Moderate Stress: moderate ≤ HSI < severe
+ * - Severe Stress: severe ≤ HSI < emergency
+ * - Emergency: HSI ≥ emergency threshold
  */
 
 export type HeatStressLevel = 'normal' | 'mild' | 'moderate' | 'severe' | 'emergency';
+
+export interface HSIThresholds {
+  mild: number;
+  moderate: number;
+  severe: number;
+  emergency: number;
+}
+
+export const DEFAULT_HSI_THRESHOLDS: HSIThresholds = {
+  mild: 70,
+  moderate: 75,
+  severe: 80,
+  emergency: 85,
+};
 
 export interface HeatStressResult {
   index: number;
@@ -30,17 +44,22 @@ export interface HeatStressResult {
  * Calculate Heat Stress Index from temperature and humidity
  * @param temperature - Temperature in Celsius
  * @param humidity - Relative humidity in percentage (0-100)
+ * @param thresholds - Custom HSI thresholds (optional)
  * @returns HeatStressResult object with index, level, and recommended actions
  */
-export function calculateHSI(temperature: number, humidity: number): HeatStressResult {
+export function calculateHSI(
+  temperature: number, 
+  humidity: number,
+  thresholds: HSIThresholds = DEFAULT_HSI_THRESHOLDS
+): HeatStressResult {
   // THI formula for poultry
   const hsi = 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
   
   // Round to 1 decimal place
   const roundedHSI = Math.round(hsi * 10) / 10;
   
-  // Determine stress level and actions
-  if (roundedHSI < 70) {
+  // Determine stress level and actions using thresholds
+  if (roundedHSI < thresholds.mild) {
     return {
       index: roundedHSI,
       level: 'normal',
@@ -52,7 +71,7 @@ export function calculateHSI(temperature: number, humidity: number): HeatStressR
         en: 'Normal conditions'
       }
     };
-  } else if (roundedHSI < 75) {
+  } else if (roundedHSI < thresholds.moderate) {
     return {
       index: roundedHSI,
       level: 'mild',
@@ -64,7 +83,7 @@ export function calculateHSI(temperature: number, humidity: number): HeatStressR
         en: 'Mild heat stress - Turn on fans'
       }
     };
-  } else if (roundedHSI < 80) {
+  } else if (roundedHSI < thresholds.severe) {
     return {
       index: roundedHSI,
       level: 'moderate',
@@ -76,7 +95,7 @@ export function calculateHSI(temperature: number, humidity: number): HeatStressR
         en: 'Moderate heat stress - Extra ventilation needed'
       }
     };
-  } else if (roundedHSI < 85) {
+  } else if (roundedHSI < thresholds.emergency) {
     return {
       index: roundedHSI,
       level: 'severe',
