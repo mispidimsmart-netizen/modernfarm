@@ -7,6 +7,7 @@ export const translations = {
     automation: { bn: 'অটো', en: 'Auto' },
     alerts: { bn: 'সতর্কতা', en: 'Alerts' },
     reports: { bn: 'রিপোর্ট', en: 'Reports' },
+    farm: { bn: 'ফার্ম', en: 'Farm' },
   },
 
   // Dashboard

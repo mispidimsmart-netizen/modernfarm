@@ -281,6 +281,75 @@ export type Database = {
         }
         Relationships: []
       }
+      egg_production: {
+        Row: {
+          broken: number
+          created_at: string
+          grade_a: number
+          grade_b: number
+          grade_c: number
+          id: string
+          notes: string | null
+          production_date: string
+          total_eggs: number
+          user_id: string
+        }
+        Insert: {
+          broken?: number
+          created_at?: string
+          grade_a?: number
+          grade_b?: number
+          grade_c?: number
+          id?: string
+          notes?: string | null
+          production_date?: string
+          total_eggs?: number
+          user_id: string
+        }
+        Update: {
+          broken?: number
+          created_at?: string
+          grade_a?: number
+          grade_b?: number
+          grade_c?: number
+          id?: string
+          notes?: string | null
+          production_date?: string
+          total_eggs?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          description: string | null
+          expense_date: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          expense_date?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       farm_settings: {
         Row: {
           ammonia_max: number
@@ -317,6 +386,141 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_consumption: {
+        Row: {
+          consumption_date: string
+          created_at: string
+          feed_type: string
+          id: string
+          notes: string | null
+          quantity_kg: number
+          user_id: string
+        }
+        Insert: {
+          consumption_date?: string
+          created_at?: string
+          feed_type?: string
+          id?: string
+          notes?: string | null
+          quantity_kg?: number
+          user_id: string
+        }
+        Update: {
+          consumption_date?: string
+          created_at?: string
+          feed_type?: string
+          id?: string
+          notes?: string | null
+          quantity_kg?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      feed_inventory: {
+        Row: {
+          created_at: string
+          feed_type: string
+          id: string
+          notes: string | null
+          purchase_date: string
+          quantity_kg: number
+          supplier: string | null
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feed_type?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          quantity_kg?: number
+          supplier?: string | null
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feed_type?: string
+          id?: string
+          notes?: string | null
+          purchase_date?: string
+          quantity_kg?: number
+          supplier?: string | null
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flock_info: {
+        Row: {
+          age_weeks: number
+          breed: string | null
+          created_at: string
+          id: string
+          purchase_date: string | null
+          total_birds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_weeks?: number
+          breed?: string | null
+          created_at?: string
+          id?: string
+          purchase_date?: string | null
+          total_birds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_weeks?: number
+          breed?: string | null
+          created_at?: string
+          id?: string
+          purchase_date?: string | null
+          total_birds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      income: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          income_date: string
+          quantity: number | null
+          unit_price: number | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          income_date?: string
+          quantity?: number | null
+          unit_price?: number | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          income_date?: string
+          quantity?: number | null
+          unit_price?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       lighting_schedule: {
         Row: {
           end_time: string
@@ -343,6 +547,39 @@ export type Database = {
           start_time?: string
           total_hours?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mortality_records: {
+        Row: {
+          age_weeks: number | null
+          cause: string
+          count: number
+          created_at: string
+          id: string
+          notes: string | null
+          record_date: string
+          user_id: string
+        }
+        Insert: {
+          age_weeks?: number | null
+          cause?: string
+          count?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          record_date?: string
+          user_id: string
+        }
+        Update: {
+          age_weeks?: number | null
+          cause?: string
+          count?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          record_date?: string
           user_id?: string
         }
         Relationships: []
