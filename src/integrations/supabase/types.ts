@@ -163,6 +163,57 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_summary: {
+        Row: {
+          alerts_count: number | null
+          avg_ammonia: number | null
+          avg_humidity: number | null
+          avg_temperature: number | null
+          created_at: string
+          health_score: number
+          id: string
+          mortality_count: number | null
+          notes: string | null
+          power_outage_minutes: number | null
+          summary_date: string
+          total_eggs: number | null
+          total_water_usage: number | null
+          user_id: string
+        }
+        Insert: {
+          alerts_count?: number | null
+          avg_ammonia?: number | null
+          avg_humidity?: number | null
+          avg_temperature?: number | null
+          created_at?: string
+          health_score?: number
+          id?: string
+          mortality_count?: number | null
+          notes?: string | null
+          power_outage_minutes?: number | null
+          summary_date?: string
+          total_eggs?: number | null
+          total_water_usage?: number | null
+          user_id: string
+        }
+        Update: {
+          alerts_count?: number | null
+          avg_ammonia?: number | null
+          avg_humidity?: number | null
+          avg_temperature?: number | null
+          created_at?: string
+          health_score?: number
+          id?: string
+          mortality_count?: number | null
+          notes?: string | null
+          power_outage_minutes?: number | null
+          summary_date?: string
+          total_eggs?: number | null
+          total_water_usage?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       device_commands: {
         Row: {
           command_type: string
@@ -751,6 +802,96 @@ export type Database = {
         }
         Relationships: []
       }
+      mode_profiles: {
+        Row: {
+          ammonia_max: number
+          bg_color: string | null
+          color: string | null
+          created_at: string
+          description: string | null
+          description_bn: string | null
+          fan_high_temp_min: number
+          fan_low_temp_max: number
+          fan_low_temp_min: number
+          fan_medium_temp_max: number
+          fan_medium_temp_min: number
+          hsi_emergency_threshold: number
+          hsi_mild_threshold: number
+          hsi_moderate_threshold: number
+          hsi_severe_threshold: number
+          humidity_max: number
+          humidity_min: number
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          is_custom: boolean | null
+          name: string
+          name_bn: string | null
+          temperature_max: number
+          temperature_min: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ammonia_max?: number
+          bg_color?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          description_bn?: string | null
+          fan_high_temp_min?: number
+          fan_low_temp_max?: number
+          fan_low_temp_min?: number
+          fan_medium_temp_max?: number
+          fan_medium_temp_min?: number
+          hsi_emergency_threshold?: number
+          hsi_mild_threshold?: number
+          hsi_moderate_threshold?: number
+          hsi_severe_threshold?: number
+          humidity_max?: number
+          humidity_min?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_custom?: boolean | null
+          name: string
+          name_bn?: string | null
+          temperature_max?: number
+          temperature_min?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ammonia_max?: number
+          bg_color?: string | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          description_bn?: string | null
+          fan_high_temp_min?: number
+          fan_low_temp_max?: number
+          fan_low_temp_min?: number
+          fan_medium_temp_max?: number
+          fan_medium_temp_min?: number
+          hsi_emergency_threshold?: number
+          hsi_mild_threshold?: number
+          hsi_moderate_threshold?: number
+          hsi_severe_threshold?: number
+          humidity_max?: number
+          humidity_min?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_custom?: boolean | null
+          name?: string
+          name_bn?: string | null
+          temperature_max?: number
+          temperature_min?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mortality_records: {
         Row: {
           age_weeks: number | null
@@ -827,6 +968,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      power_outage_logs: {
+        Row: {
+          actions_taken: string | null
+          battery_level: number | null
+          created_at: string
+          humidity_during: number | null
+          id: string
+          log_type: string
+          message: string
+          power_outage_id: string | null
+          temperature_during: number | null
+          user_id: string
+        }
+        Insert: {
+          actions_taken?: string | null
+          battery_level?: number | null
+          created_at?: string
+          humidity_during?: number | null
+          id?: string
+          log_type?: string
+          message: string
+          power_outage_id?: string | null
+          temperature_during?: number | null
+          user_id: string
+        }
+        Update: {
+          actions_taken?: string | null
+          battery_level?: number | null
+          created_at?: string
+          humidity_during?: number | null
+          id?: string
+          log_type?: string
+          message?: string
+          power_outage_id?: string | null
+          temperature_during?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "power_outage_logs_power_outage_id_fkey"
+            columns: ["power_outage_id"]
+            isOneToOne: false
+            referencedRelation: "power_outages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       power_outages: {
         Row: {
@@ -1315,6 +1503,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      water_trends: {
+        Row: {
+          deviation_percent: number | null
+          id: string
+          notes: string | null
+          recorded_at: string
+          rolling_avg_30d: number | null
+          rolling_avg_7d: number | null
+          shed_id: string | null
+          trend_type: string
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          deviation_percent?: number | null
+          id?: string
+          notes?: string | null
+          recorded_at?: string
+          rolling_avg_30d?: number | null
+          rolling_avg_7d?: number | null
+          shed_id?: string | null
+          trend_type?: string
+          user_id: string
+          water_usage: number
+        }
+        Update: {
+          deviation_percent?: number | null
+          id?: string
+          notes?: string | null
+          recorded_at?: string
+          rolling_avg_30d?: number | null
+          rolling_avg_7d?: number | null
+          shed_id?: string | null
+          trend_type?: string
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_trends_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weather_cache: {
         Row: {
