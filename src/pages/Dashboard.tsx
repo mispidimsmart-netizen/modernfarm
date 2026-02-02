@@ -8,6 +8,7 @@ import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
+import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
@@ -25,6 +26,7 @@ import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
 import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
+import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -58,6 +60,8 @@ export function Dashboard() {
   // Water usage anomaly detection (health alert)
   const waterAnomalyResult = useWaterAnomalyDetection(sensorData.waterUsage);
 
+  // Ammonia rising trend detection
+  const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
   // Count online devices
   const onlineDeviceCount = deviceHealth?.filter(d => d.is_online).length || 0;
   const totalDeviceCount = deviceHealth?.length || 0;
@@ -225,6 +229,19 @@ export function Dashboard() {
             {language === 'bn' ? 'পানি ব্যবহার বিশ্লেষণ' : 'Water Usage Analysis'}
           </h2>
           <WaterAnomalyCard result={waterAnomalyResult} />
+        </motion.div>
+
+        {/* Ammonia Trend Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14 }}
+          className="mt-6"
+        >
+          <h2 className="section-title">
+            {language === 'bn' ? 'অ্যামোনিয়া ট্রেন্ড' : 'Ammonia Trend'}
+          </h2>
+          <AmmoniaTrendCard result={ammoniaTrendResult} />
         </motion.div>
 
         {/* Weather Card */}
