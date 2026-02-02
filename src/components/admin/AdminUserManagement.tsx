@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Ban, UserCheck, Pencil, Save, Loader2 } from 'lucide-react';
+import { Ban, UserCheck, Pencil, Save, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 
 interface AdminUserManagementProps {
   user: AdminUser;
@@ -69,6 +69,13 @@ const t = {
     active: 'সক্রিয়',
     userBlocked: 'ইউজার ব্লক করা হয়েছে',
     userUnblocked: 'ইউজার আনব্লক করা হয়েছে',
+    deleteUser: 'ইউজার ডিলিট করুন',
+    deleteConfirmTitle: '⚠️ ইউজার ডিলিট করতে চান?',
+    deleteConfirmDesc: 'এই অ্যাকশন রিভার্স করা যাবে না! এই ইউজারের সমস্ত ডেটা (সেন্সর রিডিং, ডিম উৎপাদন, আয়-ব্যয়, সেটিংস) চিরতরে মুছে যাবে।',
+    deleteWarning: 'সতর্কতা: এই অ্যাকশন পূর্বাবস্থায় ফেরানো যাবে না!',
+    deleting: 'ডিলিট হচ্ছে...',
+    userDeleted: 'ইউজার সফলভাবে ডিলিট হয়েছে',
+    typeToConfirm: 'নিশ্চিত করতে "DELETE" লিখুন',
   },
   en: {
     editUser: 'Edit User',
@@ -96,6 +103,13 @@ const t = {
     active: 'Active',
     userBlocked: 'User has been blocked',
     userUnblocked: 'User has been unblocked',
+    deleteUser: 'Delete User',
+    deleteConfirmTitle: '⚠️ Delete this user?',
+    deleteConfirmDesc: 'This action cannot be undone! All data for this user (sensor readings, egg production, income/expenses, settings) will be permanently deleted.',
+    deleteWarning: 'Warning: This action cannot be reversed!',
+    deleting: 'Deleting...',
+    userDeleted: 'User deleted successfully',
+    typeToConfirm: 'Type "DELETE" to confirm',
   },
 };
 
@@ -114,6 +128,8 @@ export function AdminUserManagement({ user, isOpen, onClose, language }: AdminUs
   });
 
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const isBlocked = (user as any).is_blocked || false;
 
   // Update profile mutation
@@ -167,12 +183,57 @@ export function AdminUserManagement({ user, isOpen, onClose, language }: AdminUs
     },
   });
 
+  // Delete user mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionData.session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ user_id: user.id }),
+        }
+      );
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      toast({ title: labels.userDeleted });
+      queryClient.invalidateQueries({ queryKey: ['admin-all-users'] });
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
+      onClose();
+    },
+    onError: (error) => {
+      toast({ title: labels.error, description: String(error), variant: 'destructive' });
+    },
+  });
+
   const handleSave = () => {
     updateMutation.mutate(formData);
   };
 
   const handleBlock = () => {
     blockMutation.mutate(!isBlocked);
+  };
+
+  const handleDelete = () => {
+    if (deleteConfirmText === 'DELETE') {
+      deleteMutation.mutate();
+    }
   };
 
   return (
@@ -271,52 +332,69 @@ export function AdminUserManagement({ user, isOpen, onClose, language }: AdminUs
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            {/* Block/Unblock Button */}
-            <Button
-              type="button"
-              variant={isBlocked ? 'outline' : 'destructive'}
-              onClick={() => setShowBlockConfirm(true)}
-              className={isBlocked 
-                ? 'border-green-500 text-green-400 hover:bg-green-500/10' 
-                : ''
-              }
-            >
-              {isBlocked ? (
-                <>
-                  <UserCheck className="w-4 h-4 mr-2" />
-                  {labels.unblockUser}
-                </>
-              ) : (
-                <>
-                  <Ban className="w-4 h-4 mr-2" />
-                  {labels.blockUser}
-                </>
-              )}
-            </Button>
+          <DialogFooter className="flex flex-col gap-3">
+            {/* Action Row */}
+            <div className="flex flex-wrap gap-2 w-full">
+              {/* Block/Unblock Button */}
+              <Button
+                type="button"
+                variant={isBlocked ? 'outline' : 'destructive'}
+                size="sm"
+                onClick={() => setShowBlockConfirm(true)}
+                className={isBlocked 
+                  ? 'border-green-500 text-green-400 hover:bg-green-500/10' 
+                  : ''
+                }
+              >
+                {isBlocked ? (
+                  <>
+                    <UserCheck className="w-4 h-4 mr-1" />
+                    {labels.unblockUser}
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 mr-1" />
+                    {labels.blockUser}
+                  </>
+                )}
+              </Button>
 
-            <div className="flex-1" />
+              {/* Delete Button */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="border-red-500 text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {labels.deleteUser}
+              </Button>
+            </div>
 
-            <Button variant="ghost" onClick={onClose} className="text-gray-400">
-              {labels.cancel}
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {updateMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {labels.saving}
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  {labels.save}
-                </>
-              )}
-            </Button>
+            {/* Save/Cancel Row */}
+            <div className="flex gap-2 w-full justify-end">
+              <Button variant="ghost" onClick={onClose} className="text-gray-400">
+                {labels.cancel}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {labels.saving}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {labels.save}
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -348,6 +426,58 @@ export function AdminUserManagement({ user, isOpen, onClose, language }: AdminUs
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 labels.confirm
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => {
+        setShowDeleteConfirm(open);
+        if (!open) setDeleteConfirmText('');
+      }}>
+        <AlertDialogContent className="bg-slate-800 border-red-500/50 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-400">
+              <AlertTriangle className="w-5 h-5" />
+              {labels.deleteConfirmTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400 space-y-3">
+              <p>{labels.deleteConfirmDesc}</p>
+              <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-red-300 text-sm">
+                ⚠️ {labels.deleteWarning}
+              </div>
+              <div className="pt-2">
+                <Label className="text-gray-400 text-xs">{labels.typeToConfirm}</Label>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="mt-1 bg-slate-700/50 border-white/10 text-white font-mono"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 border-white/10 text-white hover:bg-slate-600">
+              {labels.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending || deleteConfirmText !== 'DELETE'}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {labels.deleting}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {labels.deleteUser}
+                </>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
