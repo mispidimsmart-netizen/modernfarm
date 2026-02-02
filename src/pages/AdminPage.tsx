@@ -26,6 +26,8 @@ import {
   RefreshCw,
   Eye,
   Activity,
+  Bell,
+  TrendingUp,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -39,6 +41,8 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { SystemHealthCard } from '@/components/admin/SystemHealthCard';
+import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
+import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
 
 const t = {
   bn: {
@@ -70,6 +74,8 @@ const t = {
     noSheds: 'কোনো শেড নেই',
     tabUsers: 'ইউজার',
     tabSystem: 'সিস্টেম',
+    tabNotify: 'নোটিফিকেশন',
+    tabAnalytics: 'অ্যানালিটিক্স',
   },
   en: {
     title: 'Super Admin Dashboard',
@@ -100,6 +106,8 @@ const t = {
     noSheds: 'No sheds',
     tabUsers: 'Users',
     tabSystem: 'System',
+    tabNotify: 'Notifications',
+    tabAnalytics: 'Analytics',
   },
 };
 
@@ -287,12 +295,20 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Tabs for Users and System */}
+        {/* Tabs for Users, System, Notifications, Analytics */}
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="bg-slate-800/50 border-white/10">
+          <TabsList className="bg-slate-800/50 border-white/10 flex-wrap h-auto gap-1">
             <TabsTrigger value="users" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <Users className="w-4 h-4 mr-2" />
               {labels.tabUsers}
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              {labels.tabAnalytics}
+            </TabsTrigger>
+            <TabsTrigger value="notify" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">
+              <Bell className="w-4 h-4 mr-2" />
+              {labels.tabNotify}
             </TabsTrigger>
             <TabsTrigger value="system" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
               <Activity className="w-4 h-4 mr-2" />
@@ -303,103 +319,111 @@ export default function AdminPage() {
           <TabsContent value="users" className="mt-4">
             {/* Users List */}
             <Card className="bg-slate-800/50 border-white/10">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-purple-400" />
-                {labels.allUsers}
-              </CardTitle>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder={labels.searchUsers}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-slate-700/50 border-white/10 text-white placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[500px]">
-              {loadingUsers ? (
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <Skeleton key={i} className="h-20 w-full bg-slate-700/50" />
-                  ))}
+              <CardHeader className="pb-4">
+                <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Users className="w-5 h-5 text-purple-400" />
+                    {labels.allUsers}
+                  </CardTitle>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder={labels.searchUsers}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 bg-slate-700/50 border-white/10 text-white placeholder:text-gray-400"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredUsers?.map(u => {
-                    const sensorData = userDetails?.[u.id];
-                    return (
-                      <div
-                        key={u.id}
-                        className="flex items-center justify-between p-4 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <Avatar className="w-12 h-12 border-2 border-purple-500/30">
-                            <AvatarImage src={u.avatar_url || undefined} />
-                            <AvatarFallback className="bg-purple-600 text-white">
-                              {u.farm_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-semibold text-white">{u.farm_name}</h3>
-                            <div className="flex items-center gap-3 text-sm text-gray-400">
-                              <span className="flex items-center gap-1">
-                                <Phone className="w-3 h-3" />
-                                {u.phone || labels.noPhone}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Building2 className="w-3 h-3" />
-                                {u.sheds_count} {labels.sheds}
-                              </span>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px]">
+                  {loadingUsers ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <Skeleton key={i} className="h-20 w-full bg-slate-700/50" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredUsers?.map(u => {
+                        const sensorData = userDetails?.[u.id];
+                        return (
+                          <div
+                            key={u.id}
+                            className="flex items-center justify-between p-4 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <Avatar className="w-12 h-12 border-2 border-purple-500/30">
+                                <AvatarImage src={u.avatar_url || undefined} />
+                                <AvatarFallback className="bg-purple-600 text-white">
+                                  {u.farm_name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h3 className="font-semibold text-white">{u.farm_name}</h3>
+                                <div className="flex items-center gap-3 text-sm text-gray-400">
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="w-3 h-3" />
+                                    {u.phone || labels.noPhone}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="w-3 h-3" />
+                                    {u.sheds_count} {labels.sheds}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: bn })}
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                              <Calendar className="w-3 h-3" />
-                              {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: bn })}
+                            <div className="flex items-center gap-4">
+                              {sensorData && (
+                                <div className="hidden sm:flex items-center gap-3 text-xs">
+                                  <Badge variant="outline" className="border-orange-500/30 text-orange-400">
+                                    <Thermometer className="w-3 h-3 mr-1" />
+                                    {sensorData.temperature}°C
+                                  </Badge>
+                                  <Badge variant="outline" className="border-blue-500/30 text-blue-400">
+                                    <Droplets className="w-3 h-3 mr-1" />
+                                    {sensorData.humidity}%
+                                  </Badge>
+                                  <Badge variant="outline" className="border-green-500/30 text-green-400">
+                                    <Wind className="w-3 h-3 mr-1" />
+                                    {sensorData.ammonia}ppm
+                                  </Badge>
+                                </div>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                                onClick={() => {
+                                  setSelectedUser(u);
+                                  setShowUserDialog(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                {labels.viewDetails}
+                              </Button>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {sensorData && (
-                            <div className="hidden sm:flex items-center gap-3 text-xs">
-                              <Badge variant="outline" className="border-orange-500/30 text-orange-400">
-                                <Thermometer className="w-3 h-3 mr-1" />
-                                {sensorData.temperature}°C
-                              </Badge>
-                              <Badge variant="outline" className="border-blue-500/30 text-blue-400">
-                                <Droplets className="w-3 h-3 mr-1" />
-                                {sensorData.humidity}%
-                              </Badge>
-                              <Badge variant="outline" className="border-green-500/30 text-green-400">
-                                <Wind className="w-3 h-3 mr-1" />
-                                {sensorData.ammonia}ppm
-                              </Badge>
-                            </div>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                            onClick={() => {
-                              setSelectedUser(u);
-                              setShowUserDialog(true);
-                            }}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            {labels.viewDetails}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="mt-4">
+            <AdminSensorCharts language={language} />
+          </TabsContent>
+
+          <TabsContent value="notify" className="mt-4">
+            <AdminNotificationSender language={language} />
           </TabsContent>
 
           <TabsContent value="system" className="mt-4">
