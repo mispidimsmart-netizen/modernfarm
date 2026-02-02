@@ -28,6 +28,8 @@ import {
   Activity,
   Bell,
   TrendingUp,
+  Pencil,
+  Ban,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -43,6 +45,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SystemHealthCard } from '@/components/admin/SystemHealthCard';
 import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
+import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 
 const t = {
   bn: {
@@ -146,6 +149,8 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [showUserDialog, setShowUserDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const language = 'bn';
   const labels = t[language];
 
@@ -371,18 +376,36 @@ export default function AdminPage() {
                         return (
                           <div
                             key={u.id}
-                            className="flex items-center justify-between p-4 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition-colors"
+                            className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
+                              u.is_blocked 
+                                ? 'bg-red-900/20 border border-red-500/30' 
+                                : 'bg-slate-700/30 hover:bg-slate-700/50'
+                            }`}
                           >
                             <div className="flex items-center gap-4">
-                              <Avatar className="w-12 h-12 border-2 border-purple-500/30">
-                                <AvatarImage src={u.avatar_url || undefined} />
-                                <AvatarFallback className="bg-purple-600 text-white">
-                                  {(u.user_name || u.farm_name).charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
+                              <div className="relative">
+                                <Avatar className={`w-12 h-12 border-2 ${u.is_blocked ? 'border-red-500/50' : 'border-purple-500/30'}`}>
+                                  <AvatarImage src={u.avatar_url || undefined} />
+                                  <AvatarFallback className={u.is_blocked ? 'bg-red-600 text-white' : 'bg-purple-600 text-white'}>
+                                    {(u.user_name || u.farm_name).charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {u.is_blocked && (
+                                  <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5">
+                                    <Ban className="w-3 h-3 text-white" />
+                                  </div>
+                                )}
+                              </div>
                               <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-semibold text-white">{u.user_name || labels.noName}</h3>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className={`font-semibold ${u.is_blocked ? 'text-red-300' : 'text-white'}`}>
+                                    {u.user_name || labels.noName}
+                                  </h3>
+                                  {u.is_blocked && (
+                                    <Badge variant="outline" className="border-red-500 text-red-400 text-xs">
+                                      🚫 ব্লকড
+                                    </Badge>
+                                  )}
                                   <Badge 
                                     variant="outline" 
                                     className={u.farm_type === 'broiler' 
@@ -415,9 +438,9 @@ export default function AdminPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
                               {sensorData && (
-                                <div className="hidden sm:flex items-center gap-3 text-xs">
+                                <div className="hidden lg:flex items-center gap-2 text-xs">
                                   <Badge variant="outline" className="border-orange-500/30 text-orange-400">
                                     <Thermometer className="w-3 h-3 mr-1" />
                                     {sensorData.temperature}°C
@@ -426,12 +449,19 @@ export default function AdminPage() {
                                     <Droplets className="w-3 h-3 mr-1" />
                                     {sensorData.humidity}%
                                   </Badge>
-                                  <Badge variant="outline" className="border-green-500/30 text-green-400">
-                                    <Wind className="w-3 h-3 mr-1" />
-                                    {sensorData.ammonia}ppm
-                                  </Badge>
                                 </div>
                               )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10"
+                                onClick={() => {
+                                  setEditingUser(u);
+                                  setShowEditDialog(true);
+                                }}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -441,8 +471,7 @@ export default function AdminPage() {
                                   setShowUserDialog(true);
                                 }}
                               >
-                                <Eye className="w-4 h-4 mr-1" />
-                                {labels.viewDetails}
+                                <Eye className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>
@@ -590,6 +619,19 @@ export default function AdminPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit User Dialog */}
+      {editingUser && (
+        <AdminUserManagement
+          user={editingUser}
+          isOpen={showEditDialog}
+          onClose={() => {
+            setShowEditDialog(false);
+            setEditingUser(null);
+          }}
+          language={language}
+        />
+      )}
     </div>
   );
 }

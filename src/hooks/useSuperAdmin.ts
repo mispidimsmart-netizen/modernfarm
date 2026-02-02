@@ -11,6 +11,9 @@ export interface AdminUser {
   user_name: string | null;
   email: string | null;
   farm_type: string | null;
+  is_blocked: boolean;
+  blocked_at: string | null;
+  blocked_by: string | null;
   sheds_count?: number;
   last_sensor_reading?: {
     temperature: number;
@@ -90,6 +93,9 @@ export function useSuperAdmin() {
         user_name: (profile as any).user_name || null,
         email: (profile as any).email || null,
         farm_type: (profile as any).farm_type || 'layer',
+        is_blocked: (profile as any).is_blocked || false,
+        blocked_at: (profile as any).blocked_at || null,
+        blocked_by: (profile as any).blocked_by || null,
         sheds_count: shedCounts[profile.id] || 0,
       }));
 
