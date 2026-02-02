@@ -17,6 +17,7 @@ import { WeatherCard } from '@/components/weather/WeatherCard';
 import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
+import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -146,6 +147,11 @@ export function Dashboard() {
         {/* Farm Summary Cards */}
         <div className="mt-6">
           <FarmSummaryCards />
+        </div>
+
+        {/* Sensor Charts */}
+        <div className="mt-6">
+          <SensorCharts />
         </div>
 
         {/* Weather Card */}
