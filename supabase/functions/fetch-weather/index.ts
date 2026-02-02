@@ -24,21 +24,35 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
     // Get auth token
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Authorization header required');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
+    // Create authenticated Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Validate JWT token using getClaims
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     
-    if (authError || !user) {
-      throw new Error('Invalid token');
+    if (claimsError || !claimsData?.claims) {
+      console.error('JWT validation failed:', claimsError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    const userId = claimsData.claims.sub as string;
 
     const { lat, lng, location_name } = await req.json();
 
@@ -90,7 +104,7 @@ serve(async (req) => {
 
     // Prepare weather cache data
     const cacheData = {
-      user_id: user.id,
+      user_id: userId,
       temperature: current.temperature_2m,
       feels_like: current.apparent_temperature,
       humidity: current.relative_humidity_2m,
@@ -106,7 +120,7 @@ serve(async (req) => {
     await supabase
       .from('weather_cache')
       .delete()
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     const { error: cacheError } = await supabase
       .from('weather_cache')
@@ -120,7 +134,7 @@ serve(async (req) => {
     await supabase
       .from('weather_settings')
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         location_lat: lat,
         location_lng: lng,
         location_name: location_name || 'Unknown',
@@ -135,7 +149,7 @@ serve(async (req) => {
     const { data: settings } = await supabase
       .from('weather_settings')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (settings?.heat_wave_protection && current.temperature_2m >= (settings.heat_wave_threshold || 35)) {
@@ -152,7 +166,7 @@ serve(async (req) => {
     // Create alerts if any
     for (let i = 0; i < alerts.length; i++) {
       await supabase.from('alerts').insert({
-        user_id: user.id,
+        user_id: userId,
         alert_type: 'temperature',
         severity: 'warning',
         message: alerts[i],
