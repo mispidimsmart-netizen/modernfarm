@@ -100,11 +100,12 @@ struct CachedSettings {
   float fanMedTempMax = 33.0;
   float fanHighTempMin = 33.0;
   
-  // HSI thresholds
-  float hsiMild = 70.0;
-  float hsiModerate = 75.0;
-  float hsiSevere = 80.0;
-  float hsiEmergency = 85.0;
+  // 🔥 HSI Thresholds (Layer Optimized)
+  // HSI = Temperature + (Humidity × 0.1)
+  float hsiNormal = 30.0;      // < 30: Normal → Fan OFF
+  float hsiMild = 35.0;        // 30-35: Mild Stress → Fan LOW  
+  float hsiHigh = 40.0;        // 35-40: High Stress → Fan HIGH
+  float hsiDanger = 40.0;      // > 40: Danger → Fan HIGH + Alert
   
   // Lighting schedule
   int lightStartHour = 5;
@@ -607,28 +608,51 @@ void runLocalAutomation() {
   }
   
   // ========================================
-  // RULE 6: HEAT STRESS INDEX CHECK
+  // 🔥 HEAT STRESS INDEX (HSI) - MAIN DECISION
+  // HSI = Temperature + (Humidity × 0.1)
+  // This is MORE ACCURATE than temperature alone!
   // ========================================
   float hsi = calculateHSI(temperature, humidity);
-  if (hsi >= cachedSettings.hsiEmergency) {  // Default: 85
-    Serial.printf("🚨 HSI EMERGENCY (%.1f) → Fan HIGH + Alarm\n", hsi);
+  Serial.printf("🔥 HSI = %.1f (Temp=%.1f + Hum=%.1f×0.1)\n", hsi, temperature, humidity);
+  
+  // HSI > 40: DANGER → Fan HIGH + Alert
+  if (hsi > cachedSettings.hsiDanger) {
+    Serial.printf("🚨 HSI DANGER (%.1f > 40) → Fan HIGH + ALERT!\n", hsi);
     fanOn = true;
     fanSpeed = "HIGH";
     alarmOn = true;
     digitalWrite(FAN_RELAY_PIN, HIGH);
     digitalWrite(ALARM_RELAY_PIN, HIGH);
-  } else if (hsi >= cachedSettings.hsiSevere) {  // Default: 80
-    Serial.printf("⚠️ HSI SEVERE (%.1f) → Fan HIGH\n", hsi);
+  }
+  // HSI 35-40: HIGH STRESS → Fan HIGH
+  else if (hsi >= cachedSettings.hsiMild) {
+    Serial.printf("⚠️ HSI HIGH STRESS (%.1f) → Fan HIGH\n", hsi);
     fanOn = true;
     fanSpeed = "HIGH";
     digitalWrite(FAN_RELAY_PIN, HIGH);
+  }
+  // HSI 30-35: MILD STRESS → Fan LOW
+  else if (hsi >= cachedSettings.hsiNormal) {
+    Serial.printf("🌡️ HSI MILD STRESS (%.1f) → Fan LOW\n", hsi);
+    fanOn = true;
+    fanSpeed = "LOW";
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+  }
+  // HSI < 30: NORMAL → Fan OFF (if no other concerns)
+  else {
+    if (ammonia < cachedSettings.ammoniaMax && powerOn) {
+      Serial.printf("✅ HSI NORMAL (%.1f) → Fan OFF\n", hsi);
+      fanOn = false;
+      fanSpeed = "OFF";
+      digitalWrite(FAN_RELAY_PIN, LOW);
+    }
   }
   
   // ========================================
   // ALARM AUTO-CLEAR (only if ALL conditions safe)
   // ========================================
   if (alarmOn && powerOn && ammonia < cachedSettings.ammoniaMax && 
-      hsi < cachedSettings.hsiSevere && temperature < cachedSettings.fanHighTempMin) {
+      hsi < cachedSettings.hsiMild && temperature < cachedSettings.fanHighTempMin) {
     alarmOn = false;
     digitalWrite(ALARM_RELAY_PIN, LOW);
     Serial.println("✅ All conditions safe → Alarm cleared");
@@ -639,17 +663,30 @@ void runLocalAutomation() {
   // ========================================
   controlLighting();
   
-  // Log current state
-  Serial.printf("📊 State: Fan=%s(%s), Alarm=%s, Light=%s(%d%%)\n",
-                fanOn ? "ON" : "OFF", fanSpeed.c_str(),
+  // Log current state with HSI
+  Serial.printf("📊 State: HSI=%.1f, Fan=%s(%s), Alarm=%s, Light=%s(%d%%)\n",
+                hsi, fanOn ? "ON" : "OFF", fanSpeed.c_str(),
                 alarmOn ? "ON" : "OFF",
                 lightOn ? "ON" : "OFF", lightBrightness);
 }
 
+// 🔥 HEAT STRESS INDEX CALCULATION
+// Simple & Practical Formula (Perfect for ESP32)
+// HSI = Temperature + (Humidity × 0.1)
+//
+// Example:
+// | Temp  | Humidity | HSI |
+// |-------|----------|-----|
+// | 30°C  | 70%      | 37  |
+// | 32°C  | 80%      | 40 ⚠️|
+//
 float calculateHSI(float temp, float hum) {
-  // Heat Stress Index calculation
-  // HSI = temp + (0.36 * dewpoint) + 41.2
-  // Simplified: HSI ≈ temp + (hum * 0.1)
+  // Validate inputs
+  if (isnan(temp) || isnan(hum)) {
+    return 50.0;  // Return danger value if sensors fail
+  }
+  
+  // HSI = Temperature + (Humidity × 0.1)
   float hsi = temp + (hum * 0.1);
   return hsi;
 }
