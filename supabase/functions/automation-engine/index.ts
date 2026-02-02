@@ -1,0 +1,460 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-token',
+};
+
+// ================ HEAT STRESS INDEX (HSI) CALCULATION ================
+// THI Formula: THI = 0.8 × T + (RH/100) × (T - 14.4) + 46.4
+// Or Simple: HSI = Temperature + (Humidity × 0.1)
+function calculateHSI(temperature: number, humidity: number, useSimpleFormula = false): number {
+  if (useSimpleFormula) {
+    // Simple formula (matches ESP32 local calculation)
+    return temperature + (humidity * 0.1);
+  }
+  // THI formula (more accurate for cloud)
+  return 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
+}
+
+type HSILevel = 'normal' | 'mild' | 'moderate' | 'severe' | 'emergency';
+
+interface HSIResult {
+  index: number;
+  simpleIndex: number;
+  level: HSILevel;
+  fanSpeed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+  shouldAlert: boolean;
+  message: { bn: string; en: string };
+}
+
+function getHSIResult(temperature: number, humidity: number, thresholds: {
+  mild: number;
+  moderate: number;
+  severe: number;
+  emergency: number;
+}): HSIResult {
+  const hsi = calculateHSI(temperature, humidity);
+  const simpleHsi = calculateHSI(temperature, humidity, true);
+  
+  if (hsi >= thresholds.emergency) {
+    return {
+      index: hsi,
+      simpleIndex: simpleHsi,
+      level: 'emergency',
+      fanSpeed: 'HIGH',
+      shouldAlert: true,
+      message: { bn: 'জরুরি অবস্থা! মুরগির জীবন ঝুঁকিতে', en: 'Emergency! Bird lives at risk' }
+    };
+  } else if (hsi >= thresholds.severe) {
+    return {
+      index: hsi,
+      simpleIndex: simpleHsi,
+      level: 'severe',
+      fanSpeed: 'HIGH',
+      shouldAlert: true,
+      message: { bn: 'গুরুতর তাপ চাপ! জরুরি পদক্ষেপ নিন', en: 'Severe heat stress! Take immediate action' }
+    };
+  } else if (hsi >= thresholds.moderate) {
+    return {
+      index: hsi,
+      simpleIndex: simpleHsi,
+      level: 'moderate',
+      fanSpeed: 'HIGH',
+      shouldAlert: true,
+      message: { bn: 'মাঝারি তাপ চাপ - অতিরিক্ত বায়ু চলাচল প্রয়োজন', en: 'Moderate heat stress - Extra ventilation needed' }
+    };
+  } else if (hsi >= thresholds.mild) {
+    return {
+      index: hsi,
+      simpleIndex: simpleHsi,
+      level: 'mild',
+      fanSpeed: 'LOW',
+      shouldAlert: false,
+      message: { bn: 'হালকা তাপ চাপ - ফ্যান চালু করুন', en: 'Mild heat stress - Turn on fans' }
+    };
+  }
+  
+  return {
+    index: hsi,
+    simpleIndex: simpleHsi,
+    level: 'normal',
+    fanSpeed: 'OFF',
+    shouldAlert: false,
+    message: { bn: 'স্বাভাবিক অবস্থা', en: 'Normal conditions' }
+  };
+}
+
+// ================ AUTOMATION RULES ENGINE ================
+interface AutomationAction {
+  fan: boolean;
+  fanSpeed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+  alarm: boolean;
+  alert?: { type: string; severity: 'warning' | 'danger'; message: string; messageBn: string };
+}
+
+function runAutomationRules(
+  sensorData: { temperature: number; humidity: number; ammonia: number; powerOn: boolean },
+  settings: {
+    temperature_max: number;
+    ammonia_max: number;
+    fan_low_temp_min: number;
+    fan_medium_temp_min: number;
+    fan_high_temp_min: number;
+    hsi_mild_threshold: number;
+    hsi_moderate_threshold: number;
+    hsi_severe_threshold: number;
+    hsi_emergency_threshold: number;
+  }
+): AutomationAction {
+  const { temperature, humidity, ammonia, powerOn } = sensorData;
+  
+  // Default action
+  let action: AutomationAction = {
+    fan: false,
+    fanSpeed: 'OFF',
+    alarm: false,
+  };
+  
+  // ========================================
+  // RULE 0: POWER OFF = ALARM ON
+  // ========================================
+  if (!powerOn) {
+    action.alarm = true;
+    action.alert = {
+      type: 'power',
+      severity: 'danger',
+      message: 'Power outage detected!',
+      messageBn: 'বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!'
+    };
+  }
+  
+  // ========================================
+  // RULE 1: AMMONIA ≥ threshold = FAN ON + ALARM
+  // ========================================
+  if (ammonia >= settings.ammonia_max) {
+    action.fan = true;
+    action.fanSpeed = 'HIGH';
+    action.alarm = true;
+    action.alert = {
+      type: 'ammonia',
+      severity: 'danger',
+      message: `Ammonia level critical: ${ammonia} ppm`,
+      messageBn: `অ্যামোনিয়া স্তর বিপজ্জনক: ${ammonia} ppm`
+    };
+    return action;
+  }
+  
+  // ========================================
+  // RULE 2: HEAT STRESS INDEX (PRIMARY DECISION)
+  // ========================================
+  const hsiResult = getHSIResult(temperature, humidity, {
+    mild: settings.hsi_mild_threshold,
+    moderate: settings.hsi_moderate_threshold,
+    severe: settings.hsi_severe_threshold,
+    emergency: settings.hsi_emergency_threshold,
+  });
+  
+  // Apply HSI-based fan speed
+  if (hsiResult.level !== 'normal') {
+    action.fan = true;
+    action.fanSpeed = hsiResult.fanSpeed;
+  }
+  
+  // Create alert if needed
+  if (hsiResult.shouldAlert) {
+    action.alert = {
+      type: 'temperature',
+      severity: hsiResult.level === 'emergency' || hsiResult.level === 'severe' ? 'danger' : 'warning',
+      message: hsiResult.message.en,
+      messageBn: hsiResult.message.bn
+    };
+    
+    if (hsiResult.level === 'emergency' || hsiResult.level === 'severe') {
+      action.alarm = true;
+    }
+  }
+  
+  // ========================================
+  // RULE 3: TEMPERATURE THRESHOLDS (Backup if HSI not triggered)
+  // ========================================
+  if (!action.fan) {
+    if (temperature >= settings.fan_high_temp_min) {
+      action.fan = true;
+      action.fanSpeed = 'HIGH';
+    } else if (temperature >= settings.fan_medium_temp_min) {
+      action.fan = true;
+      action.fanSpeed = 'MEDIUM';
+    } else if (temperature >= settings.fan_low_temp_min) {
+      action.fan = true;
+      action.fanSpeed = 'LOW';
+    }
+  }
+  
+  return action;
+}
+
+// ================ MAIN HANDLER ================
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { action, shed_id, user_id } = await req.json();
+
+    // ========================================
+    // ACTION: run-automation (Per-Shed Automation)
+    // ========================================
+    if (action === 'run-automation') {
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'user_id required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get farm settings (or shed-specific overrides)
+      const { data: settings } = await supabase
+        .from('farm_settings')
+        .select('*')
+        .eq('user_id', user_id)
+        .single();
+
+      if (!settings) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Settings not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get latest sensor data for the shed
+      let sensorQuery = supabase
+        .from('sensor_logs')
+        .select('*')
+        .eq('user_id', user_id)
+        .order('timestamp', { ascending: false })
+        .limit(1);
+
+      if (shed_id) {
+        sensorQuery = sensorQuery.eq('shed_id', shed_id);
+      }
+
+      const { data: sensorData } = await sensorQuery;
+
+      if (!sensorData || sensorData.length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'No sensor data available',
+            fallback: { fan: true, fanSpeed: 'HIGH', alarm: false, reason: 'No sensor data - Safe mode' }
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const latestSensor = sensorData[0];
+      
+      // Run automation rules
+      const automationAction = runAutomationRules(
+        {
+          temperature: latestSensor.temperature,
+          humidity: latestSensor.humidity,
+          ammonia: latestSensor.ammonia,
+          powerOn: latestSensor.power_status !== 'OFF',
+        },
+        {
+          temperature_max: settings.temperature_max,
+          ammonia_max: settings.ammonia_max,
+          fan_low_temp_min: settings.fan_low_temp_min,
+          fan_medium_temp_min: settings.fan_medium_temp_min,
+          fan_high_temp_min: settings.fan_high_temp_min,
+          hsi_mild_threshold: settings.hsi_mild_threshold,
+          hsi_moderate_threshold: settings.hsi_moderate_threshold,
+          hsi_severe_threshold: settings.hsi_severe_threshold,
+          hsi_emergency_threshold: settings.hsi_emergency_threshold,
+        }
+      );
+
+      // Calculate HSI for response
+      const hsiResult = getHSIResult(
+        latestSensor.temperature,
+        latestSensor.humidity,
+        {
+          mild: settings.hsi_mild_threshold,
+          moderate: settings.hsi_moderate_threshold,
+          severe: settings.hsi_severe_threshold,
+          emergency: settings.hsi_emergency_threshold,
+        }
+      );
+
+      // Update device status if not in manual override
+      const { data: deviceStatus } = await supabase
+        .from('device_status')
+        .select('manual_override')
+        .eq('user_id', user_id)
+        .eq('shed_id', shed_id)
+        .single();
+
+      if (!deviceStatus?.manual_override) {
+        await supabase
+          .from('device_status')
+          .update({
+            fan_on: automationAction.fan,
+            fan_speed: automationAction.fanSpeed,
+            alarm_on: automationAction.alarm,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user_id)
+          .eq('shed_id', shed_id);
+      }
+
+      // Create alert if needed
+      if (automationAction.alert) {
+        await supabase.from('alerts').insert({
+          user_id,
+          shed_id,
+          alert_type: automationAction.alert.type,
+          severity: automationAction.alert.severity,
+          message: automationAction.alert.message,
+          message_bn: automationAction.alert.messageBn,
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          automation: {
+            action: automationAction,
+            hsi: {
+              index: hsiResult.index,
+              simpleIndex: hsiResult.simpleIndex,
+              level: hsiResult.level,
+            },
+            sensor: {
+              temperature: latestSensor.temperature,
+              humidity: latestSensor.humidity,
+              ammonia: latestSensor.ammonia,
+            },
+            timestamp: new Date().toISOString(),
+          },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========================================
+    // ACTION: get-status (Get automation status for all sheds)
+    // ========================================
+    if (action === 'get-status') {
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'user_id required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get all sheds
+      const { data: sheds } = await supabase
+        .from('sheds')
+        .select('id, name, name_en, is_active')
+        .eq('user_id', user_id);
+
+      // Get device health for all sheds
+      const { data: deviceHealth } = await supabase
+        .from('device_health')
+        .select('*')
+        .eq('user_id', user_id);
+
+      // Get latest sensor data per shed
+      const { data: sensorData } = await supabase
+        .from('sensor_logs')
+        .select('*')
+        .eq('user_id', user_id)
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      // Get settings
+      const { data: settings } = await supabase
+        .from('farm_settings')
+        .select('*')
+        .eq('user_id', user_id)
+        .single();
+
+      // Build status per shed
+      const shedStatus = (sheds || []).map(shed => {
+        const health = deviceHealth?.find(d => d.shed_id === shed.id);
+        const sensors = sensorData?.filter(s => s.shed_id === shed.id) || [];
+        const latestSensor = sensors[0];
+
+        let hsiResult = null;
+        if (latestSensor && settings) {
+          hsiResult = getHSIResult(
+            latestSensor.temperature,
+            latestSensor.humidity,
+            {
+              mild: settings.hsi_mild_threshold,
+              moderate: settings.hsi_moderate_threshold,
+              severe: settings.hsi_severe_threshold,
+              emergency: settings.hsi_emergency_threshold,
+            }
+          );
+        }
+
+        return {
+          shed_id: shed.id,
+          name: shed.name,
+          name_en: shed.name_en,
+          is_active: shed.is_active,
+          device: health ? {
+            is_online: health.is_online,
+            failsafe_mode: health.failsafe_mode,
+            last_cloud_sync: health.last_cloud_sync_at,
+            last_seen: health.last_seen_at,
+            mode: health.failsafe_mode ? 'FAIL-SAFE' : 'AUTO',
+          } : null,
+          sensor: latestSensor ? {
+            temperature: latestSensor.temperature,
+            humidity: latestSensor.humidity,
+            ammonia: latestSensor.ammonia,
+            timestamp: latestSensor.timestamp,
+          } : null,
+          hsi: hsiResult ? {
+            index: hsiResult.index,
+            level: hsiResult.level,
+            fanSpeed: hsiResult.fanSpeed,
+          } : null,
+        };
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          sheds: shedStatus,
+          total_sheds: sheds?.length || 0,
+          sheds_online: shedStatus.filter(s => s.device?.is_online).length,
+          sheds_failsafe: shedStatus.filter(s => s.device?.failsafe_mode).length,
+          timestamp: new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: false, error: 'Invalid action' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Automation engine error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

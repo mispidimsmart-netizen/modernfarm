@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.mode-profile]
 verify_jwt = false
+
+[functions.automation-engine]
+verify_jwt = false

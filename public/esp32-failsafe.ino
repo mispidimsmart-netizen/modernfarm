@@ -108,12 +108,18 @@ struct CachedSettings {
   float fanMedTempMax = 33.0;
   float fanHighTempMin = 33.0;
   
-  // 🔥 HSI Thresholds (Layer Optimized)
-  // HSI = Temperature + (Humidity × 0.1)
-  float hsiNormal = 30.0;      // < 30: Normal → Fan OFF
-  float hsiMild = 35.0;        // 30-35: Mild Stress → Fan LOW  
+  // 🔥 HSI Thresholds (Simple Formula: HSI = Temp + Humidity × 0.1)
+  // User Request: HSI < 30 = Normal, 30-35 = Mild, 35-40 = High, > 40 = Danger
+  float hsiNormal = 30.0;      // < 30: Normal → Fan OFF or LOW
+  float hsiMild = 35.0;        // 30-35: Mild Stress → Fan LOW
   float hsiHigh = 40.0;        // 35-40: High Stress → Fan HIGH
   float hsiDanger = 40.0;      // > 40: Danger → Fan HIGH + Alert
+  
+  // Cloud HSI thresholds (THI Formula) - mapped for compatibility
+  float hsiMildCloud = 70.0;      // Cloud mild threshold
+  float hsiModerateCloud = 75.0;  // Cloud moderate threshold
+  float hsiSevereCloud = 80.0;    // Cloud severe threshold
+  float hsiEmergencyCloud = 85.0; // Cloud emergency threshold
   
   // Lighting schedule
   int lightStartHour = 5;
@@ -381,10 +387,21 @@ void updateCachedSettings(JsonObject settings) {
   cachedSettings.fanMedTempMax = settings["fan_medium_temp_max"] | 33.0;
   cachedSettings.fanHighTempMin = settings["fan_high_temp_min"] | 33.0;
   
-  cachedSettings.hsiMild = settings["hsi_mild_threshold"] | 70.0;
-  cachedSettings.hsiModerate = settings["hsi_moderate_threshold"] | 75.0;
-  cachedSettings.hsiSevere = settings["hsi_severe_threshold"] | 80.0;
-  cachedSettings.hsiEmergency = settings["hsi_emergency_threshold"] | 85.0;
+  // Cloud HSI thresholds (THI formula)
+  cachedSettings.hsiMildCloud = settings["hsi_mild_threshold"] | 70.0;
+  cachedSettings.hsiModerateCloud = settings["hsi_moderate_threshold"] | 75.0;
+  cachedSettings.hsiSevereCloud = settings["hsi_severe_threshold"] | 80.0;
+  cachedSettings.hsiEmergencyCloud = settings["hsi_emergency_threshold"] | 85.0;
+  
+  // Convert cloud THI thresholds to simple HSI for local use
+  // Simple HSI = Temp + (Humidity × 0.1) 
+  // Cloud THI = 0.8×T + (RH/100)×(T-14.4) + 46.4
+  // Approximation for 32°C, 70% humidity: Simple HSI ≈ 39, THI ≈ 80
+  // So we map: THI 70 → Simple 30, THI 85 → Simple 42
+  cachedSettings.hsiNormal = 30.0;  // Fixed threshold
+  cachedSettings.hsiMild = 35.0;    // Fixed threshold  
+  cachedSettings.hsiHigh = 40.0;    // Fixed threshold
+  cachedSettings.hsiDanger = 40.0;  // Fixed threshold
   
   // Lighting schedule
   String startTime = settings["light_start_time"] | "05:00";
