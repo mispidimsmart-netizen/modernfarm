@@ -1,11 +1,16 @@
 import { Power, Wifi, WifiOff, LogOut, Globe } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 export function Header() {
-  const { language, setLanguage, user, logout, isConnected, deviceStatus } = useApp();
+  const { language, setLanguage, user, signOut } = useAuth();
+  const { data: profile } = useProfile();
+  const { data: deviceStatus } = useDeviceStatus();
+
+  const isConnected = true; // Would come from realtime connection status
 
   return (
     <header className="sticky top-0 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur-md pt-safe">
@@ -13,13 +18,13 @@ export function Header() {
         <div className="flex items-center gap-3">
           <div className={cn(
             'flex h-10 w-10 items-center justify-center rounded-xl',
-            deviceStatus.power ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            deviceStatus?.power_on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
           )}>
             <Power size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">
-              {translations.dashboard.title[language]}
+              {profile?.farm_name || translations.dashboard.title[language]}
             </h1>
             <div className="flex items-center gap-2">
               {isConnected ? (
@@ -52,7 +57,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={logout}
+              onClick={signOut}
               className="text-muted-foreground"
             >
               <LogOut size={18} />

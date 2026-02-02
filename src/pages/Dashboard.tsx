@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Power, Zap, RefreshCw } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { useFarmSettings } from '@/hooks/useFarmData';
+import { useLiveSensorData, useStatusLevels, useDeviceControl } from '@/hooks/useSensorData';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -9,32 +11,11 @@ import { BottomNav } from '@/components/BottomNav';
 import { StatusLevel } from '@/lib/types';
 
 export function Dashboard() {
-  const { language, sensorData, deviceStatus, farmSettings, manualOverride } = useApp();
-
-  // Calculate status levels
-  const getTemperatureStatus = (): StatusLevel => {
-    if (sensorData.temperature > farmSettings.temperatureMax + 5) return 'danger';
-    if (sensorData.temperature > farmSettings.temperatureMax || sensorData.temperature < farmSettings.temperatureMin) return 'warning';
-    return 'normal';
-  };
-
-  const getHumidityStatus = (): StatusLevel => {
-    if (sensorData.humidity > farmSettings.humidityMax + 10 || sensorData.humidity < farmSettings.humidityMin - 10) return 'danger';
-    if (sensorData.humidity > farmSettings.humidityMax || sensorData.humidity < farmSettings.humidityMin) return 'warning';
-    return 'normal';
-  };
-
-  const getAmmoniaStatus = (): StatusLevel => {
-    if (sensorData.ammonia > farmSettings.ammoniaMax + 10) return 'danger';
-    if (sensorData.ammonia > farmSettings.ammoniaMax) return 'warning';
-    return 'normal';
-  };
-
-  const getWaterStatus = (): StatusLevel => {
-    if (sensorData.waterUsage < 10) return 'danger';
-    if (sensorData.waterUsage < 20) return 'warning';
-    return 'normal';
-  };
+  const { language } = useAuth();
+  const sensorData = useLiveSensorData();
+  const statusLevels = useStatusLevels(sensorData);
+  const { status: deviceStatus, manualOverride } = useDeviceControl();
+  const { data: farmSettings } = useFarmSettings();
 
   const statusText = {
     bn: { normal: 'স্বাভাবিক', warning: 'সতর্কতা', danger: 'বিপদ' },
@@ -42,8 +23,8 @@ export function Dashboard() {
   };
 
   const overallStatus: StatusLevel = 
-    getTemperatureStatus() === 'danger' || getAmmoniaStatus() === 'danger' ? 'danger' :
-    getTemperatureStatus() === 'warning' || getHumidityStatus() === 'warning' || getAmmoniaStatus() === 'warning' ? 'warning' :
+    statusLevels.temperature === 'danger' || statusLevels.ammonia === 'danger' ? 'danger' :
+    statusLevels.temperature === 'warning' || statusLevels.humidity === 'warning' || statusLevels.ammonia === 'warning' ? 'warning' :
     'normal';
 
   return (
@@ -94,28 +75,28 @@ export function Dashboard() {
             value={sensorData.temperature}
             unit={translations.units.celsius[language]}
             label={translations.sensors.temperature[language]}
-            status={getTemperatureStatus()}
+            status={statusLevels.temperature}
           />
           <SensorCard
             type="humidity"
             value={sensorData.humidity}
             unit={translations.units.percent[language]}
             label={translations.sensors.humidity[language]}
-            status={getHumidityStatus()}
+            status={statusLevels.humidity}
           />
           <SensorCard
             type="ammonia"
             value={sensorData.ammonia}
             unit={translations.units.ppm[language]}
             label={translations.sensors.ammonia[language]}
-            status={getAmmoniaStatus()}
+            status={statusLevels.ammonia}
           />
           <SensorCard
             type="water"
             value={sensorData.waterUsage}
             unit={translations.units.litersPerHour[language]}
             label={translations.sensors.water[language]}
-            status={getWaterStatus()}
+            status={statusLevels.water}
           />
         </div>
 
@@ -131,10 +112,10 @@ export function Dashboard() {
           </h2>
           <div className="grid grid-cols-4 gap-3">
             {[
-              { key: 'power', icon: Power, status: deviceStatus.power },
-              { key: 'fan', icon: Zap, status: deviceStatus.fan },
-              { key: 'light', icon: Zap, status: deviceStatus.light },
-              { key: 'alarm', icon: Zap, status: deviceStatus.alarm },
+              { key: 'power', status: deviceStatus.power },
+              { key: 'fan', status: deviceStatus.fan },
+              { key: 'light', status: deviceStatus.light },
+              { key: 'alarm', status: deviceStatus.alarm },
             ].map(({ key, status }) => (
               <div
                 key={key}

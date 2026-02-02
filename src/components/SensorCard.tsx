@@ -1,6 +1,5 @@
 import { LucideIcon, Thermometer, Droplets, Wind, Droplet } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useApp } from '@/context/AppContext';
 import { StatusLevel } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +38,6 @@ const statusBgColors: Record<StatusLevel, string> = {
 };
 
 export function SensorCard({ type, value, unit, label, status }: SensorCardProps) {
-  const { language } = useApp();
   const Icon = sensorIcons[type];
 
   return (

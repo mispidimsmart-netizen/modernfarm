@@ -1,8 +1,17 @@
 import { AlertTriangle, Thermometer, Wind, Zap, Droplet, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useApp } from '@/context/AppContext';
-import { Alert } from '@/lib/types';
+import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+
+interface AlertData {
+  id: string;
+  type: 'temperature' | 'ammonia' | 'power' | 'water';
+  severity: 'warning' | 'danger';
+  message: string;
+  messageBn: string;
+  timestamp: Date;
+  acknowledged: boolean;
+}
 
 const alertIcons = {
   temperature: Thermometer,
@@ -12,12 +21,12 @@ const alertIcons = {
 };
 
 interface AlertCardProps {
-  alert: Alert;
+  alert: AlertData;
   onAcknowledge: (id: string) => void;
 }
 
 export function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
-  const { language } = useApp();
+  const { language } = useAuth();
   const Icon = alertIcons[alert.type];
 
   return (
@@ -49,17 +58,19 @@ export function AlertCard({ alert, onAcknowledge }: AlertCardProps) {
         </p>
       </div>
 
-      <button
-        onClick={() => onAcknowledge(alert.id)}
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
-          alert.severity === 'danger' 
-            ? 'text-red-400 hover:bg-red-200 hover:text-red-600' 
-            : 'text-amber-400 hover:bg-amber-200 hover:text-amber-600'
-        )}
-      >
-        <X size={18} />
-      </button>
+      {!alert.acknowledged && (
+        <button
+          onClick={() => onAcknowledge(alert.id)}
+          className={cn(
+            'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
+            alert.severity === 'danger' 
+              ? 'text-red-400 hover:bg-red-200 hover:text-red-600' 
+              : 'text-amber-400 hover:bg-amber-200 hover:text-amber-600'
+          )}
+        >
+          <X size={18} />
+        </button>
+      )}
     </motion.div>
   );
 }

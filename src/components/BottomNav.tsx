@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Sliders, Zap, Bell, BarChart3 } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { useAlerts } from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 
@@ -14,9 +15,10 @@ const navItems = [
 
 export function BottomNav() {
   const location = useLocation();
-  const { language, alerts } = useApp();
+  const { language } = useAuth();
+  const { data: alerts } = useAlerts();
   
-  const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged).length;
+  const unacknowledgedAlerts = alerts?.filter(a => !a.acknowledged).length ?? 0;
 
   return (
     <nav className="bottom-nav">

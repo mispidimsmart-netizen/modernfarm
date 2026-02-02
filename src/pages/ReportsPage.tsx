@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Egg, Droplet, Thermometer } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { useSensorReadings, useDailyReports, useUpsertDailyReport } from '@/hooks/useFarmData';
+import { useLiveSensorData } from '@/hooks/useSensorData';
 import { translations } from '@/lib/translations';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -10,12 +12,30 @@ import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 export function ReportsPage() {
-  const { language, sensorData } = useApp();
+  const { language } = useAuth();
+  const sensorData = useLiveSensorData();
+  const { data: sensorReadings } = useSensorReadings(24);
+  const { data: dailyReports } = useDailyReports(7);
+  const upsertReport = useUpsertDailyReport();
+  
   const [eggCount, setEggCount] = useState('');
-  const [savedEggCount, setSavedEggCount] = useState<number | null>(null);
+  const todayReport = dailyReports?.find(r => r.report_date === new Date().toISOString().split('T')[0]);
 
-  // Generate mock historical data for chart
+  // Generate chart data from sensor readings or mock data
   const chartData = useMemo(() => {
+    if (sensorReadings && sensorReadings.length > 0) {
+      return sensorReadings.map(r => ({
+        time: new Date(r.recorded_at).toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        temperature: Number(r.temperature),
+        humidity: Number(r.humidity),
+        ammonia: Number(r.ammonia),
+      }));
+    }
+    
+    // Mock data for demo
     const data = [];
     const now = new Date();
     for (let i = 23; i >= 0; i--) {
@@ -28,12 +48,15 @@ export function ReportsPage() {
       });
     }
     return data;
-  }, []);
+  }, [sensorReadings, language]);
 
   const handleSaveEggs = () => {
     const count = parseInt(eggCount);
     if (!isNaN(count) && count >= 0) {
-      setSavedEggCount(count);
+      upsertReport.mutate({
+        report_date: new Date().toISOString().split('T')[0],
+        egg_production: count,
+      });
       setEggCount('');
     }
   };
@@ -72,7 +95,7 @@ export function ReportsPage() {
             </div>
             <div className="rounded-xl bg-card p-3 text-center shadow-card">
               <Egg size={20} className="mx-auto mb-1 text-secondary" />
-              <p className="text-lg font-bold">{savedEggCount ?? '—'}</p>
+              <p className="text-lg font-bold">{todayReport?.egg_production ?? '—'}</p>
               <p className="text-xs text-muted-foreground">
                 {language === 'bn' ? 'ডিম' : 'Eggs'}
               </p>
@@ -171,13 +194,17 @@ export function ReportsPage() {
                 placeholder={translations.reports.enterCount[language]}
                 className="h-12 flex-1 text-lg"
               />
-              <Button onClick={handleSaveEggs} className="h-12 px-6">
+              <Button 
+                onClick={handleSaveEggs} 
+                className="h-12 px-6"
+                disabled={upsertReport.isPending}
+              >
                 {translations.common.save[language]}
               </Button>
             </div>
-            {savedEggCount !== null && (
+            {todayReport?.egg_production !== undefined && (
               <p className="mt-3 text-center text-sm text-muted-foreground">
-                {translations.common.today[language]}: {savedEggCount} {translations.reports.eggs[language]}
+                {translations.common.today[language]}: {todayReport.egg_production} {translations.reports.eggs[language]}
               </p>
             )}
           </div>
