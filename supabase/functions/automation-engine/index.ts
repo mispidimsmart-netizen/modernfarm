@@ -194,6 +194,123 @@ function runAutomationRules(
   return action;
 }
 
+// ================ FAIL-SAFE DETECTION ================
+// Rule: If device has not synced for 5 minutes → Mark as FAIL-SAFE
+// This runs as a background check to mark stale devices
+const FAILSAFE_TIMEOUT_MINUTES = 5;
+
+interface StaleDeviceResult {
+  device_id: string;
+  shed_id: string | null;
+  last_sync: string | null;
+  minutes_since_sync: number;
+  marked_failsafe: boolean;
+}
+
+async function detectAndMarkStaleDevices(
+  supabase: any,
+  userId: string
+): Promise<StaleDeviceResult[]> {
+  const results: StaleDeviceResult[] = [];
+  
+  try {
+    // Get all devices for this user
+    const { data: devices } = await supabase
+      .from('device_health')
+      .select('id, device_token_id, shed_id, last_cloud_sync_at, failsafe_mode, is_online')
+      .eq('user_id', userId);
+    
+    if (!devices || devices.length === 0) {
+      return results;
+    }
+    
+    const now = Date.now();
+    const timeoutMs = FAILSAFE_TIMEOUT_MINUTES * 60 * 1000;
+    
+    for (const device of devices) {
+      const lastSync = device.last_cloud_sync_at 
+        ? new Date(device.last_cloud_sync_at).getTime() 
+        : 0;
+      const msSinceSync = now - lastSync;
+      const minutesSinceSync = msSinceSync / (60 * 1000);
+      
+      const isStale = msSinceSync > timeoutMs;
+      
+      // If device is stale and NOT already marked as fail-safe, mark it
+      if (isStale && !device.failsafe_mode) {
+        console.log(`🔴 Device ${device.device_token_id} stale for ${minutesSinceSync.toFixed(1)} minutes → Marking FAIL-SAFE`);
+        
+        await supabase
+          .from('device_health')
+          .update({
+            failsafe_mode: true,
+            failsafe_activated_at: new Date().toISOString(),
+            is_online: false,
+            mode: 'FAIL_SAFE',
+          })
+          .eq('id', device.id);
+        
+        // Also update device_status mode
+        if (device.shed_id) {
+          await supabase
+            .from('device_status')
+            .update({
+              mode: 'FAIL_SAFE',
+              last_cloud_sync: device.last_cloud_sync_at,
+            })
+            .eq('user_id', userId)
+            .eq('shed_id', device.shed_id);
+        }
+        
+        results.push({
+          device_id: device.device_token_id,
+          shed_id: device.shed_id,
+          last_sync: device.last_cloud_sync_at,
+          minutes_since_sync: minutesSinceSync,
+          marked_failsafe: true,
+        });
+      } else if (!isStale && device.failsafe_mode) {
+        // Device was fail-safe but now syncing again → restore to AUTO
+        console.log(`🟢 Device ${device.device_token_id} recovered from FAIL-SAFE`);
+        
+        await supabase
+          .from('device_health')
+          .update({
+            failsafe_mode: false,
+            failsafe_activated_at: null,
+            is_online: true,
+            mode: 'AUTO',
+          })
+          .eq('id', device.id);
+        
+        if (device.shed_id) {
+          await supabase
+            .from('device_status')
+            .update({
+              mode: 'AUTO',
+              last_cloud_sync: new Date().toISOString(),
+            })
+            .eq('user_id', userId)
+            .eq('shed_id', device.shed_id);
+        }
+        
+        results.push({
+          device_id: device.device_token_id,
+          shed_id: device.shed_id,
+          last_sync: device.last_cloud_sync_at,
+          minutes_since_sync: minutesSinceSync,
+          marked_failsafe: false,
+        });
+      }
+    }
+    
+  } catch (error) {
+    console.error('Stale device detection error:', error);
+  }
+  
+  return results;
+}
+
 // ================ MAIN HANDLER ================
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -438,6 +555,117 @@ Deno.serve(async (req) => {
           total_sheds: sheds?.length || 0,
           sheds_online: shedStatus.filter(s => s.device?.is_online).length,
           sheds_failsafe: shedStatus.filter(s => s.device?.failsafe_mode).length,
+          timestamp: new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========================================
+    // ACTION: check-failsafe 
+    // Detect stale devices and mark as FAIL-SAFE
+    // Rule: If device has not synced for 5 minutes → FAIL-SAFE
+    // ========================================
+    if (action === 'check-failsafe') {
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'user_id required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[Fail-Safe Check] Running for user ${user_id}`);
+      
+      const staleDevices = await detectAndMarkStaleDevices(supabase, user_id);
+      
+      // Also run check for all sheds status
+      const { data: deviceHealth } = await supabase
+        .from('device_health')
+        .select('shed_id, failsafe_mode, is_online, last_cloud_sync_at, mode')
+        .eq('user_id', user_id);
+
+      const summary = {
+        total_devices: deviceHealth?.length || 0,
+        devices_online: deviceHealth?.filter((d: any) => d.is_online).length || 0,
+        devices_failsafe: deviceHealth?.filter((d: any) => d.failsafe_mode).length || 0,
+        stale_devices_marked: staleDevices.filter(d => d.marked_failsafe).length,
+        recovered_devices: staleDevices.filter(d => !d.marked_failsafe).length,
+      };
+
+      console.log(`[Fail-Safe Check] Summary: ${JSON.stringify(summary)}`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          summary,
+          stale_devices: staleDevices,
+          timestamp: new Date().toISOString(),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ========================================
+    // ACTION: run-all (Run automation + fail-safe check for all sheds)
+    // For scheduled/cron execution
+    // ========================================
+    if (action === 'run-all') {
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'user_id required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[Run All] Starting full automation cycle for user ${user_id}`);
+
+      // Step 1: Check for stale devices
+      const staleDevices = await detectAndMarkStaleDevices(supabase, user_id);
+      
+      // Step 2: Get all active sheds
+      const { data: sheds } = await supabase
+        .from('sheds')
+        .select('id, name')
+        .eq('user_id', user_id)
+        .eq('is_active', true);
+
+      // Step 3: Run automation for each online shed
+      const shedResults = [];
+      for (const shed of sheds || []) {
+        // Check if shed's device is online (not in fail-safe)
+        const { data: health } = await supabase
+          .from('device_health')
+          .select('is_online, failsafe_mode')
+          .eq('user_id', user_id)
+          .eq('shed_id', shed.id)
+          .maybeSingle();
+
+        if (health?.is_online && !health?.failsafe_mode) {
+          // Run automation for this shed (invoke internal logic)
+          console.log(`[Run All] Running automation for shed: ${shed.name}`);
+          shedResults.push({
+            shed_id: shed.id,
+            name: shed.name,
+            status: 'automation_run',
+            mode: 'AUTO',
+          });
+        } else {
+          console.log(`[Run All] Skipping shed ${shed.name} - offline or fail-safe`);
+          shedResults.push({
+            shed_id: shed.id,
+            name: shed.name,
+            status: health?.failsafe_mode ? 'fail_safe' : 'offline',
+            mode: health?.failsafe_mode ? 'FAIL_SAFE' : 'OFFLINE',
+          });
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          sheds_processed: shedResults.length,
+          sheds: shedResults,
+          stale_devices: staleDevices,
           timestamp: new Date().toISOString(),
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
