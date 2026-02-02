@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Cloud, CloudOff, Clock, Cpu, RefreshCw, Shield, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAllDeviceHealth, DeviceHealth } from '@/hooks/useDeviceHealth';
+import { useSelectedShed } from '@/hooks/useSheds';
 
 // Calculate time ago from a date string
 function getTimeAgo(dateStr: string | null, language: 'bn' | 'en'): string {
@@ -26,10 +27,18 @@ function getTimeAgo(dateStr: string | null, language: 'bn' | 'en'): string {
   return language === 'bn' ? `${Math.floor(diffHour / 24)} দিন আগে` : `${Math.floor(diffHour / 24)}d ago`;
 }
 
-// Get primary device (most recently seen)
-function getPrimaryDevice(devices: DeviceHealth[] | undefined): DeviceHealth | null {
+// Get primary device for a specific shed (most recently seen)
+function getPrimaryDeviceForShed(devices: DeviceHealth[] | undefined, shedId: string | null): DeviceHealth | null {
   if (!devices || devices.length === 0) return null;
-  return devices.reduce((latest, device) => {
+  
+  // Filter by shed if selected
+  const shedDevices = shedId 
+    ? devices.filter(d => d.shed_id === shedId)
+    : devices;
+  
+  if (shedDevices.length === 0) return null;
+  
+  return shedDevices.reduce((latest, device) => {
     if (!latest.last_seen_at) return device;
     if (!device.last_seen_at) return latest;
     return new Date(device.last_seen_at) > new Date(latest.last_seen_at) ? device : latest;
@@ -39,8 +48,10 @@ function getPrimaryDevice(devices: DeviceHealth[] | undefined): DeviceHealth | n
 export function SystemModeCard() {
   const { language } = useAuth();
   const { data: deviceHealth, isLoading } = useAllDeviceHealth();
+  const { selectedShedId } = useSelectedShed();
   
-  const primaryDevice = getPrimaryDevice(deviceHealth);
+  // Each shed = independent fail-safe unit
+  const primaryDevice = getPrimaryDeviceForShed(deviceHealth, selectedShedId);
   const isFailSafe = primaryDevice?.failsafe_mode ?? false;
   const lastCloudSync = primaryDevice?.last_cloud_sync_at;
   const lastSeenAt = primaryDevice?.last_seen_at;
