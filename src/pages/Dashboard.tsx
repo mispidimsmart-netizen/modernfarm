@@ -31,6 +31,7 @@ import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
 import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
+import { PowerOutageCard } from '@/components/device/PowerOutageCard';
 import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -296,6 +297,19 @@ export function Dashboard() {
             />
           </div>
           <WeatherCard />
+        </motion.div>
+
+        {/* Power Outage Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.19 }}
+          className="mt-6"
+        >
+          <h2 className="section-title">
+            {language === 'bn' ? 'পাওয়ার মনিটরিং' : 'Power Monitoring'}
+          </h2>
+          <PowerOutageCard />
         </motion.div>
 
         {/* Automation Status */}
