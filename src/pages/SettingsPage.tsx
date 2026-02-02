@@ -31,6 +31,7 @@ import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
 import { InstallPromptCard } from '@/components/pwa/InstallPromptCard';
+import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -501,6 +502,9 @@ export function SettingsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Notification Sounds */}
+              <NotificationSoundCard />
 
               {/* SMS Alerts - Owner only */}
               {isOwner && <SmsAlertSettingsCard />}
