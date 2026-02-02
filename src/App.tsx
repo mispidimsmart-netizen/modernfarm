@@ -19,6 +19,7 @@ const ReportsPage = lazy(() => import("./pages/ReportsPage").then(m => ({ defaul
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
 const ApiDocsPage = lazy(() => import("./pages/ApiDocsPage").then(m => ({ default: m.ApiDocsPage })));
 const FarmManagementPage = lazy(() => import("./pages/FarmManagementPage").then(m => ({ default: m.FarmManagementPage })));
+const InstallationGuidePage = lazy(() => import("./pages/InstallationGuidePage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -172,6 +173,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/installation-guide"
+          element={
+            <ProtectedRoute>
+              <InstallationGuidePage />
             </ProtectedRoute>
           }
         />
