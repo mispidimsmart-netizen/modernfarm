@@ -1,16 +1,20 @@
 import { motion } from 'framer-motion';
-import { Fan, Lightbulb, Bell, RefreshCcw } from 'lucide-react';
+import { Fan, Lightbulb, Bell, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
+import { useUserRole } from '@/hooks/useUserRole';
 import { translations } from '@/lib/translations';
 import { ControlButton } from '@/components/ControlButton';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function ControlPage() {
   const { language } = useAuth();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl();
+  const { data: userRole } = useUserRole();
+  const isOwner = userRole?.role === 'owner';
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,6 +26,27 @@ export function ControlPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h2 className="section-title">{translations.controls.title[language]}</h2>
+
+          {/* Worker restriction notice */}
+          {!isOwner && (
+            <Card className="mb-6 border-status-warning/30 bg-status-warning/5">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <ShieldAlert className="h-5 w-5 text-status-warning" />
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View Only Access'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {language === 'bn' 
+                        ? 'আপনি কর্মী হিসেবে ডিভাইস নিয়ন্ত্রণ করতে পারবেন না'
+                        : 'As a worker, you cannot control devices'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Manual Override Toggle */}
           <div className="mb-6 flex items-center justify-between rounded-2xl bg-card p-4 shadow-card">
@@ -46,6 +71,7 @@ export function ControlPage() {
             <Switch
               checked={manualOverride}
               onCheckedChange={setManualOverride}
+              disabled={!isOwner}
             />
           </div>
 
@@ -56,25 +82,25 @@ export function ControlPage() {
               label={translations.sensors.fan[language]}
               isOn={status.fan}
               onToggle={() => setDeviceStatus({ fan: !status.fan })}
-              disabled={!manualOverride}
+              disabled={!manualOverride || !isOwner}
             />
             <ControlButton
               icon={Lightbulb}
               label={translations.sensors.light[language]}
               isOn={status.light}
               onToggle={() => setDeviceStatus({ light: !status.light })}
-              disabled={!manualOverride}
+              disabled={!manualOverride || !isOwner}
             />
             <ControlButton
               icon={Bell}
               label={translations.sensors.alarm[language]}
               isOn={status.alarm}
               onToggle={() => setDeviceStatus({ alarm: !status.alarm })}
-              disabled={!manualOverride}
+              disabled={!manualOverride || !isOwner}
             />
           </div>
 
-          {!manualOverride && (
+          {!manualOverride && isOwner && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

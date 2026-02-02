@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, ChevronRight } from 'lucide-react';
+import { Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, ChevronRight, Shield } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile } from '@/hooks/useFarmData';
+import { useUserRole } from '@/hooks/useUserRole';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { generateDeviceToken } from '@/lib/esp32Api';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
@@ -24,6 +26,8 @@ import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
 export function SettingsPage() {
   const { language, user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: userRole } = useUserRole();
+  const isOwner = userRole?.role === 'owner';
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -120,9 +124,23 @@ export function SettingsPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <User size={28} />
               </div>
-              <div>
-                <p className="font-semibold text-foreground">{profile?.farm_name}</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-foreground">{profile?.farm_name}</p>
+                  <Badge variant={isOwner ? 'default' : 'secondary'} className="text-xs">
+                    <Shield className="h-3 w-3 mr-1" />
+                    {isOwner 
+                      ? (language === 'bn' ? 'মালিক' : 'Owner')
+                      : (language === 'bn' ? 'কর্মী' : 'Worker')
+                    }
+                  </Badge>
+                </div>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
+                {!isOwner && (
+                  <p className="text-xs text-status-warning mt-1">
+                    {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View only access'}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -167,49 +185,69 @@ export function SettingsPage() {
             )}
           </div>
 
-          {/* Smart Mode Profiles */}
-          <div className="mb-6">
-            <SmartModeCard />
-          </div>
+          {/* Owner-only settings */}
+          {isOwner && (
+            <>
+              {/* Smart Mode Profiles */}
+              <div className="mb-6">
+                <SmartModeCard />
+              </div>
 
-          {/* Weather Auto Mode */}
-          <div className="mb-6">
-            <WeatherAutoModeCard />
-          </div>
+              {/* Weather Auto Mode */}
+              <div className="mb-6">
+                <WeatherAutoModeCard />
+              </div>
 
-          {/* Threshold Settings */}
-          <div className="mb-6">
-            <ThresholdSettingsCard />
-          </div>
+              {/* Threshold Settings */}
+              <div className="mb-6">
+                <ThresholdSettingsCard />
+              </div>
 
-          {/* Fan Speed Settings */}
-          <div className="mb-6">
-            <FanSpeedSettingsCard />
-          </div>
+              {/* Fan Speed Settings */}
+              <div className="mb-6">
+                <FanSpeedSettingsCard />
+              </div>
 
-          {/* HSI Settings */}
-          <div className="mb-6">
-            <HSISettingsCard />
-          </div>
+              {/* HSI Settings */}
+              <div className="mb-6">
+                <HSISettingsCard />
+              </div>
 
-          {/* Water Anomaly Settings */}
-          <div className="mb-6">
-            <WaterAnomalySettingsCard />
-          </div>
+              {/* Water Anomaly Settings */}
+              <div className="mb-6">
+                <WaterAnomalySettingsCard />
+              </div>
 
-          {/* Battery Backup Settings */}
-          <div className="mb-6">
-            <BatterySettingsCard />
-          </div>
+              {/* Battery Backup Settings */}
+              <div className="mb-6">
+                <BatterySettingsCard />
+              </div>
+            </>
+          )}
 
-          {/* ESP32 Device Tokens */}
-          <div className="mb-6 rounded-2xl bg-card p-4 shadow-card">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold">
-              <Cpu size={18} />
-              {language === 'bn' ? 'ESP32 ডিভাইস টোকেন' : 'ESP32 Device Tokens'}
-            </h3>
-            
-            <p className="mb-4 text-sm text-muted-foreground">
+          {/* Worker view-only notice */}
+          {!isOwner && (
+            <div className="mb-6 rounded-2xl bg-muted/50 p-4 border border-dashed">
+              <p className="text-sm text-muted-foreground text-center">
+                {language === 'bn' 
+                  ? 'সেটিংস পরিবর্তন করতে মালিকের অনুমতি প্রয়োজন'
+                  : 'Owner permission required to change settings'}
+              </p>
+            </div>
+          )}
+
+          {/* ESP32 Device Tokens - Owner only */}
+          {isOwner && (
+            <div className="mb-6 rounded-2xl bg-card p-4 shadow-card">
+              <h3 className="mb-4 flex items-center gap-2 font-semibold">
+                <Cpu size={18} />
+                {language === 'bn' ? 'ESP32 ডিভাইস টোকেন' : 'ESP32 Device Tokens'}
+              </h3>
+              
+              <p className="mb-4 text-sm text-muted-foreground">
+                {language === 'bn' 
+                  ? 'আপনার ESP32 ডিভাইসগুলোকে এই অ্যাপের সাথে সংযুক্ত করতে টোকেন ব্যবহার করুন।'
+                  : 'Use tokens to connect your ESP32 devices to this app.'}
               {language === 'bn' 
                 ? 'আপনার ESP32 ডিভাইসগুলোকে এই অ্যাপের সাথে সংযুক্ত করতে টোকেন ব্যবহার করুন।'
                 : 'Use tokens to connect your ESP32 devices to this app.'}
@@ -273,7 +311,7 @@ export function SettingsPage() {
               )}
             </div>
           </div>
-
+          )}
           {/* Quick Links */}
           <div className="rounded-2xl bg-card shadow-card">
             <a href="/reports" className="flex items-center justify-between border-b p-4">
