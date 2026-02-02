@@ -393,22 +393,42 @@ async function handleDeviceStatus(body: DeviceStatusPayload, supabase: any, user
 }
 
 async function getSettings(supabase: any, userId: string) {
+  // Return ALL settings for fail-safe caching on ESP32
   const { data, error } = await supabase
     .from('farm_settings')
-    .select('temperature_min, temperature_max, humidity_min, humidity_max, ammonia_max')
+    .select(`
+      temperature_min, temperature_max, 
+      humidity_min, humidity_max, 
+      ammonia_max,
+      fan_low_temp_min, fan_low_temp_max,
+      fan_medium_temp_min, fan_medium_temp_max,
+      fan_high_temp_min,
+      hsi_mild_threshold, hsi_moderate_threshold,
+      hsi_severe_threshold, hsi_emergency_threshold,
+      hsi_automation_enabled,
+      water_anomaly_threshold
+    `)
     .eq('user_id', userId)
     .single();
 
   if (error) {
+    console.error('Failed to get settings:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to get settings', code: 'FETCH_FAILED' }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
+  // Add server timestamp for sync tracking
   return new Response(
-    JSON.stringify({ success: true, data }),
-    { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    JSON.stringify({ 
+      success: true, 
+      data: {
+        ...data,
+        server_timestamp: new Date().toISOString(),
+      }
+    }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
 
