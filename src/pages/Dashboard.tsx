@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Power, RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu } from 'lucide-react';
+import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Calendar, Cloud } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
@@ -13,7 +13,11 @@ import { BottomNav } from '@/components/BottomNav';
 import { ShedSelector } from '@/components/shed/ShedSelector';
 import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
 import { DeviceManagementSheet } from '@/components/device/DeviceManagementSheet';
+import { WeatherCard } from '@/components/weather/WeatherCard';
+import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
+import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
 import { StatusLevel } from '@/lib/types';
+import { Button } from '@/components/ui/button';
 
 export function Dashboard() {
   const { language } = useAuth();
@@ -138,6 +142,29 @@ export function Dashboard() {
           />
         </div>
 
+        {/* Weather Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mt-6"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="section-title mb-0">
+              {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
+            </h2>
+            <WeatherSettingsSheet
+              trigger={
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                  <Settings className="h-3.5 w-3.5" />
+                  {language === 'bn' ? 'সেটিংস' : 'Settings'}
+                </Button>
+              }
+            />
+          </div>
+          <WeatherCard />
+        </motion.div>
+
         {/* Quick Device Status */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -200,18 +227,19 @@ export function Dashboard() {
             </div>
             <ChevronRight size={18} className="text-muted-foreground" />
           </Link>
-          <Link
-            to="/settings"
-            className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card transition-transform active:scale-[0.98]"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-              <Settings size={20} />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium">{language === 'bn' ? 'সেটিংস' : 'Settings'}</p>
-            </div>
-            <ChevronRight size={18} className="text-muted-foreground" />
-          </Link>
+          <ScheduleSheet
+            trigger={
+              <div className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card transition-transform active:scale-[0.98] cursor-pointer">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                  <Calendar size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{language === 'bn' ? 'শিডিউল' : 'Schedule'}</p>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground" />
+              </div>
+            }
+          />
         </motion.div>
       </main>
 

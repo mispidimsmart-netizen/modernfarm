@@ -812,6 +812,115 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          message_bn: string | null
+          notification_type: string
+          schedule_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          message_bn?: string | null
+          notification_type: string
+          schedule_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          message_bn?: string | null
+          notification_type?: string
+          schedule_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_notifications_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedules: {
+        Row: {
+          created_at: string
+          day_of_month: number | null
+          day_of_week: number | null
+          description: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          next_run_at: string | null
+          notify_before_minutes: number | null
+          recurrence: string
+          schedule_type: string
+          shed_id: string | null
+          time_of_day: string
+          title: string
+          title_bn: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          notify_before_minutes?: number | null
+          recurrence?: string
+          schedule_type: string
+          shed_id?: string | null
+          time_of_day: string
+          title: string
+          title_bn?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          notify_before_minutes?: number | null
+          recurrence?: string
+          schedule_type?: string
+          shed_id?: string | null
+          time_of_day?: string
+          title?: string
+          title_bn?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sensor_logs: {
         Row: {
           ammonia: number
@@ -931,6 +1040,93 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           name_en?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      weather_cache: {
+        Row: {
+          feels_like: number | null
+          fetched_at: string
+          forecast_json: Json | null
+          humidity: number | null
+          id: string
+          rain_probability: number | null
+          temperature: number | null
+          user_id: string
+          weather_condition: string | null
+          weather_icon: string | null
+          wind_speed: number | null
+        }
+        Insert: {
+          feels_like?: number | null
+          fetched_at?: string
+          forecast_json?: Json | null
+          humidity?: number | null
+          id?: string
+          rain_probability?: number | null
+          temperature?: number | null
+          user_id: string
+          weather_condition?: string | null
+          weather_icon?: string | null
+          wind_speed?: number | null
+        }
+        Update: {
+          feels_like?: number | null
+          fetched_at?: string
+          forecast_json?: Json | null
+          humidity?: number | null
+          id?: string
+          rain_probability?: number | null
+          temperature?: number | null
+          user_id?: string
+          weather_condition?: string | null
+          weather_icon?: string | null
+          wind_speed?: number | null
+        }
+        Relationships: []
+      }
+      weather_settings: {
+        Row: {
+          auto_fan_adjustment: boolean
+          created_at: string
+          heat_wave_protection: boolean
+          heat_wave_threshold: number
+          id: string
+          last_weather_fetch: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
+          rain_alert_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_fan_adjustment?: boolean
+          created_at?: string
+          heat_wave_protection?: boolean
+          heat_wave_threshold?: number
+          id?: string
+          last_weather_fetch?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          rain_alert_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_fan_adjustment?: boolean
+          created_at?: string
+          heat_wave_protection?: boolean
+          heat_wave_threshold?: number
+          id?: string
+          last_weather_fetch?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          rain_alert_enabled?: boolean
           updated_at?: string
           user_id?: string
         }
