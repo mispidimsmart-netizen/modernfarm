@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Cloud, Droplets, Wind, MapPin, RefreshCw, ThermometerSun } from 'lucide-react';
+import { Cloud, Droplets, Wind, MapPin, RefreshCw, ThermometerSun, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useWeatherCache, useFetchWeather, useCurrentLocation, useWeatherSettings } from '@/hooks/useWeather';
+import { useWeatherAutoMode } from '@/hooks/useWeatherAutoMode';
+import { SMART_MODE_PROFILES } from '@/hooks/useSmartModeProfiles';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 const AUTO_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
@@ -13,6 +16,7 @@ export function WeatherCard() {
   const { language } = useAuth();
   const { data: weather, isLoading: weatherLoading } = useWeatherCache();
   const { data: settings } = useWeatherSettings();
+  const { currentAutoMode, isEnabled: autoModeEnabled } = useWeatherAutoMode();
   const fetchWeather = useFetchWeather();
   const getLocation = useCurrentLocation();
 
@@ -125,6 +129,10 @@ export function WeatherCard() {
   const isOld = weather.fetched_at && 
     new Date().getTime() - new Date(weather.fetched_at).getTime() > 30 * 60 * 1000;
 
+  const autoModeProfile = currentAutoMode 
+    ? SMART_MODE_PROFILES.find(p => p.id === currentAutoMode) 
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -193,6 +201,19 @@ export function WeatherCard() {
           </div>
         </div>
       </div>
+
+      {/* Auto Mode Badge */}
+      {autoModeEnabled && autoModeProfile && (
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <Zap className="h-3 w-3 text-primary" />
+          <Badge variant="outline" className={`${autoModeProfile.bgColor} ${autoModeProfile.color}`}>
+            {autoModeProfile.icon} {autoModeProfile.name[language]}
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {language === 'bn' ? 'অটো-মোড' : 'Auto-Mode'}
+          </span>
+        </div>
+      )}
 
       {isOld && (
         <p className="mt-2 text-center text-xs text-yellow-600">
