@@ -12,7 +12,7 @@ import {
   getScheduleTypeLabel,
   getRecurrenceLabel,
 } from '@/hooks/useSchedules';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -115,6 +115,9 @@ export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
             <Calendar className="h-5 w-5" />
             {language === 'bn' ? 'শিডিউল ম্যানেজমেন্ট' : 'Schedule Management'}
           </SheetTitle>
+          <SheetDescription>
+            {language === 'bn' ? 'খাবার, পরিষ্কার ও ভ্যাক্সিনেশন শিডিউল সেট করুন' : 'Set feed, cleaning and vaccination schedules'}
+          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
