@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { HSISettingsCard } from '@/components/settings/HSISettingsCard';
 import { FanSpeedSettingsCard } from '@/components/settings/FanSpeedSettingsCard';
+import { WaterAnomalySettingsCard } from '@/components/settings/WaterAnomalySettingsCard';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -176,6 +177,11 @@ export function SettingsPage() {
           {/* HSI Settings */}
           <div className="mb-6">
             <HSISettingsCard />
+          </div>
+
+          {/* Water Anomaly Settings */}
+          <div className="mb-6">
+            <WaterAnomalySettingsCard />
           </div>
 
           {/* ESP32 Device Tokens */}

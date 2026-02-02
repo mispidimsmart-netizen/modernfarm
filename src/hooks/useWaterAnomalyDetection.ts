@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useFarmSettings } from '@/hooks/useFarmData';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
@@ -11,13 +12,14 @@ export interface WaterAnomalyResult {
   last3DaysAvg: number;
   percentChange: number;
   isAnomaly: boolean;
+  threshold: number;
   message: {
     bn: string;
     en: string;
   };
 }
 
-const ANOMALY_THRESHOLD_PERCENT = 15; // Alert if usage drops by 15%
+const DEFAULT_ANOMALY_THRESHOLD_PERCENT = 15; // Default alert threshold
 
 /**
  * Calculate average water usage for a date range
@@ -83,9 +85,15 @@ async function getDailyWaterTotals(
 export function useWaterAnomalyDetection(currentWaterUsage: number | null) {
   const { user, language } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  const { data: farmSettings } = useFarmSettings();
   const { toast } = useToast();
   const lastAlertTime = useRef<number>(0);
   const [anomalyResult, setAnomalyResult] = useState<WaterAnomalyResult | null>(null);
+
+  // Get threshold from settings or use default
+  const anomalyThreshold = farmSettings 
+    ? Number(farmSettings.water_anomaly_threshold) || DEFAULT_ANOMALY_THRESHOLD_PERCENT
+    : DEFAULT_ANOMALY_THRESHOLD_PERCENT;
 
   // Fetch last 3 days water usage averages
   const { data: waterHistory } = useQuery({
@@ -105,7 +113,6 @@ export function useWaterAnomalyDetection(currentWaterUsage: number | null) {
     }
 
     // Calculate today's usage and last 3 days average
-    const todayData = waterHistory[0];
     const last3Days = waterHistory.slice(1, 4);
     
     const todayUsage = currentWaterUsage; // Use realtime value
@@ -119,13 +126,14 @@ export function useWaterAnomalyDetection(currentWaterUsage: number | null) {
 
     // Calculate percent change
     const percentChange = ((todayUsage - last3DaysAvg) / last3DaysAvg) * 100;
-    const isAnomaly = percentChange < -ANOMALY_THRESHOLD_PERCENT;
+    const isAnomaly = percentChange < -anomalyThreshold;
 
     const result: WaterAnomalyResult = {
       todayUsage,
       last3DaysAvg,
       percentChange,
       isAnomaly,
+      threshold: anomalyThreshold,
       message: isAnomaly
         ? {
             bn: `⚠️ পানি ব্যবহার ${Math.abs(percentChange).toFixed(0)}% কমেছে! মুরগির স্বাস্থ্য পরীক্ষা করুন`,
@@ -145,7 +153,7 @@ export function useWaterAnomalyDetection(currentWaterUsage: number | null) {
       createHealthAlert(result);
       lastAlertTime.current = now;
     }
-  }, [user, currentWaterUsage, waterHistory, selectedShedId]);
+  }, [user, currentWaterUsage, waterHistory, selectedShedId, anomalyThreshold]);
 
   const createHealthAlert = async (result: WaterAnomalyResult) => {
     if (!user) return;

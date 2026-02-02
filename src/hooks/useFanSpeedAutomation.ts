@@ -185,9 +185,43 @@ export function useFanSpeedAutomation({
         });
       }
 
+      // Send push notification for fan speed change
+      await sendFanSpeedPushNotification(fanSpeedResult);
+
       console.log(`[Fan Speed Automation] Speed: ${fanSpeedResult.speed}, Temp: ${temperature}°C`);
     } catch (error) {
       console.error('[Fan Speed Automation] Failed to update fan speed:', error);
+    }
+  };
+
+  const sendFanSpeedPushNotification = async (fanSpeedResult: FanSpeedResult) => {
+    if (!user) return;
+
+    try {
+      const speedLabels = {
+        OFF: { bn: 'বন্ধ', en: 'OFF' },
+        LOW: { bn: 'নিম্ন', en: 'LOW' },
+        MEDIUM: { bn: 'মাঝারি', en: 'MEDIUM' },
+        HIGH: { bn: 'সর্বোচ্চ', en: 'HIGH' },
+      };
+
+      const title = language === 'bn' 
+        ? `🌀 ফ্যান: ${speedLabels[fanSpeedResult.speed].bn}`
+        : `🌀 Fan: ${speedLabels[fanSpeedResult.speed].en}`;
+
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          user_id: user.id,
+          title,
+          body: fanSpeedResult.message[language],
+          severity: fanSpeedResult.speed === 'HIGH' ? 'danger' : 'warning',
+          url: '/control',
+        },
+      });
+
+      console.log(`[Fan Speed Automation] Push notification sent for speed: ${fanSpeedResult.speed}`);
+    } catch (error) {
+      console.error('[Fan Speed Automation] Failed to send push notification:', error);
     }
   };
 
