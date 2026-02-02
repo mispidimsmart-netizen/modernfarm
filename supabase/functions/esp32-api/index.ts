@@ -67,9 +67,9 @@ Deno.serve(async (req) => {
     }
 
     // For GET requests, support device_id from query params
-    if (req.method === 'GET' && !deviceToken) {
+    if (req.method === 'GET') {
       const queryDeviceId = url.searchParams.get('device_id');
-      if (queryDeviceId) {
+      if (!deviceToken && queryDeviceId) {
         const { data: deviceByName } = await supabase
           .from('device_tokens')
           .select('token')
@@ -147,6 +147,12 @@ Deno.serve(async (req) => {
 
     if (req.method === 'GET' && path === 'lighting-schedule') {
       return await getLightingSchedule(supabase, userId);
+    }
+
+    if (req.method === 'GET' && path === 'alerts') {
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      const unacknowledgedOnly = url.searchParams.get('unacknowledged') === 'true';
+      return await getAlerts(supabase, userId, limit, unacknowledgedOnly);
     }
 
     if (req.method === 'GET' && path === 'commands') {
@@ -893,6 +899,46 @@ async function getLatestSensorData(supabase: any, userId: string) {
         updated_at: deviceStatus.updated_at
       } : null,
       thresholds: settings || null,
+      timestamp: new Date().toISOString()
+    }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+async function getAlerts(supabase: any, userId: string, limit: number, unacknowledgedOnly: boolean) {
+  let query = supabase
+    .from('alerts')
+    .select('id, alert_type, severity, message, message_bn, acknowledged, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(Math.min(limit, 100));
+
+  if (unacknowledgedOnly) {
+    query = query.eq('acknowledged', false);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      alerts: data.map((alert: any) => ({
+        id: alert.id,
+        type: alert.alert_type,
+        severity: alert.severity,
+        message: alert.message,
+        message_bn: alert.message_bn,
+        acknowledged: alert.acknowledged,
+        timestamp: alert.created_at
+      })),
+      count: data.length,
       timestamp: new Date().toISOString()
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
