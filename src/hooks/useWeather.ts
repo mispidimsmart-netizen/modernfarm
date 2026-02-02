@@ -49,7 +49,8 @@ export function useWeatherCache() {
       return data as WeatherData | null;
     },
     enabled: !!user,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 15 * 60 * 1000, // Auto refresh every 15 minutes
   });
 }
 

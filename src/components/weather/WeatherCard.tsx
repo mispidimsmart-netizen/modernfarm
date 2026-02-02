@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Cloud, Droplets, Wind, MapPin, RefreshCw, ThermometerSun } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -6,12 +7,47 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 
+const AUTO_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
 export function WeatherCard() {
   const { language } = useAuth();
   const { data: weather, isLoading: weatherLoading } = useWeatherCache();
   const { data: settings } = useWeatherSettings();
   const fetchWeather = useFetchWeather();
   const getLocation = useCurrentLocation();
+
+  // Auto-refresh weather data
+  useEffect(() => {
+    if (!settings?.location_lat || !settings?.location_lng) return;
+    
+    const shouldRefresh = () => {
+      if (!weather?.fetched_at) return true;
+      const lastFetch = new Date(weather.fetched_at).getTime();
+      return Date.now() - lastFetch > AUTO_REFRESH_INTERVAL;
+    };
+
+    // Initial check
+    if (shouldRefresh()) {
+      fetchWeather.mutate({
+        lat: settings.location_lat,
+        lng: settings.location_lng,
+        location_name: settings.location_name || undefined,
+      });
+    }
+
+    // Set up interval for auto-refresh
+    const interval = setInterval(() => {
+      if (shouldRefresh()) {
+        fetchWeather.mutate({
+          lat: settings.location_lat!,
+          lng: settings.location_lng!,
+          location_name: settings.location_name || undefined,
+        });
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => clearInterval(interval);
+  }, [settings?.location_lat, settings?.location_lng, settings?.location_name, weather?.fetched_at]);
 
   const handleRefresh = async () => {
     try {
