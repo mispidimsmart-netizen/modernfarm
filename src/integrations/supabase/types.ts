@@ -1181,6 +1181,117 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_alert_settings: {
+        Row: {
+          ammonia_alerts: boolean
+          cooldown_minutes: number
+          created_at: string
+          device_offline_alerts: boolean
+          enabled: boolean
+          humidity_alerts: boolean
+          id: string
+          last_sms_sent_at: string | null
+          power_alerts: boolean
+          temperature_alerts: boolean
+          updated_at: string
+          user_id: string
+          water_alerts: boolean
+        }
+        Insert: {
+          ammonia_alerts?: boolean
+          cooldown_minutes?: number
+          created_at?: string
+          device_offline_alerts?: boolean
+          enabled?: boolean
+          humidity_alerts?: boolean
+          id?: string
+          last_sms_sent_at?: string | null
+          power_alerts?: boolean
+          temperature_alerts?: boolean
+          updated_at?: string
+          user_id: string
+          water_alerts?: boolean
+        }
+        Update: {
+          ammonia_alerts?: boolean
+          cooldown_minutes?: number
+          created_at?: string
+          device_offline_alerts?: boolean
+          enabled?: boolean
+          humidity_alerts?: boolean
+          id?: string
+          last_sms_sent_at?: string | null
+          power_alerts?: boolean
+          temperature_alerts?: boolean
+          updated_at?: string
+          user_id?: string
+          water_alerts?: boolean
+        }
+        Relationships: []
+      }
+      sms_logs: {
+        Row: {
+          alert_type: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          phone_number: string
+          sent_via: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          phone_number: string
+          sent_via?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          phone_number?: string
+          sent_via?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_phone_numbers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+          phone_number: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          phone_number: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          phone_number?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

@@ -22,6 +22,7 @@ import { WaterAnomalySettingsCard } from '@/components/settings/WaterAnomalySett
 import { SmartModeCard } from '@/components/settings/SmartModeCard';
 import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
 import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
+import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -221,6 +222,11 @@ export function SettingsPage() {
               {/* Battery Backup Settings */}
               <div className="mb-6">
                 <BatterySettingsCard />
+              </div>
+
+              {/* SMS Alert Settings */}
+              <div className="mb-6">
+                <SmsAlertSettingsCard />
               </div>
             </>
           )}
