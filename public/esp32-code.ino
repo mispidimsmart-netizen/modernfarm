@@ -37,8 +37,9 @@ const char* DEVICE_ID = "ESP32_LAYER_001";  // Match this with your device name 
 #define MQ135_PIN 34
 #define FLOW_SENSOR_PIN 27
 
-// Update interval (milliseconds)
-#define SEND_INTERVAL 30000  // 30 seconds
+// Update intervals (milliseconds)
+#define SEND_INTERVAL 30000       // 30 seconds for sensor data
+#define HEALTH_INTERVAL 60000     // 60 seconds for health report
 
 // ============= GLOBAL VARIABLES =============
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -48,6 +49,8 @@ float flowRate = 0.0;
 unsigned long lastFlowTime = 0;
 
 unsigned long lastSendTime = 0;
+unsigned long lastHealthTime = 0;
+unsigned long startupTime = 0;
 bool wifiConnected = false;
 
 // ============= SETUP =============
@@ -57,6 +60,8 @@ void setup() {
   Serial.println("স্মার্ট লেয়ার ফার্ম IoT Controller");
   Serial.println("Smart Layer Farm IoT Controller");
   Serial.println("=================================\n");
+
+  startupTime = millis();
 
   // Initialize sensors
   dht.begin();
@@ -93,6 +98,12 @@ void loop() {
   if (currentTime - lastSendTime >= SEND_INTERVAL) {
     sendSensorData();
     lastSendTime = currentTime;
+  }
+
+  // Send health report every HEALTH_INTERVAL
+  if (currentTime - lastHealthTime >= HEALTH_INTERVAL) {
+    sendDeviceHealth();
+    lastHealthTime = currentTime;
   }
 
   delay(100);
@@ -226,6 +237,52 @@ void sendSensorData() {
   Serial.println("----------------------------------------\n");
 }
 
+// ============= SEND DEVICE HEALTH =============
+void sendDeviceHealth() {
+  if (!wifiConnected) {
+    Serial.println("✗ No WiFi connection - skipping health report");
+    return;
+  }
+
+  // Calculate uptime in seconds
+  unsigned long uptimeSeconds = (millis() - startupTime) / 1000;
+  
+  // Get WiFi signal strength
+  int rssi = WiFi.RSSI();
+  
+  // Get free heap memory
+  uint32_t freeHeap = ESP.getFreeHeap();
+
+  // Create JSON payload
+  StaticJsonDocument<256> doc;
+  doc["wifi_signal_strength"] = rssi;
+  doc["uptime_seconds"] = uptimeSeconds;
+  doc["free_memory_bytes"] = freeHeap;
+  doc["power_source"] = "mains";
+  doc["firmware_version"] = "1.0.0";
+
+  String jsonPayload;
+  serializeJson(doc, jsonPayload);
+
+  // Send HTTP POST request
+  String healthUrl = String(API_URL).substring(0, String(API_URL).lastIndexOf('/')) + "/health";
+  HTTPClient http;
+  http.begin(healthUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  Serial.println("📤 Sending device health...");
+  
+  int httpResponseCode = http.POST(jsonPayload);
+
+  if (httpResponseCode > 0) {
+    Serial.printf("✓ Health report sent (RSSI: %d dBm, Uptime: %lu s)\n", rssi, uptimeSeconds);
+  } else {
+    Serial.printf("✗ Health report failed: %s\n", http.errorToString(httpResponseCode).c_str());
+  }
+
+  http.end();
+}
+
 /*
  * ============= WIRING DIAGRAM =============
  * 
@@ -256,8 +313,11 @@ void sendSensorData() {
  * 
  * POST /esp32-api/data - Send sensor readings
  * POST /esp32-api/device-status - Update device status
+ * POST /esp32-api/health - Report device health (WiFi, memory, uptime)
  * GET  /esp32-api/settings - Fetch farm threshold settings
  * GET  /esp32-api/automation-rules - Get automation rules
  * GET  /esp32-api/lighting-schedule - Get light schedule
+ * GET  /esp32-api/commands - Get pending commands
+ * POST /esp32-api/commands-ack - Acknowledge executed commands
  * 
  */

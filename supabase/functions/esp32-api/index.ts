@@ -172,6 +172,10 @@ Deno.serve(async (req) => {
       return await handleManualControl(bodyData, supabase, userId);
     }
 
+    if (req.method === 'POST' && path === 'health') {
+      return await handleDeviceHealth(bodyData, supabase, userId, deviceToken);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -943,4 +947,109 @@ async function getAlerts(supabase: any, userId: string, limit: number, unacknowl
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
+}
+
+interface DeviceHealthPayload {
+  wifi_signal_strength?: number;
+  uptime_seconds?: number;
+  free_memory_bytes?: number;
+  cpu_temperature?: number;
+  power_source?: string;
+  battery_percentage?: number;
+  firmware_version?: string;
+  last_restart_at?: string;
+  error_count?: number;
+  last_error_message?: string;
+  shed_id?: string;
+}
+
+async function handleDeviceHealth(body: DeviceHealthPayload, supabase: any, userId: string, deviceToken: string) {
+  try {
+    // Get the device token ID
+    const { data: device } = await supabase
+      .from('device_tokens')
+      .select('id, shed_id')
+      .eq('token', deviceToken)
+      .single();
+
+    if (!device) {
+      return new Response(
+        JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const healthData = {
+      device_token_id: device.id,
+      user_id: userId,
+      shed_id: body.shed_id || device.shed_id || null,
+      wifi_signal_strength: body.wifi_signal_strength ?? null,
+      uptime_seconds: body.uptime_seconds ?? null,
+      free_memory_bytes: body.free_memory_bytes ?? null,
+      cpu_temperature: body.cpu_temperature ?? null,
+      power_source: body.power_source || 'mains',
+      battery_percentage: body.battery_percentage ?? null,
+      firmware_version: body.firmware_version ?? null,
+      last_restart_at: body.last_restart_at ?? null,
+      error_count: body.error_count ?? 0,
+      last_error_message: body.last_error_message ?? null,
+      is_online: true,
+      last_seen_at: new Date().toISOString(),
+    };
+
+    // Upsert device health (update if exists, insert if not)
+    const { data: existingHealth } = await supabase
+      .from('device_health')
+      .select('id')
+      .eq('device_token_id', device.id)
+      .single();
+
+    if (existingHealth) {
+      // Update existing record
+      const { error: updateError } = await supabase
+        .from('device_health')
+        .update(healthData)
+        .eq('id', existingHealth.id);
+
+      if (updateError) {
+        console.error('Device health update error:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update device health', code: 'UPDATE_FAILED' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Insert new record
+      const { error: insertError } = await supabase
+        .from('device_health')
+        .insert(healthData);
+
+      if (insertError) {
+        console.error('Device health insert error:', insertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save device health', code: 'INSERT_FAILED' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    console.log(`Device health updated for device ${device.id}: wifi=${body.wifi_signal_strength}, uptime=${body.uptime_seconds}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Device health updated',
+        device_id: device.id,
+        received_at: new Date().toISOString()
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Handle device health error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to process device health', code: 'PROCESS_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 }

@@ -1,14 +1,18 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Power, RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff } from 'lucide-react';
+import { Power, RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
+import { ShedSelector } from '@/components/shed/ShedSelector';
+import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
+import { DeviceManagementSheet } from '@/components/device/DeviceManagementSheet';
 import { StatusLevel } from '@/lib/types';
 
 export function Dashboard() {
@@ -17,9 +21,14 @@ export function Dashboard() {
   const statusLevels = useRealtimeStatusLevels(sensorData);
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   const { data: farmSettings } = useFarmSettings();
+  const { data: deviceHealth } = useAllDeviceHealth();
   
   // Subscribe to realtime alerts
   useRealtimeAlerts();
+
+  // Count online devices
+  const onlineDeviceCount = deviceHealth?.filter(d => d.is_online).length || 0;
+  const totalDeviceCount = deviceHealth?.length || 0;
 
   const statusText = {
     bn: { normal: 'স্বাভাবিক', warning: 'সতর্কতা', danger: 'বিপদ' },
@@ -36,10 +45,24 @@ export function Dashboard() {
       <Header />
 
       <main className="page-container px-4">
+        {/* Shed Selector & Management */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 flex flex-wrap items-center gap-2"
+        >
+          <ShedSelector />
+          <div className="flex gap-2">
+            <ShedManagementSheet />
+            <DeviceManagementSheet />
+          </div>
+        </motion.div>
+
         {/* Status Overview */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
           className="mb-6 flex items-center justify-between rounded-2xl bg-card p-4 shadow-card"
         >
           <div>
@@ -122,9 +145,20 @@ export function Dashboard() {
           transition={{ delay: 0.2 }}
           className="mt-6"
         >
-          <h2 className="section-title">
-            {language === 'bn' ? 'ডিভাইস স্ট্যাটাস' : 'Device Status'}
-          </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="section-title mb-0">
+              {language === 'bn' ? 'ডিভাইস স্ট্যাটাস' : 'Device Status'}
+            </h2>
+            {totalDeviceCount > 0 && (
+              <span className="flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs">
+                <Cpu className="h-3.5 w-3.5" />
+                <span className={onlineDeviceCount === totalDeviceCount ? 'text-status-normal' : 'text-status-warning'}>
+                  {onlineDeviceCount}/{totalDeviceCount}
+                </span>
+                {language === 'bn' ? 'অনলাইন' : 'online'}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-4 gap-3">
             {[
               { key: 'power', status: deviceStatus.power },
