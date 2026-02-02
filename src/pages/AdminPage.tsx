@@ -76,6 +76,15 @@ const t = {
     tabSystem: 'সিস্টেম',
     tabNotify: 'নোটিফিকেশন',
     tabAnalytics: 'অ্যানালিটিক্স',
+    userName: 'নাম',
+    email: 'ইমেইল',
+    farmType: 'ফার্মের ধরণ',
+    layer: 'লেয়ার',
+    broiler: 'ব্রয়লার',
+    noName: 'নাম নেই',
+    noEmail: 'ইমেইল নেই',
+    userInfo: 'ইউজার তথ্য',
+    farmInfo: 'ফার্ম তথ্য',
   },
   en: {
     title: 'Super Admin Dashboard',
@@ -108,6 +117,15 @@ const t = {
     tabSystem: 'System',
     tabNotify: 'Notifications',
     tabAnalytics: 'Analytics',
+    userName: 'Name',
+    email: 'Email',
+    farmType: 'Farm Type',
+    layer: 'Layer',
+    broiler: 'Broiler',
+    noName: 'No name',
+    noEmail: 'No email',
+    userInfo: 'User Info',
+    farmInfo: 'Farm Info',
   },
 };
 
@@ -158,7 +176,9 @@ export default function AdminPage() {
   // Filter users based on search
   const filteredUsers = allUsers?.filter(u => 
     u.farm_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.phone?.includes(searchQuery)
+    u.phone?.includes(searchQuery) ||
+    u.user_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (authLoading || checkingAdmin) {
@@ -357,24 +377,41 @@ export default function AdminPage() {
                               <Avatar className="w-12 h-12 border-2 border-purple-500/30">
                                 <AvatarImage src={u.avatar_url || undefined} />
                                 <AvatarFallback className="bg-purple-600 text-white">
-                                  {u.farm_name.charAt(0)}
+                                  {(u.user_name || u.farm_name).charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <h3 className="font-semibold text-white">{u.farm_name}</h3>
-                                <div className="flex items-center gap-3 text-sm text-gray-400">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold text-white">{u.user_name || labels.noName}</h3>
+                                  <Badge 
+                                    variant="outline" 
+                                    className={u.farm_type === 'broiler' 
+                                      ? 'border-amber-500/30 text-amber-400 text-xs' 
+                                      : 'border-green-500/30 text-green-400 text-xs'
+                                    }
+                                  >
+                                    {u.farm_type === 'broiler' ? '🐔' : '🥚'} {u.farm_type === 'broiler' ? labels.broiler : labels.layer}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-purple-300">{u.farm_name}</p>
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-1">
                                   <span className="flex items-center gap-1">
                                     <Phone className="w-3 h-3" />
                                     {u.phone || labels.noPhone}
                                   </span>
+                                  {u.email && (
+                                    <span className="flex items-center gap-1">
+                                      📧 {u.email}
+                                    </span>
+                                  )}
                                   <span className="flex items-center gap-1">
                                     <Building2 className="w-3 h-3" />
                                     {u.sheds_count} {labels.sheds}
                                   </span>
-                                </div>
-                                <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: bn })}
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: bn })}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -448,17 +485,54 @@ export default function AdminPage() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            {/* User Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-700/50 rounded-lg p-3">
-                <p className="text-gray-400 text-sm">{labels.phone}</p>
-                <p className="font-medium">{selectedUser?.phone || labels.noPhone}</p>
+            {/* User Info Section */}
+            <div className="bg-slate-700/50 rounded-lg p-4">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                👤 {labels.userInfo}
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.userName}</p>
+                  <p className="font-medium">{selectedUser?.user_name || labels.noName}</p>
+                </div>
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.phone}</p>
+                  <p className="font-medium">{selectedUser?.phone || labels.noPhone}</p>
+                </div>
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.email}</p>
+                  <p className="font-medium text-sm">{selectedUser?.email || labels.noEmail}</p>
+                </div>
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.joined}</p>
+                  <p className="font-medium">
+                    {selectedUser && format(new Date(selectedUser.created_at), 'dd MMM yyyy', { locale: bn })}
+                  </p>
+                </div>
               </div>
-              <div className="bg-slate-700/50 rounded-lg p-3">
-                <p className="text-gray-400 text-sm">{labels.joined}</p>
-                <p className="font-medium">
-                  {selectedUser && format(new Date(selectedUser.created_at), 'dd MMM yyyy', { locale: bn })}
-                </p>
+            </div>
+
+            {/* Farm Info Section */}
+            <div className="bg-slate-700/50 rounded-lg p-4">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                🏠 {labels.farmInfo}
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.farmName}</p>
+                  <p className="font-medium">{selectedUser?.farm_name}</p>
+                </div>
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.farmType}</p>
+                  <p className="font-medium flex items-center gap-2">
+                    {selectedUser?.farm_type === 'broiler' ? '🐔' : '🥚'}
+                    {selectedUser?.farm_type === 'broiler' ? labels.broiler : labels.layer}
+                  </p>
+                </div>
+                <div className="bg-slate-600/50 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs">{labels.sheds}</p>
+                  <p className="font-medium">{selectedUser?.sheds_count || 0}</p>
+                </div>
               </div>
             </div>
 

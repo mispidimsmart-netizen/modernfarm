@@ -8,6 +8,9 @@ export interface AdminUser {
   farm_name: string;
   avatar_url: string | null;
   created_at: string;
+  user_name: string | null;
+  email: string | null;
+  farm_type: string | null;
   sheds_count?: number;
   last_sensor_reading?: {
     temperature: number;
@@ -84,6 +87,9 @@ export function useSuperAdmin() {
         farm_name: profile.farm_name,
         avatar_url: profile.avatar_url,
         created_at: profile.created_at,
+        user_name: (profile as any).user_name || null,
+        email: (profile as any).email || null,
+        farm_type: (profile as any).farm_type || 'layer',
         sheds_count: shedCounts[profile.id] || 0,
       }));
 
