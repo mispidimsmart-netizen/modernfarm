@@ -17,6 +17,7 @@ import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCa
 import { HSISettingsCard } from '@/components/settings/HSISettingsCard';
 import { FanSpeedSettingsCard } from '@/components/settings/FanSpeedSettingsCard';
 import { WaterAnomalySettingsCard } from '@/components/settings/WaterAnomalySettingsCard';
+import { SmartModeCard } from '@/components/settings/SmartModeCard';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -162,6 +163,11 @@ export function SettingsPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Smart Mode Profiles */}
+          <div className="mb-6">
+            <SmartModeCard />
           </div>
 
           {/* Threshold Settings */}
