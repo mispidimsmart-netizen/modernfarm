@@ -137,6 +137,10 @@ Deno.serve(async (req) => {
       return await getAutomationRules(supabase, userId);
     }
 
+    if (req.method === 'POST' && path === 'automation-rules') {
+      return await createAutomationRule(bodyData, supabase, userId);
+    }
+
     if (req.method === 'GET' && path === 'lighting-schedule') {
       return await getLightingSchedule(supabase, userId);
     }
@@ -575,5 +579,108 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
       mode: body.mode || 'unchanged'
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+interface AutomationRulePayload {
+  name: string;
+  condition_sensor: 'temperature' | 'humidity' | 'ammonia';
+  condition_operator: '>' | '<' | '>=' | '<=';
+  condition_value: number;
+  action_device: 'fan' | 'light' | 'alarm';
+  action_state: boolean;
+  enabled?: boolean;
+}
+
+const VALID_SENSORS = ['temperature', 'humidity', 'ammonia'];
+const VALID_OPERATORS = ['>', '<', '>=', '<='];
+const VALID_DEVICES = ['fan', 'light', 'alarm'];
+
+async function createAutomationRule(body: AutomationRulePayload, supabase: any, userId: string) {
+  // Validate required fields
+  if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'Name is required and must be a non-empty string', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (body.name.length > 100) {
+    return new Response(
+      JSON.stringify({ error: 'Name must be less than 100 characters', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!VALID_SENSORS.includes(body.condition_sensor)) {
+    return new Response(
+      JSON.stringify({ error: `Invalid condition_sensor. Must be one of: ${VALID_SENSORS.join(', ')}`, code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!VALID_OPERATORS.includes(body.condition_operator)) {
+    return new Response(
+      JSON.stringify({ error: `Invalid condition_operator. Must be one of: ${VALID_OPERATORS.join(', ')}`, code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (typeof body.condition_value !== 'number' || isNaN(body.condition_value)) {
+    return new Response(
+      JSON.stringify({ error: 'condition_value must be a valid number', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (body.condition_value < -50 || body.condition_value > 500) {
+    return new Response(
+      JSON.stringify({ error: 'condition_value must be between -50 and 500', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!VALID_DEVICES.includes(body.action_device)) {
+    return new Response(
+      JSON.stringify({ error: `Invalid action_device. Must be one of: ${VALID_DEVICES.join(', ')}`, code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (typeof body.action_state !== 'boolean') {
+    return new Response(
+      JSON.stringify({ error: 'action_state must be a boolean', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const { data, error } = await supabase
+    .from('automation_rules')
+    .insert({
+      user_id: userId,
+      name: body.name.trim(),
+      condition_sensor: body.condition_sensor,
+      condition_operator: body.condition_operator,
+      condition_value: body.condition_value,
+      action_device: body.action_device,
+      action_state: body.action_state,
+      enabled: body.enabled !== false,
+    })
+    .select('id, name, condition_sensor, condition_operator, condition_value, action_device, action_state, enabled')
+    .single();
+
+  if (error) {
+    console.error('Error creating automation rule:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to create automation rule', code: 'INSERT_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log(`Created automation rule: ${body.name}`);
+
+  return new Response(
+    JSON.stringify({ success: true, rule: data }),
+    { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
