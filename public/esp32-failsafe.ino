@@ -1,15 +1,43 @@
 /*
  * Smart Layer Farm - ESP32 Fail-Safe Controller
  * 
- * এই কোড ESP32-কে "Backup Brain" হিসেবে কাজ করতে দেয়।
- * ইন্টারনেট থাকলে → Cloud rules follow করে
- * ইন্টারনেট না থাকলে → Local cached rules follow করে
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  🏭 BIG FARM FAIL-SAFE DESIGN RULES (VERY IMPORTANT!)           ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  ✔ Each shed runs independently                                 ║
+ * ║  ✔ One shed fail ≠ whole farm fail                              ║
+ * ║  ✔ Cloud is advisor, ESP32 is guardian                          ║
+ * ║  ✔ Manual override always available locally                     ║
+ * ╚══════════════════════════════════════════════════════════════════╝
  * 
- * Features:
- * - EEPROM-তে settings cache
- * - Local automation rules
- * - SMS fallback alerts
- * - Auto-recovery on reconnect
+ * ARCHITECTURE:
+ * ┌─────────────────────────────────────────────────────────────────┐
+ * │                        CLOUD (Supervisor)                        │
+ * │         - Advanced analytics & predictions                       │
+ * │         - Cross-shed coordination (optional)                     │
+ * │         - Historical data & reports                              │
+ * │         - NOT a single point of failure!                         │
+ * └─────────────────────────────────────────────────────────────────┘
+ *                    ↕ Internet (may fail)
+ * ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
+ * │   SHED A       │  │   SHED B       │  │   SHED C       │
+ * │   ESP32-A      │  │   ESP32-B      │  │   ESP32-C      │
+ * │   (Guardian)   │  │   (Guardian)   │  │   (Guardian)   │
+ * │                │  │                │  │                │
+ * │  ✓ Own sensors │  │  ✓ Own sensors │  │  ✓ Own sensors │
+ * │  ✓ Own rules   │  │  ✓ Own rules   │  │  ✓ Own rules   │
+ * │  ✓ Own relays  │  │  ✓ Own relays  │  │  ✓ Own relays  │
+ * │  ✓ Own backup  │  │  ✓ Own backup  │  │  ✓ Own backup  │
+ * └────────────────┘  └────────────────┘  └────────────────┘
+ *        ↑                   ↑                   ↑
+ *   INDEPENDENT         INDEPENDENT         INDEPENDENT
+ * 
+ * KEY PRINCIPLES:
+ * 1. Each ESP32 = One Shed's Guardian
+ * 2. Cloud failure → Local rules take over (5 min timeout)
+ * 3. Sensor failure → "When in doubt, Fan ON"
+ * 4. Manual override button → ALWAYS works (physical)
+ * 5. HSI = Temperature + (Humidity × 0.1)
  */
 
 #include <WiFi.h>
@@ -29,18 +57,33 @@
 #define ALARM_RELAY_PIN 33
 #define STATUS_LED_PIN 2
 
-// ================ CONFIGURATION ================
+// 🔘 LOCAL MANUAL OVERRIDE BUTTON (CRITICAL!)
+// This button bypasses ALL automation and Cloud commands
+// Press and hold for 3 seconds to toggle manual override
+#define MANUAL_OVERRIDE_BTN_PIN 32
+#define MANUAL_FAN_BTN_PIN 14        // Direct fan control in manual mode
+#define MANUAL_ALARM_BTN_PIN 12      // Direct alarm control in manual mode
+
+// ================ SHED CONFIGURATION ================
+// ⚠️ IMPORTANT: Each ESP32 belongs to ONE shed only!
+// This ensures isolation - one shed fail ≠ whole farm fail
+const char* SHED_ID = "YOUR_SHED_ID";       // UUID from app
+const char* SHED_NAME = "Shed A";           // Human readable name
+const char* FARM_ID = "YOUR_FARM_ID";       // Farm identifier
+
+// ================ NETWORK CONFIGURATION ================
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* API_URL = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api";
 const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN";
 
-// Timing constants
+// ================ TIMING CONSTANTS ================
 const unsigned long CLOUD_SYNC_INTERVAL = 30000;      // 30 seconds
 const unsigned long SENSOR_READ_INTERVAL = 5000;      // 5 seconds
 const unsigned long FAILSAFE_CHECK_INTERVAL = 10000;  // 10 seconds
 const unsigned long WIFI_RECONNECT_INTERVAL = 60000;  // 1 minute
 const unsigned long CLOUD_TIMEOUT = 300000;           // ⚠️ 5 MINUTES = FAILSAFE MODE
+const unsigned long MANUAL_OVERRIDE_HOLD_TIME = 3000; // 3 seconds to toggle manual mode
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -55,6 +98,14 @@ unsigned long lastCloudSync = 0;
 unsigned long lastWifiAttempt = 0;
 unsigned long failsafeActivatedAt = 0;
 int cloudFailCount = 0;
+
+// 🔘 LOCAL MANUAL OVERRIDE STATE
+// When enabled, ALL automation is bypassed - human is in control
+bool localManualOverride = false;
+unsigned long manualOverrideBtnPressTime = 0;
+bool manualOverrideBtnWasPressed = false;
+bool manualFanState = false;        // Fan state in manual mode
+bool manualAlarmState = false;      // Alarm state in manual mode
 
 // 🧠 STATE MEMORY (Very Important!)
 // These values are remembered even when cloud is down
@@ -79,6 +130,12 @@ bool lightOn = false;
 bool alarmOn = false;
 String fanSpeed = "OFF";
 int lightBrightness = 0;
+
+// 🏭 SHED ISOLATION STATUS
+// Each shed reports its own status independently
+String currentMode = "AUTO";      // AUTO, MANUAL, FAIL_SAFE
+String systemState = "NORMAL";    // NORMAL, MILD_STRESS, HIGH_STRESS, DANGER
+float currentHSI = 0;
 
 // 🔧 FAN RELAY HEALTH CHECK (Watchdog)
 bool fanRelayHealthy = true;
@@ -141,17 +198,27 @@ struct CachedSettings {
 // ================ SETUP ================
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n========================================");
-  Serial.println("Smart Layer Farm - Fail-Safe Controller");
-  Serial.println("========================================\n");
+  Serial.println("\n╔══════════════════════════════════════════════════════════════╗");
+  Serial.println("║    Smart Layer Farm - ESP32 Fail-Safe Controller             ║");
+  Serial.println("║    🏭 BIG FARM ARCHITECTURE: Each Shed = Independent Unit    ║");
+  Serial.println("╚══════════════════════════════════════════════════════════════╝\n");
+  Serial.printf("  Shed: %s (%s)\n", SHED_NAME, SHED_ID);
+  Serial.printf("  Farm: %s\n\n", FARM_ID);
   
-  // Initialize pins
+  // Initialize output pins
   pinMode(FAN_RELAY_PIN, OUTPUT);
   pinMode(LIGHT_PWM_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
+  
+  // Initialize input pins
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
+  
+  // 🔘 Initialize manual override buttons (CRITICAL for big farm safety)
+  pinMode(MANUAL_OVERRIDE_BTN_PIN, INPUT_PULLUP);
+  pinMode(MANUAL_FAN_BTN_PIN, INPUT_PULLUP);
+  pinMode(MANUAL_ALARM_BTN_PIN, INPUT_PULLUP);
   
   // Initialize PWM for light
   ledcSetup(0, 1000, 8);  // Channel 0, 1kHz, 8-bit
@@ -172,7 +239,8 @@ void setup() {
   }
   
   Serial.println("\n✓ Setup complete!");
-  Serial.printf("  Mode: %s\n", failsafeMode ? "FAILSAFE" : "CLOUD");
+  Serial.printf("  Mode: %s\n", failsafeMode ? "FAIL_SAFE" : "AUTO");
+  Serial.printf("  Manual Override: %s\n", localManualOverride ? "ENABLED" : "DISABLED");
 }
 
 // ================ MAIN LOOP ================
@@ -180,8 +248,13 @@ void loop() {
   static unsigned long lastSensorRead = 0;
   static unsigned long lastCloudAttempt = 0;
   static unsigned long lastFailsafeCheck = 0;
+  static unsigned long lastStateReport = 0;
   
   unsigned long now = millis();
+  
+  // 🔘 ALWAYS CHECK MANUAL OVERRIDE BUTTON FIRST!
+  // This must work even if everything else fails
+  checkManualOverrideButton();
   
   // 1. Read sensors regularly
   if (now - lastSensorRead >= SENSOR_READ_INTERVAL) {
@@ -189,16 +262,24 @@ void loop() {
     lastSensorRead = now;
   }
   
-  // 2. Check connection status
+  // 2. If in local manual override, skip all automation
+  if (localManualOverride) {
+    handleLocalManualMode();
+    updateStatusLED();
+    delay(100);
+    return;  // Skip cloud sync and automation
+  }
+  
+  // 3. Check connection status
   checkConnectionStatus();
   
-  // 3. Try cloud sync if connected
+  // 4. Try cloud sync if connected
   if (wifiConnected && now - lastCloudAttempt >= CLOUD_SYNC_INTERVAL) {
     syncWithCloud();
     lastCloudAttempt = now;
   }
   
-  // 4. Check failsafe status
+  // 5. Check failsafe status
   if (now - lastFailsafeCheck >= FAILSAFE_CHECK_INTERVAL) {
     checkFailsafeStatus();
     lastFailsafeCheck = now;
@@ -546,11 +627,114 @@ void logFailsafeEvent(String eventType, String message) {
   preferences.end();
 }
 
+// ================ MANUAL OVERRIDE FUNCTIONS ================
+// 🔘 LOCAL MANUAL OVERRIDE - ALWAYS WORKS!
+// Even if WiFi, Cloud, and automation all fail, human can still control
+
+void checkManualOverrideButton() {
+  bool btnPressed = (digitalRead(MANUAL_OVERRIDE_BTN_PIN) == LOW);
+  unsigned long now = millis();
+  
+  if (btnPressed && !manualOverrideBtnWasPressed) {
+    // Button just pressed
+    manualOverrideBtnPressTime = now;
+    manualOverrideBtnWasPressed = true;
+  } 
+  else if (btnPressed && manualOverrideBtnWasPressed) {
+    // Button still held
+    if (now - manualOverrideBtnPressTime >= MANUAL_OVERRIDE_HOLD_TIME) {
+      // Toggle manual override after 3 second hold
+      toggleLocalManualOverride();
+      manualOverrideBtnWasPressed = false;  // Reset to prevent multiple toggles
+    }
+  }
+  else if (!btnPressed) {
+    manualOverrideBtnWasPressed = false;
+  }
+}
+
+void toggleLocalManualOverride() {
+  localManualOverride = !localManualOverride;
+  
+  if (localManualOverride) {
+    currentMode = "MANUAL";
+    Serial.println("\n╔════════════════════════════════════════╗");
+    Serial.println("║  🔘 LOCAL MANUAL OVERRIDE ENABLED      ║");
+    Serial.println("╠════════════════════════════════════════╣");
+    Serial.println("║  All automation is now BYPASSED        ║");
+    Serial.println("║  Use physical buttons to control       ║");
+    Serial.println("║  Hold 3s again to return to AUTO       ║");
+    Serial.println("╚════════════════════════════════════════╝\n");
+    
+    // Flash LED to indicate manual mode
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(STATUS_LED_PIN, HIGH);
+      delay(200);
+      digitalWrite(STATUS_LED_PIN, LOW);
+      delay(200);
+    }
+  } else {
+    currentMode = failsafeMode ? "FAIL_SAFE" : "AUTO";
+    Serial.println("\n✅ Local manual override DISABLED - returning to automation\n");
+    
+    // Brief LED flash
+    digitalWrite(STATUS_LED_PIN, HIGH);
+    delay(500);
+    digitalWrite(STATUS_LED_PIN, LOW);
+  }
+}
+
+void handleLocalManualMode() {
+  // In manual mode, physical buttons directly control devices
+  
+  // Fan button (toggle on press)
+  static bool lastFanBtnState = HIGH;
+  bool fanBtnState = digitalRead(MANUAL_FAN_BTN_PIN);
+  if (fanBtnState == LOW && lastFanBtnState == HIGH) {
+    manualFanState = !manualFanState;
+    fanOn = manualFanState;
+    fanSpeed = manualFanState ? "HIGH" : "OFF";
+    digitalWrite(FAN_RELAY_PIN, fanOn ? HIGH : LOW);
+    Serial.printf("🔘 MANUAL: Fan %s\n", fanOn ? "ON (HIGH)" : "OFF");
+  }
+  lastFanBtnState = fanBtnState;
+  
+  // Alarm button (toggle on press)
+  static bool lastAlarmBtnState = HIGH;
+  bool alarmBtnState = digitalRead(MANUAL_ALARM_BTN_PIN);
+  if (alarmBtnState == LOW && lastAlarmBtnState == HIGH) {
+    manualAlarmState = !manualAlarmState;
+    alarmOn = manualAlarmState;
+    digitalWrite(ALARM_RELAY_PIN, alarmOn ? HIGH : LOW);
+    Serial.printf("🔘 MANUAL: Alarm %s\n", alarmOn ? "ON" : "OFF");
+  }
+  lastAlarmBtnState = alarmBtnState;
+  
+  // Still read sensors and calculate HSI for display
+  currentHSI = calculateHSI(temperature, humidity);
+  if (currentHSI > 40) systemState = "DANGER";
+  else if (currentHSI >= 35) systemState = "HIGH_STRESS";
+  else if (currentHSI >= 30) systemState = "MILD_STRESS";
+  else systemState = "NORMAL";
+  
+  // Log state periodically
+  static unsigned long lastManualLog = 0;
+  if (millis() - lastManualLog > 10000) {
+    Serial.printf("🔘 MANUAL MODE: HSI=%.1f(%s), Fan=%s, Alarm=%s\n",
+                  currentHSI, systemState.c_str(),
+                  fanOn ? "ON" : "OFF", alarmOn ? "ON" : "OFF");
+    lastManualLog = millis();
+  }
+}
+
 // ================ AUTOMATION FUNCTIONS ================
 // 🔐 LOCAL SAFE RULES - "সন্দেহ হলে Fan ON — Always safer"
 // These rules run when cloud is unavailable
 
 void runAutomation() {
+  // Update current mode
+  currentMode = failsafeMode ? "FAIL_SAFE" : "AUTO";
+  
   if (failsafeMode) {
     runLocalAutomation();
     
@@ -629,10 +813,12 @@ void runLocalAutomation() {
   // This is MORE ACCURATE than temperature alone!
   // ========================================
   float hsi = calculateHSI(temperature, humidity);
+  currentHSI = hsi;  // Store for state reporting
   Serial.printf("🔥 HSI = %.1f (Temp=%.1f + Hum=%.1f×0.1)\n", hsi, temperature, humidity);
   
   // HSI > 40: DANGER → Fan HIGH + Alert
   if (hsi > cachedSettings.hsiDanger) {
+    systemState = "DANGER";
     Serial.printf("🚨 HSI DANGER (%.1f > 40) → Fan HIGH + ALERT!\n", hsi);
     setFanState(true, "HIGH");
     alarmOn = true;
@@ -640,16 +826,19 @@ void runLocalAutomation() {
   }
   // HSI 35-40: HIGH STRESS → Fan HIGH
   else if (hsi >= cachedSettings.hsiMild) {
+    systemState = "HIGH_STRESS";
     Serial.printf("⚠️ HSI HIGH STRESS (%.1f) → Fan HIGH\n", hsi);
     setFanState(true, "HIGH");
   }
   // HSI 30-35: MILD STRESS → Fan LOW
   else if (hsi >= cachedSettings.hsiNormal) {
+    systemState = "MILD_STRESS";
     Serial.printf("🌡️ HSI MILD STRESS (%.1f) → Fan LOW\n", hsi);
     setFanState(true, "LOW");
   }
   // HSI < 30: NORMAL → Fan OFF (if no other concerns)
   else {
+    systemState = "NORMAL";
     if (ammonia < cachedSettings.ammoniaMax && powerOn) {
       Serial.printf("✅ HSI NORMAL (%.1f) → Fan OFF\n", hsi);
       setFanState(false, "OFF");
@@ -671,9 +860,14 @@ void runLocalAutomation() {
   // ========================================
   controlLighting();
   
-  // Log current state with HSI
-  Serial.printf("📊 State: HSI=%.1f, Fan=%s(%s), Alarm=%s, Light=%s(%d%%)\n",
-                hsi, fanOn ? "ON" : "OFF", fanSpeed.c_str(),
+  // ========================================
+  // 🏭 SHED STATUS REPORT (For Big Farm Monitoring)
+  // ========================================
+  Serial.printf("\n📊 [%s] Status Report:\n", SHED_NAME);
+  Serial.printf("   Mode: %s | State: %s\n", currentMode.c_str(), systemState.c_str());
+  Serial.printf("   HSI: %.1f | Temp: %.1f°C | Hum: %.1f%%\n", currentHSI, temperature, humidity);
+  Serial.printf("   Fan: %s (%s) | Alarm: %s | Light: %s (%d%%)\n",
+                fanOn ? "ON" : "OFF", fanSpeed.c_str(),
                 alarmOn ? "ON" : "OFF",
                 lightOn ? "ON" : "OFF", lightBrightness);
 }
