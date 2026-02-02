@@ -1,15 +1,19 @@
 import { Power, Wifi, WifiOff, LogOut, Globe } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
+import { useUserRole } from '@/hooks/useUserRole';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: deviceStatus } = useDeviceStatus();
+  const { data: userRole } = useUserRole();
 
   const isConnected = true; // Would come from realtime connection status
 
@@ -28,6 +32,11 @@ export function Header() {
               {profile?.farm_name || translations.dashboard.title[language]}
             </h1>
             <div className="flex items-center gap-2">
+              {userRole?.role === 'worker' && (
+                <Badge variant="secondary" className="text-xs">
+                  {language === 'bn' ? 'কর্মী' : 'Worker'}
+                </Badge>
+              )}
               {isConnected ? (
                 <span className="flex items-center gap-1 text-xs text-status-normal">
                   <Wifi size={12} />
@@ -44,6 +53,8 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
+          <WorkerManagementSheet />
+          
           <ThemeToggle />
           
           <Button

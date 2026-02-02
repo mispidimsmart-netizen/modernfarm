@@ -1181,6 +1181,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          farm_owner_id: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          farm_owner_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          farm_owner_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       weather_cache: {
         Row: {
           feels_like: number | null
@@ -1268,16 +1292,59 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_invitations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          farm_owner_id: string
+          id: string
+          invite_code: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          farm_owner_id: string
+          id?: string
+          invite_code: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          farm_owner_id?: string
+          id?: string
+          invite_code?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_access_farm: {
+        Args: { _owner_id: string; _user_id: string }
+        Returns: boolean
+      }
+      get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       alert_severity: "warning" | "danger"
       alert_type: "temperature" | "ammonia" | "power" | "water"
+      app_role: "owner" | "worker"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
       sensor_type: "temperature" | "humidity" | "ammonia"
@@ -1410,6 +1477,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["warning", "danger"],
       alert_type: ["temperature", "ammonia", "power", "water"],
+      app_role: ["owner", "worker"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
       sensor_type: ["temperature", "humidity", "ammonia"],
