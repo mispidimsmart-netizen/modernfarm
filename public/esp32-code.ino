@@ -40,6 +40,7 @@ const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 // API Settings
 const char* API_URL = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api/data";
 const char* DEVICE_ID = "ESP32_LAYER_001";
+const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN";  // Get from Dashboard > Device Management
 
 // Sensor Pins
 #define DHT_PIN 4
@@ -169,6 +170,14 @@ float lastHumidity = 60.0;
 float lastAmmonia = 10.0;
 float lastWaterFlow = 0.0;
 
+// Power monitoring
+bool powerOn = true;
+bool lastPowerState = true;
+unsigned long powerOutageStartTime = 0;
+unsigned long lastPowerStatusSend = 0;
+#define POWER_STATUS_INTERVAL 15000  // Send power status every 15 seconds when on battery
+#define POWER_DETECT_PIN 35          // GPIO for power detection (connect to voltage divider from mains)
+
 // ============= SETUP =============
 void setup() {
   Serial.begin(115200);
@@ -191,6 +200,7 @@ void setup() {
   dht.begin();
   pinMode(MQ135_PIN, INPUT);
   pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
+  pinMode(POWER_DETECT_PIN, INPUT);  // Power detection pin
   
   // Initialize output pins
   pinMode(FAN_RELAY_PIN, OUTPUT);
@@ -264,6 +274,9 @@ void loop() {
       lastSettingsSync = currentTime;
     }
   }
+
+  // === POWER MONITORING ===
+  monitorPowerStatus(currentTime);
 
   // Update status LED
   updateStatusLED();
@@ -343,6 +356,88 @@ void updateFailsafeStatus(unsigned long currentTime) {
     Serial.println("\n🟢 ONLINE MODE RESTORED");
     Serial.println("   Syncing with server...");
   }
+}
+
+// ============= POWER MONITORING =============
+void monitorPowerStatus(unsigned long currentTime) {
+  // Read power detection pin (HIGH = mains power, LOW = battery/no power)
+  // Use voltage divider: Mains 5V -> Divider -> 3.3V logic
+  int powerReading = analogRead(POWER_DETECT_PIN);
+  powerOn = powerReading > 2000;  // Threshold for ~2.5V (adjust based on your circuit)
+
+  // Detect power state change
+  if (powerOn != lastPowerState) {
+    if (!powerOn) {
+      // Power just went OFF
+      powerOutageStartTime = currentTime;
+      Serial.println("\n⚡ POWER FAILURE DETECTED!");
+      Serial.println("   Switching to battery backup...");
+      
+      // Send immediate notification to server
+      sendPowerStatus(false);
+      
+      // Sound brief alarm
+      digitalWrite(ALARM_PIN, HIGH);
+      delay(500);
+      digitalWrite(ALARM_PIN, LOW);
+      
+    } else {
+      // Power just came ON
+      unsigned long outageDuration = (currentTime - powerOutageStartTime) / 1000;
+      Serial.printf("\n✓ POWER RESTORED after %lu seconds\n", outageDuration);
+      
+      // Send power restored notification
+      sendPowerStatus(true);
+    }
+    lastPowerState = powerOn;
+  }
+
+  // Periodically report power status when on battery
+  if (!powerOn && wifiConnected) {
+    if (currentTime - lastPowerStatusSend >= POWER_STATUS_INTERVAL) {
+      sendPowerStatus(false);
+      lastPowerStatusSend = currentTime;
+    }
+  }
+}
+
+void sendPowerStatus(bool isPowerOn) {
+  if (!wifiConnected) {
+    Serial.println("⚠️  Cannot send power status - WiFi disconnected");
+    return;
+  }
+
+  HTTPClient http;
+  String apiUrl = String(API_URL);
+  apiUrl.replace("/data", "/power-status");
+  
+  http.begin(apiUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", DEVICE_TOKEN);
+  
+  StaticJsonDocument<256> doc;
+  doc["device_id"] = DEVICE_ID;
+  doc["power_on"] = isPowerOn;
+  doc["power_source"] = isPowerOn ? "mains" : "battery";
+  
+  // If we have battery monitoring, include battery level
+  // doc["battery_level"] = getBatteryLevel();  // Implement if you have battery monitoring
+  
+  String payload;
+  serializeJson(doc, payload);
+  
+  Serial.printf("📤 Sending power status: %s\n", isPowerOn ? "ON" : "OFF");
+  
+  int httpCode = http.POST(payload);
+  
+  if (httpCode == HTTP_CODE_OK) {
+    Serial.println("   ✓ Power status sent successfully");
+    lastServerContact = millis();
+  } else {
+    Serial.printf("   ✗ Power status send failed: %d\n", httpCode);
+  }
+  
+  http.end();
 }
 
 // ============= LOCAL AUTOMATION (FAIL-SAFE) =============

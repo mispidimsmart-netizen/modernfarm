@@ -231,6 +231,7 @@ export type Database = {
       }
       device_health: {
         Row: {
+          battery_capacity_wh: number | null
           battery_percentage: number | null
           cpu_temperature: number | null
           created_at: string
@@ -241,8 +242,10 @@ export type Database = {
           id: string
           is_online: boolean | null
           last_error_message: string | null
+          last_power_outage_id: string | null
           last_restart_at: string | null
           last_seen_at: string | null
+          power_consumption_w: number | null
           power_source: string | null
           shed_id: string | null
           updated_at: string
@@ -251,6 +254,7 @@ export type Database = {
           wifi_signal_strength: number | null
         }
         Insert: {
+          battery_capacity_wh?: number | null
           battery_percentage?: number | null
           cpu_temperature?: number | null
           created_at?: string
@@ -261,8 +265,10 @@ export type Database = {
           id?: string
           is_online?: boolean | null
           last_error_message?: string | null
+          last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
+          power_consumption_w?: number | null
           power_source?: string | null
           shed_id?: string | null
           updated_at?: string
@@ -271,6 +277,7 @@ export type Database = {
           wifi_signal_strength?: number | null
         }
         Update: {
+          battery_capacity_wh?: number | null
           battery_percentage?: number | null
           cpu_temperature?: number | null
           created_at?: string
@@ -281,8 +288,10 @@ export type Database = {
           id?: string
           is_online?: boolean | null
           last_error_message?: string | null
+          last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
+          power_consumption_w?: number | null
           power_source?: string | null
           shed_id?: string | null
           updated_at?: string
@@ -296,6 +305,13 @@ export type Database = {
             columns: ["device_token_id"]
             isOneToOne: false
             referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_health_last_power_outage_id_fkey"
+            columns: ["last_power_outage_id"]
+            isOneToOne: false
+            referencedRelation: "power_outages"
             referencedColumns: ["id"]
           },
           {
@@ -811,6 +827,75 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      power_outages: {
+        Row: {
+          alert_sent: boolean | null
+          battery_level_end: number | null
+          battery_level_start: number | null
+          created_at: string
+          critical_alert_sent: boolean | null
+          device_token_id: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          is_ongoing: boolean | null
+          notes: string | null
+          power_source: string | null
+          shed_id: string | null
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_sent?: boolean | null
+          battery_level_end?: number | null
+          battery_level_start?: number | null
+          created_at?: string
+          critical_alert_sent?: boolean | null
+          device_token_id?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          is_ongoing?: boolean | null
+          notes?: string | null
+          power_source?: string | null
+          shed_id?: string | null
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_sent?: boolean | null
+          battery_level_end?: number | null
+          battery_level_start?: number | null
+          created_at?: string
+          critical_alert_sent?: boolean | null
+          device_token_id?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          is_ongoing?: boolean | null
+          notes?: string | null
+          power_source?: string | null
+          shed_id?: string | null
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "power_outages_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "power_outages_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
