@@ -9,6 +9,7 @@ import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
+import { useHeatStressRiskPrediction } from '@/hooks/useHeatStressRiskPrediction';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
@@ -27,6 +28,7 @@ import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
 import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
+import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -62,6 +64,9 @@ export function Dashboard() {
 
   // Ammonia rising trend detection
   const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
+
+  // Tomorrow's heat stress risk prediction
+  const heatStressRiskResult = useHeatStressRiskPrediction();
   // Count online devices
   const onlineDeviceCount = deviceHealth?.filter(d => d.is_online).length || 0;
   const totalDeviceCount = deviceHealth?.length || 0;
@@ -244,11 +249,24 @@ export function Dashboard() {
           <AmmoniaTrendCard result={ammoniaTrendResult} />
         </motion.div>
 
-        {/* Weather Card */}
+        {/* Tomorrow's Heat Stress Risk */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
+          className="mt-6"
+        >
+          <h2 className="section-title">
+            {language === 'bn' ? 'আগামীকালের ঝুঁকি' : 'Tomorrow\'s Risk'}
+          </h2>
+          <HeatStressRiskCard result={heatStressRiskResult} />
+        </motion.div>
+
+        {/* Weather Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
           className="mt-6"
         >
           <div className="mb-3 flex items-center justify-between">
