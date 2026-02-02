@@ -61,15 +61,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prepare the push message payload
+    // Prepare the push message payload with sound/vibration options
+    const severity = payload.severity || 'warning';
     const pushPayload = JSON.stringify({
       title: payload.title,
       body: payload.body,
-      severity: payload.severity || 'warning',
+      severity: severity,
       alertId: payload.alert_id,
       url: payload.url || '/alerts',
       tag: `alert-${payload.alert_id || Date.now()}`,
+      // These hints help the service worker decide notification behavior
+      urgency: severity === 'danger' ? 'high' : 'normal',
+      timestamp: Date.now(),
     });
+
+    console.log(`Push payload prepared with severity: ${severity}`);
 
     let successCount = 0;
     let failCount = 0;
