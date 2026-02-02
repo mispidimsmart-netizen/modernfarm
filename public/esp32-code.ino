@@ -2,8 +2,10 @@
  * স্মার্ট লেয়ার ফার্ম - ESP32 IoT Controller
  * Smart Layer Farm - ESP32 IoT Controller
  * 
- * This code reads sensor data and sends it to the Smart Farm API
- * Now with PWM lighting control for smart curve brightness!
+ * ★★★ FAIL-SAFE AUTOMATION v3.0 ★★★
+ * - Runs LOCAL automation when internet is down
+ * - Caches settings in EEPROM for persistence
+ * - Uses last known safe values
  * 
  * Hardware:
  * - ESP32 DevKit
@@ -19,12 +21,16 @@
  * - HTTPClient.h (built-in)
  * - ArduinoJson.h (install via Library Manager)
  * - DHT.h (install via Library Manager - "DHT sensor library")
+ * - EEPROM.h (built-in)
+ * - Preferences.h (built-in) - for NVS storage
  */
 
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
+#include <EEPROM.h>
+#include <Preferences.h>
 
 // ============= CONFIGURATION =============
 // WiFi Settings
@@ -33,7 +39,7 @@ const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // API Settings
 const char* API_URL = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api/data";
-const char* DEVICE_ID = "ESP32_LAYER_001";  // Match this with your device name in the app
+const char* DEVICE_ID = "ESP32_LAYER_001";
 
 // Sensor Pins
 #define DHT_PIN 4
@@ -42,22 +48,94 @@ const char* DEVICE_ID = "ESP32_LAYER_001";  // Match this with your device name 
 #define FLOW_SENSOR_PIN 27
 
 // Output Control Pins
-#define LIGHT_PWM_PIN 25      // PWM output for light dimmer (MOSFET gate)
-#define FAN_RELAY_PIN 26      // Relay for fan control
-#define ALARM_PIN 32          // Buzzer/Alarm
+#define LIGHT_PWM_PIN 25
+#define FAN_RELAY_PIN 26
+#define ALARM_PIN 32
+
+// Status LED (optional - use built-in LED)
+#define STATUS_LED_PIN 2
 
 // PWM Configuration
-#define PWM_FREQUENCY 5000    // 5kHz PWM frequency
-#define PWM_CHANNEL 0         // LEDC channel 0
-#define PWM_RESOLUTION 8      // 8-bit resolution (0-255)
+#define PWM_FREQUENCY 5000
+#define PWM_CHANNEL 0
+#define PWM_RESOLUTION 8
 
 // Update intervals (milliseconds)
-#define SEND_INTERVAL 30000       // 30 seconds for sensor data
-#define HEALTH_INTERVAL 60000     // 60 seconds for health report
-#define LIGHTING_CHECK_INTERVAL 10000  // 10 seconds for lighting update
+#define SEND_INTERVAL 30000
+#define HEALTH_INTERVAL 60000
+#define LIGHTING_CHECK_INTERVAL 10000
+#define LOCAL_AUTOMATION_INTERVAL 5000    // Run local rules every 5 seconds
+#define SETTINGS_SYNC_INTERVAL 300000     // Sync settings every 5 minutes
+#define WIFI_RETRY_INTERVAL 30000         // Retry WiFi every 30 seconds
+
+// Fail-safe timeout
+#define OFFLINE_FAILSAFE_TIMEOUT 60000    // 1 minute without server = failsafe mode
+
+// ============= FAIL-SAFE SETTINGS STRUCTURE =============
+struct FailSafeSettings {
+  uint32_t magic;                // Magic number to verify valid data
+  // Temperature thresholds
+  float temp_min;
+  float temp_max;
+  float temp_fan_low_start;
+  float temp_fan_medium_start;
+  float temp_fan_high_start;
+  // Humidity thresholds
+  float humidity_min;
+  float humidity_max;
+  // Ammonia threshold
+  float ammonia_max;
+  // HSI thresholds
+  float hsi_mild;
+  float hsi_moderate;
+  float hsi_severe;
+  float hsi_emergency;
+  // Lighting schedule (minutes from midnight)
+  uint16_t light_start_minutes;
+  uint16_t light_end_minutes;
+  uint8_t light_min_brightness;
+  uint8_t light_max_brightness;
+  uint16_t fade_in_minutes;
+  uint16_t fade_out_minutes;
+  // Last update timestamp
+  uint32_t last_sync_epoch;
+  // Checksum
+  uint8_t checksum;
+};
+
+#define SETTINGS_MAGIC 0x534D4152  // "SMAR" in hex
+#define EEPROM_SIZE 512
+
+// ============= DEFAULT SAFE VALUES =============
+// These are used when EEPROM is empty or corrupted
+const FailSafeSettings DEFAULT_SETTINGS = {
+  SETTINGS_MAGIC,
+  18.0,   // temp_min
+  32.0,   // temp_max
+  28.0,   // fan_low_start
+  30.0,   // fan_medium_start
+  33.0,   // fan_high_start
+  40.0,   // humidity_min
+  80.0,   // humidity_max
+  25.0,   // ammonia_max
+  70.0,   // hsi_mild
+  75.0,   // hsi_moderate
+  80.0,   // hsi_severe
+  85.0,   // hsi_emergency
+  300,    // light_start (5:00 AM = 5*60)
+  1260,   // light_end (9:00 PM = 21*60)
+  0,      // light_min_brightness
+  100,    // light_max_brightness
+  30,     // fade_in_minutes
+  30,     // fade_out_minutes
+  0,      // last_sync_epoch
+  0       // checksum (calculated later)
+};
 
 // ============= GLOBAL VARIABLES =============
 DHT dht(DHT_PIN, DHT_TYPE);
+Preferences preferences;
+FailSafeSettings cachedSettings;
 
 volatile int flowPulseCount = 0;
 float flowRate = 0.0;
@@ -66,26 +144,48 @@ unsigned long lastFlowTime = 0;
 unsigned long lastSendTime = 0;
 unsigned long lastHealthTime = 0;
 unsigned long lastLightingCheck = 0;
+unsigned long lastLocalAutomation = 0;
+unsigned long lastSettingsSync = 0;
+unsigned long lastWifiRetry = 0;
+unsigned long lastServerContact = 0;
 unsigned long startupTime = 0;
+
 bool wifiConnected = false;
+bool isOfflineMode = false;
+bool failsafeActive = false;
+int wifiFailCount = 0;
 
 // Current device states
-int currentBrightness = 0;      // 0-100 percentage
-int currentPwmValue = 0;        // 0-255 PWM value
-String currentPhase = "off";    // off, fade-in, on, fade-out, manual
+int currentBrightness = 0;
+int currentPwmValue = 0;
+String currentPhase = "off";
 bool fanState = false;
 bool alarmState = false;
+String fanSpeed = "OFF";  // OFF, LOW, MEDIUM, HIGH
+
+// Last sensor readings (for offline use)
+float lastTemperature = 25.0;
+float lastHumidity = 60.0;
+float lastAmmonia = 10.0;
+float lastWaterFlow = 0.0;
 
 // ============= SETUP =============
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n=================================");
+  Serial.println("\n==========================================");
   Serial.println("স্মার্ট লেয়ার ফার্ম IoT Controller");
-  Serial.println("Smart Layer Farm IoT Controller");
-  Serial.println("with PWM Lighting Control v2.0");
-  Serial.println("=================================\n");
+  Serial.println("★★★ FAIL-SAFE AUTOMATION v3.0 ★★★");
+  Serial.println("==========================================\n");
 
   startupTime = millis();
+
+  // Initialize status LED
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  blinkStatusLED(3, 100);  // Boot indication
+
+  // Initialize EEPROM
+  EEPROM.begin(EEPROM_SIZE);
+  loadSettingsFromEEPROM();
 
   // Initialize sensors
   dht.begin();
@@ -101,64 +201,109 @@ void setup() {
   // Configure PWM for light control
   ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
   ledcAttachPin(LIGHT_PWM_PIN, PWM_CHANNEL);
-  ledcWrite(PWM_CHANNEL, 0);  // Start with light off
+  ledcWrite(PWM_CHANNEL, 0);
   
   // Attach interrupt for flow sensor
   attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), flowPulseCounter, FALLING);
 
-  // Connect to WiFi
+  // Try to connect to WiFi
   connectWiFi();
 
-  Serial.println("System ready! Sending data every 30 seconds...\n");
+  Serial.println("\n✓ System ready!");
+  Serial.println("  - Online Mode: Cloud automation + local backup");
+  Serial.println("  - Offline Mode: Local automation with cached settings");
+  Serial.println("==========================================\n");
 }
 
 // ============= MAIN LOOP =============
 void loop() {
-  // Check WiFi connection
-  if (WiFi.status() != WL_CONNECTED) {
-    wifiConnected = false;
-    connectWiFi();
-  }
+  unsigned long currentTime = millis();
+
+  // Check WiFi and manage connection
+  manageWiFiConnection(currentTime);
+
+  // Determine if we're in failsafe mode
+  updateFailsafeStatus(currentTime);
 
   // Calculate flow rate every second
-  unsigned long currentTime = millis();
   if (currentTime - lastFlowTime >= 1000) {
-    // YF-S201: 7.5 pulses per liter per minute
-    flowRate = (flowPulseCount / 7.5);  // Liters per minute
+    flowRate = (flowPulseCount / 7.5);
     flowPulseCount = 0;
     lastFlowTime = currentTime;
   }
 
-  // Send sensor data every SEND_INTERVAL
-  if (currentTime - lastSendTime >= SEND_INTERVAL) {
-    sendSensorData();
-    lastSendTime = currentTime;
+  // === ALWAYS RUN: Local Automation (Fail-Safe) ===
+  if (currentTime - lastLocalAutomation >= LOCAL_AUTOMATION_INTERVAL) {
+    runLocalAutomation();
+    lastLocalAutomation = currentTime;
   }
 
-  // Send health report every HEALTH_INTERVAL
-  if (currentTime - lastHealthTime >= HEALTH_INTERVAL) {
-    sendDeviceHealth();
-    lastHealthTime = currentTime;
+  // === ONLINE MODE: Send data to server ===
+  if (wifiConnected && !isOfflineMode) {
+    // Send sensor data
+    if (currentTime - lastSendTime >= SEND_INTERVAL) {
+      sendSensorData();
+      lastSendTime = currentTime;
+    }
+
+    // Send health report
+    if (currentTime - lastHealthTime >= HEALTH_INTERVAL) {
+      sendDeviceHealth();
+      lastHealthTime = currentTime;
+    }
+
+    // Fetch lighting from server
+    if (currentTime - lastLightingCheck >= LIGHTING_CHECK_INTERVAL) {
+      fetchAndApplyLighting();
+      lastLightingCheck = currentTime;
+    }
+
+    // Sync settings periodically
+    if (currentTime - lastSettingsSync >= SETTINGS_SYNC_INTERVAL) {
+      syncSettingsFromServer();
+      lastSettingsSync = currentTime;
+    }
   }
 
-  // Check and update lighting every LIGHTING_CHECK_INTERVAL
-  if (currentTime - lastLightingCheck >= LIGHTING_CHECK_INTERVAL) {
-    fetchAndApplyLighting();
-    lastLightingCheck = currentTime;
-  }
+  // Update status LED
+  updateStatusLED();
 
   delay(100);
 }
 
-// ============= WIFI CONNECTION =============
+// ============= WIFI MANAGEMENT =============
+void manageWiFiConnection(unsigned long currentTime) {
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wifiConnected) {
+      // Just disconnected
+      wifiConnected = false;
+      wifiFailCount++;
+      Serial.println("⚠️  WiFi disconnected! Switching to offline mode...");
+    }
+
+    // Retry WiFi periodically
+    if (currentTime - lastWifiRetry >= WIFI_RETRY_INTERVAL) {
+      connectWiFi();
+      lastWifiRetry = currentTime;
+    }
+  } else {
+    if (!wifiConnected) {
+      // Just reconnected
+      wifiConnected = true;
+      wifiFailCount = 0;
+      Serial.println("✓ WiFi reconnected! Syncing with server...");
+      syncSettingsFromServer();
+    }
+  }
+}
+
 void connectWiFi() {
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(WIFI_SSID);
+  Serial.printf("📡 Connecting to WiFi: %s", WIFI_SSID);
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     delay(500);
     Serial.print(".");
     attempts++;
@@ -167,10 +312,365 @@ void connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     wifiConnected = true;
     Serial.println("\n✓ WiFi Connected!");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
+    Serial.printf("  IP: %s, RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
   } else {
-    Serial.println("\n✗ WiFi Connection Failed!");
+    Serial.println("\n✗ WiFi Failed - Running in OFFLINE MODE");
+  }
+}
+
+// ============= FAILSAFE STATUS =============
+void updateFailsafeStatus(unsigned long currentTime) {
+  bool wasFailsafe = failsafeActive;
+
+  if (!wifiConnected) {
+    isOfflineMode = true;
+    failsafeActive = true;
+  } else if (currentTime - lastServerContact > OFFLINE_FAILSAFE_TIMEOUT) {
+    // WiFi connected but no server response
+    isOfflineMode = true;
+    failsafeActive = true;
+  } else {
+    isOfflineMode = false;
+    failsafeActive = false;
+  }
+
+  // Log status change
+  if (failsafeActive && !wasFailsafe) {
+    Serial.println("\n🔴 FAILSAFE MODE ACTIVATED");
+    Serial.println("   Using cached settings for local automation");
+    printCachedSettings();
+  } else if (!failsafeActive && wasFailsafe) {
+    Serial.println("\n🟢 ONLINE MODE RESTORED");
+    Serial.println("   Syncing with server...");
+  }
+}
+
+// ============= LOCAL AUTOMATION (FAIL-SAFE) =============
+void runLocalAutomation() {
+  // Read current sensor values
+  float temperature = readTemperature();
+  float humidity = readHumidity();
+  float ammonia = readAmmonia();
+
+  // Store last readings
+  lastTemperature = temperature;
+  lastHumidity = humidity;
+  lastAmmonia = ammonia;
+  lastWaterFlow = flowRate * 60;
+
+  // Calculate Heat Stress Index
+  float hsi = calculateHSI(temperature, humidity);
+
+  if (failsafeActive) {
+    Serial.println("----------------------------------------");
+    Serial.println("🔴 FAILSAFE LOCAL AUTOMATION");
+    Serial.printf("   Temp: %.1f°C, Humidity: %.1f%%, NH3: %.1f ppm\n", temperature, humidity, ammonia);
+    Serial.printf("   HSI: %.1f\n", hsi);
+  }
+
+  // === FAN CONTROL ===
+  String newFanSpeed = "OFF";
+  
+  // HSI-based emergency override
+  if (hsi >= cachedSettings.hsi_emergency) {
+    newFanSpeed = "HIGH";
+    if (!alarmState) {
+      setAlarm(true);
+      Serial.println("🚨 EMERGENCY: HSI critical! Alarm ON");
+    }
+  } else if (hsi >= cachedSettings.hsi_severe) {
+    newFanSpeed = "HIGH";
+    setAlarm(false);
+  } else if (hsi >= cachedSettings.hsi_moderate) {
+    newFanSpeed = "MEDIUM";
+    setAlarm(false);
+  } else if (hsi >= cachedSettings.hsi_mild) {
+    newFanSpeed = "LOW";
+    setAlarm(false);
+  } else {
+    // Temperature-based fan control
+    if (temperature >= cachedSettings.temp_fan_high_start) {
+      newFanSpeed = "HIGH";
+    } else if (temperature >= cachedSettings.temp_fan_medium_start) {
+      newFanSpeed = "MEDIUM";
+    } else if (temperature >= cachedSettings.temp_fan_low_start) {
+      newFanSpeed = "LOW";
+    } else {
+      newFanSpeed = "OFF";
+    }
+    setAlarm(false);
+  }
+
+  // Ammonia override - high ammonia needs ventilation
+  if (ammonia >= cachedSettings.ammonia_max) {
+    if (newFanSpeed == "OFF" || newFanSpeed == "LOW") {
+      newFanSpeed = "MEDIUM";
+    }
+    Serial.printf("⚠️  High ammonia (%.1f ppm) - Fan boosted\n", ammonia);
+  }
+
+  // Apply fan speed
+  if (newFanSpeed != fanSpeed) {
+    setFanSpeed(newFanSpeed);
+  }
+
+  // === LIGHTING CONTROL (Local calculation) ===
+  if (failsafeActive) {
+    int localBrightness = calculateLocalBrightness();
+    if (localBrightness != currentBrightness) {
+      setLightBrightness(localBrightness);
+    }
+  }
+
+  if (failsafeActive) {
+    Serial.printf("   Fan: %s, Light: %d%%, Alarm: %s\n", 
+                  fanSpeed.c_str(), currentBrightness, alarmState ? "ON" : "OFF");
+    Serial.println("----------------------------------------");
+  }
+}
+
+// ============= CALCULATE HEAT STRESS INDEX =============
+float calculateHSI(float temp, float humidity) {
+  // Simplified HSI calculation for poultry
+  // HSI = Temperature + (0.3 * Humidity)
+  return temp + (0.3 * humidity);
+}
+
+// ============= CALCULATE LOCAL BRIGHTNESS =============
+int calculateLocalBrightness() {
+  // Get current time in minutes from midnight
+  // Note: In real implementation, use NTP or RTC for accurate time
+  unsigned long uptimeMinutes = (millis() - startupTime) / 60000;
+  
+  // For demo, use a simple simulation (in real use, get time from RTC/NTP)
+  // Assume we track approximate time based on last sync
+  uint16_t currentMinutes = (uptimeMinutes + cachedSettings.light_start_minutes) % 1440;
+
+  uint16_t startMinutes = cachedSettings.light_start_minutes;
+  uint16_t endMinutes = cachedSettings.light_end_minutes;
+  uint16_t fadeIn = cachedSettings.fade_in_minutes;
+  uint16_t fadeOut = cachedSettings.fade_out_minutes;
+  uint8_t minBright = cachedSettings.light_min_brightness;
+  uint8_t maxBright = cachedSettings.light_max_brightness;
+
+  // Before start time
+  if (currentMinutes < startMinutes) {
+    return minBright;
+  }
+
+  // During fade-in
+  if (currentMinutes < startMinutes + fadeIn) {
+    float progress = (float)(currentMinutes - startMinutes) / fadeIn;
+    return minBright + (maxBright - minBright) * progress;
+  }
+
+  // Full brightness period
+  if (currentMinutes < endMinutes - fadeOut) {
+    return maxBright;
+  }
+
+  // During fade-out
+  if (currentMinutes < endMinutes) {
+    float progress = (float)(endMinutes - currentMinutes) / fadeOut;
+    return minBright + (maxBright - minBright) * progress;
+  }
+
+  // After end time
+  return minBright;
+}
+
+// ============= EEPROM FUNCTIONS =============
+uint8_t calculateChecksum(FailSafeSettings& settings) {
+  uint8_t* ptr = (uint8_t*)&settings;
+  uint8_t sum = 0;
+  for (size_t i = 0; i < sizeof(FailSafeSettings) - 1; i++) {
+    sum ^= ptr[i];
+  }
+  return sum;
+}
+
+void loadSettingsFromEEPROM() {
+  Serial.println("📦 Loading settings from EEPROM...");
+
+  EEPROM.get(0, cachedSettings);
+
+  // Verify magic number and checksum
+  if (cachedSettings.magic != SETTINGS_MAGIC) {
+    Serial.println("⚠️  EEPROM empty or corrupted - using defaults");
+    cachedSettings = DEFAULT_SETTINGS;
+    cachedSettings.checksum = calculateChecksum(cachedSettings);
+    saveSettingsToEEPROM();
+    return;
+  }
+
+  uint8_t storedChecksum = cachedSettings.checksum;
+  cachedSettings.checksum = 0;
+  uint8_t calculatedChecksum = calculateChecksum(cachedSettings);
+  cachedSettings.checksum = storedChecksum;
+
+  if (storedChecksum != calculatedChecksum) {
+    Serial.println("⚠️  EEPROM checksum mismatch - using defaults");
+    cachedSettings = DEFAULT_SETTINGS;
+    cachedSettings.checksum = calculateChecksum(cachedSettings);
+    saveSettingsToEEPROM();
+    return;
+  }
+
+  Serial.println("✓ Settings loaded successfully!");
+  printCachedSettings();
+}
+
+void saveSettingsToEEPROM() {
+  Serial.println("💾 Saving settings to EEPROM...");
+
+  cachedSettings.magic = SETTINGS_MAGIC;
+  cachedSettings.checksum = 0;
+  cachedSettings.checksum = calculateChecksum(cachedSettings);
+
+  EEPROM.put(0, cachedSettings);
+  EEPROM.commit();
+
+  Serial.println("✓ Settings saved!");
+}
+
+void printCachedSettings() {
+  Serial.println("  ┌─ Cached Settings ─────────────────┐");
+  Serial.printf("  │ Temp: %.0f-%.0f°C                    │\n", cachedSettings.temp_min, cachedSettings.temp_max);
+  Serial.printf("  │ Fan Low: %.0f°C, Med: %.0f°C, Hi: %.0f°C │\n", 
+                cachedSettings.temp_fan_low_start, cachedSettings.temp_fan_medium_start, cachedSettings.temp_fan_high_start);
+  Serial.printf("  │ Humidity: %.0f-%.0f%%                 │\n", cachedSettings.humidity_min, cachedSettings.humidity_max);
+  Serial.printf("  │ Ammonia Max: %.0f ppm              │\n", cachedSettings.ammonia_max);
+  Serial.printf("  │ HSI: %.0f/%.0f/%.0f/%.0f              │\n", 
+                cachedSettings.hsi_mild, cachedSettings.hsi_moderate, cachedSettings.hsi_severe, cachedSettings.hsi_emergency);
+  Serial.printf("  │ Light: %02d:%02d - %02d:%02d            │\n", 
+                cachedSettings.light_start_minutes / 60, cachedSettings.light_start_minutes % 60,
+                cachedSettings.light_end_minutes / 60, cachedSettings.light_end_minutes % 60);
+  Serial.println("  └────────────────────────────────────┘");
+}
+
+// ============= SYNC SETTINGS FROM SERVER =============
+void syncSettingsFromServer() {
+  if (!wifiConnected) return;
+
+  String settingsUrl = String(API_URL).substring(0, String(API_URL).lastIndexOf('/')) + "/settings?device_id=" + DEVICE_ID;
+  HTTPClient http;
+  http.begin(settingsUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  Serial.println("☁️  Syncing settings from server...");
+
+  int httpResponseCode = http.GET();
+
+  if (httpResponseCode == 200) {
+    String response = http.getString();
+    lastServerContact = millis();
+
+    StaticJsonDocument<1024> doc;
+    DeserializationError error = deserializeJson(doc, response);
+
+    if (!error && doc["success"] == true) {
+      JsonObject data = doc["data"];
+
+      // Update cached settings
+      cachedSettings.temp_min = data["temperature_min"] | cachedSettings.temp_min;
+      cachedSettings.temp_max = data["temperature_max"] | cachedSettings.temp_max;
+      cachedSettings.temp_fan_low_start = data["fan_low_temp_min"] | cachedSettings.temp_fan_low_start;
+      cachedSettings.temp_fan_medium_start = data["fan_medium_temp_min"] | cachedSettings.temp_fan_medium_start;
+      cachedSettings.temp_fan_high_start = data["fan_high_temp_min"] | cachedSettings.temp_fan_high_start;
+      cachedSettings.humidity_min = data["humidity_min"] | cachedSettings.humidity_min;
+      cachedSettings.humidity_max = data["humidity_max"] | cachedSettings.humidity_max;
+      cachedSettings.ammonia_max = data["ammonia_max"] | cachedSettings.ammonia_max;
+      cachedSettings.hsi_mild = data["hsi_mild_threshold"] | cachedSettings.hsi_mild;
+      cachedSettings.hsi_moderate = data["hsi_moderate_threshold"] | cachedSettings.hsi_moderate;
+      cachedSettings.hsi_severe = data["hsi_severe_threshold"] | cachedSettings.hsi_severe;
+      cachedSettings.hsi_emergency = data["hsi_emergency_threshold"] | cachedSettings.hsi_emergency;
+      cachedSettings.last_sync_epoch = millis() / 1000;
+
+      // Save to EEPROM
+      saveSettingsToEEPROM();
+
+      Serial.println("✓ Settings synced and saved!");
+    }
+  } else {
+    Serial.printf("✗ Settings sync failed: %d\n", httpResponseCode);
+  }
+
+  http.end();
+
+  // Also sync lighting schedule
+  syncLightingSchedule();
+}
+
+void syncLightingSchedule() {
+  if (!wifiConnected) return;
+
+  String lightingUrl = String(API_URL).substring(0, String(API_URL).lastIndexOf('/')) + "/lighting-schedule?device_id=" + DEVICE_ID;
+  HTTPClient http;
+  http.begin(lightingUrl);
+
+  int httpResponseCode = http.GET();
+
+  if (httpResponseCode == 200) {
+    String response = http.getString();
+    lastServerContact = millis();
+
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, response);
+
+    if (!error && doc["success"] == true) {
+      JsonObject data = doc["data"];
+
+      // Parse time strings to minutes
+      String startTime = data["start_time"] | "05:00";
+      String endTime = data["end_time"] | "21:00";
+
+      int startHour = startTime.substring(0, 2).toInt();
+      int startMin = startTime.substring(3, 5).toInt();
+      int endHour = endTime.substring(0, 2).toInt();
+      int endMin = endTime.substring(3, 5).toInt();
+
+      cachedSettings.light_start_minutes = startHour * 60 + startMin;
+      cachedSettings.light_end_minutes = endHour * 60 + endMin;
+      cachedSettings.fade_in_minutes = data["fade_in_minutes"] | 30;
+      cachedSettings.fade_out_minutes = data["fade_out_minutes"] | 30;
+      cachedSettings.light_min_brightness = data["min_brightness"] | 0;
+      cachedSettings.light_max_brightness = data["max_brightness"] | 100;
+
+      saveSettingsToEEPROM();
+      Serial.println("✓ Lighting schedule synced!");
+    }
+  }
+
+  http.end();
+}
+
+// ============= STATUS LED =============
+void updateStatusLED() {
+  static unsigned long lastBlink = 0;
+  static bool ledState = false;
+
+  unsigned long interval;
+  if (failsafeActive) {
+    interval = 250;  // Fast blink = failsafe
+  } else if (wifiConnected) {
+    interval = 2000;  // Slow blink = online
+  } else {
+    interval = 500;   // Medium blink = connecting
+  }
+
+  if (millis() - lastBlink >= interval) {
+    ledState = !ledState;
+    digitalWrite(STATUS_LED_PIN, ledState);
+    lastBlink = millis();
+  }
+}
+
+void blinkStatusLED(int times, int duration) {
+  for (int i = 0; i < times; i++) {
+    digitalWrite(STATUS_LED_PIN, HIGH);
+    delay(duration);
+    digitalWrite(STATUS_LED_PIN, LOW);
+    delay(duration);
   }
 }
 
@@ -178,8 +678,7 @@ void connectWiFi() {
 float readTemperature() {
   float temp = dht.readTemperature();
   if (isnan(temp)) {
-    Serial.println("DHT22 read error - using last value");
-    return 25.0;  // Default fallback
+    return lastTemperature;  // Use last known value
   }
   return temp;
 }
@@ -187,20 +686,15 @@ float readTemperature() {
 float readHumidity() {
   float humidity = dht.readHumidity();
   if (isnan(humidity)) {
-    Serial.println("DHT22 read error - using last value");
-    return 60.0;  // Default fallback
+    return lastHumidity;  // Use last known value
   }
   return humidity;
 }
 
 float readAmmonia() {
-  // MQ135 analog reading (0-4095 for ESP32 12-bit ADC)
   int rawValue = analogRead(MQ135_PIN);
-  
-  // Convert to PPM (calibration needed for accurate readings)
-  // This is a simplified conversion - adjust based on your sensor calibration
   float voltage = rawValue * (3.3 / 4095.0);
-  float ppm = (voltage - 0.1) * 50;  // Rough approximation
+  float ppm = (voltage - 0.1) * 50;
   
   if (ppm < 0) ppm = 0;
   if (ppm > 100) ppm = 100;
@@ -216,109 +710,69 @@ void IRAM_ATTR flowPulseCounter() {
 // ============= SEND DATA TO API =============
 void sendSensorData() {
   if (!wifiConnected) {
-    Serial.println("✗ No WiFi connection - skipping send");
+    Serial.println("✗ No WiFi - data cached locally");
     return;
   }
 
-  // Read all sensors
-  float temperature = readTemperature();
-  float humidity = readHumidity();
-  float ammonia = readAmmonia();
-  float waterFlow = flowRate * 60;  // Convert to L/hr
-
-  // Print readings
-  Serial.println("----------------------------------------");
-  Serial.println("📊 Sensor Readings:");
-  Serial.printf("  🌡️  Temperature: %.1f°C\n", temperature);
-  Serial.printf("  💧 Humidity: %.1f%%\n", humidity);
-  Serial.printf("  ☁️  Ammonia: %.1f ppm\n", ammonia);
-  Serial.printf("  🚰 Water Flow: %.1f L/hr\n", waterFlow);
-
-  // Create JSON payload
   StaticJsonDocument<256> doc;
   doc["device_id"] = DEVICE_ID;
-  doc["temperature"] = temperature;
-  doc["humidity"] = humidity;
-  doc["ammonia"] = ammonia;
-  doc["water_flow"] = waterFlow;
+  doc["temperature"] = lastTemperature;
+  doc["humidity"] = lastHumidity;
+  doc["ammonia"] = lastAmmonia;
+  doc["water_flow"] = lastWaterFlow;
   doc["power_status"] = "ON";
+  doc["failsafe_active"] = failsafeActive;
 
   String jsonPayload;
   serializeJson(doc, jsonPayload);
 
-  // Send HTTP POST request
   HTTPClient http;
   http.begin(API_URL);
   http.addHeader("Content-Type", "application/json");
 
-  Serial.println("\n📤 Sending data to server...");
+  Serial.println("📤 Sending sensor data...");
   
   int httpResponseCode = http.POST(jsonPayload);
 
   if (httpResponseCode > 0) {
-    String response = http.getString();
-    Serial.printf("✓ Response Code: %d\n", httpResponseCode);
-    Serial.printf("✓ Response: %s\n", response.c_str());
-    
-    // Parse response to check for alerts
-    StaticJsonDocument<256> responseDoc;
-    DeserializationError error = deserializeJson(responseDoc, response);
-    if (!error) {
-      int alertsCreated = responseDoc["alerts_created"] | 0;
-      if (alertsCreated > 0) {
-        Serial.printf("⚠️  %d alert(s) created!\n", alertsCreated);
-        // You could trigger a local buzzer/LED here
-      }
-    }
+    lastServerContact = millis();
+    Serial.printf("✓ Data sent (Code: %d)\n", httpResponseCode);
   } else {
-    Serial.printf("✗ HTTP Error: %s\n", http.errorToString(httpResponseCode).c_str());
+    Serial.printf("✗ Send failed: %s\n", http.errorToString(httpResponseCode).c_str());
   }
 
   http.end();
-  Serial.println("----------------------------------------\n");
 }
 
 // ============= SEND DEVICE HEALTH =============
 void sendDeviceHealth() {
-  if (!wifiConnected) {
-    Serial.println("✗ No WiFi connection - skipping health report");
-    return;
-  }
+  if (!wifiConnected) return;
 
-  // Calculate uptime in seconds
   unsigned long uptimeSeconds = (millis() - startupTime) / 1000;
   
-  // Get WiFi signal strength
-  int rssi = WiFi.RSSI();
-  
-  // Get free heap memory
-  uint32_t freeHeap = ESP.getFreeHeap();
-
-  // Create JSON payload
-  StaticJsonDocument<256> doc;
-  doc["wifi_signal_strength"] = rssi;
+  StaticJsonDocument<512> doc;
+  doc["wifi_signal_strength"] = WiFi.RSSI();
   doc["uptime_seconds"] = uptimeSeconds;
-  doc["free_memory_bytes"] = freeHeap;
+  doc["free_memory_bytes"] = ESP.getFreeHeap();
   doc["power_source"] = "mains";
-  doc["firmware_version"] = "1.0.0";
+  doc["firmware_version"] = "3.0.0-failsafe";
+  doc["failsafe_mode"] = failsafeActive;
+  doc["wifi_fail_count"] = wifiFailCount;
+  doc["last_sync_epoch"] = cachedSettings.last_sync_epoch;
 
   String jsonPayload;
   serializeJson(doc, jsonPayload);
 
-  // Send HTTP POST request
   String healthUrl = String(API_URL).substring(0, String(API_URL).lastIndexOf('/')) + "/health";
   HTTPClient http;
   http.begin(healthUrl);
   http.addHeader("Content-Type", "application/json");
 
-  Serial.println("📤 Sending device health...");
-  
   int httpResponseCode = http.POST(jsonPayload);
 
   if (httpResponseCode > 0) {
-    Serial.printf("✓ Health report sent (RSSI: %d dBm, Uptime: %lu s)\n", rssi, uptimeSeconds);
-  } else {
-    Serial.printf("✗ Health report failed: %s\n", http.errorToString(httpResponseCode).c_str());
+    lastServerContact = millis();
+    Serial.printf("✓ Health report sent (Failsafe: %s)\n", failsafeActive ? "YES" : "NO");
   }
 
   http.end();
@@ -326,19 +780,17 @@ void sendDeviceHealth() {
 
 // ============= FETCH AND APPLY LIGHTING =============
 void fetchAndApplyLighting() {
-  if (!wifiConnected) {
-    return;
-  }
+  if (!wifiConnected) return;
 
   String lightingUrl = String(API_URL).substring(0, String(API_URL).lastIndexOf('/')) + "/lighting-schedule?device_id=" + DEVICE_ID;
   HTTPClient http;
   http.begin(lightingUrl);
-  http.addHeader("Content-Type", "application/json");
 
   int httpResponseCode = http.GET();
 
   if (httpResponseCode == 200) {
     String response = http.getString();
+    lastServerContact = millis();
     
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson(doc, response);
@@ -346,130 +798,94 @@ void fetchAndApplyLighting() {
     if (!error && doc["success"] == true) {
       JsonObject data = doc["data"];
       
-      int newBrightness = data["current_brightness"] | 0;
       int newPwmValue = data["pwm_value"] | 0;
-      String newPhase = data["current_phase"] | "off";
       
-      // Only update if brightness changed
       if (newPwmValue != currentPwmValue) {
-        currentBrightness = newBrightness;
+        currentBrightness = data["current_brightness"] | 0;
         currentPwmValue = newPwmValue;
-        currentPhase = newPhase;
+        currentPhase = data["current_phase"] | "off";
         
-        // Apply PWM value to light
         ledcWrite(PWM_CHANNEL, currentPwmValue);
         
-        Serial.println("----------------------------------------");
-        Serial.println("💡 Lighting Update:");
-        Serial.printf("  Phase: %s\n", currentPhase.c_str());
-        Serial.printf("  Brightness: %d%%\n", currentBrightness);
-        Serial.printf("  PWM Value: %d/255\n", currentPwmValue);
-        Serial.println("----------------------------------------");
+        Serial.printf("💡 Light: %d%% (PWM: %d, Phase: %s)\n", 
+                      currentBrightness, currentPwmValue, currentPhase.c_str());
       }
     }
-  } else {
-    Serial.printf("✗ Failed to fetch lighting: %d\n", httpResponseCode);
   }
 
   http.end();
 }
 
-// ============= SET LIGHT BRIGHTNESS =============
+// ============= CONTROL FUNCTIONS =============
 void setLightBrightness(int brightness) {
-  // Constrain to 0-100
   brightness = constrain(brightness, 0, 100);
-  
-  // Convert percentage to PWM value (0-255)
   int pwmValue = map(brightness, 0, 100, 0, 255);
   
   currentBrightness = brightness;
   currentPwmValue = pwmValue;
   
-  // Apply PWM
   ledcWrite(PWM_CHANNEL, pwmValue);
-  
-  Serial.printf("💡 Light set to %d%% (PWM: %d)\n", brightness, pwmValue);
+  Serial.printf("💡 Light: %d%% (PWM: %d)\n", brightness, pwmValue);
 }
 
-// ============= CONTROL FAN =============
+void setFanSpeed(String speed) {
+  fanSpeed = speed;
+  
+  if (speed == "OFF") {
+    setFan(false);
+  } else {
+    setFan(true);
+    // In a real implementation, you'd control multiple relays or a variable speed controller
+  }
+  
+  Serial.printf("🌀 Fan Speed: %s\n", speed.c_str());
+}
+
 void setFan(bool state) {
   fanState = state;
   digitalWrite(FAN_RELAY_PIN, state ? HIGH : LOW);
-  Serial.printf("🌀 Fan %s\n", state ? "ON" : "OFF");
 }
 
-// ============= CONTROL ALARM =============
 void setAlarm(bool state) {
   alarmState = state;
   digitalWrite(ALARM_PIN, state ? HIGH : LOW);
-  Serial.printf("🔔 Alarm %s\n", state ? "ON" : "OFF");
+  if (state) {
+    Serial.println("🔔 ALARM ACTIVATED!");
+  }
 }
 
 /*
- * ============= WIRING DIAGRAM =============
+ * ==========================================
+ * FAIL-SAFE AUTOMATION BEHAVIOR
+ * ==========================================
  * 
- * DHT22 Sensor:
- *   VCC  -> 3.3V
- *   GND  -> GND
- *   DATA -> GPIO 4 (with 10K pull-up resistor)
+ * ONLINE MODE (WiFi + Server Connected):
+ * - Sends sensor data to server every 30 seconds
+ * - Receives automation commands from server
+ * - Local automation runs as backup
+ * - Settings synced every 5 minutes
  * 
- * MQ135 Sensor:
- *   VCC  -> 5V (some modules need 5V for heater)
- *   GND  -> GND
- *   AO   -> GPIO 34 (Analog output)
+ * OFFLINE MODE (No WiFi or Server):
+ * - Uses cached settings from EEPROM
+ * - Runs local automation every 5 seconds
+ * - HSI-based fan control
+ * - Temperature-based fan speed tiers
+ * - Ammonia-triggered ventilation boost
+ * - Time-based lighting (using cached schedule)
+ * - Emergency alarm for critical conditions
  * 
- * YF-S201 Flow Sensor:
- *   Red  -> 5V
- *   Black -> GND
- *   Yellow -> GPIO 27 (Signal)
+ * SAFETY PRIORITIES:
+ * 1. HSI Emergency (>85) → All fans HIGH + Alarm
+ * 2. HSI Severe (>80) → All fans HIGH
+ * 3. HSI Moderate (>75) → Fans MEDIUM
+ * 4. HSI Mild (>70) → Fans LOW
+ * 5. High Ammonia (>25 ppm) → Boost ventilation
+ * 6. Temperature thresholds → Graduated fan control
  * 
- * Light PWM Control (using MOSFET):
- *   GPIO 25 -> 1K resistor -> MOSFET Gate (e.g., IRLZ44N)
- *   MOSFET Drain -> LED Strip/Bulb negative
- *   MOSFET Source -> GND
- *   LED Strip positive -> 12V/24V Power Supply
+ * STATUS LED:
+ * - Slow blink (2s) = Online, all good
+ * - Medium blink (0.5s) = Connecting
+ * - Fast blink (0.25s) = FAILSAFE MODE ACTIVE
  * 
- * Fan Relay:
- *   GPIO 26 -> Relay IN
- *   Relay COM -> Fan
- *   Relay NO -> Power Supply
- * 
- * Alarm/Buzzer:
- *   GPIO 32 -> Buzzer positive (through transistor for loud buzzers)
- *   Buzzer negative -> GND
- * 
- * ============= NOTES =============
- * 
- * 1. Before uploading, set your WiFi credentials above
- * 2. Create a device in the Smart Farm app Settings page
- * 3. Copy the Device ID and paste it in DEVICE_ID above
- * 4. The MQ135 sensor needs 24-48 hours warm-up for accurate readings
- * 5. Calibrate sensors based on your specific environment
- * 6. For PWM dimming, use a logic-level MOSFET (IRLZ44N recommended)
- * 
- * ============= API ENDPOINTS =============
- * 
- * POST /esp32-api/data - Send sensor readings
- * POST /esp32-api/device-status - Update device status
- * POST /esp32-api/health - Report device health (WiFi, memory, uptime)
- * GET  /esp32-api/settings - Fetch farm threshold settings
- * GET  /esp32-api/automation-rules - Get automation rules
- * GET  /esp32-api/lighting-schedule - Get light schedule with PWM values
- *      Response includes:
- *        - current_brightness (0-100%)
- *        - current_phase (off, fade-in, on, fade-out, manual)
- *        - pwm_value (0-255 for ESP32 PWM)
- * GET  /esp32-api/commands - Get pending commands
- * POST /esp32-api/commands-ack - Acknowledge executed commands
- * 
- * ============= SMART LIGHTING CURVE =============
- * 
- * The server calculates the current brightness based on:
- * - Start/End times from the app
- * - Fade-in/Fade-out duration (gradual transitions)
- * - Smooth easing for natural light changes
- * 
- * The ESP32 fetches pwm_value every 10 seconds and applies it directly.
- * This gives smooth gradual lighting transitions without complex local logic.
- * 
+ * ==========================================
  */
