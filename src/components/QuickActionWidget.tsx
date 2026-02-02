@@ -1,17 +1,38 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Fan, Lightbulb, Bell, AlertTriangle, X, Mic, MicOff } from 'lucide-react';
+import { Zap, Fan, Lightbulb, Bell, AlertTriangle, X, Mic, MicOff, RefreshCw, Home } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useUpdateDeviceStatus, useDeviceStatus } from '@/hooks/useFarmData';
 import { useVoiceCommands } from '@/hooks/useVoiceCommands';
-import { Button } from '@/components/ui/button';
+import { useSheds, useSelectedShed } from '@/hooks/useSheds';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export function QuickActionWidget() {
   const { language } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { data: deviceStatus } = useDeviceStatus();
   const updateStatus = useUpdateDeviceStatus();
+  const { data: sheds } = useSheds();
+  const { selectedShedId, setSelectedShedId } = useSelectedShed();
+  const queryClient = useQueryClient();
+
+  // Refresh sensor data
+  const refreshSensorData = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['sensor_readings'] });
+      await queryClient.invalidateQueries({ queryKey: ['device_status'] });
+      await queryClient.invalidateQueries({ queryKey: ['device_health'] });
+      await queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast.success(language === 'bn' ? 'ডেটা রিফ্রেশ হয়েছে' : 'Data refreshed');
+    } catch {
+      toast.error(language === 'bn' ? 'রিফ্রেশ ব্যর্থ' : 'Refresh failed');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Device control functions
   const toggleFan = () => {
@@ -73,6 +94,13 @@ export function QuickActionWidget() {
       keywords: ['emergency', 'danger', 'alert', 'help'],
       keywordsBn: ['ইমার্জেন্সি', 'বিপদ', 'সাহায্য', 'জরুরি'],
     },
+    {
+      command: 'Refresh',
+      commandBn: 'রিফ্রেশ',
+      action: refreshSensorData,
+      keywords: ['refresh', 'reload', 'update'],
+      keywordsBn: ['রিফ্রেশ', 'আপডেট', 'নতুন করে'],
+    },
   ];
 
   const { isListening, isSupported, toggleListening, transcript } = useVoiceCommands({
@@ -120,6 +148,12 @@ export function QuickActionWidget() {
     },
   ];
 
+  // Get current shed name
+  const currentShed = sheds?.find(s => s.id === selectedShedId);
+  const shedName = currentShed 
+    ? (language === 'bn' ? currentShed.name : currentShed.name_en)
+    : (language === 'bn' ? 'সকল শেড' : 'All Sheds');
+
   return (
     <>
       {/* Floating Action Button */}
@@ -144,13 +178,77 @@ export function QuickActionWidget() {
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             className="fixed bottom-36 right-4 z-50 flex flex-col gap-3"
           >
+            {/* Refresh Button */}
+            <motion.button
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ delay: 0.02 }}
+              onClick={refreshSensorData}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 rounded-full bg-card px-4 py-3 shadow-lg transition-all hover:bg-muted disabled:opacity-50"
+            >
+              <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
+              <span className="text-sm font-medium">
+                {isRefreshing 
+                  ? (language === 'bn' ? 'রিফ্রেশ হচ্ছে...' : 'Refreshing...') 
+                  : (language === 'bn' ? 'রিফ্রেশ' : 'Refresh')}
+              </span>
+            </motion.button>
+
+            {/* Shed Selector */}
+            {sheds && sheds.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ delay: 0.04 }}
+                className="flex flex-col gap-1 rounded-2xl bg-card p-2 shadow-lg"
+              >
+                <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
+                  <Home size={14} />
+                  <span>{language === 'bn' ? 'শেড নির্বাচন' : 'Select Shed'}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    onClick={() => setSelectedShedId(null)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      !selectedShedId 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    {language === 'bn' ? 'সকল' : 'All'}
+                  </button>
+                  {sheds.map((shed) => (
+                    <button
+                      key={shed.id}
+                      onClick={() => {
+                        setSelectedShedId(shed.id);
+                        toast.success(language === 'bn' 
+                          ? `${shed.name} নির্বাচিত` 
+                          : `${shed.name_en} selected`);
+                      }}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                        selectedShedId === shed.id 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      {language === 'bn' ? shed.name : shed.name_en}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* Voice Command Button */}
             {isSupported && (
               <motion.button
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: 0.05 }}
+                transition={{ delay: 0.06 }}
                 onClick={toggleListening}
                 className={`flex items-center gap-2 rounded-full px-4 py-3 shadow-lg transition-all ${
                   isListening 
@@ -174,12 +272,9 @@ export function QuickActionWidget() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: 0.05 * (index + 1) }}
+                transition={{ delay: 0.08 + 0.03 * index }}
                 onClick={() => {
                   action.onClick();
-                  if (action.id !== 'emergency') {
-                    // Don't close on emergency
-                  }
                 }}
                 className={`flex items-center gap-2 rounded-full px-4 py-3 shadow-lg transition-all ${
                   action.isActive
