@@ -7,6 +7,7 @@ import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
+import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
@@ -23,6 +24,7 @@ import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
 import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
+import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -52,6 +54,9 @@ export function Dashboard() {
     shedId: selectedShedId,
     enabled: !manualOverride, // Only auto-control when not in manual override
   });
+
+  // Water usage anomaly detection (health alert)
+  const waterAnomalyResult = useWaterAnomalyDetection(sensorData.waterUsage);
 
   // Count online devices
   const onlineDeviceCount = deviceHealth?.filter(d => d.is_online).length || 0;
@@ -207,6 +212,19 @@ export function Dashboard() {
             temperature={sensorData.temperature}
             humidity={sensorData.humidity}
           />
+        </motion.div>
+
+        {/* Water Anomaly Detection Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.13 }}
+          className="mt-6"
+        >
+          <h2 className="section-title">
+            {language === 'bn' ? 'পানি ব্যবহার বিশ্লেষণ' : 'Water Usage Analysis'}
+          </h2>
+          <WaterAnomalyCard result={waterAnomalyResult} />
         </motion.div>
 
         {/* Weather Card */}
