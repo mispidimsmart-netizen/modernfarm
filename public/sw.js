@@ -22,32 +22,60 @@ self.addEventListener('push', (event) => {
 
   try {
     const data = event.data.json();
+    const severity = data.severity || 'warning';
     
-    const options: NotificationOptions = {
+    // Different vibration patterns based on severity
+    // Mobile will use default sound based on device settings
+    const vibrationPatterns = {
+      danger: [300, 100, 300, 100, 300, 100, 300], // Urgent - longer, more intense
+      warning: [200, 100, 200, 100, 200],           // Warning - moderate
+      info: [100, 50, 100],                          // Info - short
+    };
+    
+    const options = {
       body: data.body || data.message,
-      icon: '/favicon.ico',
+      icon: '/pwa-192x192.png',
       badge: '/favicon.ico',
-      vibrate: [200, 100, 200, 100, 200],
-      tag: data.tag || 'farm-alert',
-      requireInteraction: data.severity === 'danger',
+      
+      // Vibration pattern based on severity - follows device settings
+      vibrate: vibrationPatterns[severity] || vibrationPatterns.warning,
+      
+      // Sound - uses device default notification sound
+      // Setting silent to false ensures sound plays (follows device mute/vibrate settings)
+      silent: false,
+      
+      // Tag for grouping - renotify ensures sound plays even for same tag
+      tag: data.tag || `farm-alert-${Date.now()}`,
+      renotify: true, // Play sound even if replacing existing notification
+      
+      // Keep notification visible for danger alerts
+      requireInteraction: severity === 'danger',
+      
+      // Timestamp for ordering
+      timestamp: Date.now(),
+      
+      // Custom data for click handling
       data: {
-        url: data.url || '/',
+        url: data.url || '/alerts',
         alertId: data.alertId,
+        severity: severity,
       },
+      
+      // Action buttons
       actions: [
         {
           action: 'view',
-          title: 'View',
+          title: severity === 'danger' ? '🚨 View Now' : '👁️ View',
         },
         {
           action: 'dismiss',
-          title: 'Dismiss',
+          title: '✕ Dismiss',
         },
       ],
     };
 
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Farm Alert', options)
+      self.registration.showNotification(data.title || 'Farm Alert 🌾', options)
     );
   } catch (error) {
     console.error('Error showing notification:', error);
