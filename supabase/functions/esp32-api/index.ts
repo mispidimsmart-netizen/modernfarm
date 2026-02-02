@@ -184,6 +184,13 @@ Deno.serve(async (req) => {
       return await getPowerOutages(supabase, userId);
     }
 
+    // ===== FAIL-SAFE SYNC ENDPOINT =====
+    // This is the main endpoint for ESP32 fail-safe mode
+    // It handles bidirectional sync and returns all needed settings for local caching
+    if (req.method === 'POST' && path === 'sync') {
+      return await handleFailsafeSync(bodyData, supabase, userId, deviceToken);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -1416,6 +1423,252 @@ async function getPowerOutages(supabase: any, userId: string) {
     console.error('Get power outages error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to process request', code: 'PROCESS_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ===== FAIL-SAFE SYNC HANDLER =====
+// Comprehensive sync endpoint for ESP32 fail-safe mode
+
+interface FailsafeSyncPayload {
+  // Sensor data
+  temperature?: number;
+  humidity?: number;
+  ammonia?: number;
+  water_usage?: number;
+  power_on?: boolean;
+  
+  // Device states
+  fan_on?: boolean;
+  fan_speed?: string;
+  light_on?: boolean;
+  light_brightness?: number;
+  alarm_on?: boolean;
+  
+  // Failsafe status
+  failsafe_mode?: boolean;
+  cached_settings_version?: number;
+  
+  // Device health
+  wifi_rssi?: number;
+  uptime_seconds?: number;
+  free_memory?: number;
+  cpu_temperature?: number;
+  battery_percentage?: number;
+}
+
+async function handleFailsafeSync(
+  body: FailsafeSyncPayload, 
+  supabase: any, 
+  userId: string, 
+  deviceToken: string
+) {
+  try {
+    const now = new Date().toISOString();
+    
+    // Get device info
+    const { data: device } = await supabase
+      .from('device_tokens')
+      .select('id, shed_id, device_name')
+      .eq('token', deviceToken)
+      .single();
+
+    if (!device) {
+      return new Response(
+        JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 1. Save sensor data if provided
+    if (body.temperature !== undefined && body.humidity !== undefined) {
+      await supabase.from('sensor_readings').insert({
+        user_id: userId,
+        shed_id: device.shed_id,
+        temperature: body.temperature,
+        humidity: body.humidity,
+        ammonia: body.ammonia ?? 0,
+        water_usage: body.water_usage ?? 0,
+      });
+    }
+
+    // 2. Update device status
+    const deviceStatusUpdate: Record<string, any> = {
+      updated_at: now,
+    };
+    if (body.fan_on !== undefined) deviceStatusUpdate.fan_on = body.fan_on;
+    if (body.light_on !== undefined) deviceStatusUpdate.light_on = body.light_on;
+    if (body.alarm_on !== undefined) deviceStatusUpdate.alarm_on = body.alarm_on;
+    if (body.power_on !== undefined) deviceStatusUpdate.power_on = body.power_on;
+    if (body.fan_speed !== undefined) deviceStatusUpdate.fan_speed = body.fan_speed;
+
+    await supabase
+      .from('device_status')
+      .update(deviceStatusUpdate)
+      .eq('user_id', userId)
+      .eq('shed_id', device.shed_id);
+
+    // 3. Update device health with failsafe status
+    const healthUpdate: Record<string, any> = {
+      is_online: true,
+      last_seen_at: now,
+      last_cloud_sync_at: now,
+      failsafe_mode: body.failsafe_mode ?? false,
+      failsafe_activated_at: body.failsafe_mode ? now : null,
+      wifi_signal_strength: body.wifi_rssi ?? null,
+      uptime_seconds: body.uptime_seconds ?? null,
+      free_memory_bytes: body.free_memory ?? null,
+      cpu_temperature: body.cpu_temperature ?? null,
+      battery_percentage: body.battery_percentage ?? null,
+      cached_settings_version: body.cached_settings_version ?? 0,
+    };
+
+    // Upsert device health
+    const { data: existingHealth } = await supabase
+      .from('device_health')
+      .select('id')
+      .eq('device_token_id', device.id)
+      .single();
+
+    if (existingHealth) {
+      await supabase
+        .from('device_health')
+        .update(healthUpdate)
+        .eq('id', existingHealth.id);
+    } else {
+      await supabase.from('device_health').insert({
+        ...healthUpdate,
+        device_token_id: device.id,
+        user_id: userId,
+        shed_id: device.shed_id,
+      });
+    }
+
+    // 4. Get all settings for fail-safe caching
+    const { data: farmSettings } = await supabase
+      .from('farm_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    // 5. Get lighting schedule
+    const { data: lightingSchedule } = await supabase
+      .from('lighting_schedule')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    // 6. Get automation rules
+    const { data: automationRules } = await supabase
+      .from('automation_rules')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('enabled', true);
+
+    // 7. Get pending commands
+    const { data: pendingCommands } = await supabase
+      .from('device_commands')
+      .select('id, command_type, command_value')
+      .eq('user_id', userId)
+      .eq('device_name', device.device_name)
+      .eq('executed', false)
+      .order('created_at', { ascending: true });
+
+    // 8. Get current device status from DB
+    const { data: currentStatus } = await supabase
+      .from('device_status')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('shed_id', device.shed_id)
+      .single();
+
+    // Calculate settings version (hash-like for change detection)
+    const settingsVersion = farmSettings ? 
+      (farmSettings.updated_at ? new Date(farmSettings.updated_at).getTime() : 0) : 0;
+
+    // Determine if ESP32 needs settings update
+    const needsSettingsUpdate = (body.cached_settings_version ?? 0) < settingsVersion;
+
+    // Build response
+    const response: Record<string, any> = {
+      success: true,
+      server_time: now,
+      settings_version: settingsVersion,
+      needs_settings_update: needsSettingsUpdate,
+      
+      // Device status from database (what cloud wants)
+      device_status: currentStatus ? {
+        fan_on: currentStatus.fan_on,
+        light_on: currentStatus.light_on,
+        alarm_on: currentStatus.alarm_on,
+        power_on: currentStatus.power_on,
+        fan_speed: currentStatus.fan_speed,
+        manual_override: currentStatus.manual_override,
+      } : null,
+      
+      // Manual override status
+      manual_override: currentStatus?.manual_override ?? false,
+      
+      // Pending commands for execution
+      commands: pendingCommands || [],
+      
+      // Full settings for caching (only if version changed)
+      settings: needsSettingsUpdate && farmSettings ? {
+        temperature_min: Number(farmSettings.temperature_min),
+        temperature_max: Number(farmSettings.temperature_max),
+        humidity_min: Number(farmSettings.humidity_min),
+        humidity_max: Number(farmSettings.humidity_max),
+        ammonia_max: Number(farmSettings.ammonia_max),
+        fan_low_temp_min: Number(farmSettings.fan_low_temp_min),
+        fan_low_temp_max: Number(farmSettings.fan_low_temp_max),
+        fan_medium_temp_min: Number(farmSettings.fan_medium_temp_min),
+        fan_medium_temp_max: Number(farmSettings.fan_medium_temp_max),
+        fan_high_temp_min: Number(farmSettings.fan_high_temp_min),
+        hsi_mild_threshold: Number(farmSettings.hsi_mild_threshold),
+        hsi_moderate_threshold: Number(farmSettings.hsi_moderate_threshold),
+        hsi_severe_threshold: Number(farmSettings.hsi_severe_threshold),
+        hsi_emergency_threshold: Number(farmSettings.hsi_emergency_threshold),
+        hsi_automation_enabled: farmSettings.hsi_automation_enabled,
+        water_anomaly_threshold: Number(farmSettings.water_anomaly_threshold),
+        version: settingsVersion,
+      } : null,
+      
+      // Lighting schedule for caching
+      lighting: needsSettingsUpdate && lightingSchedule ? {
+        start_time: lightingSchedule.start_time,
+        end_time: lightingSchedule.end_time,
+        gradual_enabled: lightingSchedule.gradual_enabled,
+        fade_in_minutes: lightingSchedule.fade_in_minutes,
+        fade_out_minutes: lightingSchedule.fade_out_minutes,
+        min_brightness: lightingSchedule.min_brightness,
+        max_brightness: lightingSchedule.max_brightness,
+        manual_override: lightingSchedule.manual_override,
+      } : null,
+      
+      // Automation rules for local execution
+      automation_rules: needsSettingsUpdate && automationRules ? 
+        automationRules.map((rule: any) => ({
+          sensor: rule.condition_sensor,
+          operator: rule.condition_operator,
+          value: Number(rule.condition_value),
+          device: rule.action_device,
+          state: rule.action_state,
+        })) : null,
+    };
+
+    // Log sync event
+    console.log(`[Failsafe Sync] Device: ${device.device_name}, Failsafe: ${body.failsafe_mode}, Version: ${body.cached_settings_version} -> ${settingsVersion}`);
+
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Failsafe sync error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Sync failed', code: 'SYNC_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -24,6 +24,11 @@ export interface DeviceHealth {
   last_seen_at: string;
   created_at: string;
   updated_at: string;
+  // Fail-safe mode fields
+  failsafe_mode: boolean;
+  failsafe_activated_at: string | null;
+  last_cloud_sync_at: string | null;
+  cached_settings_version: number;
 }
 
 export interface DeviceToken {
