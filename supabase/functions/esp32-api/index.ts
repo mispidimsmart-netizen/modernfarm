@@ -30,7 +30,8 @@ async function applyHSIAutomation(
   supabase: any, 
   userId: string, 
   level: 'NORMAL' | 'MILD' | 'HIGH' | 'DANGER',
-  hsi: number
+  hsi: number,
+  shedId?: string | null
 ): Promise<void> {
   try {
     // Check if HSI automation is enabled and not in manual override
@@ -45,14 +46,20 @@ async function applyHSIAutomation(
       return;
     }
     
-    const { data: deviceStatus } = await supabase
+    // Build query for device_status - filter by shed if provided
+    let deviceQuery = supabase
       .from('device_status')
-      .select('manual_override')
-      .eq('user_id', userId)
-      .single();
+      .select('id, manual_override, shed_id')
+      .eq('user_id', userId);
+    
+    if (shedId) {
+      deviceQuery = deviceQuery.eq('shed_id', shedId);
+    }
+    
+    const { data: deviceStatus } = await deviceQuery.maybeSingle();
     
     if (deviceStatus?.manual_override) {
-      console.log('Manual override active, skipping HSI automation');
+      console.log(`Manual override active for shed ${shedId || 'default'}, skipping HSI automation`);
       return;
     }
 
@@ -65,21 +72,21 @@ async function applyHSIAutomation(
         updates.fan_on = true;
         updates.fan_speed = 'HIGH';
         updates.alarm_on = true;
-        console.log(`🚨 HSI DANGER (${hsi.toFixed(1)}) → Fan HIGH + Alarm ON`);
+        console.log(`🚨 [Shed: ${shedId || 'default'}] HSI DANGER (${hsi.toFixed(1)}) → Fan HIGH + Alarm ON`);
         break;
         
       case 'HIGH':
         // HSI 35-40: Fan HIGH
         updates.fan_on = true;
         updates.fan_speed = 'HIGH';
-        console.log(`⚠️ HSI HIGH (${hsi.toFixed(1)}) → Fan HIGH`);
+        console.log(`⚠️ [Shed: ${shedId || 'default'}] HSI HIGH (${hsi.toFixed(1)}) → Fan HIGH`);
         break;
         
       case 'MILD':
         // HSI 30-35: Fan LOW
         updates.fan_on = true;
         updates.fan_speed = 'LOW';
-        console.log(`🌡️ HSI MILD (${hsi.toFixed(1)}) → Fan LOW`);
+        console.log(`🌡️ [Shed: ${shedId || 'default'}] HSI MILD (${hsi.toFixed(1)}) → Fan LOW`);
         break;
         
       case 'NORMAL':
@@ -87,14 +94,21 @@ async function applyHSIAutomation(
         updates.fan_on = false;
         updates.fan_speed = 'OFF';
         updates.alarm_on = false;
-        console.log(`✅ HSI NORMAL (${hsi.toFixed(1)}) → Fan OFF`);
+        console.log(`✅ [Shed: ${shedId || 'default'}] HSI NORMAL (${hsi.toFixed(1)}) → Fan OFF`);
         break;
     }
     
-    await supabase
+    // Update device_status for specific shed or default
+    let updateQuery = supabase
       .from('device_status')
       .update(updates)
       .eq('user_id', userId);
+    
+    if (shedId) {
+      updateQuery = updateQuery.eq('shed_id', shedId);
+    }
+    
+    await updateQuery;
       
   } catch (error) {
     console.error('HSI automation error:', error);
@@ -102,7 +116,9 @@ async function applyHSIAutomation(
 }
 
 interface SensorPayload {
-  // Support both formats
+  // Multi-shed support
+  farm_id?: string;
+  shed_id?: string;
   device_id?: string;
   device_token?: string;
   temperature: number;
@@ -318,16 +334,63 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       );
     }
 
-    // Insert sensor reading
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🏭 MULTI-SHED SUPPORT
+    // Each shed is an independent fail-safe unit
+    // shed_id can come from: body.shed_id OR device_tokens.shed_id
+    // ═══════════════════════════════════════════════════════════════════════════
+    let shedId: string | null = body.shed_id || null;
+    let shedName: string | null = null;
+    
+    // If no shed_id in body, try to get from device_tokens based on device_id
+    if (!shedId && body.device_id) {
+      const { data: deviceInfo } = await supabase
+        .from('device_tokens')
+        .select('shed_id, sheds(name, name_en)')
+        .eq('device_name', body.device_id)
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (deviceInfo?.shed_id) {
+        shedId = deviceInfo.shed_id;
+        shedName = deviceInfo.sheds?.name || deviceInfo.sheds?.name_en || null;
+      }
+    }
+    
+    // If shed_id provided, validate it belongs to user
+    if (shedId) {
+      const { data: shedInfo } = await supabase
+        .from('sheds')
+        .select('id, name, name_en')
+        .eq('id', shedId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (!shedInfo) {
+        console.warn(`Invalid shed_id ${shedId} for user ${userId}, ignoring shed assignment`);
+        shedId = null;
+      } else {
+        shedName = shedInfo.name || shedInfo.name_en;
+      }
+    }
+
+    // Insert sensor reading with shed_id
+    const sensorInsertData: Record<string, any> = {
+      user_id: userId,
+      temperature: body.temperature,
+      humidity: body.humidity,
+      ammonia: body.ammonia,
+      water_usage: waterUsage,
+    };
+    
+    if (shedId) {
+      sensorInsertData.shed_id = shedId;
+    }
+    
     const { error: insertError } = await supabase
       .from('sensor_readings')
-      .insert({
-        user_id: userId,
-        temperature: body.temperature,
-        humidity: body.humidity,
-        ammonia: body.ammonia,
-        water_usage: waterUsage,
-      });
+      .insert(sensorInsertData);
 
     if (insertError) {
       console.error('Sensor insert error:', insertError);
@@ -337,23 +400,40 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       );
     }
 
-    // Handle power_status if provided
+    // Handle power_status if provided - update for specific shed
     if (body.power_status) {
       const powerOn = body.power_status.toUpperCase() === 'ON';
-      await supabase
+      
+      let powerQuery = supabase
         .from('device_status')
-        .update({ power_on: powerOn })
+        .update({ power_on: powerOn, updated_at: new Date().toISOString() })
         .eq('user_id', userId);
+      
+      if (shedId) {
+        powerQuery = powerQuery.eq('shed_id', shedId);
+      }
+      
+      await powerQuery;
 
-      // Create alert for power failure
+      // Create alert for power failure with shed info
       if (!powerOn) {
-        await supabase.from('alerts').insert({
+        const alertData: Record<string, any> = {
           user_id: userId,
           alert_type: 'power',
           severity: 'danger',
-          message: 'Power failure detected!',
-          message_bn: 'বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!',
-        });
+          message: shedName 
+            ? `Power failure detected in ${shedName}!`
+            : 'Power failure detected!',
+          message_bn: shedName 
+            ? `${shedName}-এ বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!`
+            : 'বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!',
+        };
+        
+        if (shedId) {
+          alertData.shed_id = shedId;
+        }
+        
+        await supabase.from('alerts').insert(alertData);
       }
     }
 
@@ -364,45 +444,52 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       .eq('user_id', userId)
       .single();
 
-    const alerts = [];
+    const alerts: Record<string, any>[] = [];
+    const shedLabel = shedName || (shedId ? `Shed ${shedId.slice(0, 8)}` : 'Farm');
     
     // 🔥 HSI-BASED AUTOMATION (Cloud Side)
     // Calculate Heat Stress Index: HSI = Temperature + (Humidity × 0.1)
     const hsi = calculateHSI(body.temperature, body.humidity);
-    console.log(`🔥 HSI = ${hsi.toFixed(1)} (Temp=${body.temperature}, Hum=${body.humidity})`);
+    const hsiStatus = hsi > 40 ? 'DANGER' : hsi >= 35 ? 'HIGH' : hsi >= 30 ? 'MILD' : 'NORMAL';
+    
+    console.log(`🔥 [${shedLabel}] HSI = ${hsi.toFixed(1)} (Temp=${body.temperature}, Hum=${body.humidity}) → ${hsiStatus}`);
     
     // HSI-based alert thresholds (Layer Optimized)
     // < 30: Normal, 30-35: Mild, 35-40: High Stress, > 40: Danger
     if (hsi > 40) {
-      alerts.push({
+      const alertData: Record<string, any> = {
         user_id: userId,
         alert_type: 'temperature',
         severity: 'danger',
-        message: `🚨 DANGER! Heat Stress Index: ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
-        message_bn: `🚨 বিপদ! হিট স্ট্রেস ইন্ডেক্স: ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
-      });
+        message: `🚨 [${shedLabel}] DANGER! Heat Stress Index: ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
+        message_bn: `🚨 [${shedLabel}] বিপদ! হিট স্ট্রেস ইন্ডেক্স: ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
+      };
+      if (shedId) alertData.shed_id = shedId;
+      alerts.push(alertData);
       
-      // Auto-enable fan HIGH + alarm
-      await applyHSIAutomation(supabase, userId, 'DANGER', hsi);
+      // Auto-enable fan HIGH + alarm for THIS SHED
+      await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
       
     } else if (hsi >= 35) {
-      alerts.push({
+      const alertData: Record<string, any> = {
         user_id: userId,
         alert_type: 'temperature',
         severity: 'warning',
-        message: `⚠️ High Heat Stress: HSI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
-        message_bn: `⚠️ উচ্চ হিট স্ট্রেস: HSI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
-      });
+        message: `⚠️ [${shedLabel}] High Heat Stress: HSI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
+        message_bn: `⚠️ [${shedLabel}] উচ্চ হিট স্ট্রেস: HSI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
+      };
+      if (shedId) alertData.shed_id = shedId;
+      alerts.push(alertData);
       
-      // Auto-enable fan HIGH
-      await applyHSIAutomation(supabase, userId, 'HIGH', hsi);
+      // Auto-enable fan HIGH for THIS SHED
+      await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
       
     } else if (hsi >= 30) {
       // Mild stress - fan LOW (no alert needed, just automation)
-      await applyHSIAutomation(supabase, userId, 'MILD', hsi);
+      await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
     } else {
       // Normal - can turn off fan if no other issues
-      await applyHSIAutomation(supabase, userId, 'NORMAL', hsi);
+      await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
     }
 
     // Legacy temperature-only alerts (for backward compatibility)
@@ -410,34 +497,40 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       if (body.temperature > Number(settings.temperature_max) && hsi <= 40) {
         // Only add if not already covered by HSI danger alert
         if (!alerts.some(a => a.severity === 'danger' && a.alert_type === 'temperature')) {
-          alerts.push({
+          const alertData: Record<string, any> = {
             user_id: userId,
             alert_type: 'temperature',
             severity: body.temperature > Number(settings.temperature_max) + 5 ? 'danger' : 'warning',
-            message: `High temperature: ${body.temperature.toFixed(1)}°C`,
-            message_bn: `উচ্চ তাপমাত্রা: ${body.temperature.toFixed(1)}°সে`,
-          });
+            message: `[${shedLabel}] High temperature: ${body.temperature.toFixed(1)}°C`,
+            message_bn: `[${shedLabel}] উচ্চ তাপমাত্রা: ${body.temperature.toFixed(1)}°সে`,
+          };
+          if (shedId) alertData.shed_id = shedId;
+          alerts.push(alertData);
         }
       }
 
       if (body.ammonia > Number(settings.ammonia_max)) {
-        alerts.push({
+        const alertData: Record<string, any> = {
           user_id: userId,
           alert_type: 'ammonia',
           severity: body.ammonia > Number(settings.ammonia_max) + 10 ? 'danger' : 'warning',
-          message: `High ammonia level: ${body.ammonia.toFixed(0)} ppm`,
-          message_bn: `উচ্চ অ্যামোনিয়া মাত্রা: ${body.ammonia.toFixed(0)} পিপিএম`,
-        });
+          message: `[${shedLabel}] High ammonia level: ${body.ammonia.toFixed(0)} ppm`,
+          message_bn: `[${shedLabel}] উচ্চ অ্যামোনিয়া মাত্রা: ${body.ammonia.toFixed(0)} পিপিএম`,
+        };
+        if (shedId) alertData.shed_id = shedId;
+        alerts.push(alertData);
       }
 
       if (waterUsage < 10) {
-        alerts.push({
+        const alertData: Record<string, any> = {
           user_id: userId,
           alert_type: 'water',
           severity: waterUsage < 5 ? 'danger' : 'warning',
-          message: `Low water usage: ${waterUsage.toFixed(1)} L/hr`,
-          message_bn: `কম পানি ব্যবহার: ${waterUsage.toFixed(1)} লি/ঘন্টা`,
-        });
+          message: `[${shedLabel}] Low water usage: ${waterUsage.toFixed(1)} L/hr`,
+          message_bn: `[${shedLabel}] কম পানি ব্যবহার: ${waterUsage.toFixed(1)} লি/ঘন্টা`,
+        };
+        if (shedId) alertData.shed_id = shedId;
+        alerts.push(alertData);
       }
     }
 
@@ -458,7 +551,7 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
             },
             body: JSON.stringify({
               user_id: userId,
-              title: '⚠️ Critical Farm Alert',
+              title: `⚠️ Critical Alert - ${shedLabel}`,
               body: alert.message,
               severity: 'danger',
               url: '/alerts',
@@ -471,14 +564,19 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       }
     }
 
-    console.log(`Sensor data saved for device ${body.device_id || 'unknown'}: temp=${body.temperature}, humidity=${body.humidity}, ammonia=${body.ammonia}, water=${waterUsage}`);
+    console.log(`✅ [${shedLabel}] Sensor data saved: device=${body.device_id || 'unknown'}, temp=${body.temperature}, humidity=${body.humidity}, ammonia=${body.ammonia}, water=${waterUsage}, HSI=${hsi.toFixed(1)}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Sensor data saved',
         alerts_created: alerts.length,
+        farm_id: body.farm_id || null,
+        shed_id: shedId,
+        shed_name: shedName,
         device_id: body.device_id || null,
+        hsi: parseFloat(hsi.toFixed(1)),
+        hsi_status: hsiStatus,
         received_at: new Date().toISOString()
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
