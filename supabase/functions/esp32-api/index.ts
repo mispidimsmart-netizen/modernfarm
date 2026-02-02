@@ -235,9 +235,34 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       }
     }
 
-    // Insert alerts if any
+    // Insert alerts if any and send push notifications for critical ones
     if (alerts.length > 0) {
       await supabase.from('alerts').insert(alerts);
+      
+      // Send push notifications for danger-level alerts
+      const dangerAlerts = alerts.filter(a => a.severity === 'danger');
+      for (const alert of dangerAlerts) {
+        try {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              title: '⚠️ Critical Farm Alert',
+              body: alert.message,
+              severity: 'danger',
+              url: '/alerts',
+            }),
+          });
+          console.log(`Push notification sent for alert: ${alert.message}`);
+        } catch (pushError) {
+          console.error('Failed to send push notification:', pushError);
+        }
+      }
     }
 
     console.log(`Sensor data saved for device ${body.device_id || 'unknown'}: temp=${body.temperature}, humidity=${body.humidity}, ammonia=${body.ammonia}, water=${waterUsage}`);
