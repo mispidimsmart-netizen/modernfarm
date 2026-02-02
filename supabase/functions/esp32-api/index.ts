@@ -150,6 +150,10 @@ Deno.serve(async (req) => {
       return await acknowledgeCommands(bodyData, supabase, userId);
     }
 
+    if (req.method === 'POST' && path === 'control') {
+      return await handleControlCommand(bodyData, supabase, userId);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -491,6 +495,85 @@ async function acknowledgeCommands(body: { command_ids: string[] }, supabase: an
 
   return new Response(
     JSON.stringify({ success: true, acknowledged: body.command_ids.length }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+interface ControlPayload {
+  device_id?: string;
+  fan?: string | boolean;
+  light?: string | boolean;
+  alarm?: string | boolean;
+  power?: string | boolean;
+  mode?: 'AUTO' | 'MANUAL';
+}
+
+async function handleControlCommand(body: ControlPayload, supabase: any, userId: string) {
+  const deviceName = body.device_id || 'ESP32_LAYER_001';
+  const commands: { user_id: string; device_name: string; command_type: string; command_value: boolean }[] = [];
+
+  // Helper to parse ON/OFF or boolean
+  const parseValue = (val: string | boolean | undefined): boolean | null => {
+    if (val === undefined) return null;
+    if (typeof val === 'boolean') return val;
+    return val.toUpperCase() === 'ON';
+  };
+
+  const fanValue = parseValue(body.fan);
+  const lightValue = parseValue(body.light);
+  const alarmValue = parseValue(body.alarm);
+  const powerValue = parseValue(body.power);
+
+  if (fanValue !== null) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'fan', command_value: fanValue });
+  }
+  if (lightValue !== null) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'light', command_value: lightValue });
+  }
+  if (alarmValue !== null) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'alarm', command_value: alarmValue });
+  }
+  if (powerValue !== null) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'power', command_value: powerValue });
+  }
+
+  // Handle mode - AUTO means disable manual override, MANUAL means enable it
+  if (body.mode) {
+    const manualOverride = body.mode === 'MANUAL';
+    await supabase
+      .from('device_status')
+      .update({ manual_override: manualOverride })
+      .eq('user_id', userId);
+  }
+
+  if (commands.length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'No valid control commands provided', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Insert commands for ESP32 to pick up
+  const { error } = await supabase.from('device_commands').insert(commands);
+
+  if (error) {
+    console.error('Error inserting control commands:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to queue commands', code: 'INSERT_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  console.log(`Queued ${commands.length} control commands for device ${deviceName}`);
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      message: 'Commands queued',
+      commands_queued: commands.length,
+      device_id: deviceName,
+      mode: body.mode || 'unchanged'
+    }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
