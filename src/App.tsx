@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { QuickActionWidget } from "./components/QuickActionWidget";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { ControlPage } from "./pages/ControlPage";
@@ -138,6 +139,17 @@ function AppRoutes() {
   );
 }
 
+function AppWithWidget() {
+  const { user } = useAuth();
+  
+  return (
+    <>
+      <AppRoutes />
+      {user && <QuickActionWidget />}
+    </>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -147,7 +159,7 @@ const App = () => (
           <Sonner />
           <OfflineIndicator />
           <BrowserRouter>
-            <AppRoutes />
+            <AppWithWidget />
           </BrowserRouter>
         </ShedProvider>
       </AuthProvider>

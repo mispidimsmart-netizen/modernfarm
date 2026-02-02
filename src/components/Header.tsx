@@ -4,6 +4,7 @@ import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
@@ -42,7 +43,9 @@ export function Header() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          
           <Button
             variant="ghost"
             size="sm"
