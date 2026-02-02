@@ -158,6 +158,10 @@ Deno.serve(async (req) => {
       return await handleControlCommand(bodyData, supabase, userId);
     }
 
+    if (req.method === 'POST' && path === 'manual-control') {
+      return await handleManualControl(bodyData, supabase, userId);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -718,5 +722,98 @@ async function createAutomationRule(body: AutomationRulePayload, supabase: any, 
   return new Response(
     JSON.stringify({ success: true, rule: data }),
     { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+interface ManualControlPayload {
+  device_id?: string;
+  fan?: boolean | string;
+  light?: boolean | string;
+  alarm?: boolean | string;
+  power?: boolean | string;
+  manual_override?: boolean;
+}
+
+async function handleManualControl(body: ManualControlPayload, supabase: any, userId: string) {
+  const deviceName = body.device_id || 'ESP32_LAYER_001';
+  
+  // Helper to parse boolean or ON/OFF string
+  const parseValue = (val: boolean | string | undefined): boolean | undefined => {
+    if (val === undefined) return undefined;
+    if (typeof val === 'boolean') return val;
+    return val.toUpperCase() === 'ON';
+  };
+
+  const fanValue = parseValue(body.fan);
+  const lightValue = parseValue(body.light);
+  const alarmValue = parseValue(body.alarm);
+  const powerValue = parseValue(body.power);
+
+  // Build update object for device_status
+  const statusUpdate: Record<string, boolean> = {};
+  if (fanValue !== undefined) statusUpdate.fan_on = fanValue;
+  if (lightValue !== undefined) statusUpdate.light_on = lightValue;
+  if (alarmValue !== undefined) statusUpdate.alarm_on = alarmValue;
+  if (powerValue !== undefined) statusUpdate.power_on = powerValue;
+  
+  // Enable manual override when using manual control
+  if (body.manual_override !== undefined) {
+    statusUpdate.manual_override = body.manual_override;
+  } else {
+    statusUpdate.manual_override = true;
+  }
+
+  if (Object.keys(statusUpdate).length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'No control values provided', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Update device status directly
+  const { error: updateError } = await supabase
+    .from('device_status')
+    .update(statusUpdate)
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error('Error updating device status:', updateError);
+    return new Response(
+      JSON.stringify({ error: 'Failed to update device status', code: 'UPDATE_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Also queue commands for ESP32 to pick up
+  const commands: { user_id: string; device_name: string; command_type: string; command_value: boolean }[] = [];
+  if (fanValue !== undefined) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'fan', command_value: fanValue });
+  }
+  if (lightValue !== undefined) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'light', command_value: lightValue });
+  }
+  if (alarmValue !== undefined) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'alarm', command_value: alarmValue });
+  }
+  if (powerValue !== undefined) {
+    commands.push({ user_id: userId, device_name: deviceName, command_type: 'power', command_value: powerValue });
+  }
+
+  if (commands.length > 0) {
+    await supabase.from('device_commands').insert(commands);
+  }
+
+  console.log(`Manual control applied: ${JSON.stringify(statusUpdate)} for device ${deviceName}`);
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      message: 'Manual control applied',
+      device_id: deviceName,
+      status_updated: statusUpdate,
+      commands_queued: commands.length,
+      manual_override: statusUpdate.manual_override
+    }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
