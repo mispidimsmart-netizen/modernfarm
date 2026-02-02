@@ -5,6 +5,102 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-token',
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 HEAT STRESS INDEX (HSI) CALCULATION
+// Formula: HSI = Temperature + (Humidity × 0.1)
+// 
+// | HSI    | Status      | Action         |
+// |--------|-------------|----------------|
+// | < 30   | Normal      | Fan OFF        |
+// | 30-35  | Mild Stress | Fan LOW        |
+// | 35-40  | High Stress | Fan HIGH       |
+// | > 40   | Danger      | Fan HIGH+Alert |
+// ═══════════════════════════════════════════════════════════════════════════
+function calculateHSI(temperature: number, humidity: number): number {
+  return temperature + (humidity * 0.1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔥 HSI-BASED AUTOMATION (Cloud Side Rule Engine)
+// IF HSI > 35 → fan = HIGH, alert = ON
+// Cloud থাকলে advanced decision
+// Cloud না থাকলেও ESP32 একই কাজ করবে (local rules)
+// ═══════════════════════════════════════════════════════════════════════════
+async function applyHSIAutomation(
+  supabase: any, 
+  userId: string, 
+  level: 'NORMAL' | 'MILD' | 'HIGH' | 'DANGER',
+  hsi: number
+): Promise<void> {
+  try {
+    // Check if HSI automation is enabled and not in manual override
+    const { data: settings } = await supabase
+      .from('farm_settings')
+      .select('hsi_automation_enabled')
+      .eq('user_id', userId)
+      .single();
+    
+    if (!settings?.hsi_automation_enabled) {
+      console.log('HSI automation disabled, skipping');
+      return;
+    }
+    
+    const { data: deviceStatus } = await supabase
+      .from('device_status')
+      .select('manual_override')
+      .eq('user_id', userId)
+      .single();
+    
+    if (deviceStatus?.manual_override) {
+      console.log('Manual override active, skipping HSI automation');
+      return;
+    }
+
+    // Apply automation based on HSI level
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+    
+    switch (level) {
+      case 'DANGER':
+        // HSI > 40: Fan HIGH + Alarm ON
+        updates.fan_on = true;
+        updates.fan_speed = 'HIGH';
+        updates.alarm_on = true;
+        console.log(`🚨 HSI DANGER (${hsi.toFixed(1)}) → Fan HIGH + Alarm ON`);
+        break;
+        
+      case 'HIGH':
+        // HSI 35-40: Fan HIGH
+        updates.fan_on = true;
+        updates.fan_speed = 'HIGH';
+        console.log(`⚠️ HSI HIGH (${hsi.toFixed(1)}) → Fan HIGH`);
+        break;
+        
+      case 'MILD':
+        // HSI 30-35: Fan LOW
+        updates.fan_on = true;
+        updates.fan_speed = 'LOW';
+        console.log(`🌡️ HSI MILD (${hsi.toFixed(1)}) → Fan LOW`);
+        break;
+        
+      case 'NORMAL':
+        // HSI < 30: Can turn off (but check ammonia first in calling code)
+        updates.fan_on = false;
+        updates.fan_speed = 'OFF';
+        updates.alarm_on = false;
+        console.log(`✅ HSI NORMAL (${hsi.toFixed(1)}) → Fan OFF`);
+        break;
+    }
+    
+    await supabase
+      .from('device_status')
+      .update(updates)
+      .eq('user_id', userId);
+      
+  } catch (error) {
+    console.error('HSI automation error:', error);
+  }
+}
+
 interface SensorPayload {
   // Support both formats
   device_id?: string;
@@ -269,16 +365,59 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       .single();
 
     const alerts = [];
+    
+    // 🔥 HSI-BASED AUTOMATION (Cloud Side)
+    // Calculate Heat Stress Index: HSI = Temperature + (Humidity × 0.1)
+    const hsi = calculateHSI(body.temperature, body.humidity);
+    console.log(`🔥 HSI = ${hsi.toFixed(1)} (Temp=${body.temperature}, Hum=${body.humidity})`);
+    
+    // HSI-based alert thresholds (Layer Optimized)
+    // < 30: Normal, 30-35: Mild, 35-40: High Stress, > 40: Danger
+    if (hsi > 40) {
+      alerts.push({
+        user_id: userId,
+        alert_type: 'temperature',
+        severity: 'danger',
+        message: `🚨 DANGER! Heat Stress Index: ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
+        message_bn: `🚨 বিপদ! হিট স্ট্রেস ইন্ডেক্স: ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
+      });
+      
+      // Auto-enable fan HIGH + alarm
+      await applyHSIAutomation(supabase, userId, 'DANGER', hsi);
+      
+    } else if (hsi >= 35) {
+      alerts.push({
+        user_id: userId,
+        alert_type: 'temperature',
+        severity: 'warning',
+        message: `⚠️ High Heat Stress: HSI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
+        message_bn: `⚠️ উচ্চ হিট স্ট্রেস: HSI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
+      });
+      
+      // Auto-enable fan HIGH
+      await applyHSIAutomation(supabase, userId, 'HIGH', hsi);
+      
+    } else if (hsi >= 30) {
+      // Mild stress - fan LOW (no alert needed, just automation)
+      await applyHSIAutomation(supabase, userId, 'MILD', hsi);
+    } else {
+      // Normal - can turn off fan if no other issues
+      await applyHSIAutomation(supabase, userId, 'NORMAL', hsi);
+    }
 
+    // Legacy temperature-only alerts (for backward compatibility)
     if (settings) {
-      if (body.temperature > Number(settings.temperature_max)) {
-        alerts.push({
-          user_id: userId,
-          alert_type: 'temperature',
-          severity: body.temperature > Number(settings.temperature_max) + 5 ? 'danger' : 'warning',
-          message: `High temperature: ${body.temperature.toFixed(1)}°C`,
-          message_bn: `উচ্চ তাপমাত্রা: ${body.temperature.toFixed(1)}°সে`,
-        });
+      if (body.temperature > Number(settings.temperature_max) && hsi <= 40) {
+        // Only add if not already covered by HSI danger alert
+        if (!alerts.some(a => a.severity === 'danger' && a.alert_type === 'temperature')) {
+          alerts.push({
+            user_id: userId,
+            alert_type: 'temperature',
+            severity: body.temperature > Number(settings.temperature_max) + 5 ? 'danger' : 'warning',
+            message: `High temperature: ${body.temperature.toFixed(1)}°C`,
+            message_bn: `উচ্চ তাপমাত্রা: ${body.temperature.toFixed(1)}°সে`,
+          });
+        }
       }
 
       if (body.ammonia > Number(settings.ammonia_max)) {
