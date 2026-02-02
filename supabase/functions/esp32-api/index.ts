@@ -583,73 +583,109 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
 }
 
 interface AutomationRulePayload {
-  name: string;
-  condition_sensor: 'temperature' | 'humidity' | 'ammonia';
-  condition_operator: '>' | '<' | '>=' | '<=';
-  condition_value: number;
-  action_device: 'fan' | 'light' | 'alarm';
-  action_state: boolean;
+  // Standard format
+  name?: string;
+  condition_sensor?: 'temperature' | 'humidity' | 'ammonia';
+  condition_operator?: '>' | '<' | '>=' | '<=';
+  condition_value?: number;
+  action_device?: 'fan' | 'light' | 'alarm';
+  action_state?: boolean;
   enabled?: boolean;
+  // Simplified format
+  parameter?: 'temperature' | 'humidity' | 'ammonia';
+  condition?: '>' | '<' | '>=' | '<=';
+  value?: number;
+  action?: string; // "fan_on", "fan_off", "light_on", etc.
 }
 
 const VALID_SENSORS = ['temperature', 'humidity', 'ammonia'];
 const VALID_OPERATORS = ['>', '<', '>=', '<='];
 const VALID_DEVICES = ['fan', 'light', 'alarm'];
+const VALID_ACTIONS = ['fan_on', 'fan_off', 'light_on', 'light_off', 'alarm_on', 'alarm_off'];
+
+function parseAction(action: string): { device: string; state: boolean } | null {
+  const match = action.match(/^(fan|light|alarm)_(on|off)$/i);
+  if (!match) return null;
+  return {
+    device: match[1].toLowerCase(),
+    state: match[2].toLowerCase() === 'on'
+  };
+}
 
 async function createAutomationRule(body: AutomationRulePayload, supabase: any, userId: string) {
+  // Normalize simplified format to standard format
+  const sensor = body.condition_sensor || body.parameter;
+  const operator = body.condition_operator || body.condition;
+  const value = body.condition_value ?? body.value;
+  
+  let device = body.action_device;
+  let state = body.action_state;
+  
+  // Parse action string like "fan_on" if provided
+  if (body.action && !device) {
+    const parsed = parseAction(body.action);
+    if (parsed) {
+      device = parsed.device as 'fan' | 'light' | 'alarm';
+      state = parsed.state;
+    }
+  }
+
+  // Auto-generate name if not provided
+  const name = body.name || `${sensor} ${operator} ${value} → ${device}_${state ? 'on' : 'off'}`;
+
   // Validate required fields
-  if (!body.name || typeof body.name !== 'string' || body.name.trim().length === 0) {
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return new Response(
       JSON.stringify({ error: 'Name is required and must be a non-empty string', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (body.name.length > 100) {
+  if (name.length > 100) {
     return new Response(
       JSON.stringify({ error: 'Name must be less than 100 characters', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (!VALID_SENSORS.includes(body.condition_sensor)) {
+  if (!sensor || !VALID_SENSORS.includes(sensor)) {
     return new Response(
-      JSON.stringify({ error: `Invalid condition_sensor. Must be one of: ${VALID_SENSORS.join(', ')}`, code: 'INVALID_DATA' }),
+      JSON.stringify({ error: `Invalid parameter/condition_sensor. Must be one of: ${VALID_SENSORS.join(', ')}`, code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (!VALID_OPERATORS.includes(body.condition_operator)) {
+  if (!operator || !VALID_OPERATORS.includes(operator)) {
     return new Response(
-      JSON.stringify({ error: `Invalid condition_operator. Must be one of: ${VALID_OPERATORS.join(', ')}`, code: 'INVALID_DATA' }),
+      JSON.stringify({ error: `Invalid condition/condition_operator. Must be one of: ${VALID_OPERATORS.join(', ')}`, code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (typeof body.condition_value !== 'number' || isNaN(body.condition_value)) {
+  if (typeof value !== 'number' || isNaN(value)) {
     return new Response(
-      JSON.stringify({ error: 'condition_value must be a valid number', code: 'INVALID_DATA' }),
+      JSON.stringify({ error: 'value/condition_value must be a valid number', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (body.condition_value < -50 || body.condition_value > 500) {
+  if (value < -50 || value > 500) {
     return new Response(
-      JSON.stringify({ error: 'condition_value must be between -50 and 500', code: 'INVALID_DATA' }),
+      JSON.stringify({ error: 'value/condition_value must be between -50 and 500', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (!VALID_DEVICES.includes(body.action_device)) {
+  if (!device || !VALID_DEVICES.includes(device)) {
     return new Response(
-      JSON.stringify({ error: `Invalid action_device. Must be one of: ${VALID_DEVICES.join(', ')}`, code: 'INVALID_DATA' }),
+      JSON.stringify({ error: `Invalid action/action_device. Must be one of: ${VALID_DEVICES.join(', ')} or action like "fan_on"`, code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  if (typeof body.action_state !== 'boolean') {
+  if (typeof state !== 'boolean') {
     return new Response(
-      JSON.stringify({ error: 'action_state must be a boolean', code: 'INVALID_DATA' }),
+      JSON.stringify({ error: 'action_state must be a boolean (or use action like "fan_on")', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -658,12 +694,12 @@ async function createAutomationRule(body: AutomationRulePayload, supabase: any, 
     .from('automation_rules')
     .insert({
       user_id: userId,
-      name: body.name.trim(),
-      condition_sensor: body.condition_sensor,
-      condition_operator: body.condition_operator,
-      condition_value: body.condition_value,
-      action_device: body.action_device,
-      action_state: body.action_state,
+      name: name.trim(),
+      condition_sensor: sensor,
+      condition_operator: operator,
+      condition_value: value,
+      action_device: device,
+      action_state: state,
       enabled: body.enabled !== false,
     })
     .select('id, name, condition_sensor, condition_operator, condition_value, action_device, action_state, enabled')
