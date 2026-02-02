@@ -435,7 +435,7 @@ async function getAutomationRules(supabase: any, userId: string) {
 async function getLightingSchedule(supabase: any, userId: string) {
   const { data, error } = await supabase
     .from('lighting_schedule')
-    .select('start_time, end_time, total_hours, manual_override')
+    .select('start_time, end_time, total_hours, manual_override, gradual_enabled, fade_in_minutes, fade_out_minutes, min_brightness, max_brightness')
     .eq('user_id', userId)
     .single();
 
@@ -446,10 +446,102 @@ async function getLightingSchedule(supabase: any, userId: string) {
     );
   }
 
+  // Calculate current brightness for PWM control
+  const currentBrightness = calculateCurrentBrightness(data);
+  
   return new Response(
-    JSON.stringify({ success: true, data }),
+    JSON.stringify({ 
+      success: true, 
+      data: {
+        ...data,
+        current_brightness: currentBrightness.brightness,
+        current_phase: currentBrightness.phase,
+        pwm_value: Math.round(currentBrightness.brightness * 255 / 100), // 0-255 for ESP32 PWM
+      }
+    }),
     { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
   );
+}
+
+/**
+ * Calculate current brightness based on lighting schedule and time
+ * Uses smooth easing for gradual transitions
+ */
+function calculateCurrentBrightness(schedule: any): { brightness: number; phase: string } {
+  if (!schedule) {
+    return { brightness: 0, phase: 'off' };
+  }
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  
+  // Parse times (format: "HH:MM:SS" or "HH:MM")
+  const startTime = schedule.start_time?.toString() || '05:00:00';
+  const endTime = schedule.end_time?.toString() || '21:00:00';
+  
+  const [startH, startM] = startTime.split(':').map(Number);
+  const [endH, endM] = endTime.split(':').map(Number);
+  
+  const startMinutes = startH * 60 + (startM || 0);
+  const endMinutes = endH * 60 + (endM || 0);
+  
+  const fadeInMinutes = schedule.fade_in_minutes || 30;
+  const fadeOutMinutes = schedule.fade_out_minutes || 30;
+  const minBrightness = schedule.min_brightness || 0;
+  const maxBrightness = schedule.max_brightness || 100;
+  const gradualEnabled = schedule.gradual_enabled !== false;
+
+  // If manual override, return max brightness
+  if (schedule.manual_override) {
+    return { brightness: maxBrightness, phase: 'manual' };
+  }
+
+  // If gradual is disabled, use simple ON/OFF
+  if (!gradualEnabled) {
+    const isActive = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+    return {
+      brightness: isActive ? maxBrightness : minBrightness,
+      phase: isActive ? 'on' : 'off'
+    };
+  }
+
+  // Calculate phase boundaries
+  const fadeInEnd = startMinutes + fadeInMinutes;
+  const fadeOutStart = endMinutes - fadeOutMinutes;
+
+  // Ease-in-out quadratic function for smooth transitions
+  const easeInOutQuad = (t: number): number => {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  };
+
+  // Before schedule starts (OFF)
+  if (currentMinutes < startMinutes) {
+    return { brightness: minBrightness, phase: 'off' };
+  }
+
+  // Fade-in phase (Morning: 0% → 100%)
+  if (currentMinutes >= startMinutes && currentMinutes < fadeInEnd) {
+    const progress = (currentMinutes - startMinutes) / fadeInMinutes;
+    const easedProgress = easeInOutQuad(progress);
+    const brightness = Math.round(minBrightness + (maxBrightness - minBrightness) * easedProgress);
+    return { brightness, phase: 'fade-in' };
+  }
+
+  // Full ON phase
+  if (currentMinutes >= fadeInEnd && currentMinutes < fadeOutStart) {
+    return { brightness: maxBrightness, phase: 'on' };
+  }
+
+  // Fade-out phase (Evening: 100% → 0%)
+  if (currentMinutes >= fadeOutStart && currentMinutes < endMinutes) {
+    const progress = (currentMinutes - fadeOutStart) / fadeOutMinutes;
+    const easedProgress = easeInOutQuad(progress);
+    const brightness = Math.round(maxBrightness - (maxBrightness - minBrightness) * easedProgress);
+    return { brightness, phase: 'fade-out' };
+  }
+
+  // After schedule ends (OFF)
+  return { brightness: minBrightness, phase: 'off' };
 }
 
 async function getDeviceCommands(supabase: any, userId: string, deviceName: string | null) {

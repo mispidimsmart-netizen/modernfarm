@@ -3,12 +3,16 @@
  * Smart Layer Farm - ESP32 IoT Controller
  * 
  * This code reads sensor data and sends it to the Smart Farm API
+ * Now with PWM lighting control for smart curve brightness!
  * 
  * Hardware:
  * - ESP32 DevKit
  * - DHT22 Temperature/Humidity Sensor (GPIO 4)
  * - MQ135 Ammonia Sensor (GPIO 34 - ADC)
  * - YF-S201 Water Flow Sensor (GPIO 27)
+ * - MOSFET/LED Driver for Light (GPIO 25 - PWM)
+ * - Relay for Fan (GPIO 26)
+ * - Buzzer/Alarm (GPIO 32)
  * 
  * Libraries Required:
  * - WiFi.h (built-in)
@@ -37,9 +41,20 @@ const char* DEVICE_ID = "ESP32_LAYER_001";  // Match this with your device name 
 #define MQ135_PIN 34
 #define FLOW_SENSOR_PIN 27
 
+// Output Control Pins
+#define LIGHT_PWM_PIN 25      // PWM output for light dimmer (MOSFET gate)
+#define FAN_RELAY_PIN 26      // Relay for fan control
+#define ALARM_PIN 32          // Buzzer/Alarm
+
+// PWM Configuration
+#define PWM_FREQUENCY 5000    // 5kHz PWM frequency
+#define PWM_CHANNEL 0         // LEDC channel 0
+#define PWM_RESOLUTION 8      // 8-bit resolution (0-255)
+
 // Update intervals (milliseconds)
 #define SEND_INTERVAL 30000       // 30 seconds for sensor data
 #define HEALTH_INTERVAL 60000     // 60 seconds for health report
+#define LIGHTING_CHECK_INTERVAL 10000  // 10 seconds for lighting update
 
 // ============= GLOBAL VARIABLES =============
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -50,8 +65,16 @@ unsigned long lastFlowTime = 0;
 
 unsigned long lastSendTime = 0;
 unsigned long lastHealthTime = 0;
+unsigned long lastLightingCheck = 0;
 unsigned long startupTime = 0;
 bool wifiConnected = false;
+
+// Current device states
+int currentBrightness = 0;      // 0-100 percentage
+int currentPwmValue = 0;        // 0-255 PWM value
+String currentPhase = "off";    // off, fade-in, on, fade-out, manual
+bool fanState = false;
+bool alarmState = false;
 
 // ============= SETUP =============
 void setup() {
@@ -59,6 +82,7 @@ void setup() {
   Serial.println("\n=================================");
   Serial.println("স্মার্ট লেয়ার ফার্ম IoT Controller");
   Serial.println("Smart Layer Farm IoT Controller");
+  Serial.println("with PWM Lighting Control v2.0");
   Serial.println("=================================\n");
 
   startupTime = millis();
@@ -67,6 +91,17 @@ void setup() {
   dht.begin();
   pinMode(MQ135_PIN, INPUT);
   pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
+  
+  // Initialize output pins
+  pinMode(FAN_RELAY_PIN, OUTPUT);
+  pinMode(ALARM_PIN, OUTPUT);
+  digitalWrite(FAN_RELAY_PIN, LOW);
+  digitalWrite(ALARM_PIN, LOW);
+  
+  // Configure PWM for light control
+  ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
+  ledcAttachPin(LIGHT_PWM_PIN, PWM_CHANNEL);
+  ledcWrite(PWM_CHANNEL, 0);  // Start with light off
   
   // Attach interrupt for flow sensor
   attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), flowPulseCounter, FALLING);
@@ -104,6 +139,12 @@ void loop() {
   if (currentTime - lastHealthTime >= HEALTH_INTERVAL) {
     sendDeviceHealth();
     lastHealthTime = currentTime;
+  }
+
+  // Check and update lighting every LIGHTING_CHECK_INTERVAL
+  if (currentTime - lastLightingCheck >= LIGHTING_CHECK_INTERVAL) {
+    fetchAndApplyLighting();
+    lastLightingCheck = currentTime;
   }
 
   delay(100);
@@ -283,6 +324,87 @@ void sendDeviceHealth() {
   http.end();
 }
 
+// ============= FETCH AND APPLY LIGHTING =============
+void fetchAndApplyLighting() {
+  if (!wifiConnected) {
+    return;
+  }
+
+  String lightingUrl = String(API_URL).substring(0, String(API_URL).lastIndexOf('/')) + "/lighting-schedule?device_id=" + DEVICE_ID;
+  HTTPClient http;
+  http.begin(lightingUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpResponseCode = http.GET();
+
+  if (httpResponseCode == 200) {
+    String response = http.getString();
+    
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, response);
+    
+    if (!error && doc["success"] == true) {
+      JsonObject data = doc["data"];
+      
+      int newBrightness = data["current_brightness"] | 0;
+      int newPwmValue = data["pwm_value"] | 0;
+      String newPhase = data["current_phase"] | "off";
+      
+      // Only update if brightness changed
+      if (newPwmValue != currentPwmValue) {
+        currentBrightness = newBrightness;
+        currentPwmValue = newPwmValue;
+        currentPhase = newPhase;
+        
+        // Apply PWM value to light
+        ledcWrite(PWM_CHANNEL, currentPwmValue);
+        
+        Serial.println("----------------------------------------");
+        Serial.println("💡 Lighting Update:");
+        Serial.printf("  Phase: %s\n", currentPhase.c_str());
+        Serial.printf("  Brightness: %d%%\n", currentBrightness);
+        Serial.printf("  PWM Value: %d/255\n", currentPwmValue);
+        Serial.println("----------------------------------------");
+      }
+    }
+  } else {
+    Serial.printf("✗ Failed to fetch lighting: %d\n", httpResponseCode);
+  }
+
+  http.end();
+}
+
+// ============= SET LIGHT BRIGHTNESS =============
+void setLightBrightness(int brightness) {
+  // Constrain to 0-100
+  brightness = constrain(brightness, 0, 100);
+  
+  // Convert percentage to PWM value (0-255)
+  int pwmValue = map(brightness, 0, 100, 0, 255);
+  
+  currentBrightness = brightness;
+  currentPwmValue = pwmValue;
+  
+  // Apply PWM
+  ledcWrite(PWM_CHANNEL, pwmValue);
+  
+  Serial.printf("💡 Light set to %d%% (PWM: %d)\n", brightness, pwmValue);
+}
+
+// ============= CONTROL FAN =============
+void setFan(bool state) {
+  fanState = state;
+  digitalWrite(FAN_RELAY_PIN, state ? HIGH : LOW);
+  Serial.printf("🌀 Fan %s\n", state ? "ON" : "OFF");
+}
+
+// ============= CONTROL ALARM =============
+void setAlarm(bool state) {
+  alarmState = state;
+  digitalWrite(ALARM_PIN, state ? HIGH : LOW);
+  Serial.printf("🔔 Alarm %s\n", state ? "ON" : "OFF");
+}
+
 /*
  * ============= WIRING DIAGRAM =============
  * 
@@ -301,6 +423,21 @@ void sendDeviceHealth() {
  *   Black -> GND
  *   Yellow -> GPIO 27 (Signal)
  * 
+ * Light PWM Control (using MOSFET):
+ *   GPIO 25 -> 1K resistor -> MOSFET Gate (e.g., IRLZ44N)
+ *   MOSFET Drain -> LED Strip/Bulb negative
+ *   MOSFET Source -> GND
+ *   LED Strip positive -> 12V/24V Power Supply
+ * 
+ * Fan Relay:
+ *   GPIO 26 -> Relay IN
+ *   Relay COM -> Fan
+ *   Relay NO -> Power Supply
+ * 
+ * Alarm/Buzzer:
+ *   GPIO 32 -> Buzzer positive (through transistor for loud buzzers)
+ *   Buzzer negative -> GND
+ * 
  * ============= NOTES =============
  * 
  * 1. Before uploading, set your WiFi credentials above
@@ -308,6 +445,7 @@ void sendDeviceHealth() {
  * 3. Copy the Device ID and paste it in DEVICE_ID above
  * 4. The MQ135 sensor needs 24-48 hours warm-up for accurate readings
  * 5. Calibrate sensors based on your specific environment
+ * 6. For PWM dimming, use a logic-level MOSFET (IRLZ44N recommended)
  * 
  * ============= API ENDPOINTS =============
  * 
@@ -316,8 +454,22 @@ void sendDeviceHealth() {
  * POST /esp32-api/health - Report device health (WiFi, memory, uptime)
  * GET  /esp32-api/settings - Fetch farm threshold settings
  * GET  /esp32-api/automation-rules - Get automation rules
- * GET  /esp32-api/lighting-schedule - Get light schedule
+ * GET  /esp32-api/lighting-schedule - Get light schedule with PWM values
+ *      Response includes:
+ *        - current_brightness (0-100%)
+ *        - current_phase (off, fade-in, on, fade-out, manual)
+ *        - pwm_value (0-255 for ESP32 PWM)
  * GET  /esp32-api/commands - Get pending commands
  * POST /esp32-api/commands-ack - Acknowledge executed commands
+ * 
+ * ============= SMART LIGHTING CURVE =============
+ * 
+ * The server calculates the current brightness based on:
+ * - Start/End times from the app
+ * - Fade-in/Fade-out duration (gradual transitions)
+ * - Smooth easing for natural light changes
+ * 
+ * The ESP32 fetches pwm_value every 10 seconds and applies it directly.
+ * This gives smooth gradual lighting transitions without complex local logic.
  * 
  */

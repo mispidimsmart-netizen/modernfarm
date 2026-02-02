@@ -13,6 +13,7 @@ import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { LightingCurveCard } from '@/components/lighting/LightingCurveCard';
 import { LightingCurveSettings } from '@/components/lighting/LightingCurveSettings';
+import { AgeLightingSuggestionCard } from '@/components/lighting/AgeLightingSuggestionCard';
 
 export function LightingPage() {
   const { language } = useAuth();
@@ -109,6 +110,11 @@ export function LightingPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h2 className="section-title">{translations.lighting.title[language]}</h2>
+
+          {/* Age-Based Lighting Suggestion */}
+          <div className="mb-6">
+            <AgeLightingSuggestionCard />
+          </div>
 
           {/* Smart Lighting Curve Card */}
           <div className="mb-6">
