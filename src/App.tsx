@@ -13,6 +13,7 @@ import { AlertsPage } from "./pages/AlertsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ApiDocsPage } from "./pages/ApiDocsPage";
+import { FarmManagementPage } from "./pages/FarmManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -119,6 +120,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ApiDocsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/farm"
+        element={
+          <ProtectedRoute>
+            <FarmManagementPage />
           </ProtectedRoute>
         }
       />

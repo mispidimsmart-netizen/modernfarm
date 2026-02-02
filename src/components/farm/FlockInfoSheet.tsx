@@ -1,0 +1,173 @@
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { Bird, Save } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useFlockInfo, useUpdateFlockInfo } from '@/hooks/useFarmManagement';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface FlockInfoSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const BREEDS = [
+  { value: 'layer', bn: 'লেয়ার', en: 'Layer' },
+  { value: 'isa_brown', bn: 'আইএসএ ব্রাউন', en: 'ISA Brown' },
+  { value: 'lohmann_brown', bn: 'লোহম্যান ব্রাউন', en: 'Lohmann Brown' },
+  { value: 'hy_line', bn: 'হাই-লাইন', en: 'Hy-Line' },
+  { value: 'novogen', bn: 'নোভোজেন', en: 'Novogen' },
+  { value: 'other', bn: 'অন্যান্য', en: 'Other' },
+];
+
+export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
+  const { language } = useAuth();
+  const { data: flockInfo, isLoading } = useFlockInfo();
+  const updateFlockInfo = useUpdateFlockInfo();
+  
+  const [formData, setFormData] = useState({
+    total_birds: 0,
+    age_weeks: 0,
+    breed: 'layer',
+    purchase_date: '',
+  });
+
+  useEffect(() => {
+    if (flockInfo) {
+      setFormData({
+        total_birds: flockInfo.total_birds,
+        age_weeks: flockInfo.age_weeks,
+        breed: flockInfo.breed || 'layer',
+        purchase_date: flockInfo.purchase_date || '',
+      });
+    }
+  }, [flockInfo]);
+
+  const t = {
+    title: { bn: 'মুরগির তথ্য', en: 'Flock Information' },
+    totalBirds: { bn: 'মোট মুরগি', en: 'Total Birds' },
+    ageWeeks: { bn: 'বয়স (সপ্তাহ)', en: 'Age (weeks)' },
+    breed: { bn: 'জাত', en: 'Breed' },
+    purchaseDate: { bn: 'ক্রয়ের তারিখ', en: 'Purchase Date' },
+    save: { bn: 'সংরক্ষণ করুন', en: 'Save' },
+    tips: { bn: 'পরামর্শ', en: 'Tips' },
+  };
+
+  const tips = language === 'bn' 
+    ? [
+        '২০-৭৮ সপ্তাহ বয়সে সর্বোচ্চ ডিম উৎপাদন হয়',
+        'প্রতি ১০০ মুরগিতে দৈনিক ১০-১২ কেজি খাদ্য লাগে',
+        '১৪-১৬ ঘন্টা আলো উৎপাদন বাড়ায়',
+      ]
+    : [
+        'Peak production is between 20-78 weeks of age',
+        '100 birds need 10-12 kg feed daily',
+        '14-16 hours of light increases production',
+      ];
+
+  const handleSubmit = () => {
+    updateFlockInfo.mutate({
+      ...formData,
+      purchase_date: formData.purchase_date || null,
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="flex items-center gap-2">
+            <Bird className="h-5 w-5 text-primary" />
+            {t.title[language]}
+          </SheetTitle>
+        </SheetHeader>
+
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t.totalBirds[language]}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={formData.total_birds || ''}
+                onChange={(e) => setFormData(p => ({ ...p, total_birds: parseInt(e.target.value) || 0 }))}
+                className="text-lg"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{t.ageWeeks[language]}</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.age_weeks || ''}
+                  onChange={(e) => setFormData(p => ({ ...p, age_weeks: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t.breed[language]}</Label>
+                <Select 
+                  value={formData.breed} 
+                  onValueChange={(v) => setFormData(p => ({ ...p, breed: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BREEDS.map(breed => (
+                      <SelectItem key={breed.value} value={breed.value}>
+                        {breed[language]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t.purchaseDate[language]}</Label>
+              <Input
+                type="date"
+                value={formData.purchase_date}
+                onChange={(e) => setFormData(p => ({ ...p, purchase_date: e.target.value }))}
+              />
+            </div>
+
+            <Button 
+              onClick={handleSubmit} 
+              className="w-full"
+              disabled={updateFlockInfo.isPending}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {t.save[language]}
+            </Button>
+
+            {/* Tips Card */}
+            <Card className="mt-6 bg-primary/5">
+              <CardContent className="p-4">
+                <h4 className="mb-2 font-medium text-primary">{t.tips[language]}</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {tips.map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}

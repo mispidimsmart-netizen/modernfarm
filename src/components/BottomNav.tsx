@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Sliders, Sun, Zap, Bell } from 'lucide-react';
+import { Home, Sliders, Egg, Bell, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAlerts } from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/', icon: Home, labelKey: 'home' },
+  { path: '/farm', icon: Egg, labelKey: 'farm' },
   { path: '/control', icon: Sliders, labelKey: 'control' },
-  { path: '/lighting', icon: Sun, labelKey: 'lighting' },
-  { path: '/automation', icon: Zap, labelKey: 'automation' },
   { path: '/alerts', icon: Bell, labelKey: 'alerts' },
+  { path: '/reports', icon: BarChart3, labelKey: 'reports' },
 ] as const;
 
 export function BottomNav() {
