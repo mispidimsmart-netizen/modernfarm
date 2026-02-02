@@ -132,11 +132,37 @@ interface SensorPayload {
 
 interface DeviceStatusPayload {
   device_id?: string;
+  shed_id?: string;
   power_on?: boolean;
   fan_on?: boolean;
   light_on?: boolean;
   alarm_on?: boolean;
   device_token?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔄 DEVICE STATE PAYLOAD
+// ESP32 reports its current operational state to cloud
+// This is for status transparency and monitoring
+// ═══════════════════════════════════════════════════════════════════════════
+interface DeviceStatePayload {
+  device_id?: string;
+  shed_id?: string;
+  mode: 'AUTO' | 'MANUAL' | 'FAIL_SAFE';
+  fan_speed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+  fan_on?: boolean;
+  light_on?: boolean;
+  alarm: 'ON' | 'OFF';
+  hsi: number;
+  system_state: 'NORMAL' | 'MILD_STRESS' | 'HIGH_STRESS' | 'DANGER' | 'FAIL_SAFE';
+  temperature?: number;
+  humidity?: number;
+  ammonia?: number;
+  power_source?: 'MAINS' | 'BATTERY' | 'UPS';
+  battery_level?: number;
+  uptime_seconds?: number;
+  last_cloud_sync?: string;
+  failsafe_reason?: string;
 }
 
 Deno.serve(async (req) => {
@@ -301,6 +327,19 @@ Deno.serve(async (req) => {
     // It handles bidirectional sync and returns all needed settings for local caching
     if (req.method === 'POST' && path === 'sync') {
       return await handleFailsafeSync(bodyData, supabase, userId, deviceToken);
+    }
+
+    // ===== DEVICE STATE ENDPOINT =====
+    // ESP32 reports its current operational state (mode, HSI, fan_speed, etc.)
+    if (req.method === 'POST' && path === 'state') {
+      return await handleDeviceState(bodyData, supabase, userId, deviceToken);
+    }
+
+    // ===== GET DEVICE STATE ENDPOINT =====
+    // Get current state for a specific device/shed
+    if (req.method === 'GET' && path === 'state') {
+      const shedId = url.searchParams.get('shed_id');
+      return await getDeviceState(supabase, userId, shedId);
     }
 
     return new Response(
@@ -639,6 +678,281 @@ async function handleDeviceStatus(body: DeviceStatusPayload, supabase: any, user
     console.error('Handle device status error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to process device status', code: 'PROCESS_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔄 DEVICE STATE HANDLER
+// POST /state - ESP32 reports its current operational state
+// This provides transparency on what the device is doing locally
+// ═══════════════════════════════════════════════════════════════════════════
+async function handleDeviceState(
+  body: DeviceStatePayload, 
+  supabase: any, 
+  userId: string, 
+  deviceToken: string
+) {
+  try {
+    // Get device info including shed_id
+    const { data: deviceInfo } = await supabase
+      .from('device_tokens')
+      .select('id, device_name, shed_id')
+      .eq('token', deviceToken)
+      .single();
+
+    if (!deviceInfo) {
+      return new Response(
+        JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const shedId = body.shed_id || deviceInfo.shed_id;
+    const deviceTokenId = deviceInfo.id;
+
+    // Determine if device is in fail-safe mode
+    const isFailSafe = body.mode === 'FAIL_SAFE' || body.system_state === 'FAIL_SAFE';
+    
+    // Update device_health with current state
+    const healthUpdate: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+      last_seen_at: new Date().toISOString(),
+      is_online: true,
+      failsafe_mode: isFailSafe,
+    };
+
+    if (isFailSafe) {
+      healthUpdate.failsafe_activated_at = new Date().toISOString();
+    }
+
+    if (body.power_source) {
+      healthUpdate.power_source = body.power_source.toLowerCase();
+    }
+
+    if (typeof body.battery_level === 'number') {
+      healthUpdate.battery_percentage = body.battery_level;
+    }
+
+    if (typeof body.uptime_seconds === 'number') {
+      healthUpdate.uptime_seconds = body.uptime_seconds;
+    }
+
+    if (body.last_cloud_sync) {
+      healthUpdate.last_cloud_sync_at = body.last_cloud_sync;
+    }
+
+    // Upsert device health
+    const { error: healthError } = await supabase
+      .from('device_health')
+      .upsert({
+        device_token_id: deviceTokenId,
+        user_id: userId,
+        shed_id: shedId,
+        ...healthUpdate,
+      }, {
+        onConflict: 'device_token_id'
+      });
+
+    if (healthError) {
+      console.error('Failed to update device health:', healthError);
+    }
+
+    // Update device_status for the specific shed
+    const statusUpdate: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // Map fan_speed to fan_on and fan_speed
+    if (body.fan_speed) {
+      statusUpdate.fan_speed = body.fan_speed;
+      statusUpdate.fan_on = body.fan_speed !== 'OFF';
+    }
+
+    if (typeof body.fan_on === 'boolean') {
+      statusUpdate.fan_on = body.fan_on;
+    }
+
+    if (typeof body.light_on === 'boolean') {
+      statusUpdate.light_on = body.light_on;
+    }
+
+    // Map alarm to alarm_on
+    if (body.alarm) {
+      statusUpdate.alarm_on = body.alarm === 'ON';
+    }
+
+    // Update device_status
+    let statusQuery = supabase
+      .from('device_status')
+      .update(statusUpdate)
+      .eq('user_id', userId);
+
+    if (shedId) {
+      statusQuery = statusQuery.eq('shed_id', shedId);
+    }
+
+    await statusQuery;
+
+    // Log state change if in fail-safe mode
+    if (isFailSafe && body.failsafe_reason) {
+      console.log(`⚠️ Device ${deviceInfo.device_name} entered FAIL-SAFE: ${body.failsafe_reason}`);
+    }
+
+    // Get shed name for response
+    let shedName: string | null = null;
+    if (shedId) {
+      const { data: shed } = await supabase
+        .from('sheds')
+        .select('name, name_en')
+        .eq('id', shedId)
+        .single();
+      shedName = shed?.name || shed?.name_en || null;
+    }
+
+    console.log(`✅ [${shedName || 'Farm'}] State update: mode=${body.mode}, fan=${body.fan_speed}, HSI=${body.hsi}, state=${body.system_state}`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Device state updated',
+        device_id: deviceInfo.device_name,
+        shed_id: shedId,
+        shed_name: shedName,
+        mode: body.mode,
+        hsi: body.hsi,
+        system_state: body.system_state,
+        is_failsafe: isFailSafe,
+        server_timestamp: new Date().toISOString(),
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Handle device state error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to process device state', code: 'PROCESS_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔍 GET DEVICE STATE
+// GET /state?shed_id=xxx - Get current state for a specific shed
+// ═══════════════════════════════════════════════════════════════════════════
+async function getDeviceState(supabase: any, userId: string, shedId: string | null) {
+  try {
+    // Get latest sensor reading
+    let sensorQuery = supabase
+      .from('sensor_readings')
+      .select('temperature, humidity, ammonia, water_usage, recorded_at')
+      .eq('user_id', userId)
+      .order('recorded_at', { ascending: false })
+      .limit(1);
+
+    if (shedId) {
+      sensorQuery = sensorQuery.eq('shed_id', shedId);
+    }
+
+    const { data: sensorData } = await sensorQuery.maybeSingle();
+
+    // Get device status
+    let statusQuery = supabase
+      .from('device_status')
+      .select('fan_on, fan_speed, light_on, alarm_on, power_on, manual_override')
+      .eq('user_id', userId);
+
+    if (shedId) {
+      statusQuery = statusQuery.eq('shed_id', shedId);
+    }
+
+    const { data: statusData } = await statusQuery.maybeSingle();
+
+    // Get device health (for online status and fail-safe info)
+    let healthQuery = supabase
+      .from('device_health')
+      .select('is_online, failsafe_mode, power_source, battery_percentage, uptime_seconds, last_seen_at, last_cloud_sync_at')
+      .eq('user_id', userId);
+
+    if (shedId) {
+      healthQuery = healthQuery.eq('shed_id', shedId);
+    }
+
+    const { data: healthData } = await healthQuery.maybeSingle();
+
+    // Calculate HSI if we have sensor data
+    let hsi: number | null = null;
+    let hsiStatus: string = 'UNKNOWN';
+    
+    if (sensorData) {
+      hsi = calculateHSI(sensorData.temperature, sensorData.humidity);
+      hsiStatus = hsi > 40 ? 'DANGER' : hsi >= 35 ? 'HIGH_STRESS' : hsi >= 30 ? 'MILD_STRESS' : 'NORMAL';
+    }
+
+    // Determine mode
+    let mode: string = 'UNKNOWN';
+    if (healthData?.failsafe_mode) {
+      mode = 'FAIL_SAFE';
+    } else if (statusData?.manual_override) {
+      mode = 'MANUAL';
+    } else {
+      mode = 'AUTO';
+    }
+
+    // Get shed info
+    let shedName: string | null = null;
+    if (shedId) {
+      const { data: shed } = await supabase
+        .from('sheds')
+        .select('name, name_en')
+        .eq('id', shedId)
+        .single();
+      shedName = shed?.name || shed?.name_en || null;
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        shed_id: shedId,
+        shed_name: shedName,
+        state: {
+          mode,
+          fan_on: statusData?.fan_on ?? false,
+          fan_speed: statusData?.fan_speed ?? 'OFF',
+          light_on: statusData?.light_on ?? false,
+          alarm: statusData?.alarm_on ? 'ON' : 'OFF',
+          power_on: statusData?.power_on ?? true,
+          manual_override: statusData?.manual_override ?? false,
+        },
+        sensors: sensorData ? {
+          temperature: sensorData.temperature,
+          humidity: sensorData.humidity,
+          ammonia: sensorData.ammonia,
+          water_usage: sensorData.water_usage,
+          recorded_at: sensorData.recorded_at,
+        } : null,
+        hsi: hsi ? parseFloat(hsi.toFixed(1)) : null,
+        hsi_status: hsiStatus,
+        device: {
+          is_online: healthData?.is_online ?? false,
+          failsafe_mode: healthData?.failsafe_mode ?? false,
+          power_source: healthData?.power_source ?? 'mains',
+          battery_level: healthData?.battery_percentage ?? null,
+          uptime_seconds: healthData?.uptime_seconds ?? 0,
+          last_seen_at: healthData?.last_seen_at ?? null,
+          last_cloud_sync: healthData?.last_cloud_sync_at ?? null,
+        },
+        server_timestamp: new Date().toISOString(),
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Get device state error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to get device state', code: 'FETCH_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
