@@ -142,8 +142,8 @@ export function ApiDocsPage() {
   "success": true,
   "message": "Sensor data saved",
   "alerts_created": 0,
-  "device_id": "ESP32_LAYER_001",
-  "received_at": "2024-01-15T10:30:00.000Z"
+  "hsi": 35.0,
+  "hsi_level": "MILD"
 }`}
                   />
                 </div>
@@ -151,7 +151,7 @@ export function ApiDocsPage() {
                 <div className="rounded-lg border p-4 bg-yellow-50 dark:bg-yellow-950">
                   <h4 className="font-medium text-yellow-800 dark:text-yellow-200">গুরুত্বপূর্ণ</h4>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    temperature, humidity, ammonia সব সংখ্যা হতে হবে। water_flow ঐচ্ছিক।
+                    temperature, humidity, ammonia সব সংখ্যা হতে হবে। HSI অটো ক্যালকুলেট হবে (Temp + Humidity × 0.1)।
                   </p>
                 </div>
               </TabsContent>
@@ -270,10 +270,46 @@ export function ApiDocsPage() {
               <TabsContent value="automation" className="space-y-4 mt-4">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-blue-500">GET</Badge>
-                  <code className="text-sm bg-muted px-2 py-1 rounded">/automation-rules</code>
+                  <code className="text-sm bg-muted px-2 py-1 rounded">/system-status</code>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  সক্রিয় অটোমেশন নিয়মগুলো পেতে। ESP32 এই নিয়ম অনুযায়ী ফ্যান/লাইট নিয়ন্ত্রণ করবে।
+                  ESP32 বুট/সিঙ্কের সময় এক কলে সব ডাটা পেতে। Settings, Rules, Status সব একসাথে।
+                </p>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Response:</h4>
+                  <CodeBlock
+                    section="system-status-response"
+                    language="json"
+                    code={`{
+  "success": true,
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "settings_version": 1705312200000,
+  "settings": {
+    "temperature_min": 20,
+    "temperature_max": 32,
+    "hsi_automation_enabled": true,
+    "fan_high_temp_min": 33
+  },
+  "device_status": {
+    "mode": "AUTO",
+    "fan_on": true,
+    "fan_speed": "HIGH",
+    "manual_override": false
+  },
+  "automation_rules": [...],
+  "lighting": {...},
+  "commands": [...]
+}`}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 mt-4">
+                  <Badge className="bg-blue-500">GET</Badge>
+                  <code className="text-sm bg-muted px-2 py-1 rounded">/automation-rules</code>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  শুধু অটোমেশন নিয়মগুলো পেতে।
                 </p>
 
                 <div className="space-y-2">
