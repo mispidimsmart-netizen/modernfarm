@@ -8,6 +8,7 @@ export const translations = {
     alerts: { bn: 'সতর্কতা', en: 'Alerts' },
     reports: { bn: 'রিপোর্ট', en: 'Reports' },
     farm: { bn: 'ফার্ম', en: 'Farm' },
+    settings: { bn: 'সেটিংস', en: 'Settings' },
   },
 
   // Dashboard
