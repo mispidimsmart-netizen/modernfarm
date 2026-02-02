@@ -29,6 +29,7 @@ import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
 import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
+import { InstallPromptCard } from '@/components/pwa/InstallPromptCard';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -309,6 +310,9 @@ export function SettingsPage() {
               </div>
             </div>
           </motion.div>
+
+          {/* PWA Install Prompt */}
+          <InstallPromptCard />
 
           {/* Quick Actions Grid */}
           <div className="grid grid-cols-2 gap-3">
