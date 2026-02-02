@@ -100,9 +100,10 @@ export function ApiDocsPage() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="sensor-data" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                 <TabsTrigger value="sensor-data">সেন্সর ডাটা</TabsTrigger>
                 <TabsTrigger value="device-status">ডিভাইস স্ট্যাটাস</TabsTrigger>
+                <TabsTrigger value="commands">কমান্ড</TabsTrigger>
                 <TabsTrigger value="settings">সেটিংস</TabsTrigger>
                 <TabsTrigger value="automation">অটোমেশন</TabsTrigger>
               </TabsList>
@@ -177,6 +178,64 @@ export function ApiDocsPage() {
   "alarm_on": false
 }`}
                   />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="commands" className="space-y-4 mt-4">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-500">GET</Badge>
+                  <code className="text-sm bg-muted px-2 py-1 rounded">/commands?device_id=ESP32_LAYER_001</code>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  পেন্ডিং কমান্ড পেতে। ESP32 প্রতি ৫ সেকেন্ডে এই endpoint পোল করবে।
+                </p>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Response:</h4>
+                  <CodeBlock
+                    section="commands-response"
+                    language="json"
+                    code={`{
+  "success": true,
+  "commands": [
+    {
+      "id": "uuid-here",
+      "command_type": "fan",
+      "command_value": true,
+      "created_at": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "device_id": "ESP32_LAYER_001",
+  "timestamp": "2024-01-15T10:35:00.000Z"
+}`}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 mt-4">
+                  <Badge className="bg-green-500">POST</Badge>
+                  <code className="text-sm bg-muted px-2 py-1 rounded">/commands-ack</code>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  কমান্ড এক্সিকিউট হলে acknowledge করতে।
+                </p>
+
+                <div className="space-y-2">
+                  <h4 className="font-medium">Request Body:</h4>
+                  <CodeBlock
+                    section="commands-ack-request"
+                    language="json"
+                    code={`{
+  "device_id": "ESP32_LAYER_001",
+  "command_ids": ["uuid-1", "uuid-2"]
+}`}
+                  />
+                </div>
+
+                <div className="rounded-lg border p-4 bg-blue-50 dark:bg-blue-950">
+                  <h4 className="font-medium text-blue-800 dark:text-blue-200">ব্যবহার</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    অ্যাপ থেকে ফ্যান/লাইট কন্ট্রোল করলে কমান্ড তৈরি হয়। ESP32 পোল করে কমান্ড পায় এবং execute করার পর acknowledge করে।
+                  </p>
                 </div>
               </TabsContent>
 

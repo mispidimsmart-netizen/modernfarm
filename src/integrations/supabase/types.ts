@@ -119,6 +119,39 @@ export type Database = {
         }
         Relationships: []
       }
+      device_commands: {
+        Row: {
+          command_type: string
+          command_value: boolean
+          created_at: string
+          device_name: string
+          executed: boolean
+          executed_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          command_type: string
+          command_value?: boolean
+          created_at?: string
+          device_name?: string
+          executed?: boolean
+          executed_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          command_type?: string
+          command_value?: boolean
+          created_at?: string
+          device_name?: string
+          executed?: boolean
+          executed_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       device_status: {
         Row: {
           alarm_on: boolean
