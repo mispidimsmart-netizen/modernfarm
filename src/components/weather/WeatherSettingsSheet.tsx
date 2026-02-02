@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings2, MapPin, ThermometerSun, CloudRain, Flame } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useWeatherSettings, useUpdateWeatherSettings, useFetchWeather, useCurrentLocation } from '@/hooks/useWeather';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -73,6 +73,9 @@ export function WeatherSettingsSheet({ trigger }: WeatherSettingsSheetProps) {
             <Settings2 className="h-5 w-5" />
             {language === 'bn' ? 'আবহাওয়া সেটিংস' : 'Weather Settings'}
           </SheetTitle>
+          <SheetDescription>
+            {language === 'bn' ? 'আবহাওয়া এবং স্মার্ট অটোমেশন সেটিংস কনফিগার করুন' : 'Configure weather and smart automation settings'}
+          </SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
