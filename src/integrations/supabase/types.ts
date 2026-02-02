@@ -14,7 +14,264 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          acknowledged: boolean
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at: string
+          id: string
+          message: string
+          message_bn: string
+          severity: Database["public"]["Enums"]["alert_severity"]
+          user_id: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          id?: string
+          message: string
+          message_bn: string
+          severity: Database["public"]["Enums"]["alert_severity"]
+          user_id: string
+        }
+        Update: {
+          acknowledged?: boolean
+          alert_type?: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          id?: string
+          message?: string
+          message_bn?: string
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      automation_rules: {
+        Row: {
+          action_device: Database["public"]["Enums"]["device_type"]
+          action_state: boolean
+          condition_operator: Database["public"]["Enums"]["operator_type"]
+          condition_sensor: Database["public"]["Enums"]["sensor_type"]
+          condition_value: number
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          action_device: Database["public"]["Enums"]["device_type"]
+          action_state: boolean
+          condition_operator: Database["public"]["Enums"]["operator_type"]
+          condition_sensor: Database["public"]["Enums"]["sensor_type"]
+          condition_value: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          action_device?: Database["public"]["Enums"]["device_type"]
+          action_state?: boolean
+          condition_operator?: Database["public"]["Enums"]["operator_type"]
+          condition_sensor?: Database["public"]["Enums"]["sensor_type"]
+          condition_value?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      daily_reports: {
+        Row: {
+          avg_humidity: number | null
+          avg_temperature: number | null
+          created_at: string
+          egg_production: number | null
+          id: string
+          report_date: string
+          total_water_usage: number | null
+          user_id: string
+        }
+        Insert: {
+          avg_humidity?: number | null
+          avg_temperature?: number | null
+          created_at?: string
+          egg_production?: number | null
+          id?: string
+          report_date?: string
+          total_water_usage?: number | null
+          user_id: string
+        }
+        Update: {
+          avg_humidity?: number | null
+          avg_temperature?: number | null
+          created_at?: string
+          egg_production?: number | null
+          id?: string
+          report_date?: string
+          total_water_usage?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      device_status: {
+        Row: {
+          alarm_on: boolean
+          fan_on: boolean
+          id: string
+          light_on: boolean
+          manual_override: boolean
+          power_on: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alarm_on?: boolean
+          fan_on?: boolean
+          id?: string
+          light_on?: boolean
+          manual_override?: boolean
+          power_on?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alarm_on?: boolean
+          fan_on?: boolean
+          id?: string
+          light_on?: boolean
+          manual_override?: boolean
+          power_on?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      farm_settings: {
+        Row: {
+          ammonia_max: number
+          created_at: string
+          humidity_max: number
+          humidity_min: number
+          id: string
+          temperature_max: number
+          temperature_min: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ammonia_max?: number
+          created_at?: string
+          humidity_max?: number
+          humidity_min?: number
+          id?: string
+          temperature_max?: number
+          temperature_min?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ammonia_max?: number
+          created_at?: string
+          humidity_max?: number
+          humidity_min?: number
+          id?: string
+          temperature_max?: number
+          temperature_min?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lighting_schedule: {
+        Row: {
+          end_time: string
+          id: string
+          manual_override: boolean
+          start_time: string
+          total_hours: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          end_time?: string
+          id?: string
+          manual_override?: boolean
+          start_time?: string
+          total_hours?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          end_time?: string
+          id?: string
+          manual_override?: boolean
+          start_time?: string
+          total_hours?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          farm_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          farm_name?: string
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          farm_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sensor_readings: {
+        Row: {
+          ammonia: number
+          humidity: number
+          id: string
+          recorded_at: string
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          humidity: number
+          id?: string
+          recorded_at?: string
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Update: {
+          ammonia?: number
+          humidity?: number
+          id?: string
+          recorded_at?: string
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +280,11 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      alert_severity: "warning" | "danger"
+      alert_type: "temperature" | "ammonia" | "power" | "water"
+      device_type: "fan" | "light" | "alarm"
+      operator_type: ">" | "<" | ">=" | "<="
+      sensor_type: "temperature" | "humidity" | "ammonia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +411,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_severity: ["warning", "danger"],
+      alert_type: ["temperature", "ammonia", "power", "water"],
+      device_type: ["fan", "light", "alarm"],
+      operator_type: [">", "<", ">=", "<="],
+      sensor_type: ["temperature", "humidity", "ammonia"],
+    },
   },
 } as const

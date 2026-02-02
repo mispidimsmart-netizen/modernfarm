@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AppProvider, useApp } from "./context/AppContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { ControlPage } from "./pages/ControlPage";
@@ -15,9 +15,20 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useApp();
+  const { user, isLoading } = useAuth();
   
-  if (!isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-muted-foreground">লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
   
@@ -25,13 +36,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useApp();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-muted-foreground">লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
       <Route 
         path="/login" 
-        element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} 
+        element={user ? <Navigate to="/" replace /> : <LoginPage />} 
       />
       <Route
         path="/"
@@ -81,13 +103,13 @@ function AppRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AppProvider>
+      <AuthProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>
-      </AppProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

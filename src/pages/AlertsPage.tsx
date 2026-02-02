@@ -1,16 +1,23 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, CheckCircle } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { useAlerts, useAcknowledgeAlert } from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { AlertCard } from '@/components/AlertCard';
 
 export function AlertsPage() {
-  const { language, alerts, acknowledgeAlert } = useApp();
+  const { language } = useAuth();
+  const { data: alerts, isLoading } = useAlerts();
+  const acknowledgeAlert = useAcknowledgeAlert();
 
-  const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged);
-  const acknowledgedAlerts = alerts.filter(a => a.acknowledged);
+  const unacknowledgedAlerts = alerts?.filter(a => !a.acknowledged) ?? [];
+  const acknowledgedAlerts = alerts?.filter(a => a.acknowledged) ?? [];
+
+  const handleAcknowledge = (id: string) => {
+    acknowledgeAlert.mutate(id);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,7 +30,11 @@ export function AlertsPage() {
         >
           <h2 className="section-title">{translations.alerts.title[language]}</h2>
 
-          {unacknowledgedAlerts.length === 0 && acknowledgedAlerts.length === 0 ? (
+          {isLoading ? (
+            <div className="py-16 text-center text-muted-foreground">
+              {translations.common.loading[language]}
+            </div>
+          ) : unacknowledgedAlerts.length === 0 && acknowledgedAlerts.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -54,8 +65,16 @@ export function AlertsPage() {
                       {unacknowledgedAlerts.map((alert) => (
                         <AlertCard
                           key={alert.id}
-                          alert={alert}
-                          onAcknowledge={acknowledgeAlert}
+                          alert={{
+                            id: alert.id,
+                            type: alert.alert_type,
+                            severity: alert.severity,
+                            message: alert.message,
+                            messageBn: alert.message_bn,
+                            timestamp: new Date(alert.created_at),
+                            acknowledged: alert.acknowledged,
+                          }}
+                          onAcknowledge={handleAcknowledge}
                         />
                       ))}
                     </AnimatePresence>
@@ -72,8 +91,16 @@ export function AlertsPage() {
                     {acknowledgedAlerts.slice(0, 10).map((alert) => (
                       <AlertCard
                         key={alert.id}
-                        alert={alert}
-                        onAcknowledge={acknowledgeAlert}
+                        alert={{
+                          id: alert.id,
+                          type: alert.alert_type,
+                          severity: alert.severity,
+                          message: alert.message,
+                          messageBn: alert.message_bn,
+                          timestamp: new Date(alert.created_at),
+                          acknowledged: alert.acknowledged,
+                        }}
+                        onAcknowledge={handleAcknowledge}
                       />
                     ))}
                   </div>

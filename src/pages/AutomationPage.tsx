@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Zap, ChevronRight } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { 
+  useFarmSettings, 
+  useUpdateFarmSettings,
+  useAutomationRules, 
+  useAddAutomationRule, 
+  useUpdateAutomationRule, 
+  useDeleteAutomationRule 
+} from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -10,33 +18,42 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AutomationRule } from '@/lib/types';
+import { Database } from '@/integrations/supabase/types';
+
+type SensorType = Database['public']['Enums']['sensor_type'];
+type OperatorType = Database['public']['Enums']['operator_type'];
+type DeviceType = Database['public']['Enums']['device_type'];
 
 export function AutomationPage() {
-  const { 
-    language, 
-    automationRules, 
-    addAutomationRule, 
-    updateAutomationRule, 
-    deleteAutomationRule,
-    farmSettings,
-    setFarmSettings 
-  } = useApp();
+  const { language } = useAuth();
+  const { data: farmSettings } = useFarmSettings();
+  const updateSettings = useUpdateFarmSettings();
+  const { data: automationRules } = useAutomationRules();
+  const addRule = useAddAutomationRule();
+  const updateRule = useUpdateAutomationRule();
+  const deleteRule = useDeleteAutomationRule();
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newRule, setNewRule] = useState<Omit<AutomationRule, 'id'>>({
+  const [newRule, setNewRule] = useState({
     name: '',
-    condition: { sensor: 'temperature', operator: '>', value: 30 },
-    action: { device: 'fan', state: true },
+    condition_sensor: 'temperature' as SensorType,
+    condition_operator: '>' as OperatorType,
+    condition_value: 30,
+    action_device: 'fan' as DeviceType,
+    action_state: true,
     enabled: true,
   });
 
   const handleAddRule = () => {
     if (newRule.name.trim()) {
-      addAutomationRule(newRule);
+      addRule.mutate(newRule);
       setNewRule({
         name: '',
-        condition: { sensor: 'temperature', operator: '>', value: 30 },
-        action: { device: 'fan', state: true },
+        condition_sensor: 'temperature',
+        condition_operator: '>',
+        condition_value: 30,
+        action_device: 'fan',
+        action_state: true,
         enabled: true,
       });
       setIsDialogOpen(false);
@@ -77,8 +94,8 @@ export function AutomationPage() {
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={farmSettings.temperatureMax}
-                  onChange={(e) => setFarmSettings({ temperatureMax: Number(e.target.value) })}
+                  value={farmSettings?.temperature_max ?? 32}
+                  onChange={(e) => updateSettings.mutate({ temperature_max: Number(e.target.value) })}
                   className="h-10 w-20 text-center"
                 />
                 <span className="text-sm text-muted-foreground">°C</span>
@@ -91,8 +108,8 @@ export function AutomationPage() {
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={farmSettings.ammoniaMax}
-                  onChange={(e) => setFarmSettings({ ammoniaMax: Number(e.target.value) })}
+                  value={farmSettings?.ammonia_max ?? 25}
+                  onChange={(e) => updateSettings.mutate({ ammonia_max: Number(e.target.value) })}
                   className="h-10 w-20 text-center"
                 />
                 <span className="text-sm text-muted-foreground">ppm</span>
@@ -105,8 +122,8 @@ export function AutomationPage() {
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={farmSettings.humidityMax}
-                  onChange={(e) => setFarmSettings({ humidityMax: Number(e.target.value) })}
+                  value={farmSettings?.humidity_max ?? 80}
+                  onChange={(e) => updateSettings.mutate({ humidity_max: Number(e.target.value) })}
                   className="h-10 w-20 text-center"
                 />
                 <span className="text-sm text-muted-foreground">%</span>
@@ -143,10 +160,10 @@ export function AutomationPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">IF</span>
                     <Select
-                      value={newRule.condition.sensor}
+                      value={newRule.condition_sensor}
                       onValueChange={(v) => setNewRule({
                         ...newRule,
-                        condition: { ...newRule.condition, sensor: v as any }
+                        condition_sensor: v as SensorType
                       })}
                     >
                       <SelectTrigger className="flex-1">
@@ -159,10 +176,10 @@ export function AutomationPage() {
                       </SelectContent>
                     </Select>
                     <Select
-                      value={newRule.condition.operator}
+                      value={newRule.condition_operator}
                       onValueChange={(v) => setNewRule({
                         ...newRule,
-                        condition: { ...newRule.condition, operator: v as any }
+                        condition_operator: v as OperatorType
                       })}
                     >
                       <SelectTrigger className="w-16">
@@ -171,14 +188,16 @@ export function AutomationPage() {
                       <SelectContent>
                         <SelectItem value=">">&gt;</SelectItem>
                         <SelectItem value="<">&lt;</SelectItem>
+                        <SelectItem value=">=">&gt;=</SelectItem>
+                        <SelectItem value="<=">&lt;=</SelectItem>
                       </SelectContent>
                     </Select>
                     <Input
                       type="number"
-                      value={newRule.condition.value}
+                      value={newRule.condition_value}
                       onChange={(e) => setNewRule({
                         ...newRule,
-                        condition: { ...newRule.condition, value: Number(e.target.value) }
+                        condition_value: Number(e.target.value)
                       })}
                       className="w-20"
                     />
@@ -186,10 +205,10 @@ export function AutomationPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm">THEN</span>
                     <Select
-                      value={newRule.action.device}
+                      value={newRule.action_device}
                       onValueChange={(v) => setNewRule({
                         ...newRule,
-                        action: { ...newRule.action, device: v as any }
+                        action_device: v as DeviceType
                       })}
                     >
                       <SelectTrigger className="flex-1">
@@ -202,10 +221,10 @@ export function AutomationPage() {
                       </SelectContent>
                     </Select>
                     <Select
-                      value={newRule.action.state ? 'on' : 'off'}
+                      value={newRule.action_state ? 'on' : 'off'}
                       onValueChange={(v) => setNewRule({
                         ...newRule,
-                        action: { ...newRule.action, state: v === 'on' }
+                        action_state: v === 'on'
                       })}
                     >
                       <SelectTrigger className="w-24">
@@ -217,7 +236,7 @@ export function AutomationPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleAddRule} className="w-full">
+                  <Button onClick={handleAddRule} className="w-full" disabled={addRule.isPending}>
                     {translations.common.save[language]}
                   </Button>
                 </div>
@@ -227,7 +246,7 @@ export function AutomationPage() {
 
           <div className="space-y-3">
             <AnimatePresence>
-              {automationRules.map((rule) => (
+              {automationRules?.map((rule) => (
                 <motion.div
                   key={rule.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -243,19 +262,19 @@ export function AutomationPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-foreground">{rule.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {sensorLabels[rule.condition.sensor]} {rule.condition.operator} {rule.condition.value}
+                      {sensorLabels[rule.condition_sensor as keyof typeof sensorLabels]} {rule.condition_operator} {rule.condition_value}
                       <ChevronRight size={14} className="mx-1 inline" />
-                      {deviceLabels[rule.action.device]} {rule.action.state ? 'ON' : 'OFF'}
+                      {deviceLabels[rule.action_device as keyof typeof deviceLabels]} {rule.action_state ? 'ON' : 'OFF'}
                     </p>
                   </div>
                   <Switch
                     checked={rule.enabled}
-                    onCheckedChange={(enabled) => updateAutomationRule(rule.id, { enabled })}
+                    onCheckedChange={(enabled) => updateRule.mutate({ id: rule.id, enabled })}
                   />
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteAutomationRule(rule.id)}
+                    onClick={() => deleteRule.mutate(rule.id)}
                     className="text-destructive"
                   >
                     <Trash2 size={18} />
@@ -263,6 +282,12 @@ export function AutomationPage() {
                 </motion.div>
               ))}
             </AnimatePresence>
+
+            {(!automationRules || automationRules.length === 0) && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {language === 'bn' ? 'কোনো নিয়ম নেই। নতুন নিয়ম যোগ করুন।' : 'No rules yet. Add a new rule.'}
+              </p>
+            )}
           </div>
         </motion.div>
       </main>

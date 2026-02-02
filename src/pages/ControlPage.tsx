@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Fan, Lightbulb, Bell, RefreshCcw } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { useDeviceControl } from '@/hooks/useSensorData';
 import { translations } from '@/lib/translations';
 import { ControlButton } from '@/components/ControlButton';
 import { Header } from '@/components/Header';
@@ -8,13 +9,8 @@ import { BottomNav } from '@/components/BottomNav';
 import { Switch } from '@/components/ui/switch';
 
 export function ControlPage() {
-  const { 
-    language, 
-    deviceStatus, 
-    setDeviceStatus, 
-    manualOverride, 
-    setManualOverride 
-  } = useApp();
+  const { language } = useAuth();
+  const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl();
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,22 +54,22 @@ export function ControlPage() {
             <ControlButton
               icon={Fan}
               label={translations.sensors.fan[language]}
-              isOn={deviceStatus.fan}
-              onToggle={() => setDeviceStatus({ fan: !deviceStatus.fan })}
+              isOn={status.fan}
+              onToggle={() => setDeviceStatus({ fan: !status.fan })}
               disabled={!manualOverride}
             />
             <ControlButton
               icon={Lightbulb}
               label={translations.sensors.light[language]}
-              isOn={deviceStatus.light}
-              onToggle={() => setDeviceStatus({ light: !deviceStatus.light })}
+              isOn={status.light}
+              onToggle={() => setDeviceStatus({ light: !status.light })}
               disabled={!manualOverride}
             />
             <ControlButton
               icon={Bell}
               label={translations.sensors.alarm[language]}
-              isOn={deviceStatus.alarm}
-              onToggle={() => setDeviceStatus({ alarm: !deviceStatus.alarm })}
+              isOn={status.alarm}
+              onToggle={() => setDeviceStatus({ alarm: !status.alarm })}
               disabled={!manualOverride}
             />
           </div>
