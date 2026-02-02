@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { calculateHSI, HeatStressResult } from '@/lib/heatStressIndex';
+import { useFarmSettings } from '@/hooks/useFarmData';
+import { calculateHSI, HeatStressResult, HSIThresholds, DEFAULT_HSI_THRESHOLDS } from '@/lib/heatStressIndex';
 import { useToast } from '@/hooks/use-toast';
 
 interface UseHeatStressAutomationProps {
@@ -18,16 +19,28 @@ export function useHeatStressAutomation({
   enabled = true,
 }: UseHeatStressAutomationProps) {
   const { user, language } = useAuth();
+  const { data: farmSettings } = useFarmSettings();
   const { toast } = useToast();
   const lastAlertLevel = useRef<string | null>(null);
   const lastFanAction = useRef<boolean | null>(null);
 
+  // Get custom thresholds from settings
+  const thresholds: HSIThresholds = farmSettings ? {
+    mild: Number(farmSettings.hsi_mild_threshold) || DEFAULT_HSI_THRESHOLDS.mild,
+    moderate: Number(farmSettings.hsi_moderate_threshold) || DEFAULT_HSI_THRESHOLDS.moderate,
+    severe: Number(farmSettings.hsi_severe_threshold) || DEFAULT_HSI_THRESHOLDS.severe,
+    emergency: Number(farmSettings.hsi_emergency_threshold) || DEFAULT_HSI_THRESHOLDS.emergency,
+  } : DEFAULT_HSI_THRESHOLDS;
+
+  // Check if HSI automation is enabled in settings
+  const isHSIAutomationEnabled = farmSettings?.hsi_automation_enabled ?? true;
+
   useEffect(() => {
-    if (!enabled || !user || temperature === null || humidity === null) {
+    if (!enabled || !isHSIAutomationEnabled || !user || temperature === null || humidity === null) {
       return;
     }
 
-    const hsiResult = calculateHSI(temperature, humidity);
+    const hsiResult = calculateHSI(temperature, humidity, thresholds);
 
     // Handle fan automation
     if (hsiResult.shouldActivateFan && lastFanAction.current !== true) {
@@ -47,7 +60,7 @@ export function useHeatStressAutomation({
     } else if (!hsiResult.shouldAlert) {
       lastAlertLevel.current = null;
     }
-  }, [temperature, humidity, enabled, user]);
+  }, [temperature, humidity, enabled, isHSIAutomationEnabled, user, thresholds]);
 
   const activateFan = async (hsiResult: HeatStressResult) => {
     if (!user) return;
@@ -130,5 +143,5 @@ export function useHeatStressAutomation({
     return null;
   }
 
-  return calculateHSI(temperature, humidity);
+  return calculateHSI(temperature, humidity, thresholds);
 }

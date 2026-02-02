@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
+import { HSISettingsCard } from '@/components/settings/HSISettingsCard';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -164,6 +165,11 @@ export function SettingsPage() {
           {/* Threshold Settings */}
           <div className="mb-6">
             <ThresholdSettingsCard />
+          </div>
+
+          {/* HSI Settings */}
+          <div className="mb-6">
+            <HSISettingsCard />
           </div>
 
           {/* ESP32 Device Tokens */}

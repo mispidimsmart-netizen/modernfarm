@@ -476,6 +476,11 @@ export type Database = {
         Row: {
           ammonia_max: number
           created_at: string
+          hsi_automation_enabled: boolean
+          hsi_emergency_threshold: number
+          hsi_mild_threshold: number
+          hsi_moderate_threshold: number
+          hsi_severe_threshold: number
           humidity_max: number
           humidity_min: number
           id: string
@@ -487,6 +492,11 @@ export type Database = {
         Insert: {
           ammonia_max?: number
           created_at?: string
+          hsi_automation_enabled?: boolean
+          hsi_emergency_threshold?: number
+          hsi_mild_threshold?: number
+          hsi_moderate_threshold?: number
+          hsi_severe_threshold?: number
           humidity_max?: number
           humidity_min?: number
           id?: string
@@ -498,6 +508,11 @@ export type Database = {
         Update: {
           ammonia_max?: number
           created_at?: string
+          hsi_automation_enabled?: boolean
+          hsi_emergency_threshold?: number
+          hsi_mild_threshold?: number
+          hsi_moderate_threshold?: number
+          hsi_severe_threshold?: number
           humidity_max?: number
           humidity_min?: number
           id?: string
