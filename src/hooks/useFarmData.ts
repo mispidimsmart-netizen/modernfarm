@@ -26,9 +26,28 @@ export function useProfile() {
         .eq('id', user.id)
         .single();
       if (error) throw error;
-      return data as Profile;
+      return data as Profile & { avatar_url?: string | null };
     },
     enabled: !!user,
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async (profile: Partial<Profile> & { avatar_url?: string | null }) => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('profiles')
+        .update(profile)
+        .eq('id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
   });
 }
 
