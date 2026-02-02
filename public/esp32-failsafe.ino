@@ -40,7 +40,7 @@ const unsigned long CLOUD_SYNC_INTERVAL = 30000;      // 30 seconds
 const unsigned long SENSOR_READ_INTERVAL = 5000;      // 5 seconds
 const unsigned long FAILSAFE_CHECK_INTERVAL = 10000;  // 10 seconds
 const unsigned long WIFI_RECONNECT_INTERVAL = 60000;  // 1 minute
-const unsigned long CLOUD_TIMEOUT = 90000;            // 90 seconds without cloud = failsafe
+const unsigned long CLOUD_TIMEOUT = 300000;           // ⚠️ 5 MINUTES = FAILSAFE MODE
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -55,6 +55,16 @@ unsigned long lastCloudSync = 0;
 unsigned long lastWifiAttempt = 0;
 unsigned long failsafeActivatedAt = 0;
 int cloudFailCount = 0;
+
+// 🧠 STATE MEMORY (Very Important!)
+// These values are remembered even when cloud is down
+float lastSafeTemp = 25.0;           // Last known safe temperature
+bool lastSafeFanState = false;        // Last known fan state from cloud
+String lastSafeFanSpeed = "OFF";      // Last known fan speed from cloud
+unsigned long lastCloudContactTime = 0;  // When cloud was last contacted (millis)
+bool lastSafeLightState = false;      // Last known light state
+int lastSafeLightBrightness = 0;      // Last known brightness
+bool cloudEverConnected = false;      // Has cloud ever connected since boot?
 
 // Sensor readings
 float temperature = 0;
@@ -275,7 +285,16 @@ void syncWithCloud() {
     
     cloudConnected = true;
     lastCloudSync = millis();
+    lastCloudContactTime = millis();  // 🧠 Update state memory
     cloudFailCount = 0;
+    cloudEverConnected = true;
+    
+    // 🧠 Save current safe state from cloud
+    lastSafeTemp = temperature;
+    lastSafeFanState = fanOn;
+    lastSafeFanSpeed = fanSpeed;
+    lastSafeLightState = lightOn;
+    lastSafeLightBrightness = lightBrightness;
     
     // Exit failsafe mode if we were in it
     if (failsafeMode) {
@@ -283,6 +302,8 @@ void syncWithCloud() {
     }
     
     Serial.println("✓ Cloud sync successful");
+    Serial.printf("🧠 State saved: Temp=%.1f, Fan=%s(%s)\n", 
+                  lastSafeTemp, lastSafeFanState ? "ON" : "OFF", lastSafeFanSpeed.c_str());
   } else {
     cloudFailCount++;
     Serial.printf("✗ Cloud sync failed: %d (attempt %d)\n", httpCode, cloudFailCount);
@@ -328,6 +349,12 @@ void handleCloudResponse(String response) {
     lightOn = status["light_on"] | false;
     alarmOn = status["alarm_on"] | false;
     fanSpeed = status["fan_speed"] | "OFF";
+    
+    // 🧠 Update last safe state from cloud
+    lastSafeFanState = fanOn;
+    lastSafeFanSpeed = fanSpeed;
+    lastSafeLightState = lightOn;
+    
     applyDeviceStates();
   }
 }
@@ -393,11 +420,31 @@ void executeCommand(JsonObject cmd) {
 
 // ================ FAILSAFE FUNCTIONS ================
 void checkFailsafeStatus() {
-  unsigned long timeSinceLastSync = millis() - lastCloudSync;
+  unsigned long now = millis();
+  unsigned long timeSinceLastCloud = now - lastCloudContactTime;
   
-  // Activate failsafe if no cloud sync for too long
-  if (!failsafeMode && timeSinceLastSync > CLOUD_TIMEOUT) {
-    activateFailsafe("Cloud timeout exceeded");
+  // 🧠 5 MINUTE RULE: No cloud contact > 5 min = FAILSAFE MODE
+  if (!failsafeMode && lastCloudContactTime > 0 && timeSinceLastCloud > CLOUD_TIMEOUT) {
+    String reason = "No cloud contact for " + String(timeSinceLastCloud / 60000) + " minutes";
+    activateFailsafe(reason);
+  }
+  
+  // Also activate if WiFi connected but cloud never responded
+  if (!failsafeMode && wifiConnected && !cloudEverConnected && now > 120000) {  // 2 min after boot
+    activateFailsafe("Cloud never connected after boot");
+  }
+  
+  // Log status periodically in failsafe mode
+  if (failsafeMode) {
+    static unsigned long lastStatusLog = 0;
+    if (now - lastStatusLog > 60000) {  // Every minute
+      unsigned long failsafeDuration = (now - failsafeActivatedAt) / 1000;
+      Serial.printf("⚠️ FAILSAFE MODE: %lu seconds | Last cloud: %lu min ago\n",
+                    failsafeDuration, timeSinceLastCloud / 60000);
+      Serial.printf("🧠 Using state: LastTemp=%.1f, LastFan=%s\n",
+                    lastSafeTemp, lastSafeFanState ? "ON" : "OFF");
+      lastStatusLog = now;
+    }
   }
 }
 
@@ -407,11 +454,19 @@ void activateFailsafe(String reason) {
   failsafeMode = true;
   failsafeActivatedAt = millis();
   
-  Serial.println("\n========================================");
-  Serial.println("⚠⚠⚠ FAILSAFE MODE ACTIVATED ⚠⚠⚠");
-  Serial.printf("Reason: %s\n", reason.c_str());
-  Serial.println("Running on LOCAL cached rules");
-  Serial.println("========================================\n");
+  Serial.println("\n╔════════════════════════════════════════╗");
+  Serial.println("║  ⚠️⚠️⚠️ FAILSAFE MODE ACTIVATED ⚠️⚠️⚠️  ║");
+  Serial.println("╠════════════════════════════════════════╣");
+  Serial.printf("║  Reason: %s\n", reason.c_str());
+  Serial.println("║  Running on LOCAL SAFE RULES           ║");
+  Serial.println("║  সন্দেহ হলে Fan ON — Always safer       ║");
+  Serial.println("╚════════════════════════════════════════╝\n");
+  
+  // 🧠 Log last known safe state
+  Serial.println("🧠 STATE MEMORY:");
+  Serial.printf("   Last Safe Temp: %.1f°C\n", lastSafeTemp);
+  Serial.printf("   Last Fan State: %s (%s)\n", lastSafeFanState ? "ON" : "OFF", lastSafeFanSpeed.c_str());
+  Serial.printf("   Last Cloud Contact: %lu seconds ago\n", (millis() - lastCloudContactTime) / 1000);
   
   // Flash LED rapidly to indicate failsafe
   for (int i = 0; i < 10; i++) {
@@ -430,11 +485,12 @@ void exitFailsafe() {
   
   unsigned long duration = (millis() - failsafeActivatedAt) / 1000;
   
-  Serial.println("\n========================================");
-  Serial.println("✓ CLOUD CONNECTION RESTORED");
-  Serial.printf("Failsafe duration: %lu seconds\n", duration);
-  Serial.println("Switching back to CLOUD mode");
-  Serial.println("========================================\n");
+  Serial.println("\n╔════════════════════════════════════════╗");
+  Serial.println("║  ✅ CLOUD CONNECTION RESTORED          ║");
+  Serial.println("╠════════════════════════════════════════╣");
+  Serial.printf("║  Failsafe duration: %lu seconds\n", duration);
+  Serial.println("║  Switching back to CLOUD mode          ║");
+  Serial.println("╚════════════════════════════════════════╝\n");
   
   failsafeMode = false;
   failsafeActivatedAt = 0;
