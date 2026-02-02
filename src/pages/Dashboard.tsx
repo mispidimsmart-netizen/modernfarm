@@ -35,6 +35,7 @@ import { AutomationStatusCard } from '@/components/automation/AutomationStatusCa
 import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
 import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
+import { BigFarmOverview } from '@/components/dashboard/BigFarmOverview';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -92,7 +93,10 @@ export function Dashboard() {
       <Header />
 
       <main className="page-container px-4">
-        {/* Shed Selector & Management */}
+        {/* Big Farm Overview - Multi-Shed Grid */}
+        <BigFarmOverview />
+
+        {/* Shed Selector & Management (for single shed selection) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
