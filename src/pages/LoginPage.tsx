@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Lock, Egg, User, Sparkles, Leaf } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, Egg, User, Sparkles, Leaf, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { translations } from '@/lib/translations';
@@ -8,32 +8,59 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
+type LoginMethod = 'email' | 'phone';
+
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [farmName, setFarmName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    const isPhone = loginMethod === 'phone';
+
+    // Basic validation
+    if (isPhone) {
+      const cleanedPhone = identifier.replace(/\D/g, '');
+      if (cleanedPhone.length < 10 || cleanedPhone.length > 11) {
+        toast({
+          title: translations.common.error[language],
+          description: language === 'bn' ? 'সঠিক মোবাইল নম্বর দিন' : 'Please enter a valid phone number',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password, farmName);
+        const { error } = await signUp(identifier, password, farmName, isPhone);
         if (error) {
           toast({
             title: translations.common.error[language],
             description: error.message,
             variant: 'destructive',
           });
+        } else {
+          // For phone signup, auto-login after signup
+          if (isPhone) {
+            const { error: signInError } = await signIn(identifier, password, isPhone);
+            if (!signInError) {
+              navigate('/');
+            }
+          }
         }
       } else {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(identifier, password, isPhone);
         if (error) {
           toast({
             title: translations.common.error[language],
@@ -85,7 +112,7 @@ export function LoginPage() {
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
-        className="relative z-10 flex flex-col items-center px-6 pt-16"
+        className="relative z-10 flex flex-col items-center px-6 pt-12"
       >
         {/* Floating leaves decoration */}
         <motion.div
@@ -110,14 +137,14 @@ export function LoginPage() {
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-          className="relative mb-6"
+          className="relative mb-4"
         >
-          <div className="flex h-28 w-28 items-center justify-center rounded-[2rem] bg-white shadow-2xl shadow-black/20">
+          <div className="flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-2xl shadow-black/20">
             <motion.div
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <Egg size={56} className="text-primary" />
+              <Egg size={48} className="text-primary" />
             </motion.div>
           </div>
           {/* Sparkle decoration */}
@@ -135,7 +162,7 @@ export function LoginPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.6 }}
-          className="text-center text-3xl font-bold text-white drop-shadow-lg"
+          className="text-center text-2xl font-bold text-white drop-shadow-lg"
         >
           {translations.dashboard.title[language]}
         </motion.h1>
@@ -143,7 +170,7 @@ export function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.6 }}
-          className="mt-2 text-center text-primary-foreground/80"
+          className="mt-1 text-center text-sm text-primary-foreground/80"
         >
           Smart Layer Farm IoT
         </motion.p>
@@ -154,7 +181,7 @@ export function LoginPage() {
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
-        className="relative z-10 mt-10 flex-1 rounded-t-[2.5rem] bg-background px-6 py-8 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.15)]"
+        className="relative z-10 mt-6 flex-1 rounded-t-[2.5rem] bg-background px-6 py-6 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.15)]"
       >
         {/* Decorative top line */}
         <div className="absolute left-1/2 top-3 h-1 w-12 -translate-x-1/2 rounded-full bg-muted-foreground/20" />
@@ -163,7 +190,7 @@ export function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="mb-8 text-center text-2xl font-bold text-foreground"
+          className="mb-4 text-center text-xl font-bold text-foreground"
         >
           {isSignUp 
             ? (language === 'bn' ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'Create Account')
@@ -171,30 +198,80 @@ export function LoginPage() {
           }
         </motion.h2>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.55, duration: 0.5 }}
-            className="space-y-2"
+        {/* Login Method Toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.5 }}
+          className="mb-5 flex rounded-2xl bg-muted/50 p-1"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMethod('phone');
+              setIdentifier('');
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+              loginMethod === 'phone'
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <label className="text-sm font-medium text-foreground">
-              {language === 'bn' ? 'ইমেইল' : 'Email'}
-            </label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-primary/10 p-1.5">
-                <Mail className="h-4 w-4 text-primary" />
+            <Phone className="h-4 w-4" />
+            {language === 'bn' ? 'মোবাইল' : 'Mobile'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMethod('email');
+              setIdentifier('');
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+              loginMethod === 'email'
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Mail className="h-4 w-4" />
+            {language === 'bn' ? 'ইমেইল' : 'Email'}
+          </button>
+        </motion.div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={loginMethod}
+              initial={{ opacity: 0, x: loginMethod === 'phone' ? -20 : 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: loginMethod === 'phone' ? 20 : -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-2"
+            >
+              <label className="text-sm font-medium text-foreground">
+                {loginMethod === 'phone' 
+                  ? (language === 'bn' ? 'মোবাইল নম্বর' : 'Mobile Number')
+                  : (language === 'bn' ? 'ইমেইল' : 'Email')
+                }
+              </label>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-primary/10 p-1.5">
+                  {loginMethod === 'phone' ? (
+                    <Phone className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Mail className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+                <Input
+                  type={loginMethod === 'phone' ? 'tel' : 'email'}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder={loginMethod === 'phone' ? '01XXXXXXXXX' : 'example@email.com'}
+                  className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-primary focus:bg-background"
+                  required
+                />
               </div>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@email.com"
-                className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-primary focus:bg-background"
-                required
-              />
-            </div>
-          </motion.div>
+            </motion.div>
+          </AnimatePresence>
 
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -221,30 +298,32 @@ export function LoginPage() {
             </div>
           </motion.div>
 
-          {isSignUp && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-2"
-            >
-              <label className="text-sm font-medium text-foreground">
-                {translations.auth.farmName[language]}
-              </label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
-                  <User className="h-4 w-4 text-secondary" />
+          <AnimatePresence>
+            {isSignUp && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2 overflow-hidden"
+              >
+                <label className="text-sm font-medium text-foreground">
+                  {translations.auth.farmName[language]}
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
+                    <User className="h-4 w-4 text-secondary" />
+                  </div>
+                  <Input
+                    type="text"
+                    value={farmName}
+                    onChange={(e) => setFarmName(e.target.value)}
+                    placeholder={language === 'bn' ? 'আমার লেয়ার ফার্ম' : 'My Layer Farm'}
+                    className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
+                  />
                 </div>
-                <Input
-                  type="text"
-                  value={farmName}
-                  onChange={(e) => setFarmName(e.target.value)}
-                  placeholder={language === 'bn' ? 'আমার লেয়ার ফার্ম' : 'My Layer Farm'}
-                  className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
-                />
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -276,7 +355,7 @@ export function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 0.5 }}
-          className="mt-6 text-center"
+          className="mt-5 text-center"
         >
           <button
             type="button"
@@ -294,7 +373,7 @@ export function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9, duration: 0.5 }}
-          className="mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground"
         >
           <div className="h-px flex-1 bg-border" />
           <span className="px-2">
