@@ -152,6 +152,36 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          device_name: string
+          id: string
+          is_active: boolean
+          last_seen_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string
+          id?: string
+          is_active?: boolean
+          last_seen_at?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string
+          id?: string
+          is_active?: boolean
+          last_seen_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       farm_settings: {
         Row: {
           ammonia_max: number
@@ -239,6 +269,33 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
         }
         Relationships: []
       }

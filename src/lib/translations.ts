@@ -3,7 +3,8 @@ export const translations = {
   nav: {
     home: { bn: 'হোম', en: 'Home' },
     control: { bn: 'নিয়ন্ত্রণ', en: 'Control' },
-    automation: { bn: 'অটোমেশন', en: 'Automation' },
+    lighting: { bn: 'লাইট', en: 'Light' },
+    automation: { bn: 'অটো', en: 'Auto' },
     alerts: { bn: 'সতর্কতা', en: 'Alerts' },
     reports: { bn: 'রিপোর্ট', en: 'Reports' },
   },

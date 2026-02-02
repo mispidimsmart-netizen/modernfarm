@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { LucideIcon, Thermometer, Droplets, Wind, Droplet } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { StatusLevel } from '@/lib/types';
@@ -37,42 +38,45 @@ const statusBgColors: Record<StatusLevel, string> = {
   danger: 'bg-red-50 border-red-200',
 };
 
-export function SensorCard({ type, value, unit, label, status }: SensorCardProps) {
-  const Icon = sensorIcons[type];
+export const SensorCard = forwardRef<HTMLDivElement, SensorCardProps>(
+  function SensorCard({ type, value, unit, label, status }, ref) {
+    const Icon = sensorIcons[type];
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileTap={{ scale: 0.98 }}
-      className={cn(
-        'sensor-card relative border',
-        statusBgColors[status]
-      )}
-    >
-      {/* Status indicator dot */}
-      <div className={cn(
-        'absolute right-3 top-3 h-3 w-3 rounded-full',
-        statusColors[status],
-        status === 'danger' && 'animate-pulse'
-      )} />
-
-      <div className="flex items-start gap-3">
+    return (
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileTap={{ scale: 0.98 }}
+        className={cn(
+          'sensor-card relative border',
+          statusBgColors[status]
+        )}
+      >
+        {/* Status indicator dot */}
         <div className={cn(
-          'flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm',
-          sensorColors[type]
-        )}>
-          <Icon size={24} />
-        </div>
+          'absolute right-3 top-3 h-3 w-3 rounded-full',
+          statusColors[status],
+          status === 'danger' && 'animate-pulse'
+        )} />
 
-        <div className="flex-1">
-          <p className="text-sensor-label">{label}</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-sensor-value">{value.toFixed(1)}</span>
-            <span className="text-base font-medium text-muted-foreground">{unit}</span>
+        <div className="flex items-start gap-3">
+          <div className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm',
+            sensorColors[type]
+          )}>
+            <Icon size={24} />
+          </div>
+
+          <div className="flex-1">
+            <p className="text-sensor-label">{label}</p>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-sensor-value">{value.toFixed(1)}</span>
+              <span className="text-base font-medium text-muted-foreground">{unit}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </motion.div>
-  );
-}
+      </motion.div>
+    );
+  }
+);
