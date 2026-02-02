@@ -1174,33 +1174,42 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          blocked_at: string | null
+          blocked_by: string | null
           created_at: string
           email: string | null
           farm_name: string
           farm_type: string | null
           id: string
+          is_blocked: boolean | null
           phone: string | null
           updated_at: string
           user_name: string | null
         }
         Insert: {
           avatar_url?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
           created_at?: string
           email?: string | null
           farm_name?: string
           farm_type?: string | null
           id: string
+          is_blocked?: boolean | null
           phone?: string | null
           updated_at?: string
           user_name?: string | null
         }
         Update: {
           avatar_url?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
           created_at?: string
           email?: string | null
           farm_name?: string
           farm_type?: string | null
           id?: string
+          is_blocked?: boolean | null
           phone?: string | null
           updated_at?: string
           user_name?: string | null
