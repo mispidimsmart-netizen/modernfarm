@@ -258,7 +258,16 @@ Deno.serve(async (req) => {
       .update({ last_seen_at: new Date().toISOString() })
       .eq('token', deviceToken);
 
-    // Route handling
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🛣️ API ROUTES
+    // Supports both legacy paths and new /api/iot/* paths
+    // 
+    // POST /data or /api/iot/data     → Sensor data submission
+    // GET  /commands or /api/iot/commands → Fetch pending commands
+    // GET  /system-status or /api/iot/system-status → Full system status
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // Route handling - support both legacy and /api/iot/* prefix
     if (req.method === 'POST' && (path === 'sensor-data' || path === 'data')) {
       return await handleSensorData(bodyData, supabase, userId);
     }
@@ -340,6 +349,17 @@ Deno.serve(async (req) => {
     if (req.method === 'GET' && path === 'state') {
       const shedId = url.searchParams.get('shed_id');
       return await getDeviceState(supabase, userId, shedId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🆕 GET /system-status - Complete system status for ESP32
+    // Returns: settings, automation rules, device status, lighting, commands
+    // This is the "one-call-gets-all" endpoint for ESP32 boot/sync
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'GET' && path === 'system-status') {
+      const shedId = url.searchParams.get('shed_id');
+      const deviceName = url.searchParams.get('device_id');
+      return await getSystemStatus(supabase, userId, shedId, deviceName);
     }
 
     return new Response(
@@ -2220,6 +2240,231 @@ async function handleFailsafeSync(
     console.error('Failsafe sync error:', error);
     return new Response(
       JSON.stringify({ error: 'Sync failed', code: 'SYNC_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 GET /system-status - Complete System Status Endpoint
+// ═══════════════════════════════════════════════════════════════════════════
+// This is the "one-call-gets-all" endpoint for ESP32 boot/sync
+// Returns everything ESP32 needs in a single request:
+// - Farm settings (thresholds)
+// - Automation rules
+// - Device status (fan, light, alarm states)
+// - Lighting schedule
+// - Pending commands
+// - Active power outage status
+// ═══════════════════════════════════════════════════════════════════════════
+async function getSystemStatus(
+  supabase: any, 
+  userId: string, 
+  shedId: string | null,
+  deviceName: string | null
+) {
+  try {
+    const now = new Date().toISOString();
+    
+    // 1. Farm Settings
+    const { data: farmSettings } = await supabase
+      .from('farm_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    // 2. Device Status (for specific shed if provided)
+    let statusQuery = supabase
+      .from('device_status')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (shedId) {
+      statusQuery = statusQuery.eq('shed_id', shedId);
+    }
+    
+    const { data: deviceStatus } = await statusQuery.maybeSingle();
+
+    // 3. Device Health (for monitoring)
+    let healthQuery = supabase
+      .from('device_health')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (shedId) {
+      healthQuery = healthQuery.eq('shed_id', shedId);
+    }
+    
+    const { data: deviceHealth } = await healthQuery.maybeSingle();
+
+    // 4. Automation Rules (enabled only)
+    const { data: automationRules } = await supabase
+      .from('automation_rules')
+      .select('id, condition_sensor, condition_operator, condition_value, action_device, action_state')
+      .eq('user_id', userId)
+      .eq('enabled', true);
+
+    // 5. Lighting Schedule
+    const { data: lightingSchedule } = await supabase
+      .from('lighting_schedule')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    // 6. Pending Commands (for specific device)
+    const targetDeviceName = deviceName || 'ESP32_LAYER_001';
+    const { data: pendingCommands } = await supabase
+      .from('device_commands')
+      .select('id, command_type, command_value, created_at')
+      .eq('user_id', userId)
+      .eq('device_name', targetDeviceName)
+      .eq('executed', false)
+      .order('created_at', { ascending: true });
+
+    // 7. Active Power Outage (if any)
+    let outageQuery = supabase
+      .from('power_outages')
+      .select('id, started_at, power_source, battery_level_start, is_ongoing')
+      .eq('user_id', userId)
+      .eq('is_ongoing', true);
+    
+    if (shedId) {
+      outageQuery = outageQuery.eq('shed_id', shedId);
+    }
+    
+    const { data: activeOutage } = await outageQuery.maybeSingle();
+
+    // 8. Latest Sensor Reading
+    let sensorQuery = supabase
+      .from('sensor_readings')
+      .select('temperature, humidity, ammonia, water_usage, hsi, recorded_at')
+      .eq('user_id', userId)
+      .order('recorded_at', { ascending: false })
+      .limit(1);
+    
+    if (shedId) {
+      sensorQuery = sensorQuery.eq('shed_id', shedId);
+    }
+    
+    const { data: latestSensor } = await sensorQuery.maybeSingle();
+
+    // Calculate settings version for caching
+    const settingsVersion = farmSettings?.updated_at 
+      ? new Date(farmSettings.updated_at).getTime() 
+      : 0;
+
+    // Build comprehensive response
+    const response = {
+      success: true,
+      timestamp: now,
+      settings_version: settingsVersion,
+      
+      // Thresholds for automation
+      settings: farmSettings ? {
+        temperature_min: Number(farmSettings.temperature_min),
+        temperature_max: Number(farmSettings.temperature_max),
+        humidity_min: Number(farmSettings.humidity_min),
+        humidity_max: Number(farmSettings.humidity_max),
+        ammonia_max: Number(farmSettings.ammonia_max),
+        // Fan speed thresholds
+        fan_low_temp_min: Number(farmSettings.fan_low_temp_min),
+        fan_low_temp_max: Number(farmSettings.fan_low_temp_max),
+        fan_medium_temp_min: Number(farmSettings.fan_medium_temp_min),
+        fan_medium_temp_max: Number(farmSettings.fan_medium_temp_max),
+        fan_high_temp_min: Number(farmSettings.fan_high_temp_min),
+        // HSI thresholds
+        hsi_mild_threshold: Number(farmSettings.hsi_mild_threshold),
+        hsi_moderate_threshold: Number(farmSettings.hsi_moderate_threshold),
+        hsi_severe_threshold: Number(farmSettings.hsi_severe_threshold),
+        hsi_emergency_threshold: Number(farmSettings.hsi_emergency_threshold),
+        hsi_automation_enabled: farmSettings.hsi_automation_enabled,
+        water_anomaly_threshold: Number(farmSettings.water_anomaly_threshold),
+      } : null,
+      
+      // Current device state
+      device_status: deviceStatus ? {
+        mode: deviceStatus.mode || 'AUTO',
+        fan_on: deviceStatus.fan_on,
+        fan_speed: deviceStatus.fan_speed,
+        light_on: deviceStatus.light_on,
+        alarm_on: deviceStatus.alarm_on,
+        power_on: deviceStatus.power_on,
+        manual_override: deviceStatus.manual_override,
+        hsi: deviceStatus.hsi ? Number(deviceStatus.hsi) : null,
+        last_cloud_sync: deviceStatus.last_cloud_sync,
+      } : null,
+      
+      // Device health monitoring
+      device_health: deviceHealth ? {
+        is_online: deviceHealth.is_online,
+        failsafe_mode: deviceHealth.failsafe_mode,
+        mode: deviceHealth.mode,
+        battery_percentage: deviceHealth.battery_percentage,
+        power_source: deviceHealth.power_source,
+        wifi_signal_strength: deviceHealth.wifi_signal_strength,
+        uptime_seconds: deviceHealth.uptime_seconds,
+        last_seen_at: deviceHealth.last_seen_at,
+        last_error_message: deviceHealth.last_error_message,
+      } : null,
+      
+      // Latest sensor readings
+      latest_sensor: latestSensor ? {
+        temperature: Number(latestSensor.temperature),
+        humidity: Number(latestSensor.humidity),
+        ammonia: Number(latestSensor.ammonia),
+        water_usage: Number(latestSensor.water_usage),
+        hsi: latestSensor.hsi ? Number(latestSensor.hsi) : null,
+        recorded_at: latestSensor.recorded_at,
+      } : null,
+      
+      // Automation rules for local execution
+      automation_rules: automationRules ? automationRules.map((rule: any) => ({
+        id: rule.id,
+        sensor: rule.condition_sensor,
+        operator: rule.condition_operator,
+        value: Number(rule.condition_value),
+        device: rule.action_device,
+        state: rule.action_state,
+      })) : [],
+      
+      // Lighting schedule
+      lighting: lightingSchedule ? {
+        start_time: lightingSchedule.start_time,
+        end_time: lightingSchedule.end_time,
+        total_hours: Number(lightingSchedule.total_hours),
+        gradual_enabled: lightingSchedule.gradual_enabled,
+        fade_in_minutes: lightingSchedule.fade_in_minutes,
+        fade_out_minutes: lightingSchedule.fade_out_minutes,
+        min_brightness: lightingSchedule.min_brightness,
+        max_brightness: lightingSchedule.max_brightness,
+        manual_override: lightingSchedule.manual_override,
+      } : null,
+      
+      // Pending commands for execution
+      commands: pendingCommands || [],
+      commands_count: pendingCommands?.length || 0,
+      
+      // Active power outage
+      power_outage: activeOutage ? {
+        id: activeOutage.id,
+        started_at: activeOutage.started_at,
+        power_source: activeOutage.power_source,
+        battery_level: activeOutage.battery_level_start,
+        is_ongoing: activeOutage.is_ongoing,
+      } : null,
+    };
+
+    console.log(`[System Status] User: ${userId}, Shed: ${shedId || 'all'}, Device: ${targetDeviceName}`);
+
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('System status error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to get system status', code: 'STATUS_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
