@@ -496,6 +496,7 @@ export type Database = {
           temperature_min: number
           updated_at: string
           user_id: string
+          water_anomaly_threshold: number
         }
         Insert: {
           ammonia_max?: number
@@ -517,6 +518,7 @@ export type Database = {
           temperature_min?: number
           updated_at?: string
           user_id: string
+          water_anomaly_threshold?: number
         }
         Update: {
           ammonia_max?: number
@@ -538,6 +540,7 @@ export type Database = {
           temperature_min?: number
           updated_at?: string
           user_id?: string
+          water_anomaly_threshold?: number
         }
         Relationships: []
       }
