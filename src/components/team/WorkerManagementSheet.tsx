@@ -8,6 +8,7 @@ import {
   useDeleteInvitation,
   useJoinFarm,
   useIsOwner,
+  usePromoteToOwner,
 } from '@/hooks/useUserRole';
 import {
   Sheet,
@@ -16,6 +17,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +41,7 @@ import {
   Clock,
   CheckCircle2,
   Key,
+  Crown,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -43,6 +56,7 @@ export function WorkerManagementSheet() {
   const removeWorker = useRemoveWorker();
   const deleteInvitation = useDeleteInvitation();
   const joinFarm = useJoinFarm();
+  const promoteToOwner = usePromoteToOwner();
   const { toast } = useToast();
   
   const [inviteCode, setInviteCode] = useState('');
@@ -152,14 +166,53 @@ export function WorkerManagementSheet() {
                               })}
                             </p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => removeWorker.mutate(worker.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {/* Promote to Owner Button */}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-status-warning hover:text-status-warning"
+                                  title={language === 'bn' ? 'মালিক বানান' : 'Promote to Owner'}
+                                >
+                                  <Crown className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    {language === 'bn' ? 'মালিক বানাতে চান?' : 'Promote to Owner?'}
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    {language === 'bn'
+                                      ? 'এই কর্মী মালিক হলে তাদের নিজস্ব ফার্ম থাকবে এবং আপনার ফার্ম থেকে আলাদা হয়ে যাবে। এই কাজ পুনরায় ফেরানো যাবে না।'
+                                      : 'This worker will become an independent owner with their own farm. This action cannot be undone.'}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>
+                                    {language === 'bn' ? 'বাতিল' : 'Cancel'}
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => promoteToOwner.mutate(worker.id)}
+                                  >
+                                    {language === 'bn' ? 'মালিক বানান' : 'Promote'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            
+                            {/* Remove Worker Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => removeWorker.mutate(worker.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
