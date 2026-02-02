@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Shield, 
   Users, 
@@ -24,17 +25,20 @@ import {
   Wind,
   RefreshCw,
   Eye,
+  Activity,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { SystemHealthCard } from '@/components/admin/SystemHealthCard';
 
 const t = {
   bn: {
@@ -64,6 +68,8 @@ const t = {
     ammonia: 'অ্যামোনিয়া',
     shedsList: 'শেড তালিকা',
     noSheds: 'কোনো শেড নেই',
+    tabUsers: 'ইউজার',
+    tabSystem: 'সিস্টেম',
   },
   en: {
     title: 'Super Admin Dashboard',
@@ -92,6 +98,8 @@ const t = {
     ammonia: 'Ammonia',
     shedsList: 'Sheds List',
     noSheds: 'No sheds',
+    tabUsers: 'Users',
+    tabSystem: 'System',
   },
 };
 
@@ -279,8 +287,22 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Users List */}
-        <Card className="bg-slate-800/50 border-white/10">
+        {/* Tabs for Users and System */}
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="bg-slate-800/50 border-white/10">
+            <TabsTrigger value="users" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+              <Users className="w-4 h-4 mr-2" />
+              {labels.tabUsers}
+            </TabsTrigger>
+            <TabsTrigger value="system" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+              <Activity className="w-4 h-4 mr-2" />
+              {labels.tabSystem}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users" className="mt-4">
+            {/* Users List */}
+            <Card className="bg-slate-800/50 border-white/10">
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row gap-4 justify-between">
               <CardTitle className="text-white flex items-center gap-2">
@@ -378,6 +400,12 @@ export default function AdminPage() {
             </ScrollArea>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* User Details Dialog */}
