@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
 const partsList = [
   {
@@ -401,6 +402,10 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
 
           {/* Setup Tab */}
           <TabsContent value="setup" className="mt-4 space-y-4">
+            {/* ESP32 Code Generator - Interactive */}
+            <ESP32CodeGenerator language="bn" />
+
+            {/* Setup Steps Accordion */}
             <Accordion type="single" collapsible className="w-full">
               {setupSteps.map((step) => (
                 <AccordionItem key={step.step} value={`step-${step.step}`}>
