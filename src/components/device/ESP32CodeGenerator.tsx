@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Copy, Check, Eye, EyeOff, Sparkles, Wifi } from 'lucide-react';
+import { Copy, Check, Eye, EyeOff, Sparkles, Wifi, Download, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
 // Validation schema
 const configSchema = z.object({
   ssid: z.string().trim().min(1, 'WiFi নাম দিন').max(32, 'WiFi নাম ৩২ অক্ষরের বেশি হতে পারবে না'),
@@ -42,6 +41,33 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
     pasteInstruction: language === 'bn' 
       ? '👆 এই কোডটি esp32-code.ino ফাইলের // ============= CONFIGURATION ============= সেকশনে পেস্ট করুন' 
       : '👆 Paste this code in the // ============= CONFIGURATION ============= section of esp32-code.ino',
+    downloadFirmware: language === 'bn' ? 'ফার্মওয়্যার ডাউনলোড করুন' : 'Download Firmware',
+    downloadingFirmware: language === 'bn' ? 'ডাউনলোড হচ্ছে...' : 'Downloading...',
+  };
+
+  const downloadFirmwareCode = async () => {
+    try {
+      // Fetch the firmware code from the public folder
+      const response = await fetch('/esp32-code.ino');
+      if (!response.ok) throw new Error('Failed to fetch');
+      
+      const code = await response.text();
+      
+      // Create a blob and download
+      const blob = new Blob([code], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'esp32-code.ino';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success(language === 'bn' ? 'ফার্মওয়্যার ডাউনলোড হয়েছে!' : 'Firmware downloaded!');
+    } catch (error) {
+      toast.error(language === 'bn' ? 'ডাউনলোড ব্যর্থ হয়েছে' : 'Download failed');
+    }
   };
 
   const validateInputs = () => {
@@ -97,6 +123,37 @@ const char* DEVICE_TOKEN = "${deviceToken.trim()}";  // Get from Dashboard > Dev
         <p className="text-xs text-muted-foreground">{t.subtitle}</p>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Download Firmware Button */}
+        <div className="p-3 bg-muted/50 rounded-lg border border-dashed border-primary/30">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileCode className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium">
+                  {language === 'bn' ? 'ধাপ ১: ফার্মওয়্যার কোড' : 'Step 1: Firmware Code'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'bn' ? 'Arduino IDE তে আপলোড করতে এই ফাইল প্রয়োজন' : 'Required for Arduino IDE upload'}
+                </p>
+              </div>
+            </div>
+            <Button onClick={downloadFirmwareCode} variant="default" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              {t.downloadFirmware}
+            </Button>
+          </div>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              {language === 'bn' ? 'ধাপ ২: কনফিগারেশন' : 'Step 2: Configuration'}
+            </span>
+          </div>
+        </div>
         {/* WiFi SSID */}
         <div className="space-y-2">
           <Label htmlFor="ssid" className="text-sm flex items-center gap-2">
