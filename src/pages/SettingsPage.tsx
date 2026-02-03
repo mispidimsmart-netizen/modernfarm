@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, 
   ChevronRight, Shield, Zap, Thermometer, Droplets, Wind, 
-  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, BookOpen
+  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -601,28 +601,6 @@ export function SettingsPage() {
             </SettingsSection>
           )}
 
-          {/* Installation Guide Section */}
-          <SettingsSection 
-            title="Installation Guide" 
-            titleBn="ইনস্টলেশন গাইড"
-            icon={BookOpen}
-            language={language}
-          >
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {language === 'bn' 
-                  ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট এবং ওয়্যারিং ডায়াগ্রাম দেখুন।'
-                  : 'View ESP32 hardware setup, parts list and wiring diagram.'}
-              </p>
-              <Button 
-                onClick={() => navigate('/installation-guide')}
-                className="w-full"
-              >
-                <BookOpen size={16} className="mr-2" />
-                {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
-              </Button>
-            </div>
-          </SettingsSection>
         </motion.div>
       </main>
 
