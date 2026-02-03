@@ -31,7 +31,7 @@ import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
 import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
-import { InstallPromptCard } from '@/components/pwa/InstallPromptCard';
+import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
@@ -317,8 +317,8 @@ export function SettingsPage() {
             </div>
           </motion.div>
 
-          {/* PWA Install Prompt */}
-          <InstallPromptCard />
+          {/* App Install Section */}
+          <SettingsInstallCard />
 
           {/* Quick Actions Grid */}
           <div className={`grid gap-3 ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
