@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const INSTALL_PROMPT_DISMISSED_KEY = 'pwa_install_prompt_dismissed';
 const INSTALL_PROMPT_DELAY_MS = 2000; // Show after 2 seconds
 
 export function AutoInstallPrompt() {
@@ -43,16 +42,7 @@ export function AutoInstallPrompt() {
     // Don't show if not installable
     if (!isInstallable) return;
 
-    // Check if user already dismissed the prompt
-    const dismissed = localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY);
-    if (dismissed) {
-      // Check if it's been more than 7 days since dismissal
-      const dismissedTime = parseInt(dismissed, 10);
-      const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) return;
-    }
-
-    // Show prompt after delay
+    // Show prompt after delay on every visit
     const timer = setTimeout(() => {
       setShowPrompt(true);
     }, INSTALL_PROMPT_DELAY_MS);
@@ -73,7 +63,6 @@ export function AutoInstallPrompt() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, Date.now().toString());
     setShowPrompt(false);
   };
 
