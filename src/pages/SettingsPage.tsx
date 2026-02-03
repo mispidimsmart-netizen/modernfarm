@@ -33,6 +33,7 @@ import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
 import { InstallPromptCard } from '@/components/pwa/InstallPromptCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -596,6 +597,11 @@ export function SettingsPage() {
                       </p>
                     </div>
                   )}
+                </div>
+
+                {/* ESP32 Code Generator */}
+                <div className="pt-4 border-t">
+                  <ESP32CodeGenerator language={language} />
                 </div>
               </div>
             </SettingsSection>
