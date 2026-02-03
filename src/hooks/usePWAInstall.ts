@@ -12,14 +12,31 @@ export function usePWAInstall() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if already installed (standalone mode)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as any).standalone === true;
+    // Check if already installed (standalone mode) - works for both mobile and desktop
+    const checkStandalone = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches
+        || (window.navigator as any).standalone === true
+        || document.referrer.includes('android-app://');
+      
+      return isStandalone;
+    };
     
-    if (isStandalone) {
+    if (checkStandalone()) {
       setIsInstalled(true);
       return;
     }
+
+    // Listen for display mode changes
+    const standaloneQuery = window.matchMedia('(display-mode: standalone)');
+    const handleDisplayModeChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        setIsInstalled(true);
+        setIsInstallable(false);
+      }
+    };
+    standaloneQuery.addEventListener('change', handleDisplayModeChange);
 
     // Check if iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
