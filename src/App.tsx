@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { AutoInstallPrompt } from "./components/pwa/AutoInstallPrompt";
 
 // Lazy load pages for better initial load performance
 const LoginPage = lazy(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
@@ -214,6 +215,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <OfflineIndicator />
+          <AutoInstallPrompt />
           <BrowserRouter>
             <AppWithWidget />
           </BrowserRouter>
