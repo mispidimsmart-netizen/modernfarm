@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { AutoInstallPrompt } from "./components/pwa/AutoInstallPrompt";
+import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
 
 // Lazy load pages for better initial load performance
 const LoginPage = lazy(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
@@ -216,6 +217,7 @@ const App = () => (
           <Sonner />
           <OfflineIndicator />
           <AutoInstallPrompt />
+          <PWAUpdatePrompt />
           <BrowserRouter>
             <AppWithWidget />
           </BrowserRouter>
