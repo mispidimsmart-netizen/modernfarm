@@ -30,6 +30,7 @@ import {
   TrendingUp,
   Pencil,
   Ban,
+  BookOpen,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -79,6 +80,7 @@ const t = {
     tabSystem: 'সিস্টেম',
     tabNotify: 'নোটিফিকেশন',
     tabAnalytics: 'অ্যানালিটিক্স',
+    tabGuide: 'ইনস্টলেশন গাইড',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -120,6 +122,7 @@ const t = {
     tabSystem: 'System',
     tabNotify: 'Notifications',
     tabAnalytics: 'Analytics',
+    tabGuide: 'Installation Guide',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -339,6 +342,10 @@ export default function AdminPage() {
               <Activity className="w-4 h-4 mr-2" />
               {labels.tabSystem}
             </TabsTrigger>
+            <TabsTrigger value="guide" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white">
+              <BookOpen className="w-4 h-4 mr-2" />
+              {labels.tabGuide}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-4">
@@ -494,6 +501,31 @@ export default function AdminPage() {
 
           <TabsContent value="system" className="mt-4">
             <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+            <Card className="bg-slate-800/50 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-teal-400" />
+                  {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-300">
+                  {language === 'bn' 
+                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
+                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                </p>
+                <Button 
+                  onClick={() => navigate('/installation-guide')}
+                  className="w-full bg-teal-600 hover:bg-teal-700"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
