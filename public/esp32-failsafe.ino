@@ -38,6 +38,9 @@
  * 3. Sensor failure → "When in doubt, Fan ON"
  * 4. Manual override button → ALWAYS works (physical)
  * 5. HSI = Temperature + (Humidity × 0.1)
+ * 6. 🛡️ DEFAULT SAFE STATE (সবচেয়ে গুরুত্বপূর্ণ!):
+ *    - যেকোনো অজানা error → Fan ON + Alarm periodic + NEVER stay OFF
+ *    - This is the ultimate fallback for any unknown condition
  */
 
 #include <WiFi.h>
@@ -166,6 +169,14 @@ unsigned long lastWaterBeep = 0;              // For intermittent buzzer pattern
 volatile unsigned long waterPulseCount = 0;   // ISR counter for water pulses
 unsigned long lastWaterPulseCheck = 0;        // For tracking pulse changes
 
+// 🛡️ DEFAULT SAFE STATE (সবচেয়ে গুরুত্বপূর্ণ!)
+// যেকোনো অজানা error হলে → Fan ON + Alarm periodic + Never stay OFF
+bool defaultSafeStateActive = false;          // Default safe state active
+unsigned long lastDefaultSafeAlarm = 0;       // For periodic alarm pattern
+const unsigned long DEFAULT_SAFE_ALARM_ON = 500;   // Alarm ON 0.5 sec
+const unsigned long DEFAULT_SAFE_ALARM_OFF = 5000; // Alarm OFF 5 sec
+bool defaultSafeAlarmPhase = false;           // false = OFF phase, true = ON phase
+unsigned long defaultSafePhaseStart = 0;      // Phase start time
 // ================ FARM TYPE CONFIGURATION ================
 // 🐔 Set this to "LAYER" or "BROILER" based on your farm type
 // BROILER uses age-based temperature thresholds
@@ -420,6 +431,7 @@ void setup() {
   Serial.printf("║  Sensors: %s\n", sensorInitSuccess ? "OK" : "ERROR - Fan ON");
   Serial.printf("║  WiFi: %s\n", wifiConnected ? "Connected" : "Disconnected");
   Serial.printf("║  Watchdog: Enabled (8 sec)\n");
+  Serial.printf("║  Default Safe State: Ready (Fan ON on unknown error)\n");
   Serial.printf("║  Boot Fan: Running (30 sec remaining)\n");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
@@ -545,13 +557,17 @@ void loop() {
   // ৬ ঘন্টা pulse না থাকলে → Water Failure Alert + Buzzer intermittent
   checkWaterIntakeSafety(now);
   
-  // 7. Run automation (cloud or local)
+  // 🛡️ 7. DEFAULT SAFE STATE CHECK (সবচেয়ে গুরুত্বপূর্ণ!)
+  // যেকোনো অজানা error হলে → Fan ON + Alarm periodic + Never stay OFF
+  checkDefaultSafeState(now);
+  
+  // 8. Run automation (cloud or local)
   runAutomation();
   
-  // 8. Update status LED
+  // 9. Update status LED
   updateStatusLED();
   
-  // 🔧 9. Feed Watchdog Timer - prevents auto restart
+  // 🔧 10. Feed Watchdog Timer - prevents auto restart
   // If loop freezes > 8 sec, WDT will restart ESP32
   esp_task_wdt_reset();
   
@@ -617,7 +633,7 @@ void syncWithCloud() {
   http.setTimeout(10000);
   
   // Create sync payload
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<768> doc;  // Increased size for new fields
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
@@ -629,6 +645,9 @@ void syncWithCloud() {
   doc["fan_speed"] = fanSpeed;
   doc["light_brightness"] = lightBrightness;
   doc["failsafe_mode"] = failsafeMode;
+  doc["default_safe_active"] = defaultSafeStateActive;  // 🛡️ Report default safe state
+  doc["sensor_error_mode"] = sensorErrorMode;
+  doc["water_failure_mode"] = waterFailureMode;
   doc["cached_settings_version"] = cachedSettings.version;
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["uptime_seconds"] = millis() / 1000;
@@ -1575,6 +1594,207 @@ void saveCachedSettings() {
   preferences.end();
   
   Serial.println("✓ Settings saved to EEPROM");
+}
+
+// ================ DEFAULT SAFE STATE (সবচেয়ে গুরুত্বপূর্ণ!) ================
+// 🛡️ যেকোনো অজানা error হলে → Fan ON + Alarm periodic + Never stay OFF
+// This is the MOST IMPORTANT safety feature - when in doubt, FAN ON!
+//
+// TRIGGERS:
+// 1. Sensor reads invalid/extreme values outside any possible range
+// 2. State machine in undefined state
+// 3. Multiple conflicting error modes active
+// 4. Memory corruption detected (impossible variable values)
+// 5. Any unhandled exception scenario
+//
+// BEHAVIOR:
+// - Fan ON (HIGH speed) - never OFF in this state
+// - Periodic alarm: 0.5 sec ON, 5 sec OFF
+// - systemState = "DEFAULT_SAFE"
+// - Can only exit after sensor data normalizes for 60 seconds
+
+unsigned long defaultSafeExitTimer = 0;           // Timer for exit condition
+const unsigned long DEFAULT_SAFE_EXIT_DELAY = 60000;  // 60 seconds of normal data to exit
+unsigned long previousPulseCountForSafe = 0;      // For pulse tracking
+
+void checkDefaultSafeState(unsigned long now) {
+  bool shouldActivateSafe = false;
+  String reason = "";
+  
+  // ============ CHECK FOR UNKNOWN ERROR CONDITIONS ============
+  
+  // 1. Impossible sensor values (outside physical possibility)
+  if (temperature < -40 || temperature > 100) {
+    shouldActivateSafe = true;
+    reason = "Temperature out of physical range";
+  }
+  if (humidity < 0 || humidity > 100) {
+    shouldActivateSafe = true;
+    reason = "Humidity out of physical range";
+  }
+  if (ammonia < 0 || ammonia > 500) {  // MQ135 can't read > 500ppm
+    shouldActivateSafe = true;
+    reason = "Ammonia out of physical range";
+  }
+  
+  // 2. NaN values that weren't caught elsewhere
+  if (isnan(currentHSI) && !sensorErrorMode) {
+    shouldActivateSafe = true;
+    reason = "HSI calculation resulted in NaN";
+  }
+  
+  // 3. Invalid state machine states
+  if (currentMode != "AUTO" && currentMode != "MANUAL" && 
+      currentMode != "FAIL_SAFE" && currentMode != "OFFLINE") {
+    shouldActivateSafe = true;
+    reason = "Invalid system mode state";
+  }
+  
+  // 4. Multiple critical error modes active simultaneously (unusual)
+  int errorModeCount = 0;
+  if (sensorErrorMode) errorModeCount++;
+  if (waterFailureMode) errorModeCount++;
+  if (failsafeMode) errorModeCount++;
+  if (!fanRelayHealthy) errorModeCount++;
+  
+  if (errorModeCount >= 3 && !defaultSafeStateActive) {
+    shouldActivateSafe = true;
+    reason = "Multiple simultaneous error conditions";
+  }
+  
+  // 5. Fan relay claims OFF but sensor shows extreme danger
+  if (!fanOn && temperature > 40 && !localManualOverride) {
+    shouldActivateSafe = true;
+    reason = "Extreme temp but fan reported OFF";
+  }
+  
+  // 6. Uptime overflow protection (very rare, ~50 days)
+  if (now < lastSensorRead && lastSensorRead > 0 && now > 1000) {
+    // millis() has wrapped around
+    lastSensorRead = 0;
+    lastValidSensorRead = 0;
+    lastCloudSync = 0;
+    Serial.println("⚠️ millis() overflow detected - timers reset");
+  }
+  
+  // ============ ACTIVATE DEFAULT SAFE STATE IF NEEDED ============
+  
+  if (shouldActivateSafe && !defaultSafeStateActive) {
+    defaultSafeStateActive = true;
+    defaultSafePhaseStart = now;
+    defaultSafeAlarmPhase = true;  // Start with alarm ON
+    defaultSafeExitTimer = 0;      // Reset exit timer
+    
+    Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+    Serial.println("║  🛡️ DEFAULT SAFE STATE ACTIVATED (সবচেয়ে গুরুত্বপূর্ণ!)      ║");
+    Serial.println("║  যেকোনো অজানা error → Fan ON + Alarm periodic + Never OFF  ║");
+    Serial.printf("║  Reason: %-48s ║\n", reason.c_str());
+    Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+    
+    // Immediately turn on Fan HIGH - NEVER OFF in this state
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    expectedFanState = true;
+    systemState = "DEFAULT_SAFE";
+    
+    // Activate failsafe mode as well
+    if (!failsafeMode) {
+      activateFailsafe(reason);
+    }
+    
+    // Log the event
+    logFailsafeEvent("DEFAULT_SAFE", reason);
+    
+    // Try SMS alert
+    #ifdef GSM_ENABLED
+    sendGsmSms("🛡️ EMERGENCY: Default Safe State activated - " + reason);
+    #endif
+  }
+  
+  // ============ MAINTAIN SAFE STATE WHILE ACTIVE ============
+  
+  if (defaultSafeStateActive) {
+    // 🔥 CRITICAL: Fan must ALWAYS be ON in this state
+    if (!fanOn || digitalRead(FAN_RELAY_PIN) != HIGH) {
+      digitalWrite(FAN_RELAY_PIN, HIGH);
+      fanOn = true;
+      fanSpeed = "HIGH";
+      expectedFanState = true;
+      Serial.println("🛡️ DEFAULT SAFE: Forced Fan ON (never OFF!)");
+    }
+    
+    // Periodic alarm pattern: 0.5 sec ON, 5 sec OFF
+    if (defaultSafeAlarmPhase) {
+      // Alarm ON phase
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      alarmOn = true;
+      
+      if (now - defaultSafePhaseStart >= DEFAULT_SAFE_ALARM_ON) {
+        defaultSafeAlarmPhase = false;  // Switch to OFF phase
+        defaultSafePhaseStart = now;
+      }
+    } else {
+      // Alarm OFF phase
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      alarmOn = false;
+      
+      if (now - defaultSafePhaseStart >= DEFAULT_SAFE_ALARM_OFF) {
+        defaultSafeAlarmPhase = true;  // Switch to ON phase
+        defaultSafePhaseStart = now;
+      }
+    }
+    
+    // ============ CHECK FOR EXIT CONDITIONS ============
+    // Can only exit if ALL conditions are normal for 60 seconds
+    
+    bool canExit = true;
+    
+    // Check sensor values are normal
+    if (isnan(temperature) || isnan(humidity)) canExit = false;
+    if (temperature < 10 || temperature > 50) canExit = false;
+    if (humidity < 20 || humidity > 95) canExit = false;
+    if (isnan(currentHSI)) canExit = false;
+    
+    // Check state machine is valid
+    if (currentMode != "AUTO" && currentMode != "MANUAL" && 
+        currentMode != "FAIL_SAFE" && currentMode != "OFFLINE") canExit = false;
+    
+    // Check sensor error mode is cleared
+    if (sensorErrorMode) canExit = false;
+    
+    if (canExit) {
+      // Start or continue exit timer
+      if (defaultSafeExitTimer == 0) {
+        defaultSafeExitTimer = now;
+        Serial.println("🛡️ DEFAULT SAFE: Conditions normalizing, starting 60s exit timer...");
+      }
+      
+      // Check if 60 seconds have passed
+      if (now - defaultSafeExitTimer >= DEFAULT_SAFE_EXIT_DELAY) {
+        // Safe to exit
+        defaultSafeStateActive = false;
+        digitalWrite(ALARM_RELAY_PIN, LOW);
+        alarmOn = false;
+        
+        Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+        Serial.println("║  ✅ DEFAULT SAFE STATE CLEARED                              ║");
+        Serial.println("║  Conditions normal for 60 seconds - resuming normal ops     ║");
+        Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+        
+        logFailsafeEvent("DEFAULT_SAFE_CLEARED", "Conditions normalized");
+        
+        // Note: Fan stays ON until automation decides to turn it off
+        // This is intentional - let the normal logic decide
+      }
+    } else {
+      // Reset exit timer if conditions are not normal
+      if (defaultSafeExitTimer > 0) {
+        defaultSafeExitTimer = 0;
+        Serial.println("🛡️ DEFAULT SAFE: Exit timer reset - conditions not yet normal");
+      }
+    }
+  }
 }
 
 // ================ FAN RELAY HEALTH CHECK ================
