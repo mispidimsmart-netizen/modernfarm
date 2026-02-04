@@ -152,6 +152,15 @@ const unsigned long SENSOR_TIMEOUT = 15000;   // 15 seconds timeout
 bool sensorErrorMode = false;                 // Sensor error mode active
 unsigned long lastSlowBeep = 0;               // For slow beep pattern
 
+// 💧 WATER INTAKE SAFETY
+// ৬ ঘন্টা pulse না থাকলে → Water Failure Alert + Buzzer intermittent
+unsigned long lastWaterPulseTime = 0;         // Last time water pulse detected
+const unsigned long WATER_TIMEOUT = 21600000; // 6 hours in milliseconds (6 * 60 * 60 * 1000)
+bool waterFailureMode = false;                // Water failure alert active
+unsigned long lastWaterBeep = 0;              // For intermittent buzzer pattern
+volatile unsigned long waterPulseCount = 0;   // ISR counter for water pulses
+unsigned long lastWaterPulseCheck = 0;        // For tracking pulse changes
+
 // ================ FARM TYPE CONFIGURATION ================
 // 🐔 Set this to "LAYER" or "BROILER" based on your farm type
 // BROILER uses age-based temperature thresholds
@@ -297,6 +306,11 @@ void setup() {
   // Initialize input pins
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
+  
+  // 💧 Attach water flow meter interrupt for pulse counting
+  attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
+  lastWaterPulseTime = millis();  // Initialize water pulse tracking
+  Serial.println("✓ Water flow meter interrupt attached");
   
   // 🔘 Initialize manual override buttons (CRITICAL for big farm safety)
   pinMode(MANUAL_OVERRIDE_BTN_PIN, INPUT_PULLUP);
@@ -514,10 +528,14 @@ void loop() {
     lastFailsafeCheck = now;
   }
   
-  // 5. Run automation (cloud or local)
+  // 💧 6. WATER INTAKE SAFETY CHECK
+  // ৬ ঘন্টা pulse না থাকলে → Water Failure Alert + Buzzer intermittent
+  checkWaterIntakeSafety(now);
+  
+  // 7. Run automation (cloud or local)
   runAutomation();
   
-  // 6. Update status LED
+  // 8. Update status LED
   updateStatusLED();
   
   // Small delay
@@ -854,6 +872,66 @@ void logFailsafeEvent(String eventType, String message) {
   preferences.putInt("log_count", logCount + 1);
   
   preferences.end();
+}
+
+// ================ WATER INTAKE SAFETY ================
+// 💧 ৬ ঘন্টা pulse না থাকলে → Water Failure Alert + Buzzer intermittent
+
+// Water pulse interrupt handler (ISR)
+void IRAM_ATTR waterPulseISR() {
+  waterPulseCount++;
+}
+
+void checkWaterIntakeSafety(unsigned long now) {
+  static unsigned long previousPulseCount = 0;
+  
+  // Check if any new water pulses detected since last check
+  if (waterPulseCount > previousPulseCount) {
+    // Water is flowing - reset timer
+    lastWaterPulseTime = now;
+    previousPulseCount = waterPulseCount;
+    
+    // Exit water failure mode if active
+    if (waterFailureMode) {
+      waterFailureMode = false;
+      Serial.println("✅ Water flow restored - Exiting Water Failure Mode");
+      // Only clear alarm if other conditions are safe
+      if (!sensorErrorMode && currentHSI < HSI_FAN_MAX_ALARM) {
+        alarmOn = false;
+        digitalWrite(ALARM_RELAY_PIN, LOW);
+      }
+    }
+  }
+  
+  // Check for 6-hour timeout (only if we've ever received a pulse)
+  if (!waterFailureMode && lastWaterPulseTime > 0 && 
+      (now - lastWaterPulseTime >= WATER_TIMEOUT)) {
+    waterFailureMode = true;
+    
+    Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+    Serial.println("║  💧 WATER FAILURE ALERT - No water pulse for 6 hours!      ║");
+    Serial.println("║  ৬ ঘন্টা pulse না থাকলে: Water Failure + Buzzer intermittent ║");
+    Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+    
+    systemState = "WATER_FAILURE";
+  }
+  
+  // Intermittent buzzer pattern in water failure mode (0.5s ON, 2s OFF)
+  if (waterFailureMode) {
+    static bool buzzerState = false;
+    static unsigned long buzzerOnTime = 0;
+    
+    if (!buzzerState && (now - lastWaterBeep >= 2000)) {  // OFF for 2 seconds
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      buzzerState = true;
+      buzzerOnTime = now;
+    }
+    else if (buzzerState && (now - buzzerOnTime >= 500)) {  // ON for 0.5 seconds
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      buzzerState = false;
+      lastWaterBeep = now;
+    }
+  }
 }
 
 // ================ MANUAL OVERRIDE FUNCTIONS ================
