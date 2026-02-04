@@ -122,13 +122,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (identifier: string, password: string, isPhone?: boolean) => {
     try {
-      // For phone auth, use synthetic email approach
-      const email = isPhone ? phoneToEmail(identifier) : identifier;
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // For phone auth, try synthetic email first; if it fails and this user actually
+      // registered with email, resolve phone->email via backend and retry.
+      const primaryEmail = isPhone ? phoneToEmail(identifier) : identifier;
+
+      const attempt = async (email: string) => {
+        return await supabase.auth.signInWithPassword({ email, password });
+      };
+
+      let { error } = await attempt(primaryEmail);
+
+      if (isPhone && error?.message?.includes('Invalid login credentials')) {
+        // Resolve phone to email for accounts created via email but with phone saved in profile.
+        const { data } = await supabase.functions.invoke('lookup-login-identifier', {
+          body: { phone: identifier },
+        });
+
+        const resolvedEmail = (data as { email?: string | null } | null)?.email ?? null;
+        if (resolvedEmail && resolvedEmail !== primaryEmail) {
+          ({ error } = await attempt(resolvedEmail));
+        }
+      }
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
