@@ -1468,40 +1468,50 @@ void runLocalAutomation() {
   
   // ========================================
   // 💧 LAYER HUMIDITY CONTROL
+  // ⚠️ Humidity alone fan চালাবে না — temp/HSI priority
+  // Humidity শুধু existing fan speed বাড়াতে পারে
   // ========================================
   
-  // HUMIDITY < 40% = Warning beep (too dry)
+  // HUMIDITY < 40% = Warning beep (dry litter risk)
   if (humidity < LAYER_HUMIDITY_LOW) {
-    Serial.printf("⚠️ LAYER HUMIDITY LOW (%.1f%% < 40%%) → Warning beep\n", humidity);
+    Serial.printf("⚠️ LAYER HUMIDITY LOW (%.1f%% < 40%%) → Warning beep (dry litter risk)\n", humidity);
     
-    // Short warning beep pattern (0.2s ON, 3s OFF) - not continuous
+    // Short warning beep pattern (0.2s ON, 5s OFF) - not continuous
     static unsigned long lastHumidityBeep = 0;
-    if (millis() - lastHumidityBeep >= 3000) {
+    if (millis() - lastHumidityBeep >= 5000) {
       digitalWrite(ALARM_RELAY_PIN, HIGH);
       delay(200);
       digitalWrite(ALARM_RELAY_PIN, LOW);
       lastHumidityBeep = millis();
-      Serial.println("   🔔 Warning beep: Low humidity!");
+      Serial.println("   🔔 Warning beep: Dry litter risk!");
     }
   }
   // HUMIDITY 50-70% = IDEAL
   else if (humidity >= LAYER_HUMIDITY_IDEAL_MIN && humidity <= LAYER_HUMIDITY_IDEAL_MAX) {
     Serial.printf("✅ LAYER HUMIDITY IDEAL (%.1f%%, 50-70%% range)\n", humidity);
   }
-  // HUMIDITY > 75% = Ventilation increase
+  // HUMIDITY > 75% = Increase ventilation (ONLY if fan already ON)
   else if (humidity > LAYER_HUMIDITY_HIGH) {
-    Serial.printf("💨 LAYER HUMIDITY HIGH (%.1f%% > 75%%) → Increase ventilation\n", humidity);
-    // Increase fan if not already at high
-    if (!fanOn || fanSpeed == "OFF" || fanSpeed == "LOW") {
-      setFanState(true, "MEDIUM");
+    Serial.printf("💨 LAYER HUMIDITY HIGH (%.1f%% > 75%%)\n", humidity);
+    
+    // ⚠️ Humidity alone fan চালাবে না — temp/HSI priority
+    // শুধু fan যদি আগে থেকে ON থাকে তাহলে speed বাড়াবে
+    if (fanOn) {
+      if (fanSpeed == "LOW") {
+        Serial.println("   → Fan already ON, increasing to MEDIUM");
+        setFanState(true, "MEDIUM");
+      } else if (fanSpeed == "MEDIUM") {
+        Serial.println("   → Fan already MEDIUM, increasing to HIGH");
+        setFanState(true, "HIGH");
+      }
+      // If already HIGH or MAX, don't change
+    } else {
+      Serial.println("   → Fan OFF (waiting for temp/HSI trigger first)");
     }
   }
-  // HUMIDITY 70-75% = Borderline (slight ventilation)
-  else if (humidity > LAYER_HUMIDITY_IDEAL_MAX) {
-    Serial.printf("⚠️ LAYER HUMIDITY BORDERLINE (%.1f%%, 70-75%%) → Slight ventilation\n", humidity);
-    if (!fanOn) {
-      setFanState(true, "LOW");
-    }
+  // HUMIDITY 40-50% or 70-75% = Borderline (no action, just log)
+  else {
+    Serial.printf("⚠️ LAYER HUMIDITY BORDERLINE (%.1f%%) → No fan action (temp/HSI priority)\n", humidity);
   }
   
   // ========================================
