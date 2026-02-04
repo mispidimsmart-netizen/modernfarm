@@ -62,64 +62,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Convert phone to synthetic email for auth (since SMS provider not configured)
+  const phoneToEmail = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, '');
+    // Normalize: remove leading 0 or 880
+    let normalized = cleaned;
+    if (normalized.startsWith('880')) {
+      normalized = normalized.substring(3);
+    }
+    if (normalized.startsWith('0')) {
+      normalized = normalized.substring(1);
+    }
+    return `${normalized}@phone.layerfarm.app`;
+  };
+
   const signUp = async (identifier: string, password: string, farmName?: string, isPhone?: boolean) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
-      if (isPhone) {
-        // Phone signup with password
-        const formattedPhone = formatPhoneNumber(identifier);
-        
-        const { error } = await supabase.auth.signUp({
-          phone: formattedPhone,
-          password,
-          options: {
-            data: {
-              farm_name: farmName || 'আমার লেয়ার ফার্ম',
-            }
+      // For phone auth, use synthetic email approach since SMS provider is not configured
+      const email = isPhone ? phoneToEmail(identifier) : identifier;
+      const formattedPhone = isPhone ? formatPhoneNumber(identifier) : null;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            farm_name: farmName || 'আমার লেয়ার ফার্ম',
+            phone: formattedPhone,
+            auth_method: isPhone ? 'phone' : 'email',
           }
-        });
-
-        if (error) {
-          if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
-            return { error: new Error(language === 'bn' ? 'এই নম্বর দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'An account with this phone already exists') };
-          }
-          return { error };
         }
+      });
 
-        toast({
-          title: language === 'bn' ? 'সফল!' : 'Success!',
-          description: language === 'bn' 
-            ? 'অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।' 
-            : 'Account created. Please login now.',
-        });
-      } else {
-        // Email signup
-        const { error } = await supabase.auth.signUp({
-          email: identifier,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              farm_name: farmName || 'আমার লেয়ার ফার্ম',
-            }
-          }
-        });
-
-        if (error) {
-          if (error.message.includes('User already registered')) {
-            return { error: new Error(language === 'bn' ? 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'An account with this email already exists') };
-          }
-          return { error };
+      if (error) {
+        if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
+          return { error: new Error(language === 'bn' 
+            ? (isPhone ? 'এই নম্বর দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে') 
+            : (isPhone ? 'An account with this phone already exists' : 'An account with this email already exists')) 
+          };
         }
-
-        toast({
-          title: language === 'bn' ? 'সফল!' : 'Success!',
-          description: language === 'bn' 
-            ? 'অ্যাকাউন্ট তৈরি হয়েছে। ইমেইল যাচাই করুন।' 
-            : 'Account created. Please verify your email.',
-        });
+        return { error };
       }
+
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' 
+          ? 'অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।' 
+          : 'Account created. You can now login.',
+      });
 
       return { error: null };
     } catch (error) {
@@ -129,35 +122,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (identifier: string, password: string, isPhone?: boolean) => {
     try {
-      if (isPhone) {
-        const formattedPhone = formatPhoneNumber(identifier);
-        
-        const { error } = await supabase.auth.signInWithPassword({
-          phone: formattedPhone,
-          password,
-        });
+      // For phone auth, use synthetic email approach
+      const email = isPhone ? phoneToEmail(identifier) : identifier;
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            return { error: new Error(language === 'bn' ? 'ভুল মোবাইল নম্বর বা পাসওয়ার্ড' : 'Invalid phone or password') };
-          }
-          return { error };
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          return { error: new Error(language === 'bn' 
+            ? (isPhone ? 'ভুল মোবাইল নম্বর বা পাসওয়ার্ড' : 'ভুল ইমেইল বা পাসওয়ার্ড') 
+            : (isPhone ? 'Invalid phone or password' : 'Invalid email or password')) 
+          };
         }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: identifier,
-          password,
-        });
-
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            return { error: new Error(language === 'bn' ? 'ভুল ইমেইল বা পাসওয়ার্ড' : 'Invalid email or password') };
-          }
-          if (error.message.includes('Email not confirmed')) {
-            return { error: new Error(language === 'bn' ? 'অনুগ্রহ করে আপনার ইমেইল যাচাই করুন' : 'Please verify your email first') };
-          }
-          return { error };
+        if (error.message.includes('Email not confirmed')) {
+          return { error: new Error(language === 'bn' ? 'অনুগ্রহ করে আপনার ইমেইল যাচাই করুন' : 'Please verify your email first') };
         }
+        return { error };
       }
 
       return { error: null };
