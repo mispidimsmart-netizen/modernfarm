@@ -393,13 +393,22 @@ Deno.serve(async (req) => {
       if (result.success) {
         successCount++;
         console.log(`✅ Sent successfully!`);
-      } else if (result.statusCode === 410 || result.statusCode === 404) {
-        console.log(`🗑️ Expired subscription, removing...`);
+       } else if (result.statusCode === 410 || result.statusCode === 404) {
+         console.log(`🗑️ Expired subscription (gone/not found), removing...`);
         await supabase
           .from('push_subscriptions')
           .delete()
           .eq('endpoint', sub.endpoint);
         failCount++;
+       } else if (result.statusCode === 403) {
+         // Common when VAPID keys changed after a subscription was created.
+         // Keeping these stale subscriptions causes repeated failures and can mask valid subscriptions.
+         console.log(`🗑️ Subscription rejected (403, likely VAPID mismatch), removing...`);
+         await supabase
+           .from('push_subscriptions')
+           .delete()
+           .eq('endpoint', sub.endpoint);
+         failCount++;
       } else {
         console.error(`❌ Failed (${result.statusCode}): ${result.error}`);
         failCount++;
