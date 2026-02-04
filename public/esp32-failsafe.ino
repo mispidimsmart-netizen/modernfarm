@@ -245,12 +245,14 @@ const float LAYER_HUMIDITY_HIGH = 75.0;       // >75% → Ventilation increase
 const float LAYER_AMMONIA_FAN_ON = 15.0;      // >15 ppm → Fan ON
 const float LAYER_AMMONIA_ALARM = 25.0;       // >25 ppm → Alarm + Fan HIGH
 
-// ================ UNIVERSAL HSI EMERGENCY THRESHOLDS ================
+// ================ LAYER HSI THRESHOLDS ================
 // 🔥 CRITICAL: These run LOCALLY without waiting for cloud!
 // HSI = Temperature + (Humidity × 0.1)
-const float HSI_FAN_HIGH = 38.0;       // >38 → Fan HIGH
-const float HSI_FAN_MAX_ALARM = 42.0;  // >42 → Fan MAX + Alarm
-const float HSI_EMERGENCY = 45.0;      // >45 → Emergency mode (continuous alarm)
+// 📌 Layer এ heat stress = egg production drop
+const float LAYER_HSI_NORMAL = 30.0;      // < 30 → Normal (no action)
+const float LAYER_HSI_FAN_LOW = 30.0;     // 30-35 → Fan LOW
+const float LAYER_HSI_FAN_HIGH = 35.0;    // 35-40 → Fan HIGH
+const float LAYER_HSI_EMERGENCY = 40.0;   // > 40 → Emergency Alarm + Max Ventilation
 
 // ================ CACHED SETTINGS (EEPROM) ================
 struct CachedSettings {
@@ -1556,17 +1558,21 @@ void runLocalAutomation() {
   // 🔥 HEAT STRESS INDEX (HSI) - CRITICAL DECISION!
   // HSI = Temperature + (Humidity × 0.1)
   // 👉 Cloud এর অপেক্ষা করবে না - Runs LOCALLY!
+  // 📌 Layer এ heat stress = egg production drop
   // ========================================
   float hsi = calculateHSI(temperature, humidity);
   currentHSI = hsi;
   Serial.printf("🔥 HSI = %.1f (Temp=%.1f + Hum=%.1f×0.1)\n", hsi, temperature, humidity);
   
-  // ⚠️ HSI >= 45: EMERGENCY MODE - Continuous alarm, bird life at risk!
-  if (hsi >= HSI_EMERGENCY) {
+  // ========================================
+  // HSI > 40: EMERGENCY ALARM + MAX VENTILATION
+  // ========================================
+  if (hsi > LAYER_HSI_EMERGENCY) {
     systemState = "EMERGENCY";
     Serial.println("\n╔═══════════════════════════════════════════════════════════╗");
-    Serial.println("║  🚨🚨🚨 HSI EMERGENCY MODE - CRITICAL HEAT STRESS! 🚨🚨🚨  ║");
-    Serial.printf("║  HSI: %.1f >= 45 → CONTINUOUS ALARM ACTIVATED!             ║\n", hsi);
+    Serial.println("║  🚨🚨🚨 HSI EMERGENCY - HEAT STRESS CRITICAL! 🚨🚨🚨        ║");
+    Serial.printf("║  HSI: %.1f > 40 → EMERGENCY ALARM + MAX VENTILATION!       ║\n", hsi);
+    Serial.println("║  📌 Layer heat stress = egg production drop!               ║");
     Serial.println("║  মুরগি মারা যেতে পারে! জরুরি ব্যবস্থা নিন!                  ║");
     Serial.println("╚═══════════════════════════════════════════════════════════╝\n");
     setFanState(true, "MAX");
@@ -1580,30 +1586,44 @@ void runLocalAutomation() {
       lastAlarmBeep = millis();
     }
   }
-  // HSI >= 42: Fan MAX + Alarm
-  else if (hsi >= HSI_FAN_MAX_ALARM) {
-    systemState = "DANGER";
-    Serial.printf("🚨 HSI DANGER (%.1f >= 42) → Fan MAX + ALARM!\n", hsi);
-    setFanState(true, "MAX");
-    alarmOn = true;
-    digitalWrite(ALARM_RELAY_PIN, HIGH);
-  }
-  // HSI >= 38: Fan HIGH
-  else if (hsi >= HSI_FAN_HIGH) {
+  // ========================================
+  // HSI 35-40: Fan HIGH
+  // ========================================
+  else if (hsi >= LAYER_HSI_FAN_HIGH) {
     if (systemState != "DANGER" && systemState != "EMERGENCY") {
       systemState = "HIGH_STRESS";
     }
-    Serial.printf("⚠️ HSI HIGH STRESS (%.1f >= 38) → Fan HIGH\n", hsi);
+    Serial.printf("🔥 HSI HIGH STRESS (%.1f, 35-40 range) → Fan HIGH\n", hsi);
     setFanState(true, "HIGH");
+  }
+  // ========================================
+  // HSI 30-35: Fan LOW
+  // ========================================
+  else if (hsi >= LAYER_HSI_FAN_LOW) {
+    if (systemState == "NORMAL") {
+      systemState = "MILD_STRESS";
+    }
+    Serial.printf("⚠️ HSI MILD STRESS (%.1f, 30-35 range) → Fan LOW\n", hsi);
+    // Only set to LOW if not already at higher speed
+    if (!fanOn || fanSpeed == "OFF") {
+      setFanState(true, "LOW");
+    }
+  }
+  // ========================================
+  // HSI < 30: NORMAL (No HSI-based action)
+  // ========================================
+  else {
+    Serial.printf("✅ HSI NORMAL (%.1f < 30) → No HSI action needed\n", hsi);
+    // Don't change fan state here - let temp/ammonia rules control
   }
   
   // ========================================
   // ALARM AUTO-CLEAR (only if ALL conditions safe)
   // ========================================
   if (alarmOn && powerOn && 
-      ammonia < cachedSettings.ammoniaMax && 
+      ammonia <= LAYER_AMMONIA_FAN_ON && 
       temperature < LAYER_TEMP_ALARM && 
-      hsi < HSI_FAN_MAX_ALARM) {
+      hsi <= LAYER_HSI_EMERGENCY) {
     alarmOn = false;
     digitalWrite(ALARM_RELAY_PIN, LOW);
     Serial.println("✅ All conditions safe → Alarm cleared");
