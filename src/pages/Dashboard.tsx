@@ -96,13 +96,13 @@ export function Dashboard() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary/95 to-primary/85 p-5 shadow-2xl"
+          className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-emerald-700 to-teal-800 p-5 shadow-2xl"
         >
           {/* Animated Background Elements */}
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/8 blur-3xl" />
-            <div className="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
-            <div className="absolute right-1/4 top-1/2 h-24 w-24 rounded-full bg-secondary/20 blur-2xl" />
+            <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl" />
+            <div className="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-400/10 blur-2xl" />
+            <div className="absolute right-1/4 top-1/2 h-24 w-24 rounded-full bg-cyan-400/15 blur-2xl" />
           </div>
           
           <div className="relative z-10">
