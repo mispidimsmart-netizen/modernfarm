@@ -224,6 +224,22 @@ const float BROILER_HSI_FAN_HIGH = 38.0;        // >38 → fan HIGH
 const float BROILER_HSI_EMERGENCY = 42.0;       // >42 → fan MAX + alarm
 const float BROILER_HSI_CRITICAL = 45.0;        // >45 → emergency mode (continuous alarm)
 
+// ================ LAYER TEMPERATURE THRESHOLDS ================
+// 👉 Layer sudden heat change সহ্য করতে পারে না!
+// More strict thresholds for layer farms
+const float LAYER_TEMP_HEATER_ON = 18.0;      // <18°C → Heater ON (cold protection)
+const float LAYER_TEMP_IDEAL_MIN = 18.0;      // 18-27°C = Ideal range
+const float LAYER_TEMP_IDEAL_MAX = 27.0;      
+const float LAYER_TEMP_FAN_HIGH = 30.0;       // >30°C → Fan HIGH
+const float LAYER_TEMP_ALARM = 33.0;          // >33°C → Alarm + Max Ventilation
+
+// ================ LAYER HUMIDITY THRESHOLDS ================
+// Layer needs stable humidity for egg production
+const float LAYER_HUMIDITY_LOW = 40.0;        // <40% → Warning beep
+const float LAYER_HUMIDITY_IDEAL_MIN = 50.0;  // 50-70% = Ideal range
+const float LAYER_HUMIDITY_IDEAL_MAX = 70.0;
+const float LAYER_HUMIDITY_HIGH = 75.0;       // >75% → Ventilation increase
+
 // ================ UNIVERSAL HSI EMERGENCY THRESHOLDS ================
 // 🔥 CRITICAL: These run LOCALLY without waiting for cloud!
 // HSI = Temperature + (Humidity × 0.1)
@@ -1351,7 +1367,8 @@ void runBroilerAutomation() {
 
 
 void runLocalAutomation() {
-  Serial.println("\n🔐 Running LOCAL SAFE RULES...");
+  Serial.println("\n🐔 Running LAYER LOCAL SAFE RULES...");
+  Serial.println("   👉 Layer sudden heat change সহ্য করতে পারে না!");
   
   // ========================================
   // RULE 0: SENSOR ERROR = FAN ON (Safe Mode)
@@ -1375,52 +1392,134 @@ void runLocalAutomation() {
   }
   
   // ========================================
-  // RULE 2: AMMONIA ≥ 25 ppm = FAN ON + ALARM
+  // 🌡️ LAYER TEMPERATURE CONTROL
+  // Layer sudden heat change সহ্য করতে পারে না!
+  // ========================================
+  
+  // TEMP > 33°C = ALARM + MAX VENTILATION (CRITICAL!)
+  if (temperature >= LAYER_TEMP_ALARM) {
+    Serial.printf("🚨 LAYER TEMP ALARM! (%.1f°C >= 33) → ALARM + MAX Ventilation!\n", temperature);
+    setFanState(true, "MAX");
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    systemState = "DANGER";
+    
+    // 🔥 Turn OFF heater if it was on
+    if (heaterOn) {
+      heaterOn = false;
+      digitalWrite(HEATER_RELAY_PIN, LOW);
+    }
+  }
+  // TEMP > 30°C = FAN HIGH
+  else if (temperature >= LAYER_TEMP_FAN_HIGH) {
+    Serial.printf("🔥 LAYER TEMP HIGH (%.1f°C >= 30) → Fan HIGH\n", temperature);
+    setFanState(true, "HIGH");
+    systemState = "HIGH_STRESS";
+    
+    // 🔥 Turn OFF heater
+    if (heaterOn) {
+      heaterOn = false;
+      digitalWrite(HEATER_RELAY_PIN, LOW);
+    }
+  }
+  // TEMP 18-27°C = IDEAL (No action needed)
+  else if (temperature >= LAYER_TEMP_IDEAL_MIN && temperature <= LAYER_TEMP_IDEAL_MAX) {
+    Serial.printf("✅ LAYER TEMP IDEAL (%.1f°C, 18-27°C range)\n", temperature);
+    systemState = "NORMAL";
+    
+    // 🔥 Turn OFF heater - temp is good
+    if (heaterOn) {
+      heaterOn = false;
+      digitalWrite(HEATER_RELAY_PIN, LOW);
+      Serial.println("🔥 Heater OFF (temp in ideal range)");
+    }
+    
+    // Only turn off fan if humidity and ammonia are also OK
+    if (humidity <= LAYER_HUMIDITY_HIGH && ammonia < cachedSettings.ammoniaMax) {
+      setFanState(false, "OFF");
+    }
+  }
+  // TEMP < 18°C = HEATER ON (Cold protection)
+  else if (temperature < LAYER_TEMP_HEATER_ON) {
+    Serial.printf("🥶 LAYER TEMP LOW (%.1f°C < 18) → HEATER ON!\n", temperature);
+    setFanState(false, "OFF");  // Don't cool when cold
+    systemState = "COLD";
+    
+    // 🔥 HEATER CONTROL - Turn ON heater relay
+    if (!heaterOn) {
+      heaterOn = true;
+      digitalWrite(HEATER_RELAY_PIN, HIGH);
+      Serial.println("🔥 Heater turned ON (GPIO 13) - Layer cold protection");
+    }
+  }
+  // TEMP 27-30°C = Borderline (Low fan)
+  else if (temperature > LAYER_TEMP_IDEAL_MAX && temperature < LAYER_TEMP_FAN_HIGH) {
+    Serial.printf("⚠️ LAYER TEMP BORDERLINE (%.1f°C, 27-30°C) → Fan LOW\n", temperature);
+    setFanState(true, "LOW");
+    systemState = "MILD_STRESS";
+    
+    // 🔥 Turn OFF heater
+    if (heaterOn) {
+      heaterOn = false;
+      digitalWrite(HEATER_RELAY_PIN, LOW);
+    }
+  }
+  
+  // ========================================
+  // 💧 LAYER HUMIDITY CONTROL
+  // ========================================
+  
+  // HUMIDITY < 40% = Warning beep (too dry)
+  if (humidity < LAYER_HUMIDITY_LOW) {
+    Serial.printf("⚠️ LAYER HUMIDITY LOW (%.1f%% < 40%%) → Warning beep\n", humidity);
+    
+    // Short warning beep pattern (0.2s ON, 3s OFF) - not continuous
+    static unsigned long lastHumidityBeep = 0;
+    if (millis() - lastHumidityBeep >= 3000) {
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      lastHumidityBeep = millis();
+      Serial.println("   🔔 Warning beep: Low humidity!");
+    }
+  }
+  // HUMIDITY 50-70% = IDEAL
+  else if (humidity >= LAYER_HUMIDITY_IDEAL_MIN && humidity <= LAYER_HUMIDITY_IDEAL_MAX) {
+    Serial.printf("✅ LAYER HUMIDITY IDEAL (%.1f%%, 50-70%% range)\n", humidity);
+  }
+  // HUMIDITY > 75% = Ventilation increase
+  else if (humidity > LAYER_HUMIDITY_HIGH) {
+    Serial.printf("💨 LAYER HUMIDITY HIGH (%.1f%% > 75%%) → Increase ventilation\n", humidity);
+    // Increase fan if not already at high
+    if (!fanOn || fanSpeed == "OFF" || fanSpeed == "LOW") {
+      setFanState(true, "MEDIUM");
+    }
+  }
+  // HUMIDITY 70-75% = Borderline (slight ventilation)
+  else if (humidity > LAYER_HUMIDITY_IDEAL_MAX) {
+    Serial.printf("⚠️ LAYER HUMIDITY BORDERLINE (%.1f%%, 70-75%%) → Slight ventilation\n", humidity);
+    if (!fanOn) {
+      setFanState(true, "LOW");
+    }
+  }
+  
+  // ========================================
+  // AMMONIA CHECK ≥ 25 ppm = FAN ON + ALARM
   // ========================================
   if (ammonia >= cachedSettings.ammoniaMax) {  // Default: 25 ppm
-    Serial.printf("🟡 AMMONIA HIGH (%.1f ppm) → Fan ON + Alarm\n", ammonia);
+    Serial.printf("🟡 AMMONIA HIGH (%.1f ppm >= 25) → Fan HIGH + Alarm\n", ammonia);
     setFanState(true, "HIGH");
     alarmOn = true;
     digitalWrite(ALARM_RELAY_PIN, HIGH);
   }
   
   // ========================================
-  // RULE 3: TEMP ≥ 33°C = FAN HIGH
-  // ========================================
-  else if (temperature >= cachedSettings.fanHighTempMin) {  // Default: 33°C
-    Serial.printf("🔥 TEMP CRITICAL (%.1f°C) → Fan HIGH\n", temperature);
-    setFanState(true, "HIGH");
-  }
-  
-  // ========================================
-  // RULE 4: TEMP ≥ 30°C = FAN ON (Medium)
-  // ========================================
-  else if (temperature >= cachedSettings.fanMedTempMin) {  // Default: 30°C
-    Serial.printf("🌡️ TEMP HIGH (%.1f°C) → Fan ON (Medium)\n", temperature);
-    setFanState(true, "MEDIUM");
-  }
-  
-  // ========================================
-  // RULE 5: TEMP < 30°C = Normal operation
-  // ========================================
-  else {
-    // Only turn off if conditions are truly safe
-    if (temperature < cachedSettings.fanLowTempMin && ammonia < cachedSettings.ammoniaMax) {
-      setFanState(false, "OFF");
-    } else if (temperature >= cachedSettings.fanLowTempMin) {
-      // Keep fan on LOW for borderline temps (28-30°C)
-      setFanState(true, "LOW");
-    }
-  }
-  
-  // ========================================
   // 🔥 HEAT STRESS INDEX (HSI) - CRITICAL DECISION!
   // HSI = Temperature + (Humidity × 0.1)
   // 👉 Cloud এর অপেক্ষা করবে না - Runs LOCALLY!
-  // This is MORE ACCURATE than temperature alone!
   // ========================================
   float hsi = calculateHSI(temperature, humidity);
-  currentHSI = hsi;  // Store for state reporting
+  currentHSI = hsi;
   Serial.printf("🔥 HSI = %.1f (Temp=%.1f + Hum=%.1f×0.1)\n", hsi, temperature, humidity);
   
   // ⚠️ HSI >= 45: EMERGENCY MODE - Continuous alarm, bird life at risk!
@@ -1435,9 +1534,9 @@ void runLocalAutomation() {
     alarmOn = true;
     digitalWrite(ALARM_RELAY_PIN, HIGH);
     
-    // Continuous alarm pattern - don't stop until HSI drops
+    // Continuous alarm pattern
     static unsigned long lastAlarmBeep = 0;
-    if (millis() - lastAlarmBeep > 500) {  // Beep every 500ms
+    if (millis() - lastAlarmBeep > 500) {
       digitalWrite(ALARM_RELAY_PIN, !digitalRead(ALARM_RELAY_PIN));
       lastAlarmBeep = millis();
     }
@@ -1452,46 +1551,38 @@ void runLocalAutomation() {
   }
   // HSI >= 38: Fan HIGH
   else if (hsi >= HSI_FAN_HIGH) {
-    systemState = "HIGH_STRESS";
+    if (systemState != "DANGER" && systemState != "EMERGENCY") {
+      systemState = "HIGH_STRESS";
+    }
     Serial.printf("⚠️ HSI HIGH STRESS (%.1f >= 38) → Fan HIGH\n", hsi);
     setFanState(true, "HIGH");
-  }
-  // HSI 30-38: MILD STRESS → Fan LOW
-  else if (hsi >= cachedSettings.hsiNormal) {
-    systemState = "MILD_STRESS";
-    Serial.printf("🌡️ HSI MILD STRESS (%.1f) → Fan LOW\n", hsi);
-    setFanState(true, "LOW");
-  }
-  // HSI < 30: NORMAL → Fan OFF (if no other concerns)
-  else {
-    systemState = "NORMAL";
-    if (ammonia < cachedSettings.ammoniaMax && powerOn) {
-      Serial.printf("✅ HSI NORMAL (%.1f) → Fan OFF\n", hsi);
-      setFanState(false, "OFF");
-    }
   }
   
   // ========================================
   // ALARM AUTO-CLEAR (only if ALL conditions safe)
   // ========================================
-  if (alarmOn && powerOn && ammonia < cachedSettings.ammoniaMax && 
-      hsi < cachedSettings.hsiMild && temperature < cachedSettings.fanHighTempMin) {
+  if (alarmOn && powerOn && 
+      ammonia < cachedSettings.ammoniaMax && 
+      temperature < LAYER_TEMP_ALARM && 
+      hsi < HSI_FAN_MAX_ALARM) {
     alarmOn = false;
     digitalWrite(ALARM_RELAY_PIN, LOW);
     Serial.println("✅ All conditions safe → Alarm cleared");
   }
   
   // ========================================
-  // LIGHTING CONTROL (continues regardless)
+  // LIGHTING CONTROL
   // ========================================
   controlLighting();
   
   // ========================================
-  // 🏭 SHED STATUS REPORT (For Big Farm Monitoring)
+  // 🐔 LAYER STATUS REPORT
   // ========================================
-  Serial.printf("\n📊 [%s] Status Report:\n", SHED_NAME);
+  Serial.printf("\n📊 [%s] LAYER Status Report:\n", SHED_NAME);
   Serial.printf("   Mode: %s | State: %s\n", currentMode.c_str(), systemState.c_str());
-  Serial.printf("   HSI: %.1f | Temp: %.1f°C | Hum: %.1f%%\n", currentHSI, temperature, humidity);
+  Serial.printf("   Temp: %.1f°C | Ideal: 18-27°C | Heater: %s\n", 
+                temperature, heaterOn ? "ON" : "OFF");
+  Serial.printf("   Hum: %.1f%% | Ideal: 50-70%% | HSI: %.1f\n", humidity, currentHSI);
   Serial.printf("   Fan: %s (%s) | Alarm: %s | Light: %s (%d%%)\n",
                 fanOn ? "ON" : "OFF", fanSpeed.c_str(),
                 alarmOn ? "ON" : "OFF",
