@@ -57,30 +57,44 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 export async function subscribeToPushNotifications(
   userId: string
 ): Promise<PushSubscription | null> {
+  console.log('[Push] subscribeToPushNotifications called for user:', userId);
+
   try {
+    // Step 1: Wait for service worker
+    console.log('[Push] Step 1: Waiting for service worker...');
     const registration = await navigator.serviceWorker.ready;
-    
-    // Check existing subscription
+    console.log('[Push] Service worker ready:', registration.scope);
+
+    // Step 2: Check existing subscription
+    console.log('[Push] Step 2: Checking existing subscription...');
     let subscription = await registration.pushManager.getSubscription();
-    
+    console.log('[Push] Existing subscription:', subscription ? 'yes' : 'no');
+
     if (!subscription) {
-      // Create new subscription
+      // Step 3: Get VAPID key
+      console.log('[Push] Step 3: Getting VAPID public key...');
       const vapidKey = await getVapidPublicKey();
+      console.log('[Push] VAPID key retrieved:', vapidKey ? `${vapidKey.slice(0, 20)}...` : 'null');
+
       if (!vapidKey) {
-        console.error('Missing VAPID public key (cannot subscribe)');
+        console.error('[Push] Missing VAPID public key (cannot subscribe)');
         return null;
       }
 
+      // Step 4: Subscribe to push
+      console.log('[Push] Step 4: Subscribing to pushManager...');
       const applicationServerKey = urlBase64ToUint8Array(vapidKey);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey as BufferSource,
       });
+      console.log('[Push] pushManager.subscribe success:', subscription.endpoint.slice(0, 50));
     }
 
-    // Save subscription to database
+    // Step 5: Save to database
+    console.log('[Push] Step 5: Saving subscription to database...');
     const subscriptionJson = subscription.toJSON();
-    
+
     const { error } = await supabase
       .from('push_subscriptions')
       .upsert({
@@ -93,14 +107,14 @@ export async function subscribeToPushNotifications(
       });
 
     if (error) {
-      console.error('Error saving push subscription:', error);
+      console.error('[Push] Error saving push subscription:', error);
       return null;
     }
 
-    console.log('Push subscription saved');
+    console.log('[Push] ✅ Push subscription saved successfully!');
     return subscription;
   } catch (error) {
-    console.error('Push subscription failed:', error);
+    console.error('[Push] ❌ Push subscription failed:', error);
     return null;
   }
 }
