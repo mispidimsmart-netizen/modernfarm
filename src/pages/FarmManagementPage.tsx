@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, LineChart, BarChart3, Egg, TrendingUp, TrendingDown } from 'lucide-react';
+import { FileText, LineChart, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { Header } from '@/components/Header';
@@ -87,6 +87,24 @@ export function FarmManagementPage() {
             <TabsContent value="input" className="mt-4">
               <div className="space-y-4">
                 <FarmInputCards onCardClick={handleQuickAction} />
+                
+                {/* Schedule Card */}
+                <div 
+                  onClick={() => setActiveSheet('schedule')}
+                  className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
+                    <Calendar size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{language === 'bn' ? 'শিডিউল ম্যানেজমেন্ট' : 'Schedule Management'}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {language === 'bn' ? 'খাবার, পরিষ্কার ও টিকার সময়সূচী' : 'Feed, cleaning & vaccination schedules'}
+                    </p>
+                  </div>
+                  <ChevronRight size={18} className="text-muted-foreground" />
+                </div>
+                
                 <p className="text-xs text-center text-muted-foreground">
                   {t.quickTip[language]}
                 </p>

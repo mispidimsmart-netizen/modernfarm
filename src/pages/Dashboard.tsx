@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Zap, Thermometer, Wind, Droplets, AlertTriangle, Egg } from 'lucide-react';
+import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Calendar, Zap, Thermometer, Wind, Droplets, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
@@ -20,6 +20,7 @@ import { ShedSelector } from '@/components/shed/ShedSelector';
 import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
 
 import { WeatherCard } from '@/components/weather/WeatherCard';
+import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
@@ -388,21 +389,22 @@ export function Dashboard() {
             <ChevronRight size={18} className="text-muted-foreground" />
           </Link>
           
-          <Link
-            to="/farm"
-            className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-              <Egg size={20} />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm">{language === 'bn' ? 'ফার্ম ম্যানেজমেন্ট' : 'Farm Management'}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {language === 'bn' ? 'ডিম, খাদ্য, শিডিউল' : 'Eggs, Feed, Schedule'}
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-muted-foreground" />
-          </Link>
+          <ScheduleSheet
+            trigger={
+              <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98] cursor-pointer">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                  <Calendar size={20} />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{language === 'bn' ? 'শিডিউল' : 'Schedule'}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {language === 'bn' ? 'কাজের সময়সূচী' : 'Task schedules'}
+                  </p>
+                </div>
+                <ChevronRight size={18} className="text-muted-foreground" />
+              </div>
+            }
+          />
         </motion.div>
       </main>
 
