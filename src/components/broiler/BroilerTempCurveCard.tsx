@@ -3,7 +3,7 @@ import { Thermometer, TrendingDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getBroilerTempCurveData } from '@/hooks/useBroilerAutomation';
+import { getBroilerTempCurveDisplayData } from '@/hooks/useBroilerEnvironment';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { cn } from '@/lib/utils';
 
@@ -15,12 +15,18 @@ export function BroilerTempCurveCard({ currentTemp }: BroilerTempCurveCardProps)
   const { language } = useAuth();
   const { data: activeBatch } = useActiveBatch();
   
-  const curveData = getBroilerTempCurveData();
+  const curveData = getBroilerTempCurveDisplayData();
   
-  // Calculate current age
-  const currentWeek = activeBatch 
-    ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (7 * 24 * 60 * 60 * 1000))
-    : 0;
+  // Calculate current age in days
+  const currentDays = activeBatch 
+    ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (24 * 60 * 60 * 1000)) + 1
+    : 1;
+  
+  // Find current curve index
+  const currentCurveIndex = curveData.findIndex((point, index) => {
+    const [minDays, maxDays] = point.days.split('-').map(d => d === '∞' ? 999 : parseInt(d));
+    return currentDays >= minDays && currentDays <= maxDays;
+  });
 
   return (
     <motion.div
@@ -46,25 +52,22 @@ export function BroilerTempCurveCard({ currentTemp }: BroilerTempCurveCardProps)
           {/* Temperature Curve Visualization */}
           <div className="space-y-2">
             {curveData.map((point, index) => {
-              const isCurrentWeek = index === Math.min(currentWeek, curveData.length - 1);
+              const isCurrent = index === currentCurveIndex;
               
               return (
                 <div 
-                  key={point.week}
+                  key={point.days}
                   className={cn(
                     'flex items-center gap-3 p-2 rounded-lg transition-colors',
-                    isCurrentWeek ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
+                    isCurrent ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
                   )}
                 >
-                  {/* Week label */}
+                  {/* Days label */}
                   <div className={cn(
-                    'w-16 text-xs font-medium',
-                    isCurrentWeek ? 'text-primary' : 'text-muted-foreground'
+                    'w-20 text-xs font-medium',
+                    isCurrent ? 'text-primary' : 'text-muted-foreground'
                   )}>
-                    {language === 'bn' 
-                      ? (index === 0 ? '১-৭ দিন' : `সপ্তাহ ${index}`)
-                      : point.label
-                    }
+                    {language === 'bn' ? point.labelBn : point.label}
                   </div>
                   
                   {/* Temperature bar */}
@@ -74,18 +77,18 @@ export function BroilerTempCurveCard({ currentTemp }: BroilerTempCurveCardProps)
                       <div 
                         className={cn(
                           'absolute h-full rounded-lg',
-                          isCurrentWeek 
+                          isCurrent 
                             ? 'bg-gradient-to-r from-primary/60 to-primary/40' 
                             : 'bg-gradient-to-r from-amber-500/40 to-red-500/30'
                         )}
                         style={{
                           left: `${(point.minTemp / 40) * 100}%`,
-                          width: `${((point.maxTemp - point.minTemp) / 40) * 100}%`,
+                          width: `${(Math.max(1, point.maxTemp - point.minTemp) / 40) * 100}%`,
                         }}
                       />
                       
-                      {/* Current temp indicator (if current week) */}
-                      {isCurrentWeek && currentTemp && (
+                      {/* Current temp indicator (if current period) */}
+                      {isCurrent && currentTemp && (
                         <div 
                           className="absolute w-1 h-full bg-primary"
                           style={{
@@ -98,14 +101,17 @@ export function BroilerTempCurveCard({ currentTemp }: BroilerTempCurveCardProps)
                     {/* Temperature values */}
                     <div className={cn(
                       'text-xs whitespace-nowrap',
-                      isCurrentWeek ? 'text-primary font-semibold' : 'text-muted-foreground'
+                      isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground'
                     )}>
-                      {point.minTemp}-{point.maxTemp}°C
+                      {point.minTemp === point.maxTemp 
+                        ? `${point.minTemp}°C` 
+                        : `${point.minTemp}-${point.maxTemp}°C`
+                      }
                     </div>
                   </div>
                   
                   {/* Current indicator */}
-                  {isCurrentWeek && (
+                  {isCurrent && (
                     <Badge variant="default" className="text-[10px] px-1.5">
                       {language === 'bn' ? 'বর্তমান' : 'Now'}
                     </Badge>

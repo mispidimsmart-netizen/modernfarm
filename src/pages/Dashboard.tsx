@@ -8,7 +8,8 @@ import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
-import { useBroilerAutomation } from '@/hooks/useBroilerAutomation';
+import { useBroilerEnvironment } from '@/hooks/useBroilerEnvironment';
+import { useBroilerWaterMonitor } from '@/hooks/useBroilerWaterMonitor';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useHeatStressRiskPrediction } from '@/hooks/useHeatStressRiskPrediction';
@@ -69,18 +70,20 @@ export function Dashboard() {
     enabled: isLayer && !manualOverride,
   });
 
-  // Broiler: Age-based temperature automation
-  const broilerTempResult = useBroilerAutomation({
+  // Broiler: Complete environment automation (temp, humidity, ammonia, HSI)
+  const broilerEnvResult = useBroilerEnvironment({
     temperature: sensorData.temperature,
     humidity: sensorData.humidity,
+    ammonia: sensorData.ammonia,
     shedId: selectedShedId,
     enabled: isBroiler,
   });
 
-  // Water usage anomaly detection (both farm types)
-  const waterAnomalyResult = useWaterAnomalyDetection(sensorData.waterUsage);
+  // Water usage monitoring - different logic for layer vs broiler
+  const layerWaterAnomalyResult = useWaterAnomalyDetection(isLayer ? sensorData.waterUsage : null);
+  const broilerWaterResult = useBroilerWaterMonitor(isBroiler ? sensorData.waterUsage : null);
 
-  // Ammonia rising trend detection (both farm types)
+  // Ammonia rising trend detection (layer only - broiler has built-in)
   const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
 
   // Tomorrow's heat stress risk prediction (layer only)
@@ -352,7 +355,19 @@ export function Dashboard() {
               {/* Broiler Mode: Show Broiler Temp Status */}
               {isBroiler && (
                 <>
-                  <BroilerTempStatusCard tempResult={broilerTempResult} />
+                  <BroilerTempStatusCard tempResult={broilerEnvResult ? {
+                    currentTemp: broilerEnvResult.temperature.current,
+                    targetMin: broilerEnvResult.temperature.targetMin,
+                    targetMax: broilerEnvResult.temperature.targetMax,
+                    ageWeeks: broilerEnvResult.ageWeeks,
+                    ageDays: broilerEnvResult.ageDays,
+                    level: broilerEnvResult.temperature.level === 'emergency' ? 'critical' : broilerEnvResult.temperature.level,
+                    deviation: broilerEnvResult.temperature.deviation,
+                    shouldActivateFan: broilerEnvResult.temperature.shouldActivateFan,
+                    shouldActivateHeater: broilerEnvResult.temperature.shouldActivateHeater,
+                    shouldAlert: broilerEnvResult.temperature.shouldAlarm,
+                    message: broilerEnvResult.overallMessage,
+                  } : null} />
                   <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
                 </>
               )}
@@ -377,7 +392,17 @@ export function Dashboard() {
             
             {/* TAB: Alerts & Predictions */}
             <TabsContent value="alerts" className="mt-4 space-y-4">
-              <WaterAnomalyCard result={waterAnomalyResult} />
+              {isLayer && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
+              {isBroiler && broilerWaterResult && (
+                <WaterAnomalyCard result={{
+                  todayUsage: broilerWaterResult.currentUsage,
+                  last3DaysAvg: broilerWaterResult.avgLast6Hours,
+                  percentChange: broilerWaterResult.percentChange,
+                  isAnomaly: broilerWaterResult.isAnomaly,
+                  threshold: broilerWaterResult.threshold,
+                  message: broilerWaterResult.message,
+                }} />
+              )}
               <AmmoniaTrendCard result={ammoniaTrendResult} />
               {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
               <PowerOutageCard />
