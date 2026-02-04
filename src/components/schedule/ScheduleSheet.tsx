@@ -39,10 +39,12 @@ const CLEANING_INTERVALS = [
 ];
 
 interface ScheduleSheetProps {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
+export function ScheduleSheet({ trigger, open, onOpenChange }: ScheduleSheetProps) {
   const { language } = useAuth();
   const { data: schedules, isLoading } = useSchedules();
   const addSchedule = useAddSchedule();
@@ -122,8 +124,8 @@ export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <Sheet>
-      <SheetTrigger asChild>{trigger}</SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
