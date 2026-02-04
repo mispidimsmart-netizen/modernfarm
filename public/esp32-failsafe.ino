@@ -145,9 +145,48 @@ int fanHealthCheckFailCount = 0;
 const int FAN_HEALTH_CHECK_INTERVAL = 60000;  // Check every 60 seconds
 const int MAX_FAN_HEALTH_FAILURES = 3;        // 3 failures = relay problem
 
+// ================ FARM TYPE CONFIGURATION ================
+// 🐔 Set this to "LAYER" or "BROILER" based on your farm type
+// BROILER uses age-based temperature thresholds
+// LAYER uses fixed HSI thresholds
+String FARM_TYPE = "LAYER";  // Change to "BROILER" for broiler farms
+int BROILER_AGE_DAYS = 1;    // Current broiler batch age in days (sync from cloud)
+
+// ================ BROILER TEMPERATURE CURVE ================
+// Age-based temperature thresholds for broilers
+struct BroilerTempCurve {
+  int minDays;
+  int maxDays;
+  float minTemp;
+  float maxTemp;
+};
+
+const BroilerTempCurve BROILER_TEMP_CURVE[] = {
+  { 1,  3, 33, 34 },   // Day 1-3: 33-34°C
+  { 4,  7, 32, 32 },   // Day 4-7: 32°C
+  { 8, 14, 30, 30 },   // Day 8-14: 30°C
+  { 15, 21, 28, 28 },  // Day 15-21: 28°C
+  { 22, 28, 26, 26 },  // Day 22-28: 26°C
+  { 29, 35, 24, 24 },  // Day 29-35: 24°C
+  { 36, 999, 22, 23 }  // Day 36+: 22-23°C
+};
+const int BROILER_CURVE_SIZE = 7;
+
+// ================ BROILER THRESHOLDS ================
+// These match the web app's BROILER_THRESHOLDS
+const float BROILER_TEMP_FAN_HIGH_DEV = 2.0;    // +2°C → fan HIGH
+const float BROILER_TEMP_HEATER_DEV = 2.0;      // -2°C → heater ON
+const float BROILER_TEMP_ALARM_DEV = 4.0;       // +4°C → alarm
+const float BROILER_HUMIDITY_LOW = 40.0;        // <40% → warning
+const float BROILER_HUMIDITY_HIGH = 75.0;       // >75% → ventilation
+const float BROILER_AMMONIA_FAN = 20.0;         // >20ppm → fan ON
+const float BROILER_AMMONIA_ALARM = 30.0;       // >30ppm → alarm
+const float BROILER_HSI_FAN_HIGH = 38.0;        // >38 → fan HIGH
+const float BROILER_HSI_EMERGENCY = 42.0;       // >42 → emergency
+
 // ================ CACHED SETTINGS (EEPROM) ================
 struct CachedSettings {
-  // Temperature thresholds
+  // Temperature thresholds (Layer)
   float tempMin = 18.0;
   float tempMax = 32.0;
   
@@ -158,15 +197,15 @@ struct CachedSettings {
   // Ammonia threshold
   float ammoniaMax = 25.0;
   
-  // Fan speed thresholds
+  // Fan speed thresholds (Layer)
   float fanLowTempMin = 28.0;
   float fanLowTempMax = 30.0;
   float fanMedTempMin = 30.0;
   float fanMedTempMax = 33.0;
   float fanHighTempMin = 33.0;
   
-  // 🔥 HSI Thresholds (Simple Formula: HSI = Temp + Humidity × 0.1)
-  // User Request: HSI < 30 = Normal, 30-35 = Mild, 35-40 = High, > 40 = Danger
+  // 🔥 HSI Thresholds (Layer - Simple Formula: HSI = Temp + Humidity × 0.1)
+  // Layer: HSI < 30 = Normal, 30-35 = Mild, 35-40 = High, > 40 = Danger
   float hsiNormal = 30.0;      // < 30: Normal → Fan OFF or LOW
   float hsiMild = 35.0;        // 30-35: Mild Stress → Fan LOW
   float hsiHigh = 40.0;        // 35-40: High Stress → Fan HIGH
@@ -195,21 +234,50 @@ struct CachedSettings {
   uint32_t checksum = 0;
 } cachedSettings;
 
-// ================ SETUP ================
+// Get broiler target temperature based on age
+void getBroilerTargetTemp(int ageDays, float &minTemp, float &maxTemp) {
+  for (int i = 0; i < BROILER_CURVE_SIZE; i++) {
+    if (ageDays >= BROILER_TEMP_CURVE[i].minDays && ageDays <= BROILER_TEMP_CURVE[i].maxDays) {
+      minTemp = BROILER_TEMP_CURVE[i].minTemp;
+      maxTemp = BROILER_TEMP_CURVE[i].maxTemp;
+      return;
+    }
+  }
+  // Default to last curve entry
+  minTemp = BROILER_TEMP_CURVE[BROILER_CURVE_SIZE - 1].minTemp;
+  maxTemp = BROILER_TEMP_CURVE[BROILER_CURVE_SIZE - 1].maxTemp;
+}
+
+// ================ BOOT BEHAVIOUR ================
+// Power ON → Initialize sensors → Load last saved settings → 
+// Fan ON for 30 sec (air refresh) → Enter AUTO mode
+// If sensor not found: FAIL-SAFE MODE → Fan ON
+
+bool sensorInitSuccess = true;
+bool bootFanDone = false;
+unsigned long bootFanStartTime = 0;
+const unsigned long BOOT_FAN_DURATION = 30000;  // 30 seconds air refresh
+
 void setup() {
   Serial.begin(115200);
   Serial.println("\n╔══════════════════════════════════════════════════════════════╗");
-  Serial.println("║    Smart Layer Farm - ESP32 Fail-Safe Controller             ║");
+  Serial.println("║    Smart Farm - ESP32 Fail-Safe Controller v4.0              ║");
   Serial.println("║    🏭 BIG FARM ARCHITECTURE: Each Shed = Independent Unit    ║");
   Serial.println("╚══════════════════════════════════════════════════════════════╝\n");
   Serial.printf("  Shed: %s (%s)\n", SHED_NAME, SHED_ID);
   Serial.printf("  Farm: %s\n\n", FARM_ID);
   
-  // Initialize output pins
+  // ========== STEP 1: Initialize Output Pins ==========
+  Serial.println("▶ Step 1: Initializing output pins...");
   pinMode(FAN_RELAY_PIN, OUTPUT);
   pinMode(LIGHT_PWM_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
+  
+  // Start with fan OFF, will turn on after sensor check
+  digitalWrite(FAN_RELAY_PIN, LOW);
+  digitalWrite(ALARM_RELAY_PIN, LOW);
+  digitalWrite(STATUS_LED_PIN, HIGH);  // LED on during boot
   
   // Initialize input pins
   pinMode(POWER_SENSE_PIN, INPUT);
@@ -223,24 +291,94 @@ void setup() {
   // Initialize PWM for light
   ledcSetup(0, 1000, 8);  // Channel 0, 1kHz, 8-bit
   ledcAttachPin(LIGHT_PWM_PIN, 0);
+  Serial.println("✓ Output pins initialized");
   
-  // Initialize DHT sensor
+  // ========== STEP 2: Initialize Sensors ==========
+  Serial.println("\n▶ Step 2: Initializing sensors...");
   dht.begin();
+  delay(2000);  // Wait for DHT sensor to stabilize
   
-  // Load cached settings from EEPROM
-  loadCachedSettings();
+  // Test DHT sensor
+  float testTemp = dht.readTemperature();
+  float testHum = dht.readHumidity();
   
-  // Connect to WiFi
-  connectWiFi();
-  
-  // Initial cloud sync
-  if (wifiConnected) {
-    syncWithCloud();
+  if (isnan(testTemp) || isnan(testHum)) {
+    Serial.println("⚠️ DHT22 SENSOR ERROR - Cannot read temperature/humidity!");
+    sensorInitSuccess = false;
+  } else {
+    Serial.printf("✓ DHT22 OK: Temp=%.1f°C, Humidity=%.1f%%\n", testTemp, testHum);
   }
   
-  Serial.println("\n✓ Setup complete!");
-  Serial.printf("  Mode: %s\n", failsafeMode ? "FAIL_SAFE" : "AUTO");
-  Serial.printf("  Manual Override: %s\n", localManualOverride ? "ENABLED" : "DISABLED");
+  // Test MQ135 ammonia sensor
+  int ammoniaRaw = analogRead(MQ135_PIN);
+  if (ammoniaRaw < 10 || ammoniaRaw > 4090) {  // ADC out of range
+    Serial.println("⚠️ MQ135 SENSOR WARNING - Ammonia reading abnormal");
+    // Don't fail for ammonia, but log warning
+  } else {
+    Serial.printf("✓ MQ135 OK: Raw ADC=%d\n", ammoniaRaw);
+  }
+  
+  // ========== STEP 3: Load Cached Settings ==========
+  Serial.println("\n▶ Step 3: Loading cached settings from EEPROM...");
+  loadCachedSettings();
+  Serial.printf("✓ Settings loaded (version: %d)\n", cachedSettings.version);
+  
+  // ========== STEP 4: Sensor Fail = FAILSAFE MODE ==========
+  if (!sensorInitSuccess) {
+    Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ⚠️ SENSOR INITIALIZATION FAILED - ENTERING FAIL-SAFE     ║");
+    Serial.println("║  যদি sensor না পাওয়া যায়: FAIL-SAFE MODE → Fan ON          ║");
+    Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+    failsafeMode = true;
+    failsafeActivatedAt = millis();
+    
+    // Turn on fan immediately for safety
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    
+    // Sound alarm to notify
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      delay(200);
+    }
+    Serial.println("🔥 Fan ON (FAILSAFE) - Sensor error detected at boot");
+  }
+  
+  // ========== STEP 5: Boot Fan Sequence (30 sec air refresh) ==========
+  Serial.println("\n▶ Step 5: Starting boot fan sequence (30 sec air refresh)...");
+  digitalWrite(FAN_RELAY_PIN, HIGH);
+  fanOn = true;
+  fanSpeed = "HIGH";
+  bootFanStartTime = millis();
+  bootFanDone = false;
+  Serial.println("🌀 Fan ON for 30 seconds - Air refresh sequence");
+  
+  // ========== STEP 6: Connect WiFi ==========
+  Serial.println("\n▶ Step 6: Connecting to WiFi...");
+  connectWiFi();
+  
+  // ========== STEP 7: Initial Cloud Sync ==========
+  if (wifiConnected) {
+    Serial.println("\n▶ Step 7: Initial cloud sync...");
+    syncWithCloud();
+  } else {
+    Serial.println("\n⚠️ Step 7: Skipped cloud sync (no WiFi)");
+  }
+  
+  // ========== BOOT COMPLETE ==========
+  digitalWrite(STATUS_LED_PIN, LOW);  // LED off after boot
+  
+  Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+  Serial.println("║  ✅ BOOT SEQUENCE COMPLETE                                 ║");
+  Serial.println("╠════════════════════════════════════════════════════════════╣");
+  Serial.printf("║  Mode: %s\n", failsafeMode ? "FAIL_SAFE (Sensor Error)" : "AUTO");
+  Serial.printf("║  Sensors: %s\n", sensorInitSuccess ? "OK" : "ERROR - Fan ON");
+  Serial.printf("║  WiFi: %s\n", wifiConnected ? "Connected" : "Disconnected");
+  Serial.printf("║  Boot Fan: Running (30 sec remaining)\n");
+  Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
 
 // ================ MAIN LOOP ================
@@ -252,6 +390,30 @@ void loop() {
   
   unsigned long now = millis();
   
+  // ========== CHECK BOOT FAN SEQUENCE ==========
+  // After 30 seconds, turn off boot fan and enter AUTO mode
+  if (!bootFanDone && now - bootFanStartTime >= BOOT_FAN_DURATION) {
+    bootFanDone = true;
+    Serial.println("\n✅ Boot fan sequence complete (30 sec)");
+    Serial.println("▶ Entering AUTO mode...\n");
+    
+    // Only turn off fan if sensors are OK and temperature is normal
+    if (sensorInitSuccess) {
+      float currentTemp = dht.readTemperature();
+      if (!isnan(currentTemp) && currentTemp < cachedSettings.fanMedTempMin) {
+        digitalWrite(FAN_RELAY_PIN, LOW);
+        fanOn = false;
+        fanSpeed = "OFF";
+        Serial.println("✓ Boot fan OFF - Temperature normal, entering AUTO");
+      } else {
+        Serial.printf("⚠️ Boot fan remains ON - Temp=%.1f°C (threshold: %.1f°C)\n", 
+                      currentTemp, cachedSettings.fanMedTempMin);
+      }
+    } else {
+      Serial.println("⚠️ Boot fan remains ON - Sensor error (FAILSAFE)");
+    }
+  }
+  
   // 🔘 ALWAYS CHECK MANUAL OVERRIDE BUTTON FIRST!
   // This must work even if everything else fails
   checkManualOverrideButton();
@@ -259,6 +421,18 @@ void loop() {
   // 1. Read sensors regularly
   if (now - lastSensorRead >= SENSOR_READ_INTERVAL) {
     readSensors();
+    
+    // ⚠️ SENSOR ERROR CHECK - "সন্দেহ হলে Fan ON"
+    if (isnan(temperature) || isnan(humidity)) {
+      if (!failsafeMode) {
+        Serial.println("⚠️ SENSOR READ ERROR → Activating FAILSAFE");
+        activateFailsafe("Sensor read error during operation");
+        digitalWrite(FAN_RELAY_PIN, HIGH);
+        fanOn = true;
+        fanSpeed = "HIGH";
+      }
+    }
+    
     lastSensorRead = now;
   }
   
@@ -730,19 +904,178 @@ void handleLocalManualMode() {
 // ================ AUTOMATION FUNCTIONS ================
 // 🔐 LOCAL SAFE RULES - "সন্দেহ হলে Fan ON — Always safer"
 // These rules run when cloud is unavailable
+// Now supports both LAYER and BROILER farm types
 
 void runAutomation() {
   // Update current mode
   currentMode = failsafeMode ? "FAIL_SAFE" : "AUTO";
   
   if (failsafeMode) {
-    runLocalAutomation();
+    // Choose automation based on farm type
+    if (FARM_TYPE == "BROILER") {
+      runBroilerAutomation();
+    } else {
+      runLocalAutomation();  // Layer automation
+    }
     
     // 🔧 Run fan relay health check in failsafe mode
     checkFanRelayHealth();
   }
   // Cloud mode automation is handled in handleCloudResponse
 }
+
+// ================ BROILER-SPECIFIC AUTOMATION ================
+// Age-based temperature control for broilers
+// Matches web app's BROILER_THRESHOLDS
+
+void runBroilerAutomation() {
+  Serial.println("\n🐔 Running BROILER AUTOMATION RULES...");
+  Serial.printf("   Batch Age: %d days\n", BROILER_AGE_DAYS);
+  
+  // ========================================
+  // RULE 0: SENSOR ERROR = FAN ON (Safe Mode)
+  // ========================================
+  bool sensorError = isnan(temperature) || isnan(humidity);
+  if (sensorError) {
+    Serial.println("⚠️ SENSOR ERROR → Fan ON (Safe Mode)");
+    setFanState(true, "HIGH");
+    return;
+  }
+  
+  // Get target temperature based on broiler age
+  float targetMin, targetMax;
+  getBroilerTargetTemp(BROILER_AGE_DAYS, targetMin, targetMax);
+  float targetTemp = (targetMin + targetMax) / 2.0;
+  float deviation = temperature - targetTemp;
+  
+  Serial.printf("   Target Temp: %.1f°C (%.1f-%.1f), Current: %.1f°C, Deviation: %+.1f°C\n",
+                targetTemp, targetMin, targetMax, temperature, deviation);
+  
+  // ========================================
+  // BROILER RULE 1: TEMP > target +4°C = ALARM
+  // ========================================
+  if (deviation >= BROILER_TEMP_ALARM_DEV) {
+    Serial.printf("🚨 BROILER TEMP ALARM! (%.1f°C > target +4°C) → Fan HIGH + Alarm\n", temperature);
+    setFanState(true, "HIGH");
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    systemState = "DANGER";
+  }
+  // ========================================
+  // BROILER RULE 2: TEMP > target +2°C = FAN HIGH
+  // ========================================
+  else if (deviation >= BROILER_TEMP_FAN_HIGH_DEV) {
+    Serial.printf("🌡️ BROILER TEMP HIGH (%.1f°C > target +2°C) → Fan HIGH\n", temperature);
+    setFanState(true, "HIGH");
+    systemState = "HIGH_STRESS";
+  }
+  // ========================================
+  // BROILER RULE 3: TEMP < target -2°C = HEATER NEEDED
+  // ========================================
+  else if (deviation <= -BROILER_TEMP_HEATER_DEV) {
+    Serial.printf("🥶 BROILER TEMP LOW (%.1f°C < target -2°C) → HEATER NEEDED!\n", temperature);
+    setFanState(false, "OFF");  // Don't cool when cold
+    // Note: Heater control would go here if connected
+    // For now, sound alarm to notify farmer
+    if (deviation <= -BROILER_TEMP_ALARM_DEV) {
+      alarmOn = true;
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      systemState = "DANGER";
+    } else {
+      systemState = "COLD";
+    }
+  }
+  // ========================================
+  // BROILER RULE 4: TEMP NORMAL
+  // ========================================
+  else {
+    systemState = "NORMAL";
+    // Only turn off fan if humidity and ammonia are also OK
+    if (humidity < BROILER_HUMIDITY_HIGH && ammonia < BROILER_AMMONIA_FAN) {
+      setFanState(false, "OFF");
+    }
+  }
+  
+  // ========================================
+  // BROILER HUMIDITY CHECK
+  // <40% = warning, >75% = ventilation
+  // ========================================
+  if (humidity < BROILER_HUMIDITY_LOW) {
+    Serial.printf("⚠️ BROILER HUMIDITY LOW (%.1f%%) - Need more moisture\n", humidity);
+    // Just warning, no fan action needed for low humidity
+  }
+  else if (humidity > BROILER_HUMIDITY_HIGH) {
+    Serial.printf("💨 BROILER HUMIDITY HIGH (%.1f%%) → Increase ventilation\n", humidity);
+    if (!fanOn) {
+      setFanState(true, "LOW");
+    }
+  }
+  
+  // ========================================
+  // BROILER AMMONIA CHECK
+  // >20ppm = fan ON, >30ppm = alarm
+  // ========================================
+  if (ammonia >= BROILER_AMMONIA_ALARM) {
+    Serial.printf("🚨 BROILER AMMONIA DANGER (%.1f ppm > 30) → Fan HIGH + Alarm\n", ammonia);
+    setFanState(true, "HIGH");
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    systemState = "DANGER";
+  }
+  else if (ammonia >= BROILER_AMMONIA_FAN) {
+    Serial.printf("⚠️ BROILER AMMONIA HIGH (%.1f ppm > 20) → Fan ON\n", ammonia);
+    if (!fanOn || fanSpeed == "OFF") {
+      setFanState(true, "MEDIUM");
+    }
+  }
+  
+  // ========================================
+  // BROILER HSI CHECK (Heat Stress Index)
+  // >38 = fan HIGH, >42 = emergency
+  // ========================================
+  float hsi = calculateHSI(temperature, humidity);
+  currentHSI = hsi;
+  
+  if (hsi >= BROILER_HSI_EMERGENCY) {
+    Serial.printf("🚨 BROILER HSI EMERGENCY (%.1f >= 42) → Fan HIGH + Alert!\n", hsi);
+    setFanState(true, "HIGH");
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    systemState = "DANGER";
+  }
+  else if (hsi >= BROILER_HSI_FAN_HIGH) {
+    Serial.printf("🔥 BROILER HSI HIGH (%.1f >= 38) → Fan HIGH\n", hsi);
+    setFanState(true, "HIGH");
+    if (systemState == "NORMAL") systemState = "HIGH_STRESS";
+  }
+  
+  // ========================================
+  // ALARM AUTO-CLEAR (only if ALL conditions safe)
+  // ========================================
+  if (alarmOn && deviation < BROILER_TEMP_ALARM_DEV && deviation > -BROILER_TEMP_ALARM_DEV &&
+      ammonia < BROILER_AMMONIA_ALARM && hsi < BROILER_HSI_EMERGENCY) {
+    alarmOn = false;
+    digitalWrite(ALARM_RELAY_PIN, LOW);
+    Serial.println("✅ All broiler conditions safe → Alarm cleared");
+  }
+  
+  // ========================================
+  // LIGHTING CONTROL
+  // ========================================
+  controlLighting();
+  
+  // ========================================
+  // BROILER STATUS REPORT
+  // ========================================
+  Serial.printf("\n🐔 [%s] BROILER Status (Day %d):\n", SHED_NAME, BROILER_AGE_DAYS);
+  Serial.printf("   Target: %.1f°C | Current: %.1f°C | Deviation: %+.1f°C\n", 
+                targetTemp, temperature, deviation);
+  Serial.printf("   HSI: %.1f | Hum: %.1f%% | NH3: %.1f ppm\n", currentHSI, humidity, ammonia);
+  Serial.printf("   Fan: %s (%s) | Alarm: %s | State: %s\n",
+                fanOn ? "ON" : "OFF", fanSpeed.c_str(),
+                alarmOn ? "ON" : "OFF", systemState.c_str());
+}
+
 
 void runLocalAutomation() {
   Serial.println("\n🔐 Running LOCAL SAFE RULES...");
