@@ -52,7 +52,7 @@ import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
 
 const t = {
   bn: {
-    title: 'সুপার অ্যাডমিন ড্যাশবোর্ড',
+    title: 'অ্যাডমিন ড্যাশবোর্ড',
     totalUsers: 'মোট ইউজার',
     totalSheds: 'মোট শেড',
     activeDevices: 'সক্রিয় ডিভাইস',
@@ -95,7 +95,7 @@ const t = {
     farmInfo: 'ফার্ম তথ্য',
   },
   en: {
-    title: 'Super Admin Dashboard',
+    title: 'Admin Dashboard',
     totalUsers: 'Total Users',
     totalSheds: 'Total Sheds',
     activeDevices: 'Active Devices',
