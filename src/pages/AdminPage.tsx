@@ -533,22 +533,26 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="guide" className="mt-4">
-            <Card className="bg-slate-800/50 border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-teal-400" />
-                  {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+            <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
+              <CardHeader className="border-b border-teal-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/40">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                  </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-300">
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-teal-200/70">
                   {language === 'bn' 
                     ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
                     : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
                 </p>
                 <Button 
                   onClick={() => navigate('/installation-guide')}
-                  className="w-full bg-teal-600 hover:bg-teal-700"
+                  className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
                 >
                   <BookOpen className="w-4 h-4 mr-2" />
                   {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}

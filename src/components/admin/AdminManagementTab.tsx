@@ -241,26 +241,30 @@ export function AdminManagementTab({ language }: AdminManagementTabProps) {
 
   return (
     <>
-      <Card className="bg-slate-800/50 border-white/10">
-        <CardHeader className="pb-4">
+      <Card className="bg-gradient-to-br from-amber-950/40 via-slate-900/90 to-yellow-950/30 border-amber-500/20 shadow-xl shadow-amber-500/10 backdrop-blur-sm">
+        <CardHeader className="pb-4 border-b border-amber-500/10">
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <div>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Shield className="w-5 h-5 text-yellow-400" />
-                {labels.title}
+              <CardTitle className="text-white flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-amber-500/40">
+                  <Shield className="w-5 h-5 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-amber-200 to-yellow-200 bg-clip-text text-transparent font-semibold">
+                  {labels.title}
+                </span>
               </CardTitle>
-              <CardDescription className="text-gray-400 mt-1">
+              <CardDescription className="text-amber-200/60 mt-2 ml-13">
                 {labels.description}
               </CardDescription>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="outline" className="border-yellow-500/30 text-yellow-400">
-                <Crown className="w-3 h-3 mr-1" />
+              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white border-0 px-4 py-1.5 shadow-lg shadow-amber-500/30">
+                <Crown className="w-3.5 h-3.5 mr-1.5" />
                 {labels.totalAdmins}: {admins?.length || 0}
               </Badge>
               <Button
                 onClick={() => setShowAddDialog(true)}
-                className="bg-yellow-600 hover:bg-yellow-700"
+                className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white border-0 shadow-lg shadow-amber-500/30"
                 size="sm"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
@@ -271,12 +275,12 @@ export function AdminManagementTab({ language }: AdminManagementTabProps) {
           
           {/* Search */}
           <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-400" />
             <Input
               placeholder={labels.searchPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-slate-700/50 border-white/10 text-white placeholder:text-gray-400"
+              className="pl-10 bg-amber-950/30 border-amber-500/20 text-white placeholder:text-amber-300/50 focus:border-amber-400/50"
             />
           </div>
         </CardHeader>
@@ -296,12 +300,12 @@ export function AdminManagementTab({ language }: AdminManagementTabProps) {
                   return (
                     <div
                       key={admin.user_id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border border-yellow-500/20"
+                      className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-500/10 border border-amber-500/20 hover:border-amber-400/40 transition-all"
                     >
                       <div className="flex items-center gap-4">
-                        <Avatar className="w-12 h-12 border-2 border-yellow-500/30">
+                        <Avatar className="w-12 h-12 border-2 border-amber-500/40 shadow-lg shadow-amber-500/20">
                           <AvatarImage src={admin.profile?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-yellow-600 text-white">
+                          <AvatarFallback className="bg-gradient-to-br from-amber-500 to-yellow-600 text-white font-semibold">
                             {(admin.profile?.user_name || admin.profile?.farm_name || 'A').charAt(0)}
                           </AvatarFallback>
                         </Avatar>
@@ -311,12 +315,12 @@ export function AdminManagementTab({ language }: AdminManagementTabProps) {
                               {admin.profile?.user_name || admin.profile?.farm_name || 'Unknown'}
                             </h3>
                             {isCurrentUser && (
-                              <Badge className="bg-yellow-600 text-white text-xs">
+                              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white text-xs border-0">
                                 {labels.youAreAdmin}
                               </Badge>
                             )}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-1">
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-amber-200/60 mt-1">
                             {admin.profile?.phone && (
                               <span className="flex items-center gap-1">
                                 <Phone className="w-3 h-3" />
@@ -341,7 +345,7 @@ export function AdminManagementTab({ language }: AdminManagementTabProps) {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/20"
                           onClick={() => {
                             setSelectedAdmin(admin);
                             setShowRemoveConfirm(true);
@@ -355,9 +359,11 @@ export function AdminManagementTab({ language }: AdminManagementTabProps) {
                 })}
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-400">
-                <Shield className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>{labels.noAdmins}</p>
+              <div className="text-center py-16">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-600/20 to-yellow-600/20 flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-8 h-8 text-amber-400/50" />
+                </div>
+                <p className="text-amber-200/50">{labels.noAdmins}</p>
               </div>
             )}
           </ScrollArea>
