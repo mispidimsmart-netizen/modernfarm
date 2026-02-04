@@ -253,10 +253,9 @@ export default function AdminPage() {
               </div>
             </div>
             <Button
-              variant="outline"
               size="sm"
               onClick={() => refetchUsers()}
-              className="border-indigo-400/30 text-indigo-200 hover:bg-indigo-500/20 hover:border-indigo-400/50 transition-all"
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 transition-all"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               {labels.refresh}
