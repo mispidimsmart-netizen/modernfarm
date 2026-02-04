@@ -30,6 +30,7 @@ export function FarmManagementPage() {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
     input: { bn: '✏️ এন্ট্রি', en: '✏️ Entry' },
     report: { bn: '📊 সারাংশ', en: '📊 Summary' },
+    schedule: { bn: '📅 শিডিউল', en: '📅 Schedule' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
     todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
     eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
@@ -62,22 +63,28 @@ export function FarmManagementPage() {
 
           {/* Tabbed Interface */}
           <Tabs defaultValue="input" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-11 rounded-2xl bg-muted/50 p-1">
+            <TabsList className="w-full grid grid-cols-4 h-11 rounded-2xl bg-muted/50 p-1">
               <TabsTrigger 
                 value="input" 
-                className="rounded-xl text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
               >
                 {t.input[language]}
               </TabsTrigger>
               <TabsTrigger 
                 value="report" 
-                className="rounded-xl text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
               >
                 {t.report[language]}
               </TabsTrigger>
               <TabsTrigger 
+                value="schedule" 
+                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+              >
+                {t.schedule[language]}
+              </TabsTrigger>
+              <TabsTrigger 
                 value="analysis" 
-                className="rounded-xl text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
               >
                 {t.analysis[language]}
               </TabsTrigger>
@@ -87,24 +94,6 @@ export function FarmManagementPage() {
             <TabsContent value="input" className="mt-4">
               <div className="space-y-4">
                 <FarmInputCards onCardClick={handleQuickAction} />
-                
-                {/* Schedule Card */}
-                <div 
-                  onClick={() => setActiveSheet('schedule')}
-                  className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500">
-                    <Calendar size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{language === 'bn' ? 'শিডিউল ম্যানেজমেন্ট' : 'Schedule Management'}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {language === 'bn' ? 'খাবার, পরিষ্কার ও টিকার সময়সূচী' : 'Feed, cleaning & vaccination schedules'}
-                    </p>
-                  </div>
-                  <ChevronRight size={18} className="text-muted-foreground" />
-                </div>
-                
                 <p className="text-xs text-center text-muted-foreground">
                   {t.quickTip[language]}
                 </p>
@@ -144,6 +133,44 @@ export function FarmManagementPage() {
                       <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                         <Egg className="h-8 w-8 text-primary" />
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Schedule Tab */}
+            <TabsContent value="schedule" className="mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold">
+                    {language === 'bn' ? 'শিডিউল ম্যানেজমেন্ট' : 'Schedule Management'}
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'bn' 
+                    ? '📅 খাবার, পরিষ্কার ও টিকার সময়সূচী সেট করুন এবং নোটিফিকেশন পান' 
+                    : '📅 Set feed, cleaning & vaccination schedules with notifications'}
+                </p>
+                
+                {/* Schedule Management Card */}
+                <Card 
+                  onClick={() => setActiveSheet('schedule')}
+                  className="cursor-pointer transition-all active:scale-[0.98] hover:shadow-md bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-purple-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{language === 'bn' ? 'শিডিউল দেখুন ও যোগ করুন' : 'View & Add Schedules'}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {language === 'bn' ? 'খাবার, পরিষ্কার, টিকা, কাস্টম' : 'Feed, Cleaning, Vaccination, Custom'}
+                        </p>
+                      </div>
+                      <ChevronRight size={20} className="text-muted-foreground" />
                     </div>
                   </CardContent>
                 </Card>
