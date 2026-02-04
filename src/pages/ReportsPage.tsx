@@ -1,14 +1,12 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Egg, Droplet, Thermometer, BarChart3, TrendingUp } from 'lucide-react';
+import { Droplet, Thermometer, BarChart3, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useSensorReadings, useDailyReports, useUpsertDailyReport } from '@/hooks/useFarmData';
+import { useSensorReadings } from '@/hooks/useFarmData';
 import { useLiveSensorData } from '@/hooks/useSensorData';
 import { translations } from '@/lib/translations';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
@@ -17,12 +15,8 @@ export function ReportsPage() {
   const { language } = useAuth();
   const sensorData = useLiveSensorData();
   const { data: sensorReadings } = useSensorReadings(24);
-  const { data: dailyReports } = useDailyReports(7);
-  const upsertReport = useUpsertDailyReport();
   
-  const [eggCount, setEggCount] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
-  const todayReport = dailyReports?.find(r => r.report_date === new Date().toISOString().split('T')[0]);
 
   // Generate chart data from sensor readings or mock data
   const chartData = useMemo(() => {
@@ -52,17 +46,6 @@ export function ReportsPage() {
     }
     return data;
   }, [sensorReadings, language]);
-
-  const handleSaveEggs = () => {
-    const count = parseInt(eggCount);
-    if (!isNaN(count) && count >= 0) {
-      upsertReport.mutate({
-        report_date: new Date().toISOString().split('T')[0],
-        egg_production: count,
-      });
-      setEggCount('');
-    }
-  };
 
   // Calculate daily averages from chart data
   const dailyAvgTemp = chartData.reduce((acc, d) => acc + d.temperature, 0) / chartData.length;
@@ -96,26 +79,19 @@ export function ReportsPage() {
             {/* Overview Tab */}
             <TabsContent value="overview" className="mt-4 space-y-6">
               {/* Daily Summary Cards */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl bg-card p-3 text-center shadow-card">
-                  <Thermometer size={20} className="mx-auto mb-1 text-sensor-temperature" />
-                  <p className="text-lg font-bold">{dailyAvgTemp.toFixed(1)}°</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-card p-4 text-center shadow-card">
+                  <Thermometer size={24} className="mx-auto mb-2 text-sensor-temperature" />
+                  <p className="text-2xl font-bold">{dailyAvgTemp.toFixed(1)}°C</p>
                   <p className="text-xs text-muted-foreground">
-                    {language === 'bn' ? 'গড় তাপ' : 'Avg Temp'}
+                    {language === 'bn' ? 'গড় তাপমাত্রা' : 'Avg Temperature'}
                   </p>
                 </div>
-                <div className="rounded-xl bg-card p-3 text-center shadow-card">
-                  <Droplet size={20} className="mx-auto mb-1 text-sensor-water" />
-                  <p className="text-lg font-bold">{totalWater}L</p>
+                <div className="rounded-xl bg-card p-4 text-center shadow-card">
+                  <Droplet size={24} className="mx-auto mb-2 text-sensor-water" />
+                  <p className="text-2xl font-bold">{totalWater}L</p>
                   <p className="text-xs text-muted-foreground">
-                    {language === 'bn' ? 'মোট পানি' : 'Total Water'}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-card p-3 text-center shadow-card">
-                  <Egg size={20} className="mx-auto mb-1 text-secondary" />
-                  <p className="text-lg font-bold">{todayReport?.egg_production ?? '—'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'bn' ? 'ডিম' : 'Eggs'}
+                    {language === 'bn' ? 'মোট পানি ব্যবহার' : 'Total Water Usage'}
                   </p>
                 </div>
               </div>
@@ -197,34 +173,6 @@ export function ReportsPage() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
-
-              {/* Egg Production Input */}
-              <div className="rounded-2xl bg-card p-4 shadow-card">
-                <h3 className="mb-4 font-medium">
-                  {translations.reports.eggProduction[language]}
-                </h3>
-                <div className="flex gap-3">
-                  <Input
-                    type="number"
-                    value={eggCount}
-                    onChange={(e) => setEggCount(e.target.value)}
-                    placeholder={translations.reports.enterCount[language]}
-                    className="h-12 flex-1 text-lg"
-                  />
-                  <Button 
-                    onClick={handleSaveEggs} 
-                    className="h-12 px-6"
-                    disabled={upsertReport.isPending}
-                  >
-                    {translations.common.save[language]}
-                  </Button>
-                </div>
-                {todayReport?.egg_production !== undefined && (
-                  <p className="mt-3 text-center text-sm text-muted-foreground">
-                    {translations.common.today[language]}: {todayReport.egg_production} {translations.reports.eggs[language]}
-                  </p>
-                )}
               </div>
             </TabsContent>
 
