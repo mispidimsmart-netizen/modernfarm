@@ -138,17 +138,17 @@ export function Dashboard() {
             {/* Main Sensor Values - Premium Glass Cards */}
             <div className="grid grid-cols-4 gap-3 mb-4">
               {[
-                { icon: Thermometer, value: sensorData.temperature.toFixed(1), unit: '°', label: language === 'bn' ? 'তাপমাত্রা' : 'Temp', iconBg: 'from-orange-400 to-red-500' },
-                { icon: Droplets, value: sensorData.humidity.toFixed(0), unit: '%', label: language === 'bn' ? 'আর্দ্রতা' : 'Humidity', iconBg: 'from-sky-400 to-blue-500' },
-                { icon: Wind, value: sensorData.ammonia.toFixed(1), unit: '', label: language === 'bn' ? 'অ্যামোনিয়া' : 'NH₃', iconBg: 'from-fuchsia-400 to-purple-500' },
-                { icon: Zap, value: hsiResult?.index?.toFixed(0) || '--', unit: '', label: language === 'bn' ? 'হিট ইনডেক্স' : 'HSI', iconBg: 'from-amber-400 to-orange-500' },
-              ].map(({ icon: Icon, value, unit, label, iconBg }, index) => (
+                { icon: Thermometer, value: sensorData.temperature.toFixed(1), unit: '°', label: language === 'bn' ? 'তাপমাত্রা' : 'Temp', iconBg: 'from-orange-400 to-red-500', cardBg: 'from-orange-600/20 to-red-600/10', borderColor: 'border-orange-400/30' },
+                { icon: Droplets, value: sensorData.humidity.toFixed(0), unit: '%', label: language === 'bn' ? 'আর্দ্রতা' : 'Humidity', iconBg: 'from-sky-400 to-blue-500', cardBg: 'from-sky-600/20 to-blue-600/10', borderColor: 'border-sky-400/30' },
+                { icon: Wind, value: sensorData.ammonia.toFixed(1), unit: '', label: language === 'bn' ? 'অ্যামোনিয়া' : 'NH₃', iconBg: 'from-fuchsia-400 to-purple-500', cardBg: 'from-fuchsia-600/20 to-purple-600/10', borderColor: 'border-fuchsia-400/30' },
+                { icon: Zap, value: hsiResult?.index?.toFixed(0) || '--', unit: '', label: language === 'bn' ? 'হিট ইনডেক্স' : 'HSI', iconBg: 'from-amber-400 to-orange-500', cardBg: 'from-amber-600/20 to-orange-600/10', borderColor: 'border-amber-400/30' },
+              ].map(({ icon: Icon, value, unit, label, iconBg, cardBg, borderColor }, index) => (
                 <motion.div
                   key={label}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.06 }}
-                  className="text-center rounded-2xl bg-white/8 backdrop-blur-sm border border-white/10 p-3 hover:bg-white/12 transition-colors"
+                  className={`text-center rounded-2xl bg-gradient-to-br ${cardBg} backdrop-blur-sm border ${borderColor} p-3 hover:scale-[1.02] transition-all`}
                 >
                   {/* Icon Container */}
                   <div className={`mx-auto w-11 h-11 rounded-xl bg-gradient-to-br ${iconBg} flex items-center justify-center mb-2 shadow-lg`}>
