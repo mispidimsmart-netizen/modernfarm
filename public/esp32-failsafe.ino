@@ -45,6 +45,11 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <DHT.h>
+#include <esp_task_wdt.h>  // 🔧 Watchdog Timer
+
+// ================ WATCHDOG CONFIGURATION ================
+// Loop freeze > 8 sec → Auto Restart → Restart → Fan ON
+#define WDT_TIMEOUT 8  // 8 seconds watchdog timeout
 
 // ================ PIN DEFINITIONS ================
 #define DHT_PIN 4
@@ -398,6 +403,13 @@ void setup() {
     Serial.println("\n⚠️ Step 7: Skipped cloud sync (no WiFi)");
   }
   
+  // ========== STEP 8: Initialize Watchdog Timer ==========
+  // Loop freeze > 8 sec → Auto Restart → Restart → Fan ON
+  Serial.println("\n▶ Step 8: Initializing Watchdog Timer (8 sec)...");
+  esp_task_wdt_init(WDT_TIMEOUT, true);  // Enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL);                // Add current thread to WDT watch
+  Serial.println("✓ Watchdog Timer initialized (8 sec timeout)");
+  
   // ========== BOOT COMPLETE ==========
   digitalWrite(STATUS_LED_PIN, LOW);  // LED off after boot
   
@@ -407,6 +419,7 @@ void setup() {
   Serial.printf("║  Mode: %s\n", failsafeMode ? "FAIL_SAFE (Sensor Error)" : "AUTO");
   Serial.printf("║  Sensors: %s\n", sensorInitSuccess ? "OK" : "ERROR - Fan ON");
   Serial.printf("║  WiFi: %s\n", wifiConnected ? "Connected" : "Disconnected");
+  Serial.printf("║  Watchdog: Enabled (8 sec)\n");
   Serial.printf("║  Boot Fan: Running (30 sec remaining)\n");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
@@ -537,6 +550,10 @@ void loop() {
   
   // 8. Update status LED
   updateStatusLED();
+  
+  // 🔧 9. Feed Watchdog Timer - prevents auto restart
+  // If loop freezes > 8 sec, WDT will restart ESP32
+  esp_task_wdt_reset();
   
   // Small delay
   delay(100);
