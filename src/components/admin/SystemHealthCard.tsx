@@ -559,23 +559,25 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full sm:w-[350px] justify-between bg-slate-800 border-white/10 text-white hover:bg-slate-700"
+              className="w-full sm:w-[350px] justify-between bg-gradient-to-r from-slate-900 to-slate-800 border-cyan-500/30 text-white hover:bg-slate-800 hover:border-cyan-400/50 shadow-lg shadow-cyan-500/10 transition-all"
             >
               <div className="flex items-center gap-2 truncate">
                 {selectedUserId === 'all' ? (
                   <>
-                    <Activity className="w-4 h-4 text-cyan-400" />
-                    <span>{labels.allUsers}</span>
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                      <Activity className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <span className="font-medium">{labels.allUsers}</span>
                   </>
                 ) : selectedUser ? (
                   <>
-                    <Avatar className="h-5 w-5">
+                    <Avatar className="h-6 w-6 border border-cyan-500/30">
                       <AvatarImage src={selectedUser.avatar_url || ''} />
-                      <AvatarFallback className="bg-cyan-600 text-[10px]">
+                      <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-[10px] text-white">
                         {selectedUser.farm_name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="truncate">{selectedUser.farm_name}</span>
+                    <span className="truncate font-medium">{selectedUser.farm_name}</span>
                   </>
                 ) : (
                   <span>{labels.selectUser}</span>
@@ -584,14 +586,14 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[350px] p-0 bg-slate-800 border-white/10" align="start">
+          <PopoverContent className="w-[350px] p-0 bg-gradient-to-b from-slate-900 to-slate-800 border-cyan-500/30 shadow-xl shadow-cyan-500/10" align="start">
             <Command className="bg-transparent">
               <CommandInput 
                 placeholder={labels.searchPlaceholder} 
-                className="text-white placeholder:text-gray-400"
+                className="text-white placeholder:text-cyan-300/50 border-cyan-500/20"
               />
               <CommandList>
-                <CommandEmpty className="text-gray-400 py-4 text-center">
+                <CommandEmpty className="text-cyan-300/60 py-4 text-center">
                   {labels.noUserFound}
                 </CommandEmpty>
                 <CommandGroup>
@@ -601,14 +603,16 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
                       setSelectedUserId('all');
                       setOpen(false);
                     }}
-                    className="text-white hover:bg-slate-700"
+                    className="text-white hover:bg-cyan-500/20 cursor-pointer"
                   >
-                    <Activity className="mr-2 h-4 w-4 text-cyan-400" />
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mr-2">
+                      <Activity className="h-3.5 w-3.5 text-white" />
+                    </div>
                     {labels.allUsers}
                     <Check
                       className={cn(
                         "ml-auto h-4 w-4",
-                        selectedUserId === 'all' ? "opacity-100 text-green-400" : "opacity-0"
+                        selectedUserId === 'all' ? "opacity-100 text-cyan-400" : "opacity-0"
                       )}
                     />
                   </CommandItem>
@@ -620,24 +624,24 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
                         setSelectedUserId(profile.id);
                         setOpen(false);
                       }}
-                      className="text-white hover:bg-slate-700"
+                      className="text-white hover:bg-cyan-500/20 cursor-pointer"
                     >
-                      <Avatar className="h-6 w-6 mr-2">
+                      <Avatar className="h-6 w-6 mr-2 border border-cyan-500/30">
                         <AvatarImage src={profile.avatar_url || ''} />
-                        <AvatarFallback className="bg-cyan-600 text-[10px]">
+                        <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-[10px] text-white">
                           {profile.farm_name?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="truncate">{profile.farm_name}</span>
                         {profile.phone && (
-                          <span className="text-xs text-gray-400">{profile.phone}</span>
+                          <span className="text-xs text-cyan-300/60">{profile.phone}</span>
                         )}
                       </div>
                       <Check
                         className={cn(
                           "ml-auto h-4 w-4",
-                          selectedUserId === profile.id ? "opacity-100 text-green-400" : "opacity-0"
+                          selectedUserId === profile.id ? "opacity-100 text-cyan-400" : "opacity-0"
                         )}
                       />
                     </CommandItem>
@@ -651,21 +655,27 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
 
       {/* Problem Users Alert Section - Only show when "All Users" is selected */}
       {selectedUserId === 'all' && (
-        <Card className={`border ${problemUsers && problemUsers.length > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-green-500/10 border-green-500/30'}`}>
+        <Card className={`border-2 shadow-xl ${problemUsers && problemUsers.length > 0 
+          ? 'bg-gradient-to-br from-rose-950/40 to-red-950/30 border-rose-500/40 shadow-rose-500/10' 
+          : 'bg-gradient-to-br from-emerald-950/40 to-green-950/30 border-emerald-500/40 shadow-emerald-500/10'}`}>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               {problemUsers && problemUsers.length > 0 ? (
                 <>
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
-                  <span className="text-red-400">{labels.attentionRequired}</span>
-                  <Badge className="bg-red-500/20 text-red-400 ml-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-lg shadow-rose-500/30">
+                    <AlertTriangle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-rose-200 font-semibold">{labels.attentionRequired}</span>
+                  <Badge className="bg-rose-500/30 text-rose-200 border-rose-400/30 ml-2 font-bold">
                     {problemUsers.length} {labels.problemUsers}
                   </Badge>
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-5 h-5 text-green-400" />
-                  <span className="text-green-400">{labels.noProblem}</span>
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-emerald-200 font-semibold">{labels.noProblem}</span>
                 </>
               )}
             </CardTitle>
@@ -673,7 +683,7 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
           {problemUsers && problemUsers.length > 0 && (
             <CardContent>
               <ScrollArea className="max-h-[200px]">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {loadingProblems ? (
                     [1, 2, 3].map(i => (
                       <Skeleton key={i} className="h-16 bg-slate-700/50" />
@@ -682,29 +692,29 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
                     problemUsers.map((problem) => (
                       <div
                         key={problem.userId}
-                        className="flex items-center justify-between p-3 rounded-lg bg-slate-800/80 border border-red-500/20 cursor-pointer hover:bg-slate-700/80 transition-colors"
+                        className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-slate-900/90 to-slate-800/80 border border-rose-500/30 cursor-pointer hover:border-rose-400/50 hover:shadow-lg hover:shadow-rose-500/10 transition-all"
                         onClick={() => setSelectedUserId(problem.userId)}
                       >
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
+                          <Avatar className="h-10 w-10 border-2 border-rose-500/30">
                             <AvatarImage src={problem.profile?.avatar_url || ''} />
-                            <AvatarFallback className="bg-red-600 text-xs">
+                            <AvatarFallback className="bg-gradient-to-br from-rose-500 to-red-600 text-white text-sm">
                               {problem.profile?.farm_name?.charAt(0) || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm text-white font-medium">
+                            <p className="text-sm text-white font-semibold">
                               {problem.profile?.farm_name || 'Unknown'}
                             </p>
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-1.5">
                               {problem.issues.map((issue, idx) => (
                                 <Badge 
                                   key={idx} 
-                                  className={`text-[10px] px-1.5 py-0 ${
-                                    issue.type === 'device_offline' ? 'bg-gray-500/20 text-gray-400' :
-                                    issue.type === 'power_outage' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    issue.type === 'critical_alert' ? 'bg-red-500/20 text-red-400' :
-                                    'bg-orange-500/20 text-orange-400'
+                                  className={`text-[10px] px-2 py-0.5 font-medium ${
+                                    issue.type === 'device_offline' ? 'bg-slate-500/30 text-slate-200 border-slate-400/30' :
+                                    issue.type === 'power_outage' ? 'bg-amber-500/30 text-amber-200 border-amber-400/30' :
+                                    issue.type === 'critical_alert' ? 'bg-rose-500/30 text-rose-200 border-rose-400/30' :
+                                    'bg-orange-500/30 text-orange-200 border-orange-400/30'
                                   }`}
                                 >
                                   {issue.type === 'device_offline' && (
@@ -727,7 +737,7 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          className="text-cyan-400 hover:text-cyan-300 text-xs"
+                          className="text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/20 text-xs"
                         >
                           {labels.viewDetails}
                         </Button>
@@ -743,41 +753,47 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* System Status Card */}
-        <Card className="bg-slate-800/50 border-white/10">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-white flex items-center gap-2 text-base">
-              <Activity className="w-5 h-5 text-cyan-400" />
-              {selectedUserId === 'all' ? labels.systemHealth : labels.userHealth}
+        <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/70 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
+          <CardHeader className="pb-3 border-b border-cyan-500/10">
+            <CardTitle className="text-white flex items-center gap-3 text-base">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+              <span className="bg-gradient-to-r from-cyan-200 to-blue-200 bg-clip-text text-transparent font-semibold">
+                {selectedUserId === 'all' ? labels.systemHealth : labels.userHealth}
+              </span>
               {selectedUser && (
-                <Badge variant="outline" className="ml-2 text-cyan-400 border-cyan-400/30">
+                <Badge variant="outline" className="ml-2 text-cyan-300 border-cyan-400/30 bg-cyan-500/10">
                   {selectedUser.farm_name}
                 </Badge>
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-4">
             {/* Database Status - Only show for "all users" */}
             {selectedUserId === 'all' && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-700/30">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-700/50 border border-blue-500/20">
                 <div className="flex items-center gap-3">
-                  <Database className="w-5 h-5 text-blue-400" />
-                  <span className="text-white">{labels.database}</span>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <Database className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-white font-medium">{labels.database}</span>
                 </div>
                 {loadingDb ? (
-                  <Skeleton className="h-6 w-20 bg-slate-600" />
+                  <Skeleton className="h-7 w-24 bg-slate-600" />
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {dbStatus?.connected ? (
                       <>
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                        <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400/30 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                           {labels.connected}
                         </Badge>
-                        <span className="text-xs text-gray-400">{dbStatus.latency}ms</span>
+                        <span className="text-sm text-cyan-300 font-mono bg-cyan-500/10 px-2 py-0.5 rounded-lg">{dbStatus.latency}ms</span>
                       </>
                     ) : (
-                      <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                        <XCircle className="w-3 h-3 mr-1" />
+                      <Badge className="bg-rose-500/30 text-rose-200 border-rose-400/30 font-medium">
+                        <XCircle className="w-3.5 h-3.5 mr-1.5" />
                         {labels.disconnected}
                       </Badge>
                     )}
@@ -788,27 +804,42 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
 
             {/* Activity Stats */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-slate-700/30 text-center">
-                <Zap className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-                <p className="text-2xl font-bold text-white">
+              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-yellow-600/10 border border-amber-500/20 text-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center mx-auto mb-2 shadow-lg shadow-amber-500/30">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-3xl font-bold text-white">
                   {loadingActivity ? '-' : activityStats?.sensorLogsToday || 0}
                 </p>
-                <p className="text-xs text-gray-400">{labels.sensorLogs}</p>
+                <p className="text-xs text-amber-200/80 mt-1">{labels.sensorLogs}</p>
               </div>
-              <div className="p-3 rounded-lg bg-slate-700/30 text-center">
-                <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${activityStats?.ongoingOutages ? 'text-red-400' : 'text-green-400'}`} />
-                <p className="text-2xl font-bold text-white">
-                  {loadingActivity ? '-' : activityStats?.ongoingOutages || 0}
-                </p>
-                <p className="text-xs text-gray-400">{labels.powerOutages}</p>
+              <div className={`p-4 rounded-xl border text-center ${activityStats?.ongoingOutages 
+                ? 'bg-gradient-to-br from-rose-500/10 to-red-600/10 border-rose-500/20' 
+                : 'bg-gradient-to-br from-emerald-500/10 to-green-600/10 border-emerald-500/20'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg ${
+                  activityStats?.ongoingOutages 
+                    ? 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30' 
+                    : 'bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-500/30'
+                }`}>
+                  <AlertTriangle className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-3xl font-bold text-white">{loadingActivity ? '-' : activityStats?.ongoingOutages || 0}</p>
+                <p className={`text-xs mt-1 ${activityStats?.ongoingOutages ? 'text-rose-200/80' : 'text-emerald-200/80'}`}>{labels.powerOutages}</p>
               </div>
             </div>
 
             {/* Alerts Today */}
-            <div className="p-3 rounded-lg bg-slate-700/30">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-600/10 border border-orange-500/20">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">{labels.alertsToday}</span>
-                <Badge className={activityStats?.alertsToday ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                    <AlertTriangle className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-sm text-orange-200/80 font-medium">{labels.alertsToday}</span>
+                </div>
+                <Badge className={`text-lg font-bold px-3 py-1 ${activityStats?.alertsToday 
+                  ? 'bg-rose-500/30 text-rose-200 border-rose-400/30' 
+                  : 'bg-emerald-500/30 text-emerald-200 border-emerald-400/30'}`}>
                   {loadingActivity ? '-' : activityStats?.alertsToday || 0}
                 </Badge>
               </div>

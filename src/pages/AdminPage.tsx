@@ -195,10 +195,10 @@ export default function AdminPage() {
 
   if (authLoading || checkingAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white flex items-center gap-2">
-          <RefreshCw className="animate-spin" />
-          {labels.loading}
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950 flex items-center justify-center">
+        <div className="text-white flex items-center gap-3 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
+          <RefreshCw className="animate-spin text-indigo-400 w-6 h-6" />
+          <span className="text-lg font-medium">{labels.loading}</span>
         </div>
       </div>
     );
@@ -206,15 +206,17 @@ export default function AdminPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full bg-red-900/20 border-red-500/30">
-          <CardContent className="pt-6 text-center">
-            <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-red-400">{labels.unauthorized}</h2>
-            <p className="text-red-300 mt-2">{labels.unauthorizedMsg}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-rose-950/20 to-slate-950 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full bg-gradient-to-br from-rose-950/40 to-red-950/30 border-rose-500/30 shadow-2xl shadow-rose-500/10">
+          <CardContent className="pt-8 pb-6 text-center">
+            <div className="w-20 h-20 rounded-full bg-rose-500/20 flex items-center justify-center mx-auto mb-5">
+              <Shield className="w-10 h-10 text-rose-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-rose-300">{labels.unauthorized}</h2>
+            <p className="text-rose-400/80 mt-3">{labels.unauthorizedMsg}</p>
             <Button 
               variant="outline" 
-              className="mt-4"
+              className="mt-6 border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
               onClick={() => navigate('/')}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -227,9 +229,9 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950">
       {/* Header */}
-      <div className="bg-slate-900/80 backdrop-blur-sm border-b border-white/10 sticky top-0 z-10">
+      <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 backdrop-blur-xl border-b border-indigo-500/20 sticky top-0 z-10 shadow-lg shadow-indigo-500/5">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -237,20 +239,24 @@ export default function AdminPage() {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/')}
-                className="text-white hover:bg-white/10"
+                className="text-indigo-200 hover:bg-indigo-500/20 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div className="flex items-center gap-2">
-                <Shield className="w-6 h-6 text-purple-400" />
-                <h1 className="text-xl font-bold text-white">{labels.title}</h1>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                  <Shield className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent">
+                  {labels.title}
+                </h1>
               </div>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => refetchUsers()}
-              className="border-white/20 text-white hover:bg-white/10"
+              className="border-indigo-400/30 text-indigo-200 hover:bg-indigo-500/20 hover:border-indigo-400/50 transition-all"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               {labels.refresh}
@@ -262,66 +268,74 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-600 to-blue-700 border-0 text-white">
-            <CardContent className="pt-4">
+          <Card className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 border-0 text-white shadow-xl shadow-blue-500/20 hover:shadow-blue-500/30 transition-shadow">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-200 text-sm">{labels.totalUsers}</p>
+                  <p className="text-blue-100/80 text-sm font-medium">{labels.totalUsers}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-8 w-16 bg-blue-400/30" />
+                    <Skeleton className="h-9 w-16 bg-blue-400/30 mt-1" />
                   ) : (
-                    <p className="text-3xl font-bold">{stats?.totalUsers || 0}</p>
+                    <p className="text-4xl font-bold mt-1">{stats?.totalUsers || 0}</p>
                   )}
                 </div>
-                <Users className="w-10 h-10 text-blue-300" />
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-600 to-green-700 border-0 text-white">
-            <CardContent className="pt-4">
+          <Card className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 border-0 text-white shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-shadow">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-200 text-sm">{labels.totalSheds}</p>
+                  <p className="text-emerald-100/80 text-sm font-medium">{labels.totalSheds}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-8 w-16 bg-green-400/30" />
+                    <Skeleton className="h-9 w-16 bg-emerald-400/30 mt-1" />
                   ) : (
-                    <p className="text-3xl font-bold">{stats?.totalSheds || 0}</p>
+                    <p className="text-4xl font-bold mt-1">{stats?.totalSheds || 0}</p>
                   )}
                 </div>
-                <Building2 className="w-10 h-10 text-green-300" />
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <Building2 className="w-7 h-7 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-600 to-purple-700 border-0 text-white">
-            <CardContent className="pt-4">
+          <Card className="bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 border-0 text-white shadow-xl shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-200 text-sm">{labels.activeDevices}</p>
+                  <p className="text-violet-100/80 text-sm font-medium">{labels.activeDevices}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-8 w-16 bg-purple-400/30" />
+                    <Skeleton className="h-9 w-16 bg-violet-400/30 mt-1" />
                   ) : (
-                    <p className="text-3xl font-bold">{stats?.activeDevices || 0}</p>
+                    <p className="text-4xl font-bold mt-1">{stats?.activeDevices || 0}</p>
                   )}
                 </div>
-                <Cpu className="w-10 h-10 text-purple-300" />
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <Cpu className="w-7 h-7 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-orange-600 to-orange-700 border-0 text-white">
-            <CardContent className="pt-4">
+          <Card className="bg-gradient-to-br from-amber-500 via-orange-600 to-rose-700 border-0 text-white shadow-xl shadow-amber-500/20 hover:shadow-amber-500/30 transition-shadow">
+            <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-200 text-sm">{labels.alertsToday}</p>
+                  <p className="text-amber-100/80 text-sm font-medium">{labels.alertsToday}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-8 w-16 bg-orange-400/30" />
+                    <Skeleton className="h-9 w-16 bg-amber-400/30 mt-1" />
                   ) : (
-                    <p className="text-3xl font-bold">{stats?.alertsToday || 0}</p>
+                    <p className="text-4xl font-bold mt-1">{stats?.alertsToday || 0}</p>
                   )}
                 </div>
-                <AlertTriangle className="w-10 h-10 text-orange-300" />
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -329,28 +343,28 @@ export default function AdminPage() {
 
         {/* Tabs for Admins, Users, System, Notifications, Analytics */}
         <Tabs defaultValue="admins" className="w-full">
-          <TabsList className="bg-slate-800/50 border-white/10 flex-wrap h-auto gap-1">
-            <TabsTrigger value="admins" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">
+          <TabsList className="bg-slate-900/80 border border-white/10 flex-wrap h-auto gap-1 p-1.5 rounded-xl shadow-lg">
+            <TabsTrigger value="admins" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <Crown className="w-4 h-4 mr-2" />
               {labels.tabAdmins}
             </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+            <TabsTrigger value="users" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <Users className="w-4 h-4 mr-2" />
               {labels.tabUsers}
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-green-600 data-[state=active]:text-white">
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <TrendingUp className="w-4 h-4 mr-2" />
               {labels.tabAnalytics}
             </TabsTrigger>
-            <TabsTrigger value="notify" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+            <TabsTrigger value="notify" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <Bell className="w-4 h-4 mr-2" />
               {labels.tabNotify}
             </TabsTrigger>
-            <TabsTrigger value="system" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
+            <TabsTrigger value="system" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <Activity className="w-4 h-4 mr-2" />
               {labels.tabSystem}
             </TabsTrigger>
-            <TabsTrigger value="guide" className="data-[state=active]:bg-teal-600 data-[state=active]:text-white">
+            <TabsTrigger value="guide" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-teal-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <BookOpen className="w-4 h-4 mr-2" />
               {labels.tabGuide}
             </TabsTrigger>
@@ -362,20 +376,24 @@ export default function AdminPage() {
 
           <TabsContent value="users" className="mt-4">
             {/* Users List */}
-            <Card className="bg-slate-800/50 border-white/10">
-              <CardHeader className="pb-4">
+            <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-violet-500/20 shadow-xl shadow-violet-500/5">
+              <CardHeader className="pb-4 border-b border-violet-500/10">
                 <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-purple-400" />
-                    {labels.allUsers}
+                  <CardTitle className="text-white flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="bg-gradient-to-r from-violet-200 to-purple-200 bg-clip-text text-transparent">
+                      {labels.allUsers}
+                    </span>
                   </CardTitle>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400" />
                     <Input
                       placeholder={labels.searchUsers}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-slate-700/50 border-white/10 text-white placeholder:text-gray-400"
+                      className="pl-10 bg-slate-800/80 border-violet-500/20 text-white placeholder:text-violet-300/50 focus:border-violet-500/40 focus:ring-violet-500/20"
                     />
                   </div>
                 </div>
