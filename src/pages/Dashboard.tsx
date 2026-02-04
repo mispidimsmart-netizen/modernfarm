@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Zap, Thermometer, Wind, Droplets, AlertTriangle, History } from 'lucide-react';
+import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Zap, Thermometer, Wind, Droplets, AlertTriangle, TrendingUp, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
@@ -372,34 +372,34 @@ export function Dashboard() {
           transition={{ delay: 0.22 }}
           className="mb-5 grid grid-cols-2 gap-3"
         >
-          {/* Reports Card */}
+          {/* Overview Card */}
           <Link
-            to="/reports"
+            to="/reports?tab=overview"
             className="flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <BarChart3 size={24} />
+              <TrendingUp size={24} />
             </div>
             <div className="text-center">
-              <p className="font-medium text-sm">{translations.reports.title[language]}</p>
+              <p className="font-medium text-sm">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</p>
               <p className="text-[10px] text-muted-foreground">
-                {language === 'bn' ? 'বিস্তারিত রিপোর্ট' : 'Detailed reports'}
+                {language === 'bn' ? 'সেন্সর চার্ট ও সারাংশ' : 'Sensor charts & summary'}
               </p>
             </div>
           </Link>
           
-          {/* History Card */}
+          {/* Cost Analytics Card */}
           <Link
-            to="/reports"
+            to="/reports?tab=costs"
             className="flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-              <History size={24} />
+              <Wallet size={24} />
             </div>
             <div className="text-center">
-              <p className="font-medium text-sm">{language === 'bn' ? 'ইতিহাস' : 'History'}</p>
+              <p className="font-medium text-sm">{language === 'bn' ? 'খরচ বিশ্লেষণ' : 'Cost Analytics'}</p>
               <p className="text-[10px] text-muted-foreground">
-                {language === 'bn' ? 'পূর্বের ডেটা' : 'Past data'}
+                {language === 'bn' ? 'আয়-ব্যয় হিসাব' : 'Income & expenses'}
               </p>
             </div>
           </Link>

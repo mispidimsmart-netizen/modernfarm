@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Droplet, Thermometer, BarChart3, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -13,10 +14,18 @@ import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDash
 
 export function ReportsPage() {
   const { language } = useAuth();
+  const [searchParams] = useSearchParams();
   const sensorData = useLiveSensorData();
   const { data: sensorReadings } = useSensorReadings(24);
   
-  const [activeTab, setActiveTab] = useState('overview');
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl === 'costs' ? 'costs' : 'overview');
+  
+  useEffect(() => {
+    if (tabFromUrl === 'costs' || tabFromUrl === 'overview') {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   // Generate chart data from sensor readings or mock data
   const chartData = useMemo(() => {
