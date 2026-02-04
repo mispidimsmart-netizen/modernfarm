@@ -21,6 +21,7 @@ export interface Schedule {
   last_run_at: string | null;
   is_active: boolean;
   notify_before_minutes: number;
+  custom_interval_days: number | null; // For custom cleaning intervals (2-6 days)
   created_at: string;
   updated_at: string;
 }
