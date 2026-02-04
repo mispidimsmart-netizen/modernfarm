@@ -253,12 +253,16 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Header with User Selector */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-green-400" />
-          {labels.title}
+        <h3 className="text-xl font-bold flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <TrendingUp className="w-5 h-5 text-white" />
+          </div>
+          <span className="bg-gradient-to-r from-emerald-200 to-green-200 bg-clip-text text-transparent">
+            {labels.title}
+          </span>
         </h3>
         
         {/* User Selector with Search */}
@@ -268,13 +272,13 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-[280px] justify-between bg-slate-700/50 border-white/10 text-white hover:bg-slate-600/50"
+              className="w-[280px] justify-between bg-gradient-to-r from-emerald-600/20 to-green-600/20 border-emerald-500/30 text-white hover:bg-emerald-500/30 hover:border-emerald-400/50 transition-all shadow-lg"
             >
               <div className="flex items-center gap-2 truncate">
                 {selectedUserId === 'all' ? (
                   <>
-                    <Building2 className="w-4 h-4 text-purple-400 shrink-0" />
-                    <span>{labels.allFarms}</span>
+                    <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="text-emerald-100">{labels.allFarms}</span>
                   </>
                 ) : selectedProfile ? (
                   <>
@@ -372,33 +376,33 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
         </Popover>
       </div>
 
-      {/* Stats Badges */}
-      <div className="flex flex-wrap gap-2">
+      {/* Stats Badges - Vibrant Gradient Pills */}
+      <div className="flex flex-wrap gap-3">
         {selectedUserId !== 'all' && selectedProfile && (
-          <Badge variant="outline" className="border-green-500/30 text-green-400">
-            <User className="w-3 h-3 mr-1" />
+          <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 px-4 py-1.5 shadow-lg shadow-green-500/30">
+            <User className="w-3.5 h-3.5 mr-1.5" />
             {labels.selectedFarm}: {selectedProfile.farm_name}
           </Badge>
         )}
-        <Badge variant="outline" className="border-orange-500/30 text-orange-400">
-          <Thermometer className="w-3 h-3 mr-1" />
+        <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 px-4 py-1.5 shadow-lg shadow-orange-500/30">
+          <Thermometer className="w-3.5 h-3.5 mr-1.5" />
           {labels.avgTemp}: {overallStats.avgTemp}°C
         </Badge>
-        <Badge variant="outline" className="border-blue-500/30 text-blue-400">
-          <Droplets className="w-3 h-3 mr-1" />
+        <Badge className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white border-0 px-4 py-1.5 shadow-lg shadow-cyan-500/30">
+          <Droplets className="w-3.5 h-3.5 mr-1.5" />
           {labels.avgHumidity}: {overallStats.avgHumidity}%
         </Badge>
-        <Badge variant="outline" className="border-purple-500/30 text-purple-400">
-          <Wind className="w-3 h-3 mr-1" />
+        <Badge className="bg-gradient-to-r from-purple-500 to-pink-600 text-white border-0 px-4 py-1.5 shadow-lg shadow-purple-500/30">
+          <Wind className="w-3.5 h-3.5 mr-1.5" />
           {labels.avgAmmonia}: {overallStats.avgAmmonia} ppm
         </Badge>
         {selectedUserId === 'all' && (
-          <Badge variant="outline" className="border-indigo-500/30 text-indigo-400">
-            <Building2 className="w-3 h-3 mr-1" />
+          <Badge className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-0 px-4 py-1.5 shadow-lg shadow-indigo-500/30">
+            <Building2 className="w-3.5 h-3.5 mr-1.5" />
             {overallStats.farmCount} {labels.farms}
           </Badge>
         )}
-        <Badge variant="outline" className="border-gray-500/30 text-gray-400">
+        <Badge className="bg-gradient-to-r from-slate-600 to-slate-700 text-white border-0 px-4 py-1.5 shadow-lg">
           {overallStats.totalReadings} {labels.readings}
         </Badge>
       </div>
@@ -406,34 +410,38 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
       {sensorData && sensorData.length > 0 ? (
         <>
           {/* Temperature, Humidity & Ammonia Trend Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Temperature Trend */}
-            <Card className="bg-slate-800/50 border-white/10">
+            <Card className="bg-gradient-to-br from-orange-950/40 via-slate-900/80 to-red-950/30 border-orange-500/20 shadow-xl shadow-orange-500/10 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-white text-sm flex items-center gap-2">
-                  <Thermometer className="w-4 h-4 text-orange-400" />
-                  {labels.temperatureTrend}
+                <CardTitle className="text-white text-base flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/40">
+                    <Thermometer className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-orange-200 to-red-200 bg-clip-text text-transparent font-semibold">
+                    {labels.temperatureTrend}
+                  </span>
                 </CardTitle>
-                <p className="text-xs text-gray-400">{labels.last24Hours}</p>
+                <p className="text-xs text-orange-300/60 ml-11">{labels.last24Hours}</p>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[200px]">
                   <AreaChart data={hourlyData}>
                     <defs>
                       <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0} />
+                        <stop offset="5%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.5} />
+                        <stop offset="95%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                     <XAxis
                       dataKey="hour"
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       tickLine={false}
                     />
                     <YAxis
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       tickLine={false}
                       domain={['dataMin - 2', 'dataMax + 2']}
@@ -445,7 +453,7 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                       dataKey="avgTemp"
                       stroke="hsl(25, 95%, 53%)"
                       fill="url(#tempGradient)"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                     />
                   </AreaChart>
                 </ChartContainer>
@@ -453,32 +461,36 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
             </Card>
 
             {/* Humidity Trend */}
-            <Card className="bg-slate-800/50 border-white/10">
+            <Card className="bg-gradient-to-br from-cyan-950/40 via-slate-900/80 to-blue-950/30 border-cyan-500/20 shadow-xl shadow-cyan-500/10 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-white text-sm flex items-center gap-2">
-                  <Droplets className="w-4 h-4 text-blue-400" />
-                  {labels.humidityTrend}
+                <CardTitle className="text-white text-base flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/40">
+                    <Droplets className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-cyan-200 to-blue-200 bg-clip-text text-transparent font-semibold">
+                    {labels.humidityTrend}
+                  </span>
                 </CardTitle>
-                <p className="text-xs text-gray-400">{labels.last24Hours}</p>
+                <p className="text-xs text-cyan-300/60 ml-11">{labels.last24Hours}</p>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[200px]">
                   <AreaChart data={hourlyData}>
                     <defs>
                       <linearGradient id="humidityGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(210, 100%, 50%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(210, 100%, 50%)" stopOpacity={0} />
+                        <stop offset="5%" stopColor="hsl(195, 100%, 50%)" stopOpacity={0.5} />
+                        <stop offset="95%" stopColor="hsl(195, 100%, 50%)" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                     <XAxis
                       dataKey="hour"
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       tickLine={false}
                     />
                     <YAxis
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       tickLine={false}
                       domain={[0, 100]}
@@ -488,9 +500,9 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                     <Area
                       type="monotone"
                       dataKey="avgHumidity"
-                      stroke="hsl(210, 100%, 50%)"
+                      stroke="hsl(195, 100%, 50%)"
                       fill="url(#humidityGradient)"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                     />
                   </AreaChart>
                 </ChartContainer>
@@ -500,32 +512,36 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
 
           {/* Ammonia Trend (full width when viewing specific user) */}
           {selectedUserId !== 'all' && (
-            <Card className="bg-slate-800/50 border-white/10">
+            <Card className="bg-gradient-to-br from-purple-950/40 via-slate-900/80 to-pink-950/30 border-purple-500/20 shadow-xl shadow-purple-500/10 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-white text-sm flex items-center gap-2">
-                  <Wind className="w-4 h-4 text-purple-400" />
-                  অ্যামোনিয়া ট্রেন্ড
+                <CardTitle className="text-white text-base flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/40">
+                    <Wind className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent font-semibold">
+                    অ্যামোনিয়া ট্রেন্ড
+                  </span>
                 </CardTitle>
-                <p className="text-xs text-gray-400">{labels.last24Hours}</p>
+                <p className="text-xs text-purple-300/60 ml-11">{labels.last24Hours}</p>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[200px]">
                   <AreaChart data={hourlyData}>
                     <defs>
                       <linearGradient id="ammoniaGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(280, 80%, 60%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(280, 80%, 60%)" stopOpacity={0} />
+                        <stop offset="5%" stopColor="hsl(280, 80%, 60%)" stopOpacity={0.5} />
+                        <stop offset="95%" stopColor="hsl(280, 80%, 60%)" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                     <XAxis
                       dataKey="hour"
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       tickLine={false}
                     />
                     <YAxis
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       tickLine={false}
                       domain={[0, 'dataMax + 5']}
@@ -537,7 +553,7 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                       dataKey="avgAmmonia"
                       stroke="hsl(280, 80%, 60%)"
                       fill="url(#ammoniaGradient)"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                     />
                   </AreaChart>
                 </ChartContainer>
@@ -547,22 +563,26 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
 
           {/* Farm Comparison Bar Chart (only when all farms selected) */}
           {selectedUserId === 'all' && farmComparison.length > 0 && (
-            <Card className="bg-slate-800/50 border-white/10">
+            <Card className="bg-gradient-to-br from-indigo-950/40 via-slate-900/80 to-violet-950/30 border-indigo-500/20 shadow-xl shadow-indigo-500/10 backdrop-blur-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-white text-sm flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-purple-400" />
-                  {labels.farmComparison}
+                <CardTitle className="text-white text-base flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/40">
+                    <Building2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-indigo-200 to-violet-200 bg-clip-text text-transparent font-semibold">
+                    {labels.farmComparison}
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[200px]">
                   <BarChart data={farmComparison} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis type="number" stroke="#9ca3af" fontSize={10} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                    <XAxis type="number" stroke="#a1a1aa" fontSize={10} />
                     <YAxis
                       type="category"
                       dataKey="farmName"
-                      stroke="#9ca3af"
+                      stroke="#a1a1aa"
                       fontSize={10}
                       width={100}
                       tickLine={false}
@@ -573,13 +593,13 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                       dataKey="avgTemp"
                       name={labels.temperature}
                       fill="hsl(25, 95%, 53%)"
-                      radius={[0, 4, 4, 0]}
+                      radius={[0, 6, 6, 0]}
                     />
                     <Bar
                       dataKey="avgHumidity"
                       name={labels.humidity}
-                      fill="hsl(210, 100%, 50%)"
-                      radius={[0, 4, 4, 0]}
+                      fill="hsl(195, 100%, 50%)"
+                      radius={[0, 6, 6, 0]}
                     />
                   </BarChart>
                 </ChartContainer>
@@ -588,12 +608,14 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
           )}
         </>
       ) : (
-        <Card className="bg-slate-800/50 border-white/10">
-          <CardContent className="py-12 text-center">
-            <RefreshCw className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-            <p className="text-gray-400">{labels.noData}</p>
+        <Card className="bg-gradient-to-br from-slate-800/80 via-slate-900/90 to-slate-800/80 border-slate-600/30 shadow-xl backdrop-blur-sm">
+          <CardContent className="py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <RefreshCw className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-slate-300 text-lg font-medium">{labels.noData}</p>
             {selectedUserId !== 'all' && (
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="text-slate-500 text-sm mt-2">
                 এই ইউজারের কোনো সেন্সর ডেটা পাওয়া যায়নি
               </p>
             )}
