@@ -1,4 +1,4 @@
-import { Power, Wifi, WifiOff, LogOut, Globe, ArrowLeft } from 'lucide-react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Eye } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
-
+import farmeyeLogo from '@/assets/farmeye-logo.png';
 
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
@@ -43,19 +43,18 @@ export function Header() {
             </Button>
           )}
           
-          <div className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-xl shrink-0',
-            deviceStatus?.power_on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-          )}>
-            <Power size={20} />
+          {/* FarmEye Logo */}
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary shrink-0 overflow-hidden">
+            <Eye className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-foreground truncate">
-              {profile?.farm_name || translations.dashboard.title[language]}
+              {profile?.farm_name || 'FarmEye'}
             </h1>
             <div className="flex items-center gap-2">
               {userRole?.role === 'worker' && (
                 <Badge variant="secondary" className="text-xs">
+                  {language === 'bn' ? 'কর্মী' : 'Worker'}
                   {language === 'bn' ? 'কর্মী' : 'Worker'}
                 </Badge>
               )}
