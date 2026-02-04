@@ -21,7 +21,7 @@ export function SensorCharts() {
 
   if (isLoading) {
     return (
-      <div className="rounded-3xl bg-gradient-to-br from-slate-800/90 via-slate-700/80 to-slate-800/90 p-5 shadow-xl border border-slate-600/60">
+      <div className="rounded-3xl bg-card p-5 shadow-card border border-border">
         <div className="flex items-center gap-2 mb-4">
           <Skeleton className="h-8 w-8 rounded-xl" />
           <Skeleton className="h-5 w-32" />
@@ -48,71 +48,71 @@ export function SensorCharts() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
     >
-      <div className="rounded-3xl bg-gradient-to-br from-slate-800/90 via-slate-700/80 to-slate-800/90 p-5 shadow-xl border border-slate-600/60 dark:from-slate-800/95 dark:via-slate-700/85 dark:to-slate-800/95 dark:border-slate-500/50">
+      <div className="rounded-3xl bg-card p-5 shadow-card border border-border">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/40">
-              <TrendingUp className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
+              <TrendingUp className="w-4 h-4 text-primary-foreground" />
             </div>
-            <h3 className="text-sm font-semibold text-white">
+            <h3 className="text-sm font-semibold text-foreground">
               {labels.title}
             </h3>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-            <Activity className="w-3 h-3 text-emerald-400" />
-            <span className="text-[10px] text-white/80 font-medium">{labels.last24h}</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border">
+            <Activity className="w-3 h-3 text-primary" />
+            <span className="text-[10px] text-muted-foreground font-medium">{labels.last24h}</span>
           </div>
         </div>
 
         {/* Quick Stats Row */}
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <div className="rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/10 p-2.5 border border-orange-500/30">
-            <div className="text-[10px] text-orange-300 font-medium mb-0.5">
+          <div className="rounded-xl bg-orange-500/10 dark:bg-orange-500/20 p-2.5 border border-orange-500/30">
+            <div className="text-[10px] text-orange-600 dark:text-orange-400 font-medium mb-0.5">
               {language === 'bn' ? 'গড় তাপ' : 'Avg Temp'}
             </div>
-            <div className="text-lg font-bold text-white">{avgTemp.toFixed(1)}°</div>
+            <div className="text-lg font-bold text-foreground">{avgTemp.toFixed(1)}°</div>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 p-2.5 border border-cyan-500/30">
-            <div className="text-[10px] text-cyan-300 font-medium mb-0.5">
+          <div className="rounded-xl bg-cyan-500/10 dark:bg-cyan-500/20 p-2.5 border border-cyan-500/30">
+            <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium mb-0.5">
               {language === 'bn' ? 'গড় আর্দ্রতা' : 'Avg Humid'}
             </div>
-            <div className="text-lg font-bold text-white">{avgHumid.toFixed(0)}%</div>
+            <div className="text-lg font-bold text-foreground">{avgHumid.toFixed(0)}%</div>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/10 p-2.5 border border-rose-500/30">
-            <div className="text-[10px] text-rose-300 font-medium mb-0.5">
+          <div className="rounded-xl bg-rose-500/10 dark:bg-rose-500/20 p-2.5 border border-rose-500/30">
+            <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">
               {language === 'bn' ? 'সর্বোচ্চ' : 'Max'}
             </div>
-            <div className="text-lg font-bold text-white">{maxTemp.toFixed(1)}°</div>
+            <div className="text-lg font-bold text-foreground">{maxTemp.toFixed(1)}°</div>
           </div>
-          <div className="rounded-xl bg-gradient-to-br from-sky-500/20 to-indigo-500/10 p-2.5 border border-sky-500/30">
-            <div className="text-[10px] text-sky-300 font-medium mb-0.5">
+          <div className="rounded-xl bg-sky-500/10 dark:bg-sky-500/20 p-2.5 border border-sky-500/30">
+            <div className="text-[10px] text-sky-600 dark:text-sky-400 font-medium mb-0.5">
               {language === 'bn' ? 'সর্বনিম্ন' : 'Min'}
             </div>
-            <div className="text-lg font-bold text-white">{minTemp.toFixed(1)}°</div>
+            <div className="text-lg font-bold text-foreground">{minTemp.toFixed(1)}°</div>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs defaultValue="temperature" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4 bg-white/5 border border-white/10 rounded-xl p-1">
+          <TabsList className="grid w-full grid-cols-3 mb-4 bg-muted border border-border rounded-xl p-1">
             <TabsTrigger 
               value="temperature" 
-              className="flex items-center gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/30 rounded-lg text-white/70"
+              className="flex items-center gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg text-muted-foreground"
             >
               <Thermometer className="h-3.5 w-3.5" />
               {labels.temperature}
             </TabsTrigger>
             <TabsTrigger 
               value="humidity" 
-              className="flex items-center gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 rounded-lg text-white/70"
+              className="flex items-center gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg text-muted-foreground"
             >
               <Droplets className="h-3.5 w-3.5" />
               {labels.humidity}
             </TabsTrigger>
             <TabsTrigger 
               value="ammonia" 
-              className="flex items-center gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 rounded-lg text-white/70"
+              className="flex items-center gap-1.5 text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg text-muted-foreground"
             >
               <Wind className="h-3.5 w-3.5" />
               {labels.ammonia}
@@ -120,7 +120,7 @@ export function SensorCharts() {
           </TabsList>
 
           <TabsContent value="temperature" className="mt-0">
-            <div className="h-[200px] w-full rounded-2xl bg-black/20 p-3 border border-white/5">
+            <div className="h-[200px] w-full rounded-2xl bg-muted/50 p-3 border border-border">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
@@ -169,7 +169,7 @@ export function SensorCharts() {
           </TabsContent>
 
           <TabsContent value="humidity" className="mt-0">
-            <div className="h-[200px] w-full rounded-2xl bg-black/20 p-3 border border-white/5">
+            <div className="h-[200px] w-full rounded-2xl bg-muted/50 p-3 border border-border">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
@@ -218,7 +218,7 @@ export function SensorCharts() {
           </TabsContent>
 
           <TabsContent value="ammonia" className="mt-0">
-            <div className="h-[200px] w-full rounded-2xl bg-black/20 p-3 border border-white/5">
+            <div className="h-[200px] w-full rounded-2xl bg-muted/50 p-3 border border-border">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <defs>
