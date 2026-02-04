@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, 
   ChevronRight, Shield, Zap, Thermometer, Droplets, Wind, 
-  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, Home, Users
+  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, Home, Users, Egg
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -38,6 +38,7 @@ import { NotificationSoundCard } from '@/components/settings/NotificationSoundCa
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
+import { FarmTypeCard } from '@/components/settings/FarmTypeCard';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -419,13 +420,22 @@ export function SettingsPage() {
           {/* Owner-only Settings */}
           {isOwner && (
             <>
+              {/* Farm Type Card - Top Priority */}
+              <SettingsSection 
+                title="Farm Type" 
+                titleBn="খামারের ধরণ"
+                icon={Egg}
+                defaultOpen={true}
+                language={language}
+              >
+                <FarmTypeCard />
+              </SettingsSection>
 
               {/* Quick Mode Section */}
               <SettingsSection 
                 title="Quick Mode Profiles" 
                 titleBn="কুইক মোড প্রোফাইল"
                 icon={Zap}
-                defaultOpen={true}
                 language={language}
               >
                 <SmartModeCard compact />
