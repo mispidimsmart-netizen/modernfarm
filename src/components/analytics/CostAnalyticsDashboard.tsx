@@ -16,13 +16,24 @@ import {
 export function CostAnalyticsDashboard() {
   const { language } = useAuth();
   const { isBroiler } = useFarmType();
+
+  // If broiler farm, show broiler-specific dashboard - must be before other hooks
+  if (isBroiler) {
+    return <BroilerCostDashboard />;
+  }
+
+  // Layer farm analytics - only called for layer farms
+  return <LayerCostDashboard language={language} />;
+}
+
+// Separate component for layer farm to maintain consistent hook order
+function LayerCostDashboard({ language }: { language: 'en' | 'bn' }) {
   const analytics = useCostAnalytics(30);
 
   const formatCurrency = (value: number) => {
     return `৳${value.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')}`;
   };
 
-  // Prepare chart data - must be before conditional return
   const trendChartData = useMemo(() => {
     return analytics.dailyTrends.map(day => ({
       ...day,
@@ -32,11 +43,6 @@ export function CostAnalyticsDashboard() {
       }),
     }));
   }, [analytics.dailyTrends, language]);
-
-  // If broiler farm, show broiler-specific dashboard
-  if (isBroiler) {
-    return <BroilerCostDashboard />;
-  }
 
   return (
     <div className="space-y-4">
