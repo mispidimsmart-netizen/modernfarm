@@ -2123,6 +2123,33 @@ async function handleFailsafeSync(
       .eq('user_id', userId)
       .single();
 
+    // 🐔 4b. Get user profile for farm_type
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('farm_type')
+      .eq('id', userId)
+      .single();
+
+    // 🐔 4c. Get active broiler batch for age calculation (if broiler farm)
+    let broilerAgeDays = 1;
+    if (profile?.farm_type === 'broiler') {
+      const { data: activeBatch } = await supabase
+        .from('broiler_batches')
+        .select('start_date')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (activeBatch?.start_date) {
+        const startDate = new Date(activeBatch.start_date);
+        const today = new Date();
+        broilerAgeDays = Math.max(1, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        console.log(`[Broiler] Active batch started ${activeBatch.start_date}, age: ${broilerAgeDays} days`);
+      }
+    }
+
     // 5. Get lighting schedule
     const { data: lightingSchedule } = await supabase
       .from('lighting_schedule')
@@ -2167,6 +2194,10 @@ async function handleFailsafeSync(
       server_time: now,
       settings_version: settingsVersion,
       needs_settings_update: needsSettingsUpdate,
+      
+      // 🐔 Farm type and broiler age for ESP32 auto-config
+      farm_type: profile?.farm_type || 'layer',
+      broiler_age_days: broilerAgeDays,
       
       // Device status from database (what cloud wants)
       device_status: currentStatus ? {

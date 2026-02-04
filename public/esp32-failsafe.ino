@@ -65,6 +65,11 @@
 #define ALARM_RELAY_PIN 33
 #define STATUS_LED_PIN 2
 
+// 🔥 HEATER RELAY PIN (for Broiler cold temperature control)
+// Enable heater when temp < target - 2°C (for young chicks)
+#define HEATER_RELAY_PIN 13          // Heater relay control (optional)
+bool heaterOn = false;               // Heater state
+
 // 🔘 LOCAL MANUAL OVERRIDE BUTTON (CRITICAL!)
 // This button bypasses ALL automation and Cloud commands
 // Press and hold for 3 seconds to toggle manual override
@@ -178,11 +183,13 @@ const unsigned long DEFAULT_SAFE_ALARM_OFF = 5000; // Alarm OFF 5 sec
 bool defaultSafeAlarmPhase = false;           // false = OFF phase, true = ON phase
 unsigned long defaultSafePhaseStart = 0;      // Phase start time
 // ================ FARM TYPE CONFIGURATION ================
-// 🐔 Set this to "LAYER" or "BROILER" based on your farm type
+// 🐔 FARM_TYPE: "LAYER" or "BROILER" - synced from cloud
 // BROILER uses age-based temperature thresholds
 // LAYER uses fixed HSI thresholds
-String FARM_TYPE = "LAYER";  // Change to "BROILER" for broiler farms
-int BROILER_AGE_DAYS = 1;    // Current broiler batch age in days (sync from cloud)
+// ⚠️ These values are auto-synced from cloud on first connection
+String FARM_TYPE = "LAYER";  // Default: LAYER (synced from cloud)
+int BROILER_AGE_DAYS = 1;    // Current broiler batch age in days (synced from cloud)
+bool farmTypeSyncedFromCloud = false;  // Track if we've synced from cloud
 
 // ================ BROILER TEMPERATURE CURVE ================
 // Age-based temperature thresholds for broilers
@@ -313,10 +320,12 @@ void setup() {
   pinMode(LIGHT_PWM_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
+  pinMode(HEATER_RELAY_PIN, OUTPUT);  // 🔥 Heater for Broiler cold temps
   
   // Start with fan OFF, will turn on after sensor check
   digitalWrite(FAN_RELAY_PIN, LOW);
   digitalWrite(ALARM_RELAY_PIN, LOW);
+  digitalWrite(HEATER_RELAY_PIN, LOW);  // Heater OFF at boot
   digitalWrite(STATUS_LED_PIN, HIGH);  // LED on during boot
   
   // Initialize input pins
@@ -696,12 +705,49 @@ void syncWithCloud() {
 }
 
 void handleCloudResponse(String response) {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<1536> doc;  // Increased for farm_type and broiler data
   DeserializationError error = deserializeJson(doc, response);
   
   if (error) {
     Serial.printf("JSON parse error: %s\n", error.c_str());
     return;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // 🐔 FARM TYPE AUTO-SYNC FROM CLOUD
+  // Automatically syncs LAYER/BROILER mode and broiler age from cloud
+  // ═══════════════════════════════════════════════════════════════
+  if (doc.containsKey("farm_type")) {
+    String cloudFarmType = doc["farm_type"] | "layer";
+    cloudFarmType.toUpperCase();
+    
+    if (cloudFarmType != FARM_TYPE) {
+      Serial.printf("\n🔄 FARM TYPE CHANGED: %s → %s\n", FARM_TYPE.c_str(), cloudFarmType.c_str());
+      FARM_TYPE = cloudFarmType;
+      farmTypeSyncedFromCloud = true;
+      
+      // Log the change
+      Serial.println(FARM_TYPE == "BROILER" ? 
+        "🐔 Switched to BROILER mode (age-based temp)" : 
+        "🥚 Switched to LAYER mode (fixed HSI thresholds)");
+    } else if (!farmTypeSyncedFromCloud) {
+      farmTypeSyncedFromCloud = true;
+      Serial.printf("✓ Farm type confirmed: %s\n", FARM_TYPE.c_str());
+    }
+  }
+  
+  // 🐔 BROILER AGE AUTO-SYNC (from active batch start_date)
+  if (doc.containsKey("broiler_age_days")) {
+    int cloudAgeDays = doc["broiler_age_days"] | 1;
+    if (cloudAgeDays != BROILER_AGE_DAYS && cloudAgeDays > 0) {
+      Serial.printf("🐔 BROILER AGE UPDATED: %d → %d days\n", BROILER_AGE_DAYS, cloudAgeDays);
+      BROILER_AGE_DAYS = cloudAgeDays;
+      
+      // Show new target temperature
+      float targetMin, targetMax;
+      getBroilerTargetTemp(BROILER_AGE_DAYS, targetMin, targetMax);
+      Serial.printf("   New Target Temp: %.1f-%.1f°C\n", targetMin, targetMax);
+    }
   }
   
   // Check if settings need update
@@ -736,6 +782,7 @@ void handleCloudResponse(String response) {
     
     applyDeviceStates();
   }
+}
 }
 
 void updateCachedSettings(JsonObject settings) {
@@ -1139,13 +1186,20 @@ void runBroilerAutomation() {
     systemState = "HIGH_STRESS";
   }
   // ========================================
-  // BROILER RULE 3: TEMP < target -2°C = HEATER NEEDED
+  // BROILER RULE 3: TEMP < target -2°C = HEATER ON
   // ========================================
   else if (deviation <= -BROILER_TEMP_HEATER_DEV) {
-    Serial.printf("🥶 BROILER TEMP LOW (%.1f°C < target -2°C) → HEATER NEEDED!\n", temperature);
+    Serial.printf("🥶 BROILER TEMP LOW (%.1f°C < target -2°C) → HEATER ON!\n", temperature);
     setFanState(false, "OFF");  // Don't cool when cold
-    // Note: Heater control would go here if connected
-    // For now, sound alarm to notify farmer
+    
+    // 🔥 HEATER CONTROL - Turn ON heater relay
+    if (!heaterOn) {
+      heaterOn = true;
+      digitalWrite(HEATER_RELAY_PIN, HIGH);
+      Serial.println("🔥 Heater turned ON (GPIO 13)");
+    }
+    
+    // Critical cold (deviation <= -4°C) = Alarm
     if (deviation <= -BROILER_TEMP_ALARM_DEV) {
       alarmOn = true;
       digitalWrite(ALARM_RELAY_PIN, HIGH);
@@ -1159,6 +1213,14 @@ void runBroilerAutomation() {
   // ========================================
   else {
     systemState = "NORMAL";
+    
+    // 🔥 Turn OFF heater if temp is normal
+    if (heaterOn) {
+      heaterOn = false;
+      digitalWrite(HEATER_RELAY_PIN, LOW);
+      Serial.println("🔥 Heater turned OFF (temp normal)");
+    }
+    
     // Only turn off fan if humidity and ammonia are also OK
     if (humidity < BROILER_HUMIDITY_HIGH && ammonia < BROILER_AMMONIA_FAN) {
       setFanState(false, "OFF");
