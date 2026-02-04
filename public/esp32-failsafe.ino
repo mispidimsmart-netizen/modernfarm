@@ -240,6 +240,11 @@ const float LAYER_HUMIDITY_IDEAL_MIN = 50.0;  // 50-70% = Ideal range
 const float LAYER_HUMIDITY_IDEAL_MAX = 70.0;
 const float LAYER_HUMIDITY_HIGH = 75.0;       // >75% → Ventilation increase
 
+// ================ LAYER AMMONIA THRESHOLDS ================
+// Ammonia is dangerous gas - immediate action required
+const float LAYER_AMMONIA_FAN_ON = 15.0;      // >15 ppm → Fan ON
+const float LAYER_AMMONIA_ALARM = 25.0;       // >25 ppm → Alarm + Fan HIGH
+
 // ================ UNIVERSAL HSI EMERGENCY THRESHOLDS ================
 // 🔥 CRITICAL: These run LOCALLY without waiting for cloud!
 // HSI = Temperature + (Humidity × 0.1)
@@ -1515,13 +1520,36 @@ void runLocalAutomation() {
   }
   
   // ========================================
-  // AMMONIA CHECK ≥ 25 ppm = FAN ON + ALARM
+  // 🧪 AMMONIA SAFETY (NH3)
+  // Sensor error: assume gas danger → Fan ON
   // ========================================
-  if (ammonia >= cachedSettings.ammoniaMax) {  // Default: 25 ppm
-    Serial.printf("🟡 AMMONIA HIGH (%.1f ppm >= 25) → Fan HIGH + Alarm\n", ammonia);
+  
+  // Check for ammonia sensor error (value out of range)
+  bool ammoniaError = (ammonia < 0 || ammonia > 100);
+  
+  if (ammoniaError) {
+    // ⚠️ Sensor error: assume gas danger → Fan ON
+    Serial.println("⚠️ AMMONIA SENSOR ERROR → Assume gas danger → Fan ON!");
+    setFanState(true, "HIGH");
+  }
+  // NH3 > 25 ppm = ALARM + Fan HIGH
+  else if (ammonia > LAYER_AMMONIA_ALARM) {
+    Serial.printf("🚨 AMMONIA DANGER (%.1f ppm > 25) → ALARM + Fan HIGH!\n", ammonia);
     setFanState(true, "HIGH");
     alarmOn = true;
     digitalWrite(ALARM_RELAY_PIN, HIGH);
+    systemState = "DANGER";
+  }
+  // NH3 > 15 ppm = Fan ON
+  else if (ammonia > LAYER_AMMONIA_FAN_ON) {
+    Serial.printf("⚠️ AMMONIA HIGH (%.1f ppm > 15) → Fan ON\n", ammonia);
+    if (!fanOn || fanSpeed == "OFF") {
+      setFanState(true, "MEDIUM");
+    }
+  }
+  // NH3 ≤ 15 ppm = Normal
+  else {
+    Serial.printf("✅ AMMONIA NORMAL (%.1f ppm)\n", ammonia);
   }
   
   // ========================================
