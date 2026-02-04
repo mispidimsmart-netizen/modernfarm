@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
-import { InstallButton } from '@/components/pwa/InstallButton';
+
 
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
@@ -75,7 +75,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
-          <InstallButton showLabel={false} variant="ghost" size="icon" className="h-9 w-9" />
+          
           
           <WorkerManagementSheet />
           

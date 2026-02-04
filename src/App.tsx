@@ -7,8 +7,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { OfflineIndicator } from "./components/OfflineIndicator";
-import { PWAInstallBanner } from "./components/pwa/PWAInstallBanner";
-import { IOSInstallSheet } from "./components/pwa/IOSInstallSheet";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 
 // Lazy load pages for better initial load performance
@@ -217,8 +215,6 @@ const App = () => (
           <Toaster />
           <Sonner />
           <OfflineIndicator />
-          <PWAInstallBanner />
-          <IOSInstallSheet />
           <PWAUpdateBanner />
           <BrowserRouter>
             <AppWithWidget />
