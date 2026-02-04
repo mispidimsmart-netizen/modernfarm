@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.automation-engine]
 verify_jwt = false
+
+[functions.schedule-notifier]
+verify_jwt = false
