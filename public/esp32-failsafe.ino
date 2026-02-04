@@ -38,7 +38,10 @@
  * 3. Sensor failure → "When in doubt, Fan ON"
  * 4. Manual override button → ALWAYS works (physical)
  * 5. HSI = Temperature + (Humidity × 0.1)
- * 6. 🛡️ DEFAULT SAFE STATE (সবচেয়ে গুরুত্বপূর্ণ!):
+ * 6. 🔧 WATCHDOG PROTECTION:
+ *    - Firmware freeze > 8 sec → Auto Restart → Fan ON default
+ *    - Prevents indefinite hangs from killing birds
+ * 7. 🛡️ DEFAULT SAFE STATE (সবচেয়ে গুরুত্বপূর্ণ!):
  *    - যেকোনো অজানা error → Fan ON + Alarm periodic + NEVER stay OFF
  *    - This is the ultimate fallback for any unknown condition
  */
@@ -48,11 +51,19 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <DHT.h>
-#include <esp_task_wdt.h>  // 🔧 Watchdog Timer
+#include <esp_task_wdt.h>       // 🔧 Watchdog Timer
+#include <esp_system.h>         // 🔧 For esp_reset_reason()
+#include <rom/rtc.h>            // 🔧 For rtc_get_reset_reason()
 
 // ================ WATCHDOG CONFIGURATION ================
-// Loop freeze > 8 sec → Auto Restart → Restart → Fan ON
+// 🛡️ WATCHDOG PROTECTION:
+//    Firmware freeze > 8 sec → Auto Restart → After restart → Fan ON default
+//    This prevents indefinite hangs from killing birds
 #define WDT_TIMEOUT 8  // 8 seconds watchdog timeout
+
+// 🛡️ WATCHDOG RESTART DETECTION
+// After WDT reset, system starts with Fan ON for safety
+bool wasWatchdogReset = false;  // True if ESP32 was reset by watchdog
 
 // ================ PIN DEFINITIONS ================
 #define DHT_PIN 4
@@ -341,25 +352,64 @@ const unsigned long BOOT_FAN_DURATION = 20000;  // 20 seconds air refresh (air r
 void setup() {
   Serial.begin(115200);
   Serial.println("\n╔══════════════════════════════════════════════════════════════╗");
-  Serial.println("║    Smart Farm - ESP32 Fail-Safe Controller v4.0              ║");
+  Serial.println("║    Smart Farm - ESP32 Fail-Safe Controller v4.1              ║");
   Serial.println("║    🏭 BIG FARM ARCHITECTURE: Each Shed = Independent Unit    ║");
   Serial.println("╚══════════════════════════════════════════════════════════════╝\n");
   Serial.printf("  Shed: %s (%s)\n", SHED_NAME, SHED_ID);
   Serial.printf("  Farm: %s\n\n", FARM_ID);
   
+  // ========== STEP 0: CHECK RESET REASON (Watchdog Protection) ==========
+  // 🛡️ Firmware freeze > 8 sec → Auto Restart → After restart → Fan ON
+  esp_reset_reason_t resetReason = esp_reset_reason();
+  RESET_REASON rtcResetReason = rtc_get_reset_reason(0);  // Core 0
+  
+  Serial.println("▶ Step 0: Checking reset reason...");
+  Serial.printf("  ESP Reset Reason: %d, RTC Reason: %d\n", resetReason, rtcResetReason);
+  
+  // Check if reset was caused by watchdog
+  if (resetReason == ESP_RST_TASK_WDT ||    // Task watchdog
+      resetReason == ESP_RST_WDT ||         // Other watchdog
+      resetReason == ESP_RST_INT_WDT ||     // Interrupt watchdog
+      rtcResetReason == TG0WDT_SYS_RESET || // Timer Group 0 WDT
+      rtcResetReason == TG1WDT_SYS_RESET || // Timer Group 1 WDT
+      rtcResetReason == RTCWDT_SYS_RESET || // RTC WDT
+      rtcResetReason == RTCWDT_CPU_RESET) { // RTC CPU reset
+    
+    wasWatchdogReset = true;
+    Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ⚠️🔧 WATCHDOG RESTART DETECTED!                            ║");
+    Serial.println("║  Firmware freeze > 8 sec → Auto Restart → Fan ON default   ║");
+    Serial.println("║  যেকোনো unknown error: Fan ON — Never keep ventilation OFF  ║");
+    Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+  } else if (resetReason == ESP_RST_PANIC) {
+    wasWatchdogReset = true;  // Treat panic as critical too
+    Serial.println("\n⚠️ PANIC RESTART DETECTED! Activating safe mode...\n");
+  } else {
+    Serial.println("  ✓ Normal boot (not watchdog reset)");
+  }
+  
   // ========== STEP 1: Initialize Output Pins ==========
-  Serial.println("▶ Step 1: Initializing output pins...");
+  Serial.println("\n▶ Step 1: Initializing output pins...");
   pinMode(FAN_RELAY_PIN, OUTPUT);
   pinMode(LIGHT_PWM_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(HEATER_RELAY_PIN, OUTPUT);  // 🔥 Heater for Broiler cold temps
   
-  // Start with fan OFF, will turn on after sensor check
-  digitalWrite(FAN_RELAY_PIN, LOW);
-  digitalWrite(ALARM_RELAY_PIN, LOW);
-  digitalWrite(HEATER_RELAY_PIN, LOW);  // Heater OFF at boot
-  digitalWrite(STATUS_LED_PIN, HIGH);  // LED on during boot
+  // 🛡️ WATCHDOG RESTART: Start with Fan ON for safety
+  if (wasWatchdogReset) {
+    digitalWrite(FAN_RELAY_PIN, HIGH);   // Fan ON immediately!
+    digitalWrite(ALARM_RELAY_PIN, LOW);  // Alarm off initially
+    digitalWrite(HEATER_RELAY_PIN, LOW); // Heater OFF
+    digitalWrite(STATUS_LED_PIN, HIGH);
+    Serial.println("🛡️ WATCHDOG SAFETY: Fan forced ON after restart!");
+  } else {
+    // Normal boot: fan OFF, will turn on after sensor check
+    digitalWrite(FAN_RELAY_PIN, LOW);
+    digitalWrite(ALARM_RELAY_PIN, LOW);
+    digitalWrite(HEATER_RELAY_PIN, LOW);
+    digitalWrite(STATUS_LED_PIN, HIGH);  // LED on during boot
+  }
   
   // Initialize input pins
   pinMode(POWER_SENSE_PIN, INPUT);
@@ -411,7 +461,31 @@ void setup() {
   loadCachedSettings();
   Serial.printf("✓ Settings loaded (version: %d)\n", cachedSettings.version);
   
-  // ========== STEP 4: Sensor Fail = FAILSAFE MODE ==========
+  // ========== STEP 4: Watchdog Restart or Sensor Fail = FAILSAFE MODE ==========
+  // 🛡️ Watchdog restart → Fan ON immediately (already done in Step 1)
+  if (wasWatchdogReset) {
+    Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ⚠️🔧 WATCHDOG RESTART - ENTERING SAFE MODE                 ║");
+    Serial.println("║  Firmware freeze > 8 sec → Auto Restart → Fan ON default   ║");
+    Serial.println("║  যেকোনো unknown error: Fan ON — Never keep ventilation OFF  ║");
+    Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+    
+    failsafeMode = true;
+    failsafeActivatedAt = millis();
+    fanOn = true;
+    fanSpeed = "HIGH";
+    systemState = "WATCHDOG_RESTART";
+    
+    // Alert beeps for watchdog restart (distinctive pattern: 2 quick beeps)
+    for (int i = 0; i < 2; i++) {
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      delay(200);
+    }
+    Serial.println("🔥 Fan ON (WATCHDOG RESTART) - Safe mode active until cloud sync");
+  }
+  
   if (!sensorInitSuccess) {
     Serial.println("\n╔════════════════════════════════════════════════════════════╗");
     Serial.println("║  ⚠️ SENSOR INITIALIZATION FAILED - ENTERING FAIL-SAFE     ║");
@@ -462,23 +536,31 @@ void setup() {
   }
   
   // ========== STEP 8: Initialize Watchdog Timer ==========
-  // Loop freeze > 8 sec → Auto Restart → Restart → Fan ON
+  // 🛡️ Firmware freeze > 8 sec → Auto Restart → After restart → Fan ON
   Serial.println("\n▶ Step 8: Initializing Watchdog Timer (8 sec)...");
   esp_task_wdt_init(WDT_TIMEOUT, true);  // Enable panic so ESP32 restarts
   esp_task_wdt_add(NULL);                // Add current thread to WDT watch
   Serial.println("✓ Watchdog Timer initialized (8 sec timeout)");
+  Serial.println("  → If loop freezes > 8 sec, WDT will restart ESP32");
+  Serial.println("  → After restart, Fan will be ON by default (safety)");
   
   // ========== BOOT COMPLETE ==========
   digitalWrite(STATUS_LED_PIN, LOW);  // LED off after boot
   
+  // Determine boot mode string
+  String bootMode = "AUTO";
+  if (wasWatchdogReset) bootMode = "WATCHDOG_RESTART (Fan ON)";
+  else if (failsafeMode) bootMode = "FAIL_SAFE (Sensor Error)";
+  
   Serial.println("\n╔════════════════════════════════════════════════════════════╗");
   Serial.println("║  ✅ BOOT SEQUENCE COMPLETE                                 ║");
   Serial.println("╠════════════════════════════════════════════════════════════╣");
-  Serial.printf("║  Mode: %s\n", failsafeMode ? "FAIL_SAFE (Sensor Error)" : "AUTO");
+  Serial.printf("║  Mode: %s\n", bootMode.c_str());
   Serial.printf("║  Sensors: %s\n", sensorInitSuccess ? "OK" : "ERROR - Fan ON");
   Serial.printf("║  WiFi: %s\n", wifiConnected ? "Connected" : "Disconnected");
-  Serial.printf("║  Watchdog: Enabled (8 sec)\n");
-  Serial.printf("║  Default Safe State: Ready (Fan ON on unknown error)\n");
+  Serial.println("║  Watchdog: Enabled (8 sec timeout → restart → Fan ON)");
+  Serial.println("║  Default Safe State: Ready (unknown error → Fan ON)");
+  Serial.printf("║  Watchdog Restart: %s\n", wasWatchdogReset ? "YES - Fan forced ON" : "No");
   Serial.printf("║  Boot Fan: Running (20 sec remaining)\n");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
