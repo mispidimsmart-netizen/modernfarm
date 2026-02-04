@@ -182,6 +182,16 @@ const unsigned long DEFAULT_SAFE_ALARM_ON = 500;   // Alarm ON 0.5 sec
 const unsigned long DEFAULT_SAFE_ALARM_OFF = 5000; // Alarm OFF 5 sec
 bool defaultSafeAlarmPhase = false;           // false = OFF phase, true = ON phase
 unsigned long defaultSafePhaseStart = 0;      // Phase start time
+
+// 💡 LAYER LIGHTING PROTECTION (Alert Only)
+// Lighting schedule cloud দিবে - ESP32 শুধু detect করবে
+// Daytime detected AND light OFF > 10 min → Production warning beep
+bool isDaytime = false;                       // Synced from cloud or time-based
+unsigned long lightOffStartTime = 0;          // When light turned OFF
+bool lightWasOn = false;                      // Previous light state
+bool lightingAlertActive = false;             // Lighting alert currently active
+const unsigned long LIGHT_OFF_ALERT_TIMEOUT = 600000;  // 10 minutes in milliseconds
+unsigned long lastLightingAlertBeep = 0;      // For warning beep pattern
 // ================ FARM TYPE CONFIGURATION ================
 // 🐔 FARM_TYPE: "LAYER" or "BROILER" - synced from cloud
 // BROILER uses age-based temperature thresholds
@@ -1630,7 +1640,14 @@ void runLocalAutomation() {
   }
   
   // ========================================
-  // LIGHTING CONTROL
+  // 💡 LAYER LIGHTING PROTECTION (Alert Only)
+  // Lighting schedule cloud দিবে - ESP32 শুধু detect করবে
+  // Daytime AND light OFF > 10 min → Production warning beep
+  // ========================================
+  checkLayerLightingProtection();
+  
+  // ========================================
+  // LIGHTING CONTROL (from cloud schedule)
   // ========================================
   controlLighting();
   
@@ -1715,6 +1732,85 @@ void controlLighting() {
     int pwmValue = map(lightBrightness, 0, 100, 0, 255);
     ledcWrite(0, pwmValue);
     Serial.printf("→ Light: %s (Brightness: %d%%)\n", lightOn ? "ON" : "OFF", lightBrightness);
+  }
+}
+
+// ================ LAYER LIGHTING PROTECTION ================
+// 💡 Lighting schedule cloud দিবে - ESP32 শুধু detect করবে
+// Daytime detected AND light OFF > 10 min → Production warning beep
+// ⚠️ automation না, শুধু alert
+
+void checkLayerLightingProtection() {
+  // Only for LAYER farms
+  if (FARM_TYPE != "LAYER") return;
+  
+  unsigned long now = millis();
+  
+  // Track light state changes
+  if (lightOn && !lightWasOn) {
+    // Light just turned ON
+    lightWasOn = true;
+    lightOffStartTime = 0;
+    lightingAlertActive = false;
+    Serial.println("💡 Light ON - Lighting alert cleared");
+  } 
+  else if (!lightOn && lightWasOn) {
+    // Light just turned OFF
+    lightWasOn = false;
+    lightOffStartTime = now;
+    Serial.println("💡 Light OFF - Starting 10 min timer for daytime check");
+  }
+  else if (!lightOn && !lightWasOn && lightOffStartTime == 0) {
+    // Initialize if light was already OFF at boot
+    lightOffStartTime = now;
+  }
+  
+  // Determine if it's daytime (6 AM - 6 PM considered daytime)
+  // In production, sync actual time from cloud or RTC
+  int currentHour = 12;  // Default estimate (placeholder)
+  
+  // Try to estimate time based on cloud sync if available
+  if (cloudConnected && lastCloudSync > 0) {
+    // Use cached lighting schedule to determine daytime
+    // If current time is within lighting schedule, it's "expected ON" time
+    int startMinutes = cachedSettings.lightStartHour * 60 + cachedSettings.lightStartMinute;
+    int endMinutes = cachedSettings.lightEndHour * 60 + cachedSettings.lightEndMinute;
+    
+    // For now, assume daytime = within lighting schedule
+    // (Cloud should sync actual isDaytime flag)
+    isDaytime = true;  // Will be overridden by cloud sync
+  }
+  
+  // Check if light has been OFF for > 10 minutes during daytime
+  if (isDaytime && !lightOn && lightOffStartTime > 0) {
+    unsigned long lightOffDuration = now - lightOffStartTime;
+    
+    if (lightOffDuration >= LIGHT_OFF_ALERT_TIMEOUT) {
+      // ⚠️ Daytime AND light OFF > 10 min → Production warning beep
+      if (!lightingAlertActive) {
+        lightingAlertActive = true;
+        Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+        Serial.println("║  💡 LIGHTING PROTECTION ALERT (LAYER)                      ║");
+        Serial.println("║  Daytime detected AND light OFF > 10 min!                  ║");
+        Serial.println("║  📌 This may affect egg production!                        ║");
+        Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+      }
+      
+      // Production warning beep pattern (0.3s ON, 10s OFF) - not continuous
+      if (now - lastLightingAlertBeep >= 10000) {
+        digitalWrite(ALARM_RELAY_PIN, HIGH);
+        delay(300);
+        digitalWrite(ALARM_RELAY_PIN, LOW);
+        lastLightingAlertBeep = now;
+        Serial.println("💡 Production warning beep: Light OFF during daytime!");
+      }
+    }
+  } else {
+    // Reset alert if light is ON or not daytime
+    if (lightingAlertActive && lightOn) {
+      lightingAlertActive = false;
+      Serial.println("✅ Lighting alert cleared - Light is now ON");
+    }
   }
 }
 
