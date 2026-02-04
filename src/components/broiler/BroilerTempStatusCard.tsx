@@ -3,14 +3,53 @@ import { Thermometer, Fan, Flame, AlertTriangle, CheckCircle } from 'lucide-reac
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { 
-  BroilerTempResult, 
-  getBroilerTempColor, 
-  getBroilerTempBgColor,
-  getBroilerTempCurveData 
-} from '@/hooks/useBroilerAutomation';
 import { cn } from '@/lib/utils';
+
+// Local type for the component
+export interface BroilerTempResult {
+  currentTemp: number;
+  targetMin: number;
+  targetMax: number;
+  ageWeeks: number;
+  ageDays: number;
+  level: 'normal' | 'low_temp' | 'high_temp' | 'critical';
+  deviation: number;
+  shouldActivateFan: boolean;
+  shouldActivateHeater: boolean;
+  shouldAlert: boolean;
+  message: { bn: string; en: string };
+}
+
+// Helper functions
+export function getBroilerTempColor(level: BroilerTempResult['level']): string {
+  switch (level) {
+    case 'normal':
+      return 'text-green-600';
+    case 'low_temp':
+      return 'text-blue-600';
+    case 'high_temp':
+      return 'text-orange-500';
+    case 'critical':
+      return 'text-red-600';
+    default:
+      return 'text-muted-foreground';
+  }
+}
+
+export function getBroilerTempBgColor(level: BroilerTempResult['level']): string {
+  switch (level) {
+    case 'normal':
+      return 'bg-green-100 dark:bg-green-900/30';
+    case 'low_temp':
+      return 'bg-blue-100 dark:bg-blue-900/30';
+    case 'high_temp':
+      return 'bg-orange-100 dark:bg-orange-900/30';
+    case 'critical':
+      return 'bg-red-100 dark:bg-red-900/30';
+    default:
+      return 'bg-muted';
+  }
+}
 
 interface BroilerTempStatusCardProps {
   tempResult: BroilerTempResult | null;

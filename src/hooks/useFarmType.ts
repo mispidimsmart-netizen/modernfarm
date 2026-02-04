@@ -24,29 +24,90 @@ export function useFarmType(): FarmTypeConfig {
 }
 
 /**
- * Broiler age-based temperature thresholds
+ * Broiler age-based temperature thresholds (DAY-BASED)
  * Source: Standard broiler management guides
  */
+export const BROILER_TEMP_CURVE_DAYS: { 
+  minDays: number; 
+  maxDays: number; 
+  minTemp: number; 
+  maxTemp: number;
+  label: string;
+  labelBn: string;
+}[] = [
+  { minDays: 1, maxDays: 3, minTemp: 33, maxTemp: 34, label: 'Day 1-3', labelBn: '১-৩ দিন' },
+  { minDays: 4, maxDays: 7, minTemp: 32, maxTemp: 32, label: 'Day 4-7', labelBn: '৪-৭ দিন' },
+  { minDays: 8, maxDays: 14, minTemp: 30, maxTemp: 30, label: 'Day 8-14', labelBn: '৮-১৪ দিন' },
+  { minDays: 15, maxDays: 21, minTemp: 28, maxTemp: 28, label: 'Day 15-21', labelBn: '১৫-২১ দিন' },
+  { minDays: 22, maxDays: 28, minTemp: 26, maxTemp: 26, label: 'Day 22-28', labelBn: '২২-২৮ দিন' },
+  { minDays: 29, maxDays: 35, minTemp: 24, maxTemp: 24, label: 'Day 29-35', labelBn: '২৯-৩৫ দিন' },
+  { minDays: 36, maxDays: 999, minTemp: 22, maxTemp: 23, label: 'Day 36+', labelBn: '৩৬+ দিন' },
+];
+
+// Legacy weekly format for backward compatibility
 export const BROILER_TEMP_CURVE: { ageWeeks: number; minTemp: number; maxTemp: number }[] = [
-  { ageWeeks: 0, minTemp: 33, maxTemp: 35 },   // Day 1-7
-  { ageWeeks: 1, minTemp: 30, maxTemp: 32 },   // Week 1-2
-  { ageWeeks: 2, minTemp: 27, maxTemp: 29 },   // Week 2-3
-  { ageWeeks: 3, minTemp: 24, maxTemp: 26 },   // Week 3-4
-  { ageWeeks: 4, minTemp: 21, maxTemp: 24 },   // Week 4+
+  { ageWeeks: 0, minTemp: 33, maxTemp: 34 },
+  { ageWeeks: 1, minTemp: 30, maxTemp: 32 },
+  { ageWeeks: 2, minTemp: 28, maxTemp: 30 },
+  { ageWeeks: 3, minTemp: 26, maxTemp: 28 },
+  { ageWeeks: 4, minTemp: 24, maxTemp: 26 },
+  { ageWeeks: 5, minTemp: 22, maxTemp: 24 },
 ];
 
 /**
- * Get recommended temperature range for broilers based on age
+ * Broiler automation thresholds
+ */
+export const BROILER_THRESHOLDS = {
+  // Temperature control
+  TEMP_FAN_HIGH_DEVIATION: 2,    // +2°C → fan HIGH
+  TEMP_HEATER_ON_DEVIATION: 2,   // -2°C → heater ON
+  TEMP_ALARM_DEVIATION: 4,       // +4°C → alarm
+  
+  // Humidity
+  HUMIDITY_LOW_WARNING: 40,      // <40% → warning
+  HUMIDITY_HIGH_VENTILATION: 75, // >75% → ventilation increase
+  
+  // Ammonia
+  AMMONIA_FAN_ON: 20,            // >20ppm → fan ON
+  AMMONIA_ALARM: 30,             // >30ppm → alarm
+  
+  // Water
+  WATER_DROP_THRESHOLD: 20,      // 20% drop
+  WATER_WINDOW_HOURS: 6,         // within 6 hours
+  
+  // Heat Stress Index
+  HSI_FAN_HIGH: 38,              // >38 → fan HIGH
+  HSI_EMERGENCY: 42,             // >42 → emergency alert
+};
+
+/**
+ * Get recommended temperature range for broilers based on age in DAYS
+ */
+export function getBroilerTempRangeByDays(ageDays: number): { 
+  minTemp: number; 
+  maxTemp: number;
+  targetTemp: number;
+  label: string;
+  labelBn: string;
+} {
+  const range = BROILER_TEMP_CURVE_DAYS.find(r => 
+    ageDays >= r.minDays && ageDays <= r.maxDays
+  );
+  
+  const result = range || BROILER_TEMP_CURVE_DAYS[BROILER_TEMP_CURVE_DAYS.length - 1];
+  return {
+    ...result,
+    targetTemp: (result.minTemp + result.maxTemp) / 2,
+  };
+}
+
+/**
+ * Get recommended temperature range for broilers based on age in WEEKS (legacy)
  */
 export function getBroilerTempRange(ageWeeks: number): { minTemp: number; maxTemp: number } {
-  // Find the appropriate range based on age
-  const range = BROILER_TEMP_CURVE.find((r, index) => {
-    const nextRange = BROILER_TEMP_CURVE[index + 1];
-    if (!nextRange) return true; // Last range applies to all older birds
-    return ageWeeks < nextRange.ageWeeks;
-  });
-  
-  return range || BROILER_TEMP_CURVE[BROILER_TEMP_CURVE.length - 1];
+  const ageDays = ageWeeks * 7 + 1; // Convert to days (start of week)
+  const range = getBroilerTempRangeByDays(ageDays);
+  return { minTemp: range.minTemp, maxTemp: range.maxTemp };
 }
 
 /**
