@@ -80,6 +80,14 @@ const t = {
     lastReading: 'শেষ রিডিং',
     outOfRange: 'অস্বাভাবিক',
     normal: 'স্বাভাবিক',
+    attentionRequired: 'মনোযোগ প্রয়োজন',
+    problemUsers: 'সমস্যাযুক্ত ইউজার',
+    noProblem: 'সকল সিস্টেম স্বাভাবিক',
+    deviceOffline: 'ডিভাইস অফলাইন',
+    noSensorData: 'সেন্সর ডেটা নেই',
+    powerOutage: 'বিদ্যুৎ বিভ্রাট',
+    criticalAlert: 'জরুরি অ্যালার্ট',
+    viewDetails: 'বিস্তারিত দেখুন',
   },
   en: {
     systemHealth: 'System Health',
@@ -122,6 +130,14 @@ const t = {
     lastReading: 'Last Reading',
     outOfRange: 'Out of Range',
     normal: 'Normal',
+    attentionRequired: 'Attention Required',
+    problemUsers: 'Problem Users',
+    noProblem: 'All Systems Normal',
+    deviceOffline: 'Device Offline',
+    noSensorData: 'No Sensor Data',
+    powerOutage: 'Power Outage',
+    criticalAlert: 'Critical Alert',
+    viewDetails: 'View Details',
   },
 };
 
@@ -144,6 +160,101 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
   });
 
   const selectedUser = profiles?.find(p => p.id === selectedUserId);
+
+  // Detect problem users
+  const { data: problemUsers, isLoading: loadingProblems } = useQuery({
+    queryKey: ['admin-problem-users'],
+    queryFn: async () => {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString();
+
+      // Get users with offline devices
+      const { data: offlineDevices } = await supabase
+        .from('device_health')
+        .select('user_id, is_online, last_seen_at')
+        .eq('is_online', false);
+
+      // Get users with ongoing power outages
+      const { data: powerOutages } = await supabase
+        .from('power_outages')
+        .select('user_id')
+        .eq('is_ongoing', true);
+
+      // Get users with critical alerts today
+      const { data: criticalAlerts } = await supabase
+        .from('alerts')
+        .select('user_id')
+        .eq('severity', 'danger')
+        .gte('created_at', todayStr);
+
+      // Get users with no recent sensor data (no data in last hour)
+      const { data: recentSensorUsers } = await supabase
+        .from('sensor_logs')
+        .select('user_id')
+        .gte('timestamp', oneHourAgo);
+
+      const recentUserIds = new Set(recentSensorUsers?.map(s => s.user_id) || []);
+      const allUserIds = new Set(profiles?.map(p => p.id) || []);
+      
+      // Users without recent sensor data
+      const noDataUserIds = [...allUserIds].filter(id => !recentUserIds.has(id));
+
+      // Compile problem users
+      const problemMap: Record<string, { 
+        userId: string; 
+        issues: Array<{ type: string; detail?: string }>;
+      }> = {};
+
+      // Add offline device users
+      offlineDevices?.forEach(d => {
+        if (!problemMap[d.user_id]) {
+          problemMap[d.user_id] = { userId: d.user_id, issues: [] };
+        }
+        problemMap[d.user_id].issues.push({ 
+          type: 'device_offline',
+          detail: d.last_seen_at ? formatDistanceToNow(new Date(d.last_seen_at), { addSuffix: true, locale: bn }) : undefined
+        });
+      });
+
+      // Add power outage users
+      powerOutages?.forEach(p => {
+        if (!problemMap[p.user_id]) {
+          problemMap[p.user_id] = { userId: p.user_id, issues: [] };
+        }
+        if (!problemMap[p.user_id].issues.find(i => i.type === 'power_outage')) {
+          problemMap[p.user_id].issues.push({ type: 'power_outage' });
+        }
+      });
+
+      // Add critical alert users
+      criticalAlerts?.forEach(a => {
+        if (!problemMap[a.user_id]) {
+          problemMap[a.user_id] = { userId: a.user_id, issues: [] };
+        }
+        if (!problemMap[a.user_id].issues.find(i => i.type === 'critical_alert')) {
+          problemMap[a.user_id].issues.push({ type: 'critical_alert' });
+        }
+      });
+
+      // Add no sensor data users
+      noDataUserIds.forEach(userId => {
+        if (!problemMap[userId]) {
+          problemMap[userId] = { userId, issues: [] };
+        }
+        problemMap[userId].issues.push({ type: 'no_sensor_data' });
+      });
+
+      // Map to profiles
+      return Object.values(problemMap).map(p => ({
+        ...p,
+        profile: profiles?.find(profile => profile.id === p.userId),
+      })).filter(p => p.profile); // Only include users with profiles
+    },
+    enabled: !!profiles && profiles.length > 0,
+    refetchInterval: 60000,
+  });
 
   // Check database connection
   const { data: dbStatus, isLoading: loadingDb } = useQuery({
@@ -537,6 +648,98 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Problem Users Alert Section - Only show when "All Users" is selected */}
+      {selectedUserId === 'all' && (
+        <Card className={`border ${problemUsers && problemUsers.length > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-green-500/10 border-green-500/30'}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              {problemUsers && problemUsers.length > 0 ? (
+                <>
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <span className="text-red-400">{labels.attentionRequired}</span>
+                  <Badge className="bg-red-500/20 text-red-400 ml-2">
+                    {problemUsers.length} {labels.problemUsers}
+                  </Badge>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                  <span className="text-green-400">{labels.noProblem}</span>
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
+          {problemUsers && problemUsers.length > 0 && (
+            <CardContent>
+              <ScrollArea className="max-h-[200px]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {loadingProblems ? (
+                    [1, 2, 3].map(i => (
+                      <Skeleton key={i} className="h-16 bg-slate-700/50" />
+                    ))
+                  ) : (
+                    problemUsers.map((problem) => (
+                      <div
+                        key={problem.userId}
+                        className="flex items-center justify-between p-3 rounded-lg bg-slate-800/80 border border-red-500/20 cursor-pointer hover:bg-slate-700/80 transition-colors"
+                        onClick={() => setSelectedUserId(problem.userId)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={problem.profile?.avatar_url || ''} />
+                            <AvatarFallback className="bg-red-600 text-xs">
+                              {problem.profile?.farm_name?.charAt(0) || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm text-white font-medium">
+                              {problem.profile?.farm_name || 'Unknown'}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {problem.issues.map((issue, idx) => (
+                                <Badge 
+                                  key={idx} 
+                                  className={`text-[10px] px-1.5 py-0 ${
+                                    issue.type === 'device_offline' ? 'bg-gray-500/20 text-gray-400' :
+                                    issue.type === 'power_outage' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    issue.type === 'critical_alert' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-orange-500/20 text-orange-400'
+                                  }`}
+                                >
+                                  {issue.type === 'device_offline' && (
+                                    <><WifiOff className="w-2.5 h-2.5 mr-0.5" />{labels.deviceOffline}</>
+                                  )}
+                                  {issue.type === 'power_outage' && (
+                                    <><Zap className="w-2.5 h-2.5 mr-0.5" />{labels.powerOutage}</>
+                                  )}
+                                  {issue.type === 'critical_alert' && (
+                                    <><AlertTriangle className="w-2.5 h-2.5 mr-0.5" />{labels.criticalAlert}</>
+                                  )}
+                                  {issue.type === 'no_sensor_data' && (
+                                    <><XCircle className="w-2.5 h-2.5 mr-0.5" />{labels.noSensorData}</>
+                                  )}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-cyan-400 hover:text-cyan-300 text-xs"
+                        >
+                          {labels.viewDetails}
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* System Status Card */}
