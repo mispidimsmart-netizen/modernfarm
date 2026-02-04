@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, 
   ChevronRight, Shield, Zap, Thermometer, Droplets, Wind, 
-  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, Home
+  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, Home, Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -37,6 +37,7 @@ import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
+import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -396,6 +397,19 @@ export function SettingsPage() {
           {/* Owner-only Settings */}
           {isOwner && (
             <>
+              {/* Team Management Section */}
+              <SettingsSection 
+                title="Team Management" 
+                titleBn="দল ব্যবস্থাপনা"
+                icon={Users}
+                defaultOpen={false}
+                language={language}
+              >
+                <div className="space-y-4">
+                  <WorkerManagementSheet />
+                </div>
+              </SettingsSection>
+
               {/* Quick Mode Section */}
               <SettingsSection 
                 title="Quick Mode Profiles" 
