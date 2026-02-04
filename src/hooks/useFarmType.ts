@@ -75,9 +75,10 @@ export const BROILER_THRESHOLDS = {
   WATER_DROP_THRESHOLD: 20,      // 20% drop
   WATER_WINDOW_HOURS: 6,         // within 6 hours
   
-  // Heat Stress Index
+  // Heat Stress Index (👉 Cloud এর অপেক্ষা করবে না - ESP32 locally handles)
   HSI_FAN_HIGH: 38,              // >38 → fan HIGH
-  HSI_EMERGENCY: 42,             // >42 → emergency alert
+  HSI_FAN_MAX_ALARM: 42,         // >42 → fan MAX + alarm
+  HSI_EMERGENCY: 45,             // >45 → emergency mode (continuous alarm)
 };
 
 /**

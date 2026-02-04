@@ -182,7 +182,15 @@ const float BROILER_HUMIDITY_HIGH = 75.0;       // >75% → ventilation
 const float BROILER_AMMONIA_FAN = 20.0;         // >20ppm → fan ON
 const float BROILER_AMMONIA_ALARM = 30.0;       // >30ppm → alarm
 const float BROILER_HSI_FAN_HIGH = 38.0;        // >38 → fan HIGH
-const float BROILER_HSI_EMERGENCY = 42.0;       // >42 → emergency
+const float BROILER_HSI_EMERGENCY = 42.0;       // >42 → fan MAX + alarm
+const float BROILER_HSI_CRITICAL = 45.0;        // >45 → emergency mode (continuous alarm)
+
+// ================ UNIVERSAL HSI EMERGENCY THRESHOLDS ================
+// 🔥 CRITICAL: These run LOCALLY without waiting for cloud!
+// HSI = Temperature + (Humidity × 0.1)
+const float HSI_FAN_HIGH = 38.0;       // >38 → Fan HIGH
+const float HSI_FAN_MAX_ALARM = 42.0;  // >42 → Fan MAX + Alarm
+const float HSI_EMERGENCY = 45.0;      // >45 → Emergency mode (continuous alarm)
 
 // ================ CACHED SETTINGS (EEPROM) ================
 struct CachedSettings {
@@ -1030,19 +1038,41 @@ void runBroilerAutomation() {
   }
   
   // ========================================
-  // BROILER HSI CHECK (Heat Stress Index)
-  // >38 = fan HIGH, >42 = emergency
+  // 🔥 BROILER HSI CHECK (Heat Stress Index) - CRITICAL!
+  // 👉 Cloud এর অপেক্ষা করবে না - Runs LOCALLY!
+  // >38 = fan HIGH, >42 = fan MAX + alarm, >45 = emergency
   // ========================================
   float hsi = calculateHSI(temperature, humidity);
   currentHSI = hsi;
   
-  if (hsi >= BROILER_HSI_EMERGENCY) {
-    Serial.printf("🚨 BROILER HSI EMERGENCY (%.1f >= 42) → Fan HIGH + Alert!\n", hsi);
-    setFanState(true, "HIGH");
+  // ⚠️ HSI >= 45: EMERGENCY MODE - Continuous alarm, bird life at risk!
+  if (hsi >= BROILER_HSI_CRITICAL) {
+    Serial.println("\n╔═══════════════════════════════════════════════════════════╗");
+    Serial.println("║  🚨🚨🚨 HSI EMERGENCY MODE - CRITICAL HEAT STRESS! 🚨🚨🚨  ║");
+    Serial.printf("║  HSI: %.1f >= 45 → CONTINUOUS ALARM ACTIVATED!             ║\n", hsi);
+    Serial.println("║  মুরগি মারা যেতে পারে! জরুরি ব্যবস্থা নিন!                  ║");
+    Serial.println("╚═══════════════════════════════════════════════════════════╝\n");
+    setFanState(true, "MAX");
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    systemState = "EMERGENCY";
+    
+    // Continuous alarm pattern - don't stop until HSI drops
+    static unsigned long lastAlarmBeep = 0;
+    if (millis() - lastAlarmBeep > 500) {  // Beep every 500ms
+      digitalWrite(ALARM_RELAY_PIN, !digitalRead(ALARM_RELAY_PIN));
+      lastAlarmBeep = millis();
+    }
+  }
+  // HSI >= 42: Fan MAX + Alarm (one-time)
+  else if (hsi >= BROILER_HSI_EMERGENCY) {
+    Serial.printf("🚨 BROILER HSI DANGER (%.1f >= 42) → Fan MAX + Alarm!\n", hsi);
+    setFanState(true, "MAX");
     alarmOn = true;
     digitalWrite(ALARM_RELAY_PIN, HIGH);
     systemState = "DANGER";
   }
+  // HSI >= 38: Fan HIGH
   else if (hsi >= BROILER_HSI_FAN_HIGH) {
     Serial.printf("🔥 BROILER HSI HIGH (%.1f >= 38) → Fan HIGH\n", hsi);
     setFanState(true, "HIGH");
@@ -1141,29 +1171,49 @@ void runLocalAutomation() {
   }
   
   // ========================================
-  // 🔥 HEAT STRESS INDEX (HSI) - MAIN DECISION
+  // 🔥 HEAT STRESS INDEX (HSI) - CRITICAL DECISION!
   // HSI = Temperature + (Humidity × 0.1)
+  // 👉 Cloud এর অপেক্ষা করবে না - Runs LOCALLY!
   // This is MORE ACCURATE than temperature alone!
   // ========================================
   float hsi = calculateHSI(temperature, humidity);
   currentHSI = hsi;  // Store for state reporting
   Serial.printf("🔥 HSI = %.1f (Temp=%.1f + Hum=%.1f×0.1)\n", hsi, temperature, humidity);
   
-  // HSI > 40: DANGER → Fan HIGH + Alert
-  if (hsi > cachedSettings.hsiDanger) {
+  // ⚠️ HSI >= 45: EMERGENCY MODE - Continuous alarm, bird life at risk!
+  if (hsi >= HSI_EMERGENCY) {
+    systemState = "EMERGENCY";
+    Serial.println("\n╔═══════════════════════════════════════════════════════════╗");
+    Serial.println("║  🚨🚨🚨 HSI EMERGENCY MODE - CRITICAL HEAT STRESS! 🚨🚨🚨  ║");
+    Serial.printf("║  HSI: %.1f >= 45 → CONTINUOUS ALARM ACTIVATED!             ║\n", hsi);
+    Serial.println("║  মুরগি মারা যেতে পারে! জরুরি ব্যবস্থা নিন!                  ║");
+    Serial.println("╚═══════════════════════════════════════════════════════════╝\n");
+    setFanState(true, "MAX");
+    alarmOn = true;
+    digitalWrite(ALARM_RELAY_PIN, HIGH);
+    
+    // Continuous alarm pattern - don't stop until HSI drops
+    static unsigned long lastAlarmBeep = 0;
+    if (millis() - lastAlarmBeep > 500) {  // Beep every 500ms
+      digitalWrite(ALARM_RELAY_PIN, !digitalRead(ALARM_RELAY_PIN));
+      lastAlarmBeep = millis();
+    }
+  }
+  // HSI >= 42: Fan MAX + Alarm
+  else if (hsi >= HSI_FAN_MAX_ALARM) {
     systemState = "DANGER";
-    Serial.printf("🚨 HSI DANGER (%.1f > 40) → Fan HIGH + ALERT!\n", hsi);
-    setFanState(true, "HIGH");
+    Serial.printf("🚨 HSI DANGER (%.1f >= 42) → Fan MAX + ALARM!\n", hsi);
+    setFanState(true, "MAX");
     alarmOn = true;
     digitalWrite(ALARM_RELAY_PIN, HIGH);
   }
-  // HSI 35-40: HIGH STRESS → Fan HIGH
-  else if (hsi >= cachedSettings.hsiMild) {
+  // HSI >= 38: Fan HIGH
+  else if (hsi >= HSI_FAN_HIGH) {
     systemState = "HIGH_STRESS";
-    Serial.printf("⚠️ HSI HIGH STRESS (%.1f) → Fan HIGH\n", hsi);
+    Serial.printf("⚠️ HSI HIGH STRESS (%.1f >= 38) → Fan HIGH\n", hsi);
     setFanState(true, "HIGH");
   }
-  // HSI 30-35: MILD STRESS → Fan LOW
+  // HSI 30-38: MILD STRESS → Fan LOW
   else if (hsi >= cachedSettings.hsiNormal) {
     systemState = "MILD_STRESS";
     Serial.printf("🌡️ HSI MILD STRESS (%.1f) → Fan LOW\n", hsi);
