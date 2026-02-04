@@ -42,23 +42,20 @@ export function SettingsInstallCard() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-4 shadow-lg"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-3 shadow-md"
       >
         {/* Background decoration */}
-        <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
-        <div className="absolute -bottom-4 -left-4 h-20 w-20 rounded-full bg-white/10 blur-xl" />
+        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-white/10 blur-xl" />
+        <div className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full bg-white/10 blur-xl" />
         
         <div className="relative flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-              <Smartphone className="h-6 w-6 text-white" />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+              <Smartphone className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="font-semibold text-white">{t.title}</h3>
-                <Sparkles className="h-4 w-4 text-yellow-300" />
-              </div>
-              <p className="text-xs text-white/80">{t.description}</p>
+            <div className="flex items-center gap-1.5">
+              <h3 className="font-semibold text-white text-sm">{t.title}</h3>
+              <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
             </div>
           </div>
           
