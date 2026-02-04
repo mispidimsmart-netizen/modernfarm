@@ -33,10 +33,9 @@ export function SettingsInstallCard() {
     }
   };
 
-  // Not installable and not iOS - hide completely
-  if (!canPrompt && !isIOS && !isInstalled) {
-    return null;
-  }
+  // Always show the card - even if not installable, show info about the app
+  const showInstallButton = canPrompt || isIOS;
+  const showInstalledState = isInstalled;
 
   return (
     <>
@@ -63,7 +62,7 @@ export function SettingsInstallCard() {
             </div>
           </div>
           
-          {isInstalled ? (
+          {showInstalledState ? (
             <Button 
               variant="secondary" 
               size="sm" 
@@ -73,7 +72,7 @@ export function SettingsInstallCard() {
               <CheckCircle2 size={16} />
               {t.installed}
             </Button>
-          ) : (
+          ) : showInstallButton ? (
             <Button 
               variant="secondary"
               size="sm"
@@ -83,6 +82,16 @@ export function SettingsInstallCard() {
             >
               <Download size={16} />
               {isInstalling ? '...' : t.install}
+            </Button>
+          ) : (
+            <Button 
+              variant="secondary"
+              size="sm"
+              disabled
+              className="gap-2 shrink-0 bg-white/20 text-white border-0"
+            >
+              <Smartphone size={16} />
+              {language === 'bn' ? 'PWA' : 'PWA'}
             </Button>
           )}
         </div>
