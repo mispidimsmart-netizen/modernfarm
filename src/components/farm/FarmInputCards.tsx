@@ -20,10 +20,8 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
       subtitle: language === 'bn' ? 'আজকের ডিম সংখ্যা লিখুন' : "Enter today's egg count",
       todayValue: summary?.todayEggs ?? 0,
       todayLabel: language === 'bn' ? 'আজ' : 'Today',
-      gradient: 'from-amber-500/20 via-orange-500/10 to-transparent',
-      iconBg: 'bg-amber-500/20',
-      iconColor: 'text-amber-600 dark:text-amber-400',
-      borderColor: 'border-amber-500/30',
+      iconBg: 'bg-primary/10',
+      iconColor: 'text-primary',
     },
     {
       key: 'feed' as const,
@@ -31,10 +29,8 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
       title: language === 'bn' ? '🌾 খাদ্য ব্যবস্থাপনা' : '🌾 Feed Management',
       subtitle: language === 'bn' ? 'খাদ্য খরচ ও স্টক' : 'Feed usage & stock',
       todayValue: null,
-      gradient: 'from-emerald-500/20 via-green-500/10 to-transparent',
-      iconBg: 'bg-emerald-500/20',
-      iconColor: 'text-emerald-600 dark:text-emerald-400',
-      borderColor: 'border-emerald-500/30',
+      iconBg: 'bg-green-500/10',
+      iconColor: 'text-green-600 dark:text-green-400',
     },
     {
       key: 'mortality' as const,
@@ -43,10 +39,8 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
       subtitle: language === 'bn' ? 'মৃত মুরগি রেকর্ড করুন' : 'Record bird deaths',
       todayValue: summary?.todayMortality ?? 0,
       todayLabel: language === 'bn' ? 'আজ' : 'Today',
-      gradient: 'from-red-500/20 via-rose-500/10 to-transparent',
-      iconBg: 'bg-red-500/20',
-      iconColor: 'text-red-600 dark:text-red-400',
-      borderColor: 'border-red-500/30',
+      iconBg: 'bg-destructive/10',
+      iconColor: 'text-destructive',
     },
     {
       key: 'finance' as const,
@@ -55,10 +49,8 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
       subtitle: language === 'bn' ? 'আর্থিক লেনদেন রেকর্ড' : 'Financial transactions',
       todayValue: summary ? summary.todayIncome - summary.todayExpenses : null,
       todayLabel: language === 'bn' ? 'আজ' : 'Today',
-      gradient: 'from-blue-500/20 via-indigo-500/10 to-transparent',
-      iconBg: 'bg-blue-500/20',
+      iconBg: 'bg-blue-500/10',
       iconColor: 'text-blue-600 dark:text-blue-400',
-      borderColor: 'border-blue-500/30',
     },
   ];
 
@@ -72,12 +64,11 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
           transition={{ delay: index * 0.08 }}
         >
           <Card 
-            className={`cursor-pointer transition-all active:scale-[0.98] hover:shadow-md overflow-hidden border ${item.borderColor}`}
+            className="cursor-pointer transition-all active:scale-[0.98] hover:shadow-md"
             onClick={() => onCardClick(item.key)}
           >
-            <CardContent className="p-0">
-              <div className={`absolute inset-0 bg-gradient-to-r ${item.gradient} pointer-events-none`} />
-              <div className="relative flex items-center gap-4 p-4">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
                 {/* Icon */}
                 <div className={`h-12 w-12 rounded-xl ${item.iconBg} flex items-center justify-center flex-shrink-0`}>
                   <item.icon className={`h-6 w-6 ${item.iconColor}`} />
@@ -94,7 +85,7 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
                   <div className="text-right flex-shrink-0">
                     <p className={`text-lg font-bold ${
                       item.key === 'finance' 
-                        ? (item.todayValue >= 0 ? 'text-green-600' : 'text-red-600')
+                        ? (item.todayValue >= 0 ? 'text-green-600' : 'text-destructive')
                         : item.iconColor
                     }`}>
                       {item.key === 'finance' ? '৳' : ''}

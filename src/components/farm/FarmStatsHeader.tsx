@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Users, Egg, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Egg } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,8 +27,8 @@ export function FarmStatsHeader({ onFlockClick }: FarmStatsHeaderProps) {
       icon: Egg,
       value: summary.totalEggs,
       label: language === 'bn' ? 'মোট ডিম (৩০দিন)' : 'Eggs (30d)',
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-500/10',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       key: 'profit',
@@ -37,8 +37,8 @@ export function FarmStatsHeader({ onFlockClick }: FarmStatsHeaderProps) {
       label: summary.profit >= 0 
         ? (language === 'bn' ? 'লাভ' : 'Profit')
         : (language === 'bn' ? 'ক্ষতি' : 'Loss'),
-      color: summary.profit >= 0 ? 'text-green-600' : 'text-red-600',
-      bgColor: summary.profit >= 0 ? 'bg-green-500/10' : 'bg-red-500/10',
+      color: summary.profit >= 0 ? 'text-green-600' : 'text-destructive',
+      bgColor: summary.profit >= 0 ? 'bg-green-500/10' : 'bg-destructive/10',
       isCurrency: true,
     },
   ];
@@ -53,7 +53,7 @@ export function FarmStatsHeader({ onFlockClick }: FarmStatsHeaderProps) {
           transition={{ delay: index * 0.1 }}
         >
           <Card 
-            className={`${stat.onClick ? 'cursor-pointer active:scale-[0.98]' : ''} transition-transform ${stat.bgColor} border-0`}
+            className={`${stat.onClick ? 'cursor-pointer active:scale-[0.98]' : ''} transition-transform`}
             onClick={stat.onClick}
           >
             <CardContent className="p-3 text-center">
