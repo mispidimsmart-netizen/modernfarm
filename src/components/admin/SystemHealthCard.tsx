@@ -25,6 +25,10 @@ import {
   Cpu,
   Battery,
   Clock,
+  Thermometer,
+  Droplets,
+  Wind,
+  Gauge,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -65,6 +69,17 @@ const t = {
     lastSync: 'শেষ সিঙ্ক',
     firmware: 'ফার্মওয়্যার',
     alertsToday: 'আজকের অ্যালার্ট',
+    sensorHealth: 'সেন্সর হেলথ',
+    temperature: 'তাপমাত্রা',
+    humidity: 'আর্দ্রতা',
+    ammonia: 'অ্যামোনিয়া',
+    waterFlow: 'পানি প্রবাহ',
+    working: 'সচল',
+    notWorking: 'অচল',
+    noData: 'ডেটা নেই',
+    lastReading: 'শেষ রিডিং',
+    outOfRange: 'অস্বাভাবিক',
+    normal: 'স্বাভাবিক',
   },
   en: {
     systemHealth: 'System Health',
@@ -96,6 +111,17 @@ const t = {
     lastSync: 'Last Sync',
     firmware: 'Firmware',
     alertsToday: 'Alerts Today',
+    sensorHealth: 'Sensor Health',
+    temperature: 'Temperature',
+    humidity: 'Humidity',
+    ammonia: 'Ammonia',
+    waterFlow: 'Water Flow',
+    working: 'Working',
+    notWorking: 'Not Working',
+    noData: 'No Data',
+    lastReading: 'Last Reading',
+    outOfRange: 'Out of Range',
+    normal: 'Normal',
   },
 };
 
@@ -300,6 +326,80 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
     refetchInterval: 60000,
   });
 
+  // Get sensor health data - latest readings per sensor type
+  const { data: sensorHealth, isLoading: loadingSensorHealth } = useQuery({
+    queryKey: ['admin-sensor-health', selectedUserId],
+    queryFn: async () => {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      
+      let query = supabase
+        .from('sensor_logs')
+        .select('temperature, humidity, ammonia, water_flow, timestamp')
+        .gte('timestamp', oneHourAgo)
+        .order('timestamp', { ascending: false })
+        .limit(10);
+
+      if (selectedUserId !== 'all') {
+        query = query.eq('user_id', selectedUserId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching sensor health:', error);
+        return null;
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          temperature: { status: 'no_data', value: null, lastReading: null },
+          humidity: { status: 'no_data', value: null, lastReading: null },
+          ammonia: { status: 'no_data', value: null, lastReading: null },
+          waterFlow: { status: 'no_data', value: null, lastReading: null },
+        };
+      }
+
+      const latest = data[0];
+      const lastReading = latest.timestamp;
+
+      // Define normal ranges
+      const tempRange = { min: 15, max: 40 };
+      const humidityRange = { min: 30, max: 90 };
+      const ammoniaRange = { min: 0, max: 30 };
+      const waterFlowRange = { min: 0, max: 500 };
+
+      const getStatus = (value: number | null, range: { min: number; max: number }) => {
+        if (value === null || value === undefined) return 'no_data';
+        if (value < range.min || value > range.max) return 'out_of_range';
+        return 'normal';
+      };
+
+      return {
+        temperature: {
+          status: getStatus(latest.temperature, tempRange),
+          value: latest.temperature,
+          lastReading,
+        },
+        humidity: {
+          status: getStatus(latest.humidity, humidityRange),
+          value: latest.humidity,
+          lastReading,
+        },
+        ammonia: {
+          status: getStatus(latest.ammonia, ammoniaRange),
+          value: latest.ammonia,
+          lastReading,
+        },
+        waterFlow: {
+          status: getStatus(latest.water_flow, waterFlowRange),
+          value: latest.water_flow,
+          lastReading,
+        },
+      };
+    },
+    refetchInterval: 30000,
+  });
+
   const formatUptime = (seconds: number | null) => {
     if (!seconds) return '-';
     const hours = Math.floor(seconds / 3600);
@@ -309,6 +409,33 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
       return `${days}d ${hours % 24}h`;
     }
     return `${hours}h ${minutes}m`;
+  };
+
+  const getSensorStatusBadge = (status: string) => {
+    switch (status) {
+      case 'normal':
+        return (
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+            <CheckCircle2 className="w-3 h-3 mr-1" />
+            {labels.working}
+          </Badge>
+        );
+      case 'out_of_range':
+        return (
+          <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+            <AlertTriangle className="w-3 h-3 mr-1" />
+            {labels.outOfRange}
+          </Badge>
+        );
+      case 'no_data':
+      default:
+        return (
+          <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+            <XCircle className="w-3 h-3 mr-1" />
+            {labels.noData}
+          </Badge>
+        );
+    }
   };
 
   return (
@@ -514,7 +641,91 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
               </div>
             </div>
 
-            {/* Overall Status */}
+            {/* Sensor Health Section */}
+            <div className="p-3 rounded-lg bg-slate-700/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Gauge className="w-4 h-4 text-purple-400" />
+                <span className="text-sm text-gray-400">{labels.sensorHealth}</span>
+              </div>
+              {loadingSensorHealth ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {[1, 2, 3, 4].map(i => (
+                    <Skeleton key={i} className="h-12 bg-slate-600" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Temperature Sensor */}
+                  <div className="flex items-center justify-between p-2 rounded bg-slate-600/30">
+                    <div className="flex items-center gap-2">
+                      <Thermometer className="w-4 h-4 text-red-400" />
+                      <div>
+                        <p className="text-xs text-gray-400">{labels.temperature}</p>
+                        <p className="text-sm text-white font-medium">
+                          {sensorHealth?.temperature?.value !== null 
+                            ? `${sensorHealth?.temperature?.value}°C` 
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    {getSensorStatusBadge(sensorHealth?.temperature?.status || 'no_data')}
+                  </div>
+
+                  {/* Humidity Sensor */}
+                  <div className="flex items-center justify-between p-2 rounded bg-slate-600/30">
+                    <div className="flex items-center gap-2">
+                      <Droplets className="w-4 h-4 text-blue-400" />
+                      <div>
+                        <p className="text-xs text-gray-400">{labels.humidity}</p>
+                        <p className="text-sm text-white font-medium">
+                          {sensorHealth?.humidity?.value !== null 
+                            ? `${sensorHealth?.humidity?.value}%` 
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    {getSensorStatusBadge(sensorHealth?.humidity?.status || 'no_data')}
+                  </div>
+
+                  {/* Ammonia Sensor */}
+                  <div className="flex items-center justify-between p-2 rounded bg-slate-600/30">
+                    <div className="flex items-center gap-2">
+                      <Wind className="w-4 h-4 text-yellow-400" />
+                      <div>
+                        <p className="text-xs text-gray-400">{labels.ammonia}</p>
+                        <p className="text-sm text-white font-medium">
+                          {sensorHealth?.ammonia?.value !== null 
+                            ? `${sensorHealth?.ammonia?.value} ppm` 
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    {getSensorStatusBadge(sensorHealth?.ammonia?.status || 'no_data')}
+                  </div>
+
+                  {/* Water Flow Sensor */}
+                  <div className="flex items-center justify-between p-2 rounded bg-slate-600/30">
+                    <div className="flex items-center gap-2">
+                      <Droplets className="w-4 h-4 text-cyan-400" />
+                      <div>
+                        <p className="text-xs text-gray-400">{labels.waterFlow}</p>
+                        <p className="text-sm text-white font-medium">
+                          {sensorHealth?.waterFlow?.value !== null 
+                            ? `${sensorHealth?.waterFlow?.value} L` 
+                            : '-'}
+                        </p>
+                      </div>
+                    </div>
+                    {getSensorStatusBadge(sensorHealth?.waterFlow?.status || 'no_data')}
+                  </div>
+                </div>
+              )}
+              {sensorHealth?.temperature?.lastReading && (
+                <p className="text-xs text-gray-500 mt-2 text-right">
+                  {labels.lastReading}: {formatDistanceToNow(new Date(sensorHealth.temperature.lastReading), { addSuffix: true, locale: bn })}
+                </p>
+              )}
+            </div>
             <div className={`p-3 rounded-lg text-center ${
               (selectedUserId === 'all' ? dbStatus?.connected : true) && !activityStats?.ongoingOutages 
                 ? 'bg-green-500/10 border border-green-500/30' 
