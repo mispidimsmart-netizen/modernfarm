@@ -329,8 +329,30 @@ export function SettingsPage() {
             </div>
           </motion.div>
 
-          {/* App Install Section */}
-          <SettingsInstallCard />
+          {/* App Install & Team Management Row */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* App Install Card - Compact */}
+            <SettingsInstallCard />
+            
+            {/* Team Management Card */}
+            {isOwner ? (
+              <WorkerManagementSheet />
+            ) : (
+              <div className="flex items-center gap-2.5 rounded-2xl bg-muted/50 p-3 border border-dashed">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted shrink-0">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-muted-foreground text-sm">
+                    {language === 'bn' ? 'দল ব্যবস্থাপনা' : 'Team'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'মালিকের জন্য' : 'Owner only'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Quick Actions Grid */}
           <div className={`grid gap-3 ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
@@ -358,7 +380,7 @@ export function SettingsPage() {
               whileTap={{ scale: 0.98 }}
               className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                 <FileText size={20} />
               </div>
               <div>
@@ -373,7 +395,7 @@ export function SettingsPage() {
               whileTap={{ scale: 0.98 }}
               className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Cog size={20} />
               </div>
               <div>
@@ -397,18 +419,6 @@ export function SettingsPage() {
           {/* Owner-only Settings */}
           {isOwner && (
             <>
-              {/* Team Management Section */}
-              <SettingsSection 
-                title="Team Management" 
-                titleBn="দল ব্যবস্থাপনা"
-                icon={Users}
-                defaultOpen={false}
-                language={language}
-              >
-                <div className="space-y-4">
-                  <WorkerManagementSheet />
-                </div>
-              </SettingsSection>
 
               {/* Quick Mode Section */}
               <SettingsSection 
