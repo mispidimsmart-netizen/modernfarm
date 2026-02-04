@@ -8,7 +8,16 @@ import {
   BROILER_THRESHOLDS,
   BROILER_TEMP_CURVE_DAYS 
 } from '@/hooks/useFarmType';
-import { calculateBroilerAge } from '@/hooks/useBroilerAutomation';
+
+// Inline function to avoid circular import
+function calculateBroilerAge(startDate: string): { days: number; weeks: number } {
+  const start = new Date(startDate);
+  const today = new Date();
+  const diffTime = Math.abs(today.getTime() - start.getTime());
+  const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const weeks = Math.floor(days / 7);
+  return { days, weeks };
+}
 
 export type BroilerAlertLevel = 'normal' | 'low_temp' | 'high_temp' | 'critical' | 'emergency';
 export type HumidityStatus = 'normal' | 'low' | 'high';
