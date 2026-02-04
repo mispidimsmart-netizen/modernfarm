@@ -132,35 +132,50 @@ export function FarmManagementPage() {
                   <FileText className="h-4 w-4 text-primary" />
                   <h3 className="text-sm font-semibold">{t.todaySummary[language]}</h3>
                 </div>
-                <FarmSummaryCards />
                 
-                {/* Production Rate Card */}
-                <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t.productionRate[language]}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-3xl font-bold text-primary">{summary.productionRate}%</p>
-                          {Number(summary.productionRate) > 80 ? (
-                            <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
-                              <TrendingUp className="h-3 w-3" />
-                              {language === 'bn' ? 'ভালো' : 'Good'}
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                              <TrendingDown className="h-3 w-3" />
-                              {language === 'bn' ? 'উন্নতি দরকার' : 'Needs improvement'}
-                            </span>
-                          )}
+                {/* Layer Mode: Show Layer Summary */}
+                {isLayer && (
+                  <>
+                    <FarmSummaryCards />
+                    
+                    {/* Production Rate Card - Layer Only */}
+                    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">{t.productionRate[language]}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-3xl font-bold text-primary">{summary.productionRate}%</p>
+                              {Number(summary.productionRate) > 80 ? (
+                                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
+                                  <TrendingUp className="h-3 w-3" />
+                                  {language === 'bn' ? 'ভালো' : 'Good'}
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                  <TrendingDown className="h-3 w-3" />
+                                  {language === 'bn' ? 'উন্নতি দরকার' : 'Needs improvement'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Egg className="h-8 w-8 text-primary" />
+                          </div>
                         </div>
-                      </div>
-                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Egg className="h-8 w-8 text-primary" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+                
+                {/* Broiler Mode: Show Broiler Summary */}
+                {isBroiler && (
+                  <BroilerDashboardWidget
+                    onBatchClick={() => setActiveSheet('batch')}
+                    onWeightClick={() => setActiveSheet('weight')}
+                    onFeedClick={() => setActiveSheet('broiler-feed')}
+                  />
+                )}
               </div>
             </TabsContent>
 
@@ -202,19 +217,46 @@ export function FarmManagementPage() {
               </div>
             </TabsContent>
 
-            {/* Analysis Tab - Egg Correlation */}
+            {/* Analysis Tab */}
             <TabsContent value="analysis" className="mt-4">
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">{t.eggAnalysis[language]}</h3>
+                  <h3 className="text-sm font-semibold">
+                    {isBroiler 
+                      ? (language === 'bn' ? 'পারফরম্যান্স বিশ্লেষণ' : 'Performance Analysis')
+                      : t.eggAnalysis[language]
+                    }
+                  </h3>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {language === 'bn' 
-                    ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন' 
-                    : '🔍 See how temperature, humidity & other factors affect egg production'}
-                </p>
-                <EggCorrelationCard />
+                
+                {/* Layer Mode: Egg Correlation Analysis */}
+                {isLayer && (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'bn' 
+                        ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন' 
+                        : '🔍 See how temperature, humidity & other factors affect egg production'}
+                    </p>
+                    <EggCorrelationCard />
+                  </>
+                )}
+                
+                {/* Broiler Mode: FCR & Weight Analysis */}
+                {isBroiler && (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'bn' 
+                        ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ দেখুন' 
+                        : '🔍 View FCR, weight gain & feed cost analysis'}
+                    </p>
+                    <BroilerDashboardWidget
+                      onBatchClick={() => setActiveSheet('batch')}
+                      onWeightClick={() => setActiveSheet('weight')}
+                      onFeedClick={() => setActiveSheet('broiler-feed')}
+                    />
+                  </>
+                )}
               </div>
             </TabsContent>
           </Tabs>
