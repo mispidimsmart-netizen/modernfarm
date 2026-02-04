@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Egg, TrendingUp, TrendingDown, Skull, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTodaySummary } from '@/hooks/useTodaySummary';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 export function FarmSummaryCards() {
   const { language } = useAuth();
   const { data: summary, isLoading } = useTodaySummary();
+  const location = useLocation();
+  const isOnFarmPage = location.pathname === '/farm';
 
   if (isLoading) {
     return (
@@ -74,15 +76,17 @@ export function FarmSummaryCards() {
     >
       <div className="flex items-center justify-between">
         <h2 className="section-title mb-0">
-          {language === 'bn' ? 'আজকের সামারি' : "Today's Summary"}
+          {language === 'bn' ? 'আজকের সারাংশ' : "Today's Summary"}
         </h2>
-        <Link 
-          to="/farm" 
-          className="flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          {language === 'bn' ? 'বিস্তারিত' : 'Details'}
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+        {!isOnFarmPage && (
+          <Link 
+            to="/farm" 
+            className="flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            {language === 'bn' ? 'বিস্তারিত' : 'Details'}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
       
       <div className="grid grid-cols-2 gap-3">
