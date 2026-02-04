@@ -96,12 +96,13 @@ export function Dashboard() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary to-primary/80 p-5 text-primary-foreground shadow-lg"
+          className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 p-5 text-white shadow-2xl shadow-emerald-500/20 border border-emerald-500/20"
         >
-          {/* Background pattern */}
-          <div className="pointer-events-none absolute inset-0 opacity-10">
-            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white" />
-            <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-white" />
+          {/* Animated Background Elements */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gradient-to-br from-emerald-400/30 to-teal-500/20 blur-2xl animate-pulse" />
+            <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-gradient-to-tr from-cyan-400/20 to-emerald-400/10 blur-xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-24 w-24 rounded-full bg-teal-400/10 blur-lg" />
           </div>
           
           <div className="relative z-10">
@@ -111,10 +112,10 @@ export function Dashboard() {
                 <StatusBadge 
                   status={overallStatus} 
                   label={statusText[language][overallStatus]}
-                  className="bg-white/20 text-white border-white/30"
+                  className="bg-white/10 text-white border-white/20 backdrop-blur-sm shadow-lg"
                 />
                 {manualOverride && (
-                  <span className="flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium">
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 text-[10px] font-medium text-amber-300">
                     <RefreshCw size={10} />
                     {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
                   </span>
@@ -123,64 +124,60 @@ export function Dashboard() {
               
               <div className="flex items-center gap-2">
                 {isConnected ? (
-                  <span className="flex items-center gap-1 rounded-full bg-green-400/30 px-2.5 py-1 text-xs font-medium">
-                    <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                    {language === 'bn' ? 'লাইভ' : 'LIVE'}
+                  <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1.5 text-xs font-semibold shadow-lg shadow-emerald-500/20">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-lg shadow-emerald-400/50" />
+                    <span className="text-emerald-300">{language === 'bn' ? 'লাইভ' : 'LIVE'}</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 rounded-full bg-red-400/30 px-2.5 py-1 text-xs font-medium">
-                    <WifiOff size={12} />
-                    {language === 'bn' ? 'অফলাইন' : 'Offline'}
+                  <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 border border-red-400/30 px-3 py-1.5 text-xs font-semibold">
+                    <WifiOff size={12} className="text-red-400" />
+                    <span className="text-red-300">{language === 'bn' ? 'অফলাইন' : 'Offline'}</span>
                   </span>
                 )}
               </div>
             </div>
             
-            {/* Main Sensor Values - Big Numbers */}
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Thermometer className="h-4 w-4 opacity-80" />
-                </div>
-                <p className="text-2xl font-bold">{sensorData.temperature.toFixed(1)}°</p>
-                <p className="text-[10px] opacity-80">{language === 'bn' ? 'তাপমাত্রা' : 'Temp'}</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Droplets className="h-4 w-4 opacity-80" />
-                </div>
-                <p className="text-2xl font-bold">{sensorData.humidity.toFixed(0)}%</p>
-                <p className="text-[10px] opacity-80">{language === 'bn' ? 'আর্দ্রতা' : 'Humidity'}</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Wind className="h-4 w-4 opacity-80" />
-                </div>
-                <p className="text-2xl font-bold">{sensorData.ammonia.toFixed(1)}</p>
-                <p className="text-[10px] opacity-80">{language === 'bn' ? 'অ্যামোনিয়া' : 'NH₃ ppm'}</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-1">
-                  <Zap className="h-4 w-4 opacity-80" />
-                </div>
-                <p className="text-2xl font-bold">{hsiResult?.index?.toFixed(0) || '--'}</p>
-                <p className="text-[10px] opacity-80">{language === 'bn' ? 'হিট ইনডেক্স' : 'HSI'}</p>
-              </div>
+            {/* Main Sensor Values - Premium Glass Cards */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[
+                { icon: Thermometer, value: sensorData.temperature.toFixed(1), unit: '°', label: language === 'bn' ? 'তাপমাত্রা' : 'Temp', color: 'from-orange-500 to-red-500', glow: 'shadow-orange-500/30' },
+                { icon: Droplets, value: sensorData.humidity.toFixed(0), unit: '%', label: language === 'bn' ? 'আর্দ্রতা' : 'Humidity', color: 'from-blue-500 to-cyan-500', glow: 'shadow-blue-500/30' },
+                { icon: Wind, value: sensorData.ammonia.toFixed(1), unit: '', label: language === 'bn' ? 'অ্যামোনিয়া' : 'NH₃', color: 'from-purple-500 to-pink-500', glow: 'shadow-purple-500/30' },
+                { icon: Zap, value: hsiResult?.index?.toFixed(0) || '--', unit: '', label: language === 'bn' ? 'হিট ইনডেক্স' : 'HSI', color: 'from-amber-500 to-orange-500', glow: 'shadow-amber-500/30' },
+              ].map(({ icon: Icon, value, unit, label, color, glow }, index) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`text-center rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 p-2.5 shadow-lg ${glow}`}
+                >
+                  <div className={`mx-auto w-8 h-8 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-1.5 shadow-lg ${glow}`}>
+                    <Icon className="h-4 w-4 text-white" />
+                  </div>
+                  <p className="text-xl font-bold text-white">{value}<span className="text-sm opacity-70">{unit}</span></p>
+                  <p className="text-[9px] text-white/60 font-medium uppercase tracking-wider">{label}</p>
+                </motion.div>
+              ))}
             </div>
             
-            {/* Bottom: Last Update + Device Count */}
-            <div className="flex items-center justify-between text-xs opacity-80">
-              <span>
-                {language === 'bn' ? 'সর্বশেষ আপডেট: ' : 'Last: '}
-                {sensorData.timestamp.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+            {/* Bottom: Last Update + Device Count - Premium Style */}
+            <div className="flex items-center justify-between text-xs px-2 py-2 rounded-xl bg-white/5 border border-white/10">
+              <span className="flex items-center gap-1.5 text-white/70">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {language === 'bn' ? 'আপডেট: ' : 'Updated: '}
+                <span className="text-white font-medium">
+                  {sensorData.timestamp.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
               </span>
               {totalDeviceCount > 0 && (
-                <span className="flex items-center gap-1">
-                  <Cpu className="h-3 w-3" />
-                  {onlineDeviceCount}/{totalDeviceCount} {language === 'bn' ? 'ডিভাইস' : 'devices'}
+                <span className="flex items-center gap-1.5 text-white/70">
+                  <Cpu className="h-3.5 w-3.5 text-cyan-400" />
+                  <span className="text-white font-medium">{onlineDeviceCount}/{totalDeviceCount}</span>
+                  {language === 'bn' ? 'ডিভাইস' : 'devices'}
                 </span>
               )}
             </div>
@@ -223,31 +220,36 @@ export function Dashboard() {
           className="mb-5"
         >
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground">
+            <h2 className="text-sm font-semibold bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
               {language === 'bn' ? '⚡ ডিভাইস স্ট্যাটাস' : '⚡ Device Status'}
             </h2>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { key: 'power', icon: '🔌', status: deviceStatus.power },
-              { key: 'fan', icon: '🌀', status: deviceStatus.fan },
-              { key: 'light', icon: '💡', status: deviceStatus.light },
-              { key: 'alarm', icon: '🔔', status: deviceStatus.alarm },
-            ].map(({ key, icon, status }) => (
+              { key: 'power', icon: '🔌', status: deviceStatus.power, activeColor: 'from-emerald-500 to-green-600', glowColor: 'shadow-emerald-500/40' },
+              { key: 'fan', icon: '🌀', status: deviceStatus.fan, activeColor: 'from-cyan-500 to-blue-600', glowColor: 'shadow-cyan-500/40' },
+              { key: 'light', icon: '💡', status: deviceStatus.light, activeColor: 'from-amber-500 to-yellow-600', glowColor: 'shadow-amber-500/40' },
+              { key: 'alarm', icon: '🔔', status: deviceStatus.alarm, activeColor: 'from-red-500 to-rose-600', glowColor: 'shadow-red-500/40' },
+            ].map(({ key, icon, status, activeColor, glowColor }) => (
               <motion.div
                 key={key}
                 whileTap={{ scale: 0.95 }}
-                className={`relative flex flex-col items-center gap-1.5 rounded-2xl p-3 transition-all ${
+                whileHover={{ scale: 1.02 }}
+                className={`relative flex flex-col items-center gap-1.5 rounded-2xl p-3 transition-all backdrop-blur-sm ${
                   status 
-                    ? 'bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-sm' 
-                    : 'bg-muted/50 border border-transparent'
+                    ? `bg-gradient-to-br ${activeColor} border border-white/20 shadow-lg ${glowColor}` 
+                    : 'bg-muted/30 border border-border/50 dark:bg-slate-800/50'
                 }`}
               >
-                <span className="text-xl">{icon}</span>
-                <span className={`text-[10px] font-medium ${status ? 'text-primary' : 'text-muted-foreground'}`}>
+                <span className="text-2xl drop-shadow-lg">{icon}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${status ? 'text-white' : 'text-muted-foreground'}`}>
                   {translations.sensors[key as keyof typeof translations.sensors][language]}
                 </span>
-                <span className={`absolute top-2 right-2 h-2 w-2 rounded-full ${status ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                <span className={`absolute top-2 right-2 h-2.5 w-2.5 rounded-full ${
+                  status 
+                    ? 'bg-white shadow-lg shadow-white/50 animate-pulse' 
+                    : 'bg-muted-foreground/30'
+                }`} />
               </motion.div>
             ))}
           </div>
@@ -271,14 +273,23 @@ export function Dashboard() {
           className="mb-5"
         >
           <Tabs defaultValue="sensors" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-10 rounded-xl bg-muted/50">
-              <TabsTrigger value="sensors" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+            <TabsList className="w-full grid grid-cols-3 h-12 rounded-2xl bg-gradient-to-r from-slate-100 via-slate-50 to-slate-100 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 p-1 border border-border/50 shadow-inner">
+              <TabsTrigger 
+                value="sensors" 
+                className="rounded-xl text-xs font-semibold transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30"
+              >
                 {language === 'bn' ? '📈 সেন্সর' : '📈 Sensors'}
               </TabsTrigger>
-              <TabsTrigger value="controls" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <TabsTrigger 
+                value="controls" 
+                className="rounded-xl text-xs font-semibold transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/30"
+              >
                 {language === 'bn' ? '🎛️ কন্ট্রোল' : '🎛️ Controls'}
               </TabsTrigger>
-              <TabsTrigger value="alerts" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <TabsTrigger 
+                value="alerts" 
+                className="rounded-xl text-xs font-semibold transition-all data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30"
+              >
                 {language === 'bn' ? '⚠️ সতর্কতা' : '⚠️ Alerts'}
               </TabsTrigger>
             </TabsList>
@@ -351,12 +362,12 @@ export function Dashboard() {
           className="mb-5"
         >
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground">
+            <h2 className="text-sm font-semibold bg-gradient-to-r from-sky-400 to-blue-500 bg-clip-text text-transparent">
               {language === 'bn' ? '🌤️ আবহাওয়া' : '🌤️ Weather'}
             </h2>
             <WeatherSettingsSheet
               trigger={
-                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs rounded-xl hover:bg-sky-500/10 hover:text-sky-500 transition-colors">
                   <Settings className="h-3.5 w-3.5" />
                 </Button>
               }
@@ -375,14 +386,15 @@ export function Dashboard() {
           {/* Overview Card */}
           <Link
             to="/reports?tab=overview"
-            className="flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
+            className="group relative flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-cyan-500/10 dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-cyan-950/50 p-5 border border-emerald-500/20 shadow-lg hover:shadow-xl hover:shadow-emerald-500/10 transition-all active:scale-[0.98] overflow-hidden"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <TrendingUp size={24} />
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
+              <TrendingUp size={26} />
             </div>
-            <div className="text-center">
-              <p className="font-medium text-sm">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</p>
-              <p className="text-[10px] text-muted-foreground">
+            <div className="text-center relative z-10">
+              <p className="font-semibold text-sm text-foreground">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 {language === 'bn' ? 'সেন্সর চার্ট ও সারাংশ' : 'Sensor charts & summary'}
               </p>
             </div>
@@ -391,14 +403,15 @@ export function Dashboard() {
           {/* Cost Analytics Card */}
           <Link
             to="/reports?tab=costs"
-            className="flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
+            className="group relative flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-fuchsia-500/10 dark:from-violet-950/50 dark:via-purple-950/30 dark:to-fuchsia-950/50 p-5 border border-violet-500/20 shadow-lg hover:shadow-xl hover:shadow-violet-500/10 transition-all active:scale-[0.98] overflow-hidden"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-              <Wallet size={24} />
+            <div className="absolute inset-0 bg-gradient-to-t from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
+              <Wallet size={26} />
             </div>
-            <div className="text-center">
-              <p className="font-medium text-sm">{language === 'bn' ? 'খরচ বিশ্লেষণ' : 'Cost Analytics'}</p>
-              <p className="text-[10px] text-muted-foreground">
+            <div className="text-center relative z-10">
+              <p className="font-semibold text-sm text-foreground">{language === 'bn' ? 'খরচ বিশ্লেষণ' : 'Cost Analytics'}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
                 {language === 'bn' ? 'আয়-ব্যয় হিসাব' : 'Income & expenses'}
               </p>
             </div>
