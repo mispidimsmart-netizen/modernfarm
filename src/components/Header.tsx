@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
-import { NotificationSheet } from '@/components/header/NotificationSheet';
 
 
 export function Header() {
@@ -76,8 +75,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
-          <NotificationSheet />
-          
           <WorkerManagementSheet />
           
           <ThemeToggle />
