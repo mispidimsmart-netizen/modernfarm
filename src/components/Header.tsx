@@ -1,4 +1,5 @@
-import { Power, Wifi, WifiOff, LogOut, Globe } from 'lucide-react';
+import { Power, Wifi, WifiOff, LogOut, Globe, ArrowLeft } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -15,21 +16,45 @@ export function Header() {
   const { data: profile } = useProfile();
   const { data: deviceStatus } = useDeviceStatus();
   const { data: userRole } = useUserRole();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const isConnected = true; // Would come from realtime connection status
+  const isHomePage = location.pathname === '/' || location.pathname === '/dashboard';
+
+  const handleBack = () => {
+    // Try to go back in history, otherwise go to home
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur-md pt-safe">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Back button - show on non-home pages */}
+          {!isHomePage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBack}
+              className="h-9 w-9 shrink-0"
+            >
+              <ArrowLeft size={20} />
+            </Button>
+          )}
+          
           <div className={cn(
-            'flex h-10 w-10 items-center justify-center rounded-xl',
+            'flex h-10 w-10 items-center justify-center rounded-xl shrink-0',
             deviceStatus?.power_on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
           )}>
             <Power size={20} />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-foreground truncate">
               {profile?.farm_name || translations.dashboard.title[language]}
             </h1>
             <div className="flex items-center gap-2">
