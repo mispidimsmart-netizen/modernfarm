@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Egg, Wheat, Skull, Wallet, ChevronRight, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Egg, Wheat, Skull, Wallet, ChevronRight, TrendingUp, TrendingDown, BarChart3, ClipboardList } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EggProductionSheet } from '@/components/farm/EggProductionSheet';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
 import { MortalitySheet } from '@/components/farm/MortalitySheet';
 import { FinanceSheet } from '@/components/farm/FinanceSheet';
 import { FlockInfoSheet } from '@/components/farm/FlockInfoSheet';
+import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
+import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
 
 export function FarmManagementPage() {
   const { language } = useAuth();
@@ -35,6 +37,9 @@ export function FarmManagementPage() {
     loss: { bn: 'ক্ষতি', en: 'Loss' },
     productionRate: { bn: 'উৎপাদন হার', en: 'Production Rate' },
     totalBirds: { bn: 'মোট মুরগি', en: 'Total Birds' },
+    summary: { bn: 'সারাংশ', en: 'Summary' },
+    analysis: { bn: 'বিশ্লেষণ', en: 'Analysis' },
+    management: { bn: 'ব্যবস্থাপনা', en: 'Management' },
   };
 
   const menuItems = [
@@ -83,8 +88,8 @@ export function FarmManagementPage() {
             <span className="text-xs text-muted-foreground">{t.last30Days[language]}</span>
           </div>
 
-          {/* Summary Cards */}
-          <div className="mb-6 grid grid-cols-2 gap-3">
+          {/* Summary Cards at Top */}
+          <div className="mb-4 grid grid-cols-2 gap-3">
             <Card 
               className="cursor-pointer transition-transform active:scale-[0.98]"
               onClick={() => setActiveSheet('flock')}
@@ -111,40 +116,78 @@ export function FarmManagementPage() {
             </Card>
           </div>
 
-          {/* Menu Items */}
-          <div className="space-y-3">
-            {menuItems.map((item, index) => (
-              <motion.div
-                key={item.key}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card 
-                  className="cursor-pointer transition-transform active:scale-[0.98]"
-                  onClick={() => setActiveSheet(item.key)}
+          {/* Tabbed Interface */}
+          <Tabs defaultValue="management" className="w-full">
+            <TabsList className="w-full grid grid-cols-3 h-11 rounded-xl bg-muted/50 mb-4">
+              <TabsTrigger value="management" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm gap-1.5">
+                <ClipboardList className="h-3.5 w-3.5" />
+                {t.management[language]}
+              </TabsTrigger>
+              <TabsTrigger value="summary" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5" />
+                {t.summary[language]}
+              </TabsTrigger>
+              <TabsTrigger value="analysis" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5" />
+                {t.analysis[language]}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Management Tab */}
+            <TabsContent value="management" className="mt-0 space-y-3">
+              {menuItems.map((item, index) => (
+                <motion.div
+                  key={item.key}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
                 >
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.color}`}>
-                      <item.icon size={24} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{item.title}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-lg font-semibold">{item.value}</p>
-                        {item.subValue && (
-                          <span className={`text-xs ${summary.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            ({item.subValue})
-                          </span>
-                        )}
+                  <Card 
+                    className="cursor-pointer transition-transform active:scale-[0.98]"
+                    onClick={() => setActiveSheet(item.key)}
+                  >
+                    <CardContent className="flex items-center gap-4 p-4">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.color}`}>
+                        <item.icon size={24} />
                       </div>
-                    </div>
-                    <ChevronRight className="text-muted-foreground" size={20} />
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{item.title}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-lg font-semibold">{item.value}</p>
+                          {item.subValue && (
+                            <span className={`text-xs ${summary.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ({item.subValue})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="text-muted-foreground" size={20} />
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </TabsContent>
+
+            {/* Summary Tab - Today's Summary */}
+            <TabsContent value="summary" className="mt-0">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {language === 'bn' ? '📊 আজকের সারাংশ' : '📊 Today\'s Summary'}
+                </h3>
+                <FarmSummaryCards />
+              </div>
+            </TabsContent>
+
+            {/* Analysis Tab - Egg Correlation */}
+            <TabsContent value="analysis" className="mt-0">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {language === 'bn' ? '🥚 ডিম উৎপাদন বিশ্লেষণ' : '🥚 Egg Production Analysis'}
+                </h3>
+                <EggCorrelationCard />
+              </div>
+            </TabsContent>
+          </Tabs>
         </motion.div>
       </main>
 
