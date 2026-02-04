@@ -41,29 +41,34 @@ export function Header() {
             </Button>
           )}
           
-          {/* FarmEye Logo */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary shrink-0 overflow-hidden">
-            <Eye className="h-5 w-5 text-white" />
+          {/* FarmEye Logo & Name */}
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary shrink-0 overflow-hidden">
+            <Eye className="h-4 w-4 text-white" />
           </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold text-foreground truncate">
-              {profile?.farm_name || 'FarmEye'}
+          <span className="font-bold text-foreground text-base">FarmEye</span>
+          
+          {/* Divider */}
+          <div className="h-5 w-px bg-border mx-1" />
+          
+          {/* Farm Name & Status */}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-sm font-medium text-foreground truncate">
+              {profile?.farm_name || (language === 'bn' ? 'আমার খামার' : 'My Farm')}
             </h1>
             <div className="flex items-center gap-2">
               {userRole?.role === 'worker' && (
-                <Badge variant="secondary" className="text-xs">
-                  {language === 'bn' ? 'কর্মী' : 'Worker'}
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   {language === 'bn' ? 'কর্মী' : 'Worker'}
                 </Badge>
               )}
               {isConnected ? (
-                <span className="flex items-center gap-1 text-xs text-status-normal">
-                  <Wifi size={12} />
+                <span className="flex items-center gap-1 text-[10px] text-status-normal">
+                  <Wifi size={10} />
                   {translations.status.connected[language]}
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-xs text-status-danger">
-                  <WifiOff size={12} />
+                <span className="flex items-center gap-1 text-[10px] text-status-danger">
+                  <WifiOff size={10} />
                   {translations.status.disconnected[language]}
                 </span>
               )}
