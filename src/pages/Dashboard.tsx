@@ -22,7 +22,6 @@ import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
 import { WeatherCard } from '@/components/weather/WeatherCard';
 import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
-import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
 import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
 import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
@@ -32,7 +31,6 @@ import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
-import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
 import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
 import { BigFarmOverview } from '@/components/dashboard/BigFarmOverview';
@@ -266,20 +264,7 @@ export function Dashboard() {
           <SmartModeWidget />
         </motion.div>
 
-        {/* ============ SECTION 6: TODAY'S SUMMARY ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14 }}
-          className="mb-5"
-        >
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-            {language === 'bn' ? '📊 আজকের সারাংশ' : '📊 Today\'s Summary'}
-          </h2>
-          <FarmSummaryCards />
-        </motion.div>
-
-        {/* ============ SECTION 7: TABBED DETAILED VIEW ============ */}
+        {/* ============ SECTION 6: TABBED DETAILED VIEW ============ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -381,17 +366,7 @@ export function Dashboard() {
           <WeatherCard />
         </motion.div>
 
-        {/* ============ SECTION 9: EGG CORRELATION ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-5"
-        >
-          <EggCorrelationCard />
-        </motion.div>
-
-        {/* ============ SECTION 10: QUICK LINKS ============ */}
+        {/* ============ SECTION 9: QUICK LINKS ============ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
