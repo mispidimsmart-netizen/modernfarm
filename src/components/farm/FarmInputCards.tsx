@@ -62,10 +62,11 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: index * 0.08 }}
+          onClick={() => onCardClick(item.key)}
+          className="cursor-pointer"
         >
           <Card 
-            className="cursor-pointer transition-all active:scale-[0.98] hover:shadow-md"
-            onClick={() => onCardClick(item.key)}
+            className="transition-all active:scale-[0.98] hover:shadow-md"
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
