@@ -1,8 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
-// This should match the VAPID_PUBLIC_KEY secret in Supabase
-// Generate with: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+// VAPID Public Key from environment variable
+// Must match the VAPID_PUBLIC_KEY secret in Supabase
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
