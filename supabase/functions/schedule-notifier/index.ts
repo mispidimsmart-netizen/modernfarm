@@ -18,6 +18,7 @@ interface Schedule {
   next_run_at: string | null;
   notify_before_minutes: number;
   is_active: boolean;
+  custom_interval_days: number | null;
 }
 
 // Calculate next run time based on recurrence
@@ -27,6 +28,12 @@ function calculateNextRun(schedule: Schedule): Date {
   const nextRun = new Date(now);
   nextRun.setSeconds(0, 0);
   nextRun.setHours(hours, minutes);
+
+  // Check for custom interval (for cleaning schedules with 2-6 day intervals)
+  if (schedule.custom_interval_days && schedule.custom_interval_days > 1) {
+    nextRun.setDate(nextRun.getDate() + schedule.custom_interval_days);
+    return nextRun;
+  }
 
   switch (schedule.recurrence) {
     case 'once':

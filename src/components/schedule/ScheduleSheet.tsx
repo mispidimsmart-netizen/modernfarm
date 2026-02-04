@@ -27,6 +27,17 @@ const scheduleTypeIcons: Record<ScheduleType, any> = {
   custom: Settings2,
 };
 
+// Custom interval options for cleaning (every X days)
+const CLEANING_INTERVALS = [
+  { value: 1, label_en: 'Every day', label_bn: 'প্রতিদিন' },
+  { value: 2, label_en: 'Every 2 days', label_bn: '২ দিন পরপর' },
+  { value: 3, label_en: 'Every 3 days', label_bn: '৩ দিন পরপর' },
+  { value: 4, label_en: 'Every 4 days', label_bn: '৪ দিন পরপর' },
+  { value: 5, label_en: 'Every 5 days', label_bn: '৫ দিন পরপর' },
+  { value: 6, label_en: 'Every 6 days', label_bn: '৬ দিন পরপর' },
+  { value: 7, label_en: 'Every 7 days (Weekly)', label_bn: '৭ দিন পরপর (সাপ্তাহিক)' },
+];
+
 interface ScheduleSheetProps {
   trigger: React.ReactNode;
 }
@@ -39,6 +50,7 @@ export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
   const deleteSchedule = useDeleteSchedule();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [cleaningInterval, setCleaningInterval] = useState(7); // Default 7 days
   const [newSchedule, setNewSchedule] = useState({
     schedule_type: 'feed' as ScheduleType,
     title: '',
@@ -53,6 +65,7 @@ export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
     shed_id: null as string | null,
     next_run_at: null as string | null,
     last_run_at: null as string | null,
+    custom_interval_days: null as number | null, // For custom cleaning intervals
   });
 
   const handleAddSchedule = async () => {
@@ -78,7 +91,9 @@ export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
         shed_id: null,
         next_run_at: null,
         last_run_at: null,
+        custom_interval_days: null,
       });
+      setCleaningInterval(7);
       setIsDialogOpen(false);
     } catch (error: any) {
       toast.error(error.message || 'Failed to add schedule');
@@ -170,26 +185,61 @@ export function ScheduleSheet({ trigger }: ScheduleSheetProps) {
                   />
                 </div>
 
-                {/* Recurrence */}
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {language === 'bn' ? 'পুনরাবৃত্তি' : 'Recurrence'}
-                  </label>
-                  <Select
-                    value={newSchedule.recurrence}
-                    onValueChange={(v) => setNewSchedule({ ...newSchedule, recurrence: v as RecurrenceType })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="once">{getRecurrenceLabel('once', language)}</SelectItem>
-                      <SelectItem value="daily">{getRecurrenceLabel('daily', language)}</SelectItem>
-                      <SelectItem value="weekly">{getRecurrenceLabel('weekly', language)}</SelectItem>
-                      <SelectItem value="monthly">{getRecurrenceLabel('monthly', language)}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Recurrence - Show custom interval for cleaning */}
+                {newSchedule.schedule_type === 'cleaning' ? (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">
+                      {language === 'bn' ? 'কত দিন পরপর' : 'Cleaning Interval'}
+                    </label>
+                    <Select
+                      value={String(cleaningInterval)}
+                      onValueChange={(v) => {
+                        const interval = parseInt(v);
+                        setCleaningInterval(interval);
+                        // Set recurrence based on interval
+                        if (interval === 1) {
+                          setNewSchedule({ ...newSchedule, recurrence: 'daily', custom_interval_days: 1 });
+                        } else if (interval === 7) {
+                          setNewSchedule({ ...newSchedule, recurrence: 'weekly', custom_interval_days: 7 });
+                        } else {
+                          // For custom intervals (2-6 days), we'll use 'daily' with custom_interval_days
+                          setNewSchedule({ ...newSchedule, recurrence: 'daily', custom_interval_days: interval });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="bg-card">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border shadow-lg z-50">
+                        {CLEANING_INTERVALS.map((interval) => (
+                          <SelectItem key={interval.value} value={String(interval.value)}>
+                            {language === 'bn' ? interval.label_bn : interval.label_en}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">
+                      {language === 'bn' ? 'পুনরাবৃত্তি' : 'Recurrence'}
+                    </label>
+                    <Select
+                      value={newSchedule.recurrence}
+                      onValueChange={(v) => setNewSchedule({ ...newSchedule, recurrence: v as RecurrenceType })}
+                    >
+                      <SelectTrigger className="bg-card">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border shadow-lg z-50">
+                        <SelectItem value="once">{getRecurrenceLabel('once', language)}</SelectItem>
+                        <SelectItem value="daily">{getRecurrenceLabel('daily', language)}</SelectItem>
+                        <SelectItem value="weekly">{getRecurrenceLabel('weekly', language)}</SelectItem>
+                        <SelectItem value="monthly">{getRecurrenceLabel('monthly', language)}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Day of Week (for weekly) */}
                 {newSchedule.recurrence === 'weekly' && (
