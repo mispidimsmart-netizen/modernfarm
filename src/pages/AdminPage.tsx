@@ -31,6 +31,7 @@ import {
   Pencil,
   Ban,
   BookOpen,
+  Crown,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -47,6 +48,7 @@ import { SystemHealthCard } from '@/components/admin/SystemHealthCard';
 import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
 import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
+import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
 
 const t = {
   bn: {
@@ -76,6 +78,7 @@ const t = {
     ammonia: 'অ্যামোনিয়া',
     shedsList: 'শেড তালিকা',
     noSheds: 'কোনো শেড নেই',
+    tabAdmins: 'অ্যাডমিন',
     tabUsers: 'ইউজার',
     tabSystem: 'সিস্টেম',
     tabNotify: 'নোটিফিকেশন',
@@ -118,6 +121,7 @@ const t = {
     ammonia: 'Ammonia',
     shedsList: 'Sheds List',
     noSheds: 'No sheds',
+    tabAdmins: 'Admins',
     tabUsers: 'Users',
     tabSystem: 'System',
     tabNotify: 'Notifications',
@@ -323,9 +327,13 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Tabs for Users, System, Notifications, Analytics */}
-        <Tabs defaultValue="users" className="w-full">
+        {/* Tabs for Admins, Users, System, Notifications, Analytics */}
+        <Tabs defaultValue="admins" className="w-full">
           <TabsList className="bg-slate-800/50 border-white/10 flex-wrap h-auto gap-1">
+            <TabsTrigger value="admins" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">
+              <Crown className="w-4 h-4 mr-2" />
+              {labels.tabAdmins}
+            </TabsTrigger>
             <TabsTrigger value="users" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
               <Users className="w-4 h-4 mr-2" />
               {labels.tabUsers}
@@ -334,7 +342,7 @@ export default function AdminPage() {
               <TrendingUp className="w-4 h-4 mr-2" />
               {labels.tabAnalytics}
             </TabsTrigger>
-            <TabsTrigger value="notify" className="data-[state=active]:bg-yellow-600 data-[state=active]:text-white">
+            <TabsTrigger value="notify" className="data-[state=active]:bg-orange-600 data-[state=active]:text-white">
               <Bell className="w-4 h-4 mr-2" />
               {labels.tabNotify}
             </TabsTrigger>
@@ -347,6 +355,10 @@ export default function AdminPage() {
               {labels.tabGuide}
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="admins" className="mt-4">
+            <AdminManagementTab language={language} />
+          </TabsContent>
 
           <TabsContent value="users" className="mt-4">
             {/* Users List */}
