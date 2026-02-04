@@ -1287,6 +1287,7 @@ export type Database = {
       schedules: {
         Row: {
           created_at: string
+          custom_interval_days: number | null
           day_of_month: number | null
           day_of_week: number | null
           description: string | null
@@ -1306,6 +1307,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_interval_days?: number | null
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
@@ -1325,6 +1327,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_interval_days?: number | null
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
