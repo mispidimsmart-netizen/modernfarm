@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Egg, Wheat, Skull, Wallet } from 'lucide-react';
+import { Plus, X, Egg, Wheat, Skull, Wallet, CalendarClock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface QuickActionFABProps {
-  onAction: (action: 'egg' | 'feed' | 'mortality' | 'finance') => void;
+  onAction: (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => void;
 }
 
 export function QuickActionFAB({ onAction }: QuickActionFABProps) {
@@ -36,9 +36,15 @@ export function QuickActionFAB({ onAction }: QuickActionFABProps) {
       label: language === 'bn' ? 'হিসাব' : 'Finance',
       color: 'bg-blue-500 hover:bg-blue-600',
     },
+    { 
+      key: 'schedule' as const, 
+      icon: CalendarClock, 
+      label: language === 'bn' ? 'শিডিউল' : 'Schedule',
+      color: 'bg-purple-500 hover:bg-purple-600',
+    },
   ];
 
-  const handleAction = (action: 'egg' | 'feed' | 'mortality' | 'finance') => {
+  const handleAction = (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => {
     setIsOpen(false);
     onAction(action);
   };

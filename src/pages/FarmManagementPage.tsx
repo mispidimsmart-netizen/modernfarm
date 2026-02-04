@@ -18,12 +18,13 @@ import { QuickActionFAB } from '@/components/farm/QuickActionFAB';
 import { TodayStatusBanner } from '@/components/farm/TodayStatusBanner';
 import { FarmInputCards } from '@/components/farm/FarmInputCards';
 import { FarmStatsHeader } from '@/components/farm/FarmStatsHeader';
+import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 
 export function FarmManagementPage() {
   const { language } = useAuth();
   const summary = useFarmSummary();
   
-  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'flock' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'flock' | 'schedule' | null>(null);
 
   const t = {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
@@ -36,7 +37,7 @@ export function FarmManagementPage() {
     quickTip: { bn: '💡 দ্রুত টিপ: নিচের + বাটন দিয়েও এন্ট্রি করতে পারবেন', en: '💡 Quick tip: Use the + button below for quick entry' },
   };
 
-  const handleQuickAction = (action: 'egg' | 'feed' | 'mortality' | 'finance') => {
+  const handleQuickAction = (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => {
     setActiveSheet(action);
   };
 
@@ -174,6 +175,10 @@ export function FarmManagementPage() {
       />
       <FlockInfoSheet 
         open={activeSheet === 'flock'} 
+        onOpenChange={(open) => !open && setActiveSheet(null)} 
+      />
+      <ScheduleSheet 
+        open={activeSheet === 'schedule'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
     </div>
