@@ -303,7 +303,7 @@ void getBroilerTargetTemp(int ageDays, float &minTemp, float &maxTemp) {
 bool sensorInitSuccess = true;
 bool bootFanDone = false;
 unsigned long bootFanStartTime = 0;
-const unsigned long BOOT_FAN_DURATION = 30000;  // 30 seconds air refresh
+const unsigned long BOOT_FAN_DURATION = 20000;  // 20 seconds air refresh (air refresh for boot)
 
 void setup() {
   Serial.begin(115200);
@@ -392,24 +392,29 @@ void setup() {
     fanOn = true;
     fanSpeed = "HIGH";
     
-    // Sound alarm to notify
-    for (int i = 0; i < 5; i++) {
+    // 🔊 SLOW ALARM PATTERN - sensor not detected at boot
+    // Slow beep: 1 sec ON, 2 sec OFF - continuous until sensor restored
+    sensorErrorMode = true;
+    Serial.println("🔥 Fan ON (FAILSAFE) + SLOW ALARM - Sensor not detected at boot");
+    Serial.println("   Alarm pattern: 1 sec ON, 2 sec OFF (continuous)");
+    
+    // Initial alarm notification (3 slow beeps)
+    for (int i = 0; i < 3; i++) {
       digitalWrite(ALARM_RELAY_PIN, HIGH);
-      delay(200);
+      delay(1000);  // 1 sec ON
       digitalWrite(ALARM_RELAY_PIN, LOW);
-      delay(200);
+      delay(2000);  // 2 sec OFF
     }
-    Serial.println("🔥 Fan ON (FAILSAFE) - Sensor error detected at boot");
   }
   
-  // ========== STEP 5: Boot Fan Sequence (30 sec air refresh) ==========
-  Serial.println("\n▶ Step 5: Starting boot fan sequence (30 sec air refresh)...");
+  // ========== STEP 5: Boot Fan Sequence (20 sec air refresh) ==========
+  Serial.println("\n▶ Step 5: Starting boot fan sequence (20 sec air refresh)...");
   digitalWrite(FAN_RELAY_PIN, HIGH);
   fanOn = true;
   fanSpeed = "HIGH";
   bootFanStartTime = millis();
   bootFanDone = false;
-  Serial.println("🌀 Fan ON for 30 seconds - Air refresh sequence");
+  Serial.println("🌀 Fan ON for 20 seconds - Air refresh sequence");
   
   // ========== STEP 6: Connect WiFi ==========
   Serial.println("\n▶ Step 6: Connecting to WiFi...");
@@ -441,7 +446,7 @@ void setup() {
   Serial.printf("║  WiFi: %s\n", wifiConnected ? "Connected" : "Disconnected");
   Serial.printf("║  Watchdog: Enabled (8 sec)\n");
   Serial.printf("║  Default Safe State: Ready (Fan ON on unknown error)\n");
-  Serial.printf("║  Boot Fan: Running (30 sec remaining)\n");
+  Serial.printf("║  Boot Fan: Running (20 sec remaining)\n");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
 
@@ -458,7 +463,7 @@ void loop() {
   // After 30 seconds, turn off boot fan and enter AUTO mode
   if (!bootFanDone && now - bootFanStartTime >= BOOT_FAN_DURATION) {
     bootFanDone = true;
-    Serial.println("\n✅ Boot fan sequence complete (30 sec)");
+    Serial.println("\n✅ Boot fan sequence complete (20 sec)");
     Serial.println("▶ Entering AUTO mode...\n");
     
     // Only turn off fan if sensors are OK and temperature is normal
@@ -531,11 +536,26 @@ void loop() {
     systemState = "SENSOR_ERROR";
   }
   
-  // Slow beep pattern in sensor error mode (1 sec ON, 1 sec OFF)
+  // 🔊 SLOW ALARM PATTERN in sensor error mode (1 sec ON, 2 sec OFF)
+  // যদি sensor detect না হয়: FAIL-SAFE → Fan ON + slow alarm
   if (sensorErrorMode) {
-    if (now - lastSlowBeep >= 1000) {  // Every 1 second
-      digitalWrite(ALARM_RELAY_PIN, !digitalRead(ALARM_RELAY_PIN));
-      lastSlowBeep = now;
+    static bool slowAlarmOn = false;
+    static unsigned long slowAlarmPhaseStart = 0;
+    
+    if (slowAlarmOn) {
+      // ON phase: 1 second
+      if (now - slowAlarmPhaseStart >= 1000) {
+        digitalWrite(ALARM_RELAY_PIN, LOW);
+        slowAlarmOn = false;
+        slowAlarmPhaseStart = now;
+      }
+    } else {
+      // OFF phase: 2 seconds
+      if (now - slowAlarmPhaseStart >= 2000) {
+        digitalWrite(ALARM_RELAY_PIN, HIGH);
+        slowAlarmOn = true;
+        slowAlarmPhaseStart = now;
+      }
     }
   }
   
