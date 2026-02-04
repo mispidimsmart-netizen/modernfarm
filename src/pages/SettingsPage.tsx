@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, 
   ChevronRight, Shield, Zap, Thermometer, Droplets, Wind, 
-  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown
+  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, Home
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +11,7 @@ import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useSheds } from '@/hooks/useSheds';
 import { generateDeviceToken } from '@/lib/esp32Api';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
@@ -20,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
@@ -100,9 +102,11 @@ export function SettingsPage() {
   const isOwner = userRole?.role === 'owner';
   const { isSuperAdmin } = useSuperAdmin();
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { data: sheds } = useSheds();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newDeviceName, setNewDeviceName] = useState('');
+  const [selectedShedForDevice, setSelectedShedForDevice] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
 
@@ -124,18 +128,24 @@ export function SettingsPage() {
 
   // Add device token
   const addDeviceToken = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, shedId }: { name: string; shedId?: string }) => {
       if (!user) throw new Error('Not authenticated');
       const token = generateDeviceToken();
       const { error } = await supabase
         .from('device_tokens')
-        .insert({ user_id: user.id, device_name: name, token });
+        .insert({ 
+          user_id: user.id, 
+          device_name: name, 
+          token,
+          shed_id: shedId || null
+        });
       if (error) throw error;
       return token;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device_tokens'] });
       setNewDeviceName('');
+      setSelectedShedForDevice('');
       toast({
         title: language === 'bn' ? 'ডিভাইস যোগ হয়েছে' : 'Device Added',
         description: language === 'bn' ? 'টোকেন কপি করতে ক্লিক করুন' : 'Click to copy token',
@@ -534,64 +544,104 @@ export function SettingsPage() {
                 </p>
 
                 {/* Add new device */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={language === 'bn' ? 'ডিভাইসের নাম' : 'Device name'}
-                    value={newDeviceName}
-                    onChange={(e) => setNewDeviceName(e.target.value)}
-                    className="flex-1"
-                  />
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={language === 'bn' ? 'ডিভাইসের নাম' : 'Device name'}
+                      value={newDeviceName}
+                      onChange={(e) => setNewDeviceName(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  
+                  {/* Shed selector */}
+                  {sheds && sheds.length > 0 && (
+                    <Select 
+                      value={selectedShedForDevice} 
+                      onValueChange={setSelectedShedForDevice}
+                    >
+                      <SelectTrigger className="w-full">
+                        <div className="flex items-center gap-2">
+                          <Home size={14} className="text-muted-foreground" />
+                          <SelectValue placeholder={language === 'bn' ? 'শেড নির্বাচন করুন (ঐচ্ছিক)' : 'Select shed (optional)'} />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border shadow-lg z-50">
+                        <SelectItem value="none">
+                          {language === 'bn' ? '🏠 কোনো শেড নয়' : '🏠 No specific shed'}
+                        </SelectItem>
+                        {sheds.map((shed) => (
+                          <SelectItem key={shed.id} value={shed.id}>
+                            🏠 {language === 'bn' ? shed.name : shed.name_en}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
                   <Button
-                    onClick={() => newDeviceName && addDeviceToken.mutate(newDeviceName)}
+                    onClick={() => newDeviceName && addDeviceToken.mutate({ 
+                      name: newDeviceName, 
+                      shedId: selectedShedForDevice && selectedShedForDevice !== 'none' ? selectedShedForDevice : undefined 
+                    })}
                     disabled={!newDeviceName || addDeviceToken.isPending}
-                    size="sm"
+                    className="w-full"
                   >
                     <Plus size={16} className="mr-1" />
-                    {language === 'bn' ? 'যোগ' : 'Add'}
+                    {language === 'bn' ? 'ডিভাইস যোগ করুন' : 'Add Device'}
                   </Button>
                 </div>
 
                 {/* Device list */}
                 <div className="space-y-2">
-                  {deviceTokens?.map((device) => (
-                    <motion.div 
-                      key={device.id} 
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2 rounded-xl bg-muted/50 p-3"
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                        <Cpu size={18} className="text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm">{device.device_name}</p>
-                        <p className="text-xs text-muted-foreground font-mono truncate">
-                          {device.token.substring(0, 20)}...
-                        </p>
-                        {device.last_seen_at && (
-                          <p className="text-xs text-green-600 dark:text-green-400">
-                            🟢 {language === 'bn' ? 'সংযুক্ত' : 'Connected'}
+                  {deviceTokens?.map((device) => {
+                    const deviceShed = sheds?.find(s => s.id === device.shed_id);
+                    return (
+                      <motion.div 
+                        key={device.id} 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-2 rounded-xl bg-muted/50 p-3"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                          <Cpu size={18} className="text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm">{device.device_name}</p>
+                          {deviceShed && (
+                            <p className="text-xs text-primary flex items-center gap-1">
+                              <Home size={10} />
+                              {language === 'bn' ? deviceShed.name : deviceShed.name_en}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground font-mono truncate">
+                            {device.token.substring(0, 20)}...
                           </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => copyToClipboard(device.token)}
-                        className="h-8 w-8"
-                      >
-                        <Copy size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteDeviceToken.mutate(device.id)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </motion.div>
-                  ))}
+                          {device.last_seen_at && (
+                            <p className="text-xs text-primary/80">
+                              🟢 {language === 'bn' ? 'সংযুক্ত' : 'Connected'}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => copyToClipboard(device.token)}
+                          className="h-8 w-8"
+                        >
+                          <Copy size={14} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteDeviceToken.mutate(device.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </motion.div>
+                    );
+                  })}
 
                   {(!deviceTokens || deviceTokens.length === 0) && (
                     <div className="py-8 text-center">
