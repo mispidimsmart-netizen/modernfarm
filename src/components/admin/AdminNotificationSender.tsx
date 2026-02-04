@@ -196,46 +196,50 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
   const canSend = selectedUsers.length > 0 && title.trim() && body.trim();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* Notification Form */}
-      <Card className="bg-slate-800/50 border-white/10">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white flex items-center gap-2">
-            <Bell className="w-5 h-5 text-yellow-400" />
-            {labels.title}
+      <Card className="bg-gradient-to-br from-orange-950/40 via-slate-900/90 to-amber-950/30 border-orange-500/20 shadow-xl shadow-orange-500/10 backdrop-blur-sm">
+        <CardHeader className="pb-3 border-b border-orange-500/10">
+          <CardTitle className="text-white flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-orange-500/40">
+              <Bell className="w-5 h-5 text-white" />
+            </div>
+            <span className="bg-gradient-to-r from-orange-200 to-amber-200 bg-clip-text text-transparent font-semibold">
+              {labels.title}
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-4">
           {/* Title Input */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-400">{labels.notificationTitle}</label>
+            <label className="text-sm text-orange-200/70 font-medium">{labels.notificationTitle}</label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={labels.titlePlaceholder}
-              className="bg-slate-700/50 border-white/10 text-white"
+              className="bg-orange-950/30 border-orange-500/20 text-white placeholder:text-orange-300/40 focus:border-orange-400/50"
             />
           </div>
 
           {/* Body Input */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-400">{labels.notificationBody}</label>
+            <label className="text-sm text-orange-200/70 font-medium">{labels.notificationBody}</label>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={labels.bodyPlaceholder}
-              className="bg-slate-700/50 border-white/10 text-white min-h-[100px]"
+              className="bg-orange-950/30 border-orange-500/20 text-white min-h-[100px] placeholder:text-orange-300/40 focus:border-orange-400/50"
             />
           </div>
 
           {/* Severity Select */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-400">{labels.severity}</label>
+            <label className="text-sm text-orange-200/70 font-medium">{labels.severity}</label>
             <Select value={severity} onValueChange={(v) => setSeverity(v as 'warning' | 'danger')}>
-              <SelectTrigger className="bg-slate-700/50 border-white/10 text-white">
+              <SelectTrigger className="bg-orange-950/30 border-orange-500/20 text-white">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-slate-800 border-orange-500/20">
                 <SelectItem value="warning">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-yellow-500" />
@@ -256,7 +260,7 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
           <Button
             onClick={() => sendNotification.mutate()}
             disabled={!canSend || sendNotification.isPending}
-            className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+            className="w-full bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white border-0 shadow-lg shadow-orange-500/30 transition-all"
           >
             {sendNotification.isPending ? (
               <>
@@ -274,29 +278,33 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
       </Card>
 
       {/* User Selection */}
-      <Card className="bg-slate-800/50 border-white/10">
-        <CardHeader className="pb-3">
+      <Card className="bg-gradient-to-br from-blue-950/40 via-slate-900/90 to-indigo-950/30 border-blue-500/20 shadow-xl shadow-blue-500/10 backdrop-blur-sm">
+        <CardHeader className="pb-3 border-b border-blue-500/10">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              {labels.selectUsers}
+            <CardTitle className="text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/40">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <span className="bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent font-semibold">
+                {labels.selectUsers}
+              </span>
             </CardTitle>
             <Button
               variant="ghost"
               size="sm"
               onClick={toggleAll}
-              className="text-blue-400 hover:text-blue-300"
+              className="text-blue-300 hover:text-blue-200 hover:bg-blue-500/20"
             >
               {labels.selectAll}
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <ScrollArea className="h-[300px]">
             {loadingUsers ? (
               <div className="space-y-2">
                 {[1, 2, 3, 4].map(i => (
-                  <Skeleton key={i} className="h-14 w-full bg-slate-700/50" />
+                  <Skeleton key={i} className="h-14 w-full bg-blue-900/30" />
                 ))}
               </div>
             ) : users && users.length > 0 ? (
@@ -304,29 +312,30 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
                 {users.map(user => (
                   <div
                     key={user.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
                       selectedUsers.includes(user.id)
-                        ? 'bg-blue-600/20 border border-blue-500/30'
-                        : 'bg-slate-700/30 hover:bg-slate-700/50'
+                        ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-400/40'
+                        : 'bg-blue-950/20 border border-blue-500/10 hover:border-blue-400/30'
                     }`}
                     onClick={() => toggleUser(user.id)}
                   >
                     <Checkbox
                       checked={selectedUsers.includes(user.id)}
                       onCheckedChange={() => toggleUser(user.id)}
+                      className="border-blue-400/50"
                     />
-                    <Avatar className="w-8 h-8">
+                    <Avatar className="w-8 h-8 border border-blue-500/30">
                       <AvatarImage src={user.avatar_url || undefined} />
-                      <AvatarFallback className="bg-purple-600 text-white text-xs">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs">
                         {user.farm_name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-white">{user.farm_name}</p>
-                      <p className="text-xs text-gray-400">{user.phone || 'No phone'}</p>
+                      <p className="text-xs text-blue-200/60">{user.phone || 'No phone'}</p>
                     </div>
                     {user.hasPushEnabled && (
-                      <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
+                      <Badge className="bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xs border-0">
                         <Bell className="w-3 h-3 mr-1" />
                         Push
                       </Badge>
@@ -335,39 +344,42 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400 text-center py-8">{labels.noUsers}</p>
+              <p className="text-blue-200/50 text-center py-8">{labels.noUsers}</p>
             )}
           </ScrollArea>
         </CardContent>
       </Card>
 
       {/* Recent Notifications */}
-      <Card className="bg-slate-800/50 border-white/10 lg:col-span-2">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white flex items-center gap-2 text-base">
-            <Info className="w-4 h-4 text-cyan-400" />
-            {labels.recentNotifications}
+      <Card className="bg-gradient-to-br from-cyan-950/40 via-slate-900/90 to-teal-950/30 border-cyan-500/20 shadow-xl shadow-cyan-500/10 backdrop-blur-sm lg:col-span-2">
+        <CardHeader className="pb-3 border-b border-cyan-500/10">
+          <CardTitle className="text-white flex items-center gap-3 text-base">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg shadow-cyan-500/40">
+              <Info className="w-4 h-4 text-white" />
+            </div>
+            <span className="bg-gradient-to-r from-cyan-200 to-teal-200 bg-clip-text text-transparent font-semibold">
+              {labels.recentNotifications}
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {recentAlerts && recentAlerts.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {recentAlerts.map(alert => (
                 <Badge
                   key={alert.id}
-                  variant="outline"
                   className={`${
                     alert.severity === 'danger'
-                      ? 'border-red-500/30 text-red-400'
-                      : 'border-yellow-500/30 text-yellow-400'
-                  }`}
+                      ? 'bg-gradient-to-r from-rose-500 to-red-600 text-white border-0'
+                      : 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white border-0'
+                  } shadow-lg`}
                 >
                   {alert.message.substring(0, 50)}...
                 </Badge>
               ))}
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">{labels.noRecentNotifications}</p>
+            <p className="text-cyan-200/50 text-sm">{labels.noRecentNotifications}</p>
           )}
         </CardContent>
       </Card>
