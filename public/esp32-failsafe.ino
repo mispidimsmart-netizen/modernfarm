@@ -145,6 +145,13 @@ int fanHealthCheckFailCount = 0;
 const int FAN_HEALTH_CHECK_INTERVAL = 60000;  // Check every 60 seconds
 const int MAX_FAN_HEALTH_FAILURES = 3;        // 3 failures = relay problem
 
+// 🔥 SENSOR FAILURE PROTECTION
+// যদি 15 sec data না আসে → Sensor Error Mode → Fan ON + Alarm slow beep
+unsigned long lastValidSensorRead = 0;        // Last time valid sensor data received
+const unsigned long SENSOR_TIMEOUT = 15000;   // 15 seconds timeout
+bool sensorErrorMode = false;                 // Sensor error mode active
+unsigned long lastSlowBeep = 0;               // For slow beep pattern
+
 // ================ FARM TYPE CONFIGURATION ================
 // 🐔 Set this to "LAYER" or "BROILER" based on your farm type
 // BROILER uses age-based temperature thresholds
@@ -315,6 +322,7 @@ void setup() {
     sensorInitSuccess = false;
   } else {
     Serial.printf("✓ DHT22 OK: Temp=%.1f°C, Humidity=%.1f%%\n", testTemp, testHum);
+    lastValidSensorRead = millis();  // Initialize sensor timeout tracking
   }
   
   // Test MQ135 ammonia sensor
@@ -432,16 +440,55 @@ void loop() {
     
     // ⚠️ SENSOR ERROR CHECK - "সন্দেহ হলে Fan ON"
     if (isnan(temperature) || isnan(humidity)) {
-      if (!failsafeMode) {
-        Serial.println("⚠️ SENSOR READ ERROR → Activating FAILSAFE");
-        activateFailsafe("Sensor read error during operation");
-        digitalWrite(FAN_RELAY_PIN, HIGH);
-        fanOn = true;
-        fanSpeed = "HIGH";
+      // Sensor read failed, but don't trigger immediately
+      // Wait for SENSOR_TIMEOUT (15 sec) before entering error mode
+    } else {
+      // Valid sensor read - reset timeout
+      lastValidSensorRead = now;
+      if (sensorErrorMode) {
+        // Exit sensor error mode
+        sensorErrorMode = false;
+        Serial.println("✅ Sensor data restored - Exiting Sensor Error Mode");
+        // Only clear alarm if other conditions are safe
+        if (currentHSI < HSI_FAN_MAX_ALARM && ammonia < BROILER_AMMONIA_ALARM) {
+          alarmOn = false;
+          digitalWrite(ALARM_RELAY_PIN, LOW);
+        }
       }
     }
     
     lastSensorRead = now;
+  }
+  
+  // 🔥 SENSOR FAILURE PROTECTION (15 sec timeout)
+  // যদি 15 sec data না আসে → Sensor Error Mode → Fan ON + Alarm slow beep
+  if (!sensorErrorMode && lastValidSensorRead > 0 && 
+      (now - lastValidSensorRead >= SENSOR_TIMEOUT)) {
+    sensorErrorMode = true;
+    
+    Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ⚠️ SENSOR ERROR MODE - No data for 15 seconds!            ║");
+    Serial.println("║  যদি 15 sec data না আসে: Fan ON + Alarm slow beep           ║");
+    Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+    
+    // Activate failsafe
+    if (!failsafeMode) {
+      activateFailsafe("Sensor timeout - no data for 15 seconds");
+    }
+    
+    // Fan ON (HIGH) for safety
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    systemState = "SENSOR_ERROR";
+  }
+  
+  // Slow beep pattern in sensor error mode (1 sec ON, 1 sec OFF)
+  if (sensorErrorMode) {
+    if (now - lastSlowBeep >= 1000) {  // Every 1 second
+      digitalWrite(ALARM_RELAY_PIN, !digitalRead(ALARM_RELAY_PIN));
+      lastSlowBeep = now;
+    }
   }
   
   // 2. If in local manual override, skip all automation
