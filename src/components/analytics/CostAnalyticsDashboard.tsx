@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCostAnalytics } from '@/hooks/useCostAnalytics';
+import { useFarmType } from '@/hooks/useFarmType';
+import { BroilerCostDashboard } from './BroilerCostDashboard';
 import { 
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, 
   Tooltip, CartesianGrid, BarChart, Bar, Legend 
@@ -13,13 +15,14 @@ import {
 
 export function CostAnalyticsDashboard() {
   const { language } = useAuth();
+  const { isBroiler } = useFarmType();
   const analytics = useCostAnalytics(30);
 
   const formatCurrency = (value: number) => {
     return `৳${value.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')}`;
   };
 
-  // Prepare chart data
+  // Prepare chart data - must be before conditional return
   const trendChartData = useMemo(() => {
     return analytics.dailyTrends.map(day => ({
       ...day,
@@ -29,6 +32,11 @@ export function CostAnalyticsDashboard() {
       }),
     }));
   }, [analytics.dailyTrends, language]);
+
+  // If broiler farm, show broiler-specific dashboard
+  if (isBroiler) {
+    return <BroilerCostDashboard />;
+  }
 
   return (
     <div className="space-y-4">
