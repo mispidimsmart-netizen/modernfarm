@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, LineChart, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight } from 'lucide-react';
+import { FileText, LineChart, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Bird } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
+import { useFarmType } from '@/hooks/useFarmType';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,12 +20,23 @@ import { TodayStatusBanner } from '@/components/farm/TodayStatusBanner';
 import { FarmInputCards } from '@/components/farm/FarmInputCards';
 import { FarmStatsHeader } from '@/components/farm/FarmStatsHeader';
 import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
+// Broiler components
+import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
+import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
+import { BroilerWeightSheet } from '@/components/broiler/BroilerWeightSheet';
+import { BroilerFeedSheet } from '@/components/broiler/BroilerFeedSheet';
 
 export function FarmManagementPage() {
   const { language } = useAuth();
   const summary = useFarmSummary();
+  const { isLayer, isBroiler } = useFarmType();
   
-  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'flock' | 'schedule' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'flock' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
+
+  // Handle broiler-specific actions
+  const handleBroilerAction = (action: 'batch' | 'weight' | 'broiler-feed') => {
+    setActiveSheet(action);
+  };
 
   const t = {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
@@ -93,7 +105,20 @@ export function FarmManagementPage() {
             {/* Input Tab - Quick Entry Cards */}
             <TabsContent value="input" className="mt-4">
               <div className="space-y-4">
-                <FarmInputCards onCardClick={handleQuickAction} />
+                {/* Broiler Mode: Show Broiler Widget */}
+                {isBroiler && (
+                  <BroilerDashboardWidget
+                    onBatchClick={() => handleBroilerAction('batch')}
+                    onWeightClick={() => handleBroilerAction('weight')}
+                    onFeedClick={() => handleBroilerAction('broiler-feed')}
+                  />
+                )}
+                
+                {/* Layer Mode: Show Layer Input Cards */}
+                {isLayer && (
+                  <FarmInputCards onCardClick={handleQuickAction} />
+                )}
+                
                 <p className="text-xs text-center text-muted-foreground">
                   {t.quickTip[language]}
                 </p>
@@ -224,6 +249,20 @@ export function FarmManagementPage() {
       />
       <ScheduleSheet 
         open={activeSheet === 'schedule'} 
+        onOpenChange={(open) => !open && setActiveSheet(null)} 
+      />
+      
+      {/* Broiler Sheets */}
+      <BroilerBatchSheet 
+        open={activeSheet === 'batch'} 
+        onOpenChange={(open) => !open && setActiveSheet(null)} 
+      />
+      <BroilerWeightSheet 
+        open={activeSheet === 'weight'} 
+        onOpenChange={(open) => !open && setActiveSheet(null)} 
+      />
+      <BroilerFeedSheet 
+        open={activeSheet === 'broiler-feed'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
     </div>
