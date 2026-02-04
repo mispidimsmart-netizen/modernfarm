@@ -16,19 +16,19 @@ export function QuickActionFAB({ onAction }: QuickActionFABProps) {
       key: 'egg' as const, 
       icon: Egg, 
       label: language === 'bn' ? 'ডিম' : 'Eggs',
-      color: 'bg-amber-500 hover:bg-amber-600',
+      color: 'bg-primary hover:bg-primary/90',
     },
     { 
       key: 'feed' as const, 
       icon: Wheat, 
       label: language === 'bn' ? 'খাদ্য' : 'Feed',
-      color: 'bg-emerald-500 hover:bg-emerald-600',
+      color: 'bg-green-600 hover:bg-green-700',
     },
     { 
       key: 'mortality' as const, 
       icon: Skull, 
       label: language === 'bn' ? 'মৃত্যু' : 'Mortality',
-      color: 'bg-red-500 hover:bg-red-600',
+      color: 'bg-destructive hover:bg-destructive/90',
     },
     { 
       key: 'finance' as const, 
