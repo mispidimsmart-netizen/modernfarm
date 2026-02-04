@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   ChartContainer,
   ChartTooltip,
@@ -14,7 +16,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
   Legend,
   BarChart,
   Bar,
@@ -25,38 +26,51 @@ import {
   TrendingUp,
   Building2,
   RefreshCw,
+  User,
+  Wind,
 } from 'lucide-react';
-import { format, subHours, startOfDay, endOfDay } from 'date-fns';
-import { bn } from 'date-fns/locale';
+import { format, subHours } from 'date-fns';
 
 const t = {
   bn: {
     title: 'রিয়েল-টাইম সেন্সর অ্যানালিটিক্স',
-    temperatureTrend: 'তাপমাত্রা ট্রেন্ড (সব ফার্ম)',
-    humidityTrend: 'আর্দ্রতা ট্রেন্ড (সব ফার্ম)',
+    temperatureTrend: 'তাপমাত্রা ট্রেন্ড',
+    humidityTrend: 'আর্দ্রতা ট্রেন্ড',
     farmComparison: 'ফার্ম তুলনা',
     last24Hours: 'গত ২৪ ঘণ্টা',
     noData: 'কোনো সেন্সর ডেটা নেই',
     avgTemp: 'গড় তাপমাত্রা',
     avgHumidity: 'গড় আর্দ্রতা',
+    avgAmmonia: 'গড় অ্যামোনিয়া',
     temperature: 'তাপমাত্রা',
     humidity: 'আর্দ্রতা',
+    ammonia: 'অ্যামোনিয়া',
     farms: 'ফার্ম',
     loading: 'লোড হচ্ছে...',
+    selectUser: 'ইউজার সিলেক্ট করুন',
+    allFarms: 'সব ফার্ম',
+    selectedFarm: 'নির্বাচিত ফার্ম',
+    readings: 'রিডিং',
   },
   en: {
     title: 'Real-time Sensor Analytics',
-    temperatureTrend: 'Temperature Trend (All Farms)',
-    humidityTrend: 'Humidity Trend (All Farms)',
+    temperatureTrend: 'Temperature Trend',
+    humidityTrend: 'Humidity Trend',
     farmComparison: 'Farm Comparison',
     last24Hours: 'Last 24 Hours',
     noData: 'No sensor data available',
     avgTemp: 'Avg Temperature',
     avgHumidity: 'Avg Humidity',
+    avgAmmonia: 'Avg Ammonia',
     temperature: 'Temperature',
     humidity: 'Humidity',
+    ammonia: 'Ammonia',
     farms: 'Farms',
     loading: 'Loading...',
+    selectUser: 'Select User',
+    allFarms: 'All Farms',
+    selectedFarm: 'Selected Farm',
+    readings: 'Readings',
   },
 };
 
@@ -68,6 +82,7 @@ interface HourlyData {
   hour: string;
   avgTemp: number;
   avgHumidity: number;
+  avgAmmonia: number;
   count: number;
 }
 
@@ -80,18 +95,40 @@ interface FarmComparison {
 
 export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
   const labels = t[language];
+  const [selectedUserId, setSelectedUserId] = useState<string>('all');
 
-  // Fetch 24-hour sensor data for all farms
+  // Fetch all profiles for user selector
+  const { data: profiles, isLoading: profilesLoading } = useQuery({
+    queryKey: ['admin-profiles-for-charts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, farm_name, phone, avatar_url')
+        .order('farm_name', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch 24-hour sensor data - filtered by selected user if any
   const { data: sensorData, isLoading } = useQuery({
-    queryKey: ['admin-all-sensor-data'],
+    queryKey: ['admin-all-sensor-data', selectedUserId],
     queryFn: async () => {
       const twentyFourHoursAgo = subHours(new Date(), 24).toISOString();
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('sensor_logs')
         .select('temperature, humidity, ammonia, timestamp, user_id')
         .gte('timestamp', twentyFourHoursAgo)
         .order('timestamp', { ascending: true });
+
+      // Filter by selected user if not "all"
+      if (selectedUserId !== 'all') {
+        query = query.eq('user_id', selectedUserId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];
@@ -99,33 +136,21 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
     refetchInterval: 60000, // Refresh every minute
   });
 
-  // Fetch profiles to map user_id to farm names
-  const { data: profiles } = useQuery({
-    queryKey: ['admin-profiles-for-charts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, farm_name');
-
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   // Process data for hourly trend chart
   const hourlyData: HourlyData[] = (() => {
     if (!sensorData || sensorData.length === 0) return [];
 
-    const hourMap = new Map<string, { temps: number[]; humidities: number[] }>();
+    const hourMap = new Map<string, { temps: number[]; humidities: number[]; ammonias: number[] }>();
 
     sensorData.forEach(reading => {
       const hour = format(new Date(reading.timestamp), 'HH:00');
       if (!hourMap.has(hour)) {
-        hourMap.set(hour, { temps: [], humidities: [] });
+        hourMap.set(hour, { temps: [], humidities: [], ammonias: [] });
       }
       const hourData = hourMap.get(hour)!;
       hourData.temps.push(reading.temperature);
       hourData.humidities.push(reading.humidity);
+      hourData.ammonias.push(reading.ammonia);
     });
 
     return Array.from(hourMap.entries())
@@ -133,14 +158,15 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
         hour,
         avgTemp: Math.round((data.temps.reduce((a, b) => a + b, 0) / data.temps.length) * 10) / 10,
         avgHumidity: Math.round((data.humidities.reduce((a, b) => a + b, 0) / data.humidities.length) * 10) / 10,
+        avgAmmonia: Math.round((data.ammonias.reduce((a, b) => a + b, 0) / data.ammonias.length) * 10) / 10,
         count: data.temps.length,
       }))
       .sort((a, b) => a.hour.localeCompare(b.hour));
   })();
 
-  // Process data for farm comparison
+  // Process data for farm comparison (only when "all" is selected)
   const farmComparison: FarmComparison[] = (() => {
-    if (!sensorData || sensorData.length === 0 || !profiles) return [];
+    if (!sensorData || sensorData.length === 0 || !profiles || selectedUserId !== 'all') return [];
 
     const farmMap = new Map<string, { temps: number[]; humidities: number[] }>();
 
@@ -169,20 +195,24 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
   // Calculate overall stats
   const overallStats = (() => {
     if (!sensorData || sensorData.length === 0) {
-      return { avgTemp: 0, avgHumidity: 0, totalReadings: 0, farmCount: 0 };
+      return { avgTemp: 0, avgHumidity: 0, avgAmmonia: 0, totalReadings: 0, farmCount: 0 };
     }
 
     const temps = sensorData.map(s => s.temperature);
     const humidities = sensorData.map(s => s.humidity);
+    const ammonias = sensorData.map(s => s.ammonia);
     const uniqueFarms = new Set(sensorData.map(s => s.user_id));
 
     return {
       avgTemp: Math.round((temps.reduce((a, b) => a + b, 0) / temps.length) * 10) / 10,
       avgHumidity: Math.round((humidities.reduce((a, b) => a + b, 0) / humidities.length) * 10) / 10,
+      avgAmmonia: Math.round((ammonias.reduce((a, b) => a + b, 0) / ammonias.length) * 10) / 10,
       totalReadings: sensorData.length,
       farmCount: uniqueFarms.size,
     };
   })();
+
+  const selectedProfile = profiles?.find(p => p.id === selectedUserId);
 
   const chartConfig = {
     avgTemp: {
@@ -193,9 +223,13 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
       label: labels.humidity,
       color: 'hsl(210, 100%, 50%)',
     },
+    avgAmmonia: {
+      label: labels.ammonia,
+      color: 'hsl(280, 80%, 60%)',
+    },
   };
 
-  if (isLoading) {
+  if (isLoading || profilesLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-48 bg-slate-700/50" />
@@ -209,31 +243,91 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header with Stats */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Header with User Selector */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-green-400" />
           {labels.title}
         </h3>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="border-orange-500/30 text-orange-400">
-            <Thermometer className="w-3 h-3 mr-1" />
-            {labels.avgTemp}: {overallStats.avgTemp}°C
+        
+        {/* User Selector */}
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4 text-gray-400" />
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger className="w-[200px] bg-slate-700/50 border-white/10 text-white">
+              <SelectValue placeholder={labels.selectUser} />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-white/10">
+              <SelectItem value="all" className="text-white hover:bg-slate-700">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-purple-400" />
+                  {labels.allFarms}
+                </div>
+              </SelectItem>
+              {profiles?.map((profile) => (
+                <SelectItem 
+                  key={profile.id} 
+                  value={profile.id}
+                  className="text-white hover:bg-slate-700"
+                >
+                  <div className="flex items-center gap-2">
+                    {profile.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt="" 
+                        className="w-5 h-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center">
+                        <User className="w-3 h-3" />
+                      </div>
+                    )}
+                    <span>{profile.farm_name}</span>
+                    {profile.phone && (
+                      <span className="text-xs text-gray-400">({profile.phone})</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Stats Badges */}
+      <div className="flex flex-wrap gap-2">
+        {selectedUserId !== 'all' && selectedProfile && (
+          <Badge variant="outline" className="border-green-500/30 text-green-400">
+            <User className="w-3 h-3 mr-1" />
+            {labels.selectedFarm}: {selectedProfile.farm_name}
           </Badge>
-          <Badge variant="outline" className="border-blue-500/30 text-blue-400">
-            <Droplets className="w-3 h-3 mr-1" />
-            {labels.avgHumidity}: {overallStats.avgHumidity}%
-          </Badge>
-          <Badge variant="outline" className="border-purple-500/30 text-purple-400">
+        )}
+        <Badge variant="outline" className="border-orange-500/30 text-orange-400">
+          <Thermometer className="w-3 h-3 mr-1" />
+          {labels.avgTemp}: {overallStats.avgTemp}°C
+        </Badge>
+        <Badge variant="outline" className="border-blue-500/30 text-blue-400">
+          <Droplets className="w-3 h-3 mr-1" />
+          {labels.avgHumidity}: {overallStats.avgHumidity}%
+        </Badge>
+        <Badge variant="outline" className="border-purple-500/30 text-purple-400">
+          <Wind className="w-3 h-3 mr-1" />
+          {labels.avgAmmonia}: {overallStats.avgAmmonia} ppm
+        </Badge>
+        {selectedUserId === 'all' && (
+          <Badge variant="outline" className="border-indigo-500/30 text-indigo-400">
             <Building2 className="w-3 h-3 mr-1" />
             {overallStats.farmCount} {labels.farms}
           </Badge>
-        </div>
+        )}
+        <Badge variant="outline" className="border-gray-500/30 text-gray-400">
+          {overallStats.totalReadings} {labels.readings}
+        </Badge>
       </div>
 
       {sensorData && sensorData.length > 0 ? (
         <>
-          {/* Temperature & Humidity Trend Charts */}
+          {/* Temperature, Humidity & Ammonia Trend Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Temperature Trend */}
             <Card className="bg-slate-800/50 border-white/10">
@@ -326,8 +420,55 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
             </Card>
           </div>
 
-          {/* Farm Comparison Bar Chart */}
-          {farmComparison.length > 0 && (
+          {/* Ammonia Trend (full width when viewing specific user) */}
+          {selectedUserId !== 'all' && (
+            <Card className="bg-slate-800/50 border-white/10">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-white text-sm flex items-center gap-2">
+                  <Wind className="w-4 h-4 text-purple-400" />
+                  অ্যামোনিয়া ট্রেন্ড
+                </CardTitle>
+                <p className="text-xs text-gray-400">{labels.last24Hours}</p>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <AreaChart data={hourlyData}>
+                    <defs>
+                      <linearGradient id="ammoniaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(280, 80%, 60%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(280, 80%, 60%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis
+                      dataKey="hour"
+                      stroke="#9ca3af"
+                      fontSize={10}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#9ca3af"
+                      fontSize={10}
+                      tickLine={false}
+                      domain={[0, 'dataMax + 5']}
+                      unit=" ppm"
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Area
+                      type="monotone"
+                      dataKey="avgAmmonia"
+                      stroke="hsl(280, 80%, 60%)"
+                      fill="url(#ammoniaGradient)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Farm Comparison Bar Chart (only when all farms selected) */}
+          {selectedUserId === 'all' && farmComparison.length > 0 && (
             <Card className="bg-slate-800/50 border-white/10">
               <CardHeader className="pb-2">
                 <CardTitle className="text-white text-sm flex items-center gap-2">
@@ -373,6 +514,11 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
           <CardContent className="py-12 text-center">
             <RefreshCw className="w-12 h-12 text-gray-500 mx-auto mb-3" />
             <p className="text-gray-400">{labels.noData}</p>
+            {selectedUserId !== 'all' && (
+              <p className="text-gray-500 text-sm mt-2">
+                এই ইউজারের কোনো সেন্সর ডেটা পাওয়া যায়নি
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
