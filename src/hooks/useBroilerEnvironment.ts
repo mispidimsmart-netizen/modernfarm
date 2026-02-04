@@ -25,7 +25,7 @@ export interface BroilerEnvironmentResult {
     level: BroilerAlertLevel;
     shouldActivateFan: boolean;
     shouldActivateHeater: boolean;
-    fanSpeed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
+    fanSpeed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH' | 'MAX';
     shouldAlarm: boolean;
   };
   // Humidity
@@ -47,8 +47,9 @@ export interface BroilerEnvironmentResult {
   hsi: {
     value: number;
     shouldFanHigh: boolean;
+    shouldFanMax: boolean;
     shouldEmergencyAlert: boolean;
-    level: 'normal' | 'high' | 'emergency';
+    level: 'normal' | 'high' | 'danger' | 'emergency';
   };
   // Age info
   ageDays: number;
@@ -84,7 +85,7 @@ export function evaluateBroilerEnvironment(
   let tempLevel: BroilerAlertLevel = 'normal';
   let shouldActivateFan = false;
   let shouldActivateHeater = false;
-  let fanSpeed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH' = 'OFF';
+  let fanSpeed: 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH' | 'MAX' = 'OFF';
   let shouldTempAlarm = false;
   let tempDeviation = 0;
 
@@ -174,17 +175,30 @@ export function evaluateBroilerEnvironment(
   }
 
   // ========== HSI EVALUATION ==========
-  let hsiLevel: 'normal' | 'high' | 'emergency' = 'normal';
+  // 👉 Cloud এর অপেক্ষা করবে না - ESP32 handles locally!
+  let hsiLevel: 'normal' | 'high' | 'danger' | 'emergency' = 'normal';
   let shouldHsiFanHigh = false;
   let shouldHsiEmergency = false;
+  let shouldHsiFanMax = false;
 
+  // HSI >= 45: EMERGENCY MODE (continuous alarm)
   if (hsiValue >= BROILER_THRESHOLDS.HSI_EMERGENCY) {
     hsiLevel = 'emergency';
-    shouldHsiFanHigh = true;
+    shouldHsiFanMax = true;
     shouldHsiEmergency = true;
-    fanSpeed = 'HIGH';
+    fanSpeed = 'MAX';
     shouldActivateFan = true;
-  } else if (hsiValue >= BROILER_THRESHOLDS.HSI_FAN_HIGH) {
+  }
+  // HSI >= 42: Fan MAX + Alarm
+  else if (hsiValue >= BROILER_THRESHOLDS.HSI_FAN_MAX_ALARM) {
+    hsiLevel = 'danger';
+    shouldHsiFanMax = true;
+    fanSpeed = 'MAX';
+    shouldActivateFan = true;
+    shouldTempAlarm = true;
+  }
+  // HSI >= 38: Fan HIGH
+  else if (hsiValue >= BROILER_THRESHOLDS.HSI_FAN_HIGH) {
     hsiLevel = 'high';
     shouldHsiFanHigh = true;
     fanSpeed = 'HIGH';
@@ -254,6 +268,7 @@ export function evaluateBroilerEnvironment(
     hsi: {
       value: hsiValue,
       shouldFanHigh: shouldHsiFanHigh,
+      shouldFanMax: shouldHsiFanMax,
       shouldEmergencyAlert: shouldHsiEmergency,
       level: hsiLevel,
     },
