@@ -4,6 +4,27 @@ import { supabase } from '@/integrations/supabase/client';
 // Must match the VAPID_PUBLIC_KEY secret in Supabase
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
+async function getVapidPublicKey(): Promise<string | null> {
+  // Prefer build-time env when available
+  if (VAPID_PUBLIC_KEY && typeof VAPID_PUBLIC_KEY === 'string' && VAPID_PUBLIC_KEY.length > 20) {
+    return VAPID_PUBLIC_KEY;
+  }
+
+  // Fallback: fetch from backend (public info, but served from a protected env)
+  try {
+    const { data, error } = await supabase.functions.invoke('push-public-key');
+    if (error) {
+      console.error('Failed to fetch VAPID public key:', error);
+      return null;
+    }
+    const key = (data as any)?.publicKey;
+    return typeof key === 'string' && key.length > 20 ? key : null;
+  } catch (e) {
+    console.error('Failed to fetch VAPID public key:', e);
+    return null;
+  }
+}
+
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
     console.log('Service Worker not supported');
@@ -44,7 +65,13 @@ export async function subscribeToPushNotifications(
     
     if (!subscription) {
       // Create new subscription
-      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const vapidKey = await getVapidPublicKey();
+      if (!vapidKey) {
+        console.error('Missing VAPID public key (cannot subscribe)');
+        return null;
+      }
+
+      const applicationServerKey = urlBase64ToUint8Array(vapidKey);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey as BufferSource,
