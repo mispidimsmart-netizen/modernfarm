@@ -57,13 +57,13 @@ export function SmartModeWidget() {
   };
 
   return (
-    <div className="rounded-3xl bg-gradient-to-br from-slate-800/90 via-slate-700/80 to-slate-800/90 p-5 shadow-xl border border-slate-600/60 dark:from-slate-800/95 dark:via-slate-700/85 dark:to-slate-800/95 dark:border-slate-500/50">
+    <div className="rounded-3xl bg-card p-5 shadow-card border border-border">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/40">
           <Zap className="w-4 h-4 text-white" />
         </div>
-        <h3 className="text-sm font-semibold text-white">
+        <h3 className="text-sm font-semibold text-foreground">
           {language === 'bn' ? 'কুইক মোড' : 'Quick Mode'}
         </h3>
       </div>
