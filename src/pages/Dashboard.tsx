@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Zap, Thermometer, Wind, Droplets, AlertTriangle, TrendingUp, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
+import { useFarmType } from '@/hooks/useFarmType';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
+import { useBroilerAutomation } from '@/hooks/useBroilerAutomation';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useHeatStressRiskPrediction } from '@/hooks/useHeatStressRiskPrediction';
@@ -33,6 +35,8 @@ import { AutomationStatusCard } from '@/components/automation/AutomationStatusCa
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
 import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
 import { BigFarmOverview } from '@/components/dashboard/BigFarmOverview';
+import { BroilerTempStatusCard } from '@/components/broiler/BroilerTempStatusCard';
+import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,32 +49,41 @@ export function Dashboard() {
   const { data: farmSettings } = useFarmSettings();
   const { data: deviceHealth } = useAllDeviceHealth();
   const { selectedShedId } = useSelectedShed();
+  const { isLayer, isBroiler } = useFarmType();
   
   // Subscribe to realtime alerts
   useRealtimeAlerts();
   
-  // Heat Stress Index automation
+  // Layer: Heat Stress Index automation
   const hsiResult = useHeatStressAutomation({
     temperature: sensorData.temperature,
     humidity: sensorData.humidity,
     shedId: selectedShedId,
-    enabled: true,
+    enabled: isLayer, // Only enable for layer farms
   });
 
-  // Fan Speed automation based on temperature
+  // Layer: Fan Speed automation based on temperature
   const fanSpeedResult = useFanSpeedAutomation({
     temperature: sensorData.temperature,
     shedId: selectedShedId,
-    enabled: !manualOverride,
+    enabled: isLayer && !manualOverride,
   });
 
-  // Water usage anomaly detection
+  // Broiler: Age-based temperature automation
+  const broilerTempResult = useBroilerAutomation({
+    temperature: sensorData.temperature,
+    humidity: sensorData.humidity,
+    shedId: selectedShedId,
+    enabled: isBroiler,
+  });
+
+  // Water usage anomaly detection (both farm types)
   const waterAnomalyResult = useWaterAnomalyDetection(sensorData.waterUsage);
 
-  // Ammonia rising trend detection
+  // Ammonia rising trend detection (both farm types)
   const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
 
-  // Tomorrow's heat stress risk prediction
+  // Tomorrow's heat stress risk prediction (layer only)
   const heatStressRiskResult = useHeatStressRiskPrediction();
   
   // Count online devices
@@ -336,16 +349,29 @@ export function Dashboard() {
             
             {/* TAB: Controls */}
             <TabsContent value="controls" className="mt-4 space-y-4">
-              <FanSpeedCard 
-                temperature={sensorData.temperature}
-                fanSpeed={fanSpeedResult?.speed || 'OFF'}
-                message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')}
-              />
-              <HeatStressCard 
-                hsiResult={hsiResult}
-                temperature={sensorData.temperature}
-                humidity={sensorData.humidity}
-              />
+              {/* Broiler Mode: Show Broiler Temp Status */}
+              {isBroiler && (
+                <>
+                  <BroilerTempStatusCard tempResult={broilerTempResult} />
+                  <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
+                </>
+              )}
+              
+              {/* Layer Mode: Show Layer HSI & Fan Speed */}
+              {isLayer && (
+                <>
+                  <FanSpeedCard 
+                    temperature={sensorData.temperature}
+                    fanSpeed={fanSpeedResult?.speed || 'OFF'}
+                    message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')}
+                  />
+                  <HeatStressCard 
+                    hsiResult={hsiResult}
+                    temperature={sensorData.temperature}
+                    humidity={sensorData.humidity}
+                  />
+                </>
+              )}
               <AutomationStatusCard />
             </TabsContent>
             
@@ -353,7 +379,7 @@ export function Dashboard() {
             <TabsContent value="alerts" className="mt-4 space-y-4">
               <WaterAnomalyCard result={waterAnomalyResult} />
               <AmmoniaTrendCard result={ammoniaTrendResult} />
-              <HeatStressRiskCard result={heatStressRiskResult} />
+              {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
               <PowerOutageCard />
             </TabsContent>
           </Tabs>
