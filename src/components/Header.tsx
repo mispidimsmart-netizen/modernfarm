@@ -8,8 +8,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
-import farmeyeLogo from '@/assets/farmeye-logo.png';
 
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
@@ -74,8 +72,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
-          <WorkerManagementSheet />
-          
           <ThemeToggle />
           
           <Button
