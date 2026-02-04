@@ -1392,7 +1392,8 @@ void runLocalAutomation() {
   }
   
   // ========================================
-  // 🌡️ LAYER TEMPERATURE CONTROL
+  // 🌡️ LAYER TEMPERATURE CONTROL (Stable Range ভিত্তিক)
+  // 📌 লক্ষ্য: sudden airflow না দিয়ে ধাপে ধাপে control
   // Layer sudden heat change সহ্য করতে পারে না!
   // ========================================
   
@@ -1411,8 +1412,8 @@ void runLocalAutomation() {
     }
   }
   // TEMP > 30°C = FAN HIGH
-  else if (temperature >= LAYER_TEMP_FAN_HIGH) {
-    Serial.printf("🔥 LAYER TEMP HIGH (%.1f°C >= 30) → Fan HIGH\n", temperature);
+  else if (temperature > LAYER_TEMP_FAN_HIGH) {
+    Serial.printf("🔥 LAYER TEMP HIGH (%.1f°C > 30) → Fan HIGH\n", temperature);
     setFanState(true, "HIGH");
     systemState = "HIGH_STRESS";
     
@@ -1422,9 +1423,21 @@ void runLocalAutomation() {
       digitalWrite(HEATER_RELAY_PIN, LOW);
     }
   }
-  // TEMP 18-27°C = IDEAL (No action needed)
+  // TEMP 27-30°C = FAN LOW (Gradual step)
+  else if (temperature > LAYER_TEMP_IDEAL_MAX && temperature <= LAYER_TEMP_FAN_HIGH) {
+    Serial.printf("⚠️ LAYER TEMP BORDERLINE (%.1f°C, 27-30°C) → Fan LOW (gradual)\n", temperature);
+    setFanState(true, "LOW");
+    systemState = "MILD_STRESS";
+    
+    // 🔥 Turn OFF heater
+    if (heaterOn) {
+      heaterOn = false;
+      digitalWrite(HEATER_RELAY_PIN, LOW);
+    }
+  }
+  // TEMP 18-27°C = IDEAL (No fan change needed)
   else if (temperature >= LAYER_TEMP_IDEAL_MIN && temperature <= LAYER_TEMP_IDEAL_MAX) {
-    Serial.printf("✅ LAYER TEMP IDEAL (%.1f°C, 18-27°C range)\n", temperature);
+    Serial.printf("✅ LAYER TEMP IDEAL (%.1f°C, 18-27°C range) → No change\n", temperature);
     systemState = "NORMAL";
     
     // 🔥 Turn OFF heater - temp is good
@@ -1450,18 +1463,6 @@ void runLocalAutomation() {
       heaterOn = true;
       digitalWrite(HEATER_RELAY_PIN, HIGH);
       Serial.println("🔥 Heater turned ON (GPIO 13) - Layer cold protection");
-    }
-  }
-  // TEMP 27-30°C = Borderline (Low fan)
-  else if (temperature > LAYER_TEMP_IDEAL_MAX && temperature < LAYER_TEMP_FAN_HIGH) {
-    Serial.printf("⚠️ LAYER TEMP BORDERLINE (%.1f°C, 27-30°C) → Fan LOW\n", temperature);
-    setFanState(true, "LOW");
-    systemState = "MILD_STRESS";
-    
-    // 🔥 Turn OFF heater
-    if (heaterOn) {
-      heaterOn = false;
-      digitalWrite(HEATER_RELAY_PIN, LOW);
     }
   }
   
