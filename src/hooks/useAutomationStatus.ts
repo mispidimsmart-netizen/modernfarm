@@ -5,6 +5,9 @@ import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealt
 import { useWeatherCache } from '@/hooks/useWeather';
 import { useLightingCurve } from '@/hooks/useLightingCurve';
 import { calculateHSI, DEFAULT_HSI_THRESHOLDS, HSIThresholds } from '@/lib/heatStressIndex';
+import { useFarmType, getBroilerTempRangeByDays, BROILER_THRESHOLDS } from '@/hooks/useFarmType';
+import { useActiveBatch } from '@/hooks/useBroilerData';
+import { calculateBroilerAge } from '@/hooks/useBroilerAutomation';
 
 export type AutomationRuleStatus = 'active' | 'triggered' | 'idle' | 'disabled';
 
@@ -36,44 +39,121 @@ export function useAutomationStatus() {
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: weatherData } = useWeatherCache();
   const { currentState: lightingState, settings: lightingSettings } = useLightingCurve();
+  const { isBroiler, isLayer } = useFarmType();
+  const { data: activeBatch } = useActiveBatch();
+
+  // Calculate broiler age if applicable
+  const broilerAge = useMemo(() => {
+    if (!isBroiler || !activeBatch?.start_date) return null;
+    return calculateBroilerAge(activeBatch.start_date);
+  }, [isBroiler, activeBatch?.start_date]);
 
   const rules = useMemo<AutomationRule[]>(() => {
     const allRules: AutomationRule[] = [];
+    const currentTemp = sensorData.temperature ?? 0;
 
-    // 1. Heat Stress Index Automation
-    const hsiThresholds: HSIThresholds = farmSettings ? {
-      mild: Number(farmSettings.hsi_mild_threshold) || DEFAULT_HSI_THRESHOLDS.mild,
-      moderate: Number(farmSettings.hsi_moderate_threshold) || DEFAULT_HSI_THRESHOLDS.moderate,
-      severe: Number(farmSettings.hsi_severe_threshold) || DEFAULT_HSI_THRESHOLDS.severe,
-      emergency: Number(farmSettings.hsi_emergency_threshold) || DEFAULT_HSI_THRESHOLDS.emergency,
-    } : DEFAULT_HSI_THRESHOLDS;
+    // ======== BROILER-SPECIFIC RULES ========
+    if (isBroiler) {
+      const ageDays = broilerAge?.days ?? 0;
+      const tempRange = getBroilerTempRangeByDays(ageDays);
+      const deviation = currentTemp - tempRange.targetTemp;
+      
+      // Broiler Temperature Status
+      let broilerTempStatus: AutomationRuleStatus = 'idle';
+      let broilerAction = { bn: 'স্বাভাবিক', en: 'Normal' };
+      let deviceAction = '';
 
-    const hsiResult = sensorData.temperature !== null && sensorData.humidity !== null
-      ? calculateHSI(sensorData.temperature, sensorData.humidity, hsiThresholds)
-      : null;
+      if (deviation >= BROILER_THRESHOLDS.TEMP_ALARM_DEVIATION) {
+        broilerTempStatus = 'triggered';
+        broilerAction = { bn: 'ফ্যান HIGH + অ্যালার্ম', en: 'Fan HIGH + Alarm' };
+        deviceAction = '🔥';
+      } else if (deviation >= BROILER_THRESHOLDS.TEMP_FAN_HIGH_DEVIATION) {
+        broilerTempStatus = 'triggered';
+        broilerAction = { bn: 'ফ্যান HIGH', en: 'Fan HIGH' };
+        deviceAction = '🌀';
+      } else if (deviation <= -BROILER_THRESHOLDS.TEMP_HEATER_ON_DEVIATION) {
+        broilerTempStatus = 'triggered';
+        broilerAction = { bn: 'হিটার চালু', en: 'Heater ON' };
+        deviceAction = '🔥';
+      } else if (currentTemp >= tempRange.minTemp && currentTemp <= tempRange.maxTemp) {
+        broilerTempStatus = 'active';
+        broilerAction = { bn: 'আদর্শ তাপমাত্রা', en: 'Ideal Temperature' };
+        deviceAction = '✅';
+      }
 
-    allRules.push({
-      id: 'hsi-automation',
-      name: { bn: 'হিট স্ট্রেস ইনডেক্স', en: 'Heat Stress Index' },
-      description: { 
-        bn: 'তাপমাত্রা ও আর্দ্রতার উপর ভিত্তি করে ফ্যান নিয়ন্ত্রণ', 
-        en: 'Fan control based on temperature & humidity' 
-      },
-      category: 'climate',
-      status: farmSettings?.hsi_automation_enabled === false ? 'disabled' 
-        : hsiResult?.shouldActivateFan ? 'triggered' 
-        : 'idle',
-      currentValue: hsiResult ? `HSI: ${hsiResult.index}` : '--',
-      threshold: `≥ ${hsiThresholds.mild}`,
-      action: { bn: 'ফ্যান চালু', en: 'Fan ON' },
-      icon: '🌡️',
-    });
+      allRules.push({
+        id: 'broiler-temp',
+        name: { bn: 'ব্রয়লার তাপমাত্রা নিয়ন্ত্রণ', en: 'Broiler Temp Control' },
+        description: { 
+          bn: `বয়স: ${ageDays} দিন | টার্গেট: ${tempRange.minTemp}-${tempRange.maxTemp}°C`, 
+          en: `Age: ${ageDays} days | Target: ${tempRange.minTemp}-${tempRange.maxTemp}°C` 
+        },
+        category: 'climate',
+        status: broilerTempStatus,
+        currentValue: `${currentTemp.toFixed(1)}°C ${deviceAction}`,
+        threshold: `${tempRange.minTemp}-${tempRange.maxTemp}°C`,
+        action: broilerAction,
+        icon: '🐔',
+      });
 
-    // 2. Fan Speed Automation
+      // Heater Status (Broiler Only)
+      const heaterNeeded = deviation <= -BROILER_THRESHOLDS.TEMP_HEATER_ON_DEVIATION;
+      allRules.push({
+        id: 'broiler-heater',
+        name: { bn: 'হিটার স্ট্যাটাস', en: 'Heater Status' },
+        description: { 
+          bn: `ঠান্ডা হলে হিটার চালু`, 
+          en: `Heater ON when cold` 
+        },
+        category: 'climate',
+        status: heaterNeeded ? 'triggered' : 'idle',
+        currentValue: heaterNeeded ? 'ON 🔥' : 'OFF',
+        threshold: `< ${tempRange.targetTemp - 2}°C`,
+        action: heaterNeeded 
+          ? { bn: 'হিটার চালু', en: 'Heater ON' }
+          : { bn: 'হিটার বন্ধ', en: 'Heater OFF' },
+        icon: '🔥',
+      });
+    }
+
+    // ======== LAYER-SPECIFIC RULES ========
+    if (isLayer) {
+      // Heat Stress Index Automation (Layer Only)
+      const hsiThresholds: HSIThresholds = farmSettings ? {
+        mild: Number(farmSettings.hsi_mild_threshold) || DEFAULT_HSI_THRESHOLDS.mild,
+        moderate: Number(farmSettings.hsi_moderate_threshold) || DEFAULT_HSI_THRESHOLDS.moderate,
+        severe: Number(farmSettings.hsi_severe_threshold) || DEFAULT_HSI_THRESHOLDS.severe,
+        emergency: Number(farmSettings.hsi_emergency_threshold) || DEFAULT_HSI_THRESHOLDS.emergency,
+      } : DEFAULT_HSI_THRESHOLDS;
+
+      const hsiResult = sensorData.temperature !== null && sensorData.humidity !== null
+        ? calculateHSI(sensorData.temperature, sensorData.humidity, hsiThresholds)
+        : null;
+
+      allRules.push({
+        id: 'hsi-automation',
+        name: { bn: 'হিট স্ট্রেস ইনডেক্স', en: 'Heat Stress Index' },
+        description: { 
+          bn: 'তাপমাত্রা ও আর্দ্রতার উপর ভিত্তি করে ফ্যান নিয়ন্ত্রণ', 
+          en: 'Fan control based on temperature & humidity' 
+        },
+        category: 'climate',
+        status: farmSettings?.hsi_automation_enabled === false ? 'disabled' 
+          : hsiResult?.shouldActivateFan ? 'triggered' 
+          : 'idle',
+        currentValue: hsiResult ? `HSI: ${hsiResult.index}` : '--',
+        threshold: `≥ ${hsiThresholds.mild}`,
+        action: { bn: 'ফ্যান চালু', en: 'Fan ON' },
+        icon: '🌡️',
+      });
+    }
+
+    // ======== COMMON RULES (BOTH FARM TYPES) ========
+    
+    // Fan Speed Automation
     const fanLowMin = Number(farmSettings?.fan_low_temp_min) || 28;
     const fanMediumMin = Number(farmSettings?.fan_medium_temp_min) || 30;
     const fanHighMin = Number(farmSettings?.fan_high_temp_min) || 33;
-    const currentTemp = sensorData.temperature ?? 0;
 
     let fanSpeedStatus: AutomationRuleStatus = 'idle';
     let fanSpeedValue = 'OFF';
@@ -103,7 +183,7 @@ export function useAutomationStatus() {
       icon: '🌀',
     });
 
-    // 3. Ammonia Trend Detection
+    // Ammonia Trend Detection
     const ammoniaMax = Number(farmSettings?.ammonia_max) || 25;
     const currentAmmonia = sensorData.ammonia ?? 0;
     const ammoniaHigh = currentAmmonia >= ammoniaMax;
@@ -123,7 +203,7 @@ export function useAutomationStatus() {
       icon: '💨',
     });
 
-    // 4. Water Anomaly Detection
+    // Water Anomaly Detection
     const waterThreshold = Number(farmSettings?.water_anomaly_threshold) || 15;
 
     allRules.push({
@@ -141,7 +221,7 @@ export function useAutomationStatus() {
       icon: '💧',
     });
 
-    // 5. Smart Lighting Curve
+    // Smart Lighting Curve (Layer focused but useful for broiler too)
     allRules.push({
       id: 'smart-lighting',
       name: { bn: 'স্মার্ট লাইটিং কার্ভ', en: 'Smart Lighting Curve' },
@@ -159,7 +239,7 @@ export function useAutomationStatus() {
       icon: '💡',
     });
 
-    // 6. Tomorrow's Heat Stress Prediction
+    // Tomorrow's Heat Stress Prediction
     const tomorrowTemp = weatherData?.forecast_json?.daily?.temperature_2m_max?.[1];
     const tomorrowHumidity = weatherData?.forecast_json?.daily?.relative_humidity_2m_mean?.[1];
     const isTomorrowRisky = (tomorrowTemp ?? 0) >= 35 || (tomorrowHumidity ?? 0) >= 80;
@@ -179,7 +259,7 @@ export function useAutomationStatus() {
       icon: '🔮',
     });
 
-    // 7. Weather-based Fan Adjustment
+    // Weather-based Fan Adjustment
     allRules.push({
       id: 'weather-fan',
       name: { bn: 'আবহাওয়া-ভিত্তিক ফ্যান', en: 'Weather-based Fan' },
@@ -196,7 +276,7 @@ export function useAutomationStatus() {
     });
 
     return allRules;
-  }, [farmSettings, sensorData, deviceStatus, weatherData, lightingState, lightingSettings]);
+  }, [farmSettings, sensorData, deviceStatus, weatherData, lightingState, lightingSettings, isBroiler, isLayer, broilerAge]);
 
   const stats = useMemo(() => {
     const total = rules.length;
