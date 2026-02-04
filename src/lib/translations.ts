@@ -13,8 +13,8 @@ export const translations = {
 
   // Dashboard
   dashboard: {
-    title: { bn: 'স্মার্ট লেয়ার ফার্ম', en: 'Smart Layer Farm' },
-    subtitle: { bn: 'আজকের অবস্থা', en: "Today's Status" },
+    title: { bn: 'FarmEye', en: 'FarmEye' },
+    subtitle: { bn: 'খামার থাকবে সবসময় নজরে', en: 'Smart Monitoring for Smart Farmers' },
     liveStatus: { bn: 'লাইভ স্ট্যাটাস', en: 'Live Status' },
     lastUpdate: { bn: 'শেষ আপডেট', en: 'Last Update' },
   },
