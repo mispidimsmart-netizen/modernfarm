@@ -34,6 +34,7 @@ import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
 import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
+import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -496,13 +497,16 @@ export function SettingsPage() {
                       </p>
                     </div>
                   </div>
-                  {isSupported && (
-                    <Switch
-                      checked={isSubscribed}
-                      onCheckedChange={handlePushToggle}
-                      disabled={pushLoading || permission === 'denied'}
-                    />
-                  )}
+                  <div className="flex items-center gap-2">
+                    {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
+                    {isSupported && (
+                      <Switch
+                        checked={isSubscribed}
+                        onCheckedChange={handlePushToggle}
+                        disabled={pushLoading || permission === 'denied'}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 
