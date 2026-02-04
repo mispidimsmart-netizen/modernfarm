@@ -807,7 +807,17 @@ void handleCloudResponse(String response) {
     }
   }
   
-  // Apply cloud commands
+  // ═══════════════════════════════════════════════════════════════
+  // 🛡️ FAILSAFE MODE = IGNORE REMOTE COMMANDS
+  // Bird safety কখনো internet depend করবে না!
+  // ═══════════════════════════════════════════════════════════════
+  if (failsafeMode) {
+    Serial.println("⚠️ FAILSAFE MODE: Ignoring remote commands - using LOCAL SAFE RULES");
+    Serial.println("   📌 Bird safety কখনো internet depend করবে না!");
+    return;  // Don't apply cloud commands in failsafe mode
+  }
+  
+  // Apply cloud commands (only when NOT in failsafe mode)
   if (doc.containsKey("commands")) {
     JsonArray commands = doc["commands"].as<JsonArray>();
     for (JsonObject cmd : commands) {
@@ -815,7 +825,7 @@ void handleCloudResponse(String response) {
     }
   }
   
-  // Update device controls if not in manual override
+  // Update device controls if not in manual override (only when NOT in failsafe mode)
   if (doc.containsKey("device_status") && !doc["manual_override"].as<bool>()) {
     JsonObject status = doc["device_status"];
     fanOn = status["fan_on"] | false;
@@ -830,7 +840,6 @@ void handleCloudResponse(String response) {
     
     applyDeviceStates();
   }
-}
 }
 
 void updateCachedSettings(JsonObject settings) {
@@ -939,19 +948,25 @@ void activateFailsafe(String reason) {
   failsafeMode = true;
   failsafeActivatedAt = millis();
   
-  Serial.println("\n╔════════════════════════════════════════╗");
-  Serial.println("║  ⚠️⚠️⚠️ FAILSAFE MODE ACTIVATED ⚠️⚠️⚠️  ║");
-  Serial.println("╠════════════════════════════════════════╣");
+  Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+  Serial.println("║  ⚠️⚠️⚠️ LOCAL AUTO MODE ACTIVATED ⚠️⚠️⚠️                    ║");
+  Serial.println("╠════════════════════════════════════════════════════════════╣");
   Serial.printf("║  Reason: %s\n", reason.c_str());
-  Serial.println("║  Running on LOCAL SAFE RULES           ║");
-  Serial.println("║  সন্দেহ হলে Fan ON — Always safer       ║");
-  Serial.println("╚════════════════════════════════════════╝\n");
+  Serial.println("║                                                            ║");
+  Serial.println("║  📌 5 মিনিট cloud update না এলে:                           ║");
+  Serial.println("║     → LOCAL AUTO MODE                                      ║");
+  Serial.println("║     → Ignore remote commands                               ║");
+  Serial.println("║     → Continue local safety rules                          ║");
+  Serial.println("║                                                            ║");
+  Serial.println("║  🛡️ Bird safety কখনো internet depend করবে না!             ║");
+  Serial.println("╚════════════════════════════════════════════════════════════╝\n");
   
   // 🧠 Log last known safe state
-  Serial.println("🧠 STATE MEMORY:");
+  Serial.println("🧠 STATE MEMORY (Last known safe values):");
   Serial.printf("   Last Safe Temp: %.1f°C\n", lastSafeTemp);
   Serial.printf("   Last Fan State: %s (%s)\n", lastSafeFanState ? "ON" : "OFF", lastSafeFanSpeed.c_str());
   Serial.printf("   Last Cloud Contact: %lu seconds ago\n", (millis() - lastCloudContactTime) / 1000);
+  Serial.println("\n   ⚠️ Remote commands will be IGNORED until cloud reconnects!");
   
   // Flash LED rapidly to indicate failsafe
   for (int i = 0; i < 10; i++) {
