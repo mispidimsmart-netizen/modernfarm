@@ -23,12 +23,8 @@ export function Header() {
   const isHomePage = location.pathname === '/' || location.pathname === '/dashboard';
 
   const handleBack = () => {
-    // Try to go back in history, otherwise go to home
-    if (window.history.length > 2) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
+    // Always navigate to home page for consistent behavior
+    navigate('/');
   };
 
   return (
