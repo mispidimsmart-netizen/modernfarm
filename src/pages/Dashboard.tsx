@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Zap, Thermometer, Wind, Droplets, AlertTriangle } from 'lucide-react';
+import { RefreshCw, BarChart3, Settings, ChevronRight, Wifi, WifiOff, Cpu, Zap, Thermometer, Wind, Droplets, AlertTriangle, History } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
@@ -370,22 +370,38 @@ export function Dashboard() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22 }}
-          className="mb-5"
+          className="mb-5 grid grid-cols-2 gap-3"
         >
+          {/* Reports Card */}
           <Link
             to="/reports"
-            className="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
+            className="flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <BarChart3 size={20} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <BarChart3 size={24} />
             </div>
-            <div className="flex-1">
+            <div className="text-center">
               <p className="font-medium text-sm">{translations.reports.title[language]}</p>
               <p className="text-[10px] text-muted-foreground">
                 {language === 'bn' ? 'বিস্তারিত রিপোর্ট' : 'Detailed reports'}
               </p>
             </div>
-            <ChevronRight size={18} className="text-muted-foreground" />
+          </Link>
+          
+          {/* History Card */}
+          <Link
+            to="/reports"
+            className="flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br from-card to-muted/30 p-4 border border-border/50 shadow-sm transition-all active:scale-[0.98]"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+              <History size={24} />
+            </div>
+            <div className="text-center">
+              <p className="font-medium text-sm">{language === 'bn' ? 'ইতিহাস' : 'History'}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {language === 'bn' ? 'পূর্বের ডেটা' : 'Past data'}
+              </p>
+            </div>
           </Link>
         </motion.div>
       </main>
