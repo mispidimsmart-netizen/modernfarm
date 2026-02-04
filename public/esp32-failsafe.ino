@@ -553,8 +553,11 @@ void loop() {
     sensorErrorMode = true;
     
     Serial.println("\n╔════════════════════════════════════════════════════════════╗");
-    Serial.println("║  ⚠️ SENSOR ERROR MODE - No data for 15 seconds!            ║");
-    Serial.println("║  যদি 15 sec data না আসে: Fan ON + Alarm slow beep           ║");
+    Serial.println("║  ⚠️ SENSOR FAILURE MODE - No data for 15 seconds!          ║");
+    Serial.println("║  যদি 15 sec sensor data না আসে:                            ║");
+    Serial.println("║  → Sensor Failure Mode                                      ║");
+    Serial.println("║  → Fan ON                                                   ║");
+    Serial.println("║  → Alarm pulse every 20 sec                                 ║");
     Serial.println("╚════════════════════════════════════════════════════════════╝\n");
     
     // Activate failsafe
@@ -566,29 +569,21 @@ void loop() {
     digitalWrite(FAN_RELAY_PIN, HIGH);
     fanOn = true;
     fanSpeed = "HIGH";
-    systemState = "SENSOR_ERROR";
+    systemState = "SENSOR_FAILURE";
   }
   
-  // 🔊 SLOW ALARM PATTERN in sensor error mode (1 sec ON, 2 sec OFF)
-  // যদি sensor detect না হয়: FAIL-SAFE → Fan ON + slow alarm
+  // 🔊 SENSOR FAILURE ALARM PATTERN (pulse every 20 sec)
+  // যদি 15 sec sensor data না আসে: Fan ON + Alarm pulse every 20 sec
   if (sensorErrorMode) {
-    static bool slowAlarmOn = false;
-    static unsigned long slowAlarmPhaseStart = 0;
+    static unsigned long lastSensorAlarmPulse = 0;
     
-    if (slowAlarmOn) {
-      // ON phase: 1 second
-      if (now - slowAlarmPhaseStart >= 1000) {
-        digitalWrite(ALARM_RELAY_PIN, LOW);
-        slowAlarmOn = false;
-        slowAlarmPhaseStart = now;
-      }
-    } else {
-      // OFF phase: 2 seconds
-      if (now - slowAlarmPhaseStart >= 2000) {
-        digitalWrite(ALARM_RELAY_PIN, HIGH);
-        slowAlarmOn = true;
-        slowAlarmPhaseStart = now;
-      }
+    // Alarm pulse: 0.5 sec ON, every 20 sec
+    if (now - lastSensorAlarmPulse >= 20000) {
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      delay(500);  // 0.5 sec pulse
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      lastSensorAlarmPulse = now;
+      Serial.println("🔔 Sensor Failure Alarm pulse (every 20 sec)");
     }
   }
   
