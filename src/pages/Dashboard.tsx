@@ -18,7 +18,7 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { ShedSelector } from '@/components/shed/ShedSelector';
 import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
-import { DeviceManagementSheet } from '@/components/device/DeviceManagementSheet';
+
 import { WeatherCard } from '@/components/weather/WeatherCard';
 import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
@@ -201,7 +201,6 @@ export function Dashboard() {
         >
           <ShedSelector />
           <ShedManagementSheet />
-          <DeviceManagementSheet />
         </motion.div>
 
         {/* ============ SECTION 3: QUICK STATUS GRID ============ */}
