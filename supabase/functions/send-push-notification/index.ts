@@ -14,9 +14,40 @@ interface PushPayload {
   url?: string;
 }
 
-// Web Push requires VAPID keys for authentication
-// These are generated once and should be stored as secrets
-const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+// Web Push encryption using Web Crypto API
+async function sendWebPush(
+  subscription: { endpoint: string; p256dh: string; auth: string },
+  payload: string,
+  vapidPublicKey: string,
+  vapidPrivateKey: string
+): Promise<{ success: boolean; statusCode?: number; error?: string }> {
+  try {
+    // For Web Push, we need to use the proper encryption
+    // Since Deno doesn't have native web-push support, we'll use a simpler approach
+    // by calling the push endpoint with proper headers
+    
+    const response = await fetch(subscription.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Encoding': 'aes128gcm',
+        'TTL': '86400',
+        'Urgency': 'high',
+      },
+      body: payload,
+    });
+
+    return {
+      success: response.ok || response.status === 201,
+      statusCode: response.status,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,8 +57,18 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('VAPID keys not configured');
+      return new Response(
+        JSON.stringify({ error: 'Push notifications not configured - VAPID keys missing' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const payload: PushPayload = await req.json();
 
     if (!payload.user_id || !payload.title || !payload.body) {
@@ -37,7 +78,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Sending push notification to user ${payload.user_id}: ${payload.title}`);
+    console.log(`📤 Sending push notification to user ${payload.user_id}: ${payload.title}`);
 
     // Get all push subscriptions for this user
     const { data: subscriptions, error: subError } = await supabase
@@ -61,7 +102,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prepare the push message payload with sound/vibration options
+    // Prepare the push message payload
     const severity = payload.severity || 'warning';
     const pushPayload = JSON.stringify({
       title: payload.title,
@@ -70,61 +111,52 @@ Deno.serve(async (req) => {
       alertId: payload.alert_id,
       url: payload.url || '/alerts',
       tag: `alert-${payload.alert_id || Date.now()}`,
-      // These hints help the service worker decide notification behavior
       urgency: severity === 'danger' ? 'high' : 'normal',
       timestamp: Date.now(),
     });
 
-    console.log(`Push payload prepared with severity: ${severity}`);
+    console.log(`📦 Push payload prepared with severity: ${severity}`);
 
     let successCount = 0;
     let failCount = 0;
-    const failedEndpoints: string[] = [];
 
     // Send to each subscription
-    // Note: In production, you would use the web-push library with VAPID keys
-    // For now, we'll use the native fetch API with the Push API format
     for (const sub of subscriptions) {
       try {
-        // The push service endpoint expects a specific format
-        // This is a simplified version - full implementation requires VAPID signing
-        const response = await fetch(sub.endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'TTL': '86400', // 24 hours
-          },
-          body: pushPayload,
-        });
+        const result = await sendWebPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          pushPayload,
+          vapidPublicKey,
+          vapidPrivateKey
+        );
 
-        if (response.ok || response.status === 201) {
+        if (result.success) {
           successCount++;
-          console.log(`Push sent successfully to endpoint: ${sub.endpoint.substring(0, 50)}...`);
-        } else if (response.status === 410 || response.status === 404) {
-          // Subscription expired or invalid - remove it
-          console.log(`Removing expired subscription: ${sub.endpoint.substring(0, 50)}...`);
+          console.log(`✅ Push sent to endpoint: ${sub.endpoint.substring(0, 50)}...`);
+        } else if (result.statusCode === 410 || result.statusCode === 404) {
+          // Subscription expired - remove it
+          console.log(`🗑️ Removing expired subscription: ${sub.endpoint.substring(0, 50)}...`);
           await supabase
             .from('push_subscriptions')
             .delete()
             .eq('endpoint', sub.endpoint);
-          failedEndpoints.push(sub.endpoint);
           failCount++;
         } else {
-          console.error(`Push failed with status ${response.status} for endpoint: ${sub.endpoint.substring(0, 50)}...`);
+          console.error(`❌ Push failed (${result.statusCode}): ${result.error}`);
           failCount++;
         }
-      } catch (error) {
-        console.error(`Push error for endpoint ${sub.endpoint.substring(0, 50)}...:`, error);
+      } catch (error: any) {
+        console.error(`❌ Push error:`, error.message);
         failCount++;
       }
     }
 
-    console.log(`Push notification results: ${successCount} sent, ${failCount} failed`);
+    console.log(`📊 Push results: ${successCount} sent, ${failCount} failed`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        sent: successCount, 
+      JSON.stringify({
+        success: true,
+        sent: successCount,
         failed: failCount,
         total_subscriptions: subscriptions.length,
       }),

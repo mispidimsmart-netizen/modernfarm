@@ -432,14 +432,37 @@ Deno.serve(async (req) => {
 
       // Create alert if needed
       if (automationAction.alert) {
-        await supabase.from('alerts').insert({
+        const { data: alertData } = await supabase.from('alerts').insert({
           user_id,
           shed_id,
           alert_type: automationAction.alert.type,
           severity: automationAction.alert.severity,
           message: automationAction.alert.message,
           message_bn: automationAction.alert.messageBn,
-        });
+        }).select('id').single();
+
+        // Send push notification for this alert
+        try {
+          console.log(`📤 Sending push notification for alert: ${automationAction.alert.type}`);
+          
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              user_id: user_id,
+              title: automationAction.alert.severity === 'danger' 
+                ? '🚨 জরুরি সতর্কতা!' 
+                : '⚠️ সতর্কতা',
+              body: automationAction.alert.messageBn,
+              severity: automationAction.alert.severity,
+              alert_id: alertData?.id,
+              url: '/alerts',
+            },
+          });
+          
+          console.log(`✅ Push notification sent for alert`);
+        } catch (pushError) {
+          console.error('❌ Failed to send push notification:', pushError);
+          // Don't fail the automation if push fails
+        }
       }
 
       return new Response(
