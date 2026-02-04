@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Egg, User, Sparkles, Leaf, Phone, Building2 } from 'lucide-react';
+import { Mail, Lock, Egg, User, Sparkles, Leaf, Phone, Building2, Crown, HardHat, Ticket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { translations } from '@/lib/translations';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 type LoginMethod = 'email' | 'phone';
 type FarmType = 'layer' | 'broiler';
+type UserType = 'owner' | 'worker';
 
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
@@ -22,6 +23,8 @@ export function LoginPage() {
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [farmType, setFarmType] = useState<FarmType>('layer');
+  const [userType, setUserType] = useState<UserType>('owner');
+  const [invitationCode, setInvitationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
@@ -57,9 +60,50 @@ export function LoginPage() {
       return;
     }
 
+    // Validate invitation code for workers
+    if (isSignUp && userType === 'worker' && !invitationCode.trim()) {
+      toast({
+        title: translations.common.error[language],
+        description: language === 'bn' ? 'আমন্ত্রণ কোড দিন' : 'Please enter invitation code',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       if (isSignUp) {
-        const { error } = await signUp(identifier, password, farmName || (language === 'bn' ? 'আমার ফার্ম' : 'My Farm'), isPhone);
+        // For workers, validate invitation code first before signup
+        let validInvitation: any = null;
+        if (userType === 'worker') {
+          const { data: invitation, error: findError } = await supabase
+            .from('worker_invitations')
+            .select('*')
+            .eq('invite_code', invitationCode.toUpperCase().trim())
+            .is('used_at', null)
+            .gt('expires_at', new Date().toISOString())
+            .maybeSingle();
+
+          if (!invitation || findError) {
+            toast({
+              title: translations.common.error[language],
+              description: language === 'bn' 
+                ? 'অবৈধ বা মেয়াদোত্তীর্ণ আমন্ত্রণ কোড' 
+                : 'Invalid or expired invitation code',
+              variant: 'destructive',
+            });
+            setIsLoading(false);
+            return;
+          }
+          validInvitation = invitation;
+        }
+
+        const { error } = await signUp(
+          identifier, 
+          password, 
+          userType === 'owner' ? (farmName || (language === 'bn' ? 'আমার ফার্ম' : 'My Farm')) : 'Worker Account', 
+          isPhone
+        );
         if (error) {
           toast({
             title: translations.common.error[language],
@@ -77,9 +121,25 @@ export function LoginPage() {
                 await supabase.from('profiles').update({
                   user_name: userName.trim(),
                   email: email.trim() || null,
-                  farm_type: farmType,
-                  farm_name: farmName.trim() || (language === 'bn' ? 'আমার ফার্ম' : 'My Farm'),
+                  farm_type: userType === 'owner' ? farmType : null,
+                  farm_name: userType === 'owner' 
+                    ? (farmName.trim() || (language === 'bn' ? 'আমার ফার্ম' : 'My Farm'))
+                    : 'Worker Account',
                 }).eq('id', user.id);
+
+                // For workers, create the worker role and mark invitation as used
+                if (userType === 'worker' && validInvitation) {
+                  await supabase.from('user_roles').insert({
+                    user_id: user.id,
+                    farm_owner_id: validInvitation.farm_owner_id,
+                    role: 'worker',
+                  });
+
+                  await supabase.from('worker_invitations').update({
+                    used_at: new Date().toISOString(),
+                    used_by: user.id,
+                  }).eq('id', validInvitation.id);
+                }
               }
               navigate('/');
             }
@@ -360,60 +420,125 @@ export function LoginPage() {
                   </div>
                 </div>
 
-                {/* Farm Name */}
+                {/* User Type Toggle */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    {translations.auth.farmName[language]}
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
-                      <Building2 className="h-4 w-4 text-secondary" />
-                    </div>
-                    <Input
-                      type="text"
-                      value={farmName}
-                      onChange={(e) => setFarmName(e.target.value)}
-                      placeholder={language === 'bn' ? 'আমার ফার্ম' : 'My Farm'}
-                      className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
-                    />
-                  </div>
-                </div>
-
-                {/* Farm Type */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {language === 'bn' ? 'ফার্মের ধরণ' : 'Farm Type'}
+                    {language === 'bn' ? 'অ্যাকাউন্টের ধরণ' : 'Account Type'}
                   </label>
                   <div className="flex rounded-2xl bg-muted/50 p-1">
                     <button
                       type="button"
-                      onClick={() => setFarmType('layer')}
+                      onClick={() => setUserType('owner')}
                       className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
-                        farmType === 'layer'
+                        userType === 'owner'
                           ? 'bg-primary text-primary-foreground shadow-md'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <Egg className="h-4 w-4" />
-                      {language === 'bn' ? 'লেয়ার' : 'Layer'}
+                      <Crown className="h-4 w-4" />
+                      {language === 'bn' ? 'মালিক' : 'Owner'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFarmType('broiler')}
+                      onClick={() => setUserType('worker')}
                       className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
-                        farmType === 'broiler'
+                        userType === 'worker'
                           ? 'bg-primary text-primary-foreground shadow-md'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      🐔
-                      {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}
+                      <HardHat className="h-4 w-4" />
+                      {language === 'bn' ? 'কর্মী' : 'Worker'}
                     </button>
                   </div>
                 </div>
 
-                {/* Email (Optional) */}
-                {loginMethod === 'phone' && (
+                {/* Owner-specific fields */}
+                {userType === 'owner' && (
+                  <>
+                    {/* Farm Name */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        {translations.auth.farmName[language]}
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-secondary/10 p-1.5">
+                          <Building2 className="h-4 w-4 text-secondary" />
+                        </div>
+                        <Input
+                          type="text"
+                          value={farmName}
+                          onChange={(e) => setFarmName(e.target.value)}
+                          placeholder={language === 'bn' ? 'আমার ফার্ম' : 'My Farm'}
+                          className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg transition-all focus:border-secondary focus:bg-background"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Farm Type */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">
+                        {language === 'bn' ? 'ফার্মের ধরণ' : 'Farm Type'}
+                      </label>
+                      <div className="flex rounded-2xl bg-muted/50 p-1">
+                        <button
+                          type="button"
+                          onClick={() => setFarmType('layer')}
+                          className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+                            farmType === 'layer'
+                              ? 'bg-primary text-primary-foreground shadow-md'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Egg className="h-4 w-4" />
+                          {language === 'bn' ? 'লেয়ার' : 'Layer'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFarmType('broiler')}
+                          className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all ${
+                            farmType === 'broiler'
+                              ? 'bg-primary text-primary-foreground shadow-md'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          🐔
+                          {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Worker-specific fields */}
+                {userType === 'worker' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      {language === 'bn' ? 'আমন্ত্রণ কোড *' : 'Invitation Code *'}
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 rounded-lg bg-accent/50 p-1.5">
+                        <Ticket className="h-4 w-4 text-accent-foreground" />
+                      </div>
+                      <Input
+                        type="text"
+                        value={invitationCode}
+                        onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
+                        placeholder={language === 'bn' ? 'যেমন: ABC123' : 'e.g., ABC123'}
+                        className="h-14 rounded-2xl border-2 border-muted bg-muted/30 pl-14 text-lg uppercase transition-all focus:border-accent focus:bg-background"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'bn' 
+                        ? 'মালিকের কাছ থেকে আমন্ত্রণ কোড নিন' 
+                        : 'Get the invitation code from the farm owner'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Email (Optional) - Only for owners */}
+                {loginMethod === 'phone' && userType === 'owner' && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">
                       {language === 'bn' ? 'ইমেইল (ঐচ্ছিক)' : 'Email (Optional)'}
