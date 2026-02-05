@@ -450,6 +450,10 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
       message: farm_profile === 0 
         ? '🥚 Farm profile set to LAYER (fixed temp: 18-27°C)' 
         : `🐔 Farm profile set to BROILER (Day ${broiler_age_days || 1})`,
+       command: {
+         switch_farm_mode: farm_profile,
+         restart_required: true
+       },
       thresholds: farm_profile === 0 
         ? {
             temp_ideal_min: 18, temp_ideal_max: 27, temp_fan_high: 30, temp_alarm: 33,
