@@ -382,6 +382,36 @@ unsigned long lastAgeIncreaseMillis = 0;   // Millis timestamp of last age incre
 bool ageFromServer = false;                // True if current age came from server
 
 // ═══════════════════════════════════════════════════════════════════════
+// 🐔 UPDATE AGE FROM SERVER
+// Called when cloud sends broiler_age_days - never decreases age!
+// ═══════════════════════════════════════════════════════════════════════
+void updateAgeFromServer(int newAge) {
+  if (!isBroiler()) return;
+  
+  // NEVER decrease age - only accept if >= current
+  if (newAge > 0 && newAge >= farmConfig.chickAgeDays) {
+    if (newAge != farmConfig.chickAgeDays) {
+      Serial.printf("\n🐔 AGE SERVER SYNC: Day %d → Day %d\n", farmConfig.chickAgeDays, newAge);
+      farmConfig.chickAgeDays = newAge;
+      loadBroilerRules();  // Reload temperature rules for new age
+    }
+    // Update all tracking variables
+    ageFromServer = true;
+    ageSource = "SERVER";
+    lastAgeSyncMillis = millis();
+    lastAgeIncreaseMillis = millis();
+    lastServerAgeSyncTime = millis() / 1000;  // Unix-style seconds
+    lastServerSyncedAge = newAge;
+    saveFarmProfile();
+    
+    Serial.printf("✓ Age synced from server: Day %d (source: SERVER)\n", newAge);
+  } else if (newAge > 0 && newAge < farmConfig.chickAgeDays) {
+    Serial.printf("⚠️ Server age (%d) < Local age (%d) - IGNORED (never decrease!)\n", 
+                  newAge, farmConfig.chickAgeDays);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // 📦 ENHANCED OFFLINE DATA BUFFER
 // অফলাইন থাকা অবস্থায় ৫০টি রেকর্ড সংরক্ষণ
 // পুনরায় সংযোগ হলে ক্লাউডে সিঙ্ক করে
@@ -1949,22 +1979,7 @@ void handleCloudResponse(String response) {
   // === BROILER AGE SYNC ===
   if (doc.containsKey("broiler_age_days") && isBroiler()) {
     int cloudAge = doc["broiler_age_days"] | 1;
-   // NEVER decrease age from server - only accept if higher or equal
-   if (cloudAge > 0 && cloudAge >= broilerAgeDays) {
-     if (cloudAge != broilerAgeDays) {
-       Serial.printf("\n🐔 AGE SERVER SYNC: Day %d → Day %d\n", broilerAgeDays, cloudAge);
-       broilerAgeDays = cloudAge;
-       loadBroilerRules();
-     }
-     // Update tracking even if age unchanged
-     ageSource = "SERVER";
-     lastServerAgeSyncTime = millis() / 1000;  // Unix-style seconds
-     lastServerSyncedAge = cloudAge;
-      saveFarmProfile();
-   } else if (cloudAge > 0 && cloudAge < broilerAgeDays) {
-     Serial.printf("⚠️ Server age (%d) < Local age (%d) - IGNORED (never decrease!)\n", 
-                   cloudAge, broilerAgeDays);
-    }
+    updateAgeFromServer(cloudAge);
   }
   
   // === SET FARM PROFILE COMMAND ===
