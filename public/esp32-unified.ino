@@ -635,19 +635,22 @@ void saveAgeTickTime() {
 
 // Check if 24 hours passed and auto-increment age
 // Works even when offline - no internet required!
-void ageTick() {
+// ═══════════════════════════════════════════════════════════════════════
+// 🐔 HANDLE OFFLINE AGE - Local 24h increment
+// Works without internet - temperature curve never freezes!
+// ═══════════════════════════════════════════════════════════════════════
+void handleOfflineAge() {
   if (!isBroiler()) return;
   
-  unsigned long now = millis();
-  unsigned long elapsed = now - lastAgeTickMillis;
+  const unsigned long DAY = 86400000UL;  // 24 hours in milliseconds
   
-  // Handle millis() overflow (every ~49 days)
-  if (now < lastAgeTickMillis) {
-    elapsed = AGE_TICK_INTERVAL;  // Force tick on overflow
-    Serial.println("📅 Millis overflow detected - forcing age tick");
+  // Handle millis() overflow (every ~49 days) 
+  if (millis() < lastAgeIncreaseMillis) {
+    lastAgeIncreaseMillis = millis();  // Reset on overflow
+    Serial.println("📅 Millis overflow - resetting age tick timer");
   }
   
-  if (elapsed >= AGE_TICK_INTERVAL) {
+  if (millis() - lastAgeIncreaseMillis >= DAY) {
     // 24 hours passed - increment age
     Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
     Serial.println("║  📅 LOCAL AGE TICK - 24 Hours Elapsed                         ║");
@@ -656,16 +659,21 @@ void ageTick() {
     Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
     
     farmConfig.chickAgeDays++;
-    ageSource = "LOCAL";  // Mark as local increment
-    saveFarmProfile();
-    lastAgeTickMillis = now;
-    saveAgeTickTime();
+    ageFromServer = false;             // Mark as local increment
+    ageSource = "LOCAL";
+    lastAgeIncreaseMillis = millis();
+    saveFarmProfile();                 // Save to EEPROM
     
     // Reload temperature rules for new age
     loadBroilerRules();
     
     Serial.printf("✅ Temperature rules updated for Day %d\n", farmConfig.chickAgeDays);
   }
+}
+
+// Legacy alias for backward compatibility
+void ageTick() {
+  handleOfflineAge();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
