@@ -347,7 +347,64 @@ void updateAge(int newAge) {
   farmConfig.chickAgeDays = newAge;
   
   Serial.printf("\n🐔 AGE UPDATED: Day %d → Day %d\n", oldAge, newAge);
-  
+   
+   // Save to EEPROM
+   saveFarmProfile();
+   
+   // Reload rules if broiler mode
+   if (isBroiler()) {
+     loadBroilerRules();
+   }
+ }
+ 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🔄 MODE SWITCH (App থেকে Farm Type পরিবর্তন)
+ // Layer → Broiler বা Broiler → Layer
+ // ESP32: Save EEPROM → Restart Device
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ void switchFarmMode(int newType) {
+   // Validate input
+   if (newType != FARM_PROFILE_LAYER && newType != FARM_PROFILE_BROILER) {
+     Serial.printf("⚠️ Invalid farm type: %d (must be 0=Layer or 1=Broiler)\n", newType);
+     return;
+   }
+   
+   // Check if already same type
+   if (newType == farmConfig.farmType) {
+     Serial.printf("ℹ️ Farm type unchanged: %s\n", getFarmTypeStr().c_str());
+     return;
+   }
+   
+   String oldType = getFarmTypeStr();
+   
+   // Update config
+   farmConfig.farmType = newType;
+   
+   // Reset age to 1 if switching to broiler
+   if (newType == FARM_PROFILE_BROILER) {
+     farmConfig.chickAgeDays = 1;
+   }
+   
+   Serial.println("\n═══════════════════════════════════════════════════════");
+   Serial.printf("🔄 MODE SWITCH: %s → %s\n", oldType.c_str(), getFarmTypeStr().c_str());
+   Serial.println("═══════════════════════════════════════════════════════");
+   
+   // Save to EEPROM
+   saveFarmProfile();
+   
+   Serial.println("\n⏳ Restarting device to apply new profile...");
+   Serial.println("   Device will be back online in ~5 seconds");
+   delay(1000);  // Allow serial output to flush
+   
+   // Restart device to fully apply new profile
+   ESP.restart();
+ }
+ 
+ // Alias for backward compatibility
+ void setFarmProfile(int newType) {
+   switchFarmMode(newType);
+ }
   // Save to EEPROM
   saveFarmProfile();
   
