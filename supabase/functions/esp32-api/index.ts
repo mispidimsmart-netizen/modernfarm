@@ -371,6 +371,15 @@ Deno.serve(async (req) => {
       return await handleSetFarmProfile(bodyData, supabase, userId);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔄 UPDATE AGE ENDPOINT
+    // Updates broiler age - App → API → ESP32 (via sync response) → EEPROM
+    // POST /update-age { "age_days": 14 }
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'POST' && path === 'update-age') {
+      return await handleUpdateAge(bodyData, supabase, userId);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -465,6 +474,127 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔄 UPDATE AGE HANDLER
+// Updates broiler age when changed from the app
+// The new age is stored in broiler_batches and sent to ESP32 on next sync
+// ═══════════════════════════════════════════════════════════════════════════
+interface UpdateAgePayload {
+  age_days: number;
+  batch_id?: string;
+}
+
+async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: string) {
+  try {
+    const { age_days, batch_id } = body;
+    
+    // Validate age
+    if (typeof age_days !== 'number' || age_days < 1 || age_days > 999) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid age_days. Must be between 1 and 999', 
+          code: 'INVALID_AGE' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check if user has broiler farm type
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('farm_type')
+      .eq('id', userId)
+      .single();
+    
+    if (profile?.farm_type !== 'broiler') {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Age update only available for broiler farms', 
+          code: 'NOT_BROILER' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Calculate new start_date based on age_days
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - age_days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    // Update active batch if batch_id provided, otherwise update any active batch
+    let updateQuery = supabase
+      .from('broiler_batches')
+      .update({ 
+        start_date: startDateStr,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    
+    if (batch_id) {
+      updateQuery = updateQuery.eq('id', batch_id);
+    }
+    
+    const { error: batchError } = await updateQuery;
+    
+    if (batchError) {
+      console.error('Error updating batch age:', batchError);
+      // Continue anyway - age can still be sent to ESP32
+    }
+    
+    console.log(`✓ Broiler age updated: Day ${age_days}`);
+    
+    // Get target temperature for this age
+    const targetTemp = getBroilerTargetTemp(age_days);
+    
+    // Response for ESP32
+    const response = {
+      success: true,
+      age_days: age_days,
+      start_date: startDateStr,
+      target_temp: targetTemp,
+      message: `🐔 Broiler age set to Day ${age_days} (Target: ${targetTemp.min}-${targetTemp.max}°C)`,
+      command: {
+        set_broiler_age: age_days
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error('Error in handleUpdateAge:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', code: 'INTERNAL_ERROR' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// Helper: Get broiler target temperature based on age
+function getBroilerTargetTemp(ageDays: number): { min: number; max: number } {
+  const curve = [
+    { minDays: 1, maxDays: 3, minTemp: 33, maxTemp: 34 },
+    { minDays: 4, maxDays: 7, minTemp: 32, maxTemp: 32 },
+    { minDays: 8, maxDays: 14, minTemp: 30, maxTemp: 30 },
+    { minDays: 15, maxDays: 21, minTemp: 28, maxTemp: 28 },
+    { minDays: 22, maxDays: 28, minTemp: 26, maxTemp: 26 },
+    { minDays: 29, maxDays: 35, minTemp: 24, maxTemp: 24 },
+    { minDays: 36, maxDays: 999, minTemp: 22, maxTemp: 23 },
+  ];
+  
+  for (const range of curve) {
+    if (ageDays >= range.minDays && ageDays <= range.maxDays) {
+      return { min: range.minTemp, max: range.maxTemp };
+    }
+  }
+  
+  return { min: 22, max: 23 }; // Default for 36+ days
 }
 
 async function handleSensorData(body: SensorPayload, supabase: any, userId: string) {
