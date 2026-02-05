@@ -104,6 +104,39 @@ String getFarmTypeStr() { return isLayer() ? "LAYER" : "BROILER"; }
 #define farmProfile farmConfig.farmType
 #define broilerAgeDays farmConfig.chickAgeDays
 
+// ═══════════════════════════════════════════════════════════════════════
+// 📋 RUNTIME RULES (Loaded at boot based on farmType)
+// ═══════════════════════════════════════════════════════════════════════
+struct RuntimeRules {
+  // Temperature thresholds
+  float tempMin;
+  float tempMax;
+  float tempTarget;
+  float tempFanHigh;
+  float tempAlarm;
+  float tempHeaterOn;
+  
+  // HSI thresholds
+  float hsiFanLow;
+  float hsiFanHigh;
+  float hsiEmergency;
+  float hsiCritical;
+  
+  // Ammonia thresholds
+  float ammoniaFan;
+  float ammoniaAlarm;
+  
+  // Humidity thresholds
+  float humidityLow;
+  float humidityHigh;
+  
+  // Feature flags
+  bool useAgeBasedTemp;       // Broiler: dynamic temp
+  bool lightingProtection;    // Layer: 10min OFF beep
+};
+
+RuntimeRules rules;  // Global runtime rules
+
 // ================ WATCHDOG CONFIGURATION ================
 #define WDT_TIMEOUT 8  // 8 seconds watchdog timeout
 bool wasWatchdogReset = false;
@@ -294,6 +327,104 @@ void saveFarmProfile() {
   Serial.printf("     nh3Offset: %.1f ppm\n", farmConfig.nh3Offset);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 📋 LOAD RULES BASED ON FARM TYPE
+// ═══════════════════════════════════════════════════════════════════════
+
+void loadLayerRules() {
+  Serial.println("\n🥚 Loading LAYER rules...");
+  
+  // Fixed temperature range
+  rules.tempMin = LAYER_TEMP_IDEAL_MIN;         // 18°C
+  rules.tempMax = LAYER_TEMP_IDEAL_MAX;         // 27°C
+  rules.tempTarget = (rules.tempMin + rules.tempMax) / 2.0;  // 22.5°C
+  rules.tempFanHigh = LAYER_TEMP_FAN_HIGH;      // 30°C
+  rules.tempAlarm = LAYER_TEMP_ALARM;           // 33°C
+  rules.tempHeaterOn = LAYER_TEMP_HEATER;       // 18°C
+  
+  // HSI thresholds (lower for layers - more sensitive)
+  rules.hsiFanLow = LAYER_HSI_FAN_LOW;          // 30
+  rules.hsiFanHigh = LAYER_HSI_FAN_HIGH;        // 35
+  rules.hsiEmergency = LAYER_HSI_EMERGENCY;     // 40
+  rules.hsiCritical = 999;                       // Not used for Layer
+  
+  // Ammonia (stricter for layers)
+  rules.ammoniaFan = LAYER_AMMONIA_FAN;         // 15 ppm
+  rules.ammoniaAlarm = LAYER_AMMONIA_ALARM;     // 25 ppm
+  
+  // Humidity
+  rules.humidityLow = LAYER_HUMIDITY_LOW;       // 40%
+  rules.humidityHigh = LAYER_HUMIDITY_HIGH;     // 75%
+  
+  // Feature flags
+  rules.useAgeBasedTemp = false;                // Fixed temp
+  rules.lightingProtection = true;              // 10min OFF → beep
+  
+  Serial.println("   ✓ LAYER rules loaded:");
+  Serial.printf("     Temp: %.0f-%.0f°C (fixed)\n", rules.tempMin, rules.tempMax);
+  Serial.printf("     HSI: %.0f/%.0f/%.0f\n", rules.hsiFanLow, rules.hsiFanHigh, rules.hsiEmergency);
+  Serial.printf("     NH3: %.0f/%.0f ppm\n", rules.ammoniaFan, rules.ammoniaAlarm);
+  Serial.println("     Lighting Protection: ON");
+}
+
+void loadBroilerRules() {
+  Serial.println("\n🐔 Loading BROILER rules...");
+  
+  // Age-based temperature (calculate from curve)
+  float tMin, tMax;
+  getBroilerTargetTemp(farmConfig.chickAgeDays, tMin, tMax);
+  rules.tempMin = tMin;
+  rules.tempMax = tMax;
+  rules.tempTarget = (tMin + tMax) / 2.0;
+  rules.tempFanHigh = rules.tempTarget + BROILER_TEMP_FAN_DEV;    // +2°C
+  rules.tempAlarm = rules.tempTarget + BROILER_TEMP_ALARM_DEV;    // +4°C
+  rules.tempHeaterOn = rules.tempTarget - BROILER_TEMP_HEATER_DEV; // -2°C
+  
+  // HSI thresholds (higher tolerance for broilers)
+  rules.hsiFanLow = 35;                                           // Mild
+  rules.hsiFanHigh = BROILER_HSI_FAN_HIGH;                        // 38
+  rules.hsiEmergency = BROILER_HSI_EMERGENCY;                     // 42
+  rules.hsiCritical = BROILER_HSI_CRITICAL;                       // 45
+  
+  // Ammonia
+  rules.ammoniaFan = BROILER_AMMONIA_FAN;                         // 20 ppm
+  rules.ammoniaAlarm = BROILER_AMMONIA_ALARM;                     // 30 ppm
+  
+  // Humidity
+  rules.humidityLow = BROILER_HUMIDITY_LOW;                       // 40%
+  rules.humidityHigh = BROILER_HUMIDITY_HIGH;                     // 75%
+  
+  // Feature flags
+  rules.useAgeBasedTemp = true;                                   // Dynamic temp
+  rules.lightingProtection = false;                               // No beep
+  
+  Serial.println("   ✓ BROILER rules loaded:");
+  Serial.printf("     Age: Day %d\n", farmConfig.chickAgeDays);
+  Serial.printf("     Temp: %.0f-%.0f°C (age-based)\n", rules.tempMin, rules.tempMax);
+  Serial.printf("     HSI: %.0f/%.0f/%.0f/%.0f\n", rules.hsiFanLow, rules.hsiFanHigh, rules.hsiEmergency, rules.hsiCritical);
+  Serial.printf("     NH3: %.0f/%.0f ppm\n", rules.ammoniaFan, rules.ammoniaAlarm);
+}
+
+void updateBroilerTempRules() {
+  // Called periodically to update temp based on age
+  if (!rules.useAgeBasedTemp) return;
+  
+  float tMin, tMax;
+  getBroilerTargetTemp(farmConfig.chickAgeDays, tMin, tMax);
+  
+  if (tMin != rules.tempMin || tMax != rules.tempMax) {
+    rules.tempMin = tMin;
+    rules.tempMax = tMax;
+    rules.tempTarget = (tMin + tMax) / 2.0;
+    rules.tempFanHigh = rules.tempTarget + BROILER_TEMP_FAN_DEV;
+    rules.tempAlarm = rules.tempTarget + BROILER_TEMP_ALARM_DEV;
+    rules.tempHeaterOn = rules.tempTarget - BROILER_TEMP_HEATER_DEV;
+    
+    Serial.printf("🔄 BROILER temp updated: Day %d → %.0f-%.0f°C\n", 
+                  farmConfig.chickAgeDays, rules.tempMin, rules.tempMax);
+  }
+}
+
 bool setFarmProfileFromAPI(uint8_t newProfile, int newAge = -1) {
   if (newProfile > FARM_PROFILE_BROILER) return false;
   
@@ -316,6 +447,13 @@ bool setFarmProfileFromAPI(uint8_t newProfile, int newAge = -1) {
   if (changed) {
     saveFarmProfile();
     printFarmProfile();
+    
+    // Reload rules after profile change
+    if (isLayer()) {
+      loadLayerRules();
+    } else {
+      loadBroilerRules();
+    }
   }
   
   return true;
@@ -897,6 +1035,17 @@ void setup() {
   EEPROM.begin(EEPROM_SIZE);
   loadFarmProfile();
   
+  // === LOAD RULES BASED ON FARM TYPE ===
+  Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+  Serial.println("║  📋 BOOT STEP 2: Loading Automation Rules                     ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════════╝");
+  
+  if (isLayer()) {
+    loadLayerRules();
+  } else {
+    loadBroilerRules();
+  }
+  
   // Boot fan sequence
   Serial.println("🌀 Boot fan: 20 sec air refresh...");
   digitalWrite(FAN_RELAY_PIN, HIGH);
@@ -969,6 +1118,13 @@ void loop() {
   // Run automation
   if (bootFanDone) {
     runAutomation();
+    
+    // Update broiler temp rules periodically (every hour)
+    static unsigned long lastRuleUpdate = 0;
+    if (rules.useAgeBasedTemp && now - lastRuleUpdate >= 3600000) {
+      updateBroilerTempRules();
+      lastRuleUpdate = now;
+    }
   }
   
   // Water failure alert
