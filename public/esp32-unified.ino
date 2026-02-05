@@ -1210,16 +1210,20 @@ void advanceSensorRollingIndex() {
  // Rolling average এর সাথে তুলনা করে false alert প্রতিরোধ
  // ═══════════════════════════════════════════════════════════════════════
  
- // Check if current time is within active monitoring hours (5:00 AM - 10:00 PM)
- bool isActiveWaterHours() {
+ // ═══════════════════════════════════════════════════════════════════════
+ // 💧 WATER MONITORING ALLOWED - Daytime detection (5:00-22:00)
+ // ═══════════════════════════════════════════════════════════════════════
+ bool waterMonitoringAllowed() {
    struct tm timeinfo;
    if (!getLocalTime(&timeinfo)) {
-     // If time not available, assume active hours for safety
-     return true;
+     return true;  // Safety fallback if RTC/cloud time unavailable
    }
-   int hour = timeinfo.tm_hour;
-   return (hour >= 5 && hour < 22);  // 05:00-21:59 (22:00 onwards = night)
+   int h = timeinfo.tm_hour;
+   return (h >= 5 && h <= 22);  // 05:00-22:59 (23:00 onwards = night)
  }
+ 
+ // Legacy alias
+ bool isActiveWaterHours() { return waterMonitoringAllowed(); }
  
  // Calculate water flow rate from pulse count (YF-S201: 7.5 pulses per liter)
  float calculateWaterFlow() {
@@ -1271,10 +1275,36 @@ void advanceSensorRollingIndex() {
    water2hAvg = (count2h > 0) ? (sum2h / count2h) : 0;
  }
  
- // Check for water anomaly (last 2h vs 24h average, require 2 consecutive cycles)
+ // ═══════════════════════════════════════════════════════════════════════
+ // 💧 WATER HEALTH ALERT - Smart detection with second check
+ // ═══════════════════════════════════════════════════════════════════════
+ void waterHealthAlert() {
+   float dropPercent = ((waterRollingAvg - water2hAvg) / waterRollingAvg) * 100;
+   
+   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+   Serial.println("║  💧 WATER HEALTH WARNING - Low Intake (2h vs 24h)             ║");
+   Serial.printf("║  Last 2h: %.1f L/h, 24h Avg: %.1f L/h (%.0f%% drop)            ║\n", 
+                 water2hAvg, waterRollingAvg, dropPercent);
+   Serial.printf("║  Consecutive cycles: %d                                        ║\n", waterAnomalyConsecutive);
+   Serial.println("║  ⚠️ Check bird health immediately!                            ║");
+   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+   
+   // Trigger warning beep (health warning, not emergency alarm)
+   digitalWrite(ALARM_RELAY_PIN, HIGH);
+   delay(200);
+   digitalWrite(ALARM_RELAY_PIN, LOW);
+   delay(100);
+   digitalWrite(ALARM_RELAY_PIN, HIGH);
+   delay(200);
+   digitalWrite(ALARM_RELAY_PIN, LOW);
+   
+   waterAnomalyAlertSent = true;
+ }
+ 
+ // Check for water anomaly - Smart detection with second check
  void checkWaterAnomaly() {
-   // Only monitor during active hours (5:00 AM - 10:00 PM)
-   if (!isActiveWaterHours()) {
+   // Only monitor during daytime (5:00-22:00)
+   if (!waterMonitoringAllowed()) {
      waterAnomalyAlertSent = false;
      waterAnomalyConsecutive = 0;  // Reset on night hours
      Serial.println("[Water] Night hours (22:00-05:00) - monitoring paused");
@@ -1287,36 +1317,22 @@ void advanceSensorRollingIndex() {
      return;
    }
    
-   // Compare last 2h average with 24h rolling average
-   if (waterRollingAvg > 0 && water2hAvg < (waterRollingAvg * (1.0 - WATER_DROP_THRESHOLD))) {
-     // Anomaly detected - increment consecutive counter
+   // Smart detection: current2h < avg24h * 0.2 (80% drop threshold)
+   // Actually using 20% drop = current2h < avg24h * 0.8
+   float threshold = waterRollingAvg * (1.0 - WATER_DROP_THRESHOLD);
+   
+   if (waterRollingAvg > 0 && water2hAvg < threshold) {
+     // First detection - increment counter for second check
      waterAnomalyConsecutive++;
      
      float dropPercent = ((waterRollingAvg - water2hAvg) / waterRollingAvg) * 100;
      Serial.printf("[Water] Anomaly cycle %d: 2h avg=%.1f, 24h avg=%.1f (%.0f%% drop)\n", 
                    waterAnomalyConsecutive, water2hAvg, waterRollingAvg, dropPercent);
      
-     // Require 2 consecutive detection cycles before alerting
-     if (waterAnomalyConsecutive >= WATER_CONSECUTIVE_REQ && !waterAnomalyAlertSent) {
-       
-       Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-       Serial.println("║  💧 WATER HEALTH WARNING - Low Intake (2h vs 24h)             ║");
-       Serial.printf("║  Last 2h: %.1f L/h, 24h Avg: %.1f L/h (%.0f%% drop)            ║\n", 
-                     water2hAvg, waterRollingAvg, dropPercent);
-       Serial.printf("║  Consecutive cycles: %d                                        ║\n", waterAnomalyConsecutive);
-       Serial.println("║  ⚠️ Check bird health immediately!                            ║");
-       Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
-       
-       // Trigger warning beep (health warning, not emergency alarm)
-       digitalWrite(ALARM_RELAY_PIN, HIGH);
-       delay(200);
-       digitalWrite(ALARM_RELAY_PIN, LOW);
-       delay(100);
-       digitalWrite(ALARM_RELAY_PIN, HIGH);
-       delay(200);
-       digitalWrite(ALARM_RELAY_PIN, LOW);
-       
-       waterAnomalyAlertSent = true;
+     // Second check passed - trigger alert
+     bool secondCheck = (waterAnomalyConsecutive >= WATER_CONSECUTIVE_REQ);
+     if (secondCheck && !waterAnomalyAlertSent) {
+       waterHealthAlert();
      }
    } else {
      // Normal water consumption - reset counters
