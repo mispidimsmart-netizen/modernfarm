@@ -138,12 +138,24 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
         `const char* SHED_NAME = "${shedName.trim() || 'Shed A'}";`
       );
 
+      // Replace Farm ID (optional)
+      firmwareCode = firmwareCode.replace(
+        'const char* FARM_ID = "YOUR_FARM_ID";',
+        `const char* FARM_ID = "${shedId.trim() ? shedId.trim().split('_')[0] : 'default_farm'}";`
+      );
+
       // Set default Farm Type in EEPROM default
       if (farmType === 'broiler') {
         // Update the default farmType to BROILER
         firmwareCode = firmwareCode.replace(
           '.farmType = FARM_PROFILE_LAYER,  // Default: Layer',
           '.farmType = FARM_PROFILE_BROILER,  // Default: Broiler (auto-configured)'
+        );
+        
+        // Also set initial broiler age to Day 1
+        firmwareCode = firmwareCode.replace(
+          '.chickAgeDays = 1,                // Default: Day 1',
+          '.chickAgeDays = 1,                // Default: Day 1 (auto-configured for broiler)'
         );
       }
 
