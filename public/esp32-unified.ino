@@ -328,6 +328,48 @@ void saveFarmProfile() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// 🔄 AGE UPDATE (Cloud → ESP32 → EEPROM)
+// App থেকে age change হলে: API → ESP32 → save EEPROM
+// ═══════════════════════════════════════════════════════════════════════
+
+void updateAge(int newAge) {
+  if (newAge < 1 || newAge > 999) {
+    Serial.printf("⚠️ Invalid age: %d (must be 1-999)\n", newAge);
+    return;
+  }
+  
+  if (newAge == farmConfig.chickAgeDays) {
+    Serial.printf("ℹ️ Age unchanged: Day %d\n", newAge);
+    return;
+  }
+  
+  int oldAge = farmConfig.chickAgeDays;
+  farmConfig.chickAgeDays = newAge;
+  
+  Serial.printf("\n🐔 AGE UPDATED: Day %d → Day %d\n", oldAge, newAge);
+  
+  // Save to EEPROM
+  saveFarmProfile();
+  
+  // If broiler mode, reload temperature rules for new age
+  if (isBroiler()) {
+    loadBroilerRules();
+    Serial.printf("   ✓ Temperature rules updated for Day %d\n", newAge);
+  }
+}
+
+// Auto-increment age daily (called every 24 hours)
+void autoIncrementAge() {
+  if (!isBroiler()) return;
+  
+  farmConfig.chickAgeDays++;
+  Serial.printf("\n📅 AUTO AGE INCREMENT: Day %d\n", farmConfig.chickAgeDays);
+  
+  saveFarmProfile();
+  loadBroilerRules();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // 📋 LOAD RULES BASED ON FARM TYPE
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -1105,6 +1147,7 @@ void loop() {
   static unsigned long lastSensorRead = 0;
   static unsigned long lastCloudAttempt = 0;
   static unsigned long lastRuleUpdate = 0;
+  static unsigned long lastDayCheck = 0;
   unsigned long now = millis();
   
   // Boot fan sequence complete
@@ -1146,6 +1189,13 @@ void loop() {
     if (isBroiler() && now - lastRuleUpdate >= 3600000) {
       updateBroilerTempRules();
       lastRuleUpdate = now;
+    }
+    
+    // Auto-increment age every 24 hours (Broiler only)
+    // 86400000 ms = 24 hours
+    if (isBroiler() && now - lastDayCheck >= 86400000UL) {
+      autoIncrementAge();
+      lastDayCheck = now;
     }
   }
   
