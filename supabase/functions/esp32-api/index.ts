@@ -362,6 +362,15 @@ Deno.serve(async (req) => {
       return await getSystemStatus(supabase, userId, shedId, deviceName);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🐔 SET FARM PROFILE ENDPOINT
+    // Sets farm_profile (0=Layer, 1=Broiler) for ESP32 to store in EEPROM
+    // POST /set-farm-profile { "farm_profile": 0 or 1, "broiler_age_days": 14 }
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'POST' && path === 'set-farm-profile') {
+      return await handleSetFarmProfile(bodyData, supabase, userId);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -375,6 +384,88 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🐔 SET FARM PROFILE HANDLER
+// Updates user's farm_type and returns confirmation for ESP32
+// ESP32 stores this in EEPROM and uses appropriate automation
+// ═══════════════════════════════════════════════════════════════════════════
+interface SetFarmProfilePayload {
+  farm_profile: number;  // 0 = Layer, 1 = Broiler
+  broiler_age_days?: number;
+  shed_id?: string;
+}
+
+async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, userId: string) {
+  try {
+    const { farm_profile, broiler_age_days } = body;
+    
+    // Validate farm_profile
+    if (farm_profile !== 0 && farm_profile !== 1) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid farm_profile. Use 0 for Layer, 1 for Broiler', 
+          code: 'INVALID_PROFILE' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const farmType = farm_profile === 0 ? 'layer' : 'broiler';
+    
+    // Update user's profile with farm_type
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ 
+        farm_type: farmType,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+    
+    if (profileError) {
+      console.error('Error updating farm profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to update farm profile', code: 'UPDATE_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`✓ Farm profile set: ${farmType.toUpperCase()}${farm_profile === 1 ? ` (Day ${broiler_age_days || 1})` : ''}`);
+    
+    // Response for ESP32 to store in EEPROM
+    const response = {
+      success: true,
+      farm_profile: farm_profile,
+      farm_type: farmType.toUpperCase(),
+      broiler_age_days: broiler_age_days || 1,
+      message: farm_profile === 0 
+        ? '🥚 Farm profile set to LAYER (fixed temp: 18-27°C)' 
+        : `🐔 Farm profile set to BROILER (Day ${broiler_age_days || 1})`,
+      thresholds: farm_profile === 0 
+        ? {
+            temp_ideal_min: 18, temp_ideal_max: 27, temp_fan_high: 30, temp_alarm: 33,
+            ammonia_fan: 15, ammonia_alarm: 25, hsi_fan_low: 30, hsi_fan_high: 35, hsi_emergency: 40
+          }
+        : {
+            temp_curve: 'age-based', temp_fan_deviation: 2, temp_heater_deviation: 2, temp_alarm_deviation: 4,
+            ammonia_fan: 20, ammonia_alarm: 30, hsi_fan_high: 38, hsi_emergency: 42, hsi_critical: 45
+          },
+      timestamp: new Date().toISOString()
+    };
+    
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error('Error in handleSetFarmProfile:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error', code: 'INTERNAL_ERROR' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
 
 async function handleSensorData(body: SensorPayload, supabase: any, userId: string) {
   try {
