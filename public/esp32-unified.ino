@@ -249,6 +249,18 @@ const float BROILER_HSI_FAN_HIGH = 38.0;
 const float BROILER_HSI_EMERGENCY = 42.0;
 const float BROILER_HSI_CRITICAL = 45.0;
 
+// ═══════════════════════════════════════════════════════════════════════
+// 📋 FUNCTION PROTOTYPES (Required for Arduino C++)
+// These must be declared before they are called
+// ═══════════════════════════════════════════════════════════════════════
+void loadLayerRules();
+void loadBroilerRules();
+void updateBroilerTempRules();
+void saveFarmProfile();
+void saveAgeTickTime();
+void getBroilerTargetTemp(int ageDays, float &minTemp, float &maxTemp);
+void handleBroilerAgeIncrement();
+
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
 Preferences preferences;
