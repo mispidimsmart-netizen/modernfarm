@@ -680,18 +680,45 @@ void layerControl() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void broilerControl() {
-  // Get target temp for current age
+  // ===== GET TARGET TEMP FOR CURRENT AGE =====
   float targetMin, targetMax;
   getBroilerTargetTemp(broilerAgeDays, targetMin, targetMax);
-  float targetTemp = (targetMin + targetMax) / 2.0;
-  float tempDeviation = temperature - targetTemp;
+  float target = (targetMin + targetMax) / 2.0;
   
-  Serial.printf("🐔 BROILER Day %d: Target=%.0f°C, Actual=%.1f°C, Dev=%+.1f°C\n", 
-                broilerAgeDays, targetTemp, temperature, tempDeviation);
+  Serial.printf("[Broiler] Day %d: Target=%.0f°C, Actual=%.1f°C\n", 
+                broilerAgeDays, target, temperature);
   
-  // === HSI CRITICAL (>45) - EMERGENCY! ===
-  if (currentHSI > BROILER_HSI_CRITICAL) {
-    Serial.println("🚨🚨🚨 BROILER HSI CRITICAL (>45) → MAX + CONTINUOUS ALARM!");
+  // ===== TEMPERATURE CONTROL (Age-Based) =====
+  if (temperature < target - 2) {
+    Serial.printf("🥶 Temp %.1f°C < Target-2 → Heater ON\n", temperature);
+    setHeater(true);
+    setFanState(false, "OFF");
+    setAlarm(false);
+    systemState = "COLD";
+    return;
+  }
+  
+  if (temperature > target + 4) {
+    Serial.printf("🚨 Temp %.1f°C > Target+4 → ALARM!\n", temperature);
+    setFanState(true, "HIGH");
+    setAlarm(true);
+    setHeater(false);
+    systemState = "EMERGENCY";
+    return;
+  }
+  
+  if (temperature > target + 2) {
+    Serial.printf("🔥 Temp %.1f°C > Target+2 → Fan ON\n", temperature);
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    setHeater(false);
+    systemState = "HIGH_STRESS";
+    return;
+  }
+  
+  // ===== HSI CONTROL =====
+  if (currentHSI > 42) {
+    Serial.printf("🚨 HSI %.1f > 42 → Emergency Ventilation!\n", currentHSI);
     setFanState(true, "MAX");
     setAlarm(true);
     setHeater(false);
@@ -699,93 +726,38 @@ void broilerControl() {
     return;
   }
   
-  // === HSI EMERGENCY (>42) ===
-  if (currentHSI > BROILER_HSI_EMERGENCY) {
-    Serial.println("🚨 BROILER HSI EMERGENCY (>42) → MAX + ALARM!");
-    setFanState(true, "MAX");
-    setAlarm(true);
-    setHeater(false);
-    systemState = "DANGER";
-    return;
-  }
-  
-  // === AMMONIA ALARM ===
-  if (ammonia > BROILER_AMMONIA_ALARM) {
-    Serial.printf("🚨 AMMONIA ALARM (%.1f > 30 ppm) → HIGH + ALARM!\n", ammonia);
+  if (currentHSI > 38) {
+    Serial.printf("🔥 HSI %.1f > 38 → Fan HIGH\n", currentHSI);
     setFanState(true, "HIGH");
-    setAlarm(true);
-    systemState = "DANGER";
-    return;
-  }
-  
-  // === TEMP ALARM (+4°C) ===
-  if (tempDeviation >= BROILER_TEMP_ALARM_DEV) {
-    Serial.printf("🚨 BROILER TEMP ALARM (+%.1f°C) → HIGH + ALARM!\n", tempDeviation);
-    setFanState(true, "HIGH");
-    setAlarm(true);
-    setHeater(false);
-    systemState = "DANGER";
-    return;
-  }
-  
-  // Clear alarm
-  setAlarm(false);
-  
-  // === HSI FAN HIGH (>38) ===
-  if (currentHSI > BROILER_HSI_FAN_HIGH) {
-    Serial.printf("🔥 BROILER HSI HIGH (%.1f > 38) → Fan HIGH\n", currentHSI);
-    setFanState(true, "HIGH");
+    setAlarm(false);
     setHeater(false);
     systemState = "HIGH_STRESS";
     return;
   }
   
-  // === TEMP HIGH (+2°C) ===
-  if (tempDeviation >= BROILER_TEMP_FAN_DEV) {
-    Serial.printf("🔥 BROILER TEMP HIGH (+%.1f°C) → Fan HIGH\n", tempDeviation);
+  // ===== AMMONIA CONTROL =====
+  if (ammonia > 30) {
+    Serial.printf("🚨 NH3 %.1f > 30 ppm → ALARM!\n", ammonia);
     setFanState(true, "HIGH");
+    setAlarm(true);
     setHeater(false);
-    systemState = "HIGH_STRESS";
+    systemState = "DANGER";
     return;
   }
   
-  // === TEMP SLIGHTLY HIGH ===
-  if (tempDeviation > 0 && tempDeviation < BROILER_TEMP_FAN_DEV) {
-    Serial.printf("⚠️ BROILER TEMP BORDERLINE (+%.1f°C) → Fan LOW\n", tempDeviation);
-    setFanState(true, "LOW");
-    setHeater(false);
-    systemState = "MILD_STRESS";
-    return;
-  }
-  
-  // === AMMONIA HIGH ===
-  if (ammonia > BROILER_AMMONIA_FAN) {
-    Serial.printf("⚠️ AMMONIA HIGH (%.1f > 20 ppm) → Fan MEDIUM\n", ammonia);
+  if (ammonia > 20) {
+    Serial.printf("⚠️ NH3 %.1f > 20 ppm → Fan ON\n", ammonia);
     setFanState(true, "MEDIUM");
+    setAlarm(false);
+    setHeater(false);
     systemState = "MILD_STRESS";
     return;
   }
   
-  // === HIGH HUMIDITY ===
-  if (humidity > BROILER_HUMIDITY_HIGH && fanOn) {
-    Serial.printf("💨 HUMIDITY HIGH (%.1f > 75%%) → Increase fan\n", humidity);
-    if (fanSpeed == "LOW") setFanState(true, "MEDIUM");
-    else if (fanSpeed == "MEDIUM") setFanState(true, "HIGH");
-    return;
-  }
-  
-  // === COLD (-2°C) - HEATER ON ===
-  if (tempDeviation <= -BROILER_TEMP_HEATER_DEV) {
-    Serial.printf("🥶 BROILER COLD (%.1f°C < Target-2) → Heater ON, Fan OFF\n", temperature);
-    setFanState(false, "OFF");
-    setHeater(true);
-    systemState = "COLD";
-    return;
-  }
-  
-  // === IDEAL ===
-  Serial.printf("✅ BROILER IDEAL (%.1f°C ≈ Target %.0f°C) → Normal\n", temperature, targetTemp);
+  // ===== IDEAL - ALL NORMAL =====
+  Serial.printf("✅ Broiler IDEAL: %.1f°C (Target %.0f°C), %.1f ppm\n", temperature, target, ammonia);
   setFanState(false, "OFF");
+  setAlarm(false);
   setHeater(false);
   systemState = "NORMAL";
 }
