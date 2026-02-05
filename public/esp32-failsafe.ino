@@ -269,6 +269,14 @@ String FARM_TYPE = "LAYER";  // Default: LAYER (synced from cloud)
 int BROILER_AGE_DAYS = 1;    // Current broiler batch age in days (synced from cloud)
 bool farmTypeSyncedFromCloud = false;  // Track if we've synced from cloud
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🐔 BROILER AGE OFFLINE TRACKING
+// Internet গেলেও temperature curve ঠিক থাকবে
+// প্রতি ২৪ ঘণ্টায় স্বয়ংক্রিয়ভাবে বয়স বাড়বে (EEPROM-এ সেভ থাকে)
+// ═══════════════════════════════════════════════════════════════════════
+unsigned long lastAgeTickMillis = 0;          // Track local age increment time
+const unsigned long AGE_TICK_INTERVAL = 86400000UL;  // 24 hours in milliseconds
+
 // ================ BROILER TEMPERATURE CURVE ================
 // Age-based temperature thresholds for broilers
 struct BroilerTempCurve {
@@ -520,6 +528,22 @@ void setup() {
   Serial.println("\n▶ Step 3: Loading cached settings from EEPROM...");
   loadCachedSettings();
   Serial.printf("✓ Settings loaded (version: %d)\n", cachedSettings.version);
+  
+  // ========== STEP 3.5: Load Broiler Age Tracking ==========
+  if (FARM_TYPE == "BROILER") {
+    Serial.println("\n▶ Step 3.5: Loading broiler age tracking...");
+    loadAgeTickTime();
+    
+    // Also load persisted age
+    preferences.begin("farm", true);
+    int savedAge = preferences.getInt("broilerAge", BROILER_AGE_DAYS);
+    preferences.end();
+    
+    if (savedAge > BROILER_AGE_DAYS) {
+      BROILER_AGE_DAYS = savedAge;
+      Serial.printf("✓ Broiler age restored: Day %d\n", BROILER_AGE_DAYS);
+    }
+  }
   
   // ========== STEP 4: Watchdog Restart or Sensor Fail = FAILSAFE MODE ==========
   // 🛡️ Watchdog restart → Fan ON immediately (already done in Step 1)
@@ -787,13 +811,17 @@ void loop() {
   // যেকোনো অজানা error হলে → Fan ON + Alarm periodic + Never stay OFF
   checkDefaultSafeState(now);
   
-  // 8. Run automation (cloud or local)
+  // 🐔 8. BROILER AGE OFFLINE TICK
+  // Internet গেলেও temperature curve ঠিক থাকবে
+  ageTick();
+  
+  // 9. Run automation (cloud or local)
   runAutomation();
   
-  // 9. Update status LED
+  // 10. Update status LED
   updateStatusLED();
   
-  // 🔧 10. Feed Watchdog Timer - prevents auto restart
+  // 🔧 11. Feed Watchdog Timer - prevents auto restart
   // If loop freezes > 8 sec, WDT will restart ESP32
   esp_task_wdt_reset();
   
@@ -2527,6 +2555,66 @@ void parseTime(String timeStr, int &hour, int &minute) {
   if (colonIndex > 0) {
     hour = timeStr.substring(0, colonIndex).toInt();
     minute = timeStr.substring(colonIndex + 1).toInt();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🐔 BROILER AGE OFFLINE TRACKING FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+void loadAgeTickTime() {
+  preferences.begin("age_track", true);  // Read-only
+  lastAgeTickMillis = preferences.getULong("lastTick", 0);
+  preferences.end();
+  
+  if (lastAgeTickMillis == 0) {
+    // First time or EEPROM cleared - start from now
+    lastAgeTickMillis = millis();
+    saveAgeTickTime();
+    Serial.println("📅 Age tracking initialized");
+  } else {
+    Serial.printf("📅 Last age tick loaded: %lu ms ago\n", millis() - lastAgeTickMillis);
+  }
+}
+
+void saveAgeTickTime() {
+  preferences.begin("age_track", false);  // Read-write
+  preferences.putULong("lastTick", millis());
+  preferences.end();
+}
+
+// Check if 24 hours passed and auto-increment age
+// Works even when offline - no internet required!
+void ageTick() {
+  if (FARM_TYPE != "BROILER") return;
+  
+  unsigned long now = millis();
+  unsigned long elapsed = now - lastAgeTickMillis;
+  
+  // Handle millis() overflow (every ~49 days)
+  if (now < lastAgeTickMillis) {
+    elapsed = AGE_TICK_INTERVAL;  // Force tick on overflow
+    Serial.println("📅 Millis overflow detected - forcing age tick");
+  }
+  
+  if (elapsed >= AGE_TICK_INTERVAL) {
+    // 24 hours passed - increment age
+    Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+    Serial.println("║  📅 OFFLINE AGE TICK - 24 Hours Elapsed                       ║");
+    Serial.printf("║  Broiler Age: Day %d → Day %d                                  ║\n", 
+                  BROILER_AGE_DAYS, BROILER_AGE_DAYS + 1);
+    Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+    
+    BROILER_AGE_DAYS++;
+    lastAgeTickMillis = now;
+    saveAgeTickTime();
+    
+    // Save new age to preferences for persistence
+    preferences.begin("farm", false);
+    preferences.putInt("broilerAge", BROILER_AGE_DAYS);
+    preferences.end();
+    
+    Serial.printf("✅ Temperature curve updated for Day %d\n", BROILER_AGE_DAYS);
   }
 }
 
