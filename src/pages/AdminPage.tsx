@@ -49,7 +49,7 @@ import { AdminNotificationSender } from '@/components/admin/AdminNotificationSen
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
 import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
- import { AppDocumentation } from '@/components/admin/AppDocumentation';
+import { AppDocumentation } from '@/components/admin/AppDocumentation';
 
 const t = {
   bn: {
