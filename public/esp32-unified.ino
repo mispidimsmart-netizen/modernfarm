@@ -805,24 +805,53 @@ void broilerControl() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// COMMON SAFETY CHECKS (Both farm types)
+// 🛡️ FAIL-SAFE COMMON (Profile Independent!)
+// এগুলো Layer/Broiler যাই হোক - সবার জন্য একই
 // ═══════════════════════════════════════════════════════════════════════
 
-void runSafetyChecks() {
-  // ----- Cloud Connection Check -----
+void failSafeCommon() {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 1️⃣ SENSOR MISSING → FAN ON
+  // সেন্সর থেকে ডাটা না পেলে - ফ্যান চালু রাখো (সেফটি)
+  // ═══════════════════════════════════════════════════════════════════════
+  if (sensorErrorMode) {
+    Serial.println("🛡️ [FAILSAFE] Sensor missing → Fan ON!");
+    setFanState(true, "HIGH");
+    systemState = "SENSOR_ERROR";
+    // Pulse alarm every 20 seconds
+    static unsigned long lastSensorBeep = 0;
+    if (millis() - lastSensorBeep > 20000) {
+      setAlarm(true);
+      delay(200);
+      setAlarm(false);
+      lastSensorBeep = millis();
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 2️⃣ NO INTERNET → LOCAL MODE
+  // ৫ মিনিট ক্লাউড না পেলে - লোকাল অটো মোডে চলো
+  // ═══════════════════════════════════════════════════════════════════════
   unsigned long timeSinceSync = millis() - lastCloudSync;
   
   if (timeSinceSync > CLOUD_TIMEOUT) {
     if (!failsafeMode) {
-      Serial.println("⚠️ [Safety] Cloud disconnected > 5min - entering LOCAL AUTO MODE");
+      Serial.println("🛡️ [FAILSAFE] No internet > 5min → LOCAL AUTO MODE!");
       failsafeMode = true;
+    }
+  } else {
+    if (failsafeMode && cloudConnected) {
+      Serial.println("✅ [FAILSAFE] Cloud restored → Normal mode");
+      failsafeMode = false;
     }
   }
   
-  // ----- Water Failure Alert -----
+  // ═══════════════════════════════════════════════════════════════════════
+  // 3️⃣ WATER FAILURE → ALERT
+  // ৬ ঘণ্টা পানি না গেলে - বিপ দাও
+  // ═══════════════════════════════════════════════════════════════════════
   if (waterFailureMode) {
-    Serial.println("⚠️ [Safety] Water flow not detected > 6 hours");
-    // Quick beep every 30 seconds
+    Serial.println("🛡️ [FAILSAFE] Water flow missing > 6 hours → Alert!");
     static unsigned long lastWaterBeep = 0;
     if (millis() - lastWaterBeep > 30000) {
       setAlarm(true);
@@ -832,27 +861,39 @@ void runSafetyChecks() {
     }
   }
   
-  // ----- Lighting Protection (Layer only) -----
+  // ═══════════════════════════════════════════════════════════════════════
+  // 4️⃣ LIGHTING PROTECTION (Layer Only)
+  // ১০ মিনিট লাইট বন্ধ থাকলে - বিপ দাও (শুধু লেয়ার)
+  // ═══════════════════════════════════════════════════════════════════════
   if (isLayer() && !lightOn) {
     static unsigned long lightOffStart = 0;
     if (lightOffStart == 0) {
       lightOffStart = millis();
-    } else if (millis() - lightOffStart > 600000) { // 10 minutes
-      // Light has been OFF for 10+ minutes during day
-      Serial.println("⚠️ [Safety] Lighting Protection: Light OFF > 10 min!");
-      // Quick beep
+    } else if (millis() - lightOffStart > 600000) {
+      Serial.println("🛡️ [FAILSAFE] Light OFF > 10 min → Alert!");
       static unsigned long lastLightBeep = 0;
-      if (millis() - lastLightBeep > 60000) { // Every minute
+      if (millis() - lastLightBeep > 60000) {
         setAlarm(true);
         delay(100);
         setAlarm(false);
         lastLightBeep = millis();
       }
     }
+  } else {
+    // Reset light off timer when light is on
+    // (handled by static variable reset on next call)
   }
   
-  // ----- Watchdog Feed -----
+  // ═══════════════════════════════════════════════════════════════════════
+  // 5️⃣ WATCHDOG FEED
+  // ৮ সেকেন্ড হ্যাং হলে - অটো রিস্টার্ট (hardware level)
+  // ═══════════════════════════════════════════════════════════════════════
   esp_task_wdt_reset();
+}
+
+// Alias for backward compatibility
+void runSafetyChecks() {
+  failSafeCommon();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
