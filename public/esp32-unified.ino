@@ -80,6 +80,19 @@
  #define POWER_PERSIST_DURATION   5000      // 5 seconds persistence for alert
  #define OFFLINE_BUFFER_SIZE      50        // Store last 50 readings
  
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🛡️ SENSOR SANITY FILTER CONSTANTS
+ // Reject impossible readings to prevent false automation
+ // ═══════════════════════════════════════════════════════════════════════
+ #define TEMP_SANITY_MIN          0.0       // Below 0°C = impossible
+ #define TEMP_SANITY_MAX          60.0      // Above 60°C = impossible
+ #define HUMIDITY_SANITY_MIN      10.0      // Below 10% = sensor error
+ #define HUMIDITY_SANITY_MAX      100.0     // Above 100% = impossible
+ #define AMMONIA_JUMP_THRESHOLD   0.50      // 50% change in 2 sec = spike
+ #define AMMONIA_JUMP_WINDOW_MS   2000      // 2 second window
+ #define VOLTAGE_SPIKE_WINDOW_MS  1000      // Ignore voltage changes < 1 sec
+ #define SENSOR_ROLLING_AVG_SIZE  5         // Rolling average for all decisions
+
 // EEPROM Configuration
 #define EEPROM_SIZE              512
 #define EEPROM_CONFIG_ADDR       0      // Start address for FarmConfig
@@ -280,6 +293,11 @@ bool sensorInitOK = true;
  unsigned long safeModeEndTime = 0;
  String restartReason = "UNKNOWN";
  int totalRestarts = 0;
+ 
+ // STABILIZING State
+ bool stabilizingMode = true;         // True for first 30 seconds after boot
+ unsigned long stabilizingEndTime = 0;
+ 
  unsigned long onlineDurationSec = 0;
  unsigned long offlineDurationSec = 0;
  unsigned long lastOnlineCheck = 0;
@@ -293,10 +311,20 @@ bool sensorInitOK = true;
  float ammoniaAvg10 = 0;
  int consecutiveHighAmmonia = 0;
  
+ // Sensor Sanity Filter State
+ float lastValidAmmonia = 0;
+ unsigned long lastAmmoniaTime = 0;
+ float tempRollingBuffer[SENSOR_ROLLING_AVG_SIZE] = {0};
+ float humRollingBuffer[SENSOR_ROLLING_AVG_SIZE] = {0};
+ int sensorRollingIndex = 0;
+ int sensorRollingCount = 0;
+
  // Power Sensor Filter
  float powerVoltageRMS = 230.0;
  unsigned long lowVoltageSince = 0;
  bool powerFailConfirmed = false;
+unsigned long lastVoltageChangeTime = 0;
+float lastVoltageRMS = 230.0;
  
  // Offline Buffer
  struct SensorBufferEntry {
@@ -820,7 +848,10 @@ void IRAM_ATTR waterPulseISR() {
  void enterSafeMode() {
    safeModeActive = true;
    safeModeEndTime = millis() + SAFE_MODE_DURATION;
-   Serial.println("\n🛡️ SAFE MODE ACTIVATED (30s) - Fan ON, Commands IGNORED");
+   stabilizingMode = true;
+   stabilizingEndTime = safeModeEndTime;
+   systemState = "STABILIZING";
+   Serial.println("\n🛡️ STABILIZING MODE (30s) - Fan ON, Commands IGNORED, No Alerts");
    pinMode(FAN_RELAY_PIN, OUTPUT);
    digitalWrite(FAN_RELAY_PIN, HIGH);
    fanOn = true;
@@ -829,7 +860,15 @@ void IRAM_ATTR waterPulseISR() {
  }
  
  void checkSafeModeExit() {
-   if (safeModeActive && millis() >= safeModeEndTime) {
+   unsigned long now = millis();
+   
+   // Check stabilizing mode exit (applies to both safe mode and normal boot)
+   if (stabilizingMode && now >= stabilizingEndTime) {
+     stabilizingMode = false;
+     Serial.println("✅ STABILIZING complete → Normal operation");
+   }
+   
+   if (safeModeActive && now >= safeModeEndTime) {
      safeModeActive = false;
      Serial.println("✅ Safe mode ended → Normal automation resumed");
    }
@@ -851,6 +890,118 @@ void IRAM_ATTR waterPulseISR() {
    }
  }
  
+// ═══════════════════════════════════════════════════════════════════════
+// 🛡️ SENSOR SANITY FILTER FUNCTIONS
+// Reject impossible readings, use rolling average for all decisions
+// ═══════════════════════════════════════════════════════════════════════
+
+// Check if temperature reading is within sane range
+bool isTempSane(float temp) {
+  return !isnan(temp) && temp >= TEMP_SANITY_MIN && temp <= TEMP_SANITY_MAX;
+}
+
+// Check if humidity reading is within sane range
+bool isHumiditySane(float hum) {
+  return !isnan(hum) && hum >= HUMIDITY_SANITY_MIN && hum <= HUMIDITY_SANITY_MAX;
+}
+
+// Check for sudden ammonia spike (>50% change in 2 seconds)
+bool isAmmoniaSpikeDetected(float newReading) {
+  unsigned long now = millis();
+  
+  // First reading - no comparison possible
+  if (lastAmmoniaTime == 0) {
+    lastValidAmmonia = newReading;
+    lastAmmoniaTime = now;
+    return false;
+  }
+  
+  // Check time window
+  if (now - lastAmmoniaTime < AMMONIA_JUMP_WINDOW_MS) {
+    // Within 2 second window - check for spike
+    if (lastValidAmmonia > 0) {
+      float changePercent = abs(newReading - lastValidAmmonia) / lastValidAmmonia;
+      if (changePercent > AMMONIA_JUMP_THRESHOLD) {
+        Serial.printf("⚠️ AMMONIA SPIKE REJECTED: %.1f → %.1f (%.0f%% change in <2s)\n", 
+                      lastValidAmmonia, newReading, changePercent * 100);
+        return true;  // Spike detected - reject reading
+      }
+    }
+  }
+  
+  // Valid reading - update last known values
+  lastValidAmmonia = newReading;
+  lastAmmoniaTime = now;
+  return false;
+}
+
+// Check for voltage spike (change <1 second)
+bool isVoltageSpikeDetected(float newVoltage) {
+  unsigned long now = millis();
+  
+  // Calculate voltage change
+  float voltageChange = abs(newVoltage - lastVoltageRMS);
+  
+  // If significant change happened too fast, reject it
+  if (voltageChange > 20 && (now - lastVoltageChangeTime) < VOLTAGE_SPIKE_WINDOW_MS) {
+    Serial.printf("⚠️ VOLTAGE SPIKE REJECTED: %.1fV → %.1fV (<1 sec)\n", 
+                  lastVoltageRMS, newVoltage);
+    return true;
+  }
+  
+  // Valid change - update tracking
+  if (voltageChange > 5) {
+    lastVoltageChangeTime = now;
+  }
+  lastVoltageRMS = newVoltage;
+  
+  return false;
+}
+
+// Add to rolling average buffer and return averaged value
+float addToTempRollingAvg(float newValue) {
+  if (!isTempSane(newValue)) {
+    Serial.printf("⚠️ TEMP REJECTED (sanity): %.1f°C\n", newValue);
+    // Return last valid average if we have data
+    if (sensorRollingCount > 0) {
+      float sum = 0;
+      for (int i = 0; i < sensorRollingCount; i++) sum += tempRollingBuffer[i];
+      return sum / sensorRollingCount;
+    }
+    return NAN;
+  }
+  
+  tempRollingBuffer[sensorRollingIndex] = newValue;
+  if (sensorRollingCount < SENSOR_ROLLING_AVG_SIZE) sensorRollingCount++;
+  
+  float sum = 0;
+  for (int i = 0; i < sensorRollingCount; i++) sum += tempRollingBuffer[i];
+  return sum / sensorRollingCount;
+}
+
+float addToHumRollingAvg(float newValue) {
+  if (!isHumiditySane(newValue)) {
+    Serial.printf("⚠️ HUMIDITY REJECTED (sanity): %.1f%%\n", newValue);
+    // Return last valid average if we have data
+    if (sensorRollingCount > 0) {
+      float sum = 0;
+      for (int i = 0; i < sensorRollingCount; i++) sum += humRollingBuffer[i];
+      return sum / sensorRollingCount;
+    }
+    return NAN;
+  }
+  
+  humRollingBuffer[sensorRollingIndex] = newValue;
+  
+  float sum = 0;
+  for (int i = 0; i < sensorRollingCount; i++) sum += humRollingBuffer[i];
+  return sum / sensorRollingCount;
+}
+
+void advanceSensorRollingIndex() {
+  sensorRollingIndex = (sensorRollingIndex + 1) % SENSOR_ROLLING_AVG_SIZE;
+}
+
  // ═══════════════════════════════════════════════════════════════════════
  // 🌡️ DHT22 FILTERED READINGS (5-sample average)
  // ═══════════════════════════════════════════════════════════════════════
@@ -912,6 +1063,11 @@ void IRAM_ATTR waterPulseISR() {
  }
  
  float calculateAmmoniaMovingAvg(float newReading) {
+   // Check for spike first
+   if (isAmmoniaSpikeDetected(newReading)) {
+     return ammoniaAvg10;  // Return previous average, reject spike
+   }
+   
    ammoniaReadings[ammoniaReadingIndex] = newReading;
    ammoniaReadingIndex = (ammoniaReadingIndex + 1) % GAS_MOVING_AVG_SIZE;
    if (ammoniaReadingCount < GAS_MOVING_AVG_SIZE) ammoniaReadingCount++;
@@ -946,8 +1102,15 @@ void IRAM_ATTR waterPulseISR() {
  }
  
  bool checkPowerFailure() {
-   powerVoltageRMS = readPowerVoltageRMS();
-   bool lowVoltage = powerVoltageRMS < 180.0;
+   float newVoltage = readPowerVoltageRMS();
+   
+   // Check for voltage spike
+   if (isVoltageSpikeDetected(newVoltage)) {
+     return powerFailConfirmed;  // Return previous state, ignore spike
+   }
+   
+   powerVoltageRMS = newVoltage;
+   bool lowVoltage = newVoltage < 180.0;
    if (lowVoltage) {
      if (lowVoltageSince == 0) lowVoltageSince = millis();
      if (millis() - lowVoltageSince >= POWER_PERSIST_DURATION) {
@@ -1291,6 +1454,13 @@ void controlLogic() {
     return;
   }
   
+  // ===== PRE-CHECK: Stabilizing Mode =====
+  if (stabilizingMode) {
+    Serial.println("⏳ STABILIZING MODE - Waiting for boot stabilization...");
+    systemState = "STABILIZING";
+    return;
+  }
+  
   // ===== PRE-CHECK: Sensor Error Mode =====
   if (sensorErrorMode) {
     Serial.println("⚠️ SENSOR ERROR MODE - Safety fan active");
@@ -1592,14 +1762,19 @@ void runSafetyChecks() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void readSensors() {
-   // Use filtered readings (5-sample average)
+   // Use filtered readings (5-sample average from DHT)
    float t = readTempFiltered();
    float h = readHumidityFiltered();
   
-  if (!isnan(t) && !isnan(h)) {
-    // Apply calibration offset from FarmConfig
-    temperature = t + farmConfig.tempOffset;
-    humidity = h;
+  // Apply sanity filter + rolling average
+  float tFiltered = addToTempRollingAvg(t);
+  float hFiltered = addToHumRollingAvg(h);
+  advanceSensorRollingIndex();
+  
+  if (!isnan(tFiltered) && !isnan(hFiltered)) {
+    // Apply calibration offset from FarmConfig to filtered values
+    temperature = tFiltered + farmConfig.tempOffset;
+    humidity = hFiltered;
     lastValidSensor = millis();
     sensorErrorMode = false;
   } else {
@@ -1765,8 +1940,8 @@ void handleCloudResponse(String response) {
   }
   
   // Ignore device commands in failsafe mode
-   if (failsafeMode || safeModeActive) {
-     Serial.println("⚠️ SAFE/FAILSAFE MODE: Ignoring cloud commands");
+   if (failsafeMode || safeModeActive || stabilizingMode) {
+     Serial.println("⚠️ SAFE/FAILSAFE/STABILIZING MODE: Ignoring cloud commands");
     return;
   }
   
@@ -1828,6 +2003,11 @@ void setup() {
    if (isPowerRelatedRestart() || wasWatchdogReset) {
      enterSafeMode();
   } else {
+     // Normal boot - still use stabilizing mode for 30s
+     stabilizingMode = true;
+     stabilizingEndTime = millis() + SAFE_MODE_DURATION;
+     systemState = "STABILIZING";
+     Serial.println("\n⏳ STABILIZING (30s) - Normal boot, collecting sensor baseline...");
      digitalWrite(FAN_RELAY_PIN, HIGH);  // Always safe state
      fanOn = true;
      fanSpeed = "HIGH";
