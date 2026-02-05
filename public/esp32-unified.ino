@@ -547,12 +547,20 @@ void setHeater(bool on) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// AUTOMATION ENGINE - Profile-Based
+// CONTROL ENGINE (MAIN DECISION)
+// Same loop, different rules based on farmType
 // ═══════════════════════════════════════════════════════════════════════
 
-void runAutomation() {
+void controlLogic() {
+  // ===== PRE-CHECK: Manual Override =====
   if (localManualOverride) {
     Serial.println("⚠️ MANUAL OVERRIDE ACTIVE - Automation skipped");
+    return;
+  }
+  
+  // ===== PRE-CHECK: Sensor Error Mode =====
+  if (sensorErrorMode) {
+    Serial.println("⚠️ SENSOR ERROR MODE - Safety fan active");
     return;
   }
   
@@ -563,19 +571,24 @@ void runAutomation() {
   Serial.printf("Temp=%.1f°C, Hum=%.1f%%, NH3=%.1f ppm, HSI=%.1f\n", 
                 temperature, humidity, ammonia, currentHSI);
   
-  // Run profile-specific automation
-  if (isLayer()) {
-    runLayerAutomation();
-  } else {
-    runBroilerAutomation();
+  // ===== MAIN DECISION: Farm Type Based Control =====
+  if (farmConfig.farmType == FARM_PROFILE_LAYER) {
+    layerControl();
+  } 
+  else if (farmConfig.farmType == FARM_PROFILE_BROILER) {
+    broilerControl();
   }
+  
+  // ===== COMMON: Safety Checks (runs for both) =====
+  runSafetyChecks();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// LAYER AUTOMATION - Fixed Temperature Range
+// LAYER CONTROL
+// Fixed thresholds, gradual fan speed, lighting protection
 // ═══════════════════════════════════════════════════════════════════════
 
-void runLayerAutomation() {
+void layerControl() {
   // === HSI EMERGENCY (Priority 1) ===
   if (currentHSI > LAYER_HSI_EMERGENCY) {
     Serial.println("🚨 LAYER HSI EMERGENCY (>40) → MAX + ALARM!");
@@ -677,10 +690,11 @@ void runLayerAutomation() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// BROILER AUTOMATION - Age-Based Temperature
+// BROILER CONTROL  
+// Age-based temperature, dynamic targets, growth-focused
 // ═══════════════════════════════════════════════════════════════════════
 
-void runBroilerAutomation() {
+void broilerControl() {
   // Get target temp for current age
   float targetMin, targetMax;
   getBroilerTargetTemp(broilerAgeDays, targetMin, targetMax);
@@ -789,6 +803,57 @@ void runBroilerAutomation() {
   setFanState(false, "OFF");
   setHeater(false);
   systemState = "NORMAL";
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COMMON SAFETY CHECKS (Both farm types)
+// ═══════════════════════════════════════════════════════════════════════
+
+void runSafetyChecks() {
+  // ----- Cloud Connection Check -----
+  unsigned long timeSinceSync = millis() - lastCloudSync;
+  
+  if (timeSinceSync > CLOUD_TIMEOUT) {
+    if (!failsafeMode) {
+      Serial.println("⚠️ [Safety] Cloud disconnected > 5min - entering LOCAL AUTO MODE");
+      failsafeMode = true;
+    }
+  }
+  
+  // ----- Water Failure Alert -----
+  if (waterFailureMode) {
+    Serial.println("⚠️ [Safety] Water flow not detected > 6 hours");
+    // Quick beep every 30 seconds
+    static unsigned long lastWaterBeep = 0;
+    if (millis() - lastWaterBeep > 30000) {
+      setAlarm(true);
+      delay(100);
+      setAlarm(false);
+      lastWaterBeep = millis();
+    }
+  }
+  
+  // ----- Lighting Protection (Layer only) -----
+  if (isLayer() && !lightOn) {
+    static unsigned long lightOffStart = 0;
+    if (lightOffStart == 0) {
+      lightOffStart = millis();
+    } else if (millis() - lightOffStart > 600000) { // 10 minutes
+      // Light has been OFF for 10+ minutes during day
+      Serial.println("⚠️ [Safety] Lighting Protection: Light OFF > 10 min!");
+      // Quick beep
+      static unsigned long lastLightBeep = 0;
+      if (millis() - lastLightBeep > 60000) { // Every minute
+        setAlarm(true);
+        delay(100);
+        setAlarm(false);
+        lastLightBeep = millis();
+      }
+    }
+  }
+  
+  // ----- Watchdog Feed -----
+  esp_task_wdt_reset();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1082,6 +1147,7 @@ void setup() {
 void loop() {
   static unsigned long lastSensorRead = 0;
   static unsigned long lastCloudAttempt = 0;
+  static unsigned long lastRuleUpdate = 0;
   unsigned long now = millis();
   
   // Boot fan sequence complete
@@ -1115,31 +1181,18 @@ void loop() {
     lastCloudAttempt = now;
   }
   
-  // Run automation
+  // ===== CONTROL ENGINE =====
   if (bootFanDone) {
-    runAutomation();
+    controlLogic();
     
-    // Update broiler temp rules periodically (every hour)
-    static unsigned long lastRuleUpdate = 0;
-    if (rules.useAgeBasedTemp && now - lastRuleUpdate >= 3600000) {
+    // Update broiler age & temp rules every hour (Broiler only)
+    if (isBroiler() && now - lastRuleUpdate >= 3600000) {
       updateBroilerTempRules();
       lastRuleUpdate = now;
     }
   }
   
-  // Water failure alert
-  if (waterFailureMode) {
-    static unsigned long lastWaterBeep = 0;
-    if (now - lastWaterBeep >= 30000) {
-      digitalWrite(ALARM_RELAY_PIN, HIGH);
-      delay(200);
-      digitalWrite(ALARM_RELAY_PIN, LOW);
-      lastWaterBeep = now;
-    }
-  }
-  
-  // Feed watchdog
-  esp_task_wdt_reset();
+  // Watchdog is now fed in runSafetyChecks()
   
   delay(100);
 }
