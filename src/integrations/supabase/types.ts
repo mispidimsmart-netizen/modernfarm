@@ -535,9 +535,11 @@ export type Database = {
       }
       device_health: {
         Row: {
+          ammonia_avg_10: number | null
           battery_capacity_wh: number | null
           battery_percentage: number | null
           cached_settings_version: number | null
+          consecutive_high_ammonia: number | null
           cpu_temperature: number | null
           created_at: string
           device_token_id: string
@@ -547,27 +549,46 @@ export type Database = {
           farm_id: string | null
           firmware_version: string | null
           free_memory_bytes: number | null
+          gas_sensor_warmup_done: boolean | null
+          gas_sensor_warmup_start: string | null
           hsi: number | null
           id: string
           is_online: boolean | null
+          last_age_sync_at: string | null
           last_cloud_sync_at: string | null
           last_error_message: string | null
+          last_power_event_at: string | null
           last_power_outage_id: string | null
           last_restart_at: string | null
           last_seen_at: string | null
           mode: string | null
+          offline_buffer_count: number | null
+          offline_duration_seconds: number | null
+          online_duration_seconds: number | null
+          ota_last_check_at: string | null
+          ota_progress: number | null
+          ota_status: string | null
+          ota_version_available: string | null
           power_consumption_w: number | null
+          power_event_type: string | null
           power_source: string | null
+          power_voltage_rms: number | null
+          restart_count: number | null
+          restart_reason: string | null
+          safe_mode_until: string | null
           shed_id: string | null
+          total_restarts: number | null
           updated_at: string
           uptime_seconds: number | null
           user_id: string
           wifi_signal_strength: number | null
         }
         Insert: {
+          ammonia_avg_10?: number | null
           battery_capacity_wh?: number | null
           battery_percentage?: number | null
           cached_settings_version?: number | null
+          consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
           created_at?: string
           device_token_id: string
@@ -577,27 +598,46 @@ export type Database = {
           farm_id?: string | null
           firmware_version?: string | null
           free_memory_bytes?: number | null
+          gas_sensor_warmup_done?: boolean | null
+          gas_sensor_warmup_start?: string | null
           hsi?: number | null
           id?: string
           is_online?: boolean | null
+          last_age_sync_at?: string | null
           last_cloud_sync_at?: string | null
           last_error_message?: string | null
+          last_power_event_at?: string | null
           last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
           mode?: string | null
+          offline_buffer_count?: number | null
+          offline_duration_seconds?: number | null
+          online_duration_seconds?: number | null
+          ota_last_check_at?: string | null
+          ota_progress?: number | null
+          ota_status?: string | null
+          ota_version_available?: string | null
           power_consumption_w?: number | null
+          power_event_type?: string | null
           power_source?: string | null
+          power_voltage_rms?: number | null
+          restart_count?: number | null
+          restart_reason?: string | null
+          safe_mode_until?: string | null
           shed_id?: string | null
+          total_restarts?: number | null
           updated_at?: string
           uptime_seconds?: number | null
           user_id: string
           wifi_signal_strength?: number | null
         }
         Update: {
+          ammonia_avg_10?: number | null
           battery_capacity_wh?: number | null
           battery_percentage?: number | null
           cached_settings_version?: number | null
+          consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
           created_at?: string
           device_token_id?: string
@@ -607,18 +647,35 @@ export type Database = {
           farm_id?: string | null
           firmware_version?: string | null
           free_memory_bytes?: number | null
+          gas_sensor_warmup_done?: boolean | null
+          gas_sensor_warmup_start?: string | null
           hsi?: number | null
           id?: string
           is_online?: boolean | null
+          last_age_sync_at?: string | null
           last_cloud_sync_at?: string | null
           last_error_message?: string | null
+          last_power_event_at?: string | null
           last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
           mode?: string | null
+          offline_buffer_count?: number | null
+          offline_duration_seconds?: number | null
+          online_duration_seconds?: number | null
+          ota_last_check_at?: string | null
+          ota_progress?: number | null
+          ota_status?: string | null
+          ota_version_available?: string | null
           power_consumption_w?: number | null
+          power_event_type?: string | null
           power_source?: string | null
+          power_voltage_rms?: number | null
+          restart_count?: number | null
+          restart_reason?: string | null
+          safe_mode_until?: string | null
           shed_id?: string | null
+          total_restarts?: number | null
           updated_at?: string
           uptime_seconds?: number | null
           user_id?: string
@@ -1308,6 +1365,114 @@ export type Database = {
         }
         Relationships: []
       }
+      ota_firmware: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          created_by: string | null
+          farm_type: string | null
+          file_size_bytes: number | null
+          filename: string
+          id: string
+          is_active: boolean | null
+          is_stable: boolean | null
+          min_firmware_version: string | null
+          release_notes: string | null
+          release_notes_bn: string | null
+          url: string
+          version: string
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          farm_type?: string | null
+          file_size_bytes?: number | null
+          filename: string
+          id?: string
+          is_active?: boolean | null
+          is_stable?: boolean | null
+          min_firmware_version?: string | null
+          release_notes?: string | null
+          release_notes_bn?: string | null
+          url: string
+          version: string
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          farm_type?: string | null
+          file_size_bytes?: number | null
+          filename?: string
+          id?: string
+          is_active?: boolean | null
+          is_stable?: boolean | null
+          min_firmware_version?: string | null
+          release_notes?: string | null
+          release_notes_bn?: string | null
+          url?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      ota_update_history: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          device_token_id: string
+          error_message: string | null
+          firmware_id: string | null
+          from_version: string | null
+          id: string
+          started_at: string | null
+          status: string
+          to_version: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          device_token_id: string
+          error_message?: string | null
+          firmware_id?: string | null
+          from_version?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          to_version?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          device_token_id?: string
+          error_message?: string | null
+          firmware_id?: string | null
+          from_version?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          to_version?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ota_update_history_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ota_update_history_firmware_id_fkey"
+            columns: ["firmware_id"]
+            isOneToOne: false
+            referencedRelation: "ota_firmware"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       power_outage_logs: {
         Row: {
           actions_taken: string | null
@@ -1601,6 +1766,69 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "schedules_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sensor_buffer: {
+        Row: {
+          ammonia: number
+          created_at: string
+          device_token_id: string
+          hsi: number | null
+          humidity: number
+          id: string
+          power_status: string | null
+          recorded_at: string
+          shed_id: string | null
+          synced_at: string | null
+          temperature: number
+          user_id: string
+          water_flow: number | null
+        }
+        Insert: {
+          ammonia: number
+          created_at?: string
+          device_token_id: string
+          hsi?: number | null
+          humidity: number
+          id?: string
+          power_status?: string | null
+          recorded_at: string
+          shed_id?: string | null
+          synced_at?: string | null
+          temperature: number
+          user_id: string
+          water_flow?: number | null
+        }
+        Update: {
+          ammonia?: number
+          created_at?: string
+          device_token_id?: string
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          power_status?: string | null
+          recorded_at?: string
+          shed_id?: string | null
+          synced_at?: string | null
+          temperature?: number
+          user_id?: string
+          water_flow?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensor_buffer_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensor_buffer_shed_id_fkey"
             columns: ["shed_id"]
             isOneToOne: false
             referencedRelation: "sheds"
