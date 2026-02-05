@@ -1939,6 +1939,72 @@ float calculateHSI(float temp, float hum) {
    return total / 10.0;
  }
  
+ // ═══════════════════════════════════════════════════════════════════════
+ // ⚡ POWER SENSOR (ZMPT101B) FILTERED READING + PERSISTENCE CHECK
+ // 50-sample RMS filter + 5-second persistence before confirming power fail
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ // Power sensor filter state
+ const int POWER_SAMPLE_COUNT = 50;
+ const unsigned long POWER_FAIL_PERSISTENCE = 5000;  // 5 seconds
+ const float MIN_VOLTAGE_THRESHOLD = 180.0;  // Below this = power failure
+ unsigned long lowVoltageStartTime = 0;
+ bool powerFailConfirmed = false;
+ float currentVoltageRMS = 230.0;
+ 
+ // Read voltage with 50-sample RMS filter
+ float readVoltageFiltered() {
+   long sumSquares = 0;
+   int dcOffset = 2048;  // ADC center for 3.3V
+   
+   for (int i = 0; i < POWER_SAMPLE_COUNT; i++) {
+     int sample = analogRead(POWER_SENSE_PIN);
+     long centered = sample - dcOffset;
+     sumSquares += centered * centered;
+     delayMicroseconds(400);  // ~20ms for 50 samples = 1 AC cycle at 50Hz
+   }
+   
+   float rms = sqrt(sumSquares / (float)POWER_SAMPLE_COUNT);
+   // Convert ADC RMS to voltage (calibration factor depends on transformer)
+   // Adjust the multiplier based on your ZMPT101B calibration
+   return (rms / 300.0) * 230.0;
+ }
+ 
+ // Check power status with 5-second persistence filter
+ // Returns true if power is OK, false if confirmed power failure
+ bool checkPowerStatus() {
+   float voltage = readVoltageFiltered();
+   currentVoltageRMS = voltage;
+   
+   if (voltage < MIN_VOLTAGE_THRESHOLD) {
+     // Voltage is low - check persistence
+     if (lowVoltageStartTime == 0) {
+       lowVoltageStartTime = millis();
+       Serial.printf("⚠️ Low voltage detected: %.1fV RMS - monitoring...\n", voltage);
+     } else if (millis() - lowVoltageStartTime > POWER_FAIL_PERSISTENCE) {
+       // Confirmed power failure after 5 seconds of low voltage
+       if (!powerFailConfirmed) {
+         powerFailConfirmed = true;
+         Serial.printf("🔴 POWER FAILURE CONFIRMED: %.1fV RMS (low for >5s)\n", voltage);
+       }
+       return false;  // Power failure
+     }
+   } else {
+     // Voltage is OK - reset timer and status
+     if (lowVoltageStartTime != 0) {
+       Serial.printf("✅ Voltage restored: %.1fV RMS\n", voltage);
+     }
+     lowVoltageStartTime = 0;
+     
+     if (powerFailConfirmed) {
+       powerFailConfirmed = false;
+       Serial.println("✅ Power restored - exiting power failure mode");
+     }
+   }
+   
+   return true;  // Power OK or not yet confirmed failure
+ }
+ 
 void controlLighting() {
   // Get current time (would need RTC or NTP in production)
   // For now, use a simple time estimation based on uptime
