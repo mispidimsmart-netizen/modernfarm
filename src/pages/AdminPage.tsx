@@ -49,6 +49,7 @@ import { AdminNotificationSender } from '@/components/admin/AdminNotificationSen
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
 import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
+ import { AppDocumentation } from '@/components/admin/AppDocumentation';
 
 const t = {
   bn: {
@@ -84,6 +85,7 @@ const t = {
     tabNotify: 'নোটিফিকেশন',
     tabAnalytics: 'অ্যানালিটিক্স',
     tabGuide: 'ইনস্টলেশন গাইড',
+     tabDocs: 'অ্যাপ ডকুমেন্টেশন',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -127,6 +129,7 @@ const t = {
     tabNotify: 'Notifications',
     tabAnalytics: 'Analytics',
     tabGuide: 'Installation Guide',
+     tabDocs: 'App Documentation',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -363,8 +366,12 @@ export default function AdminPage() {
               <Activity className="w-4 h-4 mr-2" />
               {labels.tabSystem}
             </TabsTrigger>
-            <TabsTrigger value="guide" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-teal-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="docs" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-pink-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <BookOpen className="w-4 h-4 mr-2" />
+              {labels.tabDocs}
+            </TabsTrigger>
+            <TabsTrigger value="guide" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-teal-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Cpu className="w-4 h-4 mr-2" />
               {labels.tabGuide}
             </TabsTrigger>
           </TabsList>
@@ -530,6 +537,233 @@ export default function AdminPage() {
 
           <TabsContent value="system" className="mt-4">
             <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+          
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+          
+          <TabsContent value="guide" className="mt-4">
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+            <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
+              <CardHeader className="border-b border-teal-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/40">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-teal-200/70">
+                  {language === 'bn' 
+                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
+                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                </p>
+                <Button 
+                  onClick={() => navigate('/installation-guide')}
+                  className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="notify" className="mt-4">
+            <AdminNotificationSender language={language} />
+          </TabsContent>
+
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+            <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
+              <CardHeader className="border-b border-teal-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/40">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-teal-200/70">
+                  {language === 'bn' 
+                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
+                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                </p>
+                <Button 
+                  onClick={() => navigate('/installation-guide')}
+                  className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="notify" className="mt-4">
+            <AdminNotificationSender language={language} />
+          </TabsContent>
+
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+            <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
+              <CardHeader className="border-b border-teal-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/40">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-teal-200/70">
+                  {language === 'bn' 
+                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
+                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                </p>
+                <Button 
+                  onClick={() => navigate('/installation-guide')}
+                  className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+            <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
+              <CardHeader className="border-b border-teal-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/40">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-teal-200/70">
+                  {language === 'bn' 
+                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
+                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                </p>
+                <Button 
+                  onClick={() => navigate('/installation-guide')}
+                  className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-4">
+            <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
+              <CardHeader className="border-b border-teal-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/40">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <p className="text-teal-200/70">
+                  {language === 'bn' 
+                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
+                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                </p>
+                <Button 
+                  onClick={() => navigate('/installation-guide')}
+                  className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+          <TabsContent value="system" className="mt-4">
+            <SystemHealthCard language={language} />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4">
+            <AppDocumentation />
           </TabsContent>
 
           <TabsContent value="guide" className="mt-4">
