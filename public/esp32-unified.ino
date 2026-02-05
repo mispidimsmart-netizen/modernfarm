@@ -2111,6 +2111,7 @@ void setup() {
   // === LOAD AGE TICK TIME FOR OFFLINE TRACKING ===
   if (isBroiler()) {
     loadAgeTickTime();
+    lastAgeIncreaseMillis = millis();  // Prevent overflow after reboot
   }
   
   // === LOAD RULES BASED ON FARM TYPE ===
