@@ -277,6 +277,23 @@ bool farmTypeSyncedFromCloud = false;  // Track if we've synced from cloud
 unsigned long lastAgeTickMillis = 0;          // Track local age increment time
 const unsigned long AGE_TICK_INTERVAL = 86400000UL;  // 24 hours in milliseconds
 
+// ═══════════════════════════════════════════════════════════════════════
+// 💧 SMART WATER FLOW MONITORING
+// শুধুমাত্র সক্রিয় সময়ে (৫:০০-২২:০০) মনিটরিং
+// Rolling average এর সাথে তুলনা করে false alert প্রতিরোধ
+// ═══════════════════════════════════════════════════════════════════════
+#define WATER_HISTORY_SIZE      24        // 24-hour rolling history
+#define WATER_UPDATE_INTERVAL   3600000UL // 1 hour update interval
+#define WATER_DROP_THRESHOLD    0.20      // 20% drop = anomaly alert
+#define WATER_MIN_DATA_POINTS   6         // Minimum 6 hours data for comparison
+
+float waterFlowHistory[WATER_HISTORY_SIZE] = {0};
+int waterHistoryIndex = 0;
+int waterHistoryCount = 0;
+float waterRollingAvg = 0;
+unsigned long lastWaterHistoryUpdate = 0;
+bool waterAnomalyAlertSent = false;
+
 // ================ BROILER TEMPERATURE CURVE ================
 // Age-based temperature thresholds for broilers
 struct BroilerTempCurve {
@@ -815,13 +832,17 @@ void loop() {
   // Internet গেলেও temperature curve ঠিক থাকবে
   ageTick();
   
-  // 9. Run automation (cloud or local)
+  // 💧 9. SMART WATER FLOW MONITORING
+  // Active hours only (5:00-22:00) + rolling average comparison
+  waterFlowTick();
+  
+  // 10. Run automation (cloud or local)
   runAutomation();
   
-  // 10. Update status LED
+  // 11. Update status LED
   updateStatusLED();
   
-  // 🔧 11. Feed Watchdog Timer - prevents auto restart
+  // 🔧 12. Feed Watchdog Timer - prevents auto restart
   // If loop freezes > 8 sec, WDT will restart ESP32
   esp_task_wdt_reset();
   
@@ -2556,6 +2577,129 @@ void parseTime(String timeStr, int &hour, int &minute) {
     hour = timeStr.substring(0, colonIndex).toInt();
     minute = timeStr.substring(colonIndex + 1).toInt();
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 💧 SMART WATER FLOW MONITORING FUNCTIONS
+// শুধুমাত্র সক্রিয় সময়ে (৫:০০-২২:০০) মনিটরিং
+// Rolling average এর সাথে তুলনা করে false alert প্রতিরোধ
+// ═══════════════════════════════════════════════════════════════════════
+
+// Check if current time is within active monitoring hours (5:00 AM - 10:00 PM)
+bool isActiveWaterHours() {
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo)) {
+    // In failsafe mode without time, assume active hours for safety
+    return true;
+  }
+  int hour = timeinfo.tm_hour;
+  return (hour >= 5 && hour <= 22);
+}
+
+// Calculate water flow rate from pulse count (YF-S201: 7.5 pulses per liter)
+float calculateWaterFlowRate() {
+  static unsigned long lastCalcTime = 0;
+  static float lastFlowRate = 0;
+  unsigned long now = millis();
+  
+  if (now - lastCalcTime < 1000) return lastFlowRate;
+  
+  noInterrupts();
+  unsigned long pulses = waterPulseCount;
+  waterPulseCount = 0;
+  interrupts();
+  
+  float elapsed = (now - lastCalcTime) / 1000.0;
+  lastCalcTime = now;
+  
+  // YF-S201: 7.5 pulses per liter, convert to L/hour
+  lastFlowRate = (pulses / 7.5) * (3600.0 / elapsed);
+  waterFlow = lastFlowRate;
+  
+  return lastFlowRate;
+}
+
+// Update rolling average from history
+void updateWaterRollingAverage() {
+  float sum = 0;
+  int count = 0;
+  for (int i = 0; i < WATER_HISTORY_SIZE; i++) {
+    if (waterFlowHistory[i] > 0) {
+      sum += waterFlowHistory[i];
+      count++;
+    }
+  }
+  waterRollingAvg = (count > 0) ? (sum / count) : 0;
+  waterHistoryCount = count;
+}
+
+// Check for water anomaly (drop below 20% of average)
+void checkWaterAnomaly() {
+  // Only monitor during active hours (5:00 AM - 10:00 PM)
+  if (!isActiveWaterHours()) {
+    waterAnomalyAlertSent = false;  // Reset for next active period
+    return;
+  }
+  
+  // Need minimum data points for meaningful comparison
+  if (waterHistoryCount < WATER_MIN_DATA_POINTS) {
+    return;
+  }
+  
+  float currentFlow = waterFlow;
+  
+  // Compare with rolling average - alert if drops below 20%
+  if (waterRollingAvg > 0 && currentFlow < (waterRollingAvg * WATER_DROP_THRESHOLD)) {
+    if (!waterAnomalyAlertSent) {
+      float dropPercent = ((waterRollingAvg - currentFlow) / waterRollingAvg) * 100;
+      
+      Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+      Serial.println("║  💧 WATER ANOMALY ALERT - Low Water Intake Detected!          ║");
+      Serial.printf("║  Current: %.1f L/h, Average: %.1f L/h (%.0f%% drop)            ║\n", 
+                    currentFlow, waterRollingAvg, dropPercent);
+      Serial.println("║  ⚠️ Check bird health immediately!                            ║");
+      Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+      
+      // Trigger warning beep (not full alarm - just attention)
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      delay(100);
+      digitalWrite(ALARM_RELAY_PIN, HIGH);
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, LOW);
+      
+      waterAnomalyAlertSent = true;
+    }
+  } else {
+    waterAnomalyAlertSent = false;
+  }
+}
+
+// Main water flow monitoring tick (called in loop)
+void waterFlowTick() {
+  unsigned long now = millis();
+  
+  // Update flow reading continuously
+  calculateWaterFlowRate();
+  
+  // Update hourly history
+  if (now - lastWaterHistoryUpdate >= WATER_UPDATE_INTERVAL) {
+    // Store current hour's flow in history
+    waterFlowHistory[waterHistoryIndex] = waterFlow;
+    waterHistoryIndex = (waterHistoryIndex + 1) % WATER_HISTORY_SIZE;
+    
+    // Recalculate rolling average
+    updateWaterRollingAverage();
+    
+    lastWaterHistoryUpdate = now;
+    
+    Serial.printf("[Water] Hourly update - Flow: %.1f L/h, 24h Avg: %.1f L/h, Data points: %d\n", 
+                  waterFlow, waterRollingAvg, waterHistoryCount);
+  }
+  
+  // Check for anomalies during active hours
+  checkWaterAnomaly();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
