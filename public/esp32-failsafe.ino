@@ -65,6 +65,63 @@
 // After WDT reset, system starts with Fan ON for safety
 bool wasWatchdogReset = false;  // True if ESP32 was reset by watchdog
 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🚨 PANIC MODE - Ultimate Safety Function
+ // যেকোনো critical error হলে: Fan ON + Alarm ON + Never stop
+ // ═══════════════════════════════════════════════════════════════════════
+ String panicReason = "";
+ bool panicModeActive = false;
+ 
+ void enterPanicMode(String reason) {
+   panicModeActive = true;
+   panicReason = reason;
+   
+   Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+   Serial.println("║  🚨 PANIC MODE ACTIVATED - CRITICAL SAFETY STATE           ║");
+   Serial.printf("║  Reason: %-48s ║\n", reason.c_str());
+   Serial.println("║  Actions: Fan ON + Alarm ON + Ignoring all commands        ║");
+   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+   
+   // 🛡️ IMMEDIATE SAFE STATE
+   digitalWrite(FAN_RELAY_PIN, HIGH);    // Fan ON - ALWAYS!
+   digitalWrite(ALARM_RELAY_PIN, HIGH);  // Alarm ON - Alert humans!
+   digitalWrite(HEATER_RELAY_PIN, LOW);  // Heater OFF - prevent fire risk
+   
+   fanOn = true;
+   fanSpeed = "MAX";
+   alarmOn = true;
+   heaterOn = false;
+   failsafeMode = true;
+   systemState = "PANIC";
+   
+   // Distinctive panic beep pattern: 5 rapid beeps
+   for (int i = 0; i < 5; i++) {
+     digitalWrite(ALARM_RELAY_PIN, HIGH);
+     delay(100);
+     digitalWrite(ALARM_RELAY_PIN, LOW);
+     delay(100);
+   }
+   digitalWrite(ALARM_RELAY_PIN, HIGH);  // Keep alarm ON
+ }
+ 
+ void checkPanicConditions() {
+   // Watchdog reset detected → Panic
+   if (wasWatchdogReset && !panicModeActive) {
+     enterPanicMode("WATCHDOG_RESTART");
+   }
+   
+   // Sensor failed for too long → Panic
+   if (sensorErrorMode && !panicModeActive && 
+       millis() - lastValidSensorRead > 60000) {  // 1 min sensor failure
+     enterPanicMode("SENSOR_FAILURE_60S");
+   }
+   
+   // Extreme temperature without sensor → Panic
+   if (temperature > 40.0 && !panicModeActive) {
+     enterPanicMode("EXTREME_TEMP_40C");
+   }
+ }
+ 
 // ================ PIN DEFINITIONS ================
 #define DHT_PIN 4
 #define DHT_TYPE DHT22
@@ -601,6 +658,33 @@ void loop() {
   // 🔘 ALWAYS CHECK MANUAL OVERRIDE BUTTON FIRST!
   // This must work even if everything else fails
   checkManualOverrideButton();
+   
+   // 🚨 CHECK PANIC CONDITIONS (Watchdog, extreme temp, etc.)
+   checkPanicConditions();
+   
+   // If in panic mode, skip normal automation but keep fan running
+   if (panicModeActive) {
+     // Ensure fan stays ON in panic mode
+     digitalWrite(FAN_RELAY_PIN, HIGH);
+     
+     // Periodic panic alarm (distinctive pattern)
+     static unsigned long lastPanicAlarm = 0;
+     if (now - lastPanicAlarm >= 10000) {  // Every 10 seconds
+       for (int i = 0; i < 3; i++) {
+         digitalWrite(ALARM_RELAY_PIN, HIGH);
+         delay(200);
+         digitalWrite(ALARM_RELAY_PIN, LOW);
+         delay(200);
+       }
+       lastPanicAlarm = now;
+       Serial.printf("🚨 PANIC MODE ACTIVE: %s - Fan forced ON\n", panicReason.c_str());
+     }
+     
+     // Still feed watchdog to prevent restart loop
+     esp_task_wdt_reset();
+     delay(100);
+     return;
+   }
   
   // 1. Read sensors regularly
   if (now - lastSensorRead >= SENSOR_READ_INTERVAL) {
