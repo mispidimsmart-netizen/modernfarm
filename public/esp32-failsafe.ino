@@ -294,6 +294,34 @@ float waterRollingAvg = 0;
 unsigned long lastWaterHistoryUpdate = 0;
 bool waterAnomalyAlertSent = false;
 
+// ═══════════════════════════════════════════════════════════════════════
+// 📦 ENHANCED OFFLINE DATA BUFFER
+// অফলাইন থাকা অবস্থায় ৫০টি রেকর্ড সংরক্ষণ
+// পুনরায় সংযোগ হলে ক্লাউডে সিঙ্ক করে
+// ═══════════════════════════════════════════════════════════════════════
+#define OFFLINE_BUFFER_MAX       50        // Maximum records to store
+#define OFFLINE_SYNC_BATCH_SIZE  10        // Records per sync batch
+
+struct OfflineRecord {
+  unsigned long timestamp;   // Millis when recorded
+  float temperature;
+  float humidity;
+  float ammonia;
+  float waterFlow;
+  float hsi;
+  bool powerOn;
+  String fanSpeed;
+  String systemState;
+};
+
+OfflineRecord offlineRecords[OFFLINE_BUFFER_MAX];
+int offlineRecordHead = 0;          // Next write position (circular)
+int offlineRecordTail = 0;          // Next read position for sync
+int offlineRecordCount = 0;         // Current count
+bool offlineSyncInProgress = false;
+unsigned long lastOfflineStore = 0;
+const unsigned long OFFLINE_STORE_INTERVAL = 60000;  // Store every 1 minute
+
 // ================ BROILER TEMPERATURE CURVE ================
 // Age-based temperature thresholds for broilers
 struct BroilerTempCurve {
@@ -836,13 +864,17 @@ void loop() {
   // Active hours only (5:00-22:00) + rolling average comparison
   waterFlowTick();
   
-  // 10. Run automation (cloud or local)
+  // 📦 10. OFFLINE BUFFER TICK
+  // Store data when offline for later sync
+  offlineBufferTick();
+  
+  // 11. Run automation (cloud or local)
   runAutomation();
   
-  // 11. Update status LED
+  // 12. Update status LED
   updateStatusLED();
   
-  // 🔧 12. Feed Watchdog Timer - prevents auto restart
+  // 🔧 13. Feed Watchdog Timer - prevents auto restart
   // If loop freezes > 8 sec, WDT will restart ESP32
   esp_task_wdt_reset();
   
@@ -953,6 +985,12 @@ void syncWithCloud() {
     // Exit failsafe mode if we were in it
     if (failsafeMode) {
       exitFailsafe();
+    }
+    
+    // 📦 Sync offline buffer on reconnection
+    if (offlineRecordCount > 0 && !offlineSyncInProgress) {
+      Serial.println("📦 Starting offline buffer sync...");
+      syncOfflineBuffer();
     }
     
     Serial.println("✓ Cloud sync successful");
@@ -2700,6 +2738,133 @@ void waterFlowTick() {
   
   // Check for anomalies during active hours
   checkWaterAnomaly();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 📦 OFFLINE BUFFER FUNCTIONS
+// Store sensor data when offline, sync when reconnected
+// ═══════════════════════════════════════════════════════════════════════
+
+void storeOfflineRecord() {
+  if (offlineRecordCount >= OFFLINE_BUFFER_MAX) {
+    // Buffer full - overwrite oldest (circular)
+    offlineRecordTail = (offlineRecordTail + 1) % OFFLINE_BUFFER_MAX;
+  } else {
+    offlineRecordCount++;
+  }
+  
+  OfflineRecord record;
+  record.timestamp = millis() / 1000;  // Seconds since boot
+  record.temperature = temperature;
+  record.humidity = humidity;
+  record.ammonia = ammonia;
+  record.waterFlow = waterFlow;
+  record.hsi = currentHSI;
+  record.powerOn = powerOn;
+  record.fanSpeed = fanSpeed;
+  record.systemState = systemState;
+  
+  offlineRecords[offlineRecordHead] = record;
+  offlineRecordHead = (offlineRecordHead + 1) % OFFLINE_BUFFER_MAX;
+  
+  Serial.printf("📦 Offline buffer: %d/%d records stored\n", offlineRecordCount, OFFLINE_BUFFER_MAX);
+}
+
+void offlineBufferTick() {
+  unsigned long now = millis();
+  
+  // Store data periodically when offline
+  if (!cloudConnected && now - lastOfflineStore >= OFFLINE_STORE_INTERVAL) {
+    storeOfflineRecord();
+    lastOfflineStore = now;
+  }
+}
+
+// Sync buffered data to cloud (called after reconnection)
+bool syncOfflineBuffer() {
+  if (offlineRecordCount == 0) {
+    Serial.println("📦 No offline records to sync");
+    return true;
+  }
+  
+  if (!wifiConnected || offlineSyncInProgress) return false;
+  
+  offlineSyncInProgress = true;
+  
+  Serial.printf("\n╔═══════════════════════════════════════════════════════════════╗\n");
+  Serial.printf("║  📦 SYNCING OFFLINE BUFFER: %d records                        ║\n", offlineRecordCount);
+  Serial.printf("╚═══════════════════════════════════════════════════════════════╝\n");
+  
+  HTTPClient http;
+  String url = String(API_URL) + "/sync-buffer";
+  
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.setTimeout(30000);  // Longer timeout for batch sync
+  
+  // Build batch of records
+  StaticJsonDocument<4096> doc;
+  JsonArray records = doc.createNestedArray("records");
+  
+  int syncCount = min(offlineRecordCount, OFFLINE_SYNC_BATCH_SIZE);
+  
+  for (int i = 0; i < syncCount; i++) {
+    int idx = (offlineRecordTail + i) % OFFLINE_BUFFER_MAX;
+    OfflineRecord& rec = offlineRecords[idx];
+    
+    JsonObject r = records.createNestedObject();
+    r["timestamp_offset"] = rec.timestamp;
+    r["temperature"] = rec.temperature;
+    r["humidity"] = rec.humidity;
+    r["ammonia"] = rec.ammonia;
+    r["water_flow"] = rec.waterFlow;
+    r["hsi"] = rec.hsi;
+    r["power_on"] = rec.powerOn;
+    r["fan_speed"] = rec.fanSpeed;
+    r["system_state"] = rec.systemState;
+  }
+  
+  doc["device_token"] = DEVICE_TOKEN;
+  doc["shed_id"] = SHED_ID;
+  doc["farm_type"] = FARM_TYPE;
+  doc["total_buffered"] = offlineRecordCount;
+  
+  String payload;
+  serializeJson(doc, payload);
+  
+  int httpCode = http.POST(payload);
+  
+  if (httpCode == 200) {
+    // Remove synced records from buffer
+    offlineRecordTail = (offlineRecordTail + syncCount) % OFFLINE_BUFFER_MAX;
+    offlineRecordCount -= syncCount;
+    
+    Serial.printf("✅ Synced %d records, %d remaining\n", syncCount, offlineRecordCount);
+    
+    offlineSyncInProgress = false;
+    
+    // If more records, schedule another sync
+    if (offlineRecordCount > 0) {
+      Serial.println("   → More records to sync...");
+      return false;  // Indicate more work needed
+    }
+    
+    return true;  // All done
+  } else {
+    Serial.printf("✗ Buffer sync failed: %d\n", httpCode);
+    offlineSyncInProgress = false;
+    return false;
+  }
+  
+  http.end();
+}
+
+void clearOfflineBuffer() {
+  offlineRecordHead = 0;
+  offlineRecordTail = 0;
+  offlineRecordCount = 0;
+  Serial.println("📦 Offline buffer cleared");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
