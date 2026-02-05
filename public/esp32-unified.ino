@@ -69,22 +69,40 @@
 
 // EEPROM Configuration
 #define EEPROM_SIZE              512
-#define EEPROM_FARM_PROFILE      0      // 1 byte: Farm Profile (0=Layer, 1=Broiler)
-#define EEPROM_BROILER_AGE       1      // 2 bytes: Broiler age in days (little-endian)
-#define EEPROM_PROFILE_MAGIC     4      // 4 bytes: Magic number to verify valid data
-#define EEPROM_SETTINGS_START    16     // Settings start after profile data
+#define EEPROM_CONFIG_ADDR       0      // Start address for FarmConfig
+#define EEPROM_MAGIC_ADDR        32     // Magic number address
+#define EEPROM_SETTINGS_START    64     // Settings start after config data
 
-#define FARM_PROFILE_MAGIC_NUM   0x46524D50    // "FRMP" = Farm Profile Magic
+#define FARM_CONFIG_MAGIC        0x46524D43    // "FRMC" = Farm Config Magic
 
-// Current farm profile (loaded from EEPROM at boot)
-uint8_t farmProfile = FARM_PROFILE_LAYER;     // 0=Layer (default), 1=Broiler
-int broilerAgeDays = 1;                        // Broiler batch age in days
-bool profileLoaded = false;                    // Track if profile loaded from EEPROM
+// ═══════════════════════════════════════════════════════════════════════
+// 📦 FARM CONFIG STRUCTURE (EEPROM Stored)
+// ═══════════════════════════════════════════════════════════════════════
+struct FarmConfig {
+  int farmType;        // 0 = Layer, 1 = Broiler
+  int chickAgeDays;    // Only used in broiler mode (current batch age)
+  float tempOffset;    // Temperature sensor calibration offset
+  float nh3Offset;     // Ammonia sensor calibration offset
+};
+
+// Current config (loaded from EEPROM at boot)
+FarmConfig farmConfig = {
+  .farmType = FARM_PROFILE_LAYER,  // Default: Layer
+  .chickAgeDays = 1,                // Default: Day 1
+  .tempOffset = 0.0,                // No calibration
+  .nh3Offset = 0.0                  // No calibration
+};
+
+bool configLoaded = false;  // Track if config loaded from EEPROM
 
 // Helper functions
-bool isLayer() { return farmProfile == FARM_PROFILE_LAYER; }
-bool isBroiler() { return farmProfile == FARM_PROFILE_BROILER; }
+bool isLayer() { return farmConfig.farmType == FARM_PROFILE_LAYER; }
+bool isBroiler() { return farmConfig.farmType == FARM_PROFILE_BROILER; }
 String getFarmTypeStr() { return isLayer() ? "LAYER" : "BROILER"; }
+
+// Backward compatibility aliases
+#define farmProfile farmConfig.farmType
+#define broilerAgeDays farmConfig.chickAgeDays
 
 // ================ WATCHDOG CONFIGURATION ================
 #define WDT_TIMEOUT 8  // 8 seconds watchdog timeout
@@ -214,53 +232,66 @@ bool sensorInitOK = true;
 // ═══════════════════════════════════════════════════════════════════════
 
 void loadFarmProfile() {
-  Serial.println("\n📂 Loading Farm Profile from EEPROM...");
+  Serial.println("\n📂 Loading FarmConfig from EEPROM...");
   
   // Check magic number
   uint32_t magic = 0;
-  magic |= EEPROM.read(EEPROM_PROFILE_MAGIC);
-  magic |= EEPROM.read(EEPROM_PROFILE_MAGIC + 1) << 8;
-  magic |= EEPROM.read(EEPROM_PROFILE_MAGIC + 2) << 16;
-  magic |= EEPROM.read(EEPROM_PROFILE_MAGIC + 3) << 24;
+  EEPROM.get(EEPROM_MAGIC_ADDR, magic);
   
-  if (magic == FARM_PROFILE_MAGIC_NUM) {
-    // Valid profile found
-    farmProfile = EEPROM.read(EEPROM_FARM_PROFILE);
-    if (farmProfile > FARM_PROFILE_BROILER) farmProfile = FARM_PROFILE_LAYER;
+  if (magic == FARM_CONFIG_MAGIC) {
+    // Valid config found - load struct
+    EEPROM.get(EEPROM_CONFIG_ADDR, farmConfig);
     
-    broilerAgeDays = EEPROM.read(EEPROM_BROILER_AGE);
-    broilerAgeDays |= EEPROM.read(EEPROM_BROILER_AGE + 1) << 8;
-    if (broilerAgeDays < 1 || broilerAgeDays > 999) broilerAgeDays = 1;
+    // Validate values
+    if (farmConfig.farmType < 0 || farmConfig.farmType > 1) {
+      farmConfig.farmType = FARM_PROFILE_LAYER;
+    }
+    if (farmConfig.chickAgeDays < 1 || farmConfig.chickAgeDays > 999) {
+      farmConfig.chickAgeDays = 1;
+    }
+    // Limit calibration offsets to reasonable range
+    if (farmConfig.tempOffset < -10.0 || farmConfig.tempOffset > 10.0) {
+      farmConfig.tempOffset = 0.0;
+    }
+    if (farmConfig.nh3Offset < -20.0 || farmConfig.nh3Offset > 20.0) {
+      farmConfig.nh3Offset = 0.0;
+    }
     
-    profileLoaded = true;
-    Serial.println("   ✓ Farm Profile loaded from EEPROM!");
+    configLoaded = true;
+    Serial.println("   ✓ FarmConfig loaded from EEPROM!");
   } else {
-    farmProfile = FARM_PROFILE_LAYER;
-    broilerAgeDays = 1;
-    profileLoaded = false;
-    Serial.println("   ⚠ No saved profile - using default (LAYER)");
-    Serial.println("   💡 Set via App: POST /set-farm-profile {\"farm_profile\": 0 or 1}");
+    // No valid config - use defaults
+    farmConfig.farmType = FARM_PROFILE_LAYER;
+    farmConfig.chickAgeDays = 1;
+    farmConfig.tempOffset = 0.0;
+    farmConfig.nh3Offset = 0.0;
+    configLoaded = false;
+    Serial.println("   ⚠ No saved config - using defaults (LAYER)");
+    Serial.println("   💡 Set via App: POST /set-farm-profile");
   }
   
   printFarmProfile();
 }
 
 void saveFarmProfile() {
-  Serial.println("\n💾 Saving Farm Profile to EEPROM...");
+  Serial.println("\n💾 Saving FarmConfig to EEPROM...");
   
-  EEPROM.write(EEPROM_FARM_PROFILE, farmProfile);
-  EEPROM.write(EEPROM_BROILER_AGE, broilerAgeDays & 0xFF);
-  EEPROM.write(EEPROM_BROILER_AGE + 1, (broilerAgeDays >> 8) & 0xFF);
+  // Write struct
+  EEPROM.put(EEPROM_CONFIG_ADDR, farmConfig);
   
-  // Write magic
-  EEPROM.write(EEPROM_PROFILE_MAGIC, FARM_PROFILE_MAGIC_NUM & 0xFF);
-  EEPROM.write(EEPROM_PROFILE_MAGIC + 1, (FARM_PROFILE_MAGIC_NUM >> 8) & 0xFF);
-  EEPROM.write(EEPROM_PROFILE_MAGIC + 2, (FARM_PROFILE_MAGIC_NUM >> 16) & 0xFF);
-  EEPROM.write(EEPROM_PROFILE_MAGIC + 3, (FARM_PROFILE_MAGIC_NUM >> 24) & 0xFF);
+  // Write magic number
+  uint32_t magic = FARM_CONFIG_MAGIC;
+  EEPROM.put(EEPROM_MAGIC_ADDR, magic);
   
+  // Commit to flash
   EEPROM.commit();
-  profileLoaded = true;
-  Serial.printf("   ✓ Saved! Profile=%s, Age=%d days\n", getFarmTypeStr().c_str(), broilerAgeDays);
+  configLoaded = true;
+  
+  Serial.println("   ✓ FarmConfig saved to EEPROM!");
+  Serial.printf("     farmType: %d (%s)\n", farmConfig.farmType, getFarmTypeStr().c_str());
+  Serial.printf("     chickAgeDays: %d\n", farmConfig.chickAgeDays);
+  Serial.printf("     tempOffset: %.1f°C\n", farmConfig.tempOffset);
+  Serial.printf("     nh3Offset: %.1f ppm\n", farmConfig.nh3Offset);
 }
 
 bool setFarmProfileFromAPI(uint8_t newProfile, int newAge = -1) {
@@ -268,17 +299,17 @@ bool setFarmProfileFromAPI(uint8_t newProfile, int newAge = -1) {
   
   bool changed = false;
   
-  if (newProfile != farmProfile) {
+  if (newProfile != farmConfig.farmType) {
     Serial.printf("\n🔄 FARM PROFILE CHANGED: %s → %s\n", 
                   getFarmTypeStr().c_str(),
                   newProfile == FARM_PROFILE_LAYER ? "LAYER" : "BROILER");
-    farmProfile = newProfile;
+    farmConfig.farmType = newProfile;
     changed = true;
   }
   
-  if (newAge > 0 && newAge < 999 && newAge != broilerAgeDays) {
-    Serial.printf("🐔 BROILER AGE: Day %d → Day %d\n", broilerAgeDays, newAge);
-    broilerAgeDays = newAge;
+  if (newAge > 0 && newAge < 999 && newAge != farmConfig.chickAgeDays) {
+    Serial.printf("🐔 BROILER AGE: Day %d → Day %d\n", farmConfig.chickAgeDays, newAge);
+    farmConfig.chickAgeDays = newAge;
     changed = true;
   }
   
@@ -290,8 +321,31 @@ bool setFarmProfileFromAPI(uint8_t newProfile, int newAge = -1) {
   return true;
 }
 
+// Set sensor calibration offsets
+void setSensorCalibration(float tempOff, float nh3Off) {
+  bool changed = false;
+  
+  if (tempOff != farmConfig.tempOffset && tempOff >= -10.0 && tempOff <= 10.0) {
+    Serial.printf("🌡️ TEMP OFFSET: %.1f → %.1f°C\n", farmConfig.tempOffset, tempOff);
+    farmConfig.tempOffset = tempOff;
+    changed = true;
+  }
+  
+  if (nh3Off != farmConfig.nh3Offset && nh3Off >= -20.0 && nh3Off <= 20.0) {
+    Serial.printf("🧪 NH3 OFFSET: %.1f → %.1f ppm\n", farmConfig.nh3Offset, nh3Off);
+    farmConfig.nh3Offset = nh3Off;
+    changed = true;
+  }
+  
+  if (changed) {
+    saveFarmProfile();
+  }
+}
+
 void printFarmProfile() {
   Serial.println("\n╔═════════════════════════════════════════════════════════╗");
+  Serial.println("║  📦 FARM CONFIG (EEPROM)                                ║");
+  Serial.println("╠═════════════════════════════════════════════════════════╣");
   if (isLayer()) {
     Serial.println("║  🥚 FARM PROFILE: LAYER (ডিম উৎপাদন)                    ║");
     Serial.println("║     • Fixed temp range: 18-27°C (ideal)                 ║");
@@ -300,13 +354,16 @@ void printFarmProfile() {
     Serial.println("║     • Lighting protection: 10min OFF → Beep             ║");
   } else {
     Serial.println("║  🐔 FARM PROFILE: BROILER (মাংস উৎপাদন)                  ║");
-    Serial.printf("║     • Current Age: Day %d                               ║\n", broilerAgeDays);
+    Serial.printf("║     • Current Age: Day %d                               ║\n", farmConfig.chickAgeDays);
     float tMin, tMax;
-    getBroilerTargetTemp(broilerAgeDays, tMin, tMax);
+    getBroilerTargetTemp(farmConfig.chickAgeDays, tMin, tMax);
     Serial.printf("║     • Target Temp: %.0f-%.0f°C (age-based)              ║\n", tMin, tMax);
     Serial.println("║     • HSI thresholds: 38/42/45                          ║");
     Serial.println("║     • Ammonia: 20/30 ppm                                ║");
   }
+  Serial.println("╠═════════════════════════════════════════════════════════╣");
+  Serial.printf("║  🔧 Calibration: Temp %+.1f°C, NH3 %+.1f ppm            ║\n", 
+                farmConfig.tempOffset, farmConfig.nh3Offset);
   Serial.println("╚═════════════════════════════════════════════════════════╝\n");
 }
 
@@ -605,7 +662,8 @@ void readSensors() {
   float h = dht.readHumidity();
   
   if (!isnan(t) && !isnan(h)) {
-    temperature = t;
+    // Apply calibration offset from FarmConfig
+    temperature = t + farmConfig.tempOffset;
     humidity = h;
     lastValidSensor = millis();
     sensorErrorMode = false;
@@ -620,7 +678,10 @@ void readSensors() {
   
   // Read ammonia
   int ammoniaRaw = analogRead(MQ135_PIN);
-  ammonia = map(ammoniaRaw, 0, 4095, 0, 100);  // Simple mapping
+  float ammoniaRawMapped = map(ammoniaRaw, 0, 4095, 0, 100);
+  // Apply calibration offset from FarmConfig
+  ammonia = ammoniaRawMapped + farmConfig.nh3Offset;
+  if (ammonia < 0) ammonia = 0;  // Clamp to 0
   
   // Check water flow
   if (waterPulseCount > 0) {
