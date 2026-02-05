@@ -163,6 +163,26 @@ interface DeviceStatePayload {
   uptime_seconds?: number;
   last_cloud_sync?: string;
   failsafe_reason?: string;
+  // Production reliability fields v6.0
+  firmware_version?: string;
+  restart_reason?: string;
+  restart_count?: number;
+  safe_mode_active?: boolean;
+  safe_mode_until?: string;
+  power_event_type?: string;
+  last_power_event_at?: string;
+  gas_warmup_done?: boolean;
+  gas_warmup_start?: string;
+  ammonia_avg_10?: number;
+  consecutive_high_ammonia?: number;
+  power_voltage_rms?: number;
+  offline_buffer_count?: number;
+  last_age_sync_at?: string;
+  ota_status?: string;
+  ota_progress?: number;
+  online_duration_seconds?: number;
+  offline_duration_seconds?: number;
+  total_restarts?: number;
 }
 
 Deno.serve(async (req) => {
@@ -342,6 +362,20 @@ Deno.serve(async (req) => {
     // ESP32 reports its current operational state (mode, HSI, fan_speed, etc.)
     if (req.method === 'POST' && path === 'state') {
       return await handleDeviceState(bodyData, supabase, userId, deviceToken);
+    }
+
+    // ===== OTA UPDATE CHECK ENDPOINT =====
+    // GET /ota-check - Check for available firmware updates
+    if (req.method === 'GET' && path === 'ota-check') {
+      const currentVersion = url.searchParams.get('version') || '5.0.0';
+      const farmType = url.searchParams.get('farm_type') || 'all';
+      return await checkOTAUpdate(supabase, userId, currentVersion, farmType);
+    }
+
+    // ===== OFFLINE BUFFER SYNC ENDPOINT =====
+    // POST /buffer-sync - Upload buffered offline sensor data
+    if (req.method === 'POST' && path === 'buffer-sync') {
+      return await handleBufferSync(bodyData, supabase, userId, deviceToken);
     }
 
     // ===== GET DEVICE STATE ENDPOINT =====
@@ -988,6 +1022,74 @@ async function handleDeviceState(
       healthUpdate.last_cloud_sync_at = body.last_cloud_sync;
     }
 
+    // ===== NEW PRODUCTION RELIABILITY FIELDS v6.0 =====
+    if (body.firmware_version) {
+      healthUpdate.firmware_version = body.firmware_version;
+    }
+
+    if (body.restart_reason) {
+      healthUpdate.restart_reason = body.restart_reason;
+    }
+
+    if (typeof body.restart_count === 'number') {
+      healthUpdate.restart_count = body.restart_count;
+    }
+
+    if (typeof body.total_restarts === 'number') {
+      healthUpdate.total_restarts = body.total_restarts;
+    }
+
+    if (body.power_event_type) {
+      healthUpdate.power_event_type = body.power_event_type;
+      healthUpdate.last_power_event_at = body.last_power_event_at || new Date().toISOString();
+    }
+
+    if (body.safe_mode_active) {
+      healthUpdate.safe_mode_until = body.safe_mode_until;
+    }
+
+    if (typeof body.gas_warmup_done === 'boolean') {
+      healthUpdate.gas_sensor_warmup_done = body.gas_warmup_done;
+      if (body.gas_warmup_start) {
+        healthUpdate.gas_sensor_warmup_start = body.gas_warmup_start;
+      }
+    }
+
+    if (typeof body.ammonia_avg_10 === 'number') {
+      healthUpdate.ammonia_avg_10 = body.ammonia_avg_10;
+    }
+
+    if (typeof body.consecutive_high_ammonia === 'number') {
+      healthUpdate.consecutive_high_ammonia = body.consecutive_high_ammonia;
+    }
+
+    if (typeof body.power_voltage_rms === 'number') {
+      healthUpdate.power_voltage_rms = body.power_voltage_rms;
+    }
+
+    if (typeof body.offline_buffer_count === 'number') {
+      healthUpdate.offline_buffer_count = body.offline_buffer_count;
+    }
+
+    if (body.last_age_sync_at) {
+      healthUpdate.last_age_sync_at = body.last_age_sync_at;
+    }
+
+    if (body.ota_status) {
+      healthUpdate.ota_status = body.ota_status;
+      if (typeof body.ota_progress === 'number') {
+        healthUpdate.ota_progress = body.ota_progress;
+      }
+    }
+
+    if (typeof body.online_duration_seconds === 'number') {
+      healthUpdate.online_duration_seconds = body.online_duration_seconds;
+    }
+
+    if (typeof body.offline_duration_seconds === 'number') {
+      healthUpdate.offline_duration_seconds = body.offline_duration_seconds;
+    }
+
     // Upsert device health
     const { error: healthError } = await supabase
       .from('device_health')
@@ -1078,6 +1180,187 @@ async function handleDeviceState(
     console.error('Handle device state error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to process device state', code: 'PROCESS_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔄 OTA UPDATE CHECK HANDLER
+// GET /ota-check - Check for available firmware updates
+// ═══════════════════════════════════════════════════════════════════════════
+async function checkOTAUpdate(supabase: any, userId: string, currentVersion: string, farmType: string) {
+  try {
+    // Get latest stable firmware for the farm type
+    const { data: firmware, error } = await supabase
+      .from('ota_firmware')
+      .select('*')
+      .eq('is_active', true)
+      .eq('is_stable', true)
+      .or(`farm_type.eq.all,farm_type.eq.${farmType}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('OTA check error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to check for updates', code: 'OTA_CHECK_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!firmware) {
+      return new Response(
+        JSON.stringify({
+          update_available: false,
+          current_version: currentVersion,
+          message: 'No updates available'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Simple version comparison (assumes semantic versioning)
+    const isNewer = firmware.version > currentVersion;
+    const meetsMinVersion = !firmware.min_firmware_version || currentVersion >= firmware.min_firmware_version;
+
+    if (!isNewer || !meetsMinVersion) {
+      return new Response(
+        JSON.stringify({
+          update_available: false,
+          current_version: currentVersion,
+          latest_version: firmware.version,
+          message: isNewer ? 'Update requires newer base version' : 'Already up to date'
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`🆕 OTA update available: ${currentVersion} → ${firmware.version}`);
+
+    return new Response(
+      JSON.stringify({
+        update_available: true,
+        current_version: currentVersion,
+        new_version: firmware.version,
+        download_url: firmware.url,
+        checksum: firmware.checksum,
+        file_size: firmware.file_size_bytes,
+        release_notes: firmware.release_notes,
+        release_notes_bn: firmware.release_notes_bn,
+        message: `Update available: v${firmware.version}`
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('OTA check error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to check for updates', code: 'OTA_CHECK_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 📦 OFFLINE BUFFER SYNC HANDLER
+// POST /buffer-sync - Upload buffered offline sensor data
+// ═══════════════════════════════════════════════════════════════════════════
+interface BufferSyncPayload {
+  records: Array<{
+    temperature: number;
+    humidity: number;
+    ammonia: number;
+    water_flow?: number;
+    power_status?: string;
+    recorded_at: string;
+  }>;
+  shed_id?: string;
+}
+
+async function handleBufferSync(body: BufferSyncPayload, supabase: any, userId: string, deviceToken: string) {
+  try {
+    if (!body.records || !Array.isArray(body.records) || body.records.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No records provided', code: 'EMPTY_BUFFER' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get device token ID
+    const { data: deviceInfo } = await supabase
+      .from('device_tokens')
+      .select('id, shed_id')
+      .eq('token', deviceToken)
+      .single();
+
+    if (!deviceInfo) {
+      return new Response(
+        JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const shedId = body.shed_id || deviceInfo.shed_id;
+    const records = body.records.slice(0, 50); // Max 50 records per sync
+
+    // Insert buffered records into sensor_buffer table
+    const bufferRecords = records.map(record => ({
+      device_token_id: deviceInfo.id,
+      user_id: userId,
+      shed_id: shedId,
+      temperature: record.temperature,
+      humidity: record.humidity,
+      ammonia: record.ammonia,
+      water_flow: record.water_flow || 0,
+      power_status: record.power_status || 'ON',
+      hsi: calculateHSI(record.temperature, record.humidity),
+      recorded_at: record.recorded_at,
+      synced_at: new Date().toISOString()
+    }));
+
+    const { error: insertError } = await supabase
+      .from('sensor_buffer')
+      .insert(bufferRecords);
+
+    if (insertError) {
+      console.error('Buffer sync insert error:', insertError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to sync buffer', code: 'INSERT_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Also insert into main sensor_readings for analytics
+    const sensorRecords = records.map(record => ({
+      user_id: userId,
+      shed_id: shedId,
+      temperature: record.temperature,
+      humidity: record.humidity,
+      ammonia: record.ammonia,
+      water_usage: record.water_flow || 0,
+      recorded_at: record.recorded_at
+    }));
+
+    await supabase.from('sensor_readings').insert(sensorRecords);
+
+    console.log(`📦 Buffer sync: ${records.length} offline records uploaded`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        records_synced: records.length,
+        shed_id: shedId,
+        message: `${records.length} offline records synced successfully`
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Buffer sync error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to sync buffer', code: 'SYNC_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
