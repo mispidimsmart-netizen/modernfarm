@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,8 +46,8 @@ import {
 
 interface DocSectionProps {
   title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
+  icon: ReactNode;
+  children: ReactNode;
   defaultOpen?: boolean;
   badge?: string;
   badgeColor?: string;
@@ -83,7 +83,7 @@ const DocSection = ({ title, icon, children, defaultOpen = false, badge, badgeCo
   );
 };
 
-const InfoBox = ({ type, children }: { type: 'info' | 'warning' | 'success' | 'danger'; children: React.ReactNode }) => {
+const InfoBox = ({ type, children }: { type: 'info' | 'warning' | 'success' | 'danger'; children: ReactNode }) => {
   const styles = {
     info: 'bg-blue-500/10 border-blue-500/30 text-blue-300',
     warning: 'bg-amber-500/10 border-amber-500/30 text-amber-300',
