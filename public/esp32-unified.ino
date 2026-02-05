@@ -258,8 +258,12 @@ void loadBroilerRules();
 void updateBroilerTempRules();
 void saveFarmProfile();
 void saveAgeTickTime();
+void loadAgeTickTime();
+void autoIncrementAge();
 void getBroilerTargetTemp(int ageDays, float &minTemp, float &maxTemp);
 void handleBroilerAgeIncrement();
+void printFarmProfile();
+void updateAge(int newAge);
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
