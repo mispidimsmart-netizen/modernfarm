@@ -314,6 +314,8 @@ bool sensorInitOK = true;
  
  // Age Sync & OTA
  unsigned long lastAgeSyncTime = 0;
+ unsigned long lastAgeTickMillis = 0;          // Track local age increment time
+ const unsigned long AGE_TICK_INTERVAL = 86400000UL;  // 24 hours in milliseconds
  bool otaInProgress = false;
  int otaProgress = 0;
  String otaStatus = "idle";
@@ -482,7 +484,69 @@ void autoIncrementAge() {
   Serial.printf("\n📅 AUTO AGE INCREMENT: Day %d\n", farmConfig.chickAgeDays);
   
   saveFarmProfile();
+  saveAgeTickTime();  // Persist to EEPROM
   loadBroilerRules();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🐔 BROILER AGE OFFLINE TRACKING
+// Internet গেলেও temperature curve ঠিক থাকবে
+// প্রতি ২৪ ঘণ্টায় স্বয়ংক্রিয়ভাবে বয়স বাড়বে (EEPROM-এ সেভ থাকে)
+// ═══════════════════════════════════════════════════════════════════════
+
+void loadAgeTickTime() {
+  preferences.begin("age_track", true);  // Read-only
+  lastAgeTickMillis = preferences.getULong("lastTick", 0);
+  preferences.end();
+  
+  if (lastAgeTickMillis == 0) {
+    // First time or EEPROM cleared - start from now
+    lastAgeTickMillis = millis();
+    saveAgeTickTime();
+    Serial.println("📅 Age tracking initialized");
+  } else {
+    Serial.printf("📅 Last age tick loaded: %lu ms ago\n", millis() - lastAgeTickMillis);
+  }
+}
+
+void saveAgeTickTime() {
+  preferences.begin("age_track", false);  // Read-write
+  preferences.putULong("lastTick", millis());
+  preferences.end();
+}
+
+// Check if 24 hours passed and auto-increment age
+// Works even when offline - no internet required!
+void ageTick() {
+  if (!isBroiler()) return;
+  
+  unsigned long now = millis();
+  unsigned long elapsed = now - lastAgeTickMillis;
+  
+  // Handle millis() overflow (every ~49 days)
+  if (now < lastAgeTickMillis) {
+    elapsed = AGE_TICK_INTERVAL;  // Force tick on overflow
+    Serial.println("📅 Millis overflow detected - forcing age tick");
+  }
+  
+  if (elapsed >= AGE_TICK_INTERVAL) {
+    // 24 hours passed - increment age
+    Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+    Serial.println("║  📅 OFFLINE AGE TICK - 24 Hours Elapsed                       ║");
+    Serial.printf("║  Broiler Age: Day %d → Day %d                                  ║\n", 
+                  farmConfig.chickAgeDays, farmConfig.chickAgeDays + 1);
+    Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+    
+    farmConfig.chickAgeDays++;
+    saveFarmProfile();
+    lastAgeTickMillis = now;
+    saveAgeTickTime();
+    
+    // Reload temperature rules for new age
+    loadBroilerRules();
+    
+    Serial.printf("✅ Temperature rules updated for Day %d\n", farmConfig.chickAgeDays);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1473,6 +1537,11 @@ void setup() {
   EEPROM.begin(EEPROM_SIZE);
   loadFarmProfile();
   
+  // === LOAD AGE TICK TIME FOR OFFLINE TRACKING ===
+  if (isBroiler()) {
+    loadAgeTickTime();
+  }
+  
   // === LOAD RULES BASED ON FARM TYPE ===
   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
   Serial.println("║  📋 BOOT STEP 2: Loading Automation Rules                     ║");
@@ -1566,17 +1635,14 @@ void loop() {
    if (bootFanDone && !safeModeActive) {
     controlLogic();
     
+    // 🐔 OFFLINE AGE TICK (Broiler only)
+    // Works without internet - temperature curve never freezes!
+    ageTick();
+    
     // Update broiler age & temp rules every hour (Broiler only)
     if (isBroiler() && now - lastRuleUpdate >= 3600000) {
       updateBroilerTempRules();
       lastRuleUpdate = now;
-    }
-    
-    // Auto-increment age every 24 hours (Broiler only)
-    // 86400000 ms = 24 hours
-    if (isBroiler() && now - lastDayCheck >= 86400000UL) {
-      autoIncrementAge();
-      lastDayCheck = now;
     }
   }
   
