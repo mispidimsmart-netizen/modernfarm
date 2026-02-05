@@ -358,13 +358,25 @@ float lastVoltageRMS = 230.0;
  #define WATER_UPDATE_INTERVAL   3600000UL // 1 hour update interval
  #define WATER_DROP_THRESHOLD    0.20      // 20% drop = anomaly alert
  #define WATER_MIN_DATA_POINTS   6         // Minimum 6 hours data for comparison
+#define WATER_2H_WINDOW_SIZE    2         // 2-hour comparison window
+#define WATER_CONSECUTIVE_REQ   2         // Require 2 consecutive detection cycles
  
  float waterFlowHistory[WATER_HISTORY_SIZE] = {0};
  int waterHistoryIndex = 0;
  int waterHistoryCount = 0;
  float waterRollingAvg = 0;
+float water2hAvg = 0;                     // Last 2 hours average
+int waterAnomalyConsecutive = 0;          // Consecutive anomaly detection count
  unsigned long lastWaterHistoryUpdate = 0;
  bool waterAnomalyAlertSent = false;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🐔 BROILER AGE SOURCE TRACKING
+// Track whether age came from local tick or server sync
+// ═══════════════════════════════════════════════════════════════════════
+String ageSource = "LOCAL";                // "LOCAL" or "SERVER"
+unsigned long lastServerAgeSyncTime = 0;   // Unix timestamp of last server sync
+int lastServerSyncedAge = 0;               // Last age value from server
 
 // ═══════════════════════════════════════════════════════════════════════
 // 📦 ENHANCED OFFLINE DATA BUFFER
@@ -605,12 +617,13 @@ void ageTick() {
   if (elapsed >= AGE_TICK_INTERVAL) {
     // 24 hours passed - increment age
     Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-    Serial.println("║  📅 OFFLINE AGE TICK - 24 Hours Elapsed                       ║");
+    Serial.println("║  📅 LOCAL AGE TICK - 24 Hours Elapsed                         ║");
     Serial.printf("║  Broiler Age: Day %d → Day %d                                  ║\n", 
                   farmConfig.chickAgeDays, farmConfig.chickAgeDays + 1);
     Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
     
     farmConfig.chickAgeDays++;
+    ageSource = "LOCAL";  // Mark as local increment
     saveFarmProfile();
     lastAgeTickMillis = now;
     saveAgeTickTime();
@@ -1164,7 +1177,7 @@ void advanceSensorRollingIndex() {
      return true;
    }
    int hour = timeinfo.tm_hour;
-   return (hour >= 5 && hour <= 22);
+   return (hour >= 5 && hour < 22);  // 05:00-21:59 (22:00 onwards = night)
  }
  
  // Calculate water flow rate from pulse count (YF-S201: 7.5 pulses per liter)
@@ -1202,36 +1215,58 @@ void advanceSensorRollingIndex() {
    }
    waterRollingAvg = (count > 0) ? (sum / count) : 0;
    waterHistoryCount = count;
+   
+   // Calculate last 2 hours average
+   float sum2h = 0;
+   int count2h = 0;
+   // Get last 2 entries from history (circular buffer)
+   for (int i = 0; i < WATER_2H_WINDOW_SIZE; i++) {
+     int idx = (waterHistoryIndex - 1 - i + WATER_HISTORY_SIZE) % WATER_HISTORY_SIZE;
+     if (waterFlowHistory[idx] > 0) {
+       sum2h += waterFlowHistory[idx];
+       count2h++;
+     }
+   }
+   water2hAvg = (count2h > 0) ? (sum2h / count2h) : 0;
  }
  
- // Check for water anomaly (drop below 20% of average)
+ // Check for water anomaly (last 2h vs 24h average, require 2 consecutive cycles)
  void checkWaterAnomaly() {
    // Only monitor during active hours (5:00 AM - 10:00 PM)
    if (!isActiveWaterHours()) {
-     waterAnomalyAlertSent = false;  // Reset for next active period
+     waterAnomalyAlertSent = false;
+     waterAnomalyConsecutive = 0;  // Reset on night hours
+     Serial.println("[Water] Night hours (22:00-05:00) - monitoring paused");
      return;
    }
    
    // Need minimum data points for meaningful comparison
    if (waterHistoryCount < WATER_MIN_DATA_POINTS) {
+     Serial.printf("[Water] Insufficient data: %d/%d points\n", waterHistoryCount, WATER_MIN_DATA_POINTS);
      return;
    }
    
-   float currentFlow = waterFlow;
-   
-   // Compare with rolling average - alert if drops below 20%
-   if (waterRollingAvg > 0 && currentFlow < (waterRollingAvg * WATER_DROP_THRESHOLD)) {
-     if (!waterAnomalyAlertSent) {
-       float dropPercent = ((waterRollingAvg - currentFlow) / waterRollingAvg) * 100;
+   // Compare last 2h average with 24h rolling average
+   if (waterRollingAvg > 0 && water2hAvg < (waterRollingAvg * (1.0 - WATER_DROP_THRESHOLD))) {
+     // Anomaly detected - increment consecutive counter
+     waterAnomalyConsecutive++;
+     
+     float dropPercent = ((waterRollingAvg - water2hAvg) / waterRollingAvg) * 100;
+     Serial.printf("[Water] Anomaly cycle %d: 2h avg=%.1f, 24h avg=%.1f (%.0f%% drop)\n", 
+                   waterAnomalyConsecutive, water2hAvg, waterRollingAvg, dropPercent);
+     
+     // Require 2 consecutive detection cycles before alerting
+     if (waterAnomalyConsecutive >= WATER_CONSECUTIVE_REQ && !waterAnomalyAlertSent) {
        
        Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-       Serial.println("║  💧 WATER ANOMALY ALERT - Low Water Intake Detected!          ║");
-       Serial.printf("║  Current: %.1f L/h, Average: %.1f L/h (%.0f%% drop)            ║\n", 
-                     currentFlow, waterRollingAvg, dropPercent);
+       Serial.println("║  💧 WATER HEALTH WARNING - Low Intake (2h vs 24h)             ║");
+       Serial.printf("║  Last 2h: %.1f L/h, 24h Avg: %.1f L/h (%.0f%% drop)            ║\n", 
+                     water2hAvg, waterRollingAvg, dropPercent);
+       Serial.printf("║  Consecutive cycles: %d                                        ║\n", waterAnomalyConsecutive);
        Serial.println("║  ⚠️ Check bird health immediately!                            ║");
        Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
        
-       // Trigger warning beep (not full alarm - just attention)
+       // Trigger warning beep (health warning, not emergency alarm)
        digitalWrite(ALARM_RELAY_PIN, HIGH);
        delay(200);
        digitalWrite(ALARM_RELAY_PIN, LOW);
@@ -1243,6 +1278,11 @@ void advanceSensorRollingIndex() {
        waterAnomalyAlertSent = true;
      }
    } else {
+     // Normal water consumption - reset counters
+     if (waterAnomalyConsecutive > 0) {
+       Serial.printf("[Water] Consumption normal - reset (was %d cycles)\n", waterAnomalyConsecutive);
+     }
+     waterAnomalyConsecutive = 0;
      waterAnomalyAlertSent = false;
    }
  }
@@ -1265,33 +1305,8 @@ void advanceSensorRollingIndex() {
      
      lastWaterHistoryUpdate = now;
      
-     Serial.printf("[Water] Hourly update - Flow: %.1f L/h, 24h Avg: %.1f L/h, Data points: %d\n", 
-                   waterFlow, waterRollingAvg, waterHistoryCount);
-   }
-   
-   // Check for anomalies during active hours
-   checkWaterAnomaly();
- }
- // Main water flow monitoring tick (called in loop)
- void waterFlowTick() {
-   unsigned long now = millis();
-   
-   // Update flow reading continuously
-   calculateWaterFlow();
-   
-   // Update hourly history
-   if (now - lastWaterHistoryUpdate >= WATER_UPDATE_INTERVAL) {
-     // Store current hour's flow in history
-     waterFlowHistory[waterHistoryIndex] = waterFlow;
-     waterHistoryIndex = (waterHistoryIndex + 1) % WATER_HISTORY_SIZE;
-     
-     // Recalculate rolling average
-     updateWaterRollingAverage();
-     
-     lastWaterHistoryUpdate = now;
-     
-     Serial.printf("[Water] Hourly update - Flow: %.1f L/h, 24h Avg: %.1f L/h, Data points: %d\n", 
-                   waterFlow, waterRollingAvg, waterHistoryCount);
+     Serial.printf("[Water] Hourly update - Current: %.1f L/h, 2h Avg: %.1f L/h, 24h Avg: %.1f L/h\n", 
+                   waterFlow, water2hAvg, waterRollingAvg);
    }
    
    // Check for anomalies during active hours
@@ -1860,6 +1875,13 @@ void syncWithCloud() {
   doc["broiler_age_days"] = broilerAgeDays;
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["uptime_seconds"] = millis() / 1000;
+  // Broiler age source tracking
+  doc["broiler_age_source"] = ageSource;
+  doc["last_server_age_sync_at"] = lastServerAgeSyncTime;
+  // Water monitoring fields
+  doc["water_last_2h_avg"] = water2hAvg;
+  doc["water_24h_rolling_avg"] = waterRollingAvg;
+  doc["water_anomaly_consecutive_count"] = waterAnomalyConsecutive;
    // Reliability fields
    doc["firmware_version"] = firmwareVersion;
    doc["restart_reason"] = restartReason;
@@ -1924,10 +1946,21 @@ void handleCloudResponse(String response) {
   // === BROILER AGE SYNC ===
   if (doc.containsKey("broiler_age_days") && isBroiler()) {
     int cloudAge = doc["broiler_age_days"] | 1;
-    if (cloudAge != broilerAgeDays && cloudAge > 0) {
-      broilerAgeDays = cloudAge;
+   // NEVER decrease age from server - only accept if higher or equal
+   if (cloudAge > 0 && cloudAge >= broilerAgeDays) {
+     if (cloudAge != broilerAgeDays) {
+       Serial.printf("\n🐔 AGE SERVER SYNC: Day %d → Day %d\n", broilerAgeDays, cloudAge);
+       broilerAgeDays = cloudAge;
+       loadBroilerRules();
+     }
+     // Update tracking even if age unchanged
+     ageSource = "SERVER";
+     lastServerAgeSyncTime = millis() / 1000;  // Unix-style seconds
+     lastServerSyncedAge = cloudAge;
       saveFarmProfile();
-      Serial.printf("🐔 Broiler age synced: Day %d\n", broilerAgeDays);
+   } else if (cloudAge > 0 && cloudAge < broilerAgeDays) {
+     Serial.printf("⚠️ Server age (%d) < Local age (%d) - IGNORED (never decrease!)\n", 
+                   cloudAge, broilerAgeDays);
     }
   }
   

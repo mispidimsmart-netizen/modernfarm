@@ -49,6 +49,13 @@ export interface DeviceHealth {
   ammonia_avg_10: number | null;
   power_voltage_rms: number | null;
   consecutive_high_ammonia: number | null;
+  // Broiler age source tracking
+  broiler_age_source: string | null;
+  last_server_age_sync_at: string | null;
+  // Water monitoring fields
+  water_anomaly_consecutive_count: number | null;
+  water_last_2h_avg: number | null;
+  water_24h_rolling_avg: number | null;
 }
 
 export interface DeviceToken {

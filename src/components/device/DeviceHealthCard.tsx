@@ -1,6 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { DeviceHealth, getSignalStrengthLabel, formatUptime, isDeviceOffline, getRestartReasonLabel, formatDuration, getOTAStatusLabel } from '@/hooks/useDeviceHealth';
-import { Wifi, WifiOff, Battery, Cpu, Clock, AlertTriangle, Power, Zap, RefreshCw, Shield, Database, Download, Activity } from 'lucide-react';
+import { Wifi, WifiOff, Battery, Cpu, Clock, AlertTriangle, Power, Zap, RefreshCw, Shield, Database, Download, Activity, Bird, Cloud, Server, Droplets } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -201,6 +201,67 @@ export function DeviceHealthCard({ device, deviceName }: DeviceHealthCardProps) 
             <p className="mt-1 text-[10px] text-muted-foreground">
               {language === 'bn' ? 'নতুন ভার্সন:' : 'New version:'} v{device.ota_version_available}
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Broiler Age Source Tracking */}
+      {device.broiler_age_source && (
+        <div className="mt-3 rounded-lg border border-orange-500/30 bg-orange-500/5 p-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bird className="h-4 w-4 text-orange-500" />
+              <span className="text-xs font-medium">
+                {language === 'bn' ? 'ব্রয়লার বয়স উৎস' : 'Broiler Age Source'}
+              </span>
+            </div>
+            <Badge 
+              variant={device.broiler_age_source === 'SERVER' ? 'default' : 'secondary'} 
+              className="text-[10px]"
+            >
+              {device.broiler_age_source === 'SERVER' ? (
+                <><Cloud className="h-3 w-3 mr-1" />{language === 'bn' ? 'সার্ভার' : 'SERVER'}</>
+              ) : (
+                <><Server className="h-3 w-3 mr-1" />{language === 'bn' ? 'লোকাল' : 'LOCAL'}</>
+              )}
+            </Badge>
+          </div>
+          {device.last_server_age_sync_at && (
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              {language === 'bn' ? 'শেষ সার্ভার সিঙ্ক:' : 'Last server sync:'}{' '}
+              {formatDistanceToNow(new Date(device.last_server_age_sync_at), {
+                addSuffix: true,
+                locale: language === 'bn' ? bn : enUS,
+              })}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Water Monitoring Status */}
+      {(device.water_24h_rolling_avg !== null && device.water_24h_rolling_avg > 0) && (
+        <div className="mt-3 rounded-lg bg-muted/50 p-2">
+          <div className="flex items-center gap-2 text-xs">
+            <Droplets className="h-3.5 w-3.5 text-blue-500" />
+            <span className="text-muted-foreground">
+              {language === 'bn' ? 'পানি মনিটরিং' : 'Water Monitoring'}
+            </span>
+          </div>
+          <div className="mt-1 flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              {language === 'bn' ? '২ঘ গড়:' : '2h Avg:'} {(device.water_last_2h_avg ?? 0).toFixed(1)} L/h
+            </span>
+            <span className="text-muted-foreground">
+              {language === 'bn' ? '২৪ঘ গড়:' : '24h Avg:'} {(device.water_24h_rolling_avg ?? 0).toFixed(1)} L/h
+            </span>
+          </div>
+          {device.water_anomaly_consecutive_count !== null && device.water_anomaly_consecutive_count > 0 && (
+            <div className="mt-1 flex items-center gap-1 text-amber-600 text-[10px]">
+              <AlertTriangle className="h-3 w-3" />
+              {language === 'bn' 
+                ? `${device.water_anomaly_consecutive_count}টি ধারাবাহিক অ্যানোমালি সাইকেল`
+                : `${device.water_anomaly_consecutive_count} consecutive anomaly cycles`}
+            </div>
           )}
         </div>
       )}
