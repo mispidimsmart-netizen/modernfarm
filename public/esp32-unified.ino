@@ -56,6 +56,7 @@
 #include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <rom/rtc.h>
+ #include <Update.h>
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🐔 FARM PROFILE SYSTEM (EEPROM Persistent Storage)
@@ -67,6 +68,18 @@
 #define FARM_PROFILE_LAYER   0
 #define FARM_PROFILE_BROILER 1
 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🛡️ PRODUCTION RELIABILITY CONFIG
+ // ═══════════════════════════════════════════════════════════════════════
+ #define SAFE_MODE_DURATION       30000     // 30 seconds post-boot safe mode
+ #define BOOT_VENTILATION_DELAY   5000      // 5 sec ventilation stabilization
+ #define GAS_WARMUP_DURATION      300000    // 5 minutes warmup period
+ #define GAS_MOVING_AVG_SIZE      10        // Moving average filter size
+ #define GAS_CONSECUTIVE_ALERT    3         // Consecutive readings for alert
+ #define POWER_SAMPLE_COUNT       50        // RMS sample count
+ #define POWER_PERSIST_DURATION   5000      // 5 seconds persistence for alert
+ #define OFFLINE_BUFFER_SIZE      50        // Store last 50 readings
+ 
 // EEPROM Configuration
 #define EEPROM_SIZE              512
 #define EEPROM_CONFIG_ADDR       0      // Start address for FarmConfig
@@ -260,6 +273,52 @@ bool bootFanDone = false;
 unsigned long bootFanStart = 0;
 bool sensorInitOK = true;
 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🛡️ RELIABILITY STATE VARIABLES
+ // ═══════════════════════════════════════════════════════════════════════
+ bool safeModeActive = false;
+ unsigned long safeModeEndTime = 0;
+ String restartReason = "UNKNOWN";
+ int totalRestarts = 0;
+ unsigned long onlineDurationSec = 0;
+ unsigned long offlineDurationSec = 0;
+ unsigned long lastOnlineCheck = 0;
+ 
+ // Gas Sensor Warmup
+ bool gasWarmupDone = false;
+ unsigned long gasWarmupStart = 0;
+ float ammoniaReadings[GAS_MOVING_AVG_SIZE];
+ int ammoniaReadingIndex = 0;
+ int ammoniaReadingCount = 0;
+ float ammoniaAvg10 = 0;
+ int consecutiveHighAmmonia = 0;
+ 
+ // Power Sensor Filter
+ float powerVoltageRMS = 230.0;
+ unsigned long lowVoltageSince = 0;
+ bool powerFailConfirmed = false;
+ 
+ // Offline Buffer
+ struct SensorBufferEntry {
+   unsigned long timestamp;
+   float temperature;
+   float humidity;
+   float ammonia;
+   float waterFlow;
+   bool powerOn;
+   float hsi;
+ };
+ SensorBufferEntry offlineBuffer[OFFLINE_BUFFER_SIZE];
+ int offlineBufferHead = 0;
+ int offlineBufferCount = 0;
+ 
+ // Age Sync & OTA
+ unsigned long lastAgeSyncTime = 0;
+ bool otaInProgress = false;
+ int otaProgress = 0;
+ String otaStatus = "idle";
+ String firmwareVersion = "5.1.0";
+ 
 // ═══════════════════════════════════════════════════════════════════════
 // FARM PROFILE EEPROM FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════
@@ -628,6 +687,137 @@ void IRAM_ATTR waterPulseISR() {
   waterPulseCount++;
 }
 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🛡️ RELIABILITY HELPER FUNCTIONS
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ String detectRestartReason() {
+   esp_reset_reason_t reason = esp_reset_reason();
+   switch (reason) {
+     case ESP_RST_POWERON: return "POWER_EVENT";
+     case ESP_RST_EXT: return "POWER_EVENT";
+     case ESP_RST_SW: return "SOFTWARE";
+     case ESP_RST_PANIC: return "PANIC";
+     case ESP_RST_INT_WDT: case ESP_RST_TASK_WDT: case ESP_RST_WDT: return "WATCHDOG";
+     case ESP_RST_BROWNOUT: return "BROWNOUT";
+     default: return "UNKNOWN";
+   }
+ }
+ 
+ bool isPowerRelatedRestart() {
+   return (restartReason == "POWER_EVENT" || restartReason == "BROWNOUT" || restartReason == "WATCHDOG");
+ }
+ 
+ void enterSafeMode() {
+   safeModeActive = true;
+   safeModeEndTime = millis() + SAFE_MODE_DURATION;
+   Serial.println("\n🛡️ SAFE MODE ACTIVATED (30s) - Fan ON, Commands IGNORED");
+   pinMode(FAN_RELAY_PIN, OUTPUT);
+   digitalWrite(FAN_RELAY_PIN, HIGH);
+   fanOn = true;
+   fanSpeed = "HIGH";
+   delay(BOOT_VENTILATION_DELAY);
+ }
+ 
+ void checkSafeModeExit() {
+   if (safeModeActive && millis() >= safeModeEndTime) {
+     safeModeActive = false;
+     Serial.println("✅ Safe mode ended → Normal automation resumed");
+   }
+ }
+ 
+ void initGasWarmup() {
+   gasWarmupDone = false;
+   gasWarmupStart = millis();
+   for (int i = 0; i < GAS_MOVING_AVG_SIZE; i++) ammoniaReadings[i] = 0;
+   ammoniaReadingIndex = 0;
+   ammoniaReadingCount = 0;
+   Serial.println("🧪 Gas sensor warmup started (5 minutes)...");
+ }
+ 
+ void checkGasWarmup() {
+   if (!gasWarmupDone && millis() - gasWarmupStart >= GAS_WARMUP_DURATION) {
+     gasWarmupDone = true;
+     Serial.println("✅ Gas sensor warmup complete");
+   }
+ }
+ 
+ float calculateAmmoniaMovingAvg(float newReading) {
+   ammoniaReadings[ammoniaReadingIndex] = newReading;
+   ammoniaReadingIndex = (ammoniaReadingIndex + 1) % GAS_MOVING_AVG_SIZE;
+   if (ammoniaReadingCount < GAS_MOVING_AVG_SIZE) ammoniaReadingCount++;
+   float sum = 0;
+   for (int i = 0; i < ammoniaReadingCount; i++) sum += ammoniaReadings[i];
+   ammoniaAvg10 = sum / ammoniaReadingCount;
+   return ammoniaAvg10;
+ }
+ 
+ bool shouldTriggerAmmoniaAlert(float threshold) {
+   if (!gasWarmupDone) return false;
+   if (ammoniaAvg10 > threshold) {
+     consecutiveHighAmmonia++;
+     if (consecutiveHighAmmonia >= GAS_CONSECUTIVE_ALERT) return true;
+   } else {
+     consecutiveHighAmmonia = 0;
+   }
+   return false;
+ }
+ 
+ float readPowerVoltageRMS() {
+   long sumSquares = 0;
+   int dcOffset = 2048;
+   for (int i = 0; i < POWER_SAMPLE_COUNT; i++) {
+     int sample = analogRead(POWER_SENSE_PIN);
+     long val = sample - dcOffset;
+     sumSquares += val * val;
+     delayMicroseconds(400);
+   }
+   float rms = sqrt(sumSquares / POWER_SAMPLE_COUNT);
+   return (rms / 300.0) * 230.0;
+ }
+ 
+ bool checkPowerFailure() {
+   powerVoltageRMS = readPowerVoltageRMS();
+   bool lowVoltage = powerVoltageRMS < 180.0;
+   if (lowVoltage) {
+     if (lowVoltageSince == 0) lowVoltageSince = millis();
+     if (millis() - lowVoltageSince >= POWER_PERSIST_DURATION) {
+       if (!powerFailConfirmed) {
+         powerFailConfirmed = true;
+         Serial.printf("⚠️ POWER FAILURE: %.1fV RMS\n", powerVoltageRMS);
+       }
+       return true;
+     }
+   } else {
+     lowVoltageSince = 0;
+     if (powerFailConfirmed) {
+       Serial.printf("✅ Power restored: %.1fV\n", powerVoltageRMS);
+       powerFailConfirmed = false;
+     }
+   }
+   return false;
+ }
+ 
+ void addToOfflineBuffer() {
+   offlineBuffer[offlineBufferHead].timestamp = millis() / 1000;
+   offlineBuffer[offlineBufferHead].temperature = temperature;
+   offlineBuffer[offlineBufferHead].humidity = humidity;
+   offlineBuffer[offlineBufferHead].ammonia = ammonia;
+   offlineBuffer[offlineBufferHead].waterFlow = waterFlow;
+   offlineBuffer[offlineBufferHead].powerOn = powerOn;
+   offlineBuffer[offlineBufferHead].hsi = currentHSI;
+   offlineBufferHead = (offlineBufferHead + 1) % OFFLINE_BUFFER_SIZE;
+   if (offlineBufferCount < OFFLINE_BUFFER_SIZE) offlineBufferCount++;
+ }
+ 
+ void updateOnlineOfflineDuration() {
+   unsigned long now = millis();
+   unsigned long elapsed = (now - lastOnlineCheck) / 1000;
+   if (cloudConnected) onlineDurationSec += elapsed;
+   else offlineDurationSec += elapsed;
+   lastOnlineCheck = now;
+ }
+ 
 // ================ DEVICE CONTROL ================
 void setFanState(bool on, String speed) {
   fanOn = on;
@@ -980,8 +1170,9 @@ void readSensors() {
   int ammoniaRaw = analogRead(MQ135_PIN);
   float ammoniaRawMapped = map(ammoniaRaw, 0, 4095, 0, 100);
   // Apply calibration offset from FarmConfig
-  ammonia = ammoniaRawMapped + farmConfig.nh3Offset;
-  if (ammonia < 0) ammonia = 0;  // Clamp to 0
+   float ammoniaRaw2 = ammoniaRawMapped + farmConfig.nh3Offset;
+   if (ammoniaRaw2 < 0) ammoniaRaw2 = 0;
+   ammonia = calculateAmmoniaMovingAvg(ammoniaRaw2);  // Moving avg filter
   
   // Check water flow
   if (waterPulseCount > 0) {
@@ -993,7 +1184,9 @@ void readSensors() {
   }
   
   // Power sense
-  powerOn = analogRead(POWER_SENSE_PIN) > 2000;
+   powerOn = !checkPowerFailure();  // RMS filter
+   checkGasWarmup();
+   if (!cloudConnected) addToOfflineBuffer();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1045,6 +1238,21 @@ void syncWithCloud() {
   doc["broiler_age_days"] = broilerAgeDays;
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["uptime_seconds"] = millis() / 1000;
+   // Reliability fields
+   doc["firmware_version"] = firmwareVersion;
+   doc["restart_reason"] = restartReason;
+   doc["total_restarts"] = totalRestarts;
+   doc["safe_mode_active"] = safeModeActive;
+   doc["power_event_type"] = isPowerRelatedRestart() ? "POWER_EVENT" : "NORMAL";
+   doc["gas_warmup_done"] = gasWarmupDone;
+   doc["ammonia_avg_10"] = ammoniaAvg10;
+   doc["consecutive_high_ammonia"] = consecutiveHighAmmonia;
+   doc["power_voltage_rms"] = powerVoltageRMS;
+   doc["offline_buffer_count"] = offlineBufferCount;
+   doc["ota_status"] = otaStatus;
+   doc["ota_progress"] = otaProgress;
+   doc["online_duration_seconds"] = onlineDurationSec;
+   doc["offline_duration_seconds"] = offlineDurationSec;
   
   String payload;
   serializeJson(doc, payload);
@@ -1100,8 +1308,8 @@ void handleCloudResponse(String response) {
   }
   
   // Ignore device commands in failsafe mode
-  if (failsafeMode) {
-    Serial.println("⚠️ FAILSAFE: Ignoring cloud commands");
+   if (failsafeMode || safeModeActive) {
+     Serial.println("⚠️ SAFE/FAILSAFE MODE: Ignoring cloud commands");
     return;
   }
   
@@ -1128,21 +1336,24 @@ void checkFailsafeTimeout() {
 void setup() {
   Serial.begin(115200);
   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-  Serial.println("║    Smart Farm - ESP32 Unified Controller v5.0                 ║");
+   Serial.println("║    Smart Farm - ESP32 Unified Controller v5.1                 ║");
   Serial.println("║    🐔 UNIFIED CODEBASE: Farm Profile System                   ║");
+   Serial.println("║    🛡️ PRODUCTION RELIABILITY: Safe Mode + Filters            ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
   Serial.printf("  Shed: %s (%s)\n", SHED_NAME, SHED_ID);
   Serial.printf("  Farm: %s\n\n", FARM_ID);
   
-  // Check watchdog reset
-  esp_reset_reason_t resetReason = esp_reset_reason();
-  wasWatchdogReset = (resetReason == ESP_RST_TASK_WDT || 
-                       resetReason == ESP_RST_WDT || 
-                       resetReason == ESP_RST_INT_WDT ||
-                       resetReason == ESP_RST_PANIC);
-  if (wasWatchdogReset) {
-    Serial.println("⚠️🔧 WATCHDOG RESTART DETECTED → Fan ON!");
-  }
+   // Detect restart reason
+   restartReason = detectRestartReason();
+   wasWatchdogReset = (restartReason == "WATCHDOG" || restartReason == "PANIC");
+   Serial.printf("📋 Restart Reason: %s\n", restartReason.c_str());
+   
+   // Track restart count
+   preferences.begin("device", false);
+   totalRestarts = preferences.getInt("restarts", 0) + 1;
+   preferences.putInt("restarts", totalRestarts);
+   preferences.end();
+   Serial.printf("📊 Total Restarts: %d\n", totalRestarts);
   
   // Initialize pins
   pinMode(FAN_RELAY_PIN, OUTPUT);
@@ -1156,13 +1367,14 @@ void setup() {
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
   
-  // Watchdog restart → Fan ON immediately
-  if (wasWatchdogReset) {
-    digitalWrite(FAN_RELAY_PIN, HIGH);
-    fanOn = true;
-    fanSpeed = "HIGH";
+   // SAFE MODE: Power-related restart → 30s safe mode
+   if (isPowerRelatedRestart() || wasWatchdogReset) {
+     enterSafeMode();
   } else {
-    digitalWrite(FAN_RELAY_PIN, LOW);
+     digitalWrite(FAN_RELAY_PIN, HIGH);  // Always safe state
+     fanOn = true;
+     fanSpeed = "HIGH";
+     delay(BOOT_VENTILATION_DELAY);
   }
   digitalWrite(ALARM_RELAY_PIN, LOW);
   digitalWrite(HEATER_RELAY_PIN, LOW);
@@ -1175,6 +1387,9 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
   lastWaterPulse = millis();
   
+   // Initialize gas sensor warmup
+   initGasWarmup();
+   
   // Initialize DHT
   dht.begin();
   delay(2000);
@@ -1222,6 +1437,8 @@ void setup() {
   if (wifiConnected) {
     syncWithCloud();
   }
+   
+   lastOnlineCheck = millis();
   
   // Initialize watchdog
   esp_task_wdt_init(WDT_TIMEOUT, true);
@@ -1233,6 +1450,8 @@ void setup() {
   if (isBroiler()) Serial.printf(" (Day %d)", broilerAgeDays);
   Serial.println("                                   ║");
   Serial.printf("║  WiFi: %s                                          ║\n", wifiConnected ? "Connected" : "Disconnected");
+   Serial.printf("║  Firmware: %s                                           ║\n", firmwareVersion.c_str());
+   Serial.printf("║  Safe Mode: %s                                            ║\n", safeModeActive ? "YES" : "NO");
   Serial.println("║  Watchdog: 8 sec timeout                                   ║");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
@@ -1248,11 +1467,14 @@ void loop() {
   static unsigned long lastDayCheck = 0;
   unsigned long now = millis();
   
+   checkSafeModeExit();
+   updateOnlineOfflineDuration();
+   
   // Boot fan sequence complete
   if (!bootFanDone && now - bootFanStart >= BOOT_FAN_DURATION) {
     bootFanDone = true;
     Serial.println("✅ Boot fan complete → AUTO mode");
-    if (sensorInitOK && temperature < 30) {
+     if (sensorInitOK && temperature < 30 && !safeModeActive) {
       setFanState(false, "OFF");
     }
   }
@@ -1280,7 +1502,7 @@ void loop() {
   }
   
   // ===== CONTROL ENGINE =====
-  if (bootFanDone) {
+   if (bootFanDone && !safeModeActive) {
     controlLogic();
     
     // Update broiler age & temp rules every hour (Broiler only)
