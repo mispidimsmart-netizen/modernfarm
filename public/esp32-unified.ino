@@ -589,9 +589,48 @@ void controlLogic() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void layerControl() {
-  // === HSI EMERGENCY (Priority 1) ===
-  if (currentHSI > LAYER_HSI_EMERGENCY) {
-    Serial.println("🚨 LAYER HSI EMERGENCY (>40) → MAX + ALARM!");
+  Serial.println("[Layer] Running control logic...");
+  
+  // ===== TEMPERATURE CONTROL =====
+  if (temperature < 18) {
+    Serial.printf("🥶 Temp %.1f°C < 18 → Heater ON\n", temperature);
+    setHeater(true);
+    setFanState(false, "OFF");
+    setAlarm(false);
+    systemState = "COLD";
+    return;
+  }
+  
+  if (temperature > 33) {
+    Serial.printf("🚨 Temp %.1f°C > 33 → ALARM!\n", temperature);
+    setFanState(true, "HIGH");
+    setAlarm(true);
+    setHeater(false);
+    systemState = "EMERGENCY";
+    return;
+  }
+  
+  if (temperature > 30) {
+    Serial.printf("🔥 Temp %.1f°C > 30 → Fan HIGH\n", temperature);
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    setHeater(false);
+    systemState = "HIGH_STRESS";
+    return;
+  }
+  
+  if (temperature > 27) {
+    Serial.printf("⚠️ Temp %.1f°C > 27 → Fan LOW\n", temperature);
+    setFanState(true, "LOW");
+    setAlarm(false);
+    setHeater(false);
+    systemState = "MILD_STRESS";
+    return;
+  }
+  
+  // ===== HSI CONTROL =====
+  if (currentHSI > 40) {
+    Serial.printf("🚨 HSI %.1f > 40 → Emergency Ventilation!\n", currentHSI);
     setFanState(true, "MAX");
     setAlarm(true);
     setHeater(false);
@@ -599,9 +638,18 @@ void layerControl() {
     return;
   }
   
-  // === TEMPERATURE ALARM ===
-  if (temperature >= LAYER_TEMP_ALARM) {
-    Serial.printf("🚨 LAYER TEMP ALARM (%.1f°C >= 33) → HIGH + ALARM!\n", temperature);
+  if (currentHSI > 35) {
+    Serial.printf("🔥 HSI %.1f > 35 → Fan HIGH\n", currentHSI);
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    setHeater(false);
+    systemState = "HIGH_STRESS";
+    return;
+  }
+  
+  // ===== AMMONIA CONTROL =====
+  if (ammonia > 25) {
+    Serial.printf("🚨 NH3 %.1f > 25 ppm → ALARM!\n", ammonia);
     setFanState(true, "HIGH");
     setAlarm(true);
     setHeater(false);
@@ -609,82 +657,19 @@ void layerControl() {
     return;
   }
   
-  // === AMMONIA ALARM ===
-  if (ammonia > LAYER_AMMONIA_ALARM) {
-    Serial.printf("🚨 AMMONIA ALARM (%.1f > 25 ppm) → HIGH + ALARM!\n", ammonia);
-    setFanState(true, "HIGH");
-    setAlarm(true);
-    systemState = "DANGER";
-    return;
-  }
-  
-  // Clear alarm if no danger
-  setAlarm(false);
-  
-  // === HSI HIGH STRESS ===
-  if (currentHSI >= LAYER_HSI_FAN_HIGH) {
-    Serial.printf("🔥 LAYER HSI HIGH (%.1f, 35-40) → Fan HIGH\n", currentHSI);
-    setFanState(true, "HIGH");
-    setHeater(false);
-    systemState = "HIGH_STRESS";
-    return;
-  }
-  
-  // === HSI MILD STRESS ===
-  if (currentHSI >= LAYER_HSI_FAN_LOW) {
-    Serial.printf("⚠️ LAYER HSI MILD (%.1f, 30-35) → Fan LOW\n", currentHSI);
-    setFanState(true, "LOW");
-    setHeater(false);
-    systemState = "MILD_STRESS";
-    return;
-  }
-  
-  // === TEMPERATURE HIGH ===
-  if (temperature > LAYER_TEMP_FAN_HIGH) {
-    Serial.printf("🔥 LAYER TEMP HIGH (%.1f > 30) → Fan HIGH\n", temperature);
-    setFanState(true, "HIGH");
-    setHeater(false);
-    systemState = "HIGH_STRESS";
-    return;
-  }
-  
-  // === TEMPERATURE BORDERLINE ===
-  if (temperature > LAYER_TEMP_IDEAL_MAX) {
-    Serial.printf("⚠️ LAYER TEMP BORDERLINE (%.1f, 27-30) → Fan LOW\n", temperature);
-    setFanState(true, "LOW");
-    setHeater(false);
-    systemState = "MILD_STRESS";
-    return;
-  }
-  
-  // === AMMONIA HIGH ===
-  if (ammonia > LAYER_AMMONIA_FAN) {
-    Serial.printf("⚠️ AMMONIA HIGH (%.1f > 15 ppm) → Fan MEDIUM\n", ammonia);
+  if (ammonia > 15) {
+    Serial.printf("⚠️ NH3 %.1f > 15 ppm → Fan ON\n", ammonia);
     setFanState(true, "MEDIUM");
+    setAlarm(false);
+    setHeater(false);
     systemState = "MILD_STRESS";
     return;
   }
   
-  // === HIGH HUMIDITY ===
-  if (humidity > LAYER_HUMIDITY_HIGH && fanOn) {
-    Serial.printf("💨 HUMIDITY HIGH (%.1f > 75%%) → Increase fan\n", humidity);
-    if (fanSpeed == "LOW") setFanState(true, "MEDIUM");
-    else if (fanSpeed == "MEDIUM") setFanState(true, "HIGH");
-    return;
-  }
-  
-  // === COLD - HEATER ON ===
-  if (temperature < LAYER_TEMP_HEATER) {
-    Serial.printf("🥶 LAYER COLD (%.1f < 18) → Heater ON, Fan OFF\n", temperature);
-    setFanState(false, "OFF");
-    setHeater(true);
-    systemState = "COLD";
-    return;
-  }
-  
-  // === IDEAL RANGE ===
-  Serial.printf("✅ LAYER IDEAL (%.1f°C, 18-27) → Normal\n", temperature);
+  // ===== IDEAL - ALL NORMAL =====
+  Serial.printf("✅ Layer IDEAL: %.1f°C, %.1f%%, %.1f ppm\n", temperature, humidity, ammonia);
   setFanState(false, "OFF");
+  setAlarm(false);
   setHeater(false);
   systemState = "NORMAL";
 }
