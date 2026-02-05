@@ -377,6 +377,9 @@ int waterAnomalyConsecutive = 0;          // Consecutive anomaly detection count
 String ageSource = "LOCAL";                // "LOCAL" or "SERVER"
 unsigned long lastServerAgeSyncTime = 0;   // Unix timestamp of last server sync
 int lastServerSyncedAge = 0;               // Last age value from server
+unsigned long lastAgeSyncMillis = 0;       // Millis timestamp of last server sync
+unsigned long lastAgeIncreaseMillis = 0;   // Millis timestamp of last age increment
+bool ageFromServer = false;                // True if current age came from server
 
 // ═══════════════════════════════════════════════════════════════════════
 // 📦 ENHANCED OFFLINE DATA BUFFER
