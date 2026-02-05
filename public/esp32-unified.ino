@@ -596,18 +596,9 @@ void updateAge(int newAge) {
    ESP.restart();
  }
  
- // Alias for backward compatibility
- void setFarmProfile(int newType) {
-   switchFarmMode(newType);
- }
-  // Save to EEPROM
-  saveFarmProfile();
-  
-  // If broiler mode, reload temperature rules for new age
-  if (isBroiler()) {
-    loadBroilerRules();
-    Serial.printf("   ✓ Temperature rules updated for Day %d\n", newAge);
-  }
+// Alias for backward compatibility
+void setFarmProfile(int newType) {
+  switchFarmMode(newType);
 }
 
 // Auto-increment age daily (called every 24 hours)
