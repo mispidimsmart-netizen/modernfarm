@@ -104,11 +104,13 @@ const detailedWiringGuide = [
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
     pins: [
-      { sensorPin: 'VCC (+ চিহ্ন বা লাল তার)', esp32Pin: '3.3V', wireColor: 'লাল', instruction: 'DHT22 এর VCC পিন → ESP32 এর 3.3V পিনে লাগান (⚡ ৫V লাগাবেন না!)' },
-      { sensorPin: 'DATA (মাঝের পিন বা হলুদ/সাদা তার)', esp32Pin: 'GPIO 4', wireColor: 'হলুদ/সবুজ', instruction: 'DHT22 এর DATA পিন → ESP32 এর GPIO 4 পিনে লাগান' },
-      { sensorPin: 'GND (- চিহ্ন বা কালো তার)', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'DHT22 এর GND পিন → ESP32 এর GND পিনে লাগান' },
+      { sensorPin: 'পিন ১: VCC (+)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: DHT22 এর VCC (বাম পিন) → ESP32 এর 3.3V পিনে লাগান', warning: '⚡ ৫V লাগাবেন না! শুধু 3.3V ব্যবহার করুন।' },
+      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 4', wireColor: 'হলুদ/সবুজ', wireNameEn: 'YELLOW/GREEN', instruction: '🟡 হলুদ/সবুজ তার: DHT22 এর DATA (মাঝের পিন) → ESP32 এর GPIO 4 পিনে লাগান', warning: null },
+      { sensorPin: 'পিন ৩: NC (No Connection)', esp32Pin: '-', wireColor: '-', wireNameEn: '-', instruction: '⬜ এই পিনে কিছু লাগাবেন না (খালি রাখুন)', warning: null },
+      { sensorPin: 'পিন ৪: GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: DHT22 এর GND (ডান পিন) → ESP32 এর GND পিনে লাগান', warning: null },
     ],
-    extraNote: '⚠️ গুরুত্বপূর্ণ: DATA ও VCC পিনের মধ্যে একটি 10K রেজিস্টর লাগাতে হবে (পুল-আপ রেজিস্টর)। যদি না থাকে তাহলেও কাজ করবে কিন্তু রিডিং স্থিতিশীল নাও হতে পারে।',
+    extraNote: '⚠️ গুরুত্বপূর্ণ: DATA ও VCC পিনের মধ্যে একটি 10K রেজিস্টর লাগাতে হবে (পুল-আপ রেজিস্টর)। রেজিস্টরের এক পা DATA পিনে এবং অন্য পা VCC তে লাগান। যদি না থাকে তাহলেও কাজ করবে কিন্তু রিডিং স্থিতিশীল নাও হতে পারে।',
+    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA পিন ↔ VCC পিন',
     tips: ['সেন্সর সরাসরি সূর্যের আলো থেকে দূরে রাখুন', 'শেডের মাঝামাঝি উচ্চতায় লাগান (মুরগির মাথার উচ্চতায়)'],
   },
   {
@@ -119,11 +121,12 @@ const detailedWiringGuide = [
     color: 'text-teal-500',
     bgColor: 'bg-teal-500/10',
     pins: [
-      { sensorPin: 'VCC', esp32Pin: '3.3V', wireColor: 'লাল', instruction: 'DHT22 #২ এর VCC → ESP32 এর 3.3V' },
-      { sensorPin: 'DATA', esp32Pin: 'GPIO 15', wireColor: 'হলুদ', instruction: 'DHT22 #২ এর DATA → ESP32 এর GPIO 15' },
-      { sensorPin: 'GND', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'DHT22 #২ এর GND → ESP32 এর GND' },
+      { sensorPin: 'পিন ১: VCC (+)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: DHT22 #২ এর VCC → ESP32 এর 3.3V (প্রথম সেন্সরের সাথে শেয়ার করতে পারেন)', warning: null },
+      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 15', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 15 (আলাদা পিন!)', warning: null },
+      { sensorPin: 'পিন ৪: GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: DHT22 #২ এর GND → ESP32 এর GND (প্রথমটির সাথে শেয়ার করা যায়)', warning: null },
     ],
     extraNote: 'বড় শেডে দুই প্রান্তে দুটি সেন্সর লাগালে গড় তাপমাত্রা পাওয়া যায়।',
+    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 15) ↔ VCC (3.3V)',
     tips: ['শেডের এক প্রান্তে প্রথম এবং অপর প্রান্তে দ্বিতীয় সেন্সর লাগান'],
   },
   {
@@ -134,11 +137,13 @@ const detailedWiringGuide = [
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
     pins: [
-      { sensorPin: 'VCC', esp32Pin: '5V (VIN)', wireColor: 'লাল', instruction: 'MQ-137 এর VCC → ESP32 এর VIN পিন (5V)' },
-      { sensorPin: 'AO (Analog Out)', esp32Pin: 'GPIO 34', wireColor: 'হলুদ', instruction: 'MQ-137 এর AO পিন → ESP32 এর GPIO 34' },
-      { sensorPin: 'GND', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'MQ-137 এর GND → ESP32 এর GND' },
+      { sensorPin: 'VCC (+5V)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: MQ-137 এর VCC → ESP32 এর VIN পিন (5V প্রয়োজন)', warning: 'এই সেন্সর 5V-তে চলে। 3.3V দিলে কাজ করবে না।' },
+      { sensorPin: 'AO (Analog Output)', esp32Pin: 'GPIO 34', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: MQ-137 এর AO পিন → ESP32 এর GPIO 34 (ADC ইনপুট)', warning: null },
+      { sensorPin: 'DO (Digital Output)', esp32Pin: '-', wireColor: '-', wireNameEn: '-', instruction: '⬜ DO পিন ব্যবহার করা হচ্ছে না (খালি রাখুন)', warning: null },
+      { sensorPin: 'GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: MQ-137 এর GND → ESP32 এর GND', warning: null },
     ],
-    extraNote: '⚠️ প্রথমবার চালু করার পর ২৪ ঘন্টা "প্রিহিট" করতে হবে। এই সময় রিডিং সঠিক নাও হতে পারে।',
+    extraNote: '⚠️ প্রথমবার চালু করার পর ২৪-৪৮ ঘন্টা "প্রিহিট/বার্ন-ইন" করতে হবে। এই সময় সেন্সর গরম থাকবে এবং রিডিং স্থিতিশীল হতে সময় লাগবে। চালু রাখুন, বন্ধ করবেন না!',
+    resistorNote: null,
     tips: ['মাটি থেকে ১-২ ফুট উচ্চতায় লাগান (অ্যামোনিয়া ভারী তাই নিচে জমে)', 'বাতাসের চলাচল আছে এমন জায়গায় রাখুন'],
   },
   {
@@ -149,11 +154,12 @@ const detailedWiringGuide = [
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
     pins: [
-      { sensorPin: 'VCC (লাল তার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', instruction: 'ওয়াটার সেন্সর এর লাল তার → ESP32 এর VIN' },
-      { sensorPin: 'Signal (হলুদ তার)', esp32Pin: 'GPIO 27', wireColor: 'হলুদ', instruction: 'ওয়াটার সেন্সর এর হলুদ তার → ESP32 এর GPIO 27' },
-      { sensorPin: 'GND (কালো তার)', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'ওয়াটার সেন্সর এর কালো তার → ESP32 এর GND' },
+      { sensorPin: 'VCC (লাল তার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: ওয়াটার সেন্সর থেকে আসা লাল তার → ESP32 এর VIN (5V)', warning: null },
+      { sensorPin: 'Signal/Pulse (হলুদ তার)', esp32Pin: 'GPIO 27', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: ওয়াটার সেন্সর থেকে আসা হলুদ/সাদা তার → ESP32 এর GPIO 27 (পালস ইনপুট)', warning: null },
+      { sensorPin: 'GND (কালো তার)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: ওয়াটার সেন্সর থেকে আসা কালো তার → ESP32 এর GND', warning: null },
     ],
-    extraNote: 'সেন্সরের গায়ে তীর চিহ্ন (→) আছে - পানির প্রবাহ যেদিকে সেদিকে তীর মুখ করে লাগান।',
+    extraNote: '📍 গুরুত্বপূর্ণ: সেন্সরের গায়ে তীর চিহ্ন (→) আছে। পানি যে দিকে প্রবাহিত হয় সে দিকে তীর মুখ করে লাগাতে হবে। উল্টো লাগালে রিডিং আসবে না!',
+    resistorNote: null,
     tips: ['মূল পানির পাইপে (ইনলেট) লাগান', 'সংযোগস্থলে টেফলন টেপ ব্যবহার করুন লিক এড়াতে'],
   },
   {
@@ -164,11 +170,14 @@ const detailedWiringGuide = [
     color: 'text-cyan-500',
     bgColor: 'bg-cyan-500/10',
     pins: [
-      { sensorPin: 'VCC', esp32Pin: '5V (VIN)', wireColor: 'লাল', instruction: 'ZMPT101B এর VCC → ESP32 এর VIN' },
-      { sensorPin: 'OUT/Signal', esp32Pin: 'GPIO 35', wireColor: 'হলুদ', instruction: 'ZMPT101B এর OUT পিন → ESP32 এর GPIO 35' },
-      { sensorPin: 'GND', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'ZMPT101B এর GND → ESP32 এর GND' },
+      { sensorPin: 'VCC (DC Side)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: ZMPT101B এর VCC → ESP32 এর VIN (5V)', warning: null },
+      { sensorPin: 'OUT/Signal (DC Side)', esp32Pin: 'GPIO 35', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 কমলা তার: ZMPT101B এর OUT পিন → ESP32 এর GPIO 35 (ADC ইনপুট)', warning: null },
+      { sensorPin: 'GND (DC Side)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: ZMPT101B এর GND → ESP32 এর GND', warning: null },
+      { sensorPin: 'L (AC Side - Live)', esp32Pin: 'মেইন Live', wireColor: 'লাল/বাদামী', wireNameEn: 'RED/BROWN', instruction: '⚡ AC লাইভ তার: ২২০V মেইন সুইচের Live → ZMPT101B এর L টার্মিনালে', warning: '⚡ বিপদ! মেইন সুইচ বন্ধ করে কাজ করুন!' },
+      { sensorPin: 'N (AC Side - Neutral)', esp32Pin: 'মেইন Neutral', wireColor: 'নীল/কালো', wireNameEn: 'BLUE/BLACK', instruction: '⚡ AC নিউট্রাল তার: ২২০V মেইন সুইচের Neutral → ZMPT101B এর N টার্মিনালে', warning: '⚡ বিপদ! মেইন সুইচ বন্ধ করে কাজ করুন!' },
     ],
-    extraNote: '⚡ সতর্কতা: এটি ২২০V AC লাইনে সংযুক্ত হয়। অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে এই অংশ করান!',
+    extraNote: '⚡⚡ সতর্কতা: এটি ২২০V AC লাইনে সংযুক্ত হয়। ভুল কানেকশনে ইলেকট্রিক শক বা আগুন লাগতে পারে! অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে এই অংশ করান!',
+    resistorNote: null,
     tips: ['AC লাইনের Live ও Neutral তার সেন্সরের AC পাশে লাগান', 'কাজের সময় মেইন সুইচ অফ রাখুন'],
   },
   {
@@ -179,15 +188,16 @@ const detailedWiringGuide = [
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
     pins: [
-      { sensorPin: 'VCC', esp32Pin: '5V (VIN)', wireColor: 'লাল', instruction: 'রিলে মডিউল এর VCC → ESP32 এর VIN' },
-      { sensorPin: 'GND', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'রিলে মডিউল এর GND → ESP32 এর GND' },
-      { sensorPin: 'IN1 (ফ্যান)', esp32Pin: 'GPIO 26', wireColor: 'সাদা', instruction: 'রিলে IN1 → GPIO 26 (ফ্যান কন্ট্রোল)' },
-      { sensorPin: 'IN2 (লাইট)', esp32Pin: 'GPIO 25', wireColor: 'সবুজ', instruction: 'রিলে IN2 → GPIO 25 (লাইট কন্ট্রোল)' },
-      { sensorPin: 'IN3 (হিটার)', esp32Pin: 'GPIO 32', wireColor: 'নীল', instruction: 'রিলে IN3 → GPIO 32 (হিটার কন্ট্রোল)' },
-      { sensorPin: 'IN4 (অ্যালার্ম)', esp32Pin: 'GPIO 33', wireColor: 'বেগুনি', instruction: 'রিলে IN4 → GPIO 33 (অ্যালার্ম/সাইরেন)' },
+      { sensorPin: 'VCC (পাওয়ার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে মডিউল এর VCC → ESP32 এর VIN (5V)', warning: null },
+      { sensorPin: 'GND (গ্রাউন্ড)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে মডিউল এর GND → ESP32 এর GND', warning: null },
+      { sensorPin: 'IN1 (ফ্যান কন্ট্রোল)', esp32Pin: 'GPIO 26', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: রিলে IN1 → ESP32 এর GPIO 26 (🌀 ফ্যান)', warning: null },
+      { sensorPin: 'IN2 (লাইট কন্ট্রোল)', esp32Pin: 'GPIO 25', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 25 (💡 লাইট/PWM)', warning: null },
+      { sensorPin: 'IN3 (হিটার কন্ট্রোল)', esp32Pin: 'GPIO 32', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN3 → ESP32 এর GPIO 32 (🔥 হিটার)', warning: null },
+      { sensorPin: 'IN4 (অ্যালার্ম কন্ট্রোল)', esp32Pin: 'GPIO 33', wireColor: 'বেগুনি', wireNameEn: 'PURPLE', instruction: '🟣 বেগুনি তার: রিলে IN4 → ESP32 এর GPIO 33 (🔔 অ্যালার্ম/সাইরেন)', warning: null },
     ],
-    extraNote: 'রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়।',
-    tips: ['প্রতিটি রিলে NO (Normally Open) ও COM পিনে ফ্যান/লাইটের তার লাগান', 'হাই পাওয়ার ডিভাইস (২০০০W+) এর জন্য এক্সটারনাল কন্ট্যাক্টর ব্যবহার করুন'],
+    extraNote: '⚙️ রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়, HIGH দিলে OFF হয়।',
+    resistorNote: null,
+    tips: ['প্রতিটি রিলে NO (Normally Open) ও COM পিনে ফ্যান/লাইটের তার লাগান', 'হাই পাওয়ার ডিভাইস (২০০০W+) এর জন্য এক্সটারনাল কন্ট্যাক্টর ব্যবহার করুন', 'রিলে সুইচিং এর সময় ক্লিক শব্দ হবে - এটা স্বাভাবিক'],
   },
   {
     id: 'buzzer',
@@ -197,11 +207,29 @@ const detailedWiringGuide = [
     color: 'text-orange-500',
     bgColor: 'bg-orange-500/10',
     pins: [
-      { sensorPin: '+ (লম্বা পা)', esp32Pin: 'GPIO 12', wireColor: 'লাল', instruction: 'বাজার এর + পা (লম্বা) → GPIO 12' },
-      { sensorPin: '- (ছোট পা)', esp32Pin: 'GND', wireColor: 'কালো', instruction: 'বাজার এর - পা (ছোট) → GND' },
+      { sensorPin: '+ পিন (লম্বা পা / + চিহ্ন)', esp32Pin: 'GPIO 12', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: বাজার এর + পা (লম্বা পা) → ESP32 এর GPIO 12', warning: null },
+      { sensorPin: '- পিন (ছোট পা / - চিহ্ন)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: বাজার এর - পা (ছোট পা) → ESP32 এর GND', warning: null },
     ],
-    extraNote: 'বাজারের লম্বা পা (+) এবং ছোট পা (-)। উল্টো লাগালে কাজ করবে না।',
+    extraNote: '📍 বাজারের লম্বা পা (+) এবং ছোট পা (-)। উল্টো লাগালে কাজ করবে না। কিছু বাজারে + এবং - চিহ্ন আছে - সেটা দেখে লাগান।',
+    resistorNote: null,
     tips: ['জরুরি অবস্থায় (তাপমাত্রা বেশি, পাওয়ার অফ) স্বয়ংক্রিয় অ্যালার্ম বাজবে'],
+  },
+  {
+    id: 'sim800l',
+    name: 'SIM800L GSM মডিউল (এসএমএস অ্যালার্ট)',
+    nameEn: 'SIM800L GSM Module (SMS Alerts)',
+    icon: AlertTriangle,
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-500/10',
+    pins: [
+      { sensorPin: 'VCC (4.2V পাওয়ার)', esp32Pin: 'পৃথক 4.2V 2A সাপ্লাই', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: SIM800L এর VCC → পৃথক 4.2V 2A পাওয়ার সাপ্লাই (ESP32 থেকে নয়!)', warning: '⚠️ ESP32 এর 3.3V বা VIN থেকে পাওয়ার দিবেন না! পৃথক পাওয়ার সোর্স লাগবে।' },
+      { sensorPin: 'GND (গ্রাউন্ড)', esp32Pin: 'GND (কমন)', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: SIM800L এর GND → ESP32 এর GND ও পাওয়ার সাপ্লাই GND (তিনটা একসাথে)', warning: null },
+      { sensorPin: 'TXD (ট্রান্সমিট)', esp32Pin: 'GPIO 16 (RX2)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: SIM800L এর TXD → ESP32 এর GPIO 16 (RX2) - ক্রস কানেকশন!', warning: null },
+      { sensorPin: 'RXD (রিসিভ)', esp32Pin: 'GPIO 17 (TX2)', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: SIM800L এর RXD → ESP32 এর GPIO 17 (TX2) - ক্রস কানেকশন!', warning: null },
+    ],
+    extraNote: '⚠️ এই মডিউলের জন্য পৃথক 3.7V-4.2V 2A পাওয়ার সোর্স লাগবে (18650 ব্যাটারি + TP4056 চার্জার)। ESP32 থেকে পাওয়ার দিলে কাজ করবে না এবং ESP32 ক্ষতিগ্রস্ত হতে পারে!',
+    resistorNote: '📍 RXD পিনে ভোল্টেজ ডিভাইডার প্রয়োজন হতে পারে (1K + 2K রেজিস্টর) কারণ SIM800L ৩.৩V লজিক এবং ESP32 থেকে সরাসরি সিগন্যাল ক্ষতি করতে পারে।',
+    tips: ['সিম কার্ড ঢোকানোর আগে পাওয়ার বন্ধ রাখুন', 'নেটওয়ার্ক পেতে ১-২ মিনিট সময় লাগে - LED ব্লিংক দেখুন', 'সিম কার্ডে ব্যালেন্স আছে কিনা নিশ্চিত করুন'],
   },
 ];
 
@@ -429,6 +457,38 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
 
           {/* Wiring Tab */}
           <TabsContent value="wiring" className="mt-4 space-y-4">
+            {/* Wire Color Legend */}
+            <Card className="bg-gradient-to-r from-muted/50 to-muted/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  🎨 তারের রং চার্ট (Wire Color Guide)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { color: 'bg-red-500', name: 'লাল (RED)', use: 'VCC / পাওয়ার (+)' },
+                    { color: 'bg-gray-800', name: 'কালো (BLACK)', use: 'GND / গ্রাউন্ড (-)' },
+                    { color: 'bg-yellow-500', name: 'হলুদ (YELLOW)', use: 'সিগন্যাল / ডেটা' },
+                    { color: 'bg-green-500', name: 'সবুজ (GREEN)', use: 'ডেটা / কন্ট্রোল' },
+                    { color: 'bg-white border border-gray-300', name: 'সাদা (WHITE)', use: 'সিগন্যাল / ডেটা' },
+                    { color: 'bg-blue-500', name: 'নীল (BLUE)', use: 'কন্ট্রোল / সিরিয়াল' },
+                    { color: 'bg-orange-500', name: 'কমলা (ORANGE)', use: 'এনালগ আউট' },
+                    { color: 'bg-purple-500', name: 'বেগুনি (PURPLE)', use: 'কন্ট্রোল' },
+                    { color: 'bg-amber-600', name: 'বাদামী (BROWN)', use: 'AC লাইভ' },
+                  ].map((wire, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-background/50">
+                      <div className={`w-4 h-4 rounded-full ${wire.color} shrink-0`} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{wire.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{wire.use}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Real Wiring Diagram Image */}
             <Card>
               <CardHeader className="pb-2">
@@ -471,11 +531,17 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
 │  GPIO 33 ────────────────▶ Relay IN4 (অ্যালার্ম)        │
 │  GPIO 12 ────────────────▶ Piezo Buzzer (+)             │
 │                                                          │
+│  GSM মডিউল (ঐচ্ছিক):                                    │
+│  ─────────────────────────                               │
+│  GPIO 16 (RX2) ──────────▶ SIM800L TXD                  │
+│  GPIO 17 (TX2) ──────────▶ SIM800L RXD                  │
+│                                                          │
 │  পাওয়ার:                                                │
 │  ─────────                                               │
 │  3.3V ───────────────────▶ DHT22 VCC (শুধু DHT22)       │
 │  5V (VIN) ───────────────▶ অন্যান্য সেন্সর VCC          │
 │  GND ────────────────────▶ সব GND একসাথে                │
+│  পৃথক 4.2V ──────────────▶ SIM800L VCC (2A প্রয়োজন)    │
 └─────────────────────────────────────────────────────────┘`}
                         </pre>
                       </div>
@@ -514,28 +580,47 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                           {/* Pin connections */}
                           <div className="space-y-2">
                             {sensor.pins.map((pin, pinIdx) => (
-                              <div key={pinIdx} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                              <div key={pinIdx} className={`flex items-start gap-3 p-3 rounded-lg ${pin.warning ? 'bg-destructive/5 border border-destructive/20' : 'bg-muted/50'}`}>
                                 <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
                                   {pinIdx + 1}
                                 </div>
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <Badge variant="outline" className="text-xs">{pin.sensorPin}</Badge>
-                                    <span className="text-xs">→</span>
-                                    <Badge className="text-xs bg-primary">{pin.esp32Pin}</Badge>
-                                    <Badge variant="secondary" className="text-xs">তার: {pin.wireColor}</Badge>
+                                    {pin.esp32Pin !== '-' && (
+                                      <>
+                                        <span className="text-xs">→</span>
+                                        <Badge className="text-xs bg-primary">{pin.esp32Pin}</Badge>
+                                      </>
+                                    )}
+                                    {pin.wireColor && pin.wireColor !== '-' && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        🔌 {pin.wireColor} {pin.wireNameEn && `(${pin.wireNameEn})`}
+                                      </Badge>
+                                    )}
                                   </div>
                                   <p className="text-sm mt-1">{pin.instruction}</p>
+                                  {pin.warning && (
+                                    <p className="text-xs text-destructive mt-1 font-medium">{pin.warning}</p>
+                                  )}
                                 </div>
                               </div>
                             ))}
                           </div>
                           
+                          {/* Resistor note */}
+                          {sensor.resistorNote && (
+                            <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                              <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                              <p className="text-sm text-blue-700 dark:text-blue-400">{sensor.resistorNote}</p>
+                            </div>
+                          )}
+
                           {/* Extra note */}
                           {sensor.extraNote && (
-                            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                              <p className="text-sm text-amber-700 dark:text-amber-400">{sensor.extraNote}</p>
+                            <div className="flex items-start gap-2 p-3 rounded-lg bg-status-warning/10 border border-status-warning/30">
+                              <AlertTriangle className="h-4 w-4 text-status-warning shrink-0 mt-0.5" />
+                              <p className="text-sm text-status-warning">{sensor.extraNote}</p>
                             </div>
                           )}
                           
