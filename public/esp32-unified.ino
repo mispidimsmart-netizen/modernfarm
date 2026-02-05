@@ -742,6 +742,66 @@ void IRAM_ATTR waterPulseISR() {
    }
  }
  
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🌡️ DHT22 FILTERED READINGS (5-sample average)
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ float readTempFiltered() {
+   float sum = 0;
+   int validCount = 0;
+   
+   for (int i = 0; i < 5; i++) {
+     float t = dht.readTemperature();
+     if (!isnan(t)) {
+       sum += t;
+       validCount++;
+     }
+     delay(200);
+   }
+   
+   if (validCount == 0) return NAN;
+   return sum / validCount;
+ }
+ 
+ float readHumidityFiltered() {
+   float sum = 0;
+   int validCount = 0;
+   
+   for (int i = 0; i < 5; i++) {
+     float h = dht.readHumidity();
+     if (!isnan(h)) {
+       sum += h;
+       validCount++;
+     }
+     delay(200);
+   }
+   
+   if (validCount == 0) return NAN;
+   return sum / validCount;
+ }
+ 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🧪 MQ137 FILTERED READING (10-sample average + warmup check)
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ bool gasReady() {
+   return millis() - gasWarmupStart > GAS_WARMUP_DURATION;
+ }
+ 
+ float readGasFiltered() {
+   if (!gasReady()) {
+     Serial.println("🧪 Gas sensor warming up...");
+     return 0;
+   }
+   
+   float total = 0;
+   for (int i = 0; i < 10; i++) {
+     total += analogRead(MQ135_PIN);
+     delay(50);
+   }
+   return total / 10.0;
+ }
+ 
  float calculateAmmoniaMovingAvg(float newReading) {
    ammoniaReadings[ammoniaReadingIndex] = newReading;
    ammoniaReadingIndex = (ammoniaReadingIndex + 1) % GAS_MOVING_AVG_SIZE;
@@ -1148,8 +1208,9 @@ void runSafetyChecks() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void readSensors() {
-  float t = dht.readTemperature();
-  float h = dht.readHumidity();
+   // Use filtered readings (5-sample average)
+   float t = readTempFiltered();
+   float h = readHumidityFiltered();
   
   if (!isnan(t) && !isnan(h)) {
     // Apply calibration offset from FarmConfig
@@ -1166,9 +1227,9 @@ void readSensors() {
     }
   }
   
-  // Read ammonia
-  int ammoniaRaw = analogRead(MQ135_PIN);
-  float ammoniaRawMapped = map(ammoniaRaw, 0, 4095, 0, 100);
+   // Read ammonia with warmup check + filtered
+   float ammoniaRaw = readGasFiltered();
+   float ammoniaRawMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
   // Apply calibration offset from FarmConfig
    float ammoniaRaw2 = ammoniaRawMapped + farmConfig.nh3Offset;
    if (ammoniaRaw2 < 0) ammoniaRaw2 = 0;

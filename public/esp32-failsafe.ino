@@ -492,6 +492,9 @@ void setup() {
   dht.begin();
   delay(2000);  // Wait for DHT sensor to stabilize
   
+   // Initialize gas sensor warmup (5 min before valid readings)
+   initGasSensorWarmup();
+   
   // Test DHT sensor
   float testTemp = dht.readTemperature();
   float testHum = dht.readHumidity();
@@ -1862,6 +1865,80 @@ float calculateHSI(float temp, float hum) {
   return hsi;
 }
 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🌡️ DHT22 FILTERED READINGS (5-sample average)
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ float readTempFiltered() {
+   float sum = 0;
+   int validCount = 0;
+   
+   for (int i = 0; i < 5; i++) {
+     float t = dht.readTemperature();
+     if (!isnan(t)) {
+       sum += t;
+       validCount++;
+     }
+     delay(200);
+   }
+   
+   if (validCount == 0) return NAN;
+   return sum / validCount;
+ }
+ 
+ float readHumidityFiltered() {
+   float sum = 0;
+   int validCount = 0;
+   
+   for (int i = 0; i < 5; i++) {
+     float h = dht.readHumidity();
+     if (!isnan(h)) {
+       sum += h;
+       validCount++;
+     }
+     delay(200);
+   }
+   
+   if (validCount == 0) return NAN;
+   return sum / validCount;
+ }
+ 
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🧪 MQ137 GAS SENSOR WARMUP + FILTERED READING
+ // ═══════════════════════════════════════════════════════════════════════
+ 
+ unsigned long gasWarmupStartTime = 0;
+ const unsigned long GAS_WARMUP_DURATION = 300000;  // 5 minutes
+ bool gasWarmupComplete = false;
+ 
+ void initGasSensorWarmup() {
+   gasWarmupStartTime = millis();
+   gasWarmupComplete = false;
+   Serial.println("🧪 Gas sensor warmup started (5 minutes)...");
+ }
+ 
+ bool gasReady() {
+   if (!gasWarmupComplete && millis() - gasWarmupStartTime > GAS_WARMUP_DURATION) {
+     gasWarmupComplete = true;
+     Serial.println("✅ Gas sensor warmup complete - readings valid");
+   }
+   return gasWarmupComplete;
+ }
+ 
+ float readGasFiltered() {
+   if (!gasReady()) {
+     Serial.println("🧪 Gas sensor warming up - returning 0");
+     return 0;
+   }
+   
+   float total = 0;
+   for (int i = 0; i < 10; i++) {
+     total += analogRead(MQ135_PIN);
+     delay(50);
+   }
+   return total / 10.0;
+ }
+ 
 void controlLighting() {
   // Get current time (would need RTC or NTP in production)
   // For now, use a simple time estimation based on uptime
@@ -2000,16 +2077,16 @@ void applyDeviceStates() {
 
 // ================ SENSOR FUNCTIONS ================
 void readSensors() {
-  // Read DHT22
-  float newTemp = dht.readTemperature();
-  float newHum = dht.readHumidity();
+   // Read DHT22 with 5-sample moving average filter
+   float newTemp = readTempFiltered();
+   float newHum = readHumidityFiltered();
   
   if (!isnan(newTemp)) temperature = newTemp;
   if (!isnan(newHum)) humidity = newHum;
   
-  // Read ammonia (MQ135)
-  int ammoniaRaw = analogRead(MQ135_PIN);
-  ammonia = map(ammoniaRaw, 0, 4095, 0, 100);  // Simplified conversion
+   // Read ammonia (MQ137) with warmup check + 10-sample filter
+   float ammoniaRaw = readGasFiltered();
+   ammonia = map((int)ammoniaRaw, 0, 4095, 0, 100);
   
   // Read power status
   int powerRaw = analogRead(POWER_SENSE_PIN);
