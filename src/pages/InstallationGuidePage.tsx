@@ -10,6 +10,49 @@ import { toast } from 'sonner';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import wiringDiagram from '@/assets/esp32-wiring-diagram.png';
 
+// Jumper wire types guide
+const jumperWireTypes = [
+  {
+    type: 'Male-to-Male (M-M)',
+    typeBn: 'মেল-টু-মেল (M-M)',
+    description: 'দুই প্রান্তেই পিন আছে (ঢুকানো যায়)',
+    descEn: 'Both ends have pins that can be inserted',
+    usage: 'ব্রেডবোর্ডে সংযোগ করতে বা দুটি Female পোর্ট যুক্ত করতে',
+    usageEn: 'Connect breadboard holes or two female ports',
+    visual: '📍────📍',
+    endA: '📍 পিন (ঢোকানোর জন্য)',
+    endB: '📍 পিন (ঢোকানোর জন্য)',
+    color: 'bg-blue-500',
+    examples: ['ব্রেডবোর্ডে দুই পয়েন্ট যোগ করতে', 'ESP32 থেকে ব্রেডবোর্ডে']
+  },
+  {
+    type: 'Male-to-Female (M-F)',
+    typeBn: 'মেল-টু-ফিমেল (M-F)',
+    description: 'এক প্রান্তে পিন, অন্য প্রান্তে সকেট (গর্ত)',
+    descEn: 'One end has pin, other has socket (hole)',
+    usage: 'সেন্সর থেকে সরাসরি ESP32 এর পিনে সংযোগ করতে',
+    usageEn: 'Connect sensor directly to ESP32 pins',
+    visual: '📍────⬜',
+    endA: '📍 পিন (ঢোকানোর জন্য)',
+    endB: '⬜ সকেট/গর্ত (পিন ঢোকে)',
+    color: 'bg-green-500',
+    examples: ['DHT22 সেন্সর থেকে ESP32 তে', 'রিলে মডিউল থেকে ESP32 তে']
+  },
+  {
+    type: 'Female-to-Female (F-F)',
+    typeBn: 'ফিমেল-টু-ফিমেল (F-F)',
+    description: 'দুই প্রান্তেই সকেট/গর্ত আছে',
+    descEn: 'Both ends have sockets (holes)',
+    usage: 'দুটি Male পিন যুক্ত করতে বা এক্সটেনশন হিসেবে',
+    usageEn: 'Connect two male pins or as extension',
+    visual: '⬜────⬜',
+    endA: '⬜ সকেট/গর্ত (পিন ঢোকে)',
+    endB: '⬜ সকেট/গর্ত (পিন ঢোকে)',
+    color: 'bg-purple-500',
+    examples: ['ESP32 এর পিন এক্সটেন্ড করতে', 'দুটি মডিউল এর Male পিন যোগ করতে']
+  }
+];
+
 const partsList = [
   {
     category: 'মূল কন্ট্রোলার',
@@ -675,6 +718,99 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Jumper Wire Types Guide - NEW SECTION */}
+            <Card className="border-2 border-accent">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Cable className="h-4 w-4 text-accent" />
+                  🔌 জাম্পার ওয়্যার চেনার গাইড
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">Male-to-Male, Male-to-Female, Female-to-Female তার চেনার সহজ উপায়</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Visual comparison */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {jumperWireTypes.map((wire, idx) => (
+                      <div key={idx} className="p-3 rounded-lg border-2 border-border/50 hover:border-primary/50 transition-colors">
+                        {/* Wire type header */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`w-3 h-3 rounded-full ${wire.color}`}></div>
+                          <span className="font-bold text-sm">{wire.type}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">{wire.typeBn}</p>
+                        
+                        {/* Visual representation */}
+                        <div className="bg-muted/50 rounded-lg p-3 text-center mb-3">
+                          <p className="text-2xl font-mono tracking-widest">{wire.visual}</p>
+                          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                            <span>{wire.endA}</span>
+                            <span>{wire.endB}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Description */}
+                        <p className="text-xs font-medium mb-1">🔍 চেনার উপায়:</p>
+                        <p className="text-xs text-muted-foreground mb-2">{wire.description}</p>
+                        
+                        {/* Usage */}
+                        <p className="text-xs font-medium mb-1">✅ কখন ব্যবহার:</p>
+                        <p className="text-xs text-muted-foreground mb-2">{wire.usage}</p>
+                        
+                        {/* Examples */}
+                        <p className="text-xs font-medium mb-1">📌 উদাহরণ:</p>
+                        <ul className="text-xs text-muted-foreground space-y-1">
+                          {wire.examples.map((ex, exIdx) => (
+                            <li key={exIdx}>• {ex}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Quick identification tip */}
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/30">
+                    <p className="text-sm font-bold flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-accent" />
+                      ⚡ দ্রুত চেনার টিপস
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg">📍</span>
+                        <div>
+                          <p className="font-medium">Male (পিন/সুই)</p>
+                          <p className="text-muted-foreground">ধাতব পিন বের হয়ে আছে - ব্রেডবোর্ড বা সকেটে ঢোকানো যায়</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-lg">⬜</span>
+                        <div>
+                          <p className="font-medium">Female (সকেট/গর্ত)</p>
+                          <p className="text-muted-foreground">প্লাস্টিকের ভেতরে গর্ত - এতে পিন ঢোকানো যায়</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* FarmEye project recommendation */}
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+                    <p className="text-sm font-bold mb-2">🐔 FarmEye প্রজেক্টে কোনটা কিনবেন?</p>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      আমরা সাধারণত <strong>Male-to-Female (M-F)</strong> তার বেশি ব্যবহার করি কারণ:
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>✅ ESP32 এর পিনগুলো Male (পিন বের হয়ে আছে)</li>
+                      <li>✅ বেশিরভাগ সেন্সর মডিউলেও Male পিন থাকে</li>
+                      <li>✅ M-F তার দিয়ে সরাসরি সংযোগ করা যায়</li>
+                    </ul>
+                    <div className="mt-2 p-2 bg-background/50 rounded text-xs">
+                      <p className="font-medium">💡 সুপারিশ: ৪০ পিসের M-F + ২০ পিসের M-M মিশ্র সেট কিনুন (৳১৫০-২৫০)</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
