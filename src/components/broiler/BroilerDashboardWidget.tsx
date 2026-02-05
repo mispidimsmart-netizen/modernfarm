@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
-import { Bird, Scale, TrendingUp, TrendingDown, Utensils, Target, AlertTriangle } from 'lucide-react';
+import { Bird, Scale, TrendingUp, TrendingDown, Utensils, Target, AlertTriangle, Cloud, Server } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
+import { Badge } from '@/components/ui/badge';
 
 interface BroilerDashboardWidgetProps {
   onBatchClick: () => void;
@@ -15,6 +17,12 @@ export function BroilerDashboardWidget({ onBatchClick, onWeightClick, onFeedClic
   const { language } = useAuth();
   const { data: batch, isLoading } = useActiveBatch();
   const stats = useBatchStats(batch?.id);
+  const { data: deviceHealthList } = useAllDeviceHealth();
+  
+  // Get first device's broiler age source info (usually single device per farm)
+  const primaryDevice = deviceHealthList?.[0];
+  const ageSource = primaryDevice?.broiler_age_source;
+  const lastServerSync = primaryDevice?.last_server_age_sync_at;
 
   const getFCRColor = () => {
     switch (stats.fcrRating) {
@@ -103,6 +111,19 @@ export function BroilerDashboardWidget({ onBatchClick, onWeightClick, onFeedClic
                 </p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>📅 {stats.ageDays} {t.days[language]}</span>
+                  {/* Age Source Badge */}
+                  {ageSource && (
+                    <Badge 
+                      variant={ageSource === 'SERVER' ? 'default' : 'outline'} 
+                      className="text-[9px] px-1 py-0 h-4"
+                    >
+                      {ageSource === 'SERVER' ? (
+                        <Cloud className="h-2.5 w-2.5" />
+                      ) : (
+                        <Server className="h-2.5 w-2.5" />
+                      )}
+                    </Badge>
+                  )}
                   <span>•</span>
                   <span>🐔 {batch?.current_bird_count.toLocaleString()}</span>
                 </div>

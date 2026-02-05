@@ -538,6 +538,7 @@ export type Database = {
           ammonia_avg_10: number | null
           battery_capacity_wh: number | null
           battery_percentage: number | null
+          broiler_age_source: string | null
           cached_settings_version: number | null
           consecutive_high_ammonia: number | null
           cpu_temperature: number | null
@@ -561,6 +562,7 @@ export type Database = {
           last_power_outage_id: string | null
           last_restart_at: string | null
           last_seen_at: string | null
+          last_server_age_sync_at: string | null
           mode: string | null
           offline_buffer_count: number | null
           offline_duration_seconds: number | null
@@ -581,12 +583,16 @@ export type Database = {
           updated_at: string
           uptime_seconds: number | null
           user_id: string
+          water_24h_rolling_avg: number | null
+          water_anomaly_consecutive_count: number | null
+          water_last_2h_avg: number | null
           wifi_signal_strength: number | null
         }
         Insert: {
           ammonia_avg_10?: number | null
           battery_capacity_wh?: number | null
           battery_percentage?: number | null
+          broiler_age_source?: string | null
           cached_settings_version?: number | null
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
@@ -610,6 +616,7 @@ export type Database = {
           last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
+          last_server_age_sync_at?: string | null
           mode?: string | null
           offline_buffer_count?: number | null
           offline_duration_seconds?: number | null
@@ -630,12 +637,16 @@ export type Database = {
           updated_at?: string
           uptime_seconds?: number | null
           user_id: string
+          water_24h_rolling_avg?: number | null
+          water_anomaly_consecutive_count?: number | null
+          water_last_2h_avg?: number | null
           wifi_signal_strength?: number | null
         }
         Update: {
           ammonia_avg_10?: number | null
           battery_capacity_wh?: number | null
           battery_percentage?: number | null
+          broiler_age_source?: string | null
           cached_settings_version?: number | null
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
@@ -659,6 +670,7 @@ export type Database = {
           last_power_outage_id?: string | null
           last_restart_at?: string | null
           last_seen_at?: string | null
+          last_server_age_sync_at?: string | null
           mode?: string | null
           offline_buffer_count?: number | null
           offline_duration_seconds?: number | null
@@ -679,6 +691,9 @@ export type Database = {
           updated_at?: string
           uptime_seconds?: number | null
           user_id?: string
+          water_24h_rolling_avg?: number | null
+          water_anomaly_consecutive_count?: number | null
+          water_last_2h_avg?: number | null
           wifi_signal_strength?: number | null
         }
         Relationships: [
