@@ -56,7 +56,51 @@
 #include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <rom/rtc.h>
- #include <Update.h>
+#include <Update.h>
+#include <WebServer.h>
+#include <DNSServer.h>
+
+// ═══════════════════════════════════════════════════════════════════════
+// 📶 WIFI MANAGER CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════
+#define WIFI_MANAGER_ENABLED     true
+#define AP_SSID                  "SmartFarm-Setup"
+#define AP_PASSWORD              ""              // Open network for easy setup
+#define AP_TIMEOUT_MS            180000          // 3 minutes AP mode timeout
+#define WIFI_CONNECT_TIMEOUT     20              // 20 attempts (10 sec)
+#define WIFI_CRED_MAGIC          0x57494649      // "WIFI" magic number
+
+// WiFi Manager state
+bool wifiManagerActive = false;
+bool hasStoredCredentials = false;
+unsigned long apStartTime = 0;
+WebServer wifiServer(80);
+DNSServer dnsServer;
+
+// Stored WiFi credentials structure
+struct WiFiCredentials {
+  char ssid[64];
+  char password[64];
+  uint32_t magic;
+};
+
+// EEPROM addresses for WiFi Manager
+#define EEPROM_WIFI_ADDR         400    // Store WiFi credentials at offset 400
+
+// Function prototypes for WiFi Manager
+void initWiFiManager();
+void startAPMode();
+void stopAPMode();
+void handleWiFiRoot();
+void handleWiFiSave();
+void handleWiFiScan();
+void handleWiFiStatus();
+void handleWiFiReset();
+void loadWiFiCredentials();
+void saveWiFiCredentials(const char* ssid, const char* password);
+void clearWiFiCredentials();
+bool connectToStoredWiFi();
+void wifiManagerLoop();
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🐔 FARM PROFILE SYSTEM (EEPROM Persistent Storage)
@@ -1915,19 +1959,46 @@ void readSensors() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void connectWiFi() {
-  Serial.print("📡 Connecting to WiFi");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
+  // First, try stored credentials from WiFi Manager
+  if (WIFI_MANAGER_ENABLED) {
+    loadWiFiCredentials();
+    if (hasStoredCredentials) {
+      Serial.println("📶 WiFi Manager: Using stored credentials...");
+      if (connectToStoredWiFi()) {
+        return;  // Connected successfully
+      }
+    }
   }
   
-  wifiConnected = (WiFi.status() == WL_CONNECTED);
-  Serial.println(wifiConnected ? "\n✓ WiFi Connected!" : "\n✗ WiFi Failed");
+  // Fallback to hardcoded credentials (for Code Generator users)
+  if (strlen(WIFI_SSID) > 0 && strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0) {
+    Serial.print("📡 Connecting to WiFi (hardcoded)");
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < WIFI_CONNECT_TIMEOUT) {
+      delay(500);
+      Serial.print(".");
+      attempts++;
+      esp_task_wdt_reset();
+    }
+    
+    wifiConnected = (WiFi.status() == WL_CONNECTED);
+    if (wifiConnected) {
+      Serial.println("\n✓ WiFi Connected!");
+      Serial.printf("  IP: %s\n", WiFi.localIP().toString().c_str());
+      Serial.printf("  RSSI: %d dBm\n", WiFi.RSSI());
+      return;
+    }
+    Serial.println("\n✗ WiFi Failed");
+  }
+  
+  // No connection - start AP mode for configuration
+  if (WIFI_MANAGER_ENABLED) {
+    Serial.println("📶 Starting WiFi Manager AP mode...");
+    startAPMode();
+  }
 }
 
 void syncWithCloud() {
@@ -2060,6 +2131,416 @@ void checkFailsafeTimeout() {
   if (millis() - lastCloudSync > CLOUD_TIMEOUT && !failsafeMode) {
     Serial.println("\n⚠️ CLOUD TIMEOUT (5 min) → LOCAL AUTO MODE!");
     failsafeMode = true;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 📶 WIFI MANAGER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+// HTML page for WiFi configuration
+const char WIFI_CONFIG_PAGE[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartFarm WiFi Setup</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { margin: 0; padding: 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; }
+    .container { max-width: 400px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+    h1 { color: #1a1a2e; margin: 0 0 8px 0; font-size: 24px; }
+    .subtitle { color: #666; margin-bottom: 24px; font-size: 14px; }
+    .logo { font-size: 48px; text-align: center; margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; color: #333; font-weight: 500; font-size: 14px; }
+    input, select { width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; margin-bottom: 16px; transition: border-color 0.2s; }
+    input:focus, select:focus { outline: none; border-color: #4CAF50; }
+    button { width: 100%; padding: 16px; background: linear-gradient(135deg, #4CAF50, #45a049); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
+    button:active { transform: scale(0.98); }
+    .networks { max-height: 200px; overflow-y: auto; margin-bottom: 16px; }
+    .network { padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+    .network:hover { border-color: #4CAF50; background: #f5fff5; }
+    .network.selected { border-color: #4CAF50; background: #e8f5e9; }
+    .signal { font-size: 12px; color: #666; }
+    .status { padding: 12px; border-radius: 8px; margin-top: 16px; text-align: center; }
+    .status.success { background: #e8f5e9; color: #2e7d32; }
+    .status.error { background: #ffebee; color: #c62828; }
+    .status.info { background: #e3f2fd; color: #1565c0; }
+    .loading { display: none; text-align: center; padding: 20px; }
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4CAF50; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .bn { font-size: 13px; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="logo">🐔</div>
+      <h1>SmartFarm WiFi Setup</h1>
+      <p class="subtitle">ওয়াইফাই সেটআপ করুন <span class="bn">(Connect to WiFi)</span></p>
+      
+      <div id="scan-section">
+        <label>📶 উপলব্ধ নেটওয়ার্ক <span class="bn">(Available Networks)</span></label>
+        <div class="networks" id="networks">
+          <div class="status info">🔍 স্ক্যান করা হচ্ছে... (Scanning...)</div>
+        </div>
+        <button onclick="scanNetworks()">🔄 রিস্ক্যান (Rescan)</button>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <label>📡 WiFi নাম (SSID)</label>
+        <input type="text" id="ssid" placeholder="WiFi নাম লিখুন">
+        
+        <label>🔐 পাসওয়ার্ড (Password)</label>
+        <input type="password" id="password" placeholder="পাসওয়ার্ড লিখুন">
+        
+        <button onclick="saveWiFi()">✅ সংযোগ করুন (Connect)</button>
+      </div>
+      
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>সংযোগ করা হচ্ছে... (Connecting...)</p>
+      </div>
+      
+      <div id="status"></div>
+    </div>
+    
+    <div class="card" style="background: #fff3e0;">
+      <p style="margin: 0; font-size: 13px; color: #e65100;">
+        ⚠️ <strong>গুরুত্বপূর্ণ:</strong> সংযোগের পর এই নেটওয়ার্ক বন্ধ হয়ে যাবে এবং ডিভাইস আপনার WiFi-তে যুক্ত হবে।
+        <br><span class="bn">(After connecting, this setup network will close.)</span>
+      </p>
+    </div>
+  </div>
+  
+  <script>
+    let selectedSSID = '';
+    
+    function scanNetworks() {
+      document.getElementById('networks').innerHTML = '<div class="status info">🔍 স্ক্যান করা হচ্ছে...</div>';
+      fetch('/scan')
+        .then(r => r.json())
+        .then(data => {
+          let html = '';
+          if (data.networks && data.networks.length > 0) {
+            data.networks.forEach(n => {
+              const signal = n.rssi > -50 ? '📶📶📶' : (n.rssi > -70 ? '📶📶' : '📶');
+              html += `<div class="network" onclick="selectNetwork('${n.ssid}', this)">
+                <span>${n.ssid}</span>
+                <span class="signal">${signal} ${n.rssi}dBm ${n.secure ? '🔒' : ''}</span>
+              </div>`;
+            });
+          } else {
+            html = '<div class="status info">কোনো নেটওয়ার্ক পাওয়া যায়নি</div>';
+          }
+          document.getElementById('networks').innerHTML = html;
+        })
+        .catch(e => {
+          document.getElementById('networks').innerHTML = '<div class="status error">স্ক্যান ব্যর্থ</div>';
+        });
+    }
+    
+    function selectNetwork(ssid, el) {
+      document.querySelectorAll('.network').forEach(n => n.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('ssid').value = ssid;
+      selectedSSID = ssid;
+    }
+    
+    function saveWiFi() {
+      const ssid = document.getElementById('ssid').value;
+      const password = document.getElementById('password').value;
+      
+      if (!ssid) {
+        document.getElementById('status').innerHTML = '<div class="status error">❌ WiFi নাম লিখুন</div>';
+        return;
+      }
+      
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('status').innerHTML = '';
+      
+      fetch('/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'ssid=' + encodeURIComponent(ssid) + '&password=' + encodeURIComponent(password)
+      })
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('loading').style.display = 'none';
+          if (data.success) {
+            document.getElementById('status').innerHTML = '<div class="status success">✅ ' + data.message + '</div>';
+            setTimeout(() => {
+              document.getElementById('status').innerHTML = '<div class="status info">🔄 ডিভাইস রিস্টার্ট হচ্ছে...</div>';
+            }, 2000);
+          } else {
+            document.getElementById('status').innerHTML = '<div class="status error">❌ ' + data.message + '</div>';
+          }
+        })
+        .catch(e => {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('status').innerHTML = '<div class="status error">❌ সংযোগ ব্যর্থ</div>';
+        });
+    }
+    
+    // Initial scan
+    setTimeout(scanNetworks, 500);
+  </script>
+</body>
+</html>
+)rawliteral";
+
+void loadWiFiCredentials() {
+  WiFiCredentials creds;
+  EEPROM.get(EEPROM_WIFI_ADDR, creds);
+  
+  if (creds.magic == WIFI_CRED_MAGIC && strlen(creds.ssid) > 0) {
+    hasStoredCredentials = true;
+    Serial.printf("📶 Found stored WiFi: %s\n", creds.ssid);
+  } else {
+    hasStoredCredentials = false;
+    Serial.println("📶 No stored WiFi credentials");
+  }
+}
+
+void saveWiFiCredentials(const char* ssid, const char* password) {
+  WiFiCredentials creds;
+  memset(&creds, 0, sizeof(creds));
+  strncpy(creds.ssid, ssid, sizeof(creds.ssid) - 1);
+  strncpy(creds.password, password, sizeof(creds.password) - 1);
+  creds.magic = WIFI_CRED_MAGIC;
+  
+  EEPROM.put(EEPROM_WIFI_ADDR, creds);
+  EEPROM.commit();
+  
+  hasStoredCredentials = true;
+  Serial.printf("📶 WiFi credentials saved: %s\n", ssid);
+}
+
+void clearWiFiCredentials() {
+  WiFiCredentials creds;
+  memset(&creds, 0, sizeof(creds));
+  creds.magic = 0;
+  
+  EEPROM.put(EEPROM_WIFI_ADDR, creds);
+  EEPROM.commit();
+  
+  hasStoredCredentials = false;
+  Serial.println("📶 WiFi credentials cleared");
+}
+
+bool connectToStoredWiFi() {
+  WiFiCredentials creds;
+  EEPROM.get(EEPROM_WIFI_ADDR, creds);
+  
+  if (creds.magic != WIFI_CRED_MAGIC) return false;
+  
+  Serial.printf("📡 Connecting to stored WiFi: %s", creds.ssid);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(creds.ssid, creds.password);
+  
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < WIFI_CONNECT_TIMEOUT) {
+    delay(500);
+    Serial.print(".");
+    attempts++;
+    esp_task_wdt_reset();
+  }
+  
+  wifiConnected = (WiFi.status() == WL_CONNECTED);
+  if (wifiConnected) {
+    Serial.println("\n✓ WiFi Connected!");
+    Serial.printf("  IP: %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("  RSSI: %d dBm\n", WiFi.RSSI());
+  } else {
+    Serial.println("\n✗ Stored WiFi failed");
+  }
+  
+  return wifiConnected;
+}
+
+void startAPMode() {
+  wifiManagerActive = true;
+  apStartTime = millis();
+  
+  // Stop any existing WiFi connection
+  WiFi.disconnect(true);
+  delay(100);
+  
+  // Start Access Point
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASSWORD);
+  
+  // Start DNS server for captive portal
+  dnsServer.start(53, "*", WiFi.softAPIP());
+  
+  // Setup web server routes
+  wifiServer.on("/", HTTP_GET, handleWiFiRoot);
+  wifiServer.on("/scan", HTTP_GET, handleWiFiScan);
+  wifiServer.on("/save", HTTP_POST, handleWiFiSave);
+  wifiServer.on("/status", HTTP_GET, handleWiFiStatus);
+  wifiServer.on("/reset", HTTP_GET, handleWiFiReset);
+  wifiServer.onNotFound(handleWiFiRoot);  // Captive portal redirect
+  
+  wifiServer.begin();
+  
+  Serial.println("\n╔════════════════════════════════════════════════════════════╗");
+  Serial.println("║  📶 WIFI MANAGER - ACCESS POINT MODE                       ║");
+  Serial.println("╠════════════════════════════════════════════════════════════╣");
+  Serial.printf("║  Network: %s                               ║\n", AP_SSID);
+  Serial.printf("║  IP: %s                                       ║\n", WiFi.softAPIP().toString().c_str());
+  Serial.println("║  Open browser: http://192.168.4.1                         ║");
+  Serial.printf("║  Timeout: %d seconds                                      ║\n", AP_TIMEOUT_MS / 1000);
+  Serial.println("╚════════════════════════════════════════════════════════════╝\n");
+  
+  // Blink status LED to indicate AP mode
+  for (int i = 0; i < 5; i++) {
+    digitalWrite(STATUS_LED_PIN, HIGH);
+    delay(100);
+    digitalWrite(STATUS_LED_PIN, LOW);
+    delay(100);
+  }
+}
+
+void stopAPMode() {
+  if (!wifiManagerActive) return;
+  
+  wifiServer.stop();
+  dnsServer.stop();
+  WiFi.softAPdisconnect(true);
+  wifiManagerActive = false;
+  
+  Serial.println("📶 WiFi Manager AP mode stopped");
+}
+
+void handleWiFiRoot() {
+  wifiServer.send(200, "text/html", WIFI_CONFIG_PAGE);
+}
+
+void handleWiFiScan() {
+  int n = WiFi.scanNetworks();
+  
+  StaticJsonDocument<1024> doc;
+  JsonArray networks = doc.createNestedArray("networks");
+  
+  for (int i = 0; i < n && i < 10; i++) {
+    JsonObject network = networks.createNestedObject();
+    network["ssid"] = WiFi.SSID(i);
+    network["rssi"] = WiFi.RSSI(i);
+    network["secure"] = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+  }
+  
+  String response;
+  serializeJson(doc, response);
+  wifiServer.send(200, "application/json", response);
+}
+
+void handleWiFiSave() {
+  String ssid = wifiServer.arg("ssid");
+  String password = wifiServer.arg("password");
+  
+  StaticJsonDocument<256> doc;
+  
+  if (ssid.length() == 0) {
+    doc["success"] = false;
+    doc["message"] = "WiFi নাম দরকার (SSID required)";
+    String response;
+    serializeJson(doc, response);
+    wifiServer.send(400, "application/json", response);
+    return;
+  }
+  
+  // Test connection first
+  Serial.printf("📶 Testing connection to: %s\n", ssid.c_str());
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 15) {
+    delay(500);
+    attempts++;
+    esp_task_wdt_reset();
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    // Save credentials and restart
+    saveWiFiCredentials(ssid.c_str(), password.c_str());
+    
+    doc["success"] = true;
+    doc["message"] = "সংযুক্ত! রিস্টার্ট হচ্ছে... (Connected! Restarting...)";
+    doc["ip"] = WiFi.localIP().toString();
+    
+    String response;
+    serializeJson(doc, response);
+    wifiServer.send(200, "application/json", response);
+    
+    delay(2000);
+    ESP.restart();
+  } else {
+    // Connection failed
+    WiFi.disconnect();
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(AP_SSID, AP_PASSWORD);
+    
+    doc["success"] = false;
+    doc["message"] = "সংযোগ ব্যর্থ - পাসওয়ার্ড চেক করুন (Connection failed)";
+    
+    String response;
+    serializeJson(doc, response);
+    wifiServer.send(200, "application/json", response);
+  }
+}
+
+void handleWiFiStatus() {
+  StaticJsonDocument<256> doc;
+  doc["ap_mode"] = wifiManagerActive;
+  doc["connected"] = wifiConnected;
+  doc["ssid"] = WiFi.SSID();
+  doc["ip"] = WiFi.localIP().toString();
+  doc["rssi"] = WiFi.RSSI();
+  
+  String response;
+  serializeJson(doc, response);
+  wifiServer.send(200, "application/json", response);
+}
+
+void handleWiFiReset() {
+  clearWiFiCredentials();
+  
+  StaticJsonDocument<128> doc;
+  doc["success"] = true;
+  doc["message"] = "WiFi credentials cleared. Restarting...";
+  
+  String response;
+  serializeJson(doc, response);
+  wifiServer.send(200, "application/json", response);
+  
+  delay(1000);
+  ESP.restart();
+}
+
+void wifiManagerLoop() {
+  if (!wifiManagerActive) return;
+  
+  dnsServer.processNextRequest();
+  wifiServer.handleClient();
+  
+  // Check timeout
+  if (millis() - apStartTime > AP_TIMEOUT_MS) {
+    Serial.println("📶 WiFi Manager timeout - continuing with failsafe mode");
+    stopAPMode();
+    failsafeMode = true;
+    digitalWrite(FAN_RELAY_PIN, HIGH);
+    fanOn = true;
+    fanSpeed = "HIGH";
+  }
+  
+  // Blink LED in AP mode
+  static unsigned long lastBlink = 0;
+  if (millis() - lastBlink > 500) {
+    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+    lastBlink = millis();
   }
 }
 
@@ -2212,6 +2693,14 @@ void loop() {
   static unsigned long lastDayCheck = 0;
   unsigned long now = millis();
   
+  // 📶 WiFi Manager loop (if in AP mode)
+  if (wifiManagerActive) {
+    wifiManagerLoop();
+    esp_task_wdt_reset();
+    delay(10);
+    return;  // Skip normal loop when in WiFi config mode
+  }
+  
    checkSafeModeExit();
    updateOnlineOfflineDuration();
    
@@ -2225,7 +2714,7 @@ void loop() {
   }
   
   // Check WiFi
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED && !wifiManagerActive) {
     wifiConnected = false;
     cloudConnected = false;
   }
