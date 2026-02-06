@@ -104,6 +104,14 @@
     --input: 163 15% 20%;
     --ring: 163 55% 45%;
 
+    /* Sensor/brand gradients in dark mode (so values stay readable) */
+    --gradient-card: linear-gradient(180deg, hsl(163 20% 12%) 0%, hsl(163 20% 10%) 100%);
+    --gradient-sensor: linear-gradient(135deg, hsl(163 18% 14%) 0%, hsl(163 18% 10%) 100%);
+
+    /* Slightly stronger shadows in dark mode */
+    --shadow-card: 0 8px 26px -10px hsl(0 0% 0% / 0.55);
+    --shadow-sensor: 0 10px 34px -14px hsl(0 0% 0% / 0.65);
+
     --sidebar-background: 163 20% 8%;
     --sidebar-foreground: 160 15% 95%;
     --sidebar-primary: 163 55% 45%;
