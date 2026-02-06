@@ -1111,13 +1111,19 @@ void advanceSensorRollingIndex() {
  
  float readGasFiltered() {
    if (!gasReady()) {
-     Serial.println("🧪 Gas sensor warming up...");
+     // Avoid spamming Serial (can block and contribute to WDT resets)
+     static unsigned long lastWarmupMsg = 0;
+     if (millis() - lastWarmupMsg > 10000) {
+       Serial.println("🧪 Gas sensor warming up...");
+       lastWarmupMsg = millis();
+     }
      return 0;
    }
-   
+ 
    float total = 0;
    for (int i = 0; i < 10; i++) {
      total += analogRead(MQ135_PIN);
+     esp_task_wdt_reset();
      delay(50);
    }
    return total / 10.0;
@@ -2245,7 +2251,9 @@ void loop() {
     }
   }
   
-  // Watchdog is now fed in runSafetyChecks()
-  
+  // ✅ Run safety + feed watchdog every loop
+  runSafetyChecks();
+  esp_task_wdt_reset();
+
   delay(100);
 }
