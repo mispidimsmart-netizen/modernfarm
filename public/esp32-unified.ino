@@ -180,14 +180,14 @@ bool wasWatchdogReset = false;
 #define POWER_SENSE_PIN 35
 #define FAN_RELAY_PIN 26
 #define LIGHT_PWM_PIN 25
-#define ALARM_RELAY_PIN 12   // Piezo Buzzer (changed from 33)
+#define ALARM_RELAY_PIN 33   // SFM-27 Buzzer via Relay IN3 (DC 3-24V)
 #define STATUS_LED_PIN 2
 #define HEATER_RELAY_PIN 13
 
 // Manual Override Buttons
 #define MANUAL_OVERRIDE_BTN 32
 #define MANUAL_FAN_BTN 14
-#define MANUAL_ALARM_BTN 12
+#define MANUAL_ALARM_BTN 27  // Changed from 12 to avoid conflict
 
 // ================ NETWORK CONFIGURATION ================
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
