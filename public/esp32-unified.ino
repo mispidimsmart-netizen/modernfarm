@@ -1064,23 +1064,30 @@ void advanceSensorRollingIndex() {
 }
 
  // ═══════════════════════════════════════════════════════════════════════
- // 🌡️ DHT22 FILTERED READINGS (5-sample average)
+ // 🌡️ DHT22 FILTERED READINGS (3-sample average + WDT safe)
  // ═══════════════════════════════════════════════════════════════════════
  
  float readTempFiltered() {
    float sum = 0;
    int validCount = 0;
    
-   for (int i = 0; i < 5; i++) {
+   for (int i = 0; i < 3; i++) {
+     esp_task_wdt_reset();  // ✅ Feed watchdog
      float t = dht.readTemperature();
-     if (!isnan(t)) {
+     if (!isnan(t) && t >= TEMP_SANITY_MIN && t <= TEMP_SANITY_MAX) {
        sum += t;
        validCount++;
+       Serial.printf("📊 DHT Temp[%d]: %.1f°C ✓\n", i, t);
+     } else {
+       Serial.printf("⚠️ DHT Temp[%d]: nan/invalid\n", i);
      }
-     delay(200);
+     delay(300);  // DHT22 needs 2 sec between reads, 300ms is minimum
    }
    
-   if (validCount == 0) return NAN;
+   if (validCount == 0) {
+     Serial.println("❌ DHT Temp: All 3 readings failed!");
+     return NAN;
+   }
    return sum / validCount;
  }
  
@@ -1088,16 +1095,23 @@ void advanceSensorRollingIndex() {
    float sum = 0;
    int validCount = 0;
    
-   for (int i = 0; i < 5; i++) {
+   for (int i = 0; i < 3; i++) {
+     esp_task_wdt_reset();  // ✅ Feed watchdog
      float h = dht.readHumidity();
-     if (!isnan(h)) {
+     if (!isnan(h) && h >= HUMIDITY_SANITY_MIN && h <= HUMIDITY_SANITY_MAX) {
        sum += h;
        validCount++;
+       Serial.printf("📊 DHT Humidity[%d]: %.1f%% ✓\n", i, h);
+     } else {
+       Serial.printf("⚠️ DHT Humidity[%d]: nan/invalid\n", i);
      }
-     delay(200);
+     delay(300);
    }
    
-   if (validCount == 0) return NAN;
+   if (validCount == 0) {
+     Serial.println("❌ DHT Humidity: All 3 readings failed!");
+     return NAN;
+   }
    return sum / validCount;
  }
  
