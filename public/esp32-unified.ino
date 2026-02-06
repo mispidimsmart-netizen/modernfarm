@@ -175,7 +175,7 @@ bool wasWatchdogReset = false;
 #define POWER_SENSE_PIN 35
 #define FAN_RELAY_PIN 26
 #define LIGHT_PWM_PIN 25
-#define ALARM_RELAY_PIN 33
+#define ALARM_RELAY_PIN 12   // Piezo Buzzer (changed from 33)
 #define STATUS_LED_PIN 2
 #define HEATER_RELAY_PIN 13
 
