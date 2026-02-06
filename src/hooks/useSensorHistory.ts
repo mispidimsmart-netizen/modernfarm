@@ -21,17 +21,23 @@ export function useSensorHistory(hours: number = 24) {
       const startTime = new Date();
       startTime.setHours(startTime.getHours() - hours);
 
+      // Get most recent 100 records (DESC), then reverse for chart display (oldest first)
       const { data, error } = await supabase
         .from('sensor_readings')
         .select('temperature, humidity, ammonia, water_usage, recorded_at')
         .eq('user_id', user.id)
         .gte('recorded_at', startTime.toISOString())
-        .order('recorded_at', { ascending: true })
+        .order('recorded_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
 
-      return (data || []).map(reading => ({
+      // Filter out zero-value readings (sensor not connected) and reverse for chronological order
+      const validData = (data || [])
+        .filter(r => r.temperature !== 0 || r.humidity !== 0 || r.ammonia !== 0)
+        .reverse();
+
+      return validData.map(reading => ({
         time: new Date(reading.recorded_at).toLocaleTimeString('bn-BD', {
           hour: '2-digit',
           minute: '2-digit',
