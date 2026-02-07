@@ -2388,7 +2388,13 @@ void checkPendingCommands() {
   }
   
   HTTPClient http;
-  String url = String(API_URL) + "/commands?device_id=" + SHED_NAME;
+
+  // IMPORTANT: SHED_NAME may contain spaces (e.g., "Shed A").
+  // Query params must be URL-encoded or the server can return HTTP 400.
+  String encodedShedName = String(SHED_NAME);
+  encodedShedName.replace(" ", "%20");
+
+  String url = String(API_URL) + "/commands?device_id=" + encodedShedName;
   
   Serial.printf("   → URL: %s\n", url.c_str());
   
