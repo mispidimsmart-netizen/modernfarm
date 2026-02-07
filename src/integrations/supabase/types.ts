@@ -734,6 +734,7 @@ export type Database = {
           fan_on: boolean
           fan_speed: string
           farm_id: string | null
+          heater_on: boolean | null
           hsi: number | null
           id: string
           last_cloud_sync: string | null
@@ -751,6 +752,7 @@ export type Database = {
           fan_on?: boolean
           fan_speed?: string
           farm_id?: string | null
+          heater_on?: boolean | null
           hsi?: number | null
           id?: string
           last_cloud_sync?: string | null
@@ -768,6 +770,7 @@ export type Database = {
           fan_on?: boolean
           fan_speed?: string
           farm_id?: string | null
+          heater_on?: boolean | null
           hsi?: number | null
           id?: string
           last_cloud_sync?: string | null

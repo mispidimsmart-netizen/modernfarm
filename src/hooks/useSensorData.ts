@@ -80,11 +80,13 @@ export function useDeviceControl() {
     fan: deviceStatus.fan_on,
     light: deviceStatus.light_on,
     alarm: deviceStatus.alarm_on,
+    heater: deviceStatus.heater_on ?? false,
   } : {
     power: true,
     fan: false,
     light: false,
     alarm: false,
+    heater: false,
   };
 
   const manualOverride = deviceStatus?.manual_override ?? false;
@@ -95,6 +97,7 @@ export function useDeviceControl() {
     if (newStatus.fan !== undefined) updateData.fan_on = newStatus.fan;
     if (newStatus.light !== undefined) updateData.light_on = newStatus.light;
     if (newStatus.alarm !== undefined) updateData.alarm_on = newStatus.alarm;
+    if (newStatus.heater !== undefined) updateData.heater_on = newStatus.heater;
     
     updateMutation.mutate(updateData);
   }, [updateMutation]);

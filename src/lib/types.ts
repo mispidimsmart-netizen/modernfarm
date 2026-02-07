@@ -11,6 +11,7 @@ export interface DeviceStatus {
   fan: boolean;
   light: boolean;
   alarm: boolean;
+  heater: boolean;
 }
 
 export interface AutomationRule {

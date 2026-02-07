@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Fan, Lightbulb, Bell, RefreshCcw, ShieldAlert } from 'lucide-react';
+import { Fan, Lightbulb, Bell, RefreshCcw, ShieldAlert, Flame } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -96,6 +96,13 @@ export function ControlPage() {
               label={translations.sensors.alarm[language]}
               isOn={status.alarm}
               onToggle={() => setDeviceStatus({ alarm: !status.alarm })}
+              disabled={!manualOverride || !isOwner}
+            />
+            <ControlButton
+              icon={Flame}
+              label={language === 'bn' ? 'হিটার' : 'Heater'}
+              isOn={status.heater}
+              onToggle={() => setDeviceStatus({ heater: !status.heater })}
               disabled={!manualOverride || !isOwner}
             />
           </div>
