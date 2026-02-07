@@ -2381,9 +2381,12 @@ void checkPendingCommands() {
     return;
   }
   
-  // Skip in safe modes
-  if (failsafeMode || safeModeActive || stabilizingMode) {
-    Serial.println("   ⚠️ Safe mode active, skipping commands");
+  // NOTE: Manual commands from app should ALWAYS execute, even during stabilizing mode.
+  // Only skip if we are in failsafe mode (no cloud connection) - localManualOverride handles that case.
+  // safeModeActive is for sensor anomaly protection, not for blocking user commands.
+  // We allow commands during stabilizingMode so user can control relays immediately after boot.
+  if (failsafeMode) {
+    Serial.println("   ⚠️ Failsafe mode active (offline), skipping cloud commands");
     return;
   }
   
