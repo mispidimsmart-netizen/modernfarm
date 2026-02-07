@@ -259,6 +259,52 @@ const float BROILER_HSI_EMERGENCY = 42.0;
 const float BROILER_HSI_CRITICAL = 45.0;
 
 // ═══════════════════════════════════════════════════════════════════════
+// 💡 LIGHTING SCHEDULE CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════
+struct LightingSchedule {
+  int startHour;          // Light ON time (hour)
+  int startMinute;        // Light ON time (minute)
+  int endHour;            // Light OFF time (hour)
+  int endMinute;          // Light OFF time (minute)
+  int fadeInMinutes;      // Gradual fade-in duration
+  int fadeOutMinutes;     // Gradual fade-out duration
+  int minBrightness;      // Minimum brightness (0-100)
+  int maxBrightness;      // Maximum brightness (0-100)
+  bool enabled;           // Schedule enabled
+  bool manualOverride;    // Manual override active
+};
+
+LightingSchedule lightSchedule = {
+  .startHour = 5,         // Default: 5:00 AM
+  .startMinute = 0,
+  .endHour = 21,          // Default: 9:00 PM
+  .endMinute = 0,
+  .fadeInMinutes = 30,    // 30 min sunrise simulation
+  .fadeOutMinutes = 30,   // 30 min sunset simulation
+  .minBrightness = 0,
+  .maxBrightness = 100,
+  .enabled = true,
+  .manualOverride = false
+};
+
+int lightBrightness = 0;           // Current brightness (0-100)
+int lightPWMValue = 0;             // Current PWM value (0-255)
+unsigned long lastLightingCheck = 0;
+const unsigned long LIGHTING_CHECK_INTERVAL = 10000;  // Check every 10 seconds
+
+// Time tracking (from cloud or estimation)
+int currentHour = 12;              // Current hour (0-23)
+int currentMinute = 0;             // Current minute (0-59)
+unsigned long lastTimeSync = 0;    // Last time sync from cloud
+bool timeValid = false;            // Time has been synced from cloud
+
+// Layer lighting protection
+bool lightWasOn = false;
+unsigned long lightOffStartTime = 0;
+bool lightingAlertActive = false;
+const unsigned long LIGHTING_ALERT_DELAY = 600000;  // 10 minutes
+
+// ═══════════════════════════════════════════════════════════════════════
 // 📋 FUNCTION PROTOTYPES (Required for Arduino C++)
 // These must be declared before they are called
 // ═══════════════════════════════════════════════════════════════════════
@@ -273,6 +319,10 @@ void getBroilerTargetTemp(int ageDays, float &minTemp, float &maxTemp);
 void handleBroilerAgeIncrement();
 void printFarmProfile();
 void updateAge(int newAge);
+void controlLighting();
+void checkLayerLightingProtection();
+void updateTimeFromCloud(int hour, int minute);
+void estimateLocalTime();
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -1550,6 +1600,180 @@ void setLight(bool on) {
   Serial.printf("💡 Light: %s\n", on ? "ON" : "OFF");
 }
 
+void setLightBrightness(int brightness) {
+  lightBrightness = constrain(brightness, 0, 100);
+  lightPWMValue = map(lightBrightness, 0, 100, 0, 255);
+  
+  // For PWM dimming (if using LEDC):
+  // ledcWrite(LIGHT_PWM_CHANNEL, lightPWMValue);
+  
+  // For relay (ON/OFF only):
+  bool shouldBeOn = (lightBrightness > 0);
+  if (shouldBeOn != lightOn) {
+    setLight(shouldBeOn);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 💡 LIGHTING SCHEDULE CONTROL
+// Cloud থেকে শিডিউল আসে, ESP32 লোকালি এক্সিকিউট করে
+// ═══════════════════════════════════════════════════════════════════════
+
+void updateTimeFromCloud(int hour, int minute) {
+  currentHour = hour;
+  currentMinute = minute;
+  lastTimeSync = millis();
+  timeValid = true;
+  Serial.printf("⏰ Time synced from cloud: %02d:%02d\n", hour, minute);
+}
+
+void estimateLocalTime() {
+  // If no time sync, estimate based on uptime
+  // This is a fallback - not accurate, but better than nothing
+  if (!timeValid) {
+    // Assume we started at some point - use noon as default
+    unsigned long uptimeMinutes = millis() / 60000;
+    int estimatedMinutes = (12 * 60 + uptimeMinutes) % 1440;  // 1440 = 24*60
+    currentHour = estimatedMinutes / 60;
+    currentMinute = estimatedMinutes % 60;
+  } else {
+    // Update time based on millis since last sync
+    unsigned long timeSinceSync = millis() - lastTimeSync;
+    unsigned long minutesSinceSync = timeSinceSync / 60000;
+    
+    int totalMinutes = (currentHour * 60 + currentMinute + minutesSinceSync) % 1440;
+    currentHour = totalMinutes / 60;
+    currentMinute = totalMinutes % 60;
+  }
+}
+
+void controlLighting() {
+  // Skip if manual override is active
+  if (lightSchedule.manualOverride || localManualOverride) {
+    return;
+  }
+  
+  // Skip if schedule is disabled
+  if (!lightSchedule.enabled) {
+    return;
+  }
+  
+  // Update local time estimation
+  estimateLocalTime();
+  
+  // Calculate current time in minutes
+  int currentMinutes = currentHour * 60 + currentMinute;
+  int startMinutes = lightSchedule.startHour * 60 + lightSchedule.startMinute;
+  int endMinutes = lightSchedule.endHour * 60 + lightSchedule.endMinute;
+  
+  bool shouldLightOn = false;
+  int targetBrightness = 0;
+  
+  // Handle overnight schedules (e.g., 22:00 - 05:00)
+  bool isOvernight = (endMinutes < startMinutes);
+  
+  if (isOvernight) {
+    // Overnight schedule
+    shouldLightOn = (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+  } else {
+    // Normal schedule
+    shouldLightOn = (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+  }
+  
+  if (shouldLightOn) {
+    // Calculate minutes from start and to end
+    int minutesFromStart, minutesToEnd;
+    
+    if (isOvernight) {
+      if (currentMinutes >= startMinutes) {
+        minutesFromStart = currentMinutes - startMinutes;
+        minutesToEnd = (1440 - currentMinutes) + endMinutes;
+      } else {
+        minutesFromStart = (1440 - startMinutes) + currentMinutes;
+        minutesToEnd = endMinutes - currentMinutes;
+      }
+    } else {
+      minutesFromStart = currentMinutes - startMinutes;
+      minutesToEnd = endMinutes - currentMinutes;
+    }
+    
+    // Calculate brightness with fade in/out
+    if (minutesFromStart < lightSchedule.fadeInMinutes) {
+      // Fade in (sunrise simulation)
+      targetBrightness = map(minutesFromStart, 0, lightSchedule.fadeInMinutes,
+                             lightSchedule.minBrightness, lightSchedule.maxBrightness);
+    } else if (minutesToEnd < lightSchedule.fadeOutMinutes) {
+      // Fade out (sunset simulation)
+      targetBrightness = map(minutesToEnd, 0, lightSchedule.fadeOutMinutes,
+                             lightSchedule.minBrightness, lightSchedule.maxBrightness);
+    } else {
+      // Full brightness
+      targetBrightness = lightSchedule.maxBrightness;
+    }
+  } else {
+    targetBrightness = 0;
+  }
+  
+  // Apply lighting change
+  if (targetBrightness != lightBrightness || shouldLightOn != lightOn) {
+    setLightBrightness(targetBrightness);
+    Serial.printf("💡 Lighting: %s (Brightness: %d%%, Time: %02d:%02d)\n", 
+                  shouldLightOn ? "ON" : "OFF", lightBrightness, currentHour, currentMinute);
+  }
+}
+
+void checkLayerLightingProtection() {
+  // Only for LAYER farms
+  if (!isLayer()) return;
+  
+  unsigned long now = millis();
+  
+  // Track light state changes
+  if (lightOn && !lightWasOn) {
+    // Light just turned ON
+    lightWasOn = true;
+    lightOffStartTime = 0;
+    lightingAlertActive = false;
+  } 
+  else if (!lightOn && lightWasOn) {
+    // Light just turned OFF
+    lightWasOn = false;
+    lightOffStartTime = now;
+    Serial.println("💡 Light OFF - Starting 10 min protection timer");
+  }
+  else if (!lightOn && !lightWasOn && lightOffStartTime == 0) {
+    // Initialize if light was already OFF at boot
+    lightOffStartTime = now;
+  }
+  
+  // Check if light has been OFF too long during scheduled ON time
+  if (!lightOn && lightOffStartTime > 0) {
+    unsigned long offDuration = now - lightOffStartTime;
+    
+    // Check if we're within lighting schedule
+    int currentMinutes = currentHour * 60 + currentMinute;
+    int startMinutes = lightSchedule.startHour * 60 + lightSchedule.startMinute;
+    int endMinutes = lightSchedule.endHour * 60 + lightSchedule.endMinute;
+    
+    bool isScheduledOn = (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+    
+    if (isScheduledOn && offDuration > LIGHTING_ALERT_DELAY && !lightingAlertActive) {
+      // Light has been OFF for 10+ minutes during scheduled time
+      lightingAlertActive = true;
+      Serial.println("⚠️ LAYER LIGHTING PROTECTION: Light OFF > 10 min during schedule!");
+      
+      // Short warning beep (not full alarm)
+      digitalWrite(ALARM_RELAY_PIN, LOW);   // ON
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, HIGH);  // OFF
+      delay(100);
+      digitalWrite(ALARM_RELAY_PIN, LOW);   // ON
+      delay(200);
+      digitalWrite(ALARM_RELAY_PIN, HIGH);  // OFF
+    }
+  }
+}
+
 void setAlarm(bool on) {
   alarmOn = on;
   digitalWrite(ALARM_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
@@ -2341,6 +2565,19 @@ void loop() {
   // ===== CONTROL ENGINE =====
    if (bootFanDone && !safeModeActive) {
     controlLogic();
+    
+    // 💡 LIGHTING SCHEDULE CONTROL
+    // Check every 10 seconds - Cloud থেকে শিডিউল, ESP32 লোকালি এক্সিকিউট
+    if (now - lastLightingCheck >= LIGHTING_CHECK_INTERVAL) {
+      controlLighting();
+      
+      // Layer farm: 10 min light-off protection
+      if (isLayer()) {
+        checkLayerLightingProtection();
+      }
+      
+      lastLightingCheck = now;
+    }
     
     // 💧 SMART WATER MONITORING
     // Active hours only (5:00-22:00) + rolling average comparison
