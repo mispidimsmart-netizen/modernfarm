@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import wiringDiagram from '@/assets/esp32-wiring-diagram.png';
 import relayAcWiringDiagram from '@/assets/relay-ac-wiring-diagram.png';
+import capacitorWiringDiagram from '@/assets/esp32-capacitor-wiring.png';
 
 // Jumper wire types guide
 const jumperWireTypes = [
@@ -141,6 +142,22 @@ const wiringConnections = [
 
 // Detailed step-by-step wiring guide for each sensor
 const detailedWiringGuide = [
+  {
+    id: 'capacitor',
+    name: '১০০μF ক্যাপাসিটর (পাওয়ার স্ট্যাবিলিটি)',
+    nameEn: '100μF Capacitor (Power Stability)',
+    icon: Zap,
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-500/10',
+    pins: [
+      { sensorPin: '+ পা (লম্বা পা)', esp32Pin: 'VIN (5V)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ক্যাপাসিটরের লম্বা পা (+) → ESP32 এর VIN পিনে লাগান', warning: '⚠️ + ও - উল্টো লাগালে ক্যাপাসিটর ফেটে যেতে পারে!' },
+      { sensorPin: '- পা (ছোট পা / সাদা স্ট্রাইপ)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ক্যাপাসিটরের ছোট পা (-) বা সাদা স্ট্রাইপ সাইড → ESP32 এর GND পিনে লাগান', warning: null },
+    ],
+    extraNote: '⚡ কেন দরকার: জেনারেটর/সোলার সুইচিং বা পাওয়ার ফ্লাকচুয়েশনের সময় ভোল্টেজ স্থিতিশীল রাখে এবং ESP32 রিস্টার্ট প্রতিরোধ করে।',
+    resistorNote: null,
+    tips: ['100μF 16V বা 25V ক্যাপাসিটর ব্যবহার করুন', 'যতটা সম্ভব ESP32 এর কাছাকাছি লাগান', 'পোলারিটি (+ / -) অবশ্যই মেলাতে হবে!'],
+    hasCapacitorDiagram: true, // Special flag for capacitor diagram
+  },
   {
     id: 'dht22',
     name: 'DHT22 তাপমাত্রা ও আর্দ্রতা সেন্সর',
@@ -676,6 +693,153 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                             ))}
                           </div>
                           
+                          {/* Capacitor Wiring Diagram */}
+                          {sensor.hasCapacitorDiagram && (
+                            <div className="space-y-4">
+                              {/* Visual Diagram */}
+                              <div className="rounded-lg border-2 border-amber-500/30 overflow-hidden bg-background">
+                                <div className="bg-amber-500/10 p-2 border-b border-amber-500/30">
+                                  <p className="text-xs font-bold text-center">📊 ক্যাপাসিটর কানেকশন ডায়াগ্রাম</p>
+                                </div>
+                                
+                                {/* Code-based Visual */}
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900">
+                                  <div className="flex flex-col items-center gap-4">
+                                    
+                                    {/* Power Source */}
+                                    <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
+                                      <Zap className="h-4 w-4 text-primary" />
+                                      <span className="text-sm font-bold">5V পাওয়ার সাপ্লাই / USB</span>
+                                    </div>
+                                    
+                                    {/* Connection Lines */}
+                                    <div className="flex items-center gap-8">
+                                      <div className="flex flex-col items-center">
+                                        <div className="w-1 h-6 bg-red-500 rounded"></div>
+                                        <span className="text-xs text-red-500 font-bold">+5V</span>
+                                      </div>
+                                      <div className="flex flex-col items-center">
+                                        <div className="w-1 h-6 bg-foreground/50 rounded"></div>
+                                        <span className="text-xs text-muted-foreground font-bold">GND</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* ESP32 Board with Capacitor */}
+                                    <div className="w-full max-w-sm">
+                                      <div className="bg-blue-700 rounded-t-lg p-2 text-center">
+                                        <span className="text-white text-xs font-bold">ESP32 DevKit</span>
+                                      </div>
+                                      
+                                      <div className="bg-blue-600 p-4 rounded-b-lg">
+                                        <div className="flex items-center justify-center gap-6">
+                                          {/* VIN Pin */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="w-1 h-4 bg-red-500 rounded mb-1"></div>
+                                            <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center border-2 border-yellow-600">
+                                              <span className="text-[10px] font-bold text-yellow-900">VIN</span>
+                                            </div>
+                                            <span className="text-[10px] text-white mt-1">5V পাওয়ার</span>
+                                          </div>
+                                          
+                                          {/* Capacitor in between */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="relative">
+                                              <div className="w-6 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-sm border border-gray-600 flex items-center justify-center">
+                                                <div className="absolute -top-1 left-0 right-0 flex justify-center">
+                                                  <span className="text-[8px] text-green-400 font-bold">+</span>
+                                                </div>
+                                                <span className="text-[8px] text-white font-bold rotate-90">100μF</span>
+                                                <div className="absolute top-0 bottom-0 right-0 w-1 bg-gray-400"></div>
+                                              </div>
+                                              {/* Legs */}
+                                              <div className="absolute -bottom-3 left-1 w-0.5 h-3 bg-gray-400"></div>
+                                              <div className="absolute -bottom-3 right-1 w-0.5 h-3 bg-gray-400"></div>
+                                            </div>
+                                            <div className="mt-4 flex gap-2 text-[9px]">
+                                              <span className="text-red-300">+ লম্বা</span>
+                                              <span className="text-gray-300">- ছোট</span>
+                                            </div>
+                                          </div>
+                                          
+                                          {/* GND Pin */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="w-1 h-4 bg-foreground/50 rounded mb-1"></div>
+                                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center border-2 border-gray-600">
+                                              <span className="text-[10px] font-bold text-white">GND</span>
+                                            </div>
+                                            <span className="text-[10px] text-white mt-1">গ্রাউন্ড</span>
+                                          </div>
+                                        </div>
+                                        
+                                        {/* Connection lines inside */}
+                                        <div className="mt-3 flex items-center justify-center gap-2">
+                                          <div className="flex items-center">
+                                            <div className="w-8 h-0.5 bg-red-500"></div>
+                                            <span className="text-[8px] text-red-300 mx-1">→</span>
+                                            <div className="w-4 h-0.5 bg-red-500"></div>
+                                          </div>
+                                          <div className="px-2 py-1 bg-gray-800 rounded text-[8px] text-white">ক্যাপাসিটর</div>
+                                          <div className="flex items-center">
+                                            <div className="w-4 h-0.5 bg-gray-500"></div>
+                                            <span className="text-[8px] text-gray-300 mx-1">→</span>
+                                            <div className="w-8 h-0.5 bg-gray-500"></div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Polarity Warning */}
+                                    <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/30 max-w-sm">
+                                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                                      <div className="text-xs">
+                                        <span className="font-bold text-destructive">পোলারিটি গুরুত্বপূর্ণ!</span>
+                                        <p className="text-muted-foreground">+ (লম্বা পা) → VIN | - (ছোট পা/স্ট্রাইপ) → GND</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Capacitor Identification Guide */}
+                                  <div className="mt-4 p-3 rounded-lg bg-background border">
+                                    <p className="text-xs font-bold mb-2">🔍 ক্যাপাসিটরের + ও - চেনার উপায়:</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="flex items-center gap-2 p-2 rounded bg-green-500/10">
+                                        <div className="w-4 h-8 bg-gray-800 rounded-sm relative">
+                                          <div className="absolute top-0 w-full text-center text-[8px] text-green-400">+</div>
+                                        </div>
+                                        <div className="text-xs">
+                                          <p className="font-bold text-green-600">+ পজিটিভ</p>
+                                          <p className="text-muted-foreground">লম্বা পা</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 p-2 rounded bg-gray-500/10">
+                                        <div className="w-4 h-8 bg-gray-800 rounded-sm relative">
+                                          <div className="absolute top-0 bottom-0 right-0 w-1 bg-white/50"></div>
+                                          <div className="absolute top-0 w-full text-center text-[8px] text-gray-400">-</div>
+                                        </div>
+                                        <div className="text-xs">
+                                          <p className="font-bold text-foreground">- নেগেটিভ</p>
+                                          <p className="text-muted-foreground">ছোট পা + সাদা স্ট্রাইপ</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Reference Image */}
+                                <div className="border-t">
+                                  <div className="bg-muted/50 p-2">
+                                    <p className="text-xs font-medium text-center">📷 রেফারেন্স ছবি</p>
+                                  </div>
+                                  <img 
+                                    src={capacitorWiringDiagram} 
+                                    alt="ESP32 Capacitor Wiring" 
+                                    className="w-full h-auto bg-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Resistor note */}
                           {sensor.resistorNote && (
                             <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
