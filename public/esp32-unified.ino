@@ -2402,49 +2402,68 @@ void checkPendingCommands() {
   
   if (httpCode == 200) {
     String response = http.getString();
+    Serial.printf("   → Response bytes: %d\n", response.length());
     
-    StaticJsonDocument<1024> doc;
+    // NOTE: The command list can get large (many pending commands).
+    // Use a dynamic JSON document to avoid silent parse failures.
+    DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, response);
     
-    if (!error && doc.containsKey("commands")) {
-      JsonArray commands = doc["commands"].as<JsonArray>();
+    if (error) {
+      Serial.printf("   ❌ JSON parse failed: %s\n", error.c_str());
+      return;
+    }
+
+    if (!doc.containsKey("commands")) {
+      Serial.println("   ⚠️ No 'commands' key in response");
+      return;
+    }
+
+    JsonArray commands = doc["commands"].as<JsonArray>();
+    if (commands.isNull() || commands.size() == 0) {
+      Serial.println("   (No pending commands)");
+      return;
+    }
+
+    Serial.printf("   → Pending commands: %d\n", (int)commands.size());
+    
+    for (JsonObject cmd : commands) {
+      String commandId = cmd["id"] | "";
+      String commandType = cmd["command_type"] | "";
+      bool commandValue = cmd["command_value"] | false;
       
-      for (JsonObject cmd : commands) {
-        String commandId = cmd["id"] | "";
-        String commandType = cmd["command_type"] | "";
-        bool commandValue = cmd["command_value"] | false;
-        
-        if (commandType.length() == 0) continue;
-        
-        Serial.printf("\n⚡ COMMAND RECEIVED: %s → %s\n", commandType.c_str(), commandValue ? "ON" : "OFF");
-        
-        // Execute command based on type
-        if (commandType == "fan") {
-          setFanState(commandValue, commandValue ? "HIGH" : "OFF");
-          Serial.printf("   ⚡ Fan: %s\n", commandValue ? "ON" : "OFF");
-        }
-        else if (commandType == "light") {
-          setLight(commandValue);
-          lightSchedule.manualOverride = true;  // Manual control active
-          Serial.printf("   ⚡ Light: %s\n", commandValue ? "ON" : "OFF");
-        }
-        else if (commandType == "alarm") {
-          setAlarm(commandValue);
-          Serial.printf("   ⚡ Alarm: %s\n", commandValue ? "ON" : "OFF");
-        }
-        else if (commandType == "heater") {
-          setHeater(commandValue);
-          Serial.printf("   ⚡ Heater: %s\n", commandValue ? "ON" : "OFF");
-        }
-        else if (commandType == "manual_override") {
-          localManualOverride = commandValue;
-          Serial.printf("   ⚡ Manual Override: %s\n", commandValue ? "ENABLED" : "DISABLED");
-        }
-        
-        // Acknowledge command execution
-        if (commandId.length() > 0) {
-          acknowledgeCommand(commandId);
-        }
+      if (commandType.length() == 0) continue;
+      
+      Serial.printf("\n⚡ COMMAND RECEIVED: %s → %s\n", commandType.c_str(), commandValue ? "ON" : "OFF");
+      
+      // Execute command based on type
+      if (commandType == "fan") {
+        setFanState(commandValue, commandValue ? "HIGH" : "OFF");
+        Serial.printf("   ⚡ Fan: %s\n", commandValue ? "ON" : "OFF");
+      }
+      else if (commandType == "light") {
+        setLight(commandValue);
+        lightSchedule.manualOverride = true;  // Manual control active
+        Serial.printf("   ⚡ Light: %s\n", commandValue ? "ON" : "OFF");
+      }
+      else if (commandType == "alarm") {
+        setAlarm(commandValue);
+        Serial.printf("   ⚡ Alarm: %s\n", commandValue ? "ON" : "OFF");
+      }
+      else if (commandType == "heater") {
+        setHeater(commandValue);
+        Serial.printf("   ⚡ Heater: %s\n", commandValue ? "ON" : "OFF");
+      }
+      else if (commandType == "manual_override") {
+        localManualOverride = commandValue;
+        Serial.printf("   ⚡ Manual Override: %s\n", commandValue ? "ENABLED" : "DISABLED");
+      } else {
+        Serial.printf("   ⚠️ Unknown command_type: %s\n", commandType.c_str());
+      }
+      
+      // Acknowledge command execution
+      if (commandId.length() > 0) {
+        acknowledgeCommand(commandId);
       }
     }
   }
