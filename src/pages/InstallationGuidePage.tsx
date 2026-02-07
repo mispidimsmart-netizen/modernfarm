@@ -716,19 +716,154 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                 </div>
                               </div>
 
-                              {/* AC Wiring Diagram Image */}
-                              <div className="rounded-lg border-2 border-primary/30 overflow-hidden">
+                              {/* AC Wiring Visual Diagram - Code Based for Clarity */}
+                              <div className="rounded-lg border-2 border-primary/30 overflow-hidden bg-background">
                                 <div className="bg-primary/5 p-2 border-b border-primary/30">
-                                  <p className="text-xs font-bold text-center">📊 রিলে AC লোড কানেকশন ডায়াগ্রাম</p>
+                                  <p className="text-xs font-bold text-center">📊 রিলে AC লোড কানেকশন ডায়াগ্রাম (ফ্যান উদাহরণ)</p>
+                                </div>
+                                
+                                {/* Visual Diagram */}
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900">
+                                  {/* Main Wiring Diagram */}
+                                  <div className="flex flex-col items-center gap-4">
+                                    
+                                    {/* AC Mains Source */}
+                                    <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/30">
+                                      <Zap className="h-5 w-5 text-destructive" />
+                                      <span className="text-sm font-bold">AC 220V মেইন সাপ্লাই</span>
+                                    </div>
+                                    
+                                    {/* Wires going down */}
+                                    <div className="flex items-center gap-8">
+                                      <div className="flex flex-col items-center">
+                                        <div className="w-1 h-8 bg-red-500 rounded"></div>
+                                        <span className="text-xs text-red-500 font-bold">Live</span>
+                                      </div>
+                                      <div className="flex flex-col items-center">
+                                        <div className="w-1 h-8 bg-blue-500 rounded"></div>
+                                        <span className="text-xs text-blue-500 font-bold">Neutral</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Relay Terminal Section */}
+                                    <div className="w-full max-w-md">
+                                      <div className="bg-blue-600 rounded-t-lg p-2 text-center">
+                                        <span className="text-white text-xs font-bold">রিলে মডিউল (K1 - ফ্যান)</span>
+                                      </div>
+                                      
+                                      {/* Screw Terminals */}
+                                      <div className="bg-gradient-to-b from-blue-500 to-blue-600 p-3 rounded-b-lg">
+                                        <div className="grid grid-cols-3 gap-2">
+                                          {/* NC Terminal */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="relative">
+                                              <div className="w-10 h-10 bg-gray-400 rounded border-2 border-gray-500 flex items-center justify-center">
+                                                <span className="text-xs font-bold text-white">NC</span>
+                                              </div>
+                                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                                                <span className="text-white text-xs font-bold">✕</span>
+                                              </div>
+                                            </div>
+                                            <span className="text-xs text-white mt-1">খালি</span>
+                                            <span className="text-[10px] text-red-200">ব্যবহার নেই</span>
+                                          </div>
+                                          
+                                          {/* COM Terminal */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="w-1 h-4 bg-red-500 rounded mb-1"></div>
+                                            <div className="w-10 h-10 bg-red-500 rounded border-2 border-red-600 flex items-center justify-center ring-2 ring-yellow-400">
+                                              <span className="text-xs font-bold text-white">COM</span>
+                                            </div>
+                                            <span className="text-xs text-white mt-1 font-bold">AC Live</span>
+                                            <span className="text-[10px] text-green-200">← এখানে</span>
+                                          </div>
+                                          
+                                          {/* NO Terminal */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="w-10 h-10 bg-green-500 rounded border-2 border-green-600 flex items-center justify-center">
+                                              <span className="text-xs font-bold text-white">NO</span>
+                                            </div>
+                                            <div className="w-1 h-4 bg-black rounded mt-1"></div>
+                                            <span className="text-xs text-white">লোড</span>
+                                            <span className="text-[10px] text-green-200">ফ্যানে যাবে</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Connection to Load */}
+                                    <div className="flex items-center gap-8">
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-xs text-foreground/70">NO থেকে</span>
+                                        <div className="w-1 h-8 bg-black rounded"></div>
+                                      </div>
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-xs text-foreground/70">সরাসরি</span>
+                                        <div className="w-1 h-8 bg-blue-500 rounded"></div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Fan/Load */}
+                                    <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/20 border-2 border-accent">
+                                      <div className="w-10 h-10 bg-accent/30 rounded-full flex items-center justify-center">
+                                        <span className="text-xl">🌀</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm font-bold">ফ্যান / লাইট</span>
+                                        <p className="text-xs text-muted-foreground">220V AC লোড</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Wire Legend */}
+                                  <div className="mt-4 p-3 rounded-lg bg-background border">
+                                    <p className="text-xs font-bold mb-2">🔌 তারের রঙ:</p>
+                                    <div className="flex flex-wrap gap-3 justify-center">
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-6 h-2 bg-red-500 rounded"></div>
+                                        <span className="text-xs">লাল = Live (Phase)</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-6 h-2 bg-blue-500 rounded"></div>
+                                        <span className="text-xs">নীল = Neutral</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-6 h-2 bg-black rounded"></div>
+                                        <span className="text-xs">কালো = লোড</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Summary */}
+                                <div className="bg-muted/30 p-3 border-t">
+                                  <div className="flex items-center justify-center gap-2 text-sm font-mono flex-wrap">
+                                    <span className="bg-red-500 text-white px-2 py-1 rounded text-xs">AC Live</span>
+                                    <span>→</span>
+                                    <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">COM</span>
+                                    <span className="text-muted-foreground">⟷</span>
+                                    <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">NO</span>
+                                    <span>→</span>
+                                    <span className="bg-accent text-accent-foreground px-2 py-1 rounded text-xs">ফ্যান</span>
+                                    <span>→</span>
+                                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs">Neutral</span>
+                                  </div>
+                                  <p className="text-xs text-center text-muted-foreground mt-2">
+                                    ⚡ রিলে ON হলে COM ↔ NO কানেক্ট হয় = লোড চালু | রিলে OFF হলে সার্কিট খোলা = লোড বন্ধ
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Reference Image */}
+                              <div className="rounded-lg border overflow-hidden">
+                                <div className="bg-muted/50 p-2 border-b">
+                                  <p className="text-xs font-medium text-center">📷 রেফারেন্স ডায়াগ্রাম</p>
                                 </div>
                                 <img 
                                   src={relayAcWiringDiagram} 
                                   alt="Relay NC COM NO Wiring Diagram" 
                                   className="w-full h-auto bg-white"
                                 />
-                                <div className="bg-muted/30 p-2 text-center">
-                                  <p className="text-xs text-muted-foreground">AC Live → COM | NO → Load | NC = Empty</p>
-                                </div>
                               </div>
 
                               {/* Terminal Explanation */}
