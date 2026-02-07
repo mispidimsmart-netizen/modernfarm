@@ -9,6 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { toast } from 'sonner';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import wiringDiagram from '@/assets/esp32-wiring-diagram.png';
+import relayAcWiringDiagram from '@/assets/relay-ac-wiring-diagram.png';
 
 // Jumper wire types guide
 const jumperWireTypes = [
@@ -242,6 +243,28 @@ const detailedWiringGuide = [
     extraNote: '⚙️ রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়, HIGH দিলে OFF হয়।',
     resistorNote: null,
     tips: ['প্রতিটি রিলে NO (Normally Open) ও COM পিনে ফ্যান/লাইটের তার লাগান', 'SFM-27 বাজারের জন্য রিলে IN3 এর COM-এ বাজারের +, বাহ্যিক পাওয়ার সোর্সে NO লাগান', 'হাই পাওয়ার ডিভাইস (২০০০W+) এর জন্য এক্সটারনাল কন্ট্যাক্টর ব্যবহার করুন'],
+    hasAcWiring: true, // Special flag for AC wiring section
+    acWiringInfo: {
+      title: '⚡ রিলে আউটপুট সাইড - AC লোড কানেকশন (NC, COM, NO)',
+      description: 'প্রতিটি রিলের নীল স্ক্রু টার্মিনালে তিনটি পোর্ট থাকে। এখানে ফ্যান, লাইট বা হিটারের AC তার লাগাতে হবে।',
+      terminals: [
+        { name: 'NC (Normally Closed)', position: 'বাম', useFor: '❌ খালি রাখুন', description: 'রিলে OFF থাকলে কানেক্ট থাকে। আমাদের প্রজেক্টে ব্যবহার হচ্ছে না।', color: 'bg-gray-400' },
+        { name: 'COM (Common)', position: 'মাঝখান', useFor: '⚡ AC Live/Phase', description: 'মেইন সুইচ থেকে আসা AC লাইভ (ফেজ) তার এখানে লাগান।', color: 'bg-red-500' },
+        { name: 'NO (Normally Open)', position: 'ডান', useFor: '💡 লোড (ফ্যান/লাইট)', description: 'ফ্যান বা লাইটের এক তার এখানে লাগান। রিলে ON হলে কানেক্ট হয়।', color: 'bg-green-500' },
+      ],
+      wiringSteps: [
+        { step: 1, title: 'COM টার্মিনাল', instruction: 'মেইন সুইচ থেকে আসা AC লাইভ (ফেজ) তার → COM (মাঝের পোর্ট)', wire: 'লাল/বাদামী তার' },
+        { step: 2, title: 'NO টার্মিনাল', instruction: 'ফ্যান/লাইটের এক তার → NO (ডান পোর্ট)', wire: 'কালো তার' },
+        { step: 3, title: 'Neutral সরাসরি', instruction: 'AC নিউট্রাল তার সরাসরি ফ্যান/লাইটে → রিলের মধ্য দিয়ে যাবে না', wire: 'নীল তার' },
+        { step: 4, title: 'NC খালি', instruction: 'NC (বাম পোর্ট) খালি রাখুন - কিছু লাগাবেন না', wire: 'কোনো তার নয়' },
+      ],
+      safetyWarnings: [
+        '⚡ সতর্কতা: AC ২২০V নিয়ে কাজ করার আগে অবশ্যই মেইন সুইচ বন্ধ করুন!',
+        '🔌 ভুল কানেকশনে শর্ট সার্কিট বা আগুন লাগতে পারে!',
+        '👷 অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে AC ওয়্যারিং করান।',
+        '📋 কাজ শেষে সব সংযোগ ডাবল-চেক করুন।',
+      ],
+    },
   },
   {
     id: 'buzzer',
@@ -678,6 +701,109 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                               {sensor.tips.map((tip, tipIdx) => (
                                 <p key={tipIdx} className="text-xs text-muted-foreground ml-4">• {tip}</p>
                               ))}
+                            </div>
+                          )}
+
+                          {/* AC Wiring Section for Relay Module */}
+                          {sensor.hasAcWiring && sensor.acWiringInfo && (
+                            <div className="mt-6 space-y-4">
+                              {/* Section Header */}
+                              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border-2 border-destructive/30">
+                                <Zap className="h-5 w-5 text-destructive" />
+                                <div>
+                                  <p className="font-bold text-sm text-destructive">{sensor.acWiringInfo.title}</p>
+                                  <p className="text-xs text-muted-foreground">{sensor.acWiringInfo.description}</p>
+                                </div>
+                              </div>
+
+                              {/* AC Wiring Diagram Image */}
+                              <div className="rounded-lg border-2 border-primary/30 overflow-hidden">
+                                <div className="bg-primary/5 p-2 border-b border-primary/30">
+                                  <p className="text-xs font-bold text-center">📊 রিলে AC লোড কানেকশন ডায়াগ্রাম</p>
+                                </div>
+                                <img 
+                                  src={relayAcWiringDiagram} 
+                                  alt="Relay NC COM NO Wiring Diagram" 
+                                  className="w-full h-auto bg-white"
+                                />
+                                <div className="bg-muted/30 p-2 text-center">
+                                  <p className="text-xs text-muted-foreground">AC Live → COM | NO → Load | NC = Empty</p>
+                                </div>
+                              </div>
+
+                              {/* Terminal Explanation */}
+                              <div className="space-y-2">
+                                <p className="text-sm font-bold">📍 টার্মিনাল চিনুন (বাম থেকে ডান):</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                  {sensor.acWiringInfo.terminals.map((terminal, tIdx) => (
+                                    <div key={tIdx} className={`p-3 rounded-lg border-2 ${tIdx === 1 ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <div className={`w-4 h-4 rounded-full ${terminal.color}`}></div>
+                                        <span className="font-bold text-sm">{terminal.name}</span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mb-1">অবস্থান: {terminal.position}</p>
+                                      <p className="text-sm font-medium text-primary">{terminal.useFor}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">{terminal.description}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Step by Step Wiring */}
+                              <div className="space-y-2">
+                                <p className="text-sm font-bold">🔧 ধাপে ধাপে ওয়্যারিং (ফ্যান উদাহরণ):</p>
+                                <div className="space-y-2">
+                                  {sensor.acWiringInfo.wiringSteps.map((step, sIdx) => (
+                                    <div key={sIdx} className={`flex items-start gap-3 p-3 rounded-lg ${sIdx === 3 ? 'bg-muted/30 border border-dashed border-muted-foreground/30' : 'bg-muted/50'}`}>
+                                      <div className={`flex items-center justify-center w-6 h-6 rounded-full ${sIdx === 3 ? 'bg-muted-foreground/50' : 'bg-primary'} text-primary-foreground text-xs font-bold shrink-0`}>
+                                        {step.step}
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="font-medium text-sm">{step.title}</span>
+                                          <Badge variant="secondary" className="text-xs">🔌 {step.wire}</Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mt-1">{step.instruction}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Safety Warnings */}
+                              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 space-y-2">
+                                <p className="text-sm font-bold text-destructive flex items-center gap-2">
+                                  <AlertTriangle className="h-4 w-4" />
+                                  ⚠️ নিরাপত্তা সতর্কতা
+                                </p>
+                                <ul className="space-y-1">
+                                  {sensor.acWiringInfo.safetyWarnings.map((warning, wIdx) => (
+                                    <li key={wIdx} className="text-xs text-destructive/90">• {warning}</li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {/* Circuit Summary */}
+                              <div className="p-3 rounded-lg bg-accent/10 border border-accent/30">
+                                <p className="text-sm font-bold flex items-center gap-2 mb-2">
+                                  <Lightbulb className="h-4 w-4 text-accent" />
+                                  💡 সার্কিট সারসংক্ষেপ
+                                </p>
+                                <div className="flex items-center justify-center gap-2 text-sm font-mono bg-background p-2 rounded">
+                                  <span className="text-red-500">AC Live</span>
+                                  <span>→</span>
+                                  <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs">COM</span>
+                                  <span>⇋</span>
+                                  <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">NO</span>
+                                  <span>→</span>
+                                  <span className="text-yellow-600">ফ্যান/লাইট</span>
+                                  <span>→</span>
+                                  <span className="text-blue-500">Neutral</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-2 text-center">
+                                  রিলে ON হলে COM ↔ NO কানেক্ট হয়, ফলে কারেন্ট প্রবাহিত হয়ে লোড চালু হয়।
+                                </p>
+                              </div>
                             </div>
                           )}
                         </div>
