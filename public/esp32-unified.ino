@@ -177,12 +177,16 @@ bool wasWatchdogReset = false;
 #define DHT_TYPE DHT22
 #define MQ135_PIN 34
 #define WATER_FLOW_PIN 27
+// ═══════════════════════════════════════════════════════════════════════
+// 🔌 RELAY PIN MAPPING (HW-316 4-Channel Relay - Active LOW)
+// LOW = Relay ON, HIGH = Relay OFF
+// ═══════════════════════════════════════════════════════════════════════
 #define POWER_SENSE_PIN 35
-#define FAN_RELAY_PIN 26
-#define LIGHT_PWM_PIN 25
-#define ALARM_RELAY_PIN 33   // SFM-27 Buzzer via Relay IN3 (DC 3-24V)
-#define STATUS_LED_PIN 2
-#define HEATER_RELAY_PIN 13
+#define FAN_RELAY_PIN 25       // IN1 → GPIO 25 (Fan)
+#define LIGHT_RELAY_PIN 26     // IN2 → GPIO 26 (Light)
+#define ALARM_RELAY_PIN 33     // IN3 → GPIO 33 (Buzzer/Alarm)
+#define HEATER_RELAY_PIN 13    // IN4 → GPIO 13 (Heater)
+#define STATUS_LED_PIN 2       // Onboard LED
 
 // Manual Override Buttons
 #define MANUAL_OVERRIDE_BTN 32
@@ -1529,21 +1533,33 @@ void clearOfflineBuffer() {
   Serial.println("📦 Offline buffer cleared");
 }
  
-// ================ DEVICE CONTROL ================
+// ═══════════════════════════════════════════════════════════════════════
+// 🔌 DEVICE CONTROL FUNCTIONS
+// HW-316 Relay Module: Active LOW (LOW = ON, HIGH = OFF)
+// ═══════════════════════════════════════════════════════════════════════
 void setFanState(bool on, String speed) {
   fanOn = on;
   fanSpeed = speed;
-  digitalWrite(FAN_RELAY_PIN, on ? HIGH : LOW);
+  digitalWrite(FAN_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
+  Serial.printf("🌀 Fan: %s (%s)\n", on ? "ON" : "OFF", speed.c_str());
+}
+
+void setLight(bool on) {
+  lightOn = on;
+  digitalWrite(LIGHT_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
+  Serial.printf("💡 Light: %s\n", on ? "ON" : "OFF");
 }
 
 void setAlarm(bool on) {
   alarmOn = on;
-  digitalWrite(ALARM_RELAY_PIN, on ? HIGH : LOW);
+  digitalWrite(ALARM_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
+  Serial.printf("🔔 Alarm: %s\n", on ? "ON" : "OFF");
 }
 
 void setHeater(bool on) {
   heaterOn = on;
-  digitalWrite(HEATER_RELAY_PIN, on ? HIGH : LOW);
+  digitalWrite(HEATER_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
+  Serial.printf("🔥 Heater: %s\n", on ? "ON" : "OFF");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2111,7 +2127,7 @@ void setup() {
   
   // Initialize pins
   pinMode(FAN_RELAY_PIN, OUTPUT);
-  pinMode(LIGHT_PWM_PIN, OUTPUT);
+  pinMode(LIGHT_RELAY_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(HEATER_RELAY_PIN, OUTPUT);
@@ -2130,17 +2146,16 @@ void setup() {
      stabilizingEndTime = millis() + SAFE_MODE_DURATION;
      systemState = "STABILIZING";
      Serial.println("\n⏳ STABILIZING (30s) - Normal boot, collecting sensor baseline...");
-     digitalWrite(FAN_RELAY_PIN, HIGH);  // Always safe state
+     digitalWrite(FAN_RELAY_PIN, LOW);   // Active LOW: LOW = ON
      fanOn = true;
      fanSpeed = "HIGH";
      delay(BOOT_VENTILATION_DELAY);
   }
-  digitalWrite(ALARM_RELAY_PIN, LOW);
-  digitalWrite(HEATER_RELAY_PIN, LOW);
+  digitalWrite(ALARM_RELAY_PIN, HIGH);   // Active LOW: HIGH = OFF
+  digitalWrite(HEATER_RELAY_PIN, HIGH);  // Active LOW: HIGH = OFF
   
-  // Initialize PWM
-  ledcSetup(0, 1000, 8);
-  ledcAttachPin(LIGHT_PWM_PIN, 0);
+  // Light starts OFF
+  digitalWrite(LIGHT_RELAY_PIN, HIGH);   // Active LOW: HIGH = OFF
   
   // Water flow interrupt
   attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
