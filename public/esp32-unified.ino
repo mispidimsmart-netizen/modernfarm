@@ -2127,29 +2127,68 @@ void setup() {
   
   // ═══════════════════════════════════════════════════════════════════════
   // 🔌 RELAY INITIALIZATION (Active LOW - HIGH = OFF)
-  // CRITICAL: Set all relays OFF BEFORE pinMode to prevent boot flash
   // ═══════════════════════════════════════════════════════════════════════
   
-  // Pre-set GPIO states BEFORE setting as OUTPUT (prevents boot flash)
-  digitalWrite(FAN_RELAY_PIN, HIGH);     // Pre-set HIGH (OFF)
-  digitalWrite(LIGHT_RELAY_PIN, HIGH);   // Pre-set HIGH (OFF)
-  digitalWrite(ALARM_RELAY_PIN, HIGH);   // Pre-set HIGH (OFF)
-  digitalWrite(HEATER_RELAY_PIN, HIGH);  // Pre-set HIGH (OFF)
+  Serial.println("\n🔌 RELAY PIN SETUP...");
+  Serial.printf("   FAN_RELAY_PIN (D5/IN1): GPIO %d\n", FAN_RELAY_PIN);
+  Serial.printf("   LIGHT_RELAY_PIN (D6/IN2): GPIO %d\n", LIGHT_RELAY_PIN);
+  Serial.printf("   ALARM_RELAY_PIN (D7/IN3): GPIO %d\n", ALARM_RELAY_PIN);
+  Serial.printf("   HEATER_RELAY_PIN (D8/IN4): GPIO %d\n", HEATER_RELAY_PIN);
   
-  // Now set as OUTPUT (will use pre-set HIGH state)
+  // Set as OUTPUT first (ESP32 defaults pins to INPUT with internal pull-down)
   pinMode(FAN_RELAY_PIN, OUTPUT);
   pinMode(LIGHT_RELAY_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
   pinMode(HEATER_RELAY_PIN, OUTPUT);
   pinMode(STATUS_LED_PIN, OUTPUT);
   
-  // Confirm all relays are OFF
-  digitalWrite(FAN_RELAY_PIN, HIGH);     // Ensure OFF
-  digitalWrite(LIGHT_RELAY_PIN, HIGH);   // Ensure OFF
-  digitalWrite(ALARM_RELAY_PIN, HIGH);   // Ensure OFF
-  digitalWrite(HEATER_RELAY_PIN, HIGH);  // Ensure OFF
+  // Immediately set all OFF (Active LOW: HIGH = OFF)
+  digitalWrite(FAN_RELAY_PIN, HIGH);
+  digitalWrite(LIGHT_RELAY_PIN, HIGH);
+  digitalWrite(ALARM_RELAY_PIN, HIGH);
+  digitalWrite(HEATER_RELAY_PIN, HIGH);
   
-  Serial.println("✅ All relays initialized to OFF state");
+  Serial.println("✅ All relays set to OFF (HIGH)");
+  delay(500);
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧪 RELAY TEST SEQUENCE - Each relay ON for 1 second
+  // ═══════════════════════════════════════════════════════════════════════
+  Serial.println("\n🧪 RELAY TEST SEQUENCE STARTING...");
+  
+  // Test D5 (IN1 - Fan)
+  Serial.println("   Testing D5 (IN1 - Fan) - GPIO 25...");
+  digitalWrite(FAN_RELAY_PIN, LOW);  // ON
+  delay(1000);
+  digitalWrite(FAN_RELAY_PIN, HIGH); // OFF
+  Serial.println("   ✓ D5 test complete");
+  delay(300);
+  
+  // Test D6 (IN2 - Light)
+  Serial.println("   Testing D6 (IN2 - Light) - GPIO 26...");
+  digitalWrite(LIGHT_RELAY_PIN, LOW);  // ON
+  delay(1000);
+  digitalWrite(LIGHT_RELAY_PIN, HIGH); // OFF
+  Serial.println("   ✓ D6 test complete");
+  delay(300);
+  
+  // Test D7 (IN3 - Alarm)
+  Serial.println("   Testing D7 (IN3 - Alarm) - GPIO 33...");
+  digitalWrite(ALARM_RELAY_PIN, LOW);  // ON
+  delay(1000);
+  digitalWrite(ALARM_RELAY_PIN, HIGH); // OFF
+  Serial.println("   ✓ D7 test complete");
+  delay(300);
+  
+  // Test D8 (IN4 - Heater)
+  Serial.println("   Testing D8 (IN4 - Heater) - GPIO 13...");
+  digitalWrite(HEATER_RELAY_PIN, LOW);  // ON
+  delay(1000);
+  digitalWrite(HEATER_RELAY_PIN, HIGH); // OFF
+  Serial.println("   ✓ D8 test complete");
+  
+  Serial.println("🧪 RELAY TEST COMPLETE!\n");
+  delay(500);
   
   // Other input pins
   pinMode(MANUAL_OVERRIDE_BTN, INPUT_PULLUP);
@@ -2157,9 +2196,6 @@ void setup() {
   pinMode(MANUAL_ALARM_BTN, INPUT_PULLUP);
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
-  
-  // Small delay to ensure relay states are stable
-  delay(100);
   
   // SAFE MODE: Power-related restart → 30s safe mode
   if (isPowerRelatedRestart() || wasWatchdogReset) {
@@ -2169,14 +2205,12 @@ void setup() {
     stabilizingMode = true;
     stabilizingEndTime = millis() + SAFE_MODE_DURATION;
     systemState = "STABILIZING";
-    Serial.println("\n⏳ STABILIZING (30s) - Normal boot, collecting sensor baseline...");
+    Serial.println("⏳ STABILIZING (30s) - Normal boot, Fan ON for ventilation...");
     
     // Turn ON fan for initial ventilation (Active LOW: LOW = ON)
     digitalWrite(FAN_RELAY_PIN, LOW);
     fanOn = true;
     fanSpeed = "HIGH";
-    Serial.println("🌀 Fan ON for boot ventilation");
-    delay(BOOT_VENTILATION_DELAY);
   }
   
   // Water flow interrupt
