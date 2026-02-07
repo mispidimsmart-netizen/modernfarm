@@ -2374,15 +2374,23 @@ void checkFailsafeTimeout() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void checkPendingCommands() {
-  if (!wifiConnected) return;
+  Serial.println("\n📡 Checking pending commands...");
+  
+  if (!wifiConnected) {
+    Serial.println("   ❌ WiFi not connected, skipping");
+    return;
+  }
   
   // Skip in safe modes
   if (failsafeMode || safeModeActive || stabilizingMode) {
+    Serial.println("   ⚠️ Safe mode active, skipping commands");
     return;
   }
   
   HTTPClient http;
   String url = String(API_URL) + "/commands?device_id=" + SHED_NAME;
+  
+  Serial.printf("   → URL: %s\n", url.c_str());
   
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
@@ -2390,6 +2398,7 @@ void checkPendingCommands() {
   http.setTimeout(5000);  // 5 sec timeout for quick response
   
   int httpCode = http.GET();
+  Serial.printf("   → HTTP Response: %d\n", httpCode);
   
   if (httpCode == 200) {
     String response = http.getString();
@@ -2701,8 +2710,9 @@ void loop() {
   
   // ⚡ REAL-TIME COMMAND CHECK (every 5 seconds)
   // This enables instant relay control from the app
+  // Always poll when WiFi connected - manual override check is inside function
   if (now - lastCommandCheck >= COMMAND_CHECK_INTERVAL) {
-    if (wifiConnected && localManualOverride) {
+    if (wifiConnected) {
       checkPendingCommands();
     }
     lastCommandCheck = now;

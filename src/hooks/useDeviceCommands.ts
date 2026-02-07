@@ -21,10 +21,11 @@ export function useSendDeviceCommand() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ commandType, commandValue, deviceName = 'ESP32' }: SendCommandParams) => {
+    mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A' }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
 
       // Insert command into device_commands table
+      // IMPORTANT: device_name must match ESP32's SHED_NAME constant
       const { error } = await supabase
         .from('device_commands')
         .insert({
