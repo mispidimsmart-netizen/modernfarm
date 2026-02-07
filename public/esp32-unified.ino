@@ -2306,12 +2306,53 @@ void handleCloudResponse(String response) {
     return;
   }
   
-  // Apply device commands (only when NOT in failsafe)
+  // Apply device commands from cloud (only when NOT in failsafe/manual override)
   if (doc.containsKey("device_status") && !localManualOverride) {
     JsonObject status = doc["device_status"];
-    fanOn = status["fan_on"] | false;
-    fanSpeed = status["fan_speed"] | "OFF";
-    digitalWrite(FAN_RELAY_PIN, fanOn ? HIGH : LOW);
+    
+    // Fan control
+    bool cloudFanOn = status["fan_on"] | false;
+    String cloudFanSpeed = status["fan_speed"] | "OFF";
+    if (cloudFanOn != fanOn || cloudFanSpeed != fanSpeed) {
+      setFanState(cloudFanOn, cloudFanSpeed);
+      Serial.printf("☁️ Cloud → Fan: %s (%s)\n", cloudFanOn ? "ON" : "OFF", cloudFanSpeed.c_str());
+    }
+    
+    // Light control (manual override from cloud)
+    if (status.containsKey("light_on")) {
+      bool cloudLightOn = status["light_on"] | false;
+      if (cloudLightOn != lightOn) {
+        setLight(cloudLightOn);
+        lightSchedule.manualOverride = true;  // Cloud took manual control
+        Serial.printf("☁️ Cloud → Light: %s\n", cloudLightOn ? "ON" : "OFF");
+      }
+    }
+    
+    // Alarm control
+    if (status.containsKey("alarm_on")) {
+      bool cloudAlarmOn = status["alarm_on"] | false;
+      if (cloudAlarmOn != alarmOn) {
+        setAlarm(cloudAlarmOn);
+        Serial.printf("☁️ Cloud → Alarm: %s\n", cloudAlarmOn ? "ON" : "OFF");
+      }
+    }
+    
+    // Heater control
+    if (status.containsKey("heater_on")) {
+      bool cloudHeaterOn = status["heater_on"] | false;
+      if (cloudHeaterOn != heaterOn) {
+        setHeater(cloudHeaterOn);
+        Serial.printf("☁️ Cloud → Heater: %s\n", cloudHeaterOn ? "ON" : "OFF");
+      }
+    }
+    
+    // Manual override flag from cloud
+    if (status.containsKey("manual_override")) {
+      localManualOverride = status["manual_override"] | false;
+      if (localManualOverride) {
+        Serial.println("☁️ Cloud → Manual Override ENABLED");
+      }
+    }
   }
 }
 
