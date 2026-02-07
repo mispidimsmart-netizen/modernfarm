@@ -210,6 +210,7 @@ const unsigned long CLOUD_TIMEOUT = 300000;           // ⚠️ 5 MINUTES = LOCA
 const unsigned long BOOT_FAN_DURATION = 20000;        // 20 sec air refresh
 const unsigned long SENSOR_TIMEOUT = 15000;           // 15 sec sensor timeout
 const unsigned long WATER_TIMEOUT = 21600000;         // 6 hours water timeout
+const unsigned long COMMAND_CHECK_INTERVAL = 5000;    // ⚡ 5 seconds - REAL-TIME commands
 
 // ================ BROILER TEMPERATURE CURVE ================
 struct BroilerTempCurve {
@@ -323,6 +324,8 @@ void controlLighting();
 void checkLayerLightingProtection();
 void updateTimeFromCloud(int hour, int minute);
 void estimateLocalTime();
+void checkPendingCommands();       // ⚡ Real-time command polling
+void acknowledgeCommand(String commandId);  // Mark command as executed
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -339,6 +342,7 @@ bool heaterOn = false;
 unsigned long lastCloudSync = 0;
 unsigned long lastValidSensor = 0;
 unsigned long lastWaterPulse = 0;
+unsigned long lastCommandCheck = 0;  // ⚡ Real-time command check timer
 volatile unsigned long waterPulseCount = 0;
 
 // Sensor readings
@@ -2363,6 +2367,108 @@ void checkFailsafeTimeout() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ⚡ REAL-TIME COMMAND QUEUE SYSTEM
+// Polls device_commands table every 5 seconds for instant control
+// Manual Override থাকলে App থেকে ফ্যান/লাইট/অ্যালার্ম/হিটার কন্ট্রোল
+// ═══════════════════════════════════════════════════════════════════════
+
+void checkPendingCommands() {
+  if (!wifiConnected) return;
+  
+  // Skip in safe modes
+  if (failsafeMode || safeModeActive || stabilizingMode) {
+    return;
+  }
+  
+  HTTPClient http;
+  String url = String(API_URL) + "/commands?device_id=" + SHED_NAME;
+  
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.setTimeout(5000);  // 5 sec timeout for quick response
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String response = http.getString();
+    
+    StaticJsonDocument<1024> doc;
+    DeserializationError error = deserializeJson(doc, response);
+    
+    if (!error && doc.containsKey("commands")) {
+      JsonArray commands = doc["commands"].as<JsonArray>();
+      
+      for (JsonObject cmd : commands) {
+        String commandId = cmd["id"] | "";
+        String commandType = cmd["command_type"] | "";
+        bool commandValue = cmd["command_value"] | false;
+        
+        if (commandType.length() == 0) continue;
+        
+        Serial.printf("\n⚡ COMMAND RECEIVED: %s → %s\n", commandType.c_str(), commandValue ? "ON" : "OFF");
+        
+        // Execute command based on type
+        if (commandType == "fan") {
+          setFanState(commandValue, commandValue ? "HIGH" : "OFF");
+          Serial.printf("   ⚡ Fan: %s\n", commandValue ? "ON" : "OFF");
+        }
+        else if (commandType == "light") {
+          setLight(commandValue);
+          lightSchedule.manualOverride = true;  // Manual control active
+          Serial.printf("   ⚡ Light: %s\n", commandValue ? "ON" : "OFF");
+        }
+        else if (commandType == "alarm") {
+          setAlarm(commandValue);
+          Serial.printf("   ⚡ Alarm: %s\n", commandValue ? "ON" : "OFF");
+        }
+        else if (commandType == "heater") {
+          setHeater(commandValue);
+          Serial.printf("   ⚡ Heater: %s\n", commandValue ? "ON" : "OFF");
+        }
+        else if (commandType == "manual_override") {
+          localManualOverride = commandValue;
+          Serial.printf("   ⚡ Manual Override: %s\n", commandValue ? "ENABLED" : "DISABLED");
+        }
+        
+        // Acknowledge command execution
+        if (commandId.length() > 0) {
+          acknowledgeCommand(commandId);
+        }
+      }
+    }
+  }
+  
+  http.end();
+}
+
+void acknowledgeCommand(String commandId) {
+  if (!wifiConnected || commandId.length() == 0) return;
+  
+  HTTPClient http;
+  String url = String(API_URL) + "/commands-ack";
+  
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.setTimeout(3000);
+  
+  StaticJsonDocument<256> doc;
+  doc["command_ids"][0] = commandId;
+  
+  String payload;
+  serializeJson(doc, payload);
+  
+  int httpCode = http.POST(payload);
+  
+  if (httpCode == 200) {
+    Serial.printf("   ✓ Command %s acknowledged\n", commandId.substring(0, 8).c_str());
+  }
+  
+  http.end();
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // SETUP
@@ -2593,7 +2699,16 @@ void loop() {
     lastSensorRead = now;
   }
   
-  // Sync with cloud
+  // ⚡ REAL-TIME COMMAND CHECK (every 5 seconds)
+  // This enables instant relay control from the app
+  if (now - lastCommandCheck >= COMMAND_CHECK_INTERVAL) {
+    if (wifiConnected && localManualOverride) {
+      checkPendingCommands();
+    }
+    lastCommandCheck = now;
+  }
+  
+  // Sync with cloud (every 30 seconds)
   if (now - lastCloudAttempt >= CLOUD_SYNC_INTERVAL) {
     if (wifiConnected) {
       syncWithCloud();
