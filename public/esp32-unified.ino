@@ -2125,37 +2125,59 @@ void setup() {
    preferences.end();
    Serial.printf("📊 Total Restarts: %d\n", totalRestarts);
   
-  // Initialize pins
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔌 RELAY INITIALIZATION (Active LOW - HIGH = OFF)
+  // CRITICAL: Set all relays OFF BEFORE pinMode to prevent boot flash
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Pre-set GPIO states BEFORE setting as OUTPUT (prevents boot flash)
+  digitalWrite(FAN_RELAY_PIN, HIGH);     // Pre-set HIGH (OFF)
+  digitalWrite(LIGHT_RELAY_PIN, HIGH);   // Pre-set HIGH (OFF)
+  digitalWrite(ALARM_RELAY_PIN, HIGH);   // Pre-set HIGH (OFF)
+  digitalWrite(HEATER_RELAY_PIN, HIGH);  // Pre-set HIGH (OFF)
+  
+  // Now set as OUTPUT (will use pre-set HIGH state)
   pinMode(FAN_RELAY_PIN, OUTPUT);
   pinMode(LIGHT_RELAY_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
-  pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(HEATER_RELAY_PIN, OUTPUT);
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  
+  // Confirm all relays are OFF
+  digitalWrite(FAN_RELAY_PIN, HIGH);     // Ensure OFF
+  digitalWrite(LIGHT_RELAY_PIN, HIGH);   // Ensure OFF
+  digitalWrite(ALARM_RELAY_PIN, HIGH);   // Ensure OFF
+  digitalWrite(HEATER_RELAY_PIN, HIGH);  // Ensure OFF
+  
+  Serial.println("✅ All relays initialized to OFF state");
+  
+  // Other input pins
   pinMode(MANUAL_OVERRIDE_BTN, INPUT_PULLUP);
   pinMode(MANUAL_FAN_BTN, INPUT_PULLUP);
   pinMode(MANUAL_ALARM_BTN, INPUT_PULLUP);
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
   
-   // SAFE MODE: Power-related restart → 30s safe mode
-   if (isPowerRelatedRestart() || wasWatchdogReset) {
-     enterSafeMode();
-  } else {
-     // Normal boot - still use stabilizing mode for 30s
-     stabilizingMode = true;
-     stabilizingEndTime = millis() + SAFE_MODE_DURATION;
-     systemState = "STABILIZING";
-     Serial.println("\n⏳ STABILIZING (30s) - Normal boot, collecting sensor baseline...");
-     digitalWrite(FAN_RELAY_PIN, LOW);   // Active LOW: LOW = ON
-     fanOn = true;
-     fanSpeed = "HIGH";
-     delay(BOOT_VENTILATION_DELAY);
-  }
-  digitalWrite(ALARM_RELAY_PIN, HIGH);   // Active LOW: HIGH = OFF
-  digitalWrite(HEATER_RELAY_PIN, HIGH);  // Active LOW: HIGH = OFF
+  // Small delay to ensure relay states are stable
+  delay(100);
   
-  // Light starts OFF
-  digitalWrite(LIGHT_RELAY_PIN, HIGH);   // Active LOW: HIGH = OFF
+  // SAFE MODE: Power-related restart → 30s safe mode
+  if (isPowerRelatedRestart() || wasWatchdogReset) {
+    enterSafeMode();
+  } else {
+    // Normal boot - stabilizing mode for 30s with Fan ON for ventilation
+    stabilizingMode = true;
+    stabilizingEndTime = millis() + SAFE_MODE_DURATION;
+    systemState = "STABILIZING";
+    Serial.println("\n⏳ STABILIZING (30s) - Normal boot, collecting sensor baseline...");
+    
+    // Turn ON fan for initial ventilation (Active LOW: LOW = ON)
+    digitalWrite(FAN_RELAY_PIN, LOW);
+    fanOn = true;
+    fanSpeed = "HIGH";
+    Serial.println("🌀 Fan ON for boot ventilation");
+    delay(BOOT_VENTILATION_DELAY);
+  }
   
   // Water flow interrupt
   attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
