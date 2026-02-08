@@ -1,0 +1,366 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAlerts } from './useFarmData';
+import { useLiveSensorData } from './useSensorData';
+import { useNotificationSound } from './useNotificationSound';
+import { useAuth } from '@/context/AuthContext';
+
+export type AlertLevel = 'info' | 'warning' | 'danger';
+
+export interface SmartAlert {
+  id: string;
+  type: string;
+  level: AlertLevel;
+  title: string;
+  titleBn: string;
+  message: string;
+  messageBn: string;
+  suggestion: string;
+  suggestionBn: string;
+  timestamp: Date;
+  acknowledged: boolean;
+  resolvedAt?: Date;
+  groupId?: string;
+}
+
+// Anti-spam cooldown periods in milliseconds
+const ALERT_COOLDOWNS: Record<AlertLevel, number> = {
+  info: 2 * 60 * 60 * 1000,      // 2 hours
+  warning: 30 * 60 * 1000,       // 30 minutes
+  danger: 2 * 60 * 1000,         // 2 minutes
+};
+
+// Repeat intervals for unresolved alerts
+const REPEAT_INTERVALS: Record<AlertLevel, number> = {
+  info: 0,                        // No repeat
+  warning: 30 * 60 * 1000,       // 30 minutes
+  danger: 2 * 60 * 1000,         // 2 minutes
+};
+
+// Quiet hours (night time)
+const QUIET_HOURS = { start: 22, end: 6 }; // 10 PM to 6 AM
+
+// Farmer-friendly alert messages with suggestions
+export const ALERT_TEMPLATES: Record<string, {
+  title: { en: string; bn: string };
+  getMessage: (data?: any) => { en: string; bn: string };
+  getSuggestion: () => { en: string; bn: string };
+  level: AlertLevel;
+}> = {
+  high_temperature: {
+    title: { en: 'Birds are getting too hot', bn: 'পাখিরা অতিরিক্ত গরম হয়ে যাচ্ছে' },
+    getMessage: (data) => ({
+      en: `Shed temperature is rising${data?.temp ? ` to ${data.temp}°C` : ''}. Birds may be stressed.`,
+      bn: `শেডের তাপমাত্রা বাড়ছে${data?.temp ? ` (${data.temp}°সে)` : ''}। পাখিরা অস্বস্তিতে থাকতে পারে।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Open curtains and check ventilation fans',
+      bn: 'পর্দা খুলুন এবং ভেন্টিলেশন ফ্যান চেক করুন',
+    }),
+    level: 'danger',
+  },
+  extreme_cold: {
+    title: { en: 'Shed is too cold', bn: 'শেড অত্যন্ত ঠান্ডা' },
+    getMessage: (data) => ({
+      en: `Temperature has dropped${data?.temp ? ` to ${data.temp}°C` : ''}. Birds need warmth.`,
+      bn: `তাপমাত্রা কমে গেছে${data?.temp ? ` (${data.temp}°সে)` : ''}। পাখিদের উষ্ণতা প্রয়োজন।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Close curtains and turn on heater',
+      bn: 'পর্দা বন্ধ করুন এবং হিটার চালু করুন',
+    }),
+    level: 'danger',
+  },
+  high_ammonia: {
+    title: { en: 'Air quality getting poor', bn: 'বাতাসের মান খারাপ হচ্ছে' },
+    getMessage: (data) => ({
+      en: `Ammonia level is rising${data?.ppm ? ` to ${data.ppm} ppm` : ''}. Birds may have breathing issues.`,
+      bn: `অ্যামোনিয়ার মাত্রা বাড়ছে${data?.ppm ? ` (${data.ppm} পিপিএম)` : ''}। পাখিদের শ্বাসকষ্ট হতে পারে।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Add fresh litter and increase ventilation',
+      bn: 'তাজা লিটার দিন এবং ভেন্টিলেশন বাড়ান',
+    }),
+    level: 'warning',
+  },
+  ammonia_danger: {
+    title: { en: 'Dangerous ammonia level', bn: 'বিপজ্জনক অ্যামোনিয়া মাত্রা' },
+    getMessage: () => ({
+      en: 'Ammonia has reached dangerous levels. Immediate ventilation needed.',
+      bn: 'অ্যামোনিয়া বিপদসীমায় পৌঁছেছে। এখনই ভেন্টিলেশন প্রয়োজন।',
+    }),
+    getSuggestion: () => ({
+      en: 'Open all vents and run exhaust fans at maximum',
+      bn: 'সব ভেন্ট খুলুন এবং এক্সহস্ট ফ্যান সর্বোচ্চ গতিতে চালান',
+    }),
+    level: 'danger',
+  },
+  low_water: {
+    title: { en: 'Birds drinking less water', bn: 'পাখিরা কম পানি খাচ্ছে' },
+    getMessage: () => ({
+      en: 'Water consumption is lower than usual. This may indicate health issues.',
+      bn: 'পানি খরচ স্বাভাবিকের চেয়ে কম। এটি স্বাস্থ্য সমস্যার লক্ষণ হতে পারে।',
+    }),
+    getSuggestion: () => ({
+      en: 'Check water lines for blockage or leaks',
+      bn: 'পানির লাইনে ব্লকেজ বা লিকেজ চেক করুন',
+    }),
+    level: 'warning',
+  },
+  high_humidity: {
+    title: { en: 'Shed is getting humid', bn: 'শেড ভেজা হয়ে যাচ্ছে' },
+    getMessage: (data) => ({
+      en: `Humidity is high${data?.humidity ? ` at ${data.humidity}%` : ''}. Litter may become wet.`,
+      bn: `আর্দ্রতা বেশি${data?.humidity ? ` (${data.humidity}%)` : ''}। লিটার ভেজা হয়ে যেতে পারে।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Increase ventilation and check litter condition',
+      bn: 'ভেন্টিলেশন বাড়ান এবং লিটার চেক করুন',
+    }),
+    level: 'info',
+  },
+  power_failure: {
+    title: { en: 'Power has gone out', bn: 'বিদ্যুৎ চলে গেছে' },
+    getMessage: () => ({
+      en: 'Main power supply interrupted. Running on backup battery.',
+      bn: 'বিদ্যুৎ সরবরাহ বিচ্ছিন্ন। ব্যাকআপ ব্যাটারিতে চলছে।',
+    }),
+    getSuggestion: () => ({
+      en: 'Check generator or contact electricity provider',
+      bn: 'জেনারেটর চেক করুন অথবা বিদ্যুৎ সরবরাহকারীর সাথে যোগাযোগ করুন',
+    }),
+    level: 'danger',
+  },
+  heat_stress: {
+    title: { en: 'Heat stress detected', bn: 'হিট স্ট্রেস শনাক্ত হয়েছে' },
+    getMessage: () => ({
+      en: 'Birds are experiencing heat stress. Immediate cooling required.',
+      bn: 'পাখিরা হিট স্ট্রেসে আছে। এখনই ঠান্ডা করা প্রয়োজন।',
+    }),
+    getSuggestion: () => ({
+      en: 'Start fogger and increase airflow immediately',
+      bn: 'এখনই ফগার চালু করুন এবং বাতাস চলাচল বাড়ান',
+    }),
+    level: 'danger',
+  },
+  no_ventilation: {
+    title: { en: 'No ventilation detected', bn: 'ভেন্টিলেশন বন্ধ আছে' },
+    getMessage: () => ({
+      en: 'All ventilation fans appear to be off. Check fan connections.',
+      bn: 'সব ভেন্টিলেশন ফ্যান বন্ধ মনে হচ্ছে। ফ্যানের সংযোগ চেক করুন।',
+    }),
+    getSuggestion: () => ({
+      en: 'Manually check exhaust fans and power connections',
+      bn: 'ম্যানুয়ালি এক্সহস্ট ফ্যান এবং পাওয়ার সংযোগ চেক করুন',
+    }),
+    level: 'danger',
+  },
+  sensor_failure: {
+    title: { en: 'Sensor not working', bn: 'সেন্সর কাজ করছে না' },
+    getMessage: (data) => ({
+      en: `${data?.sensor || 'A sensor'} is not responding. Data may be inaccurate.`,
+      bn: `${data?.sensorBn || 'একটি সেন্সর'} সাড়া দিচ্ছে না। ডাটা ভুল হতে পারে।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Check sensor connection or contact technician',
+      bn: 'সেন্সর সংযোগ চেক করুন অথবা টেকনিশিয়ানের সাথে যোগাযোগ করুন',
+    }),
+    level: 'danger',
+  },
+  temperature_rising: {
+    title: { en: 'Temperature slowly rising', bn: 'তাপমাত্রা ধীরে বাড়ছে' },
+    getMessage: () => ({
+      en: 'Temperature is gradually increasing. May need attention soon.',
+      bn: 'তাপমাত্রা ধীরে ধীরে বাড়ছে। শীঘ্রই মনোযোগ দিতে হতে পারে।',
+    }),
+    getSuggestion: () => ({
+      en: 'Monitor closely and prepare ventilation',
+      bn: 'নজরে রাখুন এবং ভেন্টিলেশন প্রস্তুত রাখুন',
+    }),
+    level: 'info',
+  },
+  curtain_suggestion: {
+    title: { en: 'Curtain adjustment suggested', bn: 'পর্দা সামঞ্জস্য করুন' },
+    getMessage: () => ({
+      en: 'Based on temperature difference, curtains may be opened slightly.',
+      bn: 'তাপমাত্রার পার্থক্যের উপর ভিত্তি করে পর্দা সামান্য খোলা যেতে পারে।',
+    }),
+    getSuggestion: () => ({
+      en: 'Open side curtains 10-20% for natural airflow',
+      bn: 'প্রাকৃতিক বাতাসের জন্য পাশের পর্দা ১০-২০% খুলুন',
+    }),
+    level: 'info',
+  },
+};
+
+// Group related alerts together
+function groupAlerts(alerts: SmartAlert[]): SmartAlert[] {
+  const grouped: Map<string, SmartAlert[]> = new Map();
+  const ungrouped: SmartAlert[] = [];
+
+  // Group by type and time proximity (within 5 minutes)
+  alerts.forEach(alert => {
+    const groupKey = `${alert.level}_${Math.floor(alert.timestamp.getTime() / 300000)}`;
+    if (!grouped.has(groupKey)) {
+      grouped.set(groupKey, []);
+    }
+    grouped.get(groupKey)!.push(alert);
+  });
+
+  const result: SmartAlert[] = [];
+  grouped.forEach((group, key) => {
+    if (group.length > 2) {
+      // Combine into single message
+      const combinedAlert: SmartAlert = {
+        ...group[0],
+        id: `group_${key}`,
+        groupId: key,
+        title: `Multiple issues detected (${group.length})`,
+        titleBn: `একাধিক সমস্যা শনাক্ত (${group.length}টি)`,
+        message: group.map(a => a.title).join(', '),
+        messageBn: group.map(a => a.titleBn).join(', '),
+        suggestion: 'Check all systems and respond to the most critical issues first',
+        suggestionBn: 'সব সিস্টেম চেক করুন এবং সবচেয়ে জরুরি সমস্যাগুলো আগে সমাধান করুন',
+      };
+      result.push(combinedAlert);
+    } else {
+      result.push(...group);
+    }
+  });
+
+  return result.sort((a, b) => {
+    // Sort by level (danger first) then by time
+    const levelOrder = { danger: 0, warning: 1, info: 2 };
+    if (levelOrder[a.level] !== levelOrder[b.level]) {
+      return levelOrder[a.level] - levelOrder[b.level];
+    }
+    return b.timestamp.getTime() - a.timestamp.getTime();
+  });
+}
+
+// Check if within quiet hours
+function isQuietHours(): boolean {
+  const hour = new Date().getHours();
+  if (QUIET_HOURS.start > QUIET_HOURS.end) {
+    // Spans midnight
+    return hour >= QUIET_HOURS.start || hour < QUIET_HOURS.end;
+  }
+  return hour >= QUIET_HOURS.start && hour < QUIET_HOURS.end;
+}
+
+export function useSmartAlerts() {
+  const { data: rawAlerts = [] } = useAlerts();
+  const sensorData = useLiveSensorData();
+  const { playDangerAlarm, playWarningSound } = useNotificationSound();
+  const { language } = useAuth();
+  
+  const [smartAlerts, setSmartAlerts] = useState<SmartAlert[]>([]);
+  const lastNotified = useRef<Map<string, number>>(new Map());
+  const lastSoundPlayed = useRef<Map<AlertLevel, number>>(new Map());
+
+  // Convert raw alerts to smart alerts
+  const processAlerts = useCallback(() => {
+    const processed: SmartAlert[] = rawAlerts.map(alert => {
+      const template = ALERT_TEMPLATES[alert.alert_type] || ALERT_TEMPLATES['sensor_failure'];
+      const msgData = template.getMessage({
+        temp: sensorData?.temperature,
+        humidity: sensorData?.humidity,
+        ppm: sensorData?.ammonia,
+      });
+      const suggestion = template.getSuggestion();
+
+      return {
+        id: alert.id,
+        type: alert.alert_type,
+        level: (alert.severity as AlertLevel) || template.level,
+        title: template.title.en,
+        titleBn: template.title.bn,
+        message: msgData.en,
+        messageBn: msgData.bn,
+        suggestion: suggestion.en,
+        suggestionBn: suggestion.bn,
+        timestamp: new Date(alert.created_at),
+        acknowledged: alert.acknowledged,
+      };
+    });
+
+    return groupAlerts(processed);
+  }, [rawAlerts, sensorData]);
+
+  // Handle notifications with anti-spam
+  const notify = useCallback((alert: SmartAlert) => {
+    const now = Date.now();
+    const lastTime = lastNotified.current.get(alert.type) || 0;
+    const cooldown = ALERT_COOLDOWNS[alert.level];
+
+    // Check anti-spam cooldown
+    if (now - lastTime < cooldown) {
+      return;
+    }
+
+    const quietMode = isQuietHours();
+
+    // Play sound based on level and quiet hours
+    if (alert.level === 'danger') {
+      // Danger always plays, even in quiet hours
+      const lastDanger = lastSoundPlayed.current.get('danger') || 0;
+      if (now - lastDanger > 30000) { // Min 30s between sounds
+        playDangerAlarm();
+        lastSoundPlayed.current.set('danger', now);
+      }
+    } else if (!quietMode) {
+      // Warning and info only during non-quiet hours
+      if (alert.level === 'warning') {
+        const lastWarning = lastSoundPlayed.current.get('warning') || 0;
+        if (now - lastWarning > 60000) {
+          playWarningSound();
+          lastSoundPlayed.current.set('warning', now);
+        }
+      }
+      // Info alerts are silent
+    }
+
+    lastNotified.current.set(alert.type, now);
+  }, [playDangerAlarm, playWarningSound]);
+
+  // Process and update alerts
+  useEffect(() => {
+    const processed = processAlerts();
+    setSmartAlerts(processed);
+
+    // Notify for unacknowledged alerts
+    processed.forEach(alert => {
+      if (!alert.acknowledged) {
+        notify(alert);
+      }
+    });
+  }, [processAlerts, notify]);
+
+  // Get active (unresolved) alerts
+  const activeAlerts = smartAlerts.filter(a => !a.acknowledged);
+  const resolvedAlerts = smartAlerts.filter(a => a.acknowledged);
+
+  // Get alert counts by level
+  const alertCounts = {
+    danger: activeAlerts.filter(a => a.level === 'danger').length,
+    warning: activeAlerts.filter(a => a.level === 'warning').length,
+    info: activeAlerts.filter(a => a.level === 'info').length,
+    total: activeAlerts.length,
+  };
+
+  // Get most critical alert
+  const criticalAlert = activeAlerts.find(a => a.level === 'danger') || 
+                        activeAlerts.find(a => a.level === 'warning') ||
+                        activeAlerts[0];
+
+  return {
+    alerts: smartAlerts,
+    activeAlerts,
+    resolvedAlerts,
+    alertCounts,
+    criticalAlert,
+    isQuietHours: isQuietHours(),
+    language,
+  };
+}
+
+export default useSmartAlerts;
