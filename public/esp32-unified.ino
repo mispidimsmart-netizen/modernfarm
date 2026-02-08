@@ -392,6 +392,39 @@ const char* SHED_ID = "YOUR_SHED_ID";
 const char* SHED_NAME = "Shed A";
 const char* FARM_ID = "YOUR_FARM_ID";
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🔑 NVS TOKEN STORAGE SYSTEM (OTA-Friendly Architecture)
+// ═══════════════════════════════════════════════════════════════════════
+// এই সিস্টেম দুইভাবে কাজ করে:
+// 1. HARDCODED_TOKEN = true: Code Generator থেকে ডাউনলোড করা কোডে টোকেন হার্ডকোড থাকে
+// 2. HARDCODED_TOKEN = false: NVS থেকে টোকেন পড়ে (OTA আপডেটে ব্যবহৃত)
+// 
+// OTA আপডেটের জন্য:
+// - প্রথমবার Code Generator দিয়ে ফ্ল্যাশ করুন (টোকেন NVS-এ সেভ হবে)
+// - পরবর্তী OTA আপডেটে টোকেন NVS থেকে পড়বে (হার্ডকোড লাগবে না)
+// ═══════════════════════════════════════════════════════════════════════
+
+#define USE_HARDCODED_TOKEN true   // Set to false for OTA-ready generic firmware
+
+// NVS Keys for credential storage
+#define NVS_NAMESPACE "credentials"
+#define NVS_KEY_TOKEN "device_token"
+#define NVS_KEY_WIFI_SSID "wifi_ssid"
+#define NVS_KEY_WIFI_PASS "wifi_pass"
+#define NVS_KEY_SHED_ID "shed_id"
+#define NVS_KEY_SHED_NAME "shed_name"
+#define NVS_KEY_FARM_ID "farm_id"
+#define NVS_PROVISIONED_MAGIC 0x50524F56  // "PROV" = Provisioned Magic
+
+// Runtime token (will be loaded from NVS or hardcoded)
+String activeDeviceToken = "";
+String activeWifiSSID = "";
+String activeWifiPassword = "";
+String activeShedId = "";
+String activeShedName = "";
+String activeFarmId = "";
+bool nvsProvisioned = false;
+
 // ================ TIMING CONSTANTS ================
 const unsigned long CLOUD_SYNC_INTERVAL = 30000;      // 30 seconds
 const unsigned long SENSOR_READ_INTERVAL = 5000;      // 5 seconds
@@ -536,6 +569,13 @@ void handleAdvancedAutomationSettings(JsonObject& adv);
 void checkOTAUpdate();
 void performOTAUpdate(String firmwareUrl, int firmwareSize, String version);
 void reportOTAProgress(int progress, String status, String version = "", String errorMsg = "");
+
+// 🆕 NVS Token Storage function prototypes
+void loadCredentialsFromNVS();
+void saveCredentialsToNVS();
+bool isNVSProvisioned();
+void provisionFromHardcoded();
+String getActiveToken();
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -1657,7 +1697,7 @@ bool syncOfflineBuffer() {
   
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(30000);  // Longer timeout for batch sync
   
   // Build batch of records
@@ -2555,10 +2595,12 @@ void readSensors() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void connectWiFi() {
-  if (strlen(WIFI_SSID) > 0 && strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0) {
-    Serial.print("📡 Connecting to WiFi");
+  // Use active credentials (from NVS or hardcoded)
+  if (activeWifiSSID.length() > 0 && activeWifiSSID != "YOUR_WIFI_SSID") {
+    Serial.print("📡 Connecting to WiFi: ");
+    Serial.println(activeWifiSSID);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
     
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < WIFI_CONNECT_TIMEOUT) {
@@ -2591,7 +2633,7 @@ void syncWithCloud() {
   
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
   
   StaticJsonDocument<1024> doc;
@@ -2920,7 +2962,7 @@ void checkOTAUpdate() {
   String url = otaApiUrl + "?action=check&version=" + firmwareVersion + "&farm_type=" + getFarmTypeStr();
   
   http.begin(url);
-  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
   
   int httpCode = http.GET();
@@ -2978,7 +3020,7 @@ void reportOTAProgress(int progress, String status, String version, String error
   
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   
   StaticJsonDocument<256> doc;
@@ -3139,14 +3181,14 @@ void checkPendingCommands() {
   
   HTTPClient http;
 
-  String encodedShedName = String(SHED_NAME);
+  String encodedShedName = activeShedName;
   encodedShedName.replace(" ", "%20");
 
   String url = String(API_URL) + "/commands?device_id=" + encodedShedName;
   
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   
   int httpCode = http.GET();
@@ -3221,7 +3263,7 @@ void acknowledgeCommand(String commandId) {
   
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(3000);
   
   StaticJsonDocument<256> doc;
@@ -3236,6 +3278,77 @@ void acknowledgeCommand(String commandId) {
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// 🔑 NVS TOKEN STORAGE FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+bool isNVSProvisioned() {
+  preferences.begin(NVS_NAMESPACE, true);  // Read-only
+  uint32_t magic = preferences.getUInt("magic", 0);
+  preferences.end();
+  return magic == NVS_PROVISIONED_MAGIC;
+}
+
+void loadCredentialsFromNVS() {
+  preferences.begin(NVS_NAMESPACE, true);  // Read-only
+  
+  activeDeviceToken = preferences.getString(NVS_KEY_TOKEN, "");
+  activeWifiSSID = preferences.getString(NVS_KEY_WIFI_SSID, "");
+  activeWifiPassword = preferences.getString(NVS_KEY_WIFI_PASS, "");
+  activeShedId = preferences.getString(NVS_KEY_SHED_ID, "");
+  activeShedName = preferences.getString(NVS_KEY_SHED_NAME, "");
+  activeFarmId = preferences.getString(NVS_KEY_FARM_ID, "");
+  nvsProvisioned = preferences.getUInt("magic", 0) == NVS_PROVISIONED_MAGIC;
+  
+  preferences.end();
+  
+  Serial.println("📦 Loaded credentials from NVS:");
+  Serial.printf("   Token: %s...%s\n", 
+    activeDeviceToken.substring(0, 8).c_str(),
+    activeDeviceToken.length() > 16 ? activeDeviceToken.substring(activeDeviceToken.length()-4).c_str() : "");
+  Serial.printf("   WiFi: %s\n", activeWifiSSID.c_str());
+  Serial.printf("   Shed: %s\n", activeShedName.c_str());
+}
+
+void saveCredentialsToNVS() {
+  preferences.begin(NVS_NAMESPACE, false);  // Read-write
+  
+  // Save all credentials
+  preferences.putString(NVS_KEY_TOKEN, activeDeviceToken);
+  preferences.putString(NVS_KEY_WIFI_SSID, activeWifiSSID);
+  preferences.putString(NVS_KEY_WIFI_PASS, activeWifiPassword);
+  preferences.putString(NVS_KEY_SHED_ID, activeShedId);
+  preferences.putString(NVS_KEY_SHED_NAME, activeShedName);
+  preferences.putString(NVS_KEY_FARM_ID, activeFarmId);
+  
+  // Set magic number to indicate provisioned
+  preferences.putUInt("magic", NVS_PROVISIONED_MAGIC);
+  
+  preferences.end();
+  
+  nvsProvisioned = true;
+  Serial.println("✅ Credentials saved to NVS (OTA-ready)");
+}
+
+void provisionFromHardcoded() {
+  // Copy hardcoded values to active variables
+  activeDeviceToken = String(DEVICE_TOKEN);
+  activeWifiSSID = String(WIFI_SSID);
+  activeWifiPassword = String(WIFI_PASSWORD);
+  activeShedId = String(SHED_ID);
+  activeShedName = String(SHED_NAME);
+  activeFarmId = String(FARM_ID);
+  
+  // Save to NVS for future OTA updates
+  saveCredentialsToNVS();
+  
+  Serial.println("✅ Provisioned from hardcoded credentials");
+}
+
+String getActiveToken() {
+  return activeDeviceToken;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // SETUP
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -3246,9 +3359,61 @@ void setup() {
   Serial.println("║    🐔 UNIFIED CODEBASE: Farm Profile System                   ║");
    Serial.println("║    🆕 7-MODULE ADVANCED AUTOMATION                            ║");
    Serial.println("║    🛡️ PRODUCTION RELIABILITY: Safe Mode + Filters            ║");
+   Serial.println("║    🔑 NVS TOKEN STORAGE: OTA-Ready Architecture              ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
-  Serial.printf("  Shed: %s (%s)\n", SHED_NAME, SHED_ID);
-  Serial.printf("  Farm: %s\n\n", FARM_ID);
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🔑 LOAD/PROVISION CREDENTIALS (NVS Token Storage System)
+  // ═══════════════════════════════════════════════════════════════════════
+  Serial.println("╔═══════════════════════════════════════════════════════════════╗");
+  Serial.println("║  🔑 CREDENTIAL LOADING SYSTEM                                 ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+  
+  if (USE_HARDCODED_TOKEN) {
+    // Mode 1: Code Generator firmware - use hardcoded values
+    Serial.println("📋 Mode: HARDCODED TOKEN (Code Generator firmware)");
+    
+    // Check if already provisioned in NVS
+    if (isNVSProvisioned()) {
+      Serial.println("   NVS already provisioned, loading stored credentials...");
+      loadCredentialsFromNVS();
+      
+      // Verify token matches (if hardcoded is valid)
+      String hardcodedToken = String(DEVICE_TOKEN);
+      if (hardcodedToken != "YOUR_DEVICE_TOKEN" && activeDeviceToken != hardcodedToken) {
+        Serial.println("   ⚠️ Hardcoded token differs from NVS - updating NVS");
+        provisionFromHardcoded();
+      }
+    } else {
+      // First boot - provision from hardcoded values
+      Serial.println("   First boot detected, provisioning from hardcoded values...");
+      provisionFromHardcoded();
+    }
+  } else {
+    // Mode 2: OTA firmware - must load from NVS
+    Serial.println("📋 Mode: NVS TOKEN (OTA firmware)");
+    
+    if (isNVSProvisioned()) {
+      loadCredentialsFromNVS();
+    } else {
+      // ERROR: OTA firmware but no provisioned credentials
+      Serial.println("❌ ERROR: No credentials in NVS!");
+      Serial.println("   This device must first be flashed with Code Generator firmware");
+      Serial.println("   to provision credentials before OTA updates can work.");
+      // Enter error state - blink LED rapidly
+      while(true) {
+        digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+        delay(100);
+      }
+    }
+  }
+  
+  Serial.printf("\n  Active Token: %s...%s\n", 
+    activeDeviceToken.substring(0, 8).c_str(),
+    activeDeviceToken.length() > 16 ? activeDeviceToken.substring(activeDeviceToken.length()-4).c_str() : "");
+  Serial.printf("  Active WiFi: %s\n", activeWifiSSID.c_str());
+  Serial.printf("  Shed: %s (%s)\n", activeShedName.c_str(), activeShedId.c_str());
+  Serial.printf("  Farm: %s\n\n", activeFarmId.c_str());
   
    // Detect restart reason
    restartReason = detectRestartReason();
