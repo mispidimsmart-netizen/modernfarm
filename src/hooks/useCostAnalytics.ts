@@ -101,12 +101,17 @@ export function useCostAnalytics(days: number = 30) {
   const { data: deviceStatus } = useQuery({
     queryKey: ['device-status-current', user?.id],
     queryFn: async () => {
+      if (!user) return null;
+      
       const { data, error } = await supabase
         .from('device_status')
         .select('fan_on, fan_speed, updated_at')
-        .single();
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data;
     },
     enabled: !!user,
