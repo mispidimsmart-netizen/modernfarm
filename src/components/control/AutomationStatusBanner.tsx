@@ -13,16 +13,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
 
-interface AutomationStatusBannerProps {
+export interface AutomationStatusBannerProps {
   automationEnabled: boolean;
   hasTemporaryOverrides: boolean;
   onToggleAutomation: (enabled: boolean) => void;
+  canToggle?: boolean;
 }
 
 export function AutomationStatusBanner({
   automationEnabled,
   hasTemporaryOverrides,
   onToggleAutomation,
+  canToggle = true,
 }: AutomationStatusBannerProps) {
   const { language } = useAuth();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -106,7 +108,7 @@ export function AutomationStatusBanner({
             </div>
           </div>
           
-          {automationEnabled && (
+          {automationEnabled && canToggle && (
             <button
               onClick={handleDisableClick}
               className="text-xs px-3 py-1.5 rounded-lg bg-background/50 border border-border text-muted-foreground hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/50 transition-colors"
@@ -115,13 +117,19 @@ export function AutomationStatusBanner({
             </button>
           )}
           
-          {!automationEnabled && (
+          {!automationEnabled && canToggle && (
             <button
               onClick={() => onToggleAutomation(true)}
               className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
             >
               {language === 'bn' ? 'চালু করুন' : 'Enable'}
             </button>
+          )}
+          
+          {!canToggle && (
+            <span className="text-xs px-3 py-1.5 rounded-lg bg-muted text-muted-foreground">
+              {language === 'bn' ? '🔒 অ্যাডমিন প্রয়োজন' : '🔒 Admin required'}
+            </span>
           )}
         </div>
       </motion.div>

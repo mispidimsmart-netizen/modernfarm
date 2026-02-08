@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -69,7 +70,14 @@ export function ControlPage() {
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl();
   const sendCommand = useSendDeviceCommand();
   const { data: userRole } = useUserRole();
+  const { data: permissions } = useUserPermissions();
   const { sensorData } = useRealtimeSensorData();
+  
+  // Permission checks
+  const canTemporaryControl = permissions?.canTemporaryControl ?? false;
+  const canFullControl = permissions?.canFullControl ?? false;
+  const canDisableAutomation = permissions?.canDisableAutomation ?? false;
+  const isViewer = permissions?.role === 'viewer';
   const isOwner = userRole?.role === 'owner';
   const { toast } = useToast();
 
@@ -241,27 +249,48 @@ export function ControlPage() {
       <Header />
 
       <main className="page-container px-4 space-y-4">
-        {/* SECTION 1: Automation Master Status */}
+        {/* SECTION 1: Automation Master Status - Only Admin can toggle */}
         <AutomationStatusBanner
           automationEnabled={!manualOverride}
           hasTemporaryOverrides={hasTemporaryOverrides}
           onToggleAutomation={handleAutomationToggle}
+          canToggle={canDisableAutomation}
         />
 
-        {/* Worker restriction notice */}
-        {!isOwner && (
-          <Card className="border-amber-500/30 bg-amber-500/5">
+        {/* Viewer restriction notice */}
+        {isViewer && (
+          <Card className="border-red-500/30 bg-red-500/5">
             <CardContent className="pt-4">
               <div className="flex items-center gap-3">
-                <ShieldAlert className="h-5 w-5 text-amber-500" />
+                <ShieldAlert className="h-5 w-5 text-red-500" />
                 <div>
                   <p className="font-medium text-foreground">
                     {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View Only Access'}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {language === 'bn' 
-                      ? 'আপনি কর্মী হিসেবে ডিভাইস নিয়ন্ত্রণ করতে পারবেন না'
-                      : 'As a worker, you cannot control devices'}
+                      ? 'আপনি ভিউয়ার হিসেবে কোনো পরিবর্তন করতে পারবেন না'
+                      : 'As a viewer, you cannot make any changes'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {/* Farmer (temporary only) notice */}
+        {canTemporaryControl && !canFullControl && !isViewer && (
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="font-medium text-foreground">
+                    {language === 'bn' ? 'সাময়িক কন্ট্রোল' : 'Temporary Control Only'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' 
+                      ? 'আপনি শুধুমাত্র সাময়িক কন্ট্রোল করতে পারবেন, স্থায়ী পরিবর্তন নয়'
+                      : 'You can only make temporary changes, not permanent ones'}
                   </p>
                 </div>
               </div>
@@ -312,7 +341,7 @@ export function ControlPage() {
               remainingTime={getRemainingTime(device.key)}
               onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
               onStopTemporarily={() => handleStop(device.key)}
-              disabled={!isOwner || sendCommand.isPending}
+              disabled={!canTemporaryControl || sendCommand.isPending}
             />
           ))}
         </div>
