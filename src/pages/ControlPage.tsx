@@ -1,5 +1,6 @@
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Fan, Lightbulb, Bell, RefreshCcw, ShieldAlert, Flame, Zap } from 'lucide-react';
+import { Fan, Lightbulb, Bell, RefreshCcw, ShieldAlert, Flame, Zap, Timer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
@@ -11,6 +12,8 @@ import { BottomNav } from '@/components/BottomNav';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ManualControlTimerDialog } from '@/components/assistant/ManualControlTimerDialog';
+import { useToast } from '@/hooks/use-toast';
 
 export function ControlPage() {
   const { language } = useAuth();
@@ -18,13 +21,130 @@ export function ControlPage() {
   const sendCommand = useSendDeviceCommand();
   const { data: userRole } = useUserRole();
   const isOwner = userRole?.role === 'owner';
+  const { toast } = useToast();
 
-  // Use command system for instant control
+  // Timer state for manual control
+  const [timerDialogOpen, setTimerDialogOpen] = useState(false);
+  const [pendingDevice, setPendingDevice] = useState<{
+    device: 'fan' | 'light' | 'alarm' | 'heater';
+    currentState: boolean;
+    icon: React.ReactNode;
+    name: string;
+  } | null>(null);
+  const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
+
+  // Check and clear expired timers
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setActiveTimers(prev => {
+        const updated = { ...prev };
+        let hasChanges = false;
+        
+        Object.entries(updated).forEach(([deviceKey, timer]) => {
+          if (timer.endTime <= now) {
+            // Timer expired - turn off device and return to auto mode
+            const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater';
+            sendCommand.mutate({ commandType: cmdType, commandValue: false });
+            setDeviceStatus({ [deviceKey]: false });
+            delete updated[deviceKey];
+            hasChanges = true;
+            
+            toast({
+              title: language === 'bn' ? '⏰ টাইমার শেষ' : '⏰ Timer Expired',
+              description: language === 'bn' 
+                ? `${deviceKey} বন্ধ হয়ে অটো মোডে ফিরে গেছে` 
+                : `${deviceKey} turned off, back to AUTO mode`,
+            });
+          }
+        });
+        
+        return hasChanges ? updated : prev;
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [language, sendCommand, setDeviceStatus, toast]);
+
+  // Get remaining time for a device timer
+  const getRemainingTime = useCallback((device: string) => {
+    const timer = activeTimers[device];
+    if (!timer) return null;
+    
+    const remaining = Math.max(0, timer.endTime - Date.now());
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }, [activeTimers]);
+
+  // Handle toggle with timer prompt
   const handleToggle = (device: 'fan' | 'light' | 'alarm' | 'heater', currentState: boolean) => {
-    // Send command for instant ESP32 response (5 sec polling)
-    sendCommand.mutate({ commandType: device, commandValue: !currentState });
-    // Also update local state for immediate UI feedback
-    setDeviceStatus({ [device]: !currentState });
+    if (!currentState) {
+      // Turning ON - show timer dialog
+      const deviceNames = {
+        fan: language === 'bn' ? 'ফ্যান' : 'Fan',
+        light: language === 'bn' ? 'লাইট' : 'Light',
+        alarm: language === 'bn' ? 'অ্যালার্ম' : 'Alarm',
+        heater: language === 'bn' ? 'হিটার' : 'Heater',
+      };
+      const icons = {
+        fan: <Fan className="h-6 w-6" />,
+        light: <Lightbulb className="h-6 w-6" />,
+        alarm: <Bell className="h-6 w-6" />,
+        heater: <Flame className="h-6 w-6" />,
+      };
+      
+      setPendingDevice({
+        device,
+        currentState,
+        icon: icons[device],
+        name: deviceNames[device],
+      });
+      setTimerDialogOpen(true);
+    } else {
+      // Turning OFF - immediate action
+      sendCommand.mutate({ commandType: device, commandValue: false });
+      setDeviceStatus({ [device]: false });
+      
+      // Clear any active timer
+      setActiveTimers(prev => {
+        const updated = { ...prev };
+        delete updated[device];
+        return updated;
+      });
+    }
+  };
+
+  // Handle timer confirmation
+  const handleTimerConfirm = (durationMinutes: number) => {
+    if (!pendingDevice) return;
+    
+    // Turn on the device
+    sendCommand.mutate({ commandType: pendingDevice.device, commandValue: true });
+    setDeviceStatus({ [pendingDevice.device]: true });
+    
+    // Set timer
+    setActiveTimers(prev => ({
+      ...prev,
+      [pendingDevice.device]: {
+        endTime: Date.now() + durationMinutes * 60000,
+        duration: durationMinutes,
+      },
+    }));
+    
+    toast({
+      title: language === 'bn' ? '✅ টাইমার সেট হয়েছে' : '✅ Timer Set',
+      description: language === 'bn' 
+        ? `${pendingDevice.name} ${durationMinutes} মিনিট চলবে` 
+        : `${pendingDevice.name} will run for ${durationMinutes} minutes`,
+    });
+    
+    setPendingDevice(null);
+  };
+
+  // Handle timer cancel
+  const handleTimerCancel = () => {
+    setPendingDevice(null);
   };
 
   const handleManualOverrideToggle = (checked: boolean) => {
@@ -110,34 +230,38 @@ export function ControlPage() {
 
           {/* Control Buttons Grid */}
           <div className="grid grid-cols-2 gap-4">
-            <ControlButton
-              icon={Fan}
-              label={translations.sensors.fan[language]}
-              isOn={status.fan}
-              onToggle={() => handleToggle('fan', status.fan)}
-              disabled={!manualOverride || !isOwner || sendCommand.isPending}
-            />
-            <ControlButton
-              icon={Lightbulb}
-              label={translations.sensors.light[language]}
-              isOn={status.light}
-              onToggle={() => handleToggle('light', status.light)}
-              disabled={!manualOverride || !isOwner || sendCommand.isPending}
-            />
-            <ControlButton
-              icon={Bell}
-              label={translations.sensors.alarm[language]}
-              isOn={status.alarm}
-              onToggle={() => handleToggle('alarm', status.alarm)}
-              disabled={!manualOverride || !isOwner || sendCommand.isPending}
-            />
-            <ControlButton
-              icon={Flame}
-              label={language === 'bn' ? 'হিটার' : 'Heater'}
-              isOn={status.heater}
-              onToggle={() => handleToggle('heater', status.heater)}
-              disabled={!manualOverride || !isOwner || sendCommand.isPending}
-            />
+            {[
+              { device: 'fan' as const, icon: Fan, label: translations.sensors.fan[language] },
+              { device: 'light' as const, icon: Lightbulb, label: translations.sensors.light[language] },
+              { device: 'alarm' as const, icon: Bell, label: translations.sensors.alarm[language] },
+              { device: 'heater' as const, icon: Flame, label: language === 'bn' ? 'হিটার' : 'Heater' },
+            ].map(({ device, icon: Icon, label }) => {
+              const remainingTime = getRemainingTime(device);
+              const isActive = status[device];
+              
+              return (
+                <div key={device} className="relative">
+                  <ControlButton
+                    icon={Icon}
+                    label={label}
+                    isOn={isActive}
+                    onToggle={() => handleToggle(device, isActive)}
+                    disabled={!manualOverride || !isOwner || sendCommand.isPending}
+                  />
+                  {/* Timer badge */}
+                  {remainingTime && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground shadow-lg"
+                    >
+                      <Timer className="h-3 w-3" />
+                      {remainingTime}
+                    </motion.div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {!manualOverride && isOwner && (
@@ -151,8 +275,45 @@ export function ControlPage() {
                 : 'Enable Manual Override above to use manual controls'}
             </motion.p>
           )}
+
+          {/* Active Timers Info */}
+          {Object.keys(activeTimers).length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4"
+            >
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Timer className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">
+                      {language === 'bn' 
+                        ? `${Object.keys(activeTimers).length}টি ডিভাইসে টাইমার সক্রিয়` 
+                        : `${Object.keys(activeTimers).length} device(s) with active timer`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === 'bn' 
+                      ? 'টাইমার শেষে স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে' 
+                      : 'Will return to AUTO mode when timer expires'}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </motion.div>
       </main>
+
+      {/* Timer Dialog */}
+      <ManualControlTimerDialog
+        open={timerDialogOpen}
+        onOpenChange={setTimerDialogOpen}
+        deviceName={pendingDevice?.name || ''}
+        deviceIcon={pendingDevice?.icon || null}
+        onConfirm={handleTimerConfirm}
+        onCancel={handleTimerCancel}
+      />
 
       <BottomNav />
     </div>

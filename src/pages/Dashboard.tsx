@@ -42,6 +42,9 @@ import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+// New Farmer-Friendly Assistant Components
+import { FarmActivityBanner, ComfortIndicators, SmartSummaryCards, AdvisoryAssistant } from '@/components/assistant';
+
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected } = useRealtimeSensorData();
@@ -108,6 +111,43 @@ export function Dashboard() {
       <Header />
 
       <main className="page-container px-4">
+        {/* ============ NEW: FARM ACTIVITY BANNER ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
+          <FarmActivityBanner />
+        </motion.div>
+
+        {/* ============ NEW: COMFORT INDICATORS ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.02 }}
+          className="mb-4"
+        >
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <span className="text-lg">🌡️</span>
+            {language === 'bn' ? 'খামারের অবস্থা' : 'Farm Status'}
+          </h2>
+          <ComfortIndicators />
+        </motion.div>
+
+        {/* ============ NEW: SMART SUMMARY CARDS ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="mb-5"
+        >
+          <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+            <span className="text-lg">📊</span>
+            {language === 'bn' ? 'আজকের সারসংক্ষেপ' : "Today's Summary"}
+          </h2>
+          <SmartSummaryCards />
+        </motion.div>
+
         {/* ============ SECTION 1: HERO STATUS CARD ============ */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -408,6 +448,16 @@ export function Dashboard() {
               <PowerOutageCard />
             </TabsContent>
           </Tabs>
+        </motion.div>
+
+        {/* ============ NEW: ADVISORY ASSISTANT ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.17 }}
+          className="mb-5"
+        >
+          <AdvisoryAssistant />
         </motion.div>
 
         {/* ============ SECTION 8: WEATHER ============ */}
