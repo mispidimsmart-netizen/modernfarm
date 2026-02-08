@@ -7,12 +7,28 @@ import { useSendDeviceCommand } from './useDeviceCommands';
 
 export type CalibrationStep = 
   | 'dimensions'
+  | 'automation_defaults'
   | 'fan_direction'
   | 'temp_sensor'
   | 'ammonia_baseline'
   | 'heater_response'
   | 'water_flow'
   | 'complete';
+
+export interface AutomationDefaults {
+  temp_min: number;
+  temp_max: number;
+  humidity_min: number;
+  humidity_max: number;
+  ammonia_max: number;
+  fan_low_temp_min: number;
+  fan_low_temp_max: number;
+  fan_medium_temp_min: number;
+  fan_medium_temp_max: number;
+  fan_high_temp_min: number;
+  heater_on_temp: number;
+  heater_off_temp: number;
+}
 
 export interface CalibrationData {
   id?: string;
@@ -159,7 +175,7 @@ export function useCalibrationWizard(deviceTokenId?: string, shedId?: string) {
     });
 
     setCalibrationData(data);
-    setCurrentStep('fan_direction');
+    setCurrentStep('automation_defaults');
 
     toast({
       title: language === 'bn' ? '✅ মাত্রা সংরক্ষিত' : '✅ Dimensions saved',
@@ -168,6 +184,67 @@ export function useCalibrationWizard(deviceTokenId?: string, shedId?: string) {
         : `Air volume: ${calculated.air_volume_cubic_meters.toFixed(1)} m³`,
     });
   }, [calibrationData, existingData, deviceTokenId, shedId, calculateDimensions, saveCalibration, toast, language]);
+
+  // Step 1.5: Save automation defaults to farm_settings
+  const saveAutomationDefaults = useCallback(async (defaults: AutomationDefaults) => {
+    if (!user) return;
+
+    try {
+      // Update farm_settings with the defaults
+      const { error } = await supabase
+        .from('farm_settings')
+        .update({
+          temperature_min: defaults.temp_min,
+          temperature_max: defaults.temp_max,
+          humidity_min: defaults.humidity_min,
+          humidity_max: defaults.humidity_max,
+          ammonia_max: defaults.ammonia_max,
+          fan_low_temp_min: defaults.fan_low_temp_min,
+          fan_low_temp_max: defaults.fan_low_temp_max,
+          fan_medium_temp_min: defaults.fan_medium_temp_min,
+          fan_medium_temp_max: defaults.fan_medium_temp_max,
+          fan_high_temp_min: defaults.fan_high_temp_min,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update advanced_automation_settings for heater
+      const { error: heaterError } = await supabase
+        .from('advanced_automation_settings')
+        .upsert({
+          user_id: user.id,
+          shed_id: shedId,
+          heater_on_temp: defaults.heater_on_temp,
+          heater_off_temp: defaults.heater_off_temp,
+          heater_enabled: true,
+        }, { onConflict: 'user_id,shed_id' });
+
+      if (heaterError) {
+        // If upsert with composite key fails, try simple insert/update
+        await supabase
+          .from('advanced_automation_settings')
+          .update({
+            heater_on_temp: defaults.heater_on_temp,
+            heater_off_temp: defaults.heater_off_temp,
+            heater_enabled: true,
+          })
+          .eq('user_id', user.id);
+      }
+
+      toast({
+        title: language === 'bn' ? '✅ অটোমেশন সেটিংস সংরক্ষিত' : '✅ Automation settings saved',
+      });
+
+      setCurrentStep('fan_direction');
+    } catch (error: any) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  }, [user, shedId, toast, language]);
 
   // Step 2: Fan direction test
   const runFanDirectionTest = useCallback(async () => {
@@ -488,6 +565,7 @@ export function useCalibrationWizard(deviceTokenId?: string, shedId?: string) {
     
     // Step handlers
     saveDimensions,
+    saveAutomationDefaults,
     runFanDirectionTest,
     saveFanDirectionResult,
     runTempSensorTest,
