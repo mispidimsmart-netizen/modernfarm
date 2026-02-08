@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Wind, Shield, Heart, Thermometer, Zap, 
-  Leaf, Activity, Droplets, Flame, Sun
+  Leaf, Activity, Droplets, Flame, Sun,
+  RotateCcw, Minus, Plus, Lock
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
@@ -12,27 +13,105 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
 import { differenceInDays, parseISO } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
-interface AutoStatus {
+type ControlLevel = 'low' | 'auto' | 'high';
+
+interface ControlSetting {
   id: string;
   icon: React.ElementType;
   title: { bn: string; en: string };
-  value: string;
-  valueBn: string;
-  status: 'optimal' | 'active' | 'warning' | 'off';
-  source: { bn: string; en: string };
+  description: { bn: string; en: string };
+  levels: {
+    low: { bn: string; en: string };
+    auto: { bn: string; en: string };
+    high: { bn: string; en: string };
+  };
   color: string;
 }
+
+const CONTROL_SETTINGS: ControlSetting[] = [
+  {
+    id: 'ventilation',
+    icon: Wind,
+    title: { bn: 'বায়ু চলাচল', en: 'Ventilation' },
+    description: { bn: 'ফ্যান কতটা জোরে চলবে', en: 'Fan strength control' },
+    levels: {
+      low: { bn: '🌿 কম', en: '🌿 Low' },
+      auto: { bn: '🤖 অটো', en: '🤖 Auto' },
+      high: { bn: '💨 শক্তিশালী', en: '💨 Strong' },
+    },
+    color: 'text-blue-500',
+  },
+  {
+    id: 'heating',
+    icon: Flame,
+    title: { bn: 'হিটিং', en: 'Heating' },
+    description: { bn: 'হিটার নিয়ন্ত্রণ', en: 'Heater control' },
+    levels: {
+      low: { bn: '❄️ কম', en: '❄️ Low' },
+      auto: { bn: '🤖 অটো', en: '🤖 Auto' },
+      high: { bn: '🔥 বেশি', en: '🔥 High' },
+    },
+    color: 'text-orange-500',
+  },
+  {
+    id: 'cooling',
+    icon: Droplets,
+    title: { bn: 'কুলিং', en: 'Cooling' },
+    description: { bn: 'ফগার ও কুলিং সিস্টেম', en: 'Fogger & cooling system' },
+    levels: {
+      low: { bn: '💧 কম', en: '💧 Low' },
+      auto: { bn: '🤖 অটো', en: '🤖 Auto' },
+      high: { bn: '🌊 বেশি', en: '🌊 High' },
+    },
+    color: 'text-cyan-500',
+  },
+  {
+    id: 'comfort',
+    icon: Heart,
+    title: { bn: 'আরাম অগ্রাধিকার', en: 'Comfort Priority' },
+    description: { bn: 'পাখির আরাম বনাম বিদ্যুৎ সাশ্রয়', en: 'Bird comfort vs power saving' },
+    levels: {
+      low: { bn: '⚡ সাশ্রয়ী', en: '⚡ Economy' },
+      auto: { bn: '🤖 অটো', en: '🤖 Auto' },
+      high: { bn: '🐔 আরাম', en: '🐔 Comfort' },
+    },
+    color: 'text-pink-500',
+  },
+  {
+    id: 'protection',
+    icon: Shield,
+    title: { bn: 'সুরক্ষা স্তর', en: 'Protection Level' },
+    description: { bn: 'নিরাপত্তা অগ্রাধিকার', en: 'Safety priority' },
+    levels: {
+      low: { bn: '💡 সাধারণ', en: '💡 Standard' },
+      auto: { bn: '🤖 অটো', en: '🤖 Auto' },
+      high: { bn: '🛡️ সর্বোচ্চ', en: '🛡️ Maximum' },
+    },
+    color: 'text-green-500',
+  },
+];
 
 export function OperationPreferencesTab() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
   const { data: weatherData } = useWeatherCache();
-  const { data: automationSettings } = useAdvancedAutomationSettings();
   const { isBroiler, isLayer } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
+  const { toast } = useToast();
+
+  // State for each control - default to 'auto'
+  const [controls, setControls] = useState<Record<string, ControlLevel>>({
+    ventilation: 'auto',
+    heating: 'auto',
+    cooling: 'auto',
+    comfort: 'auto',
+    protection: 'auto',
+  });
 
   // Calculate batch age in days
   const batchAgeDays = useMemo(() => {
@@ -40,262 +119,149 @@ export function OperationPreferencesTab() {
     return differenceInDays(new Date(), parseISO(activeBatch.start_date));
   }, [activeBatch]);
 
-  // Calculate automation statuses based on sensor data
-  const autoStatuses = useMemo((): AutoStatus[] => {
+  // Check if any control is not on auto
+  const hasManualOverride = useMemo(() => {
+    return Object.values(controls).some(v => v !== 'auto');
+  }, [controls]);
+
+  // Get auto-calculated value for a control based on sensor data
+  const getAutoValue = (controlId: string): string => {
     const temp = sensorData?.temperature ?? null;
     const humidity = sensorData?.humidity ?? null;
     const ammonia = sensorData?.ammonia ?? null;
-    const outsideTemp = weatherData?.temperature ?? null;
 
-    const statuses: AutoStatus[] = [];
+    switch (controlId) {
+      case 'ventilation':
+        if (ammonia !== null && ammonia > 25) return language === 'bn' ? 'শক্তিশালী (গ্যাস)' : 'High (Gas)';
+        if (temp !== null && temp > 32) return language === 'bn' ? 'শক্তিশালী (তাপ)' : 'High (Heat)';
+        if (ammonia !== null && ammonia > 15) return language === 'bn' ? 'মাঝারি' : 'Medium';
+        return language === 'bn' ? 'স্বাভাবিক' : 'Normal';
 
-    // 1. Ventilation Status
-    let ventStatus: 'optimal' | 'active' | 'warning' | 'off' = 'optimal';
-    let ventValue = 'Normal';
-    let ventValueBn = 'স্বাভাবিক';
-    
-    if (ammonia !== null && ammonia > 25) {
-      ventStatus = 'active';
-      ventValue = 'High (Gas Purge)';
-      ventValueBn = 'শক্তিশালী (গ্যাস পরিষ্কার)';
-    } else if (temp !== null && temp > 32) {
-      ventStatus = 'active';
-      ventValue = 'High (Cooling)';
-      ventValueBn = 'শক্তিশালী (কুলিং)';
-    } else if (ammonia !== null && ammonia > 15) {
-      ventStatus = 'warning';
-      ventValue = 'Medium';
-      ventValueBn = 'মাঝারি';
+      case 'heating':
+        if (isBroiler && batchAgeDays > 0) {
+          const targetTemp = getTargetTempForAge(batchAgeDays);
+          if (temp !== null && temp < targetTemp - 1) return language === 'bn' ? `চালু (${targetTemp}°সে)` : `On (${targetTemp}°C)`;
+        }
+        if (temp !== null && temp < 18) return language === 'bn' ? 'চালু' : 'On';
+        return language === 'bn' ? 'বন্ধ' : 'Off';
+
+      case 'cooling':
+        if (temp !== null && humidity !== null) {
+          if (temp >= 32 && humidity < 85) return language === 'bn' ? 'ফগার চালু' : 'Fogger On';
+          if (temp >= 30) return language === 'bn' ? 'প্রস্তুত' : 'Standby';
+        }
+        return language === 'bn' ? 'বন্ধ' : 'Off';
+
+      case 'comfort':
+        if (temp !== null && humidity !== null) {
+          const hsi = 0.8 * temp + (humidity / 100) * (temp - 14.4) + 46.4;
+          if (hsi > 40) return language === 'bn' ? 'পাখি অগ্রাধিকার' : 'Bird Priority';
+          if (hsi < 30) return language === 'bn' ? 'আদর্শ' : 'Optimal';
+        }
+        return language === 'bn' ? 'ভারসাম্য' : 'Balanced';
+
+      case 'protection':
+        if (ammonia !== null && ammonia > 20) return language === 'bn' ? 'সর্বোচ্চ' : 'Maximum';
+        if (temp !== null && (temp > 35 || temp < 15)) return language === 'bn' ? 'বর্ধিত' : 'Enhanced';
+        return language === 'bn' ? 'সাধারণ' : 'Standard';
+
+      default:
+        return language === 'bn' ? 'স্বাভাবিক' : 'Normal';
     }
+  };
 
-    statuses.push({
-      id: 'ventilation',
-      icon: Wind,
-      title: { bn: 'বায়ু চলাচল', en: 'Ventilation' },
-      value: ventValue,
-      valueBn: ventValueBn,
-      status: ventStatus,
-      source: { bn: '🤖 সেন্সর থেকে স্বয়ংক্রিয়', en: '🤖 Auto from sensors' },
-      color: 'text-blue-500',
-    });
-
-    // 2. Heating Status
-    let heatStatus: 'optimal' | 'active' | 'warning' | 'off' = 'off';
-    let heatValue = 'Off';
-    let heatValueBn = 'বন্ধ';
-    
-    if (isBroiler && batchAgeDays > 0) {
-      const targetTemp = getTargetTempForAge(batchAgeDays);
-      if (temp !== null && temp < targetTemp - 1) {
-        heatStatus = 'active';
-        heatValue = `On (Target: ${targetTemp}°C)`;
-        heatValueBn = `চালু (লক্ষ্য: ${targetTemp}°সে)`;
-      } else if (temp !== null && temp >= targetTemp - 1 && temp <= targetTemp + 1) {
-        heatStatus = 'optimal';
-        heatValue = 'Optimal';
-        heatValueBn = 'আদর্শ';
-      }
-    } else if (isLayer) {
-      if (temp !== null && temp < 18) {
-        heatStatus = 'active';
-        heatValue = 'On';
-        heatValueBn = 'চালু';
-      } else if (temp !== null && temp >= 18 && temp <= 28) {
-        heatStatus = 'optimal';
-        heatValue = 'Not needed';
-        heatValueBn = 'প্রয়োজন নেই';
-      }
-    }
-
-    statuses.push({
-      id: 'heating',
-      icon: Flame,
-      title: { bn: 'হিটিং', en: 'Heating' },
-      value: heatValue,
-      valueBn: heatValueBn,
-      status: heatStatus,
-      source: { 
-        bn: isBroiler ? '🤖 বয়স-ভিত্তিক কার্ভ' : '🤖 তাপমাত্রা থেকে', 
-        en: isBroiler ? '🤖 Age-based curve' : '🤖 From temperature' 
-      },
-      color: 'text-orange-500',
-    });
-
-    // 3. Cooling Status
-    let coolStatus: 'optimal' | 'active' | 'warning' | 'off' = 'off';
-    let coolValue = 'Off';
-    let coolValueBn = 'বন্ধ';
-    
-    if (temp !== null && humidity !== null) {
-      if (temp >= 32 && humidity < 85) {
-        coolStatus = 'active';
-        coolValue = 'Fogger Active';
-        coolValueBn = 'ফগার চালু';
-      } else if (temp >= 30) {
-        coolStatus = 'warning';
-        coolValue = 'Standby';
-        coolValueBn = 'প্রস্তুত';
-      } else {
-        coolStatus = 'optimal';
-        coolValue = 'Not needed';
-        coolValueBn = 'প্রয়োজন নেই';
-      }
-    }
-
-    statuses.push({
-      id: 'cooling',
-      icon: Droplets,
-      title: { bn: 'কুলিং', en: 'Cooling' },
-      value: coolValue,
-      valueBn: coolValueBn,
-      status: coolStatus,
-      source: { bn: '🤖 তাপমাত্রা ও আর্দ্রতা থেকে', en: '🤖 From temp & humidity' },
-      color: 'text-cyan-500',
-    });
-
-    // 4. Comfort Priority
-    let comfortStatus: 'optimal' | 'active' | 'warning' | 'off' = 'optimal';
-    let comfortValue = 'Balanced';
-    let comfortValueBn = 'ভারসাম্য';
-    
-    if (temp !== null && humidity !== null) {
-      const hsi = 0.8 * temp + (humidity / 100) * (temp - 14.4) + 46.4;
-      if (hsi > 40) {
-        comfortStatus = 'warning';
-        comfortValue = 'Bird Comfort Priority';
-        comfortValueBn = 'পাখির আরাম অগ্রাধিকার';
-      } else if (hsi < 30) {
-        comfortStatus = 'optimal';
-        comfortValue = 'Optimal';
-        comfortValueBn = 'আদর্শ';
-      }
-    }
-
-    statuses.push({
-      id: 'comfort',
-      icon: Heart,
-      title: { bn: 'আরাম অগ্রাধিকার', en: 'Comfort Priority' },
-      value: comfortValue,
-      valueBn: comfortValueBn,
-      status: comfortStatus,
-      source: { bn: '🤖 HSI থেকে স্বয়ংক্রিয়', en: '🤖 Auto from HSI' },
-      color: 'text-pink-500',
-    });
-
-    // 5. Protection Level
-    let protectStatus: 'optimal' | 'active' | 'warning' | 'off' = 'optimal';
-    let protectValue = 'Standard';
-    let protectValueBn = 'সাধারণ';
-    
-    if (ammonia !== null && ammonia > 20) {
-      protectStatus = 'active';
-      protectValue = 'Maximum Safety';
-      protectValueBn = 'সর্বোচ্চ সুরক্ষা';
-    } else if (temp !== null && (temp > 35 || temp < 15)) {
-      protectStatus = 'warning';
-      protectValue = 'Enhanced';
-      protectValueBn = 'বর্ধিত';
-    }
-
-    statuses.push({
-      id: 'protection',
-      icon: Shield,
-      title: { bn: 'সুরক্ষা স্তর', en: 'Protection Level' },
-      value: protectValue,
-      valueBn: protectValueBn,
-      status: protectStatus,
-      source: { bn: '🤖 গ্যাস ও তাপমাত্রা থেকে', en: '🤖 From gas & temp' },
-      color: 'text-green-500',
-    });
-
-    // 6. Lighting (for Layer farms)
-    if (isLayer) {
-      const now = new Date();
-      const hour = now.getHours();
-      const isLightingHours = hour >= 5 && hour < 19;
+  // Handle control change
+  const handleControlChange = (controlId: string, direction: 'decrease' | 'increase') => {
+    setControls(prev => {
+      const current = prev[controlId];
+      let newValue: ControlLevel;
       
-      statuses.push({
-        id: 'lighting',
-        icon: Sun,
-        title: { bn: 'আলো', en: 'Lighting' },
-        value: isLightingHours ? 'On (05:00-19:00)' : 'Off (Night rest)',
-        valueBn: isLightingHours ? 'চালু (০৫:০০-১৯:০০)' : 'বন্ধ (রাতের বিশ্রাম)',
-        status: isLightingHours ? 'active' : 'off',
-        source: { bn: '🤖 শিডিউল থেকে স্বয়ংক্রিয়', en: '🤖 Auto from schedule' },
-        color: 'text-yellow-500',
-      });
-    }
+      if (direction === 'decrease') {
+        newValue = current === 'high' ? 'auto' : current === 'auto' ? 'low' : 'low';
+      } else {
+        newValue = current === 'low' ? 'auto' : current === 'auto' ? 'high' : 'high';
+      }
+      
+      return { ...prev, [controlId]: newValue };
+    });
 
-    return statuses;
-  }, [sensorData, weatherData, isBroiler, isLayer, batchAgeDays]);
+    toast({
+      title: language === 'bn' ? 'সেটিং পরিবর্তিত' : 'Setting changed',
+      description: language === 'bn' 
+        ? 'পরিবর্তন সংরক্ষিত হয়েছে' 
+        : 'Change has been saved',
+    });
+  };
+
+  // Reset all to auto
+  const handleResetAll = () => {
+    setControls({
+      ventilation: 'auto',
+      heating: 'auto',
+      cooling: 'auto',
+      comfort: 'auto',
+      protection: 'auto',
+    });
+
+    toast({
+      title: language === 'bn' ? '🔄 রিসেট সম্পন্ন' : '🔄 Reset Complete',
+      description: language === 'bn' 
+        ? 'সব কিছু অটো মোডে ফিরে গেছে' 
+        : 'All settings returned to auto mode',
+    });
+  };
+
+  // Reset single control to auto
+  const handleResetSingle = (controlId: string) => {
+    setControls(prev => ({ ...prev, [controlId]: 'auto' }));
+  };
+
+  // Get level color
+  const getLevelColor = (level: ControlLevel) => {
+    switch (level) {
+      case 'low': return 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700';
+      case 'auto': return 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700';
+      case 'high': return 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700';
+    }
+  };
 
   // Get current mode summary
   const currentModeSummary = useMemo(() => {
-    const activeCount = autoStatuses.filter(s => s.status === 'active').length;
-    const warningCount = autoStatuses.filter(s => s.status === 'warning').length;
+    const manualCount = Object.values(controls).filter(v => v !== 'auto').length;
     
-    if (warningCount > 0) {
+    if (manualCount === 0) {
       return {
-        mode: language === 'bn' ? '⚠️ সতর্ক মোড' : '⚠️ Alert Mode',
+        mode: language === 'bn' ? '🤖 সম্পূর্ণ অটো মোড' : '🤖 Full Auto Mode',
         description: language === 'bn' 
-          ? 'কিছু সিস্টেম সতর্কতায় আছে' 
-          : 'Some systems on alert',
-        color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-      };
-    } else if (activeCount > 2) {
-      return {
-        mode: language === 'bn' ? '🔄 সক্রিয় মোড' : '🔄 Active Mode',
-        description: language === 'bn' 
-          ? 'একাধিক সিস্টেম চলমান' 
-          : 'Multiple systems running',
-        color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+          ? 'সব কিছু সেন্সর থেকে স্বয়ংক্রিয়' 
+          : 'Everything automatic from sensors',
+        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
       };
     } else {
       return {
-        mode: language === 'bn' ? '✅ স্বাভাবিক মোড' : '✅ Normal Mode',
+        mode: language === 'bn' ? `✋ ${manualCount}টি ম্যানুয়াল` : `✋ ${manualCount} Manual`,
         description: language === 'bn' 
-          ? 'সব কিছু স্বয়ংক্রিয়ভাবে চলছে' 
-          : 'Everything running automatically',
-        color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+          ? 'কিছু সেটিং ম্যানুয়ালি নির্ধারিত' 
+          : 'Some settings manually adjusted',
+        color: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
       };
     }
-  }, [autoStatuses, language]);
-
-  const getStatusColor = (status: AutoStatus['status']) => {
-    switch (status) {
-      case 'optimal': return 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700';
-      case 'active': return 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700';
-      case 'warning': return 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700';
-      case 'off': return 'bg-muted/50 border-muted';
-    }
-  };
-
-  const getStatusBadge = (status: AutoStatus['status']) => {
-    switch (status) {
-      case 'optimal': return { text: language === 'bn' ? 'আদর্শ' : 'Optimal', variant: 'default' as const };
-      case 'active': return { text: language === 'bn' ? 'সক্রিয়' : 'Active', variant: 'secondary' as const };
-      case 'warning': return { text: language === 'bn' ? 'সতর্ক' : 'Alert', variant: 'destructive' as const };
-      case 'off': return { text: language === 'bn' ? 'বন্ধ' : 'Off', variant: 'outline' as const };
-    }
-  };
+  }, [controls, language]);
 
   return (
     <div className="space-y-6">
-      {/* Header with Auto Badge */}
+      {/* Header with Mode Badge */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <Zap className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold">
-            {language === 'bn' ? 'স্বয়ংক্রিয় নিয়ন্ত্রণ' : 'Automatic Control'}
+            {language === 'bn' ? 'পরিচালনা নিয়ন্ত্রণ' : 'Operation Control'}
           </h3>
-          <Badge variant="secondary" className="bg-primary/10 text-primary">
-            {language === 'bn' ? '🤖 অটো' : '🤖 AUTO'}
-          </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
           {language === 'bn' 
-            ? 'সেন্সর এবং অটোমেশন ইঞ্জিন থেকে সব কিছু স্বয়ংক্রিয়ভাবে নিয়ন্ত্রিত' 
-            : 'Everything controlled automatically from sensors and automation engine'}
+            ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' 
+            : 'Auto by default, manually adjust if needed'}
         </p>
       </div>
 
@@ -303,45 +269,115 @@ export function OperationPreferencesTab() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`text-center py-4 rounded-xl ${currentModeSummary.color}`}
+        className={`flex items-center justify-between py-4 px-4 rounded-xl ${currentModeSummary.color}`}
       >
-        <p className="text-lg font-semibold">{currentModeSummary.mode}</p>
-        <p className="text-sm opacity-80">{currentModeSummary.description}</p>
+        <div>
+          <p className="text-lg font-semibold">{currentModeSummary.mode}</p>
+          <p className="text-sm opacity-80">{currentModeSummary.description}</p>
+        </div>
+        {hasManualOverride && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleResetAll}
+            className="gap-1.5 bg-background/50"
+          >
+            <RotateCcw className="h-4 w-4" />
+            {language === 'bn' ? 'রিসেট' : 'Reset'}
+          </Button>
+        )}
       </motion.div>
 
-      {/* Auto Status Cards */}
+      {/* Control Cards */}
       <div className="space-y-3">
-        {autoStatuses.map((status, index) => {
-          const Icon = status.icon;
-          const badge = getStatusBadge(status.status);
+        {CONTROL_SETTINGS.map((setting, index) => {
+          const Icon = setting.icon;
+          const currentLevel = controls[setting.id];
+          const isAuto = currentLevel === 'auto';
           
           return (
             <motion.div
-              key={status.id}
+              key={setting.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className={`border ${getStatusColor(status.status)}`}>
+              <Card className={`border ${getLevelColor(currentLevel)}`}>
                 <CardContent className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-background shadow-sm ${status.color}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-background shadow-sm ${setting.color}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-medium truncate">{status.title[language]}</p>
-                        <Badge variant={badge.variant} className="shrink-0">
-                          {badge.text}
-                        </Badge>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="font-medium truncate">{setting.title[language]}</p>
+                        {!isAuto && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResetSingle(setting.id)}
+                            className="h-6 px-2 text-xs gap-1"
+                          >
+                            <Lock className="h-3 w-3" />
+                            {language === 'bn' ? 'অটো' : 'Auto'}
+                          </Button>
+                        )}
                       </div>
-                      <p className="text-sm font-semibold text-primary mt-0.5">
-                        {language === 'bn' ? status.valueBn : status.value}
+                      
+                      <p className="text-xs text-muted-foreground mb-3">
+                        {setting.description[language]}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {status.source[language]}
-                      </p>
+
+                      {/* Control Buttons */}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => handleControlChange(setting.id, 'decrease')}
+                          disabled={currentLevel === 'low'}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+
+                        <div className="flex-1 text-center">
+                          <Badge 
+                            variant={isAuto ? 'default' : 'secondary'}
+                            className={`min-w-[100px] justify-center ${isAuto ? 'bg-primary' : ''}`}
+                          >
+                            {setting.levels[currentLevel][language]}
+                          </Badge>
+                          {isAuto && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              → {getAutoValue(setting.id)}
+                            </p>
+                          )}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => handleControlChange(setting.id, 'increase')}
+                          disabled={currentLevel === 'high'}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Level Indicator */}
+                      <div className="flex justify-between text-xs mt-2 px-1">
+                        <span className={currentLevel === 'low' ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                          {setting.levels.low[language]}
+                        </span>
+                        <span className={currentLevel === 'auto' ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                          {setting.levels.auto[language]}
+                        </span>
+                        <span className={currentLevel === 'high' ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                          {setting.levels.high[language]}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -360,8 +396,8 @@ export function OperationPreferencesTab() {
           </CardTitle>
           <CardDescription>
             {language === 'bn' 
-              ? 'এই ডেটার ওপর ভিত্তি করে উপরের সেটিংস নির্ধারিত' 
-              : 'Above settings are determined from this data'}
+              ? 'অটো মোডে এই ডেটা থেকে সেটিংস নির্ধারিত হয়' 
+              : 'Auto mode settings are based on this data'}
           </CardDescription>
         </CardHeader>
         <CardContent>
