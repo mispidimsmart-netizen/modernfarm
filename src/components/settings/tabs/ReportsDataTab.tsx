@@ -196,6 +196,35 @@ export function ReportsDataTab() {
         </CardContent>
       </Card>
 
+      {/* Report Features */}
+      <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
+        <CardContent className="pt-6">
+          <p className="text-sm font-medium mb-4">
+            {language === 'bn' ? '📊 রিপোর্টে যা থাকে' : '📊 What\'s in Reports'}
+          </p>
+          <div className="space-y-3">
+            {[
+              { icon: '🌡️', text: language === 'bn' ? 'তাপমাত্রা ও আর্দ্রতার সারাংশ' : 'Temperature & humidity summary' },
+              { icon: '🐔', text: language === 'bn' ? 'পাখির স্বাস্থ্য স্কোর' : 'Bird health score' },
+              { icon: '💧', text: language === 'bn' ? 'পানি খরচের হিসাব' : 'Water consumption stats' },
+              { icon: '⚡', text: language === 'bn' ? 'ডিভাইস রানটাইম' : 'Device runtime' },
+              { icon: '⚠️', text: language === 'bn' ? 'অ্যালার্টের সারাংশ' : 'Alert summary' },
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-center gap-3 text-sm"
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span>{item.text}</span>
+              </motion.div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Export Data Section */}
       <Card className="border-primary/20">
         <CardHeader className="pb-3">
@@ -256,35 +285,6 @@ export function ReportsDataTab() {
               ? '💡 এক্সপোর্ট করা ফাইল Excel এ সরাসরি খুলতে পারবেন'
               : '💡 Exported file can be opened directly in Excel'}
           </p>
-        </CardContent>
-      </Card>
-
-      {/* Report Features */}
-      <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
-        <CardContent className="pt-6">
-          <p className="text-sm font-medium mb-4">
-            {language === 'bn' ? '📊 রিপোর্টে যা থাকে' : '📊 What\'s in Reports'}
-          </p>
-          <div className="space-y-3">
-            {[
-              { icon: '🌡️', text: language === 'bn' ? 'তাপমাত্রা ও আর্দ্রতার সারাংশ' : 'Temperature & humidity summary' },
-              { icon: '🐔', text: language === 'bn' ? 'পাখির স্বাস্থ্য স্কোর' : 'Bird health score' },
-              { icon: '💧', text: language === 'bn' ? 'পানি খরচের হিসাব' : 'Water consumption stats' },
-              { icon: '⚡', text: language === 'bn' ? 'ডিভাইস রানটাইম' : 'Device runtime' },
-              { icon: '⚠️', text: language === 'bn' ? 'অ্যালার্টের সারাংশ' : 'Alert summary' },
-            ].map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-3 text-sm"
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span>{item.text}</span>
-              </motion.div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 
