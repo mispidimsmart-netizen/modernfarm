@@ -18,6 +18,7 @@ import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
+import { useFarmType } from '@/hooks/useFarmType';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,8 +32,59 @@ import {
   type DeviceMode 
 } from '@/components/control';
 
-// Device definitions with descriptions
-const DEVICES = [
+// Common device definitions
+const COMMON_DEVICES = [
+  {
+    key: 'fan',
+    icon: Fan,
+    name: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
+    description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
+  },
+  {
+    key: 'light',
+    icon: Lightbulb,
+    name: { bn: 'লাইট', en: 'Light' },
+    description: { bn: 'দৈনিক আলোক সময়সূচী নিয়ন্ত্রণ', en: 'Controls daily lighting schedule' },
+  },
+];
+
+// Broiler-specific devices (heater is more important)
+const BROILER_DEVICES = [
+  {
+    key: 'heater',
+    icon: Flame,
+    name: { bn: 'হিটার', en: 'Heater' },
+    description: { bn: 'বাচ্চার তাপমাত্রা বজায় রাখে', en: 'Maintains chick temperature' },
+    priority: true, // Show first for broilers
+  },
+  {
+    key: 'fan',
+    icon: Fan,
+    name: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
+    description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
+  },
+  {
+    key: 'circulation_fan',
+    icon: Wind,
+    name: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
+    description: { bn: 'বাতাস সমভাবে ছড়িয়ে দেয়', en: 'Distributes air evenly' },
+  },
+  {
+    key: 'fogger',
+    icon: Droplets,
+    name: { bn: 'ফগার', en: 'Fogger' },
+    description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress' },
+  },
+  {
+    key: 'light',
+    icon: Lightbulb,
+    name: { bn: 'লাইট', en: 'Light' },
+    description: { bn: 'আলো নিয়ন্ত্রণ', en: 'Light control' },
+  },
+];
+
+// Layer-specific devices (fogger less important, no heater needed usually)
+const LAYER_DEVICES = [
   {
     key: 'fan',
     icon: Fan,
@@ -49,19 +101,19 @@ const DEVICES = [
     key: 'heater',
     icon: Flame,
     name: { bn: 'হিটার', en: 'Heater' },
-    description: { bn: 'পাখির শরীরের তাপমাত্রা বজায় রাখে', en: 'Maintains bird body temperature' },
+    description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in winter' },
   },
   {
     key: 'fogger',
     icon: Droplets,
     name: { bn: 'ফগার', en: 'Fogger' },
-    description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress in hot weather' },
+    description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress' },
   },
   {
     key: 'light',
     icon: Lightbulb,
     name: { bn: 'লাইট', en: 'Light' },
-    description: { bn: 'দৈনিক আলোক সময়সূচী নিয়ন্ত্রণ', en: 'Controls daily lighting schedule' },
+    description: { bn: 'ডিম উৎপাদনে সহায়ক', en: 'Supports egg production' },
   },
 ];
 
@@ -72,6 +124,10 @@ export function ControlPage() {
   const { data: userRole } = useUserRole();
   const { data: permissions } = useUserPermissions();
   const { sensorData } = useRealtimeSensorData();
+  const { isBroiler, isLayer } = useFarmType();
+  
+  // Select devices based on farm type
+  const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
   
   // Permission checks
   const canTemporaryControl = permissions?.canTemporaryControl ?? false;
