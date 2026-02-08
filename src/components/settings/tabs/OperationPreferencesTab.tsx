@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
 
 type SliderLevel = 'low' | 'normal' | 'high';
 
@@ -268,6 +269,9 @@ export function OperationPreferencesTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Haptic Feedback Settings */}
+      <HapticSettingsCard />
     </div>
   );
 }

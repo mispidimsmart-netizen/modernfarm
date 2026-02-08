@@ -3,12 +3,32 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { triggerHaptic } from "@/hooks/useHapticFeedback";
 
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, ...props }, ref) => {
-  return <RadioGroupPrimitive.Root className={cn("grid gap-2", className)} {...props} ref={ref} />;
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root> & {
+    haptic?: boolean;
+  }
+>(({ className, haptic = true, onValueChange, ...props }, ref) => {
+  const handleValueChange = React.useCallback((value: string) => {
+    // Trigger haptic feedback on radio selection
+    if (haptic && !props.disabled) {
+      triggerHaptic('selection');
+    }
+    
+    // Call original handler
+    onValueChange?.(value);
+  }, [haptic, onValueChange, props.disabled]);
+
+  return (
+    <RadioGroupPrimitive.Root 
+      className={cn("grid gap-2", className)} 
+      onValueChange={handleValueChange}
+      {...props} 
+      ref={ref} 
+    />
+  );
 });
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
