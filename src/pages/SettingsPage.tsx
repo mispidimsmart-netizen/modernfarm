@@ -1,101 +1,35 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
-  Bell, BellOff, Cpu, Copy, Plus, Trash2, Settings, User, 
-  ChevronRight, Shield, Zap, Thermometer, Droplets, Wind, 
-  Battery, MessageSquare, Cloud, FileText, Cog, ChevronDown, Pencil, Check, X, Crown, Home, Users, Egg
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { useSheds } from '@/hooks/useSheds';
-import { generateDeviceToken } from '@/lib/esp32Api';
-import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
-import { HSISettingsCard } from '@/components/settings/HSISettingsCard';
-import { FanSpeedSettingsCard } from '@/components/settings/FanSpeedSettingsCard';
-import { WaterAnomalySettingsCard } from '@/components/settings/WaterAnomalySettingsCard';
-import { SmartModeCard } from '@/components/settings/SmartModeCard';
-import { WeatherAutoModeCard } from '@/components/settings/WeatherAutoModeCard';
-import { BatterySettingsCard } from '@/components/settings/BatterySettingsCard';
-import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
 import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
-import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
-import { FarmTypeCard } from '@/components/settings/FarmTypeCard';
-import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
-
-// Collapsible Section Component
-function SettingsSection({ 
-  title, 
-  titleBn, 
-  icon: Icon, 
-  children, 
-  defaultOpen = false,
-  language 
-}: { 
-  title: string; 
-  titleBn: string; 
-  icon: React.ElementType; 
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  language: string;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <Card className="mb-4 overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Icon size={20} />
-          </div>
-          <span className="font-semibold">{language === 'bn' ? titleBn : title}</span>
-        </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChevronDown size={20} className="text-muted-foreground" />
-        </motion.div>
-      </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="border-t p-4">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </Card>
-  );
-}
+import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
+import { 
+  FarmSetupTab, 
+  OperationPreferencesTab, 
+  ReportsDataTab, 
+  DeviceSystemTab 
+} from '@/components/settings/tabs';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -107,86 +41,11 @@ export function SettingsPage() {
   const isOwner = userRole?.role === 'owner';
   const isAdmin = permissions?.role === 'admin';
   const canEditSettings = permissions?.canEditFarmSettings ?? false;
-  const canEditAdvanced = permissions?.canEditAdvancedSettings ?? false;
-  const canEditThresholds = permissions?.canEditThresholds ?? false;
-  const canEditDevice = permissions?.canEditDeviceSettings ?? false;
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
-  const { data: sheds } = useSheds();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [newDeviceName, setNewDeviceName] = useState('');
-  const [selectedShedForDevice, setSelectedShedForDevice] = useState<string>('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
-
-  // Fetch device tokens
-  const { data: deviceTokens } = useQuery({
-    queryKey: ['device_tokens', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from('device_tokens')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  // Add device token
-  const addDeviceToken = useMutation({
-    mutationFn: async ({ name, shedId }: { name: string; shedId?: string }) => {
-      if (!user) throw new Error('Not authenticated');
-      const token = generateDeviceToken();
-      const { error } = await supabase
-        .from('device_tokens')
-        .insert({ 
-          user_id: user.id, 
-          device_name: name, 
-          token,
-          shed_id: shedId || null
-        });
-      if (error) throw error;
-      return token;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device_tokens'] });
-      setNewDeviceName('');
-      setSelectedShedForDevice('');
-      toast({
-        title: language === 'bn' ? 'ডিভাইস যোগ হয়েছে' : 'Device Added',
-        description: language === 'bn' ? 'টোকেন কপি করতে ক্লিক করুন' : 'Click to copy token',
-      });
-    },
-  });
-
-  // Delete device token
-  const deleteDeviceToken = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('device_tokens')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device_tokens'] });
-    },
-  });
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: language === 'bn' ? 'কপি হয়েছে!' : 'Copied!',
-        description: language === 'bn' ? 'ক্লিপবোর্ডে কপি করা হয়েছে' : 'Copied to clipboard',
-      });
-    } catch (err) {
-      console.error('Copy failed:', err);
-    }
-  };
+  const [activeTab, setActiveTab] = useState('farm-setup');
 
   const handlePushToggle = async () => {
     if (isSubscribed) {
@@ -227,16 +86,13 @@ export function SettingsPage() {
 
   const t = {
     settings: { bn: 'সেটিংস', en: 'Settings' },
-    profile: { bn: 'প্রোফাইল', en: 'Profile' },
     owner: { bn: 'মালিক', en: 'Owner' },
     worker: { bn: 'কর্মী', en: 'Worker' },
     viewOnly: { bn: 'শুধুমাত্র দেখার অনুমতি', en: 'View only access' },
-    quickActions: { bn: 'দ্রুত কাজ', en: 'Quick Actions' },
-    automationControl: { bn: 'অটোমেশন কন্ট্রোল', en: 'Automation Control' },
-    sensorThresholds: { bn: 'সেন্সর থ্রেশহোল্ড', en: 'Sensor Thresholds' },
-    notifications: { bn: 'নোটিফিকেশন', en: 'Notifications' },
-    deviceManagement: { bn: 'ডিভাইস ম্যানেজমেন্ট', en: 'Device Management' },
-    ownerRequired: { bn: 'সেটিংস পরিবর্তন করতে মালিকের অনুমতি প্রয়োজন', en: 'Owner permission required to change settings' },
+    farmSetup: { bn: 'খামার সেটআপ', en: 'Farm Setup' },
+    operation: { bn: 'পরিচালনা', en: 'Operation' },
+    reports: { bn: 'রিপোর্ট', en: 'Reports' },
+    device: { bn: 'ডিভাইস', en: 'Device' },
   };
 
   return (
@@ -268,8 +124,8 @@ export function SettingsPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-5 text-primary-foreground shadow-lg"
           >
-            <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-white/10" />
-            <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-white/10" />
+            <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-primary-foreground/10" />
+            <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-primary-foreground/10" />
             
             <div className="relative flex items-center gap-4">
               <ProfileAvatarUpload />
@@ -279,7 +135,7 @@ export function SettingsPage() {
                     <Input
                       value={editedFarmName}
                       onChange={(e) => setEditedFarmName(e.target.value)}
-                      className="h-8 bg-white/20 border-white/30 text-white placeholder:text-white/50 text-lg font-bold"
+                      className="h-8 bg-primary-foreground/20 border-primary-foreground/30 text-primary-foreground placeholder:text-primary-foreground/50 text-lg font-bold"
                       placeholder={language === 'bn' ? 'ফার্মের নাম' : 'Farm name'}
                       autoFocus
                       onKeyDown={(e) => {
@@ -292,7 +148,7 @@ export function SettingsPage() {
                       variant="ghost"
                       onClick={handleSaveName}
                       disabled={updateProfile.isPending}
-                      className="h-8 w-8 text-white hover:bg-white/20"
+                      className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
                     >
                       <Check size={16} />
                     </Button>
@@ -300,20 +156,20 @@ export function SettingsPage() {
                       size="icon"
                       variant="ghost"
                       onClick={handleCancelEdit}
-                      className="h-8 w-8 text-white hover:bg-white/20"
+                      className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
                     >
                       <X size={16} />
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <p className="text-lg font-bold text-white truncate">{profile?.farm_name || 'Smart Farm'}</p>
+                    <p className="text-lg font-bold text-primary-foreground truncate">{profile?.farm_name || 'Smart Farm'}</p>
                     {isOwner && (
                       <button
                         onClick={handleEditName}
-                        className="p-1 rounded-md hover:bg-white/20 transition-colors"
+                        className="p-1 rounded-md hover:bg-primary-foreground/20 transition-colors"
                       >
-                        <Pencil size={14} className="text-white/80" />
+                        <Pencil size={14} className="text-primary-foreground/80" />
                       </button>
                     )}
                     <Badge 
@@ -334,7 +190,7 @@ export function SettingsPage() {
                     </Badge>
                   </div>
                 )}
-                <p className="text-sm text-white/80">{user?.email}</p>
+                <p className="text-sm text-primary-foreground/80">{user?.email}</p>
                 {!isOwner && (
                   <p className="mt-1 text-xs text-yellow-200">
                     ⚠️ {t.viewOnly[language]}
@@ -346,10 +202,8 @@ export function SettingsPage() {
 
           {/* App Install & Team Management Row */}
           <div className="grid grid-cols-2 gap-3">
-            {/* App Install Card - Compact */}
             <SettingsInstallCard />
             
-            {/* Team Management Card */}
             {isOwner ? (
               <WorkerManagementSheet />
             ) : (
@@ -369,56 +223,23 @@ export function SettingsPage() {
             )}
           </div>
 
-          {/* Quick Actions Grid */}
-          <div className={`grid gap-3 ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {/* Admin Dashboard Link */}
-            {isAdmin && (
-              <motion.a
-                href="/admin"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 p-4 shadow-sm transition-colors hover:from-purple-700 hover:to-purple-800 text-white"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20">
-                  <Crown size={20} />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">{language === 'bn' ? 'অ্যাডমিন' : 'Admin'}</p>
-                  <p className="text-xs text-purple-200">{language === 'bn' ? 'ড্যাশবোর্ড' : 'Dashboard'}</p>
-                </div>
-              </motion.a>
-            )}
-            
+          {/* Quick Actions */}
+          {isAdmin && (
             <motion.a
-              href="/reports"
+              href="/admin"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 p-4 shadow-sm transition-colors hover:from-purple-700 hover:to-purple-800 text-primary-foreground"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
-                <FileText size={20} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground/20">
+                <Crown size={20} />
               </div>
               <div>
-                <p className="font-medium text-sm">{language === 'bn' ? 'রিপোর্ট' : 'Reports'}</p>
-                <p className="text-xs text-muted-foreground">{language === 'bn' ? 'দেখুন' : 'View'}</p>
+                <p className="font-medium text-sm">{language === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Admin Dashboard'}</p>
+                <p className="text-xs text-purple-200">{language === 'bn' ? 'সিস্টেম ম্যানেজমেন্ট' : 'System management'}</p>
               </div>
             </motion.a>
-            
-            <motion.a
-              href="/automation"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Cog size={20} />
-              </div>
-              <div>
-                <p className="font-medium text-sm">{language === 'bn' ? 'অটোমেশন' : 'Automation'}</p>
-                <p className="text-xs text-muted-foreground">{language === 'bn' ? 'সেটআপ' : 'Setup'}</p>
-              </div>
-            </motion.a>
-          </div>
+          )}
 
           {/* Viewer Notice */}
           {!canEditSettings && (
@@ -433,294 +254,116 @@ export function SettingsPage() {
             </Card>
           )}
 
-          {/* Farm Settings - Farmer & Admin */}
+          {/* Main Settings Tabs */}
           {canEditSettings && (
-            <>
-              {/* Farm Type Card - Top Priority */}
-              <SettingsSection 
-                title="Farm Type" 
-                titleBn="খামারের ধরণ"
-                icon={Egg}
-                defaultOpen={true}
-                language={language}
-              >
-                <FarmTypeCard />
-              </SettingsSection>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
+                <TabsTrigger value="farm-setup" className="text-xs sm:text-sm">
+                  <Home className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="hidden sm:inline">{t.farmSetup[language]}</span>
+                  <span className="sm:hidden">{language === 'bn' ? 'খামার' : 'Farm'}</span>
+                </TabsTrigger>
+                <TabsTrigger value="operation" className="text-xs sm:text-sm">
+                  <Settings className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="hidden sm:inline">{t.operation[language]}</span>
+                  <span className="sm:hidden">{language === 'bn' ? 'চালনা' : 'Ops'}</span>
+                </TabsTrigger>
+                <TabsTrigger value="reports" className="text-xs sm:text-sm">
+                  <BarChart3 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="hidden sm:inline">{t.reports[language]}</span>
+                  <span className="sm:hidden">{language === 'bn' ? 'ডেটা' : 'Data'}</span>
+                </TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="device" className="text-xs sm:text-sm">
+                    <Cpu className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                    <span className="hidden sm:inline">{t.device[language]}</span>
+                    <span className="sm:hidden">{language === 'bn' ? 'যন্ত্র' : 'Device'}</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
 
-              {/* Quick Mode Section */}
-              <SettingsSection 
-                title="Quick Mode Profiles" 
-                titleBn="কুইক মোড প্রোফাইল"
-                icon={Zap}
-                language={language}
-              >
-                <SmartModeCard compact />
-              </SettingsSection>
+              <TabsContent value="farm-setup">
+                <FarmSetupTab />
+              </TabsContent>
 
-              {/* Automation Section */}
-              <SettingsSection 
-                title="Weather & Automation" 
-                titleBn="আবহাওয়া ও অটোমেশন"
-                icon={Cloud}
-                language={language}
-              >
-                <div className="space-y-4">
-                  <WeatherAutoModeCard />
-                </div>
-              </SettingsSection>
+              <TabsContent value="operation">
+                <OperationPreferencesTab />
+              </TabsContent>
 
-              {/* Sensor Thresholds Section */}
-              <SettingsSection 
-                title="Sensor Thresholds" 
-                titleBn="সেন্সর থ্রেশহোল্ড"
-                icon={Thermometer}
-                language={language}
-              >
-                <div className="space-y-4">
-                  <ThresholdSettingsCard />
-                </div>
-              </SettingsSection>
+              <TabsContent value="reports">
+                <ReportsDataTab />
+              </TabsContent>
 
-              {/* Fan Control Section */}
-              <SettingsSection 
-                title="Fan Speed Control" 
-                titleBn="ফ্যান স্পিড কন্ট্রোল"
-                icon={Wind}
-                language={language}
-              >
-                <FanSpeedSettingsCard />
-              </SettingsSection>
-
-              {/* Advanced Automation Section */}
-              <SettingsSection 
-                title="Advanced Automation" 
-                titleBn="এডভান্সড অটোমেশন"
-                icon={Cog}
-                language={language}
-              >
-                <AdvancedAutomationSettingsCard />
-              </SettingsSection>
-
-              {/* Heat Stress Section */}
-              <SettingsSection 
-                title="Heat Stress Index (HSI)" 
-                titleBn="হিট স্ট্রেস ইনডেক্স (HSI)"
-                icon={Thermometer}
-                language={language}
-              >
-                <HSISettingsCard />
-              </SettingsSection>
-
-              {/* Water Monitoring Section */}
-              <SettingsSection 
-                title="Water Monitoring" 
-                titleBn="পানি মনিটরিং"
-                icon={Droplets}
-                language={language}
-              >
-                <WaterAnomalySettingsCard />
-              </SettingsSection>
-
-              {/* Battery & Power Section */}
-              <SettingsSection 
-                title="Battery & Power" 
-                titleBn="ব্যাটারি ও পাওয়ার"
-                icon={Battery}
-                language={language}
-              >
-                <BatterySettingsCard />
-              </SettingsSection>
-            </>
+              {isAdmin && (
+                <TabsContent value="device">
+                  <DeviceSystemTab />
+                </TabsContent>
+              )}
+            </Tabs>
           )}
 
           {/* Notifications Section - Available for all */}
-          <SettingsSection 
-            title="Notifications" 
-            titleBn="নোটিফিকেশন"
-            icon={Bell}
-            defaultOpen={!isOwner}
-            language={language}
-          >
-            <div className="space-y-4">
-              {/* Push Notifications */}
-              <div className="rounded-xl bg-muted/50 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {isSubscribed ? (
-                      <Bell className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <BellOff className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                      <p className="font-medium">
-                        {language === 'bn' ? 'পুশ নোটিফিকেশন' : 'Push Notifications'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {!isSupported 
-                          ? (language === 'bn' ? 'সমর্থিত নয়' : 'Not supported')
-                          : permission === 'granted'
-                            ? (language === 'bn' ? 'অনুমতি দেওয়া হয়েছে' : 'Permission granted')
-                            : permission === 'denied'
-                              ? (language === 'bn' ? 'অনুমতি প্রত্যাখ্যাত' : 'Permission denied')
-                              : (language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission required')
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
-                    {isSupported && (
-                      <Switch
-                        checked={isSubscribed}
-                        onCheckedChange={handlePushToggle}
-                        disabled={pushLoading || permission === 'denied'}
-                      />
-                    )}
-                  </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <p className="font-semibold">{language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'অ্যালার্ট ও আপডেট' : 'Alerts & updates'}
+                  </p>
                 </div>
               </div>
 
-              {/* Notification Sounds */}
-              <NotificationSoundCard />
-
-              {/* SMS Alerts - Owner only */}
-              {isOwner && <SmsAlertSettingsCard />}
-            </div>
-          </SettingsSection>
-
-          {/* Device Management - Owner only */}
-          {isOwner && (
-            <SettingsSection 
-              title="ESP32 Devices" 
-              titleBn="ESP32 ডিভাইস"
-              icon={Cpu}
-              language={language}
-            >
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {language === 'bn' 
-                    ? 'আপনার ESP32 ডিভাইসগুলোকে এই অ্যাপের সাথে সংযুক্ত করতে টোকেন ব্যবহার করুন।'
-                    : 'Use tokens to connect your ESP32 devices to this app.'}
-                </p>
-
-                {/* Add new device */}
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={language === 'bn' ? 'ডিভাইসের নাম' : 'Device name'}
-                      value={newDeviceName}
-                      onChange={(e) => setNewDeviceName(e.target.value)}
-                      className="flex-1"
-                    />
-                  </div>
-                  
-                  {/* Shed selector */}
-                  {sheds && sheds.length > 0 && (
-                    <Select 
-                      value={selectedShedForDevice} 
-                      onValueChange={setSelectedShedForDevice}
-                    >
-                      <SelectTrigger className="w-full">
-                        <div className="flex items-center gap-2">
-                          <Home size={14} className="text-muted-foreground" />
-                          <SelectValue placeholder={language === 'bn' ? 'শেড নির্বাচন করুন (ঐচ্ছিক)' : 'Select shed (optional)'} />
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border shadow-lg z-50">
-                        <SelectItem value="none">
-                          {language === 'bn' ? '🏠 কোনো শেড নয়' : '🏠 No specific shed'}
-                        </SelectItem>
-                        {sheds.map((shed) => (
-                          <SelectItem key={shed.id} value={shed.id}>
-                            🏠 {language === 'bn' ? shed.name : shed.name_en}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-
-                  <Button
-                    onClick={() => newDeviceName && addDeviceToken.mutate({ 
-                      name: newDeviceName, 
-                      shedId: selectedShedForDevice && selectedShedForDevice !== 'none' ? selectedShedForDevice : undefined 
-                    })}
-                    disabled={!newDeviceName || addDeviceToken.isPending}
-                    className="w-full"
-                  >
-                    <Plus size={16} className="mr-1" />
-                    {language === 'bn' ? 'ডিভাইস যোগ করুন' : 'Add Device'}
-                  </Button>
-                </div>
-
-                {/* Device list */}
-                <div className="space-y-2">
-                  {deviceTokens?.map((device) => {
-                    const deviceShed = sheds?.find(s => s.id === device.shed_id);
-                    return (
-                      <motion.div 
-                        key={device.id} 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center gap-2 rounded-xl bg-muted/50 p-3"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                          <Cpu size={18} className="text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm">{device.device_name}</p>
-                          {deviceShed && (
-                            <p className="text-xs text-primary flex items-center gap-1">
-                              <Home size={10} />
-                              {language === 'bn' ? deviceShed.name : deviceShed.name_en}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground font-mono truncate">
-                            {device.token.substring(0, 20)}...
-                          </p>
-                          {device.last_seen_at && (
-                            <p className="text-xs text-primary/80">
-                              🟢 {language === 'bn' ? 'সংযুক্ত' : 'Connected'}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => copyToClipboard(device.token)}
-                          className="h-8 w-8"
-                        >
-                          <Copy size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteDeviceToken.mutate(device.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                      </motion.div>
-                    );
-                  })}
-
-                  {(!deviceTokens || deviceTokens.length === 0) && (
-                    <div className="py-8 text-center">
-                      <Cpu className="mx-auto h-12 w-12 text-muted-foreground/50 mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        {language === 'bn' ? 'কোনো ডিভাইস নেই' : 'No devices yet'}
-                      </p>
+                {/* Push Notifications */}
+                <div className="rounded-xl bg-muted/50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {isSubscribed ? (
+                        <Bell className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <BellOff className="h-5 w-5 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium">
+                          {language === 'bn' ? 'পুশ নোটিফিকেশন' : 'Push Notifications'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {!isSupported 
+                            ? (language === 'bn' ? 'সমর্থিত নয়' : 'Not supported')
+                            : permission === 'granted'
+                              ? (language === 'bn' ? 'অনুমতি দেওয়া হয়েছে' : 'Permission granted')
+                              : permission === 'denied'
+                                ? (language === 'bn' ? 'অনুমতি প্রত্যাখ্যাত' : 'Permission denied')
+                                : (language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission required')
+                          }
+                        </p>
+                      </div>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
+                      {isSupported && (
+                        <Switch
+                          checked={isSubscribed}
+                          onCheckedChange={handlePushToggle}
+                          disabled={pushLoading || permission === 'denied'}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* ESP32 Code Generator */}
-                <div className="pt-4 border-t">
-                  <ESP32CodeGenerator language={language} />
-                </div>
+                {/* Notification Sounds */}
+                <NotificationSoundCard />
+
+                {/* SMS Alerts - Owner only */}
+                {isOwner && <SmsAlertSettingsCard />}
               </div>
-            </SettingsSection>
-          )}
-
+            </CardContent>
+          </Card>
         </motion.div>
       </main>
 
