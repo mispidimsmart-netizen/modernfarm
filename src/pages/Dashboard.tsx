@@ -212,6 +212,9 @@ export function Dashboard() {
               {/* Weather */}
               <WeatherCard />
               
+              {/* Inside-Outside Temperature Delta */}
+              <InsideOutsideDeltaCard />
+              
               {/* Quick Status Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <HeatStressStatusCard 
@@ -352,9 +355,8 @@ export function Dashboard() {
               {/* Automation Status */}
               <AutomationStatusCard />
               
-              {/* Sensor Health & Alerts */}
+              {/* Sensor Health */}
               <SensorHealthCard />
-              <InsideOutsideDeltaCard />
               
               {isLayer && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
               {isBroiler && broilerWaterResult && (
