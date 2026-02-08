@@ -316,6 +316,15 @@ Deno.serve(async (req) => {
       return await getLightingSchedule(supabase, userId);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🆕 GET /advanced-settings - Advanced automation settings for 7 modules
+    // Returns: min_vent, heater, fogger, airflow, curtain, water, lighting settings
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'GET' && path === 'advanced-settings') {
+      const shedId = url.searchParams.get('shed_id');
+      return await getAdvancedSettings(supabase, userId, shedId);
+    }
+
     if (req.method === 'GET' && path === 'alerts') {
       const limit = parseInt(url.searchParams.get('limit') || '20');
       const unacknowledgedOnly = url.searchParams.get('unacknowledged') === 'true';
@@ -2672,6 +2681,20 @@ async function handleFailsafeSync(
       .eq('user_id', userId)
       .eq('enabled', true);
 
+    // 6b. Get advanced automation settings
+    let advSettingsQuery = supabase
+      .from('advanced_automation_settings')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (device.shed_id) {
+      advSettingsQuery = advSettingsQuery.eq('shed_id', device.shed_id);
+    } else {
+      advSettingsQuery = advSettingsQuery.is('shed_id', null);
+    }
+    
+    const { data: advancedSettings } = await advSettingsQuery.maybeSingle();
+
     // 7. Get pending commands
     const { data: pendingCommands } = await supabase
       .from('device_commands')
@@ -2696,6 +2719,23 @@ async function handleFailsafeSync(
     // Determine if ESP32 needs settings update
     const needsSettingsUpdate = (body.cached_settings_version ?? 0) < settingsVersion;
 
+    // Build advanced automation object for ESP32
+    const advDefaults = {
+      min_vent_enabled: true, min_vent_temp_threshold: 26, min_vent_cycle_seconds: 40,
+      min_vent_interval_minutes: 5, min_vent_ceiling_fan_always_on: true,
+      heater_enabled: true, heater_on_temp: 20, heater_off_temp: 24, heater_tolerance: 0.7,
+      fogger_enabled: false, fogger_start_temp: 32, fogger_start_humidity_max: 85,
+      fogger_on_seconds: 40, fogger_pause_seconds: 120, fogger_stop_temp: 30, fogger_stop_humidity: 90,
+      airflow_enabled: true, airflow_early_age_days: 10, airflow_mid_age_days: 20,
+      airflow_mid_on_seconds: 30, airflow_mid_interval_minutes: 3,
+      airflow_night_on_seconds: 60, airflow_night_interval_minutes: 5,
+      lighting_fade_duration_minutes: 10,
+      curtain_advisory_enabled: true, curtain_open_temp_diff: 3, curtain_close_on_cold: true,
+      water_drop_threshold_percent: 30, water_night_spike_enabled: true,
+      water_zero_flow_alert: true, water_baseline_hours: 24,
+    };
+    const adv = advancedSettings || advDefaults;
+
     // Build response
     const response: Record<string, any> = {
       success: true,
@@ -2715,6 +2755,9 @@ async function handleFailsafeSync(
         power_on: currentStatus.power_on,
         fan_speed: currentStatus.fan_speed,
         manual_override: currentStatus.manual_override,
+        heater_on: currentStatus.heater_on ?? false,
+        fogger_on: currentStatus.fogger_on ?? false,
+        circulation_fan_on: currentStatus.circulation_fan_on ?? false,
       } : null,
       
       // Manual override status
@@ -2742,6 +2785,55 @@ async function handleFailsafeSync(
         hsi_automation_enabled: farmSettings.hsi_automation_enabled,
         water_anomaly_threshold: Number(farmSettings.water_anomaly_threshold),
         version: settingsVersion,
+      } : null,
+      
+      // 🆕 Advanced automation settings for 7 modules
+      advanced_automation: needsSettingsUpdate ? {
+        min_vent: {
+          enabled: adv.min_vent_enabled ?? advDefaults.min_vent_enabled,
+          temp_threshold: Number(adv.min_vent_temp_threshold ?? advDefaults.min_vent_temp_threshold),
+          cycle_seconds: adv.min_vent_cycle_seconds ?? advDefaults.min_vent_cycle_seconds,
+          interval_minutes: adv.min_vent_interval_minutes ?? advDefaults.min_vent_interval_minutes,
+          ceiling_fan_always_on: adv.min_vent_ceiling_fan_always_on ?? advDefaults.min_vent_ceiling_fan_always_on,
+        },
+        heater: {
+          enabled: adv.heater_enabled ?? advDefaults.heater_enabled,
+          on_temp: Number(adv.heater_on_temp ?? advDefaults.heater_on_temp),
+          off_temp: Number(adv.heater_off_temp ?? advDefaults.heater_off_temp),
+          tolerance: Number(adv.heater_tolerance ?? advDefaults.heater_tolerance),
+        },
+        fogger: {
+          enabled: adv.fogger_enabled ?? advDefaults.fogger_enabled,
+          start_temp: Number(adv.fogger_start_temp ?? advDefaults.fogger_start_temp),
+          start_humidity_max: adv.fogger_start_humidity_max ?? advDefaults.fogger_start_humidity_max,
+          on_seconds: adv.fogger_on_seconds ?? advDefaults.fogger_on_seconds,
+          pause_seconds: adv.fogger_pause_seconds ?? advDefaults.fogger_pause_seconds,
+          stop_temp: Number(adv.fogger_stop_temp ?? advDefaults.fogger_stop_temp),
+          stop_humidity: adv.fogger_stop_humidity ?? advDefaults.fogger_stop_humidity,
+        },
+        airflow: {
+          enabled: adv.airflow_enabled ?? advDefaults.airflow_enabled,
+          early_age_days: adv.airflow_early_age_days ?? advDefaults.airflow_early_age_days,
+          mid_age_days: adv.airflow_mid_age_days ?? advDefaults.airflow_mid_age_days,
+          mid_on_seconds: adv.airflow_mid_on_seconds ?? advDefaults.airflow_mid_on_seconds,
+          mid_interval_minutes: adv.airflow_mid_interval_minutes ?? advDefaults.airflow_mid_interval_minutes,
+          night_on_seconds: adv.airflow_night_on_seconds ?? advDefaults.airflow_night_on_seconds,
+          night_interval_minutes: adv.airflow_night_interval_minutes ?? advDefaults.airflow_night_interval_minutes,
+        },
+        curtain_advisory: {
+          enabled: adv.curtain_advisory_enabled ?? advDefaults.curtain_advisory_enabled,
+          open_temp_diff: Number(adv.curtain_open_temp_diff ?? advDefaults.curtain_open_temp_diff),
+          close_on_cold: adv.curtain_close_on_cold ?? advDefaults.curtain_close_on_cold,
+        },
+        water_analytics: {
+          drop_threshold_percent: adv.water_drop_threshold_percent ?? advDefaults.water_drop_threshold_percent,
+          night_spike_enabled: adv.water_night_spike_enabled ?? advDefaults.water_night_spike_enabled,
+          zero_flow_alert: adv.water_zero_flow_alert ?? advDefaults.water_zero_flow_alert,
+          baseline_hours: adv.water_baseline_hours ?? advDefaults.water_baseline_hours,
+        },
+        lighting: {
+          fade_duration_minutes: adv.lighting_fade_duration_minutes ?? advDefaults.lighting_fade_duration_minutes,
+        },
       } : null,
       
       // Lighting schedule for caching
@@ -3004,6 +3096,155 @@ async function getSystemStatus(
     console.error('System status error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to get system status', code: 'STATUS_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 GET /advanced-settings - Advanced Automation Settings Endpoint
+// ═══════════════════════════════════════════════════════════════════════════
+// Returns all 7 automation module settings for ESP32:
+// - Module 1: Minimum Ventilation Timer
+// - Module 2: Heater Control
+// - Module 3: Fogger Cooling
+// - Module 4: Broiler Airflow Growth Mode
+// - Module 5: Lighting fade duration
+// - Module 6: Curtain Advisory
+// - Module 7: Water Analytics
+// ═══════════════════════════════════════════════════════════════════════════
+async function getAdvancedSettings(
+  supabase: any, 
+  userId: string, 
+  shedId: string | null
+) {
+  try {
+    // Build query for advanced automation settings
+    let query = supabase
+      .from('advanced_automation_settings')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (shedId) {
+      query = query.eq('shed_id', shedId);
+    } else {
+      query = query.is('shed_id', null);
+    }
+
+    const { data: settings, error } = await query.maybeSingle();
+
+    if (error) {
+      console.error('Failed to get advanced settings:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to get advanced settings', code: 'FETCH_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Return default values if no settings exist
+    const defaults = {
+      min_vent_enabled: true,
+      min_vent_temp_threshold: 26,
+      min_vent_cycle_seconds: 40,
+      min_vent_interval_minutes: 5,
+      min_vent_ceiling_fan_always_on: true,
+      heater_enabled: true,
+      heater_on_temp: 20,
+      heater_off_temp: 24,
+      heater_tolerance: 0.7,
+      fogger_enabled: false,
+      fogger_start_temp: 32,
+      fogger_start_humidity_max: 85,
+      fogger_on_seconds: 40,
+      fogger_pause_seconds: 120,
+      fogger_stop_temp: 30,
+      fogger_stop_humidity: 90,
+      airflow_enabled: true,
+      airflow_early_age_days: 10,
+      airflow_mid_age_days: 20,
+      airflow_mid_on_seconds: 30,
+      airflow_mid_interval_minutes: 3,
+      airflow_night_on_seconds: 60,
+      airflow_night_interval_minutes: 5,
+      lighting_fade_duration_minutes: 10,
+      curtain_advisory_enabled: true,
+      curtain_open_temp_diff: 3,
+      curtain_close_on_cold: true,
+      water_drop_threshold_percent: 30,
+      water_night_spike_enabled: true,
+      water_zero_flow_alert: true,
+      water_baseline_hours: 24,
+      automation_priority: 'safety,heating,cooling,ventilation,lighting,advisory',
+    };
+
+    const data = settings || defaults;
+
+    // Format response in ESP32-friendly structure
+    const response = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      shed_id: shedId,
+      advanced_automation: {
+        min_vent: {
+          enabled: data.min_vent_enabled ?? defaults.min_vent_enabled,
+          temp_threshold: Number(data.min_vent_temp_threshold ?? defaults.min_vent_temp_threshold),
+          cycle_seconds: data.min_vent_cycle_seconds ?? defaults.min_vent_cycle_seconds,
+          interval_minutes: data.min_vent_interval_minutes ?? defaults.min_vent_interval_minutes,
+          ceiling_fan_always_on: data.min_vent_ceiling_fan_always_on ?? defaults.min_vent_ceiling_fan_always_on,
+        },
+        heater: {
+          enabled: data.heater_enabled ?? defaults.heater_enabled,
+          on_temp: Number(data.heater_on_temp ?? defaults.heater_on_temp),
+          off_temp: Number(data.heater_off_temp ?? defaults.heater_off_temp),
+          tolerance: Number(data.heater_tolerance ?? defaults.heater_tolerance),
+        },
+        fogger: {
+          enabled: data.fogger_enabled ?? defaults.fogger_enabled,
+          start_temp: Number(data.fogger_start_temp ?? defaults.fogger_start_temp),
+          start_humidity_max: data.fogger_start_humidity_max ?? defaults.fogger_start_humidity_max,
+          on_seconds: data.fogger_on_seconds ?? defaults.fogger_on_seconds,
+          pause_seconds: data.fogger_pause_seconds ?? defaults.fogger_pause_seconds,
+          stop_temp: Number(data.fogger_stop_temp ?? defaults.fogger_stop_temp),
+          stop_humidity: data.fogger_stop_humidity ?? defaults.fogger_stop_humidity,
+        },
+        airflow: {
+          enabled: data.airflow_enabled ?? defaults.airflow_enabled,
+          early_age_days: data.airflow_early_age_days ?? defaults.airflow_early_age_days,
+          mid_age_days: data.airflow_mid_age_days ?? defaults.airflow_mid_age_days,
+          mid_on_seconds: data.airflow_mid_on_seconds ?? defaults.airflow_mid_on_seconds,
+          mid_interval_minutes: data.airflow_mid_interval_minutes ?? defaults.airflow_mid_interval_minutes,
+          night_on_seconds: data.airflow_night_on_seconds ?? defaults.airflow_night_on_seconds,
+          night_interval_minutes: data.airflow_night_interval_minutes ?? defaults.airflow_night_interval_minutes,
+        },
+        curtain_advisory: {
+          enabled: data.curtain_advisory_enabled ?? defaults.curtain_advisory_enabled,
+          open_temp_diff: Number(data.curtain_open_temp_diff ?? defaults.curtain_open_temp_diff),
+          close_on_cold: data.curtain_close_on_cold ?? defaults.curtain_close_on_cold,
+        },
+        water_analytics: {
+          drop_threshold_percent: data.water_drop_threshold_percent ?? defaults.water_drop_threshold_percent,
+          night_spike_enabled: data.water_night_spike_enabled ?? defaults.water_night_spike_enabled,
+          zero_flow_alert: data.water_zero_flow_alert ?? defaults.water_zero_flow_alert,
+          baseline_hours: data.water_baseline_hours ?? defaults.water_baseline_hours,
+        },
+        lighting: {
+          fade_duration_minutes: data.lighting_fade_duration_minutes ?? defaults.lighting_fade_duration_minutes,
+        },
+      },
+      priority: (data.automation_priority ?? defaults.automation_priority).split(','),
+    };
+
+    console.log(`[Advanced Settings] User: ${userId}, Shed: ${shedId || 'global'}`);
+
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Get advanced settings error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to get advanced settings', code: 'FETCH_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
