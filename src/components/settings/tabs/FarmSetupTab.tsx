@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Egg, Drumstick, Sun, Cloud, Snowflake, CloudRain, 
   Baby, TrendingUp, Factory, Flame, Wind, Check,
-  Wand2, ChevronRight, Home, AlertTriangle
+  Wand2, ChevronRight, Home, AlertTriangle, Sparkles, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
@@ -14,6 +14,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveBatch } from '@/hooks/useBroilerData';
+import { useWeatherCache } from '@/hooks/useWeather';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +27,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+// Auto-detect season based on temperature and humidity
+function detectSeason(temperature: number | null, humidity: number | null, rainProbability: number | null): Season {
+  if (!temperature) return 'summer';
+  
+  // High rain probability = rainy season
+  if (rainProbability && rainProbability > 50) return 'rainy';
+  if (humidity && humidity > 85 && rainProbability && rainProbability > 30) return 'rainy';
+  
+  // Temperature based detection
+  if (temperature < 20) return 'winter';
+  if (temperature >= 30) return 'summer';
+  
+  // Moderate temperature with high humidity = likely rainy
+  if (temperature >= 20 && temperature < 30 && humidity && humidity > 80) return 'rainy';
+  
+  return 'summer';
+}
 type FarmType = 'layer' | 'broiler';
 type Season = 'summer' | 'winter' | 'rainy';
 type FarmSize = 'small' | 'medium' | 'large';
@@ -129,16 +150,30 @@ export function FarmSetupTab() {
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
   const { data: activeBatch } = useActiveBatch();
+  const { data: weatherData } = useWeatherCache();
   const { toast } = useToast();
 
+  // Auto-detect season from weather data
+  const autoDetectedSeason = useMemo(() => {
+    return detectSeason(
+      weatherData?.temperature ?? null,
+      weatherData?.humidity ?? null,
+      weatherData?.rain_probability ?? null
+    );
+  }, [weatherData]);
+
   const [farmType, setFarmType] = useState<FarmType>((profile?.farm_type as FarmType) || 'layer');
-  const [season, setSeason] = useState<Season>('summer');
+  const [seasonOverride, setSeasonOverride] = useState<Season | null>(null);
+  const [isSeasonManual, setIsSeasonManual] = useState(false);
   const [farmSize, setFarmSize] = useState<FarmSize>('medium');
   const [selectedProfile, setSelectedProfile] = useState<ProfileType>('production');
   const [birdAge, setBirdAge] = useState<number>(activeBatch?.start_date 
     ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24))
     : 0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Active season (auto or manual)
+  const activeSeason = isSeasonManual && seasonOverride ? seasonOverride : autoDetectedSeason;
 
   const handleApplyClick = () => {
     setShowConfirmDialog(true);
@@ -253,41 +288,99 @@ export function FarmSetupTab() {
         </Card>
       )}
 
-      {/* Season Selection */}
+      {/* Season Detection */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Cloud className="h-5 w-5 text-primary" />
-            {language === 'bn' ? 'মৌসুম' : 'Season'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? 'বর্তমান আবহাওয়া অনুযায়ী নির্বাচন করুন' 
-              : 'Select based on current weather'}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Cloud className="h-5 w-5 text-primary" />
+                {language === 'bn' ? 'মৌসুম' : 'Season'}
+                {!isSeasonManual && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {language === 'bn' ? 'অটো' : 'Auto'}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {language === 'bn' 
+                  ? isSeasonManual 
+                    ? 'ম্যানুয়ালি নির্বাচিত' 
+                    : `Weather API থেকে স্বয়ংক্রিয়ভাবে সনাক্ত (${weatherData?.temperature ?? '--'}°C, ${weatherData?.humidity ?? '--'}%)`
+                  : isSeasonManual
+                    ? 'Manually selected'
+                    : `Auto-detected from Weather API (${weatherData?.temperature ?? '--'}°C, ${weatherData?.humidity ?? '--'}%)`}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="season-manual" className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
+              </Label>
+              <Switch
+                id="season-manual"
+                checked={isSeasonManual}
+                onCheckedChange={(checked) => {
+                  setIsSeasonManual(checked);
+                  if (!checked) setSeasonOverride(null);
+                }}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-2">
             {SEASONS.map((s) => {
               const Icon = s.icon;
-              const isSelected = season === s.id;
+              const isSelected = activeSeason === s.id;
+              const isAutoDetected = !isSeasonManual && autoDetectedSeason === s.id;
               return (
                 <motion.button
                   key={s.id}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setSeason(s.id)}
-                  className={`rounded-xl p-3 text-center transition-all ${
+                  onClick={() => {
+                    if (isSeasonManual) {
+                      setSeasonOverride(s.id);
+                    } else {
+                      // Enable manual mode and set this season
+                      setIsSeasonManual(true);
+                      setSeasonOverride(s.id);
+                    }
+                  }}
+                  disabled={!isSeasonManual && isAutoDetected}
+                  className={`relative rounded-xl p-3 text-center transition-all ${
                     isSelected
                       ? `${s.bgColor} border-2 border-current ${s.color}`
                       : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
-                  }`}
+                  } ${!isSeasonManual && !isAutoDetected ? 'opacity-50' : ''}`}
                 >
+                  {isAutoDetected && !isSeasonManual && (
+                    <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                      <Sparkles className="h-3 w-3" />
+                    </div>
+                  )}
                   <Icon className={`h-6 w-6 mx-auto mb-1 ${isSelected ? s.color : 'text-muted-foreground'}`} />
                   <p className="text-sm font-medium">{s.name[language]}</p>
                 </motion.button>
               );
             })}
           </div>
+          
+          {/* Reset to auto button */}
+          {isSeasonManual && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3 w-full text-muted-foreground"
+              onClick={() => {
+                setIsSeasonManual(false);
+                setSeasonOverride(null);
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {language === 'bn' ? 'অটো ডিটেক্টে ফিরে যান' : 'Reset to Auto-detect'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
