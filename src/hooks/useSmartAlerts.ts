@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useAlerts } from './useFarmData';
 import { useLiveSensorData } from './useSensorData';
 import { useNotificationSound } from './useNotificationSound';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmType, getBroilerTempRangeByDays } from './useFarmType';
+import { useActiveBatch } from './useBroilerData';
+import { differenceInDays, parseISO } from 'date-fns';
 
 export type AlertLevel = 'info' | 'warning' | 'danger';
 
@@ -190,6 +193,30 @@ export const ALERT_TEMPLATES: Record<string, {
     }),
     level: 'info',
   },
+  broiler_cold: {
+    title: { en: 'Broiler too cold for age', bn: 'ব্রয়লার বয়স অনুযায়ী ঠান্ডা' },
+    getMessage: (data) => ({
+      en: `Temperature ${data?.temp || '--'}°C is below target ${data?.target || '--'}°C for ${data?.age || '--'} day old chicks.`,
+      bn: `তাপমাত্রা ${data?.temp || '--'}°সে, ${data?.age || '--'} দিনের বাচ্চার জন্য টার্গেট ${data?.target || '--'}°সে।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Turn on heater immediately to maintain broiler temperature',
+      bn: 'ব্রয়লারের তাপমাত্রা বজায় রাখতে এখনই হিটার চালু করুন',
+    }),
+    level: 'danger',
+  },
+  broiler_hot: {
+    title: { en: 'Broiler too hot for age', bn: 'ব্রয়লার বয়স অনুযায়ী গরম' },
+    getMessage: (data) => ({
+      en: `Temperature ${data?.temp || '--'}°C is above target ${data?.target || '--'}°C for ${data?.age || '--'} day old chicks.`,
+      bn: `তাপমাত্রা ${data?.temp || '--'}°সে, ${data?.age || '--'} দিনের বাচ্চার জন্য টার্গেট ${data?.target || '--'}°সে।`,
+    }),
+    getSuggestion: () => ({
+      en: 'Turn off heater and increase ventilation',
+      bn: 'হিটার বন্ধ করুন এবং ভেন্টিলেশন বাড়ান',
+    }),
+    level: 'warning',
+  },
 };
 
 // Group related alerts together
@@ -252,10 +279,24 @@ export function useSmartAlerts() {
   const sensorData = useLiveSensorData();
   const { playDangerAlarm, playWarningSound } = useNotificationSound();
   const { language } = useAuth();
+  const { isBroiler, isLayer } = useFarmType();
+  const { data: activeBatch } = useActiveBatch();
   
   const [smartAlerts, setSmartAlerts] = useState<SmartAlert[]>([]);
   const lastNotified = useRef<Map<string, number>>(new Map());
   const lastSoundPlayed = useRef<Map<AlertLevel, number>>(new Map());
+
+  // Calculate broiler age
+  const broilerAgeDays = useMemo(() => {
+    if (!isBroiler || !activeBatch?.start_date) return 0;
+    return differenceInDays(new Date(), parseISO(activeBatch.start_date));
+  }, [isBroiler, activeBatch]);
+
+  // Get broiler target temp range
+  const broilerTempTarget = useMemo(() => {
+    if (!isBroiler || broilerAgeDays <= 0) return null;
+    return getBroilerTempRangeByDays(broilerAgeDays);
+  }, [isBroiler, broilerAgeDays]);
 
   // Convert raw alerts to smart alerts
   const processAlerts = useCallback(() => {
@@ -265,6 +306,8 @@ export function useSmartAlerts() {
         temp: sensorData?.temperature,
         humidity: sensorData?.humidity,
         ppm: sensorData?.ammonia,
+        target: broilerTempTarget?.targetTemp,
+        age: broilerAgeDays,
       });
       const suggestion = template.getSuggestion();
 
@@ -283,8 +326,57 @@ export function useSmartAlerts() {
       };
     });
 
+    // Add broiler-specific temperature alerts based on live sensor data
+    if (isBroiler && broilerTempTarget && sensorData?.temperature) {
+      const temp = sensorData.temperature;
+      const target = broilerTempTarget.targetTemp;
+      const tolerance = 2; // 2°C tolerance
+
+      // Check if too cold for broiler age
+      if (temp < target - tolerance) {
+        const coldTemplate = ALERT_TEMPLATES['broiler_cold'];
+        const coldMsg = coldTemplate.getMessage({ temp, target, age: broilerAgeDays });
+        const coldSuggestion = coldTemplate.getSuggestion();
+        
+        processed.push({
+          id: `broiler_cold_${Date.now()}`,
+          type: 'broiler_cold',
+          level: coldTemplate.level as AlertLevel,
+          title: coldTemplate.title.en,
+          titleBn: coldTemplate.title.bn,
+          message: coldMsg.en,
+          messageBn: coldMsg.bn,
+          suggestion: coldSuggestion.en,
+          suggestionBn: coldSuggestion.bn,
+          timestamp: new Date(),
+          acknowledged: false,
+        });
+      }
+
+      // Check if too hot for broiler age
+      if (temp > target + tolerance) {
+        const hotTemplate = ALERT_TEMPLATES['broiler_hot'];
+        const hotMsg = hotTemplate.getMessage({ temp, target, age: broilerAgeDays });
+        const hotSuggestion = hotTemplate.getSuggestion();
+        
+        processed.push({
+          id: `broiler_hot_${Date.now()}`,
+          type: 'broiler_hot',
+          level: hotTemplate.level as AlertLevel,
+          title: hotTemplate.title.en,
+          titleBn: hotTemplate.title.bn,
+          message: hotMsg.en,
+          messageBn: hotMsg.bn,
+          suggestion: hotSuggestion.en,
+          suggestionBn: hotSuggestion.bn,
+          timestamp: new Date(),
+          acknowledged: false,
+        });
+      }
+    }
+
     return groupAlerts(processed);
-  }, [rawAlerts, sensorData]);
+  }, [rawAlerts, sensorData, isBroiler, broilerTempTarget, broilerAgeDays]);
 
   // Handle notifications with anti-spam
   const notify = useCallback((alert: SmartAlert) => {
