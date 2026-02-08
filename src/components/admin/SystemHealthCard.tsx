@@ -146,16 +146,19 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
   const [open, setOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
 
-  // Fetch all profiles for user selector
+  // Fetch all profiles for user selector with farm_type
   const { data: profiles } = useQuery({
     queryKey: ['admin-profiles-for-health'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, farm_name, phone, avatar_url')
+        .select('id, farm_name, phone, avatar_url, farm_type')
         .order('farm_name');
       if (error) throw error;
-      return data || [];
+      return (data || []).map(p => ({
+        ...p,
+        farm_type: (p as any).farm_type || 'layer',
+      }));
     },
   });
 

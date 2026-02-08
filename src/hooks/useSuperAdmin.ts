@@ -10,17 +10,29 @@ export interface AdminUser {
   created_at: string;
   user_name: string | null;
   email: string | null;
-  farm_type: string | null;
+  farm_type: 'layer' | 'broiler' | string | null;
   is_blocked: boolean;
   blocked_at: string | null;
   blocked_by: string | null;
   sheds_count?: number;
+  active_batch_count?: number;
+  broiler_age_days?: number;
   last_sensor_reading?: {
     temperature: number;
     humidity: number;
     ammonia: number;
     recorded_at: string;
   };
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalSheds: number;
+  activeDevices: number;
+  alertsToday: number;
+  layerFarms: number;
+  broilerFarms: number;
+  activeBroilerBatches: number;
 }
 
 export interface AdminStats {
@@ -133,11 +145,28 @@ export function useSuperAdmin() {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today.toISOString());
 
+      // Get layer vs broiler farm counts
+      const { data: farmTypeData } = await supabase
+        .from('profiles')
+        .select('farm_type');
+      
+      const layerFarms = farmTypeData?.filter(p => (p as any).farm_type !== 'broiler').length || 0;
+      const broilerFarms = farmTypeData?.filter(p => (p as any).farm_type === 'broiler').length || 0;
+
+      // Get active broiler batches
+      const { count: activeBatches } = await supabase
+        .from('broiler_batches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
       const adminStats: AdminStats = {
         totalUsers: usersCount || 0,
         totalSheds: shedsCount || 0,
         activeDevices: devicesCount || 0,
         alertsToday: alertsCount || 0,
+        layerFarms,
+        broilerFarms,
+        activeBroilerBatches: activeBatches || 0,
       };
 
       return adminStats;

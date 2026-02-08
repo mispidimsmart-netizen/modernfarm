@@ -49,6 +49,12 @@ const t = {
     bodyPlaceholder: 'আপনার বার্তা এখানে লিখুন...',
     recentNotifications: 'সাম্প্রতিক নোটিফিকেশন',
     noRecentNotifications: 'কোনো সাম্প্রতিক নোটিফিকেশন নেই',
+    farmTypeFilter: 'ফার্ম ফিল্টার',
+    all: 'সব',
+    layer: 'লেয়ার',
+    broiler: 'ব্রয়লার',
+    selectLayerFarms: 'সব লেয়ার ফার্ম',
+    selectBroilerFarms: 'সব ব্রয়লার ফার্ম',
   },
   en: {
     title: 'Send Notification',
@@ -70,6 +76,12 @@ const t = {
     bodyPlaceholder: 'Write your message here...',
     recentNotifications: 'Recent Notifications',
     noRecentNotifications: 'No recent notifications',
+    farmTypeFilter: 'Farm Filter',
+    all: 'All',
+    layer: 'Layer',
+    broiler: 'Broiler',
+    selectLayerFarms: 'All Layer Farms',
+    selectBroilerFarms: 'All Broiler Farms',
   },
 };
 
@@ -85,15 +97,16 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [severity, setSeverity] = useState<'warning' | 'danger'>('warning');
+  const [farmTypeFilter, setFarmTypeFilter] = useState<'all' | 'layer' | 'broiler'>('all');
 
   // Fetch all users with push subscriptions
   const { data: users, isLoading: loadingUsers } = useQuery({
     queryKey: ['admin-users-with-subscriptions'],
     queryFn: async () => {
-      // Get all profiles
+      // Get all profiles with farm_type
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, farm_name, phone, avatar_url')
+        .select('id, farm_name, phone, avatar_url, farm_type')
         .order('farm_name');
 
       if (profilesError) throw profilesError;
@@ -109,9 +122,16 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
 
       return profiles.map(p => ({
         ...p,
+        farm_type: (p as any).farm_type || 'layer',
         hasPushEnabled: usersWithPush.has(p.id),
       }));
     },
+  });
+
+  // Filter users by farm type
+  const filteredUsers = users?.filter(u => {
+    if (farmTypeFilter === 'all') return true;
+    return u.farm_type === farmTypeFilter;
   });
 
   // Send notification mutation
@@ -186,11 +206,18 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
   };
 
   const toggleAll = () => {
-    if (selectedUsers.length === users?.length) {
+    const usersToSelect = filteredUsers || [];
+    if (selectedUsers.length === usersToSelect.length && usersToSelect.every(u => selectedUsers.includes(u.id))) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers(users?.map(u => u.id) || []);
+      setSelectedUsers(usersToSelect.map(u => u.id));
     }
+  };
+
+  const selectByFarmType = (type: 'layer' | 'broiler') => {
+    const usersOfType = users?.filter(u => u.farm_type === type) || [];
+    setSelectedUsers(usersOfType.map(u => u.id));
+    setFarmTypeFilter(type);
   };
 
   const canSend = selectedUsers.length > 0 && title.trim() && body.trim();
@@ -298,6 +325,40 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
               {labels.selectAll}
             </Button>
           </div>
+          
+          {/* Farm Type Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button
+              variant={farmTypeFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFarmTypeFilter('all')}
+              className={farmTypeFilter === 'all' 
+                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0' 
+                : 'border-blue-500/30 text-blue-300 hover:bg-blue-500/20'}
+            >
+              {labels.all} ({users?.length || 0})
+            </Button>
+            <Button
+              variant={farmTypeFilter === 'layer' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => selectByFarmType('layer')}
+              className={farmTypeFilter === 'layer' 
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white border-0' 
+                : 'border-amber-500/30 text-amber-300 hover:bg-amber-500/20'}
+            >
+              🥚 {labels.layer} ({users?.filter(u => u.farm_type !== 'broiler').length || 0})
+            </Button>
+            <Button
+              variant={farmTypeFilter === 'broiler' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => selectByFarmType('broiler')}
+              className={farmTypeFilter === 'broiler' 
+                ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white border-0' 
+                : 'border-orange-500/30 text-orange-300 hover:bg-orange-500/20'}
+            >
+              🐔 {labels.broiler} ({users?.filter(u => u.farm_type === 'broiler').length || 0})
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-4">
           <ScrollArea className="h-[300px]">
@@ -307,9 +368,9 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
                   <Skeleton key={i} className="h-14 w-full bg-blue-900/30" />
                 ))}
               </div>
-            ) : users && users.length > 0 ? (
+            ) : filteredUsers && filteredUsers.length > 0 ? (
               <div className="space-y-2">
-                {users.map(user => (
+                {filteredUsers.map(user => (
                   <div
                     key={user.id}
                     className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
@@ -330,8 +391,20 @@ export function AdminNotificationSender({ language = 'bn' }: AdminNotificationSe
                         {user.farm_name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{user.farm_name}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-white truncate">{user.farm_name}</p>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-[10px] px-1.5 py-0 shrink-0 ${
+                            user.farm_type === 'broiler' 
+                              ? 'border-orange-500/50 text-orange-300' 
+                              : 'border-amber-500/50 text-amber-300'
+                          }`}
+                        >
+                          {user.farm_type === 'broiler' ? '🐔' : '🥚'}
+                        </Badge>
+                      </div>
                       <p className="text-xs text-blue-200/60">{user.phone || 'No phone'}</p>
                     </div>
                     {user.hasPushEnabled && (
