@@ -45,6 +45,22 @@ function detectSeason(temperature: number | null, humidity: number | null, rainP
   
   return 'summer';
 }
+
+// Auto-detect profile based on bird age
+function detectProfile(ageDays: number, farmType: FarmType): ProfileType {
+  if (farmType === 'broiler') {
+    // Broiler age-based profiles
+    if (ageDays <= 10) return 'chick_care';
+    if (ageDays <= 21) return 'grower';
+    return 'production';
+  } else {
+    // Layer age-based profiles (weeks)
+    const ageWeeks = Math.floor(ageDays / 7);
+    if (ageWeeks <= 4) return 'chick_care';
+    if (ageWeeks <= 18) return 'grower';
+    return 'production';
+  }
+}
 type FarmType = 'layer' | 'broiler';
 type Season = 'summer' | 'winter' | 'rainy';
 type FarmSize = 'small' | 'medium' | 'large';
@@ -166,11 +182,26 @@ export function FarmSetupTab() {
   const [seasonOverride, setSeasonOverride] = useState<Season | null>(null);
   const [isSeasonManual, setIsSeasonManual] = useState(false);
   const [farmSize, setFarmSize] = useState<FarmSize>('medium');
-  const [selectedProfile, setSelectedProfile] = useState<ProfileType>('production');
-  const [birdAge, setBirdAge] = useState<number>(activeBatch?.start_date 
-    ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24))
-    : 0);
+  const [profileOverride, setProfileOverride] = useState<ProfileType | null>(null);
+  const [isProfileManual, setIsProfileManual] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Calculate bird age from active batch or flock info
+  const birdAge = useMemo(() => {
+    if (farmType === 'broiler' && activeBatch?.start_date) {
+      return Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24));
+    }
+    // For layers, we could use flock_info purchase_date if available
+    return 0;
+  }, [farmType, activeBatch]);
+
+  // Auto-detect profile from bird age
+  const autoDetectedProfile = useMemo(() => {
+    return detectProfile(birdAge, farmType);
+  }, [birdAge, farmType]);
+
+  // Active profile (auto or manual)
+  const activeProfile = isProfileManual && profileOverride ? profileOverride : autoDetectedProfile;
 
   // Active season (auto or manual)
   const activeSeason = isSeasonManual && seasonOverride ? seasonOverride : autoDetectedSeason;
@@ -246,41 +277,42 @@ export function FarmSetupTab() {
         </CardContent>
       </Card>
 
-      {/* Bird Age / Hatch Date */}
+      {/* Bird Age Display (for broiler) */}
       {farmType === 'broiler' && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Baby className="h-5 w-5 text-pink-500" />
               {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
+              <Badge variant="secondary" className="ml-2 text-xs">
+                <Sparkles className="h-3 w-3 mr-1" />
+                {language === 'bn' ? 'অটো' : 'Auto'}
+              </Badge>
             </CardTitle>
             <CardDescription>
               {language === 'bn' 
-                ? 'বয়স অনুযায়ী তাপমাত্রা স্বয়ংক্রিয়ভাবে সমন্বয় হবে' 
-                : 'Temperature will auto-adjust based on age'}
+                ? activeBatch?.start_date 
+                  ? `ব্যাচ শুরুর তারিখ থেকে গণনা করা হয়েছে`
+                  : 'কোনো সক্রিয় ব্যাচ নেই - Farm Management এ ব্যাচ তৈরি করুন'
+                : activeBatch?.start_date
+                  ? `Calculated from batch start date`
+                  : 'No active batch - Create a batch in Farm Management'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <Label className="text-sm text-muted-foreground mb-2 block">
-                  {language === 'bn' ? 'বয়স (দিন)' : 'Age (days)'}
-                </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={birdAge}
-                  onChange={(e) => setBirdAge(Number(e.target.value))}
-                  className="text-center text-xl font-bold h-14"
-                />
-              </div>
-              <div className="text-center">
+              <div className="flex-1 text-center p-4 rounded-xl bg-muted/50">
+                <p className="text-4xl font-bold text-primary">{birdAge}</p>
                 <p className="text-sm text-muted-foreground">
-                  {language === 'bn' ? 'প্রস্তাবিত তাপমাত্রা' : 'Target Temp'}
+                  {language === 'bn' ? 'দিন বয়স' : 'days old'}
                 </p>
-                <p className="text-3xl font-bold text-primary">
+              </div>
+              <div className="text-center p-4 rounded-xl bg-muted/50">
+                <p className="text-3xl font-bold text-orange-500">
                   {birdAge <= 3 ? 33 : birdAge <= 7 ? 31 : birdAge <= 14 ? 29 : birdAge <= 21 ? 26 : birdAge <= 28 ? 24 : 22}°C
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {language === 'bn' ? 'টার্গেট তাপমাত্রা' : 'Target Temp'}
                 </p>
               </div>
             </div>
@@ -415,37 +447,84 @@ export function FarmSetupTab() {
         </CardContent>
       </Card>
 
-      {/* Profile Selection */}
+      {/* Profile Selection - Auto-detected from bird age */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Wand2 className="h-5 w-5 text-primary" />
-            {language === 'bn' ? 'পরিচালনা প্রোফাইল' : 'Management Profile'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? 'প্রোফাইল অনুযায়ী সেটিংস স্বয়ংক্রিয়ভাবে সমন্বয় হবে' 
-              : 'Settings will auto-adjust based on profile'}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-primary" />
+                {language === 'bn' ? 'পরিচালনা প্রোফাইল' : 'Management Profile'}
+                {!isProfileManual && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {language === 'bn' ? 'অটো' : 'Auto'}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {language === 'bn' 
+                  ? isProfileManual 
+                    ? 'ম্যানুয়ালি নির্বাচিত' 
+                    : `পাখির বয়স (${birdAge} দিন) থেকে স্বয়ংক্রিয়ভাবে নির্ধারিত`
+                  : isProfileManual
+                    ? 'Manually selected'
+                    : `Auto-detected from bird age (${birdAge} days)`}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="profile-manual" className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
+              </Label>
+              <Switch
+                id="profile-manual"
+                checked={isProfileManual}
+                onCheckedChange={(checked) => {
+                  setIsProfileManual(checked);
+                  if (!checked) setProfileOverride(null);
+                }}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {PROFILES.map((p) => {
               const Icon = p.icon;
-              const isSelected = selectedProfile === p.id;
+              const isSelected = activeProfile === p.id;
+              const isAutoDetected = !isProfileManual && autoDetectedProfile === p.id;
               return (
                 <motion.button
                   key={p.id}
                   whileTap={{ scale: 0.99 }}
-                  onClick={() => setSelectedProfile(p.id)}
+                  onClick={() => {
+                    if (isProfileManual) {
+                      setProfileOverride(p.id);
+                    } else {
+                      // Enable manual mode and set this profile
+                      setIsProfileManual(true);
+                      setProfileOverride(p.id);
+                    }
+                  }}
+                  disabled={!isProfileManual && isAutoDetected}
                   className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all ${
                     isSelected
                       ? `${p.bgColor} border-2 border-current ${p.color}`
                       : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
-                  }`}
+                  } ${!isProfileManual && !isAutoDetected ? 'opacity-50' : ''}`}
                 >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${p.bgColor}`}>
+                  {isAutoDetected && !isProfileManual && (
+                    <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                      <Sparkles className="h-3 w-3" />
+                    </div>
+                  )}
+                  <div className={`relative flex h-10 w-10 items-center justify-center rounded-lg ${p.bgColor}`}>
                     <Icon className={`h-5 w-5 ${p.color}`} />
+                    {isAutoDetected && !isProfileManual && (
+                      <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Sparkles className="h-2.5 w-2.5" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="font-medium">{p.name[language]}</p>
@@ -456,6 +535,22 @@ export function FarmSetupTab() {
               );
             })}
           </div>
+          
+          {/* Reset to auto button */}
+          {isProfileManual && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3 w-full text-muted-foreground"
+              onClick={() => {
+                setIsProfileManual(false);
+                setProfileOverride(null);
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {language === 'bn' ? 'অটো ডিটেক্টে ফিরে যান' : 'Reset to Auto-detect'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
