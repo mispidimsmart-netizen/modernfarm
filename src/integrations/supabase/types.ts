@@ -595,6 +595,117 @@ export type Database = {
         }
         Relationships: []
       }
+      device_calibration: {
+        Row: {
+          air_volume_cubic_meters: number | null
+          calibration_score: number | null
+          clean_air_nh3_ppm: number | null
+          created_at: string
+          device_token_id: string | null
+          fan_direction_test_passed: boolean | null
+          fan_direction_tested_at: string | null
+          farm_height_meters: number | null
+          farm_length_meters: number | null
+          farm_width_meters: number | null
+          heater_temp_rise: number | null
+          heater_test_passed: boolean | null
+          heater_tested_at: string | null
+          id: string
+          nh3_baseline_calibrated_at: string | null
+          overall_status: string | null
+          shed_id: string | null
+          temp_drop_rate: number | null
+          temp_sensor_placement_status: string | null
+          temp_sensor_test_passed: boolean | null
+          temp_sensor_tested_at: string | null
+          updated_at: string
+          user_id: string
+          ventilation_baseline: number | null
+          water_flow_test_passed: boolean | null
+          water_flow_tested_at: string | null
+          water_normal_pulse_pattern: number | null
+          wizard_completed: boolean | null
+          wizard_completed_at: string | null
+        }
+        Insert: {
+          air_volume_cubic_meters?: number | null
+          calibration_score?: number | null
+          clean_air_nh3_ppm?: number | null
+          created_at?: string
+          device_token_id?: string | null
+          fan_direction_test_passed?: boolean | null
+          fan_direction_tested_at?: string | null
+          farm_height_meters?: number | null
+          farm_length_meters?: number | null
+          farm_width_meters?: number | null
+          heater_temp_rise?: number | null
+          heater_test_passed?: boolean | null
+          heater_tested_at?: string | null
+          id?: string
+          nh3_baseline_calibrated_at?: string | null
+          overall_status?: string | null
+          shed_id?: string | null
+          temp_drop_rate?: number | null
+          temp_sensor_placement_status?: string | null
+          temp_sensor_test_passed?: boolean | null
+          temp_sensor_tested_at?: string | null
+          updated_at?: string
+          user_id: string
+          ventilation_baseline?: number | null
+          water_flow_test_passed?: boolean | null
+          water_flow_tested_at?: string | null
+          water_normal_pulse_pattern?: number | null
+          wizard_completed?: boolean | null
+          wizard_completed_at?: string | null
+        }
+        Update: {
+          air_volume_cubic_meters?: number | null
+          calibration_score?: number | null
+          clean_air_nh3_ppm?: number | null
+          created_at?: string
+          device_token_id?: string | null
+          fan_direction_test_passed?: boolean | null
+          fan_direction_tested_at?: string | null
+          farm_height_meters?: number | null
+          farm_length_meters?: number | null
+          farm_width_meters?: number | null
+          heater_temp_rise?: number | null
+          heater_test_passed?: boolean | null
+          heater_tested_at?: string | null
+          id?: string
+          nh3_baseline_calibrated_at?: string | null
+          overall_status?: string | null
+          shed_id?: string | null
+          temp_drop_rate?: number | null
+          temp_sensor_placement_status?: string | null
+          temp_sensor_test_passed?: boolean | null
+          temp_sensor_tested_at?: string | null
+          updated_at?: string
+          user_id?: string
+          ventilation_baseline?: number | null
+          water_flow_test_passed?: boolean | null
+          water_flow_tested_at?: string | null
+          water_normal_pulse_pattern?: number | null
+          wizard_completed?: boolean | null
+          wizard_completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_calibration_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_calibration_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_commands: {
         Row: {
           command_type: string
