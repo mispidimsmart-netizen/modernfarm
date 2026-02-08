@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import { 
   Cpu, Wifi, RefreshCw, Upload, Settings2, Thermometer,
   Droplets, Wind, AlertTriangle, Clock, FileCode, Trash2,
   Copy, Plus, Home, Signal, HardDrive, Bug, ChevronDown,
-  Shield, Zap, RotateCcw
+  Shield, Zap, RotateCcw, Activity
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
@@ -87,7 +90,20 @@ export function DeviceSystemTab() {
   const [newDeviceName, setNewDeviceName] = useState('');
   const [selectedShedForDevice, setSelectedShedForDevice] = useState<string>('');
   const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
-  const [debugMode, setDebugMode] = useState(false);
+  const [debugMode, setDebugMode] = useState(() => {
+    const saved = localStorage.getItem('farmeye_debug_mode');
+    return saved === 'true';
+  });
+  const [showEventLogs, setShowEventLogs] = useState(false);
+  const [showErrorLogs, setShowErrorLogs] = useState(false);
+
+  // Persist debug mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('farmeye_debug_mode', String(debugMode));
+    if (debugMode) {
+      console.log('[FarmEye Debug] Debug mode enabled');
+    }
+  }, [debugMode]);
 
   // Calibration offsets
   const [tempOffset, setTempOffset] = useState(0);
@@ -108,6 +124,41 @@ export function DeviceSystemTab() {
       return data;
     },
     enabled: !!user,
+  });
+
+  // Fetch alerts for event logs
+  const { data: eventLogs, refetch: refetchEventLogs } = useQuery({
+    queryKey: ['event_logs', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('alerts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && showEventLogs,
+  });
+
+  // Fetch error alerts specifically
+  const { data: errorLogs, refetch: refetchErrorLogs } = useQuery({
+    queryKey: ['error_logs', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('alerts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('severity', 'danger')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && showErrorLogs,
   });
 
   // Add device token
@@ -446,7 +497,7 @@ export function DeviceSystemTab() {
         title="Logs & Debug"
         titleBn="লগ ও ডিবাগ"
         icon={Bug}
-        color="bg-gray-500/10 text-gray-500"
+        color="bg-muted text-muted-foreground"
         language={language}
       >
         <div className="space-y-4">
@@ -457,18 +508,151 @@ export function DeviceSystemTab() {
                 {language === 'bn' ? 'বিস্তারিত লগ দেখুন' : 'View detailed logs'}
               </p>
             </div>
-            <Switch checked={debugMode} onCheckedChange={setDebugMode} />
+            <Switch 
+              checked={debugMode} 
+              onCheckedChange={(checked) => {
+                setDebugMode(checked);
+                toast({
+                  title: checked 
+                    ? (language === 'bn' ? 'ডিবাগ মোড চালু' : 'Debug Mode Enabled')
+                    : (language === 'bn' ? 'ডিবাগ মোড বন্ধ' : 'Debug Mode Disabled'),
+                  description: checked
+                    ? (language === 'bn' ? 'কনসোলে বিস্তারিত লগ দেখা যাবে' : 'Detailed logs will appear in console')
+                    : (language === 'bn' ? 'লগিং বন্ধ করা হয়েছে' : 'Logging has been disabled'),
+                });
+              }} 
+            />
           </div>
 
-          <Button variant="outline" className="w-full">
-            <FileCode className="mr-2 h-4 w-4" />
-            {language === 'bn' ? 'ইভেন্ট লগ দেখুন' : 'View Event Logs'}
-          </Button>
+          {debugMode && (
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">
+                  {language === 'bn' ? 'ডিবাগ মোড সক্রিয়' : 'Debug Mode Active'}
+                </span>
+              </div>
+              <p>
+                {language === 'bn' 
+                  ? 'ব্রাউজার কনসোলে [FarmEye Debug] প্রিফিক্স সহ বিস্তারিত লগ দেখুন'
+                  : 'Check browser console for detailed logs with [FarmEye Debug] prefix'}
+              </p>
+            </div>
+          )}
 
-          <Button variant="outline" className="w-full">
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            {language === 'bn' ? 'এরর লগ দেখুন' : 'View Error Logs'}
-          </Button>
+          {/* Event Logs Sheet */}
+          <Sheet open={showEventLogs} onOpenChange={setShowEventLogs}>
+            <SheetTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => {
+                  setShowEventLogs(true);
+                  refetchEventLogs();
+                }}
+              >
+                <FileCode className="mr-2 h-4 w-4" />
+                {language === 'bn' ? 'ইভেন্ট লগ দেখুন' : 'View Event Logs'}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-[70vh]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <FileCode className="h-5 w-5" />
+                  {language === 'bn' ? 'ইভেন্ট লগ' : 'Event Logs'}
+                </SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100%-60px)] mt-4">
+                {eventLogs && eventLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {eventLogs.map((log) => (
+                      <div 
+                        key={log.id} 
+                        className={`rounded-lg p-3 text-sm ${
+                          log.severity === 'danger' 
+                            ? 'bg-destructive/10 border border-destructive/20'
+                            : log.severity === 'warning'
+                              ? 'bg-yellow-500/10 border border-yellow-500/20'
+                              : 'bg-muted/50 border border-border'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant={log.severity === 'danger' ? 'destructive' : 'secondary'} className="text-xs">
+                            {log.alert_type}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm')}
+                          </span>
+                        </div>
+                        <p className="text-foreground">
+                          {language === 'bn' ? log.message_bn : log.message}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                    <FileCode className="h-12 w-12 mb-2 opacity-50" />
+                    <p>{language === 'bn' ? 'কোনো ইভেন্ট নেই' : 'No events found'}</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+
+          {/* Error Logs Sheet */}
+          <Sheet open={showErrorLogs} onOpenChange={setShowErrorLogs}>
+            <SheetTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => {
+                  setShowErrorLogs(true);
+                  refetchErrorLogs();
+                }}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                {language === 'bn' ? 'এরর লগ দেখুন' : 'View Error Logs'}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-[70vh]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  {language === 'bn' ? 'এরর লগ' : 'Error Logs'}
+                </SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100%-60px)] mt-4">
+                {errorLogs && errorLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {errorLogs.map((log) => (
+                      <div 
+                        key={log.id} 
+                        className="rounded-lg p-3 text-sm bg-destructive/10 border border-destructive/20"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="destructive" className="text-xs">
+                            {log.alert_type}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm')}
+                          </span>
+                        </div>
+                        <p className="text-foreground">
+                          {language === 'bn' ? log.message_bn : log.message}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                    <AlertTriangle className="h-12 w-12 mb-2 opacity-50" />
+                    <p>{language === 'bn' ? 'কোনো এরর নেই' : 'No errors found'}</p>
+                  </div>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
         </div>
       </CollapsibleSection>
 
