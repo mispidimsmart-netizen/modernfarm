@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSheds } from '@/hooks/useSheds';
@@ -102,8 +103,13 @@ export function SettingsPage() {
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
   const { data: userRole } = useUserRole();
+  const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
   const isOwner = userRole?.role === 'owner';
-  const { isSuperAdmin } = useSuperAdmin();
+  const isAdmin = permissions?.role === 'admin';
+  const canEditSettings = permissions?.canEditFarmSettings ?? false;
+  const canEditAdvanced = permissions?.canEditAdvancedSettings ?? false;
+  const canEditThresholds = permissions?.canEditThresholds ?? false;
+  const canEditDevice = permissions?.canEditDeviceSettings ?? false;
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const { data: sheds } = useSheds();
   const { toast } = useToast();
@@ -311,13 +317,20 @@ export function SettingsPage() {
                       </button>
                     )}
                     <Badge 
-                      className={`text-xs shrink-0 ${isOwner 
-                        ? 'bg-green-500/20 text-green-100 border-green-400/30' 
-                        : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/30'
+                      className={`text-xs shrink-0 ${
+                        isAdmin 
+                          ? 'bg-purple-500/20 text-purple-100 border-purple-400/30'
+                          : isOwner 
+                            ? 'bg-green-500/20 text-green-100 border-green-400/30' 
+                            : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/30'
                       }`}
                     >
                       <Shield className="h-3 w-3 mr-1" />
-                      {isOwner ? t.owner[language] : t.worker[language]}
+                      {isAdmin 
+                        ? (language === 'bn' ? 'অ্যাডমিন' : 'Admin')
+                        : isOwner 
+                          ? t.owner[language] 
+                          : t.worker[language]}
                     </Badge>
                   </div>
                 )}
@@ -357,9 +370,9 @@ export function SettingsPage() {
           </div>
 
           {/* Quick Actions Grid */}
-          <div className={`grid gap-3 ${isSuperAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            {/* Super Admin Link */}
-            {isSuperAdmin && (
+          <div className={`grid gap-3 ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {/* Admin Dashboard Link */}
+            {isAdmin && (
               <motion.a
                 href="/admin"
                 whileHover={{ scale: 1.02 }}
@@ -407,19 +420,21 @@ export function SettingsPage() {
             </motion.a>
           </div>
 
-          {/* Worker Notice */}
-          {!isOwner && (
+          {/* Viewer Notice */}
+          {!canEditSettings && (
             <Card className="border-dashed bg-muted/50">
               <CardContent className="p-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  🔒 {t.ownerRequired[language]}
+                  🔒 {language === 'bn' 
+                    ? 'সেটিংস পরিবর্তন করতে অ্যাডমিন বা মালিকের অনুমতি প্রয়োজন' 
+                    : 'Admin or owner permission required to change settings'}
                 </p>
               </CardContent>
             </Card>
           )}
 
-          {/* Owner-only Settings */}
-          {isOwner && (
+          {/* Farm Settings - Farmer & Admin */}
+          {canEditSettings && (
             <>
               {/* Farm Type Card - Top Priority */}
               <SettingsSection 

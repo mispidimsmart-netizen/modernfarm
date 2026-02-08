@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
+import { RoleProtectedRoute } from "./components/auth";
 
 // Lazy load pages for better initial load performance
 const LoginPage = lazy(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
@@ -105,11 +106,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        {/* Control Page - Requires at least viewer role (shown with restrictions) */}
         <Route
           path="/control"
           element={
             <ProtectedRoute>
-              <ControlPage />
+              <RoleProtectedRoute requiredRole="viewer">
+                <ControlPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />
@@ -169,11 +173,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        {/* Admin Page - Requires admin role */}
         <Route
           path="/admin"
           element={
             <ProtectedRoute>
-              <AdminPage />
+              <RoleProtectedRoute requiredRole="admin">
+                <AdminPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />

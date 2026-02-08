@@ -2504,11 +2504,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_user_role: {
+        Args: {
+          _assigner_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: boolean
+      }
       can_access_farm: {
         Args: { _owner_id: string; _user_id: string }
         Returns: boolean
       }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
+      get_user_access_role: { Args: { _user_id: string }; Returns: string }
+      has_min_role: {
+        Args: { _required_role: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2522,7 +2535,13 @@ export type Database = {
     Enums: {
       alert_severity: "info" | "warning" | "danger"
       alert_type: "temperature" | "ammonia" | "power" | "water"
-      app_role: "owner" | "worker" | "super_admin"
+      app_role:
+        | "owner"
+        | "worker"
+        | "super_admin"
+        | "viewer"
+        | "farmer"
+        | "admin"
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
@@ -2656,7 +2675,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["info", "warning", "danger"],
       alert_type: ["temperature", "ammonia", "power", "water"],
-      app_role: ["owner", "worker", "super_admin"],
+      app_role: ["owner", "worker", "super_admin", "viewer", "farmer", "admin"],
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
