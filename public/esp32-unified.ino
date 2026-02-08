@@ -3060,42 +3060,46 @@ void setup() {
   delay(500);
   
   // ═══════════════════════════════════════════════════════════════════════
-  // 🧪 RELAY TEST SEQUENCE - Each relay ON for 1 second
+  // 🧪 GRADUAL DEVICE START - Each relay ON for 1 second
+  // Prevents power surge from simultaneous relay activation
   // ═══════════════════════════════════════════════════════════════════════
-  Serial.println("\n🧪 RELAY TEST SEQUENCE STARTING...");
+  Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+  Serial.println("║  ⏳ BOOT DELAY: 30 SECOND STABILIZATION PERIOD               ║");
+  Serial.println("║  🔌 GRADUAL DEVICE START - One relay at a time               ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
   
-  // Test IN1 (Fan/Exhaust)
-  Serial.printf("   Testing IN1 (Fan) - GPIO %d...\n", FAN_RELAY_PIN);
+  // Test IN1 (Fan/Exhaust) - 2 second test
+  Serial.printf("   [1/4] Testing Exhaust Fan (IN1) - GPIO %d...\n", FAN_RELAY_PIN);
   digitalWrite(FAN_RELAY_PIN, LOW);  // ON
-  delay(1000);
+  delay(2000);
   digitalWrite(FAN_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ IN1 test complete");
-  delay(300);
+  Serial.println("   ✓ Exhaust Fan test complete");
+  delay(500);
   
-  // Test IN2 (Light/Circulation)
-  Serial.printf("   Testing IN2 (Light/Circulation) - GPIO %d...\n", LIGHT_RELAY_PIN);
+  // Test IN2 (Light/Circulation) - 2 second test
+  Serial.printf("   [2/4] Testing Circulation Fan (IN2) - GPIO %d...\n", LIGHT_RELAY_PIN);
   digitalWrite(LIGHT_RELAY_PIN, LOW);  // ON
-  delay(1000);
+  delay(2000);
   digitalWrite(LIGHT_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ IN2 test complete");
-  delay(300);
+  Serial.println("   ✓ Circulation Fan test complete");
+  delay(500);
   
-  // Test IN3 (Alarm/Heater)
-  Serial.printf("   Testing IN3 (Alarm/Heater) - GPIO %d...\n", ALARM_RELAY_PIN);
+  // Test IN3 (Heater) - 2 second test
+  Serial.printf("   [3/4] Testing Heater (IN3) - GPIO %d...\n", ALARM_RELAY_PIN);
   digitalWrite(ALARM_RELAY_PIN, LOW);  // ON
-  delay(1000);
+  delay(2000);
   digitalWrite(ALARM_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ IN3 test complete");
-  delay(300);
+  Serial.println("   ✓ Heater test complete");
+  delay(500);
   
-  // Test IN4 (Heater/Fogger)
-  Serial.printf("   Testing IN4 (Heater/Fogger) - GPIO %d...\n", HEATER_RELAY_PIN);
+  // Test IN4 (Fogger) - 2 second test
+  Serial.printf("   [4/4] Testing Fogger (IN4) - GPIO %d...\n", HEATER_RELAY_PIN);
   digitalWrite(HEATER_RELAY_PIN, LOW);  // ON
-  delay(1000);
+  delay(2000);
   digitalWrite(HEATER_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ IN4 test complete");
+  Serial.println("   ✓ Fogger test complete");
   
-  Serial.println("🧪 RELAY TEST COMPLETE!\n");
+  Serial.println("\n🧪 GRADUAL DEVICE START COMPLETE!\n");
   delay(500);
   
   // Other input pins
@@ -3105,15 +3109,28 @@ void setup() {
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
   
-  // SAFE MODE: Power-related restart → 30s safe mode
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🛡️ SAFE MODE / STABILIZING MODE (30 SECONDS)
+  // During this period: Fan ON, automation paused, commands accepted
+  // ═══════════════════════════════════════════════════════════════════════
   if (isPowerRelatedRestart() || wasWatchdogReset) {
+    // Power-related or watchdog restart → Enter safe mode
     enterSafeMode();
+    Serial.println("🛡️ SAFE MODE: Power/WDT restart detected - 30s stabilization");
   } else {
-    // Normal boot - stabilizing mode for 30s with Fan ON for ventilation
+    // Normal boot → 30s stabilizing mode with Fan ON for ventilation
     stabilizingMode = true;
     stabilizingEndTime = millis() + SAFE_MODE_DURATION;
+    safeModeActive = true;
+    safeModeEndTime = stabilizingEndTime;
     systemState = "STABILIZING";
-    Serial.println("⏳ STABILIZING (30s) - Normal boot, Fan ON for ventilation...");
+    
+    Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ⏳ 30 SECOND BOOT DELAY ACTIVE                               ║");
+    Serial.println("║  🌀 Fan ON for initial ventilation                            ║");
+    Serial.println("║  ⏸️ Automation paused until stabilization complete            ║");
+    Serial.println("║  ✅ Manual commands ARE accepted during this period           ║");
+    Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
     
     // Turn ON fan for initial ventilation (Active LOW: LOW = ON)
     digitalWrite(FAN_RELAY_PIN, LOW);
