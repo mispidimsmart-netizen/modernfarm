@@ -26,3 +26,15 @@ verify_jwt = false
 
 [functions.schedule-notifier]
 verify_jwt = false
+
+[functions.daily-farm-report]
+verify_jwt = false
+
+[functions.push-public-key]
+verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = false
+
+[functions.lookup-login-identifier]
+verify_jwt = false
