@@ -38,7 +38,6 @@ import { SensorHealthCard } from '@/components/dashboard/SensorHealthCard';
 import { InsideOutsideDeltaCard } from '@/components/dashboard/InsideOutsideDeltaCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
-import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
 import { BigFarmOverview } from '@/components/dashboard/BigFarmOverview';
 import { BroilerTempStatusCard } from '@/components/broiler/BroilerTempStatusCard';
 import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard';
@@ -225,8 +224,7 @@ export function Dashboard() {
                 <SystemModeCard />
               </div>
               
-              {/* Smart Mode Widget */}
-              <SmartModeWidget />
+              {/* Quick Links */}
               
               {/* Quick Links */}
               <div className="grid grid-cols-2 gap-3">
