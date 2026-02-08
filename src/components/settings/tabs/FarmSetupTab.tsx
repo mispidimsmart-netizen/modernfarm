@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   Egg, Drumstick, Sun, Cloud, Snowflake, CloudRain, 
   Baby, TrendingUp, Factory, Flame, Wind, Check,
-  Wand2, ChevronRight, Home
+  Wand2, ChevronRight, Home, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
@@ -14,7 +14,16 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveBatch } from '@/hooks/useBroilerData';
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 type FarmType = 'layer' | 'broiler';
 type Season = 'summer' | 'winter' | 'rainy';
 type FarmSize = 'small' | 'medium' | 'large';
@@ -129,8 +138,14 @@ export function FarmSetupTab() {
   const [birdAge, setBirdAge] = useState<number>(activeBatch?.start_date 
     ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24))
     : 0);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const handleApplyRecommended = async () => {
+  const handleApplyClick = () => {
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmApply = async () => {
+    setShowConfirmDialog(false);
     try {
       await updateProfile.mutateAsync({ 
         farm_type: farmType,
@@ -353,7 +368,7 @@ export function FarmSetupTab() {
 
       {/* Apply Button */}
       <Button 
-        onClick={handleApplyRecommended} 
+        onClick={handleApplyClick} 
         className="w-full h-14 text-lg"
         disabled={updateProfile.isPending}
       >
@@ -368,6 +383,49 @@ export function FarmSetupTab() {
           ? '💡 এটি আপনার নির্বাচন অনুযায়ী তাপমাত্রা, আর্দ্রতা এবং ভেন্টিলেশন সেটিংস স্বয়ংক্রিয়ভাবে সমন্বয় করবে।' 
           : '💡 This will auto-adjust temperature, humidity, and ventilation settings based on your selections.'}
       </p>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {language === 'bn' ? 'অটোমেশনে প্রভাব পড়বে' : 'Automation Will Be Affected'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                {language === 'bn' 
+                  ? 'এই পরিবর্তন আপনার সম্পূর্ণ অটোমেশন সিস্টেমে প্রভাব ফেলবে:' 
+                  : 'This change will affect your entire automation system:'}
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
+                <li>{language === 'bn' ? 'তাপমাত্রা ও আর্দ্রতার থ্রেশহোল্ড পরিবর্তন হবে' : 'Temperature & humidity thresholds will change'}</li>
+                <li>{language === 'bn' ? 'ফ্যান এবং হিটার অটোমেশন রিসেট হবে' : 'Fan and heater automation will reset'}</li>
+                <li>{language === 'bn' ? 'অ্যালার্ম সেটিংস পুনরায় কনফিগার হবে' : 'Alarm settings will reconfigure'}</li>
+                {farmType === 'broiler' && (
+                  <li>{language === 'bn' ? 'বয়স-ভিত্তিক তাপমাত্রা কার্ভ সক্রিয় হবে' : 'Age-based temp curve will activate'}</li>
+                )}
+              </ul>
+              <p className="font-medium text-foreground pt-2">
+                {language === 'bn' 
+                  ? 'আপনি কি নিশ্চিত এই পরিবর্তন করতে চান?' 
+                  : 'Are you sure you want to make this change?'}
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {language === 'bn' ? 'বাতিল' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmApply}
+              className="bg-primary"
+            >
+              {language === 'bn' ? 'হ্যাঁ, প্রয়োগ করুন' : 'Yes, Apply'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
