@@ -280,6 +280,16 @@ export default function AdminPage() {
                   ) : (
                     <p className="text-4xl font-bold mt-1">{stats?.totalUsers || 0}</p>
                   )}
+                  {!loadingStats && stats && (
+                    <div className="flex gap-2 mt-1.5">
+                      <Badge variant="outline" className="text-[10px] border-blue-300/50 text-blue-100 px-1.5 py-0">
+                        🥚 {stats.layerFarms}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] border-blue-300/50 text-blue-100 px-1.5 py-0">
+                        🐔 {stats.broilerFarms}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
                 <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
                   <Users className="w-7 h-7 text-white" />
@@ -315,6 +325,11 @@ export default function AdminPage() {
                     <Skeleton className="h-9 w-16 bg-violet-400/30 mt-1" />
                   ) : (
                     <p className="text-4xl font-bold mt-1">{stats?.activeDevices || 0}</p>
+                  )}
+                  {!loadingStats && stats && stats.activeBroilerBatches > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-violet-300/50 text-violet-100 px-1.5 py-0 mt-1.5">
+                      🐔 {stats.activeBroilerBatches} ব্যাচ সক্রিয়
+                    </Badge>
                   )}
                 </div>
                 <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">

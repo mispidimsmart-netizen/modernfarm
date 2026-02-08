@@ -108,17 +108,20 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [open, setOpen] = useState(false);
 
-  // Fetch all profiles for user selector
+  // Fetch all profiles for user selector with farm_type
   const { data: profiles, isLoading: profilesLoading } = useQuery({
     queryKey: ['admin-profiles-for-charts'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, farm_name, phone, avatar_url')
+        .select('id, farm_name, phone, avatar_url, farm_type')
         .order('farm_name', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []).map(p => ({
+        ...p,
+        farm_type: (p as any).farm_type || 'layer',
+      }));
     },
   });
 
@@ -355,8 +358,13 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                           <User className="w-3 h-3" />
                         </div>
                       )}
-                      <div className="flex flex-col min-w-0">
-                        <span className="truncate">{profile.farm_name}</span>
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate">{profile.farm_name}</span>
+                          <span className="text-[10px] shrink-0">
+                            {profile.farm_type === 'broiler' ? '🐔' : '🥚'}
+                          </span>
+                        </div>
                         {profile.phone && (
                           <span className="text-xs text-gray-400">{profile.phone}</span>
                         )}
