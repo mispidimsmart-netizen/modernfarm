@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Lightbulb, ChevronRight, ThermometerSun, Wind, Droplets, 
-  AlertTriangle, Leaf, Stethoscope, X, Sparkles, Bird
+  AlertTriangle, Leaf, Stethoscope, X, Sparkles, Bird, Unplug, AlertOctagon
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
@@ -10,6 +10,7 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
+import { useSensorValidation } from '@/hooks/useSensorValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ export function AdvisoryAssistant() {
   const batchStats = useBatchStats(activeBatch?.id);
   const waterAnomaly = useWaterAnomalyDetection(sensorData.waterUsage);
   const ammoniaTrend = useAmmoniaTrendDetection(sensorData.ammonia);
+  const { issues: sensorIssues } = useSensorValidation(sensorData);
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
@@ -43,6 +45,28 @@ export function AdvisoryAssistant() {
     const humidity = sensorData.humidity;
     const ammonia = sensorData.ammonia;
     const currentHour = new Date().getHours();
+
+    // 0. Sensor Validation Issues (highest priority)
+    sensorIssues.forEach(issue => {
+      const iconMap = {
+        stuck: AlertOctagon,
+        spike: AlertTriangle,
+        disconnected: Unplug,
+        invalid: AlertTriangle,
+      };
+      result.push({
+        id: `sensor-${issue.sensor}-${issue.type}`,
+        icon: iconMap[issue.type],
+        title: { 
+          bn: issue.type === 'disconnected' ? 'সেন্সর বিচ্ছিন্ন' : 'সেন্সর সমস্যা', 
+          en: issue.type === 'disconnected' ? 'Sensor Disconnected' : 'Sensor Issue' 
+        },
+        message: issue.message,
+        priority: 'high',
+        actionLabel: { bn: 'সেন্সর চেক করুন', en: 'Check sensor' },
+        category: 'health',
+      });
+    });
 
     // 1. High Ammonia Warning
     if (ammonia > 15) {
@@ -193,7 +217,7 @@ export function AdvisoryAssistant() {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
-  }, [sensorData, waterAnomaly, ammoniaTrend, isBroiler, batchStats]);
+  }, [sensorData, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats]);
 
   // Filter out dismissed advisories
   const activeAdvisories = advisories.filter(a => !dismissedIds.has(a.id));
