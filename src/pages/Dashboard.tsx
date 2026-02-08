@@ -52,6 +52,9 @@ import {
   HeroFarmBanner, SystemActivityCard, QuickSensorDisplay, TodayReadableSummary
 } from '@/components/assistant';
 
+// Smart Alert Banner
+import { AlertSummaryBanner } from '@/components/alerts';
+
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected } = useRealtimeSensorData();
@@ -123,6 +126,9 @@ export function Dashboard() {
           <ShedSelector />
           <ShedManagementSheet />
         </div>
+
+        {/* ============ SECTION 0.5: ALERT SUMMARY BANNER ============ */}
+        <AlertSummaryBanner />
 
         {/* ============ SECTION 1: HERO FARM HEALTH BANNER ============ */}
         <motion.div
