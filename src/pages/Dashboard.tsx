@@ -49,7 +49,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // New Farmer-Friendly Assistant Components
-import { FarmActivityBanner, ComfortIndicators, SmartSummaryCards, AdvisoryAssistant } from '@/components/assistant';
+import { 
+  FarmActivityBanner, ComfortIndicators, SmartSummaryCards, AdvisoryAssistant,
+  FarmHealthScore, TodaySummaryCard, HourlyForecastCard, QuickControlFAB, AIAdvisorBubble 
+} from '@/components/assistant';
 import { DailyReportCard } from '@/components/dashboard/DailyReportCard';
 
 export function Dashboard() {
@@ -131,20 +134,60 @@ export function Dashboard() {
       <Header />
 
       <main className="page-container px-4">
-        {/* ============ NEW: FARM ACTIVITY BANNER ============ */}
+        {/* ============ NEW: FARM HEALTH SCORE - HERO ============ */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mb-4"
+        >
+          <FarmHealthScore />
+        </motion.div>
+
+        {/* ============ NEW: AI ADVISOR BUBBLE ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.02 }}
+          className="mb-4"
+        >
+          <AIAdvisorBubble />
+        </motion.div>
+
+        {/* ============ NEW: TODAY SUMMARY CARD ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="mb-4"
+        >
+          <TodaySummaryCard />
+        </motion.div>
+
+        {/* ============ NEW: HOURLY FORECAST ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="mb-4"
+        >
+          <HourlyForecastCard />
+        </motion.div>
+
+        {/* ============ FARM ACTIVITY BANNER ============ */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
           className="mb-4"
         >
           <FarmActivityBanner />
         </motion.div>
 
-        {/* ============ NEW: COMFORT INDICATORS ============ */}
+        {/* ============ COMFORT INDICATORS ============ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.02 }}
+          transition={{ delay: 0.06 }}
           className="mb-4"
         >
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
@@ -152,30 +195,6 @@ export function Dashboard() {
             {language === 'bn' ? 'খামারের অবস্থা' : 'Farm Status'}
           </h2>
           <ComfortIndicators />
-        </motion.div>
-
-        {/* ============ NEW: DAILY REPORT CARD ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.03 }}
-          className="mb-4"
-        >
-          <DailyReportCard />
-        </motion.div>
-
-        {/* ============ NEW: SMART SUMMARY CARDS ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
-          className="mb-5"
-        >
-          <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="text-lg">📊</span>
-            {language === 'bn' ? 'আজকের সারসংক্ষেপ' : "Today's Summary"}
-          </h2>
-          <SmartSummaryCards />
         </motion.div>
 
         {/* ============ SECTION 1: HERO STATUS CARD ============ */}
@@ -562,6 +581,9 @@ export function Dashboard() {
           </Link>
         </motion.div>
       </main>
+
+      {/* Quick Control FAB */}
+      <QuickControlFAB />
 
       <BottomNav />
     </div>

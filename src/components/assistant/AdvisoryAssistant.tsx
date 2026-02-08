@@ -108,28 +108,6 @@ export function AdvisoryAssistant() {
       }
     }
 
-    // 0. Sensor Validation Issues (highest priority)
-    sensorIssues.forEach(issue => {
-      const iconMap = {
-        stuck: AlertOctagon,
-        spike: AlertTriangle,
-        disconnected: Unplug,
-        invalid: AlertTriangle,
-      };
-      result.push({
-        id: `sensor-${issue.sensor}-${issue.type}`,
-        icon: iconMap[issue.type],
-        title: { 
-          bn: issue.type === 'disconnected' ? 'সেন্সর বিচ্ছিন্ন' : 'সেন্সর সমস্যা', 
-          en: issue.type === 'disconnected' ? 'Sensor Disconnected' : 'Sensor Issue' 
-        },
-        message: issue.message,
-        priority: 'high',
-        actionLabel: { bn: 'সেন্সর চেক করুন', en: 'Check sensor' },
-        category: 'health',
-      });
-    });
-
     // 1. High Ammonia Warning
     if (ammonia > 15) {
       result.push({

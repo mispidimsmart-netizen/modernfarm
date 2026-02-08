@@ -3,3 +3,8 @@ export { ComfortIndicators } from './ComfortIndicators';
 export { SmartSummaryCards } from './SmartSummaryCards';
 export { AdvisoryAssistant } from './AdvisoryAssistant';
 export { ManualControlTimerDialog } from './ManualControlTimerDialog';
+export { FarmHealthScore } from './FarmHealthScore';
+export { TodaySummaryCard } from './TodaySummaryCard';
+export { HourlyForecastCard } from './HourlyForecastCard';
+export { QuickControlFAB } from './QuickControlFAB';
+export { AIAdvisorBubble } from './AIAdvisorBubble';
