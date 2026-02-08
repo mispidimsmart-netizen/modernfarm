@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.export-data]
 verify_jwt = false
+
+[functions.ota-firmware]
+verify_jwt = false
