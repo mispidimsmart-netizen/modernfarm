@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Lightbulb, ChevronRight, ThermometerSun, Wind, Droplets, 
-  AlertTriangle, Leaf, Stethoscope, X, Sparkles, Bird, Unplug, AlertOctagon
+  AlertTriangle, Leaf, Stethoscope, X, Sparkles, Bird, Unplug, AlertOctagon,
+  DoorOpen, Snowflake
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
@@ -11,6 +12,7 @@ import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useSensorValidation } from '@/hooks/useSensorValidation';
+import { useWeatherCache } from '@/hooks/useWeather';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +37,7 @@ export function AdvisoryAssistant() {
   const waterAnomaly = useWaterAnomalyDetection(sensorData.waterUsage);
   const ammoniaTrend = useAmmoniaTrendDetection(sensorData.ammonia);
   const { issues: sensorIssues } = useSensorValidation(sensorData);
+  const { data: weather } = useWeatherCache();
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
@@ -45,6 +48,65 @@ export function AdvisoryAssistant() {
     const humidity = sensorData.humidity;
     const ammonia = sensorData.ammonia;
     const currentHour = new Date().getHours();
+    const outsideTemp = weather?.temperature ?? null;
+
+    // 0. Sensor Validation Issues (highest priority)
+    sensorIssues.forEach(issue => {
+      const iconMap = {
+        stuck: AlertOctagon,
+        spike: AlertTriangle,
+        disconnected: Unplug,
+        invalid: AlertTriangle,
+      };
+      result.push({
+        id: `sensor-${issue.sensor}-${issue.type}`,
+        icon: iconMap[issue.type],
+        title: { 
+          bn: issue.type === 'disconnected' ? 'সেন্সর বিচ্ছিন্ন' : 'সেন্সর সমস্যা', 
+          en: issue.type === 'disconnected' ? 'Sensor Disconnected' : 'Sensor Issue' 
+        },
+        message: issue.message,
+        priority: 'high',
+        actionLabel: { bn: 'সেন্সর চেক করুন', en: 'Check sensor' },
+        category: 'health',
+      });
+    });
+
+    // 0.5 Curtain/Cooling Advisory based on indoor vs outdoor temp
+    if (outsideTemp !== null && temp >= 28) {
+      const tempDiff = temp - outsideTemp;
+      
+      // Inside 28°C + Outside cooler (e.g. 18°C) → Open curtain for natural ventilation
+      if (outsideTemp < temp - 5) {
+        result.push({
+          id: 'curtain-open',
+          icon: DoorOpen,
+          title: { bn: 'পর্দা খুলুন', en: 'Open Curtain' },
+          message: { 
+            bn: `ভিতরে ${temp.toFixed(0)}°C, বাইরে ${outsideTemp.toFixed(0)}°C - প্রাকৃতিক বায়ু প্রবেশ করান`, 
+            en: `Inside ${temp.toFixed(0)}°C, Outside ${outsideTemp.toFixed(0)}°C - Use natural ventilation` 
+          },
+          priority: 'medium',
+          actionLabel: { bn: 'পর্দা খুলুন', en: 'Open curtain' },
+          category: 'environment',
+        });
+      }
+      // Inside 28°C + Outside hotter (e.g. 36°C) → Need mechanical cooling
+      else if (outsideTemp >= temp) {
+        result.push({
+          id: 'cooling-mode',
+          icon: Snowflake,
+          title: { bn: 'কুলিং মোড দরকার', en: 'Cooling Mode Needed' },
+          message: { 
+            bn: `বাইরে ${outsideTemp.toFixed(0)}°C - ফগার/ফ্যান চালু করুন, পর্দা বন্ধ রাখুন`, 
+            en: `Outside ${outsideTemp.toFixed(0)}°C - Use fogger/fans, keep curtains closed` 
+          },
+          priority: temp > 32 ? 'high' : 'medium',
+          actionLabel: { bn: 'কুলিং চালু', en: 'Activate cooling' },
+          category: 'environment',
+        });
+      }
+    }
 
     // 0. Sensor Validation Issues (highest priority)
     sensorIssues.forEach(issue => {
@@ -217,7 +279,7 @@ export function AdvisoryAssistant() {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
-  }, [sensorData, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats]);
+  }, [sensorData, weather, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats]);
 
   // Filter out dismissed advisories
   const activeAdvisories = advisories.filter(a => !dismissedIds.has(a.id));
