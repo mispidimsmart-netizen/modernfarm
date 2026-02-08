@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      advanced_automation_settings: {
+        Row: {
+          airflow_early_age_days: number | null
+          airflow_enabled: boolean | null
+          airflow_mid_age_days: number | null
+          airflow_mid_interval_minutes: number | null
+          airflow_mid_on_seconds: number | null
+          airflow_night_interval_minutes: number | null
+          airflow_night_on_seconds: number | null
+          automation_priority: string | null
+          created_at: string
+          curtain_advisory_enabled: boolean | null
+          curtain_close_on_cold: boolean | null
+          curtain_open_temp_diff: number | null
+          fogger_enabled: boolean | null
+          fogger_on_seconds: number | null
+          fogger_pause_seconds: number | null
+          fogger_start_humidity_max: number | null
+          fogger_start_temp: number | null
+          fogger_stop_humidity: number | null
+          fogger_stop_temp: number | null
+          heater_enabled: boolean | null
+          heater_off_temp: number | null
+          heater_on_temp: number | null
+          heater_tolerance: number | null
+          id: string
+          lighting_fade_duration_minutes: number | null
+          min_vent_ceiling_fan_always_on: boolean | null
+          min_vent_cycle_seconds: number | null
+          min_vent_enabled: boolean | null
+          min_vent_interval_minutes: number | null
+          min_vent_temp_threshold: number | null
+          shed_id: string | null
+          updated_at: string
+          user_id: string
+          water_baseline_hours: number | null
+          water_drop_threshold_percent: number | null
+          water_night_spike_enabled: boolean | null
+          water_zero_flow_alert: boolean | null
+        }
+        Insert: {
+          airflow_early_age_days?: number | null
+          airflow_enabled?: boolean | null
+          airflow_mid_age_days?: number | null
+          airflow_mid_interval_minutes?: number | null
+          airflow_mid_on_seconds?: number | null
+          airflow_night_interval_minutes?: number | null
+          airflow_night_on_seconds?: number | null
+          automation_priority?: string | null
+          created_at?: string
+          curtain_advisory_enabled?: boolean | null
+          curtain_close_on_cold?: boolean | null
+          curtain_open_temp_diff?: number | null
+          fogger_enabled?: boolean | null
+          fogger_on_seconds?: number | null
+          fogger_pause_seconds?: number | null
+          fogger_start_humidity_max?: number | null
+          fogger_start_temp?: number | null
+          fogger_stop_humidity?: number | null
+          fogger_stop_temp?: number | null
+          heater_enabled?: boolean | null
+          heater_off_temp?: number | null
+          heater_on_temp?: number | null
+          heater_tolerance?: number | null
+          id?: string
+          lighting_fade_duration_minutes?: number | null
+          min_vent_ceiling_fan_always_on?: boolean | null
+          min_vent_cycle_seconds?: number | null
+          min_vent_enabled?: boolean | null
+          min_vent_interval_minutes?: number | null
+          min_vent_temp_threshold?: number | null
+          shed_id?: string | null
+          updated_at?: string
+          user_id: string
+          water_baseline_hours?: number | null
+          water_drop_threshold_percent?: number | null
+          water_night_spike_enabled?: boolean | null
+          water_zero_flow_alert?: boolean | null
+        }
+        Update: {
+          airflow_early_age_days?: number | null
+          airflow_enabled?: boolean | null
+          airflow_mid_age_days?: number | null
+          airflow_mid_interval_minutes?: number | null
+          airflow_mid_on_seconds?: number | null
+          airflow_night_interval_minutes?: number | null
+          airflow_night_on_seconds?: number | null
+          automation_priority?: string | null
+          created_at?: string
+          curtain_advisory_enabled?: boolean | null
+          curtain_close_on_cold?: boolean | null
+          curtain_open_temp_diff?: number | null
+          fogger_enabled?: boolean | null
+          fogger_on_seconds?: number | null
+          fogger_pause_seconds?: number | null
+          fogger_start_humidity_max?: number | null
+          fogger_start_temp?: number | null
+          fogger_stop_humidity?: number | null
+          fogger_stop_temp?: number | null
+          heater_enabled?: boolean | null
+          heater_off_temp?: number | null
+          heater_on_temp?: number | null
+          heater_tolerance?: number | null
+          id?: string
+          lighting_fade_duration_minutes?: number | null
+          min_vent_ceiling_fan_always_on?: boolean | null
+          min_vent_cycle_seconds?: number | null
+          min_vent_enabled?: boolean | null
+          min_vent_interval_minutes?: number | null
+          min_vent_temp_threshold?: number | null
+          shed_id?: string | null
+          updated_at?: string
+          user_id?: string
+          water_baseline_hours?: number | null
+          water_drop_threshold_percent?: number | null
+          water_night_spike_enabled?: boolean | null
+          water_zero_flow_alert?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advanced_automation_settings_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alerts: {
         Row: {
           acknowledged: boolean
@@ -540,15 +668,18 @@ export type Database = {
           battery_percentage: number | null
           broiler_age_source: string | null
           cached_settings_version: number | null
+          circulation_fan_last_cycle_at: string | null
           consecutive_high_ammonia: number | null
           cpu_temperature: number | null
           created_at: string
+          curtain_advisory_last_sent: string | null
           device_token_id: string
           error_count: number | null
           failsafe_activated_at: string | null
           failsafe_mode: boolean | null
           farm_id: string | null
           firmware_version: string | null
+          fogger_last_cycle_at: string | null
           free_memory_bytes: number | null
           gas_sensor_warmup_done: boolean | null
           gas_sensor_warmup_start: string | null
@@ -563,6 +694,7 @@ export type Database = {
           last_restart_at: string | null
           last_seen_at: string | null
           last_server_age_sync_at: string | null
+          min_vent_last_cycle_at: string | null
           mode: string | null
           offline_buffer_count: number | null
           offline_duration_seconds: number | null
@@ -585,7 +717,10 @@ export type Database = {
           user_id: string
           water_24h_rolling_avg: number | null
           water_anomaly_consecutive_count: number | null
+          water_hourly_baseline: number | null
           water_last_2h_avg: number | null
+          water_night_spike_detected: boolean | null
+          water_zero_flow_minutes: number | null
           wifi_signal_strength: number | null
         }
         Insert: {
@@ -594,15 +729,18 @@ export type Database = {
           battery_percentage?: number | null
           broiler_age_source?: string | null
           cached_settings_version?: number | null
+          circulation_fan_last_cycle_at?: string | null
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
           created_at?: string
+          curtain_advisory_last_sent?: string | null
           device_token_id: string
           error_count?: number | null
           failsafe_activated_at?: string | null
           failsafe_mode?: boolean | null
           farm_id?: string | null
           firmware_version?: string | null
+          fogger_last_cycle_at?: string | null
           free_memory_bytes?: number | null
           gas_sensor_warmup_done?: boolean | null
           gas_sensor_warmup_start?: string | null
@@ -617,6 +755,7 @@ export type Database = {
           last_restart_at?: string | null
           last_seen_at?: string | null
           last_server_age_sync_at?: string | null
+          min_vent_last_cycle_at?: string | null
           mode?: string | null
           offline_buffer_count?: number | null
           offline_duration_seconds?: number | null
@@ -639,7 +778,10 @@ export type Database = {
           user_id: string
           water_24h_rolling_avg?: number | null
           water_anomaly_consecutive_count?: number | null
+          water_hourly_baseline?: number | null
           water_last_2h_avg?: number | null
+          water_night_spike_detected?: boolean | null
+          water_zero_flow_minutes?: number | null
           wifi_signal_strength?: number | null
         }
         Update: {
@@ -648,15 +790,18 @@ export type Database = {
           battery_percentage?: number | null
           broiler_age_source?: string | null
           cached_settings_version?: number | null
+          circulation_fan_last_cycle_at?: string | null
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
           created_at?: string
+          curtain_advisory_last_sent?: string | null
           device_token_id?: string
           error_count?: number | null
           failsafe_activated_at?: string | null
           failsafe_mode?: boolean | null
           farm_id?: string | null
           firmware_version?: string | null
+          fogger_last_cycle_at?: string | null
           free_memory_bytes?: number | null
           gas_sensor_warmup_done?: boolean | null
           gas_sensor_warmup_start?: string | null
@@ -671,6 +816,7 @@ export type Database = {
           last_restart_at?: string | null
           last_seen_at?: string | null
           last_server_age_sync_at?: string | null
+          min_vent_last_cycle_at?: string | null
           mode?: string | null
           offline_buffer_count?: number | null
           offline_duration_seconds?: number | null
@@ -693,7 +839,10 @@ export type Database = {
           user_id?: string
           water_24h_rolling_avg?: number | null
           water_anomaly_consecutive_count?: number | null
+          water_hourly_baseline?: number | null
           water_last_2h_avg?: number | null
+          water_night_spike_detected?: boolean | null
+          water_zero_flow_minutes?: number | null
           wifi_signal_strength?: number | null
         }
         Relationships: [
@@ -730,10 +879,13 @@ export type Database = {
       device_status: {
         Row: {
           alarm_on: boolean
+          circulation_fan_on: boolean | null
+          curtain_position: string | null
           device_id: string | null
           fan_on: boolean
           fan_speed: string
           farm_id: string | null
+          fogger_on: boolean | null
           heater_on: boolean | null
           hsi: number | null
           id: string
@@ -748,10 +900,13 @@ export type Database = {
         }
         Insert: {
           alarm_on?: boolean
+          circulation_fan_on?: boolean | null
+          curtain_position?: string | null
           device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
           farm_id?: string | null
+          fogger_on?: boolean | null
           heater_on?: boolean | null
           hsi?: number | null
           id?: string
@@ -766,10 +921,13 @@ export type Database = {
         }
         Update: {
           alarm_on?: boolean
+          circulation_fan_on?: boolean | null
+          curtain_position?: string | null
           device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
           farm_id?: string | null
+          fogger_on?: boolean | null
           heater_on?: boolean | null
           hsi?: number | null
           id?: string
@@ -1681,6 +1839,7 @@ export type Database = {
       }
       schedule_notifications: {
         Row: {
+          advisory_type: string | null
           created_at: string
           id: string
           is_read: boolean
@@ -1691,6 +1850,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          advisory_type?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -1701,6 +1861,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          advisory_type?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
