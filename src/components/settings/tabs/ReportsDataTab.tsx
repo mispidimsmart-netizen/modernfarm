@@ -1,24 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  FileText, Bell, Calendar, Trash2, AlertTriangle, 
-  Download, BarChart3, Clock, CheckCircle2
+  FileText, Bell, Calendar, 
+  Download, BarChart3, Clock
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 export function ReportsDataTab() {
@@ -27,7 +17,6 @@ export function ReportsDataTab() {
 
   const [dailyReport, setDailyReport] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(true);
-  const [showResetDialog, setShowResetDialog] = useState(false);
 
   const handleDailyReportChange = (checked: boolean) => {
     setDailyReport(checked);
@@ -45,15 +34,6 @@ export function ReportsDataTab() {
         ? (language === 'bn' ? 'সাপ্তাহিক সারাংশ চালু' : 'Weekly Summary Enabled')
         : (language === 'bn' ? 'সাপ্তাহিক সারাংশ বন্ধ' : 'Weekly Summary Disabled'),
     });
-  };
-
-  const handleDataReset = () => {
-    // Implement data reset logic
-    toast({
-      title: language === 'bn' ? 'ডেটা মুছে ফেলা হয়েছে' : 'Data has been reset',
-      variant: 'destructive',
-    });
-    setShowResetDialog(false);
   };
 
   return (
@@ -199,62 +179,6 @@ export function ReportsDataTab() {
         </CardContent>
       </Card>
 
-      {/* Data Reset - Danger Zone */}
-      <Card className="border-destructive/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base text-destructive flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            {language === 'bn' ? 'বিপদ জোন' : 'Danger Zone'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? 'এই কাজগুলো আর ফিরিয়ে আনা যাবে না' 
-              : 'These actions cannot be undone'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button 
-            variant="outline" 
-            className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
-            onClick={() => setShowResetDialog(true)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            {language === 'bn' ? 'সকল ডেটা মুছে ফেলুন' : 'Reset All Data'}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Reset Confirmation Dialog */}
-      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-              </div>
-              <AlertDialogTitle>
-                {language === 'bn' ? 'আপনি কি নিশ্চিত?' : 'Are you sure?'}
-              </AlertDialogTitle>
-            </div>
-            <AlertDialogDescription className="pt-2">
-              {language === 'bn' 
-                ? 'এটি আপনার সকল সেন্সর রিডিং, অ্যালার্ট এবং রিপোর্ট স্থায়ীভাবে মুছে ফেলবে। এই কাজ আর ফিরিয়ে আনা যাবে না।'
-                : 'This will permanently delete all your sensor readings, alerts, and reports. This action cannot be undone.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {language === 'bn' ? 'বাতিল' : 'Cancel'}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDataReset}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              {language === 'bn' ? 'হ্যাঁ, মুছে ফেলুন' : 'Yes, Delete All'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
