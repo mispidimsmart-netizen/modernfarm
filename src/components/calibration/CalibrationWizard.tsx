@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Ruler, Wind, Thermometer, Flame, Droplets, CheckCircle2, 
   AlertTriangle, ArrowRight, ArrowLeft, RotateCcw, Play, 
-  Check, X, Loader2, Gauge
+  Check, X, Loader2, Gauge, Settings2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useCalibrationWizard, CalibrationStep } from '@/hooks/useCalibrationWizard';
+import { useCalibrationWizard, CalibrationStep, AutomationDefaults } from '@/hooks/useCalibrationWizard';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +15,12 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Slider } from '@/components/ui/slider';
+import { Separator } from '@/components/ui/separator';
 
 const STEPS: { id: CalibrationStep; icon: React.ElementType; label: { bn: string; en: string } }[] = [
   { id: 'dimensions', icon: Ruler, label: { bn: 'মাত্রা', en: 'Dimensions' } },
+  { id: 'automation_defaults', icon: Settings2, label: { bn: 'সেটিংস', en: 'Settings' } },
   { id: 'fan_direction', icon: Wind, label: { bn: 'ফ্যান', en: 'Fan' } },
   { id: 'temp_sensor', icon: Thermometer, label: { bn: 'তাপমাত্রা', en: 'Temp' } },
   { id: 'ammonia_baseline', icon: Gauge, label: { bn: 'গ্যাস', en: 'Gas' } },
@@ -42,6 +45,22 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
   const [waterPulse, setWaterPulse] = useState('');
+  
+  // Automation defaults state
+  const [automationDefaults, setAutomationDefaults] = useState<AutomationDefaults>({
+    temp_min: 18,
+    temp_max: 32,
+    humidity_min: 40,
+    humidity_max: 80,
+    ammonia_max: 25,
+    fan_low_temp_min: 28,
+    fan_low_temp_max: 30,
+    fan_medium_temp_min: 30,
+    fan_medium_temp_max: 33,
+    fan_high_temp_min: 33,
+    heater_on_temp: 20,
+    heater_off_temp: 24,
+  });
 
   // Pre-fill from existing data
   useEffect(() => {
@@ -119,6 +138,189 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
               onClick={() => wizard.saveDimensions(Number(length), Number(width), Number(height))}
             >
               {language === 'bn' ? 'পরবর্তী' : 'Next'}
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        );
+
+      case 'automation_defaults':
+        return (
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <Settings2 className="w-12 h-12 mx-auto text-primary mb-2" />
+              <h3 className="text-lg font-semibold">
+                {language === 'bn' ? 'ডিফল্ট অটোমেশন সেটিংস' : 'Default Automation Settings'}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {language === 'bn' ? 'থ্রেশহোল্ড ও ফ্যান/হিটার সেটিংস' : 'Thresholds & Fan/Heater settings'}
+              </p>
+            </div>
+
+            {/* Temperature Thresholds */}
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Thermometer className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">
+                  {language === 'bn' ? 'তাপমাত্রা সীমা' : 'Temperature Limits'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">{language === 'bn' ? 'সর্বনিম্ন (°C)' : 'Min (°C)'}</Label>
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.temp_min}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, temp_min: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">{language === 'bn' ? 'সর্বোচ্চ (°C)' : 'Max (°C)'}</Label>
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.temp_max}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, temp_max: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Humidity & Ammonia */}
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">{language === 'bn' ? 'আর্দ্রতা সর্বনিম্ন (%)' : 'Humidity Min (%)'}</Label>
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.humidity_min}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, humidity_min: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">{language === 'bn' ? 'আর্দ্রতা সর্বোচ্চ (%)' : 'Humidity Max (%)'}</Label>
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.humidity_max}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, humidity_max: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">{language === 'bn' ? 'অ্যামোনিয়া সর্বোচ্চ (ppm)' : 'Ammonia Max (ppm)'}</Label>
+                <Input 
+                  type="number" 
+                  value={automationDefaults.ammonia_max}
+                  onChange={(e) => setAutomationDefaults(prev => ({ ...prev, ammonia_max: Number(e.target.value) }))}
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            {/* Fan Speed Settings */}
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Wind className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">
+                  {language === 'bn' ? 'ফ্যান স্পিড তাপমাত্রা' : 'Fan Speed Temperatures'}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">🌀 Low</span>
+                  <span className="font-medium">{automationDefaults.fan_low_temp_min}°C - {automationDefaults.fan_low_temp_max}°C</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.fan_low_temp_min}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, fan_low_temp_min: Number(e.target.value) }))}
+                    className="h-8 text-xs"
+                    placeholder="28"
+                  />
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.fan_low_temp_max}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, fan_low_temp_max: Number(e.target.value) }))}
+                    className="h-8 text-xs"
+                    placeholder="30"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">🌀🌀 Medium</span>
+                  <span className="font-medium">{automationDefaults.fan_medium_temp_min}°C - {automationDefaults.fan_medium_temp_max}°C</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.fan_medium_temp_min}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, fan_medium_temp_min: Number(e.target.value) }))}
+                    className="h-8 text-xs"
+                    placeholder="30"
+                  />
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.fan_medium_temp_max}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, fan_medium_temp_max: Number(e.target.value) }))}
+                    className="h-8 text-xs"
+                    placeholder="33"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">🌀🌀🌀 High</span>
+                  <span className="font-medium">&gt; {automationDefaults.fan_high_temp_min}°C</span>
+                </div>
+                <Input 
+                  type="number" 
+                  value={automationDefaults.fan_high_temp_min}
+                  onChange={(e) => setAutomationDefaults(prev => ({ ...prev, fan_high_temp_min: Number(e.target.value) }))}
+                  className="h-8 text-xs"
+                  placeholder="33"
+                />
+              </div>
+            </div>
+
+            {/* Heater Settings */}
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">
+                  {language === 'bn' ? 'হিটার সেটিংস' : 'Heater Settings'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">{language === 'bn' ? 'চালু হবে (°C)' : 'Turn ON (°C)'}</Label>
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.heater_on_temp}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, heater_on_temp: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">{language === 'bn' ? 'বন্ধ হবে (°C)' : 'Turn OFF (°C)'}</Label>
+                  <Input 
+                    type="number" 
+                    value={automationDefaults.heater_off_temp}
+                    onChange={(e) => setAutomationDefaults(prev => ({ ...prev, heater_off_temp: Number(e.target.value) }))}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              className="w-full" 
+              onClick={() => wizard.saveAutomationDefaults(automationDefaults)}
+            >
+              {language === 'bn' ? 'সংরক্ষণ করুন ও পরবর্তী' : 'Save & Continue'}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
