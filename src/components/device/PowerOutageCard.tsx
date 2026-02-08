@@ -114,9 +114,10 @@ export function PowerOutageCard() {
 
       <CardContent className="space-y-4">
         {/* Ongoing Outage Alert */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {hasOngoingOutage && (
             <motion.div
+              key="ongoing-outage-alert"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
