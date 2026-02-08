@@ -13,6 +13,8 @@ import { useBroilerWaterMonitor } from '@/hooks/useBroilerWaterMonitor';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useHeatStressRiskPrediction } from '@/hooks/useHeatStressRiskPrediction';
+import { useFoggerCooling } from '@/hooks/useFoggerCooling';
+import { useCoolingEfficiency } from '@/hooks/useCoolingEfficiency';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
@@ -32,6 +34,7 @@ import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
+import { CoolingEfficiencyCard } from '@/components/dashboard/CoolingEfficiencyCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
 import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
@@ -92,7 +95,20 @@ export function Dashboard() {
 
   // Tomorrow's heat stress risk prediction (layer only)
   const heatStressRiskResult = useHeatStressRiskPrediction();
-  
+
+  // Fogger status for cooling efficiency detection
+  const foggerStatus = useFoggerCooling({
+    temperature: sensorData.temperature,
+    humidity: sensorData.humidity,
+    enabled: true,
+  });
+
+  // Cooling efficiency detection
+  const coolingEfficiencyResult = useCoolingEfficiency({
+    temperature: sensorData.temperature,
+    foggerActive: foggerStatus.isActive,
+    enabled: true,
+  });
   // Count online devices
   const onlineDeviceCount = deviceHealth?.filter(d => d.is_online).length || 0;
   const totalDeviceCount = deviceHealth?.length || 0;
@@ -455,6 +471,7 @@ export function Dashboard() {
                 }} />
               )}
               <AmmoniaTrendCard result={ammoniaTrendResult} />
+              <CoolingEfficiencyCard result={coolingEfficiencyResult} />
               {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
               <PowerOutageCard />
             </TabsContent>
