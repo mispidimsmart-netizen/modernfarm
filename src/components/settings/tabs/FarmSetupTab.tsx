@@ -185,6 +185,13 @@ export function FarmSetupTab() {
   const [profileOverride, setProfileOverride] = useState<ProfileType | null>(null);
   const [isProfileManual, setIsProfileManual] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  
+  // Pending change tracking for confirmation dialog
+  const [pendingChange, setPendingChange] = useState<{
+    type: 'farm_type' | 'season' | 'profile' | 'apply';
+    value?: FarmType | Season | ProfileType;
+    label?: string;
+  } | null>(null);
 
   // Calculate bird age from active batch or flock info
   const birdAge = useMemo(() => {
@@ -206,21 +213,57 @@ export function FarmSetupTab() {
   // Active season (auto or manual)
   const activeSeason = isSeasonManual && seasonOverride ? seasonOverride : autoDetectedSeason;
 
+  // Handler for farm type change with confirmation
+  const handleFarmTypeChange = (newType: FarmType) => {
+    if (newType === farmType) return;
+    const label = FARM_TYPES.find(t => t.id === newType)?.name[language] || newType;
+    setPendingChange({ type: 'farm_type', value: newType, label });
+    setShowConfirmDialog(true);
+  };
+
+  // Handler for season change with confirmation
+  const handleSeasonChange = (newSeason: Season) => {
+    const label = SEASONS.find(s => s.id === newSeason)?.name[language] || newSeason;
+    setPendingChange({ type: 'season', value: newSeason, label });
+    setShowConfirmDialog(true);
+  };
+
+  // Handler for profile change with confirmation
+  const handleProfileChange = (newProfile: ProfileType) => {
+    const label = PROFILES.find(p => p.id === newProfile)?.name[language] || newProfile;
+    setPendingChange({ type: 'profile', value: newProfile, label });
+    setShowConfirmDialog(true);
+  };
+
   const handleApplyClick = () => {
+    setPendingChange({ type: 'apply' });
     setShowConfirmDialog(true);
   };
 
   const handleConfirmApply = async () => {
     setShowConfirmDialog(false);
+    
+    if (!pendingChange) return;
+    
     try {
-      await updateProfile.mutateAsync({ 
-        farm_type: farmType,
-      });
+      if (pendingChange.type === 'farm_type' && pendingChange.value) {
+        setFarmType(pendingChange.value as FarmType);
+        await updateProfile.mutateAsync({ farm_type: pendingChange.value as FarmType });
+      } else if (pendingChange.type === 'season' && pendingChange.value) {
+        setIsSeasonManual(true);
+        setSeasonOverride(pendingChange.value as Season);
+      } else if (pendingChange.type === 'profile' && pendingChange.value) {
+        setIsProfileManual(true);
+        setProfileOverride(pendingChange.value as ProfileType);
+      } else if (pendingChange.type === 'apply') {
+        await updateProfile.mutateAsync({ farm_type: farmType });
+      }
+      
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' 
-          ? 'প্রস্তাবিত সেটিংস প্রয়োগ করা হয়েছে' 
-          : 'Recommended settings applied',
+          ? 'সেটিংস প্রয়োগ করা হয়েছে' 
+          : 'Settings applied',
       });
     } catch (error) {
       toast({
@@ -228,6 +271,8 @@ export function FarmSetupTab() {
         description: language === 'bn' ? 'আবার চেষ্টা করুন' : 'Please try again',
         variant: 'destructive',
       });
+    } finally {
+      setPendingChange(null);
     }
   };
 
@@ -255,7 +300,7 @@ export function FarmSetupTab() {
                 <motion.button
                   key={type.id}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setFarmType(type.id)}
+                  onClick={() => handleFarmTypeChange(type.id)}
                   className={`relative rounded-xl p-4 text-left transition-all ${
                     isSelected
                       ? `${type.bgColor} border-2 border-current ${type.color} shadow-md`
@@ -371,13 +416,8 @@ export function FarmSetupTab() {
                   key={s.id}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
-                    if (isSeasonManual) {
-                      setSeasonOverride(s.id);
-                    } else {
-                      // Enable manual mode and set this season
-                      setIsSeasonManual(true);
-                      setSeasonOverride(s.id);
-                    }
+                    if (!isSeasonManual && isAutoDetected) return;
+                    handleSeasonChange(s.id);
                   }}
                   disabled={!isSeasonManual && isAutoDetected}
                   className={`relative rounded-xl p-3 text-center transition-all ${
@@ -498,13 +538,8 @@ export function FarmSetupTab() {
                   key={p.id}
                   whileTap={{ scale: 0.99 }}
                   onClick={() => {
-                    if (isProfileManual) {
-                      setProfileOverride(p.id);
-                    } else {
-                      // Enable manual mode and set this profile
-                      setIsProfileManual(true);
-                      setProfileOverride(p.id);
-                    }
+                    if (!isProfileManual && isAutoDetected) return;
+                    handleProfileChange(p.id);
                   }}
                   disabled={!isProfileManual && isAutoDetected}
                   className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all ${
@@ -573,32 +608,63 @@ export function FarmSetupTab() {
       </p>
 
       {/* Confirmation Dialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <AlertDialog open={showConfirmDialog} onOpenChange={(open) => {
+        setShowConfirmDialog(open);
+        if (!open) setPendingChange(null);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              {language === 'bn' ? 'অটোমেশনে প্রভাব পড়বে' : 'Automation Will Be Affected'}
+              {language === 'bn' ? 'সেটিংস পরিবর্তন নিশ্চিত করুন' : 'Confirm Settings Change'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
-                {language === 'bn' 
-                  ? 'এই পরিবর্তন আপনার সম্পূর্ণ অটোমেশন সিস্টেমে প্রভাব ফেলবে:' 
-                  : 'This change will affect your entire automation system:'}
-              </p>
-              <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
-                <li>{language === 'bn' ? 'তাপমাত্রা ও আর্দ্রতার থ্রেশহোল্ড পরিবর্তন হবে' : 'Temperature & humidity thresholds will change'}</li>
-                <li>{language === 'bn' ? 'ফ্যান এবং হিটার অটোমেশন রিসেট হবে' : 'Fan and heater automation will reset'}</li>
-                <li>{language === 'bn' ? 'অ্যালার্ম সেটিংস পুনরায় কনফিগার হবে' : 'Alarm settings will reconfigure'}</li>
-                {farmType === 'broiler' && (
-                  <li>{language === 'bn' ? 'বয়স-ভিত্তিক তাপমাত্রা কার্ভ সক্রিয় হবে' : 'Age-based temp curve will activate'}</li>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {pendingChange?.label && (
+                  <p className="font-medium text-foreground">
+                    {language === 'bn' 
+                      ? `আপনি "${pendingChange.label}" এ পরিবর্তন করতে চাইছেন।` 
+                      : `You are changing to "${pendingChange.label}".`}
+                  </p>
                 )}
-              </ul>
-              <p className="font-medium text-foreground pt-2">
-                {language === 'bn' 
-                  ? 'আপনি কি নিশ্চিত এই পরিবর্তন করতে চান?' 
-                  : 'Are you sure you want to make this change?'}
-              </p>
+                <p>
+                  {language === 'bn' 
+                    ? 'এই পরিবর্তন আপনার অটোমেশন সিস্টেমে প্রভাব ফেলবে:' 
+                    : 'This change will affect your automation system:'}
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
+                  {pendingChange?.type === 'farm_type' && (
+                    <>
+                      <li>{language === 'bn' ? 'সমস্ত থ্রেশহোল্ড ভ্যালু রিসেট হবে' : 'All threshold values will reset'}</li>
+                      <li>{language === 'bn' ? 'অটোমেশন রুল পুনরায় কনফিগার হবে' : 'Automation rules will reconfigure'}</li>
+                    </>
+                  )}
+                  {pendingChange?.type === 'season' && (
+                    <>
+                      <li>{language === 'bn' ? 'তাপমাত্রা সীমা পরিবর্তন হবে' : 'Temperature limits will change'}</li>
+                      <li>{language === 'bn' ? 'ভেন্টিলেশন সেটিংস আপডেট হবে' : 'Ventilation settings will update'}</li>
+                    </>
+                  )}
+                  {pendingChange?.type === 'profile' && (
+                    <>
+                      <li>{language === 'bn' ? 'তাপমাত্রা ও আর্দ্রতার থ্রেশহোল্ড পরিবর্তন হবে' : 'Temperature & humidity thresholds will change'}</li>
+                      <li>{language === 'bn' ? 'হিটার/ফ্যান অটোমেশন আপডেট হবে' : 'Heater/Fan automation will update'}</li>
+                    </>
+                  )}
+                  {pendingChange?.type === 'apply' && (
+                    <>
+                      <li>{language === 'bn' ? 'তাপমাত্রা ও আর্দ্রতার থ্রেশহোল্ড পরিবর্তন হবে' : 'Temperature & humidity thresholds will change'}</li>
+                      <li>{language === 'bn' ? 'ফ্যান এবং হিটার অটোমেশন রিসেট হবে' : 'Fan and heater automation will reset'}</li>
+                      <li>{language === 'bn' ? 'অ্যালার্ম সেটিংস পুনরায় কনফিগার হবে' : 'Alarm settings will reconfigure'}</li>
+                    </>
+                  )}
+                </ul>
+                <p className="font-medium text-foreground pt-2">
+                  {language === 'bn' 
+                    ? 'আপনি কি নিশ্চিত এই পরিবর্তন করতে চান?' 
+                    : 'Are you sure you want to make this change?'}
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -609,7 +675,7 @@ export function FarmSetupTab() {
               onClick={handleConfirmApply}
               className="bg-primary"
             >
-              {language === 'bn' ? 'হ্যাঁ, প্রয়োগ করুন' : 'Yes, Apply'}
+              {language === 'bn' ? 'হ্যাঁ, পরিবর্তন করুন' : 'Yes, Change'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
