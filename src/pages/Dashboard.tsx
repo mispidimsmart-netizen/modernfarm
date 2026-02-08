@@ -178,12 +178,7 @@ export function Dashboard() {
         </motion.div>
 
         {/* ============ SECTION 7: TABS (Home + Details) ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12 }}
-          className="mb-5"
-        >
+        <div className="mb-5">
           <Tabs defaultValue="home" className="w-full">
             <TabsList className="w-full grid grid-cols-2 h-11 rounded-2xl bg-muted/50 p-1 border border-border/50">
               <TabsTrigger 
@@ -379,7 +374,7 @@ export function Dashboard() {
               <PowerOutageCard />
             </TabsContent>
           </Tabs>
-        </motion.div>
+        </div>
       </main>
 
       {/* Quick Control FAB */}
