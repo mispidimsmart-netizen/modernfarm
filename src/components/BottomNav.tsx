@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAlerts } from '@/hooks/useFarmData';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
+import { triggerHaptic } from '@/hooks/useHapticFeedback';
 
 const navItems = [
   { path: '/', icon: Home, labelKey: 'home', emoji: '🏠' },
@@ -21,6 +22,11 @@ export function BottomNav() {
   
   const unacknowledgedAlerts = alerts?.filter(a => !a.acknowledged).length ?? 0;
 
+  const handleNavClick = () => {
+    // Trigger haptic feedback on navigation
+    triggerHaptic('selection');
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-lg px-2 pb-safe">
       <div className="mx-auto flex max-w-md items-center justify-around py-1">
@@ -33,6 +39,7 @@ export function BottomNav() {
             <NavLink
               key={path}
               to={path}
+              onClick={handleNavClick}
               className="relative flex flex-col items-center justify-center py-2 px-4"
             >
               {/* Active indicator pill */}
