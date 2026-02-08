@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Ruler, Wind, Thermometer, Flame, Droplets, CheckCircle2, 
   AlertTriangle, ArrowRight, ArrowLeft, RotateCcw, Play, 
-  Check, X, Loader2, Gauge, Settings2
+  Check, X, Loader2, Gauge, Settings2, RefreshCw, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCalibrationWizard, CalibrationStep, AutomationDefaults } from '@/hooks/useCalibrationWizard';
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const STEPS: { id: CalibrationStep; icon: React.ElementType; label: { bn: string; en: string } }[] = [
   { id: 'dimensions', icon: Ruler, label: { bn: 'মাত্রা', en: 'Dimensions' } },
@@ -47,7 +48,7 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
   const [waterPulse, setWaterPulse] = useState('');
   
   // Automation defaults state
-  const [automationDefaults, setAutomationDefaults] = useState<AutomationDefaults>({
+  const DEFAULT_AUTOMATION: AutomationDefaults = {
     temp_min: 18,
     temp_max: 32,
     humidity_min: 40,
@@ -60,7 +61,66 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
     fan_high_temp_min: 33,
     heater_on_temp: 20,
     heater_off_temp: 24,
-  });
+  };
+  
+  const [automationDefaults, setAutomationDefaults] = useState<AutomationDefaults>(DEFAULT_AUTOMATION);
+
+  // Validation warnings
+  const validationWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    const d = automationDefaults;
+    
+    // Temperature range checks
+    if (d.temp_min < 10 || d.temp_min > 25) {
+      warnings.push(language === 'bn' ? '⚠️ সর্বনিম্ন তাপমাত্রা ১০-২৫°C এর মধ্যে হওয়া উচিত' : '⚠️ Min temp should be 10-25°C');
+    }
+    if (d.temp_max < 28 || d.temp_max > 40) {
+      warnings.push(language === 'bn' ? '⚠️ সর্বোচ্চ তাপমাত্রা ২৮-৪০°C এর মধ্যে হওয়া উচিত' : '⚠️ Max temp should be 28-40°C');
+    }
+    if (d.temp_min >= d.temp_max) {
+      warnings.push(language === 'bn' ? '❌ সর্বনিম্ন তাপমাত্রা সর্বোচ্চের চেয়ে কম হতে হবে' : '❌ Min temp must be less than max');
+    }
+    
+    // Humidity checks
+    if (d.humidity_min < 30 || d.humidity_min > 60) {
+      warnings.push(language === 'bn' ? '⚠️ আর্দ্রতা সর্বনিম্ন ৩০-৬০% হওয়া উচিত' : '⚠️ Humidity min should be 30-60%');
+    }
+    if (d.humidity_max < 70 || d.humidity_max > 95) {
+      warnings.push(language === 'bn' ? '⚠️ আর্দ্রতা সর্বোচ্চ ৭০-৯৫% হওয়া উচিত' : '⚠️ Humidity max should be 70-95%');
+    }
+    
+    // Ammonia check
+    if (d.ammonia_max < 15 || d.ammonia_max > 35) {
+      warnings.push(language === 'bn' ? '⚠️ অ্যামোনিয়া সীমা ১৫-৩৫ ppm হওয়া উচিত' : '⚠️ Ammonia limit should be 15-35 ppm');
+    }
+    
+    // Fan speed order check
+    if (d.fan_low_temp_min >= d.fan_low_temp_max) {
+      warnings.push(language === 'bn' ? '❌ ফ্যান Low রেঞ্জ ভুল' : '❌ Fan Low range is invalid');
+    }
+    if (d.fan_medium_temp_min >= d.fan_medium_temp_max) {
+      warnings.push(language === 'bn' ? '❌ ফ্যান Medium রেঞ্জ ভুল' : '❌ Fan Medium range is invalid');
+    }
+    if (d.fan_low_temp_max > d.fan_medium_temp_min) {
+      warnings.push(language === 'bn' ? '⚠️ ফ্যান স্পিড রেঞ্জ ওভারল্যাপ করছে' : '⚠️ Fan speed ranges overlap');
+    }
+    
+    // Heater check
+    if (d.heater_on_temp >= d.heater_off_temp) {
+      warnings.push(language === 'bn' ? '❌ হিটার ON তাপমাত্রা OFF এর চেয়ে কম হতে হবে' : '❌ Heater ON must be less than OFF');
+    }
+    if (d.heater_on_temp < 15 || d.heater_on_temp > 28) {
+      warnings.push(language === 'bn' ? '⚠️ হিটার ON তাপমাত্রা ১৫-২৮°C হওয়া উচিত' : '⚠️ Heater ON should be 15-28°C');
+    }
+    
+    return warnings;
+  }, [automationDefaults, language]);
+
+  const hasErrors = validationWarnings.some(w => w.includes('❌'));
+
+  const resetToDefaults = () => {
+    setAutomationDefaults(DEFAULT_AUTOMATION);
+  };
 
   // Pre-fill from existing data
   useEffect(() => {
@@ -155,6 +215,33 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
                 {language === 'bn' ? 'থ্রেশহোল্ড ও ফ্যান/হিটার সেটিংস' : 'Thresholds & Fan/Heater settings'}
               </p>
             </div>
+
+            {/* Reset Button */}
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={resetToDefaults}
+                className="text-xs"
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                {language === 'bn' ? 'ডিফল্ট মান' : 'Reset Defaults'}
+              </Button>
+            </div>
+
+            {/* Validation Warnings */}
+            {validationWarnings.length > 0 && (
+              <Alert variant={hasErrors ? "destructive" : "default"} className="py-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  <ul className="space-y-1 mt-1">
+                    {validationWarnings.map((warning, i) => (
+                      <li key={i}>{warning}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Temperature Thresholds */}
             <div className="bg-muted/30 rounded-xl p-4 space-y-3">
@@ -319,9 +406,13 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
             <Button 
               className="w-full" 
               onClick={() => wizard.saveAutomationDefaults(automationDefaults)}
+              disabled={hasErrors}
             >
-              {language === 'bn' ? 'সংরক্ষণ করুন ও পরবর্তী' : 'Save & Continue'}
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {hasErrors 
+                ? (language === 'bn' ? '❌ ত্রুটি সংশোধন করুন' : '❌ Fix errors first')
+                : (language === 'bn' ? 'সংরক্ষণ করুন ও পরবর্তী' : 'Save & Continue')
+              }
+              {!hasErrors && <ArrowRight className="w-4 h-4 ml-2" />}
             </Button>
           </div>
         );
