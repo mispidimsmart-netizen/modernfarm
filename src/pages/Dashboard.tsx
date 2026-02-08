@@ -35,6 +35,8 @@ import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { CoolingEfficiencyCard } from '@/components/dashboard/CoolingEfficiencyCard';
+import { SensorHealthCard } from '@/components/dashboard/SensorHealthCard';
+import { InsideOutsideDeltaCard } from '@/components/dashboard/InsideOutsideDeltaCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
 import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
@@ -461,6 +463,12 @@ export function Dashboard() {
             
             {/* TAB: Alerts & Predictions */}
             <TabsContent value="alerts" className="mt-4 space-y-4">
+              {/* Sensor Health Monitoring */}
+              <SensorHealthCard />
+              
+              {/* Inside vs Outside Temperature Delta */}
+              <InsideOutsideDeltaCard />
+              
               {isLayer && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
               {isBroiler && broilerWaterResult && (
                 <WaterAnomalyCard result={{
