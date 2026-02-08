@@ -1,0 +1,373 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Egg, Drumstick, Sun, Cloud, Snowflake, CloudRain, 
+  Baby, TrendingUp, Factory, Flame, Wind, Check,
+  Wand2, ChevronRight, Home
+} from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useToast } from '@/hooks/use-toast';
+import { useActiveBatch } from '@/hooks/useBroilerData';
+
+type FarmType = 'layer' | 'broiler';
+type Season = 'summer' | 'winter' | 'rainy';
+type FarmSize = 'small' | 'medium' | 'large';
+type ProfileType = 'chick_care' | 'grower' | 'production' | 'heat_protection' | 'cold_protection';
+
+const FARM_TYPES = [
+  {
+    id: 'layer' as FarmType,
+    icon: Egg,
+    name: { bn: 'লেয়ার', en: 'Layer' },
+    description: { bn: 'ডিম উৎপাদন', en: 'Egg production' },
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100 dark:bg-amber-900/30',
+  },
+  {
+    id: 'broiler' as FarmType,
+    icon: Drumstick,
+    name: { bn: 'ব্রয়লার', en: 'Broiler' },
+    description: { bn: 'মাংস উৎপাদন', en: 'Meat production' },
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-100 dark:bg-orange-900/30',
+  },
+];
+
+const SEASONS = [
+  {
+    id: 'summer' as Season,
+    icon: Sun,
+    name: { bn: 'গ্রীষ্ম', en: 'Summer' },
+    description: { bn: 'গরমের সময়', en: 'Hot weather' },
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-100 dark:bg-orange-900/30',
+  },
+  {
+    id: 'winter' as Season,
+    icon: Snowflake,
+    name: { bn: 'শীত', en: 'Winter' },
+    description: { bn: 'ঠান্ডার সময়', en: 'Cold weather' },
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+  },
+  {
+    id: 'rainy' as Season,
+    icon: CloudRain,
+    name: { bn: 'বর্ষা', en: 'Rainy' },
+    description: { bn: 'বৃষ্টির সময়', en: 'Monsoon' },
+    color: 'text-cyan-500',
+    bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+  },
+];
+
+const FARM_SIZES = [
+  { id: 'small' as FarmSize, name: { bn: 'ছোট', en: 'Small' }, range: { bn: '< ১,০০০ পাখি', en: '< 1,000 birds' } },
+  { id: 'medium' as FarmSize, name: { bn: 'মাঝারি', en: 'Medium' }, range: { bn: '১,০০০ - ৫,০০০', en: '1,000 - 5,000' } },
+  { id: 'large' as FarmSize, name: { bn: 'বড়', en: 'Large' }, range: { bn: '৫,০০০+', en: '5,000+' } },
+];
+
+const PROFILES = [
+  {
+    id: 'chick_care' as ProfileType,
+    icon: Baby,
+    name: { bn: 'বাচ্চা পরিচর্যা', en: 'Chick Care' },
+    description: { bn: '১-১০ দিনের জন্য উচ্চ তাপমাত্রা', en: 'High temp for 1-10 days old' },
+    color: 'text-pink-500',
+    bgColor: 'bg-pink-100 dark:bg-pink-900/30',
+  },
+  {
+    id: 'grower' as ProfileType,
+    icon: TrendingUp,
+    name: { bn: 'গ্রোয়ার স্টেজ', en: 'Grower Stage' },
+    description: { bn: '১১-২১ দিনের জন্য সুষম পরিবেশ', en: 'Balanced for 11-21 days old' },
+    color: 'text-green-500',
+    bgColor: 'bg-green-100 dark:bg-green-900/30',
+  },
+  {
+    id: 'production' as ProfileType,
+    icon: Factory,
+    name: { bn: 'প্রোডাকশন', en: 'Production' },
+    description: { bn: 'সর্বোচ্চ উৎপাদনের জন্য', en: 'For maximum output' },
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+  },
+  {
+    id: 'heat_protection' as ProfileType,
+    icon: Flame,
+    name: { bn: 'তাপ সুরক্ষা', en: 'Heat Protection' },
+    description: { bn: 'অতিরিক্ত গরমে সুরক্ষা', en: 'Protection during extreme heat' },
+    color: 'text-red-500',
+    bgColor: 'bg-red-100 dark:bg-red-900/30',
+  },
+  {
+    id: 'cold_protection' as ProfileType,
+    icon: Wind,
+    name: { bn: 'ঠান্ডা সুরক্ষা', en: 'Cold Protection' },
+    description: { bn: 'শীতকালে সুরক্ষা', en: 'Protection during cold' },
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+  },
+];
+
+export function FarmSetupTab() {
+  const { language } = useAuth();
+  const { data: profile } = useProfile();
+  const updateProfile = useUpdateProfile();
+  const { data: activeBatch } = useActiveBatch();
+  const { toast } = useToast();
+
+  const [farmType, setFarmType] = useState<FarmType>((profile?.farm_type as FarmType) || 'layer');
+  const [season, setSeason] = useState<Season>('summer');
+  const [farmSize, setFarmSize] = useState<FarmSize>('medium');
+  const [selectedProfile, setSelectedProfile] = useState<ProfileType>('production');
+  const [birdAge, setBirdAge] = useState<number>(activeBatch?.start_date 
+    ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24))
+    : 0);
+
+  const handleApplyRecommended = async () => {
+    try {
+      await updateProfile.mutateAsync({ 
+        farm_type: farmType,
+      });
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' 
+          ? 'প্রস্তাবিত সেটিংস প্রয়োগ করা হয়েছে' 
+          : 'Recommended settings applied',
+      });
+    } catch (error) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'আবার চেষ্টা করুন' : 'Please try again',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Farm Type Selection */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Home className="h-5 w-5 text-primary" />
+            {language === 'bn' ? 'খামারের ধরণ' : 'Farm Type'}
+          </CardTitle>
+          <CardDescription>
+            {language === 'bn' 
+              ? 'আপনার খামার কি ডিম না মাংসের জন্য?' 
+              : 'Is your farm for eggs or meat?'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            {FARM_TYPES.map((type) => {
+              const Icon = type.icon;
+              const isSelected = farmType === type.id;
+              return (
+                <motion.button
+                  key={type.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setFarmType(type.id)}
+                  className={`relative rounded-xl p-4 text-left transition-all ${
+                    isSelected
+                      ? `${type.bgColor} border-2 border-current ${type.color} shadow-md`
+                      : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                      <Check className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                  <Icon className={`h-8 w-8 mb-2 ${isSelected ? type.color : 'text-muted-foreground'}`} />
+                  <p className="font-semibold">{type.name[language]}</p>
+                  <p className="text-xs text-muted-foreground">{type.description[language]}</p>
+                </motion.button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bird Age / Hatch Date */}
+      {farmType === 'broiler' && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Baby className="h-5 w-5 text-pink-500" />
+              {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
+            </CardTitle>
+            <CardDescription>
+              {language === 'bn' 
+                ? 'বয়স অনুযায়ী তাপমাত্রা স্বয়ংক্রিয়ভাবে সমন্বয় হবে' 
+                : 'Temperature will auto-adjust based on age'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Label className="text-sm text-muted-foreground mb-2 block">
+                  {language === 'bn' ? 'বয়স (দিন)' : 'Age (days)'}
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={birdAge}
+                  onChange={(e) => setBirdAge(Number(e.target.value))}
+                  className="text-center text-xl font-bold h-14"
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  {language === 'bn' ? 'প্রস্তাবিত তাপমাত্রা' : 'Target Temp'}
+                </p>
+                <p className="text-3xl font-bold text-primary">
+                  {birdAge <= 3 ? 33 : birdAge <= 7 ? 31 : birdAge <= 14 ? 29 : birdAge <= 21 ? 26 : birdAge <= 28 ? 24 : 22}°C
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Season Selection */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Cloud className="h-5 w-5 text-primary" />
+            {language === 'bn' ? 'মৌসুম' : 'Season'}
+          </CardTitle>
+          <CardDescription>
+            {language === 'bn' 
+              ? 'বর্তমান আবহাওয়া অনুযায়ী নির্বাচন করুন' 
+              : 'Select based on current weather'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2">
+            {SEASONS.map((s) => {
+              const Icon = s.icon;
+              const isSelected = season === s.id;
+              return (
+                <motion.button
+                  key={s.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSeason(s.id)}
+                  className={`rounded-xl p-3 text-center transition-all ${
+                    isSelected
+                      ? `${s.bgColor} border-2 border-current ${s.color}`
+                      : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                  }`}
+                >
+                  <Icon className={`h-6 w-6 mx-auto mb-1 ${isSelected ? s.color : 'text-muted-foreground'}`} />
+                  <p className="text-sm font-medium">{s.name[language]}</p>
+                </motion.button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Farm Size */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">
+            {language === 'bn' ? 'খামারের আকার' : 'Farm Size'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={farmSize} onValueChange={(v) => setFarmSize(v as FarmSize)}>
+            <div className="grid grid-cols-3 gap-2">
+              {FARM_SIZES.map((size) => (
+                <div key={size.id}>
+                  <RadioGroupItem value={size.id} id={size.id} className="sr-only" />
+                  <Label
+                    htmlFor={size.id}
+                    className={`flex flex-col items-center justify-center rounded-xl p-3 cursor-pointer transition-all ${
+                      farmSize === size.id
+                        ? 'bg-primary/10 border-2 border-primary text-primary'
+                        : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                    }`}
+                  >
+                    <span className="font-semibold">{size.name[language]}</span>
+                    <span className="text-xs text-muted-foreground">{size.range[language]}</span>
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
+      {/* Profile Selection */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wand2 className="h-5 w-5 text-primary" />
+            {language === 'bn' ? 'পরিচালনা প্রোফাইল' : 'Management Profile'}
+          </CardTitle>
+          <CardDescription>
+            {language === 'bn' 
+              ? 'প্রোফাইল অনুযায়ী সেটিংস স্বয়ংক্রিয়ভাবে সমন্বয় হবে' 
+              : 'Settings will auto-adjust based on profile'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {PROFILES.map((p) => {
+              const Icon = p.icon;
+              const isSelected = selectedProfile === p.id;
+              return (
+                <motion.button
+                  key={p.id}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => setSelectedProfile(p.id)}
+                  className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all ${
+                    isSelected
+                      ? `${p.bgColor} border-2 border-current ${p.color}`
+                      : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                  }`}
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${p.bgColor}`}>
+                    <Icon className={`h-5 w-5 ${p.color}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{p.name[language]}</p>
+                    <p className="text-xs text-muted-foreground">{p.description[language]}</p>
+                  </div>
+                  {isSelected && <Check className="h-5 w-5 text-primary" />}
+                </motion.button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Apply Button */}
+      <Button 
+        onClick={handleApplyRecommended} 
+        className="w-full h-14 text-lg"
+        disabled={updateProfile.isPending}
+      >
+        <Wand2 className="mr-2 h-5 w-5" />
+        {language === 'bn' ? 'প্রস্তাবিত সেটিংস প্রয়োগ করুন' : 'Apply Recommended Settings'}
+        <ChevronRight className="ml-2 h-5 w-5" />
+      </Button>
+
+      {/* Explanation */}
+      <p className="text-center text-sm text-muted-foreground px-4">
+        {language === 'bn' 
+          ? '💡 এটি আপনার নির্বাচন অনুযায়ী তাপমাত্রা, আর্দ্রতা এবং ভেন্টিলেশন সেটিংস স্বয়ংক্রিয়ভাবে সমন্বয় করবে।' 
+          : '💡 This will auto-adjust temperature, humidity, and ventilation settings based on your selections.'}
+      </p>
+    </div>
+  );
+}
