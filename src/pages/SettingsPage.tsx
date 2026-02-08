@@ -39,6 +39,7 @@ import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 import { FarmTypeCard } from '@/components/settings/FarmTypeCard';
+import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
 
 // Collapsible Section Component
 function SettingsSection({ 
@@ -473,6 +474,16 @@ export function SettingsPage() {
                 language={language}
               >
                 <FanSpeedSettingsCard />
+              </SettingsSection>
+
+              {/* Advanced Automation Section */}
+              <SettingsSection 
+                title="Advanced Automation" 
+                titleBn="এডভান্সড অটোমেশন"
+                icon={Cog}
+                language={language}
+              >
+                <AdvancedAutomationSettingsCard />
               </SettingsSection>
 
               {/* Heat Stress Section */}
