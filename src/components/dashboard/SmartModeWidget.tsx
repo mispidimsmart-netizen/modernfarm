@@ -1,17 +1,21 @@
 import { motion } from 'framer-motion';
-import { Zap, Sun, Snowflake, CloudRain, AlertTriangle, LucideIcon } from 'lucide-react';
+import { Zap, Sun, Snowflake, CloudRain, AlertTriangle, LucideIcon, Check, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { 
   SMART_MODE_PROFILES, 
   useApplySmartMode,
   SmartModeType 
 } from '@/hooks/useSmartModeProfiles';
+import { useWeatherModeSuggestion, useWeatherAutoModeConfig } from '@/hooks/useWeatherAutoMode';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export function SmartModeWidget() {
   const { language } = useAuth();
   const applyMode = useApplySmartMode();
   const { toast } = useToast();
+  const suggestion = useWeatherModeSuggestion();
+  const { data: autoConfig } = useWeatherAutoModeConfig();
 
   // Quick access modes (excluding normal)
   const quickModes = SMART_MODE_PROFILES.filter(p => p.id !== 'normal').slice(0, 4);
@@ -56,16 +60,29 @@ export function SmartModeWidget() {
     },
   };
 
+  const isAutoMode = autoConfig?.enabled ?? true;
+  const suggestedModeId = suggestion?.mode;
+
   return (
     <div className="rounded-3xl bg-card p-5 shadow-card border border-border">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/40">
-          <Zap className="w-4 h-4 text-white" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/40">
+            <Zap className="w-4 h-4 text-white" />
+          </div>
+          <h3 className="text-sm font-semibold text-foreground">
+            {language === 'bn' ? 'কুইক মোড' : 'Quick Mode'}
+          </h3>
         </div>
-        <h3 className="text-sm font-semibold text-foreground">
-          {language === 'bn' ? 'কুইক মোড' : 'Quick Mode'}
-        </h3>
+        
+        {/* Auto Mode Indicator */}
+        {isAutoMode && (
+          <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20">
+            <Sparkles className="w-3 h-3" />
+            {language === 'bn' ? 'অটো' : 'Auto'}
+          </Badge>
+        )}
       </div>
       
       {/* Mode Buttons Grid */}
@@ -73,6 +90,7 @@ export function SmartModeWidget() {
         {quickModes.map((profile, index) => {
           const style = modeStyles[profile.id] || { gradient: 'from-gray-500 to-gray-600', glow: '', textColor: 'text-white', Icon: Zap };
           const IconComponent = style.Icon;
+          const isActive = suggestedModeId === profile.id;
           
           return (
             <motion.button
@@ -84,13 +102,20 @@ export function SmartModeWidget() {
               whileTap={{ scale: 0.95 }}
               onClick={() => handleQuickMode(profile.id)}
               disabled={applyMode.isPending}
-              className={`relative flex flex-col items-center gap-2 rounded-2xl px-2 py-4 transition-all duration-300 bg-gradient-to-br ${style.gradient} shadow-lg ${style.glow} disabled:opacity-50 border border-white/25 overflow-hidden group`}
+              className={`relative flex flex-col items-center gap-2 rounded-2xl px-2 py-4 transition-all duration-300 bg-gradient-to-br ${style.gradient} shadow-lg ${style.glow} disabled:opacity-50 border-2 ${isActive ? 'border-white ring-2 ring-white/50' : 'border-white/25'} overflow-hidden group`}
             >
+              {/* Active Indicator */}
+              {isActive && (
+                <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-md z-20">
+                  <Check className="w-3 h-3 text-primary" />
+                </div>
+              )}
+              
               {/* Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-t from-white/0 via-white/5 to-white/25 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className={`absolute inset-0 bg-gradient-to-t from-white/0 via-white/5 to-white/25 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
               
               {/* Icon Container with Glass Effect */}
-              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-inner border border-white/30 relative z-10">
+              <div className={`w-11 h-11 rounded-2xl ${isActive ? 'bg-white/30' : 'bg-white/20'} backdrop-blur-sm flex items-center justify-center shadow-inner border border-white/30 relative z-10`}>
                 <IconComponent className="w-6 h-6 text-white drop-shadow-lg" />
               </div>
               
@@ -102,6 +127,20 @@ export function SmartModeWidget() {
           );
         })}
       </div>
+      
+      {/* Auto Mode Reason */}
+      {isAutoMode && suggestion && suggestedModeId !== 'normal' && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mt-3 pt-3 border-t border-border/50"
+        >
+          <p className="text-xs text-muted-foreground text-center">
+            <Sparkles className="w-3 h-3 inline mr-1" />
+            {language === 'bn' ? suggestion.reason : suggestion.reasonEn}
+          </p>
+        </motion.div>
+      )}
     </div>
   );
 }

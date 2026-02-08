@@ -17,7 +17,7 @@ export interface WeatherAutoModeConfig {
 }
 
 const DEFAULT_CONFIG: WeatherAutoModeConfig = {
-  enabled: false,
+  enabled: true, // Auto mode enabled by default
   summer_temp_threshold: 32,
   winter_temp_threshold: 18,
   rain_probability_threshold: 60,
