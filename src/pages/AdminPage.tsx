@@ -50,6 +50,7 @@ import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
 import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
 import { AppDocumentation } from '@/components/admin/AppDocumentation';
+import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
 
 const t = {
   bn: {
@@ -550,8 +551,35 @@ export default function AdminPage() {
             <AdminNotificationSender language={language} />
           </TabsContent>
 
-          <TabsContent value="system" className="mt-4">
+          <TabsContent value="system" className="mt-4 space-y-4">
             <SystemHealthCard language={language} />
+            
+            {/* Calibration Wizard Card */}
+            <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
+              <CardHeader className="border-b border-cyan-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg shadow-cyan-500/40">
+                    <Cpu className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-cyan-200 to-teal-200 bg-clip-text text-transparent font-semibold">
+                    {language === 'bn' ? 'ইনস্টলেশন ক্যালিব্রেশন উইজার্ড' : 'Installation Calibration Wizard'}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <p className="text-slate-400 text-sm mb-4">
+                  {language === 'bn' 
+                    ? 'নতুন ডিভাইস সেটআপের সময় সঠিক সেন্সর প্লেসমেন্ট ও ক্যালিব্রেশন নিশ্চিত করতে এই উইজার্ড ব্যবহার করুন।'
+                    : 'Use this wizard to ensure correct sensor placement and calibration during new device setup.'}
+                </p>
+                <CalibrationWizardSheet>
+                  <Button className="bg-gradient-to-r from-cyan-500 to-teal-600 text-white border-0 hover:from-cyan-600 hover:to-teal-700 shadow-lg shadow-cyan-500/30">
+                    <Cpu className="w-4 h-4 mr-2" />
+                    {language === 'bn' ? 'ক্যালিব্রেশন উইজার্ড চালু করুন' : 'Launch Calibration Wizard'}
+                  </Button>
+                </CalibrationWizardSheet>
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="docs" className="mt-4">
