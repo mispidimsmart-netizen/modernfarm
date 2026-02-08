@@ -25,8 +25,6 @@ const InstallationGuidePage = lazy(() => import("./pages/InstallationGuidePage")
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Lazy load QuickActionWidget since it's only shown after auth
-const QuickActionWidget = lazy(() => import("./components/QuickActionWidget").then(m => ({ default: m.QuickActionWidget })));
 
 // Optimized QueryClient with better caching
 const queryClient = new QueryClient({
@@ -198,20 +196,9 @@ function AppRoutes() {
   );
 }
 
-// App with widget - memoized
-const AppWithWidget = memo(function AppWithWidget() {
-  const { user } = useAuth();
-  
-  return (
-    <>
-      <AppRoutes />
-      {user && (
-        <Suspense fallback={null}>
-          <QuickActionWidget />
-        </Suspense>
-      )}
-    </>
-  );
+// App routes wrapper - memoized
+const AppWithRoutes = memo(function AppWithRoutes() {
+  return <AppRoutes />;
 });
 
 const App = () => (
@@ -224,7 +211,7 @@ const App = () => (
           <OfflineIndicator />
           <PWAUpdateBanner />
           <BrowserRouter>
-            <AppWithWidget />
+            <AppWithRoutes />
           </BrowserRouter>
         </ShedProvider>
       </AuthProvider>
