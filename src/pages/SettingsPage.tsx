@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
@@ -46,6 +47,7 @@ export function SettingsPage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
   const [activeTab, setActiveTab] = useState('farm-setup');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handlePushToggle = async () => {
     if (isSubscribed) {
@@ -302,68 +304,84 @@ export function SettingsPage() {
             </Tabs>
           )}
 
-          {/* Notifications Section - Available for all */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Bell size={20} />
-                </div>
-                <div>
-                  <p className="font-semibold">{language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'bn' ? 'অ্যালার্ট ও আপডেট' : 'Alerts & updates'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {/* Push Notifications */}
-                <div className="rounded-xl bg-muted/50 p-4">
+          {/* Notifications Section - Collapsible */}
+          <Collapsible open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardContent className="pt-6 pb-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {isSubscribed ? (
-                        <Bell className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <BellOff className="h-5 w-5 text-muted-foreground" />
-                      )}
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Bell size={20} />
+                      </div>
                       <div>
-                        <p className="font-medium">
-                          {language === 'bn' ? 'পুশ নোটিফিকেশন' : 'Push Notifications'}
-                        </p>
+                        <p className="font-semibold">{language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}</p>
                         <p className="text-xs text-muted-foreground">
-                          {!isSupported 
-                            ? (language === 'bn' ? 'সমর্থিত নয়' : 'Not supported')
-                            : permission === 'granted'
-                              ? (language === 'bn' ? 'অনুমতি দেওয়া হয়েছে' : 'Permission granted')
-                              : permission === 'denied'
-                                ? (language === 'bn' ? 'অনুমতি প্রত্যাখ্যাত' : 'Permission denied')
-                                : (language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission required')
-                          }
+                          {isSubscribed 
+                            ? (language === 'bn' ? '✓ সক্রিয়' : '✓ Active')
+                            : (language === 'bn' ? 'অ্যালার্ট ও আপডেট' : 'Alerts & updates')}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
-                      {isSupported && (
-                        <Switch
-                          checked={isSubscribed}
-                          onCheckedChange={handlePushToggle}
-                          disabled={pushLoading || permission === 'denied'}
-                        />
-                      )}
+                    <motion.div
+                      animate={{ rotate: isNotificationsOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    </motion.div>
+                  </div>
+                </CardContent>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <CardContent className="pt-0 pb-6 space-y-4">
+                  {/* Push Notifications */}
+                  <div className="rounded-xl bg-muted/50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {isSubscribed ? (
+                          <Bell className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <BellOff className="h-5 w-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <p className="font-medium">
+                            {language === 'bn' ? 'পুশ নোটিফিকেশন' : 'Push Notifications'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {!isSupported 
+                              ? (language === 'bn' ? 'সমর্থিত নয়' : 'Not supported')
+                              : permission === 'granted'
+                                ? (language === 'bn' ? 'অনুমতি দেওয়া হয়েছে' : 'Permission granted')
+                                : permission === 'denied'
+                                  ? (language === 'bn' ? 'অনুমতি প্রত্যাখ্যাত' : 'Permission denied')
+                                  : (language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission required')
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
+                        {isSupported && (
+                          <Switch
+                            checked={isSubscribed}
+                            onCheckedChange={handlePushToggle}
+                            disabled={pushLoading || permission === 'denied'}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Notification Sounds */}
-                <NotificationSoundCard />
+                  {/* Notification Sounds */}
+                  <NotificationSoundCard />
 
-                {/* SMS Alerts - Owner only */}
-                {isOwner && <SmsAlertSettingsCard />}
-              </div>
-            </CardContent>
-          </Card>
+                  {/* SMS Alerts - Owner only */}
+                  {isOwner && <SmsAlertSettingsCard />}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </motion.div>
       </main>
 
