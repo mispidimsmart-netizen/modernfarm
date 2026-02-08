@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Droplet, Thermometer, BarChart3, TrendingUp } from 'lucide-react';
+import { Droplet, Thermometer, BarChart3, TrendingUp, Award } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSensorReadings } from '@/hooks/useFarmData';
 import { useLiveSensorData } from '@/hooks/useSensorData';
@@ -11,7 +11,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
-
+import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
 export function ReportsPage() {
   const { language } = useAuth();
   const [searchParams] = useSearchParams();
@@ -19,11 +19,13 @@ export function ReportsPage() {
   const { data: sensorReadings } = useSensorReadings(24);
   
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl === 'costs' ? 'costs' : 'overview');
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl === 'costs' ? 'costs' : tabFromUrl === 'performance' ? 'performance' : 'overview'
+  );
   
   useEffect(() => {
-    if (tabFromUrl === 'costs' || tabFromUrl === 'overview') {
-      setActiveTab(tabFromUrl);
+    if (['costs', 'overview', 'performance'].includes(tabFromUrl || '')) {
+      setActiveTab(tabFromUrl!);
     }
   }, [tabFromUrl]);
 
@@ -72,16 +74,23 @@ export function ReportsPage() {
         >
           <h2 className="section-title">{translations.reports.title[language]}</h2>
 
-          {/* Tabs for Overview and Cost Analytics */}
+          {/* Tabs for Overview, Performance and Cost Analytics */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="overview" className="gap-2">
-                <TrendingUp size={16} />
-                {language === 'bn' ? 'ওভারভিউ' : 'Overview'}
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview" className="gap-1 text-xs sm:text-sm">
+                <TrendingUp size={14} />
+                <span className="hidden xs:inline">{language === 'bn' ? 'ওভারভিউ' : 'Overview'}</span>
+                <span className="xs:hidden">{language === 'bn' ? 'ওভার' : 'Over'}</span>
               </TabsTrigger>
-              <TabsTrigger value="costs" className="gap-2">
-                <BarChart3 size={16} />
-                {language === 'bn' ? 'খরচ বিশ্লেষণ' : 'Cost Analytics'}
+              <TabsTrigger value="performance" className="gap-1 text-xs sm:text-sm">
+                <Award size={14} />
+                <span className="hidden xs:inline">{language === 'bn' ? 'পারফরম্যান্স' : 'Performance'}</span>
+                <span className="xs:hidden">{language === 'bn' ? 'পার্ফম' : 'Perf'}</span>
+              </TabsTrigger>
+              <TabsTrigger value="costs" className="gap-1 text-xs sm:text-sm">
+                <BarChart3 size={14} />
+                <span className="hidden xs:inline">{language === 'bn' ? 'খরচ' : 'Costs'}</span>
+                <span className="xs:hidden">{language === 'bn' ? 'খরচ' : 'Cost'}</span>
               </TabsTrigger>
             </TabsList>
 
@@ -183,6 +192,11 @@ export function ReportsPage() {
                   </ResponsiveContainer>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Performance Tab */}
+            <TabsContent value="performance" className="mt-4">
+              <FarmPerformanceView />
             </TabsContent>
 
             {/* Cost Analytics Tab */}
