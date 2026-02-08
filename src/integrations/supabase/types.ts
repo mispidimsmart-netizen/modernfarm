@@ -2520,7 +2520,7 @@ export type Database = {
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      alert_severity: "warning" | "danger"
+      alert_severity: "info" | "warning" | "danger"
       alert_type: "temperature" | "ammonia" | "power" | "water"
       app_role: "owner" | "worker" | "super_admin"
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
@@ -2654,7 +2654,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      alert_severity: ["warning", "danger"],
+      alert_severity: ["info", "warning", "danger"],
       alert_type: ["temperature", "ammonia", "power", "water"],
       app_role: ["owner", "worker", "super_admin"],
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],

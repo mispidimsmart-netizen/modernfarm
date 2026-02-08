@@ -39,7 +39,7 @@ export interface LightingSchedule {
 export interface Alert {
   id: string;
   type: 'temperature' | 'ammonia' | 'power' | 'water';
-  severity: 'warning' | 'danger';
+  severity: 'info' | 'warning' | 'danger';
   message: string;
   messageBn: string;
   timestamp: Date;
