@@ -50,12 +50,12 @@ export function QuickSensorDisplay() {
     },
     {
       icon: Wind,
-      label: { bn: 'বায়ুমান', en: 'Air Quality' },
-      value: ammoniaStatus.label[language],
+      label: { bn: 'অ্যামোনিয়া', en: 'Ammonia' },
+      value: `${sensorData.ammonia.toFixed(0)} ppm`,
+      subValue: ammoniaStatus.label[language],
       color: ammoniaStatus.color,
       bg: ammoniaStatus.bg,
       border: ammoniaStatus.border,
-      isStatus: true,
     },
   ];
 
@@ -80,6 +80,11 @@ export function QuickSensorDisplay() {
             <p className={`text-lg font-bold ${sensor.color}`}>
               {sensor.value}
             </p>
+            {sensor.subValue && (
+              <p className={`text-[10px] font-medium ${sensor.color}`}>
+                {sensor.subValue}
+              </p>
+            )}
           </motion.div>
         );
       })}
