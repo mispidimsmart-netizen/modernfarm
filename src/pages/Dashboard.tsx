@@ -118,6 +118,12 @@ export function Dashboard() {
       <Header />
 
       <main className="page-container px-4">
+        {/* ============ SECTION 0: SHED SELECTOR (TOP) ============ */}
+        <div className="flex items-center gap-2 mb-4">
+          <ShedSelector />
+          <ShedManagementSheet />
+        </div>
+
         {/* ============ SECTION 1: HERO FARM HEALTH BANNER ============ */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -200,12 +206,6 @@ export function Dashboard() {
               {/* Weather */}
               <WeatherCard />
               
-              {/* Shed Selector */}
-              <div className="flex items-center gap-2">
-                <ShedSelector />
-                <ShedManagementSheet />
-              </div>
-              
               {/* Quick Status Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <HeatStressStatusCard 
@@ -246,12 +246,6 @@ export function Dashboard() {
             <TabsContent value="details" className="mt-4 space-y-4">
               {/* Big Farm Overview */}
               <BigFarmOverview />
-              
-              {/* Shed Selector */}
-              <div className="flex items-center gap-2">
-                <ShedSelector />
-                <ShedManagementSheet />
-              </div>
               
               {/* Technical Sensor Cards */}
               <div className="grid grid-cols-2 gap-3">
