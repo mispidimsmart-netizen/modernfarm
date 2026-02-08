@@ -532,6 +532,11 @@ void setLightWithFade(int newBrightness);
 float getHeaterTargetTemp(int ageDays);
 void handleAdvancedAutomationSettings(JsonObject& adv);
 
+// 🆕 OTA Update function prototypes
+void checkOTAUpdate();
+void performOTAUpdate(String firmwareUrl, int firmwareSize, String version);
+void reportOTAProgress(int progress, String status, String version = "", String errorMsg = "");
+
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
 Preferences preferences;
@@ -631,6 +636,11 @@ float lastVoltageRMS = 230.0;
  bool otaInProgress = false;
  int otaProgress = 0;
  String otaStatus = "idle";
+ String otaAvailableVersion = "";
+ String otaPendingUrl = "";
+ int otaPendingSize = 0;
+ unsigned long lastOTACheck = 0;
+ const unsigned long OTA_CHECK_INTERVAL = 3600000UL;  // Check every 1 hour
  String firmwareVersion = "5.2.0";  // Updated for 7-module system
   
  // ═══════════════════════════════════════════════════════════════════════
@@ -2894,6 +2904,225 @@ void checkFailsafeTimeout() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// 📦 OTA (OVER-THE-AIR) FIRMWARE UPDATE SYSTEM
+// Check for updates every hour, download and install wirelessly
+// ═══════════════════════════════════════════════════════════════════════
+
+void checkOTAUpdate() {
+  if (!wifiConnected || otaInProgress) {
+    return;
+  }
+  
+  Serial.println("\n📡 [OTA] Checking for firmware updates...");
+  
+  HTTPClient http;
+  String otaApiUrl = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware";
+  String url = otaApiUrl + "?action=check&version=" + firmwareVersion + "&farm_type=" + getFarmTypeStr();
+  
+  http.begin(url);
+  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.setTimeout(10000);
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String response = http.getString();
+    
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, response);
+    
+    if (!error) {
+      bool updateAvailable = doc["update_available"] | false;
+      
+      if (updateAvailable) {
+        String newVersion = doc["version"] | "";
+        String firmwareUrl = doc["url"] | "";
+        int firmwareSize = doc["size"] | 0;
+        String releaseNotes = doc["release_notes"] | "";
+        
+        Serial.println("╔════════════════════════════════════════════════════════════╗");
+        Serial.println("║  🆕 NEW FIRMWARE AVAILABLE!                                ║");
+        Serial.printf("║  Current: %s → New: %s\n", firmwareVersion.c_str(), newVersion.c_str());
+        Serial.printf("║  Size: %d bytes\n", firmwareSize);
+        if (releaseNotes.length() > 0) {
+          Serial.printf("║  Notes: %s\n", releaseNotes.c_str());
+        }
+        Serial.println("╚════════════════════════════════════════════════════════════╝");
+        
+        otaAvailableVersion = newVersion;
+        otaPendingUrl = firmwareUrl;
+        otaPendingSize = firmwareSize;
+        otaStatus = "available";
+        
+        // Start the update
+        performOTAUpdate(firmwareUrl, firmwareSize, newVersion);
+      } else {
+        Serial.printf("✓ [OTA] Firmware up to date (%s)\n", firmwareVersion.c_str());
+        otaStatus = "up_to_date";
+      }
+    }
+  } else {
+    Serial.printf("✗ [OTA] Check failed: HTTP %d\n", httpCode);
+  }
+  
+  http.end();
+  lastOTACheck = millis();
+}
+
+void reportOTAProgress(int progress, String status, String version, String errorMsg) {
+  if (!wifiConnected) return;
+  
+  HTTPClient http;
+  String otaApiUrl = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware";
+  String url = otaApiUrl + "?action=progress";
+  
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", DEVICE_TOKEN);
+  http.setTimeout(5000);
+  
+  StaticJsonDocument<256> doc;
+  doc["progress"] = progress;
+  doc["status"] = status;
+  if (version.length() > 0) doc["version"] = version;
+  if (errorMsg.length() > 0) doc["error_message"] = errorMsg;
+  
+  String payload;
+  serializeJson(doc, payload);
+  
+  http.POST(payload);
+  http.end();
+}
+
+void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
+  if (otaInProgress) {
+    Serial.println("⚠️ [OTA] Update already in progress!");
+    return;
+  }
+  
+  Serial.println("\n🚀 [OTA] Starting firmware update...");
+  Serial.printf("   URL: %s\n", firmwareUrl.c_str());
+  Serial.printf("   Size: %d bytes\n", firmwareSize);
+  
+  otaInProgress = true;
+  otaStatus = "downloading";
+  otaProgress = 0;
+  
+  // Report start
+  reportOTAProgress(0, "downloading", version, "");
+  
+  HTTPClient http;
+  http.begin(firmwareUrl);
+  http.setTimeout(60000);  // 60 second timeout for download
+  
+  int httpCode = http.GET();
+  
+  if (httpCode != 200) {
+    Serial.printf("✗ [OTA] Download failed: HTTP %d\n", httpCode);
+    otaStatus = "failed";
+    otaInProgress = false;
+    reportOTAProgress(0, "failed", version, "HTTP error: " + String(httpCode));
+    http.end();
+    return;
+  }
+  
+  int contentLength = http.getSize();
+  if (contentLength <= 0) {
+    Serial.println("✗ [OTA] Invalid content length");
+    otaStatus = "failed";
+    otaInProgress = false;
+    reportOTAProgress(0, "failed", version, "Invalid content length");
+    http.end();
+    return;
+  }
+  
+  Serial.printf("   Content-Length: %d bytes\n", contentLength);
+  
+  // Check if there's enough space
+  if (!Update.begin(contentLength)) {
+    Serial.printf("✗ [OTA] Not enough space for update! Error: %s\n", Update.errorString());
+    otaStatus = "failed";
+    otaInProgress = false;
+    reportOTAProgress(0, "failed", version, "Not enough space");
+    http.end();
+    return;
+  }
+  
+  Serial.println("📥 [OTA] Downloading firmware...");
+  otaStatus = "downloading";
+  
+  WiFiClient* stream = http.getStreamPtr();
+  uint8_t buff[1024] = { 0 };
+  int bytesWritten = 0;
+  int lastProgressReport = 0;
+  
+  while (http.connected() && bytesWritten < contentLength) {
+    size_t available = stream->available();
+    
+    if (available) {
+      int c = stream->readBytes(buff, min(available, sizeof(buff)));
+      
+      if (Update.write(buff, c) != c) {
+        Serial.printf("✗ [OTA] Write failed: %s\n", Update.errorString());
+        Update.abort();
+        otaStatus = "failed";
+        otaInProgress = false;
+        reportOTAProgress(otaProgress, "failed", version, "Write error");
+        http.end();
+        return;
+      }
+      
+      bytesWritten += c;
+      otaProgress = (bytesWritten * 100) / contentLength;
+      
+      // Report progress every 10%
+      if (otaProgress >= lastProgressReport + 10) {
+        Serial.printf("   Progress: %d%% (%d/%d bytes)\n", otaProgress, bytesWritten, contentLength);
+        reportOTAProgress(otaProgress, "downloading", version, "");
+        lastProgressReport = otaProgress;
+      }
+      
+      // Feed watchdog during long download
+      esp_task_wdt_reset();
+    }
+    
+    delay(1);
+  }
+  
+  http.end();
+  
+  Serial.println("📦 [OTA] Installing firmware...");
+  otaStatus = "installing";
+  reportOTAProgress(100, "installing", version, "");
+  
+  if (Update.end()) {
+    if (Update.isFinished()) {
+      Serial.println("╔════════════════════════════════════════════════════════════╗");
+      Serial.println("║  ✅ OTA UPDATE SUCCESSFUL!                                 ║");
+      Serial.printf("║  New Version: %s\n", version.c_str());
+      Serial.println("║  Restarting in 3 seconds...                                ║");
+      Serial.println("╚════════════════════════════════════════════════════════════╝");
+      
+      otaStatus = "completed";
+      reportOTAProgress(100, "completed", version, "");
+      
+      delay(3000);
+      ESP.restart();
+    } else {
+      Serial.println("✗ [OTA] Update not finished properly");
+      otaStatus = "failed";
+      otaInProgress = false;
+      reportOTAProgress(100, "failed", version, "Update not finished");
+    }
+  } else {
+    Serial.printf("✗ [OTA] Update failed: %s\n", Update.errorString());
+    otaStatus = "failed";
+    otaInProgress = false;
+    reportOTAProgress(0, "failed", version, Update.errorString());
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // ⚡ REAL-TIME COMMAND QUEUE SYSTEM
 // Polls device_commands table every 5 seconds for instant control
 // Manual Override থাকলে App থেকে ফ্যান/লাইট/অ্যালার্ম/হিটার কন্ট্রোল
@@ -3269,6 +3498,11 @@ void loop() {
       checkFailsafeTimeout();
     }
     lastCloudAttempt = now;
+  }
+  
+  // 📦 OTA UPDATE CHECK (every 1 hour)
+  if (now - lastOTACheck >= OTA_CHECK_INTERVAL && wifiConnected && !otaInProgress) {
+    checkOTAUpdate();
   }
   
   // ===== CONTROL ENGINE =====
