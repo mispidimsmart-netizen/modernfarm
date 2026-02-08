@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Cpu, Cable, Zap, Wifi, Settings, CheckCircle2, ShoppingCart, ExternalLink, Copy, Check, AlertTriangle, Info, Lightbulb, Thermometer, Droplets, Wind, Power, ToggleLeft } from 'lucide-react';
+import { ArrowLeft, Cpu, Cable, Zap, Wifi, Settings, CheckCircle2, ShoppingCart, ExternalLink, Copy, Check, AlertTriangle, Info, Lightbulb, Thermometer, Droplets, Wind, Power, ToggleLeft, Bird, Egg, Flame, Fan } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,7 +69,7 @@ const partsList = [
     categoryEn: 'Sensors',
     items: [
       { name: 'DHT22/AM2302 (তাপমাত্রা ও আর্দ্রতা)', nameEn: 'DHT22 Temperature & Humidity', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি, বিডিস্টল', essential: true },
-      { name: 'MQ-135 (অ্যামোনিয়া/গ্যাস সেন্সর)', nameEn: 'MQ-135 Gas Sensor', quantity: 1, price: '৳২০০-৩০০', priceRange: [200, 300], shop: 'টেকশপ বিডি', essential: true },
+      { name: 'MQ-137 (অ্যামোনিয়া গ্যাস সেন্সর)', nameEn: 'MQ-137 Ammonia Gas Sensor', quantity: 1, price: '৳৪০০-৬০০', priceRange: [400, 600], shop: 'টেকশপ বিডি', essential: true },
       { name: 'YF-S201 (ওয়াটার ফ্লো সেন্সর)', nameEn: 'Water Flow Sensor', quantity: 1, price: '৳২৫০-৩৫০', priceRange: [250, 350], shop: 'রোবটিক্স বিডি', essential: false },
     ]
   },
@@ -119,25 +119,28 @@ const partsList = [
   },
 ];
 
+// Updated Pin Mapping (v5 - 2024)
 const wiringConnections = [
   { component: 'DHT22', pin: 'DATA', esp32Pin: 'GPIO 4', color: 'bg-green-500', note: '10K রেজিস্টর VCC ও DATA এর মধ্যে' },
   { component: 'DHT22', pin: 'VCC', esp32Pin: '3.3V', color: 'bg-red-500', note: '' },
   { component: 'DHT22', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'MQ-135', pin: 'AO', esp32Pin: 'GPIO 34', color: 'bg-yellow-500', note: 'এনালগ আউটপুট' },
-  { component: 'MQ-135', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
-  { component: 'MQ-135', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'YF-S201', pin: 'Signal', esp32Pin: 'GPIO 27', color: 'bg-blue-500', note: 'পালস আউটপুট' },
+  { component: 'MQ-137', pin: 'AO', esp32Pin: 'GPIO 34', color: 'bg-yellow-500', note: 'এনালগ আউটপুট (২৪ঘণ্টা প্রিহিট)' },
+  { component: 'MQ-137', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
+  { component: 'MQ-137', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
+  { component: 'YF-S201', pin: 'Signal', esp32Pin: 'GPIO 27', color: 'bg-blue-500', note: 'পালস আউটপুট (তীর চিহ্ন অনুসরণ)' },
   { component: 'YF-S201', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'YF-S201', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'Relay Module', pin: 'IN1 (Fan)', esp32Pin: 'GPIO 26', color: 'bg-purple-500', note: 'ফ্যান কন্ট্রোল' },
-  { component: 'Relay Module', pin: 'IN2 (Light)', esp32Pin: 'GPIO 25', color: 'bg-orange-500', note: 'লাইট কন্ট্রোল' },
-  { component: 'Relay Module', pin: 'IN3 (Alarm/Buzzer)', esp32Pin: 'GPIO 33', color: 'bg-pink-500', note: 'SFM-27 বাজার কন্ট্রোল' },
-  { component: 'Relay Module', pin: 'IN4 (Heater)', esp32Pin: 'GPIO 13', color: 'bg-red-400', note: 'হিটার কন্ট্রোল' },
+  { component: 'ZMPT101B', pin: 'OUT', esp32Pin: 'GPIO 35', color: 'bg-cyan-500', note: 'AC ভোল্টেজ মনিটর' },
+  { component: 'ZMPT101B', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
+  { component: 'ZMPT101B', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
+  { component: 'Relay IN1', pin: 'Exhaust Fan', esp32Pin: 'GPIO 25', color: 'bg-purple-500', note: '🌀 মূল এক্সহস্ট ফ্যান' },
+  { component: 'Relay IN2', pin: 'Circulation Fan', esp32Pin: 'GPIO 26', color: 'bg-blue-400', note: '💨 সার্কুলেশন/সিলিং ফ্যান' },
+  { component: 'Relay IN3', pin: 'Heater', esp32Pin: 'GPIO 33', color: 'bg-orange-500', note: '🔥 হিটার (ব্রয়লার ব্রুডিং)' },
+  { component: 'Relay IN4', pin: 'Fogger', esp32Pin: 'GPIO 13', color: 'bg-teal-500', note: '💦 ফগার সোলেনয়েড' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'Power Sensor', pin: 'Signal', esp32Pin: 'GPIO 35', color: 'bg-cyan-500', note: 'মেইন পাওয়ার ডিটেকশন' },
-  { component: 'Manual Button', pin: 'Signal', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: 'ম্যানুয়াল ওভাররাইড বাটন' },
-  { component: 'LED Dimmer', pin: 'PWM', esp32Pin: 'GPIO 25', color: 'bg-lime-500', note: 'PWM লাইটিং (MOSFET)' },
+  { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: '🔔 অ্যালার্ম বাজার' },
+  { component: 'PWM Light', pin: 'Signal', esp32Pin: 'GPIO 14', color: 'bg-lime-500', note: '💡 LED ডিমিং (MOSFET)' },
 ];
 
 // Detailed step-by-step wiring guide for each sensor
@@ -193,7 +196,7 @@ const detailedWiringGuide = [
   },
   {
     id: 'mq137',
-    name: 'MQ-137 অ্যামোনিয়া/গ্যাস সেন্সর',
+    name: 'MQ-137 অ্যামোনিয়া গ্যাস সেন্সর',
     nameEn: 'MQ-137 Ammonia Gas Sensor',
     icon: Wind,
     color: 'text-yellow-500',
@@ -204,9 +207,9 @@ const detailedWiringGuide = [
       { sensorPin: 'DO (Digital Output)', esp32Pin: '-', wireColor: '-', wireNameEn: '-', instruction: '⬜ DO পিন ব্যবহার করা হচ্ছে না (খালি রাখুন)', warning: null },
       { sensorPin: 'GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: MQ-137 এর GND → ESP32 এর GND', warning: null },
     ],
-    extraNote: '⚠️ প্রথমবার চালু করার পর ২৪-৪৮ ঘন্টা "প্রিহিট/বার্ন-ইন" করতে হবে। এই সময় সেন্সর গরম থাকবে এবং রিডিং স্থিতিশীল হতে সময় লাগবে। চালু রাখুন, বন্ধ করবেন না!',
+    extraNote: '⚠️ গুরুত্বপূর্ণ: প্রথমবার চালু করার পর ২৪-৪৮ ঘন্টা একটানা চালু রাখুন ("প্রিহিট/বার্ন-ইন")। এই সময় সেন্সর গরম থাকবে এবং রিডিং স্থিতিশীল হতে সময় লাগবে। প্রিহিটের আগে রিডিং ভুল আসতে পারে (যেমন ২৫ ppm)। সেটিংস থেকে ক্যালিব্রেশন অফসেট অ্যাডজাস্ট করতে পারবেন।',
     resistorNote: null,
-    tips: ['মাটি থেকে ১-২ ফুট উচ্চতায় লাগান (অ্যামোনিয়া ভারী তাই নিচে জমে)', 'বাতাসের চলাচল আছে এমন জায়গায় রাখুন'],
+    tips: ['মাটি থেকে ১-২ ফুট উচ্চতায় লাগান (অ্যামোনিয়া ভারী তাই নিচে জমে)', 'বাতাসের চলাচল আছে এমন জায়গায় রাখুন', '🥚 লেয়ার: 15/25 ppm থ্রেশহোল্ড', '🐔 ব্রয়লার: 20/30 ppm থ্রেশহোল্ড'],
   },
   {
     id: 'yfs201',
@@ -244,22 +247,22 @@ const detailedWiringGuide = [
   },
   {
     id: 'relay',
-    name: '৪-চ্যানেল রিলে মডিউল',
-    nameEn: '4-Channel Relay Module',
+    name: '৪-চ্যানেল রিলে মডিউল (HW-316)',
+    nameEn: '4-Channel Relay Module (HW-316)',
     icon: ToggleLeft,
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
     pins: [
-      { sensorPin: 'VCC (পাওয়ার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে মডিউল এর VCC → ESP32 এর VIN (5V)', warning: null },
+      { sensorPin: 'VCC (পাওয়ার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে মডিউল এর VCC → ESP32 এর VIN (5V)', warning: 'JD-VCC জাম্পার লাগানো আছে কিনা চেক করুন!' },
       { sensorPin: 'GND (গ্রাউন্ড)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে মডিউল এর GND → ESP32 এর GND', warning: null },
-      { sensorPin: 'IN1 (ফ্যান কন্ট্রোল)', esp32Pin: 'GPIO 26', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: রিলে IN1 → ESP32 এর GPIO 26 (🌀 ফ্যান)', warning: null },
-      { sensorPin: 'IN2 (লাইট কন্ট্রোল)', esp32Pin: 'GPIO 25', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 25 (💡 লাইট/PWM)', warning: null },
-      { sensorPin: 'IN3 (অ্যালার্ম/বাজার)', esp32Pin: 'GPIO 33', wireColor: 'বেগুনি', wireNameEn: 'PURPLE', instruction: '🟣 বেগুনি তার: রিলে IN3 → ESP32 এর GPIO 33 (🔔 SFM-27 বাজার)', warning: null },
-      { sensorPin: 'IN4 (হিটার কন্ট্রোল)', esp32Pin: 'GPIO 13', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN4 → ESP32 এর GPIO 13 (🔥 হিটার)', warning: null },
+      { sensorPin: 'IN1 (এক্সহস্ট ফ্যান)', esp32Pin: 'GPIO 25', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: রিলে IN1 → ESP32 এর GPIO 25 (🌀 মূল এক্সহস্ট ফ্যান)', warning: null },
+      { sensorPin: 'IN2 (সার্কুলেশন ফ্যান)', esp32Pin: 'GPIO 26', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 26 (💨 সিলিং/সার্কুলেশন ফ্যান)', warning: null },
+      { sensorPin: 'IN3 (হিটার)', esp32Pin: 'GPIO 33', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 কমলা তার: রিলে IN3 → ESP32 এর GPIO 33 (🔥 হিটার - ব্রয়লার ব্রুডিং)', warning: null },
+      { sensorPin: 'IN4 (ফগার)', esp32Pin: 'GPIO 13', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN4 → ESP32 এর GPIO 13 (💦 ফগার সোলেনয়েড)', warning: null },
     ],
-    extraNote: '⚙️ রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়, HIGH দিলে OFF হয়।',
-    resistorNote: null,
-    tips: ['প্রতিটি রিলে NO (Normally Open) ও COM পিনে ফ্যান/লাইটের তার লাগান', 'SFM-27 বাজারের জন্য রিলে IN3 এর COM-এ বাজারের +, বাহ্যিক পাওয়ার সোর্সে NO লাগান', 'হাই পাওয়ার ডিভাইস (২০০০W+) এর জন্য এক্সটারনাল কন্ট্যাক্টর ব্যবহার করুন'],
+    extraNote: '⚙️ রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়, HIGH দিলে OFF হয়। বুট করার সময় ফ্লিকারিং রোধে কোডে বিশেষ প্রোটোকল ব্যবহার করা হয়েছে।',
+    resistorNote: '📍 JD-VCC ও VCC জাম্পার সংযুক্ত রাখুন (একই পাওয়ার সোর্স)',
+    tips: ['🌀 IN1: এক্সহস্ট ফ্যান (HSI/তাপমাত্রা ভিত্তিক)', '💨 IN2: সার্কুলেশন ফ্যান (ব্রয়লার বয়স ভিত্তিক)', '🔥 IN3: হিটার (34°C এ Force OFF)', '💦 IN4: ফগার (32°C+ এবং 85% আর্দ্রতার নিচে)', 'হাই পাওয়ার ডিভাইস (১০০০W+) এর জন্য SSR বা কন্ট্যাক্টর ব্যবহার করুন'],
     hasAcWiring: true, // Special flag for AC wiring section
     acWiringInfo: {
       title: '⚡ রিলে আউটপুট সাইড - AC লোড কানেকশন (NC, COM, NO)',
@@ -486,7 +489,74 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
       </header>
 
       <div className="p-4 space-y-6">
-        {/* Quick Summary */}
+        {/* Farm Type Info Banner */}
+        <Card className="border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <Bird className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-700 dark:text-amber-400">🐔 লেয়ার ও ব্রয়লার উভয় ফার্মে কাজ করে!</p>
+                <p className="text-xs text-muted-foreground">একই হার্ডওয়্যার, অ্যাপ থেকে ফার্ম টাইপ সিলেক্ট করুন</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="flex items-center gap-1 mb-1">
+                  <Egg className="h-3 w-3 text-orange-500" />
+                  <span className="font-medium text-orange-600 dark:text-orange-400">লেয়ার</span>
+                </div>
+                <p className="text-muted-foreground">স্থির তাপমাত্রা (18-27°C)</p>
+              </div>
+              <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-center gap-1 mb-1">
+                  <Bird className="h-3 w-3 text-blue-500" />
+                  <span className="font-medium text-blue-600 dark:text-blue-400">ব্রয়লার</span>
+                </div>
+                <p className="text-muted-foreground">বয়স-ভিত্তিক তাপমাত্রা কার্ভ</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Sensor Summary */}
+        <Card className="border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Cpu className="h-4 w-4 text-primary" />
+              ৪টি সেন্সর + ৪-চ্যানেল রিলে
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
+                <Thermometer className="h-4 w-4 text-green-500" />
+                <span>DHT22 (তাপ/আর্দ্রতা)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
+                <Wind className="h-4 w-4 text-yellow-500" />
+                <span>MQ-137 (অ্যামোনিয়া)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10">
+                <Droplets className="h-4 w-4 text-blue-500" />
+                <span>YF-S201 (পানি ফ্লো)</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-cyan-500/10">
+                <Power className="h-4 w-4 text-cyan-500" />
+                <span>ZMPT101B (ভোল্টেজ)</span>
+              </div>
+            </div>
+            <div className="mt-3 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
+              <p className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-2">
+                <Fan className="h-3 w-3" />
+                ৪-চ্যানেল রিলে: এক্সহস্ট ফ্যান, সার্কুলেশন ফ্যান, হিটার, ফগার
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Summary - Price */}
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4 text-center">
@@ -639,35 +709,33 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                       <div className="bg-muted/30 rounded-lg p-4 overflow-x-auto">
                         <pre className="text-xs font-mono whitespace-pre text-foreground">
 {`┌─────────────────────────────────────────────────────────┐
-│                    ESP32 DevKit V1                       │
+│                  ESP32 DevKit V1 (v5)                    │
 │                                                          │
-│  সেন্সর ইনপুট (বাম পাশে):                                │
+│  সেন্সর ইনপুট:                                           │
+│  ─────────────                                           │
+│  DHT22 DATA ────────────────▶ GPIO 4  (তাপমাত্রা/আর্দ্রতা)│
+│  MQ-137 AO ─────────────────▶ GPIO 34 (অ্যামোনিয়া)      │
+│  YF-S201 Signal ────────────▶ GPIO 27 (ওয়াটার ফ্লো)     │
+│  ZMPT101B OUT ──────────────▶ GPIO 35 (পাওয়ার মনিটর)    │
+│                                                          │
+│  ৪-চ্যানেল রিলে আউটপুট (HW-316):                         │
 │  ─────────────────────────────                           │
-│  DHT22 #1 DATA ──────────▶ GPIO 4  (তাপমাত্রা/আর্দ্রতা) │
-│  DHT22 #2 DATA ──────────▶ GPIO 15 (২য় সেন্সর)          │
-│  MQ-137 AO ──────────────▶ GPIO 34 (অ্যামোনিয়া)        │
-│  YF-S201 Signal ─────────▶ GPIO 27 (ওয়াটার ফ্লো)       │
-│  ZMPT101B OUT ───────────▶ GPIO 35 (পাওয়ার মনিটর)      │
+│  GPIO 25 ───────────────────▶ IN1 (🌀 এক্সহস্ট ফ্যান)   │
+│  GPIO 26 ───────────────────▶ IN2 (💨 সার্কুলেশন ফ্যান) │
+│  GPIO 33 ───────────────────▶ IN3 (🔥 হিটার)            │
+│  GPIO 13 ───────────────────▶ IN4 (💦 ফগার)             │
 │                                                          │
-│  রিলে আউটপুট (ডান পাশে):                                │
-│  ─────────────────────────                               │
-│  GPIO 26 ────────────────▶ Relay IN1 (ফ্যান)            │
-│  GPIO 25 ────────────────▶ Relay IN2 (লাইট/PWM)         │
-│  GPIO 32 ────────────────▶ Relay IN3 (হিটার)            │
-│  GPIO 33 ────────────────▶ Relay IN4 (অ্যালার্ম)        │
-│  GPIO 12 ────────────────▶ Piezo Buzzer (+)             │
-│                                                          │
-│  GSM মডিউল (ঐচ্ছিক):                                    │
-│  ─────────────────────────                               │
-│  GPIO 16 (RX2) ──────────▶ SIM800L TXD                  │
-│  GPIO 17 (TX2) ──────────▶ SIM800L RXD                  │
+│  অন্যান্য আউটপুট:                                        │
+│  ────────────────                                        │
+│  GPIO 32 ───────────────────▶ পিজো বাজার (অ্যালার্ম)    │
+│  GPIO 14 ───────────────────▶ PWM লাইট (MOSFET)         │
 │                                                          │
 │  পাওয়ার:                                                │
 │  ─────────                                               │
-│  3.3V ───────────────────▶ DHT22 VCC (শুধু DHT22)       │
-│  5V (VIN) ───────────────▶ অন্যান্য সেন্সর VCC          │
-│  GND ────────────────────▶ সব GND একসাথে                │
-│  পৃথক 4.2V ──────────────▶ SIM800L VCC (2A প্রয়োজন)    │
+│  3.3V ──────────────────────▶ DHT22 VCC (শুধু DHT22)    │
+│  5V (VIN) ──────────────────▶ অন্যান্য সেন্সর + রিলে VCC│
+│  GND ───────────────────────▶ সব GND একসাথে             │
+│  100μF ক্যাপাসিটর ──────────▶ VIN ও GND এর মাঝে         │
 └─────────────────────────────────────────────────────────┘`}
                         </pre>
                       </div>
