@@ -41,6 +41,7 @@ import { SmartModeWidget } from '@/components/dashboard/SmartModeWidget';
 import { BigFarmOverview } from '@/components/dashboard/BigFarmOverview';
 import { BroilerTempStatusCard } from '@/components/broiler/BroilerTempStatusCard';
 import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard';
+import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
 import { StatusLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -419,9 +420,10 @@ export function Dashboard() {
             
             {/* TAB: Controls */}
             <TabsContent value="controls" className="mt-4 space-y-4">
-              {/* Broiler Mode: Show Broiler Temp Status */}
+              {/* Broiler Mode: Show Broiler Temp Status + Age Auto Mode */}
               {isBroiler && (
                 <>
+                  <BroilerAgeAutoModeCard enabled={true} />
                   <BroilerTempStatusCard tempResult={broilerEnvResult ? {
                     currentTemp: broilerEnvResult.temperature.current,
                     targetMin: broilerEnvResult.temperature.targetMin,
