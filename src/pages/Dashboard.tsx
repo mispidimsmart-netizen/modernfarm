@@ -44,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // New Farmer-Friendly Assistant Components
 import { FarmActivityBanner, ComfortIndicators, SmartSummaryCards, AdvisoryAssistant } from '@/components/assistant';
+import { DailyReportCard } from '@/components/dashboard/DailyReportCard';
 
 export function Dashboard() {
   const { language } = useAuth();
@@ -132,6 +133,16 @@ export function Dashboard() {
             {language === 'bn' ? 'খামারের অবস্থা' : 'Farm Status'}
           </h2>
           <ComfortIndicators />
+        </motion.div>
+
+        {/* ============ NEW: DAILY REPORT CARD ============ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="mb-4"
+        >
+          <DailyReportCard />
         </motion.div>
 
         {/* ============ NEW: SMART SUMMARY CARDS ============ */}
