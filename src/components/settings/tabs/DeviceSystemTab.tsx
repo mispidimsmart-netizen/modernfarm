@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
+import { OTAManagementCard } from '@/components/device/OTAManagementCard';
 
 interface SectionProps {
   title: string;
@@ -312,30 +313,26 @@ export function DeviceSystemTab() {
         </div>
       </CollapsibleSection>
 
-      {/* Firmware Section */}
+      {/* OTA Firmware Management */}
       <CollapsibleSection
-        title="Firmware"
-        titleBn="ফার্মওয়্যার"
+        title="OTA Firmware"
+        titleBn="OTA ফার্মওয়্যার"
         icon={Upload}
         color="bg-green-500/10 text-green-500"
         language={language}
       >
+        <OTAManagementCard />
+      </CollapsibleSection>
+
+      {/* ESP32 Code Generator */}
+      <CollapsibleSection
+        title="Code Generator"
+        titleBn="কোড জেনারেটর"
+        icon={FileCode}
+        color="bg-blue-500/10 text-blue-500"
+        language={language}
+      >
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div>
-              <p className="font-medium">{language === 'bn' ? 'বর্তমান সংস্করণ' : 'Current Version'}</p>
-              <p className="text-sm text-muted-foreground">{deviceHealth?.firmware_version || 'v1.0.0'}</p>
-            </div>
-            <Badge variant="secondary">
-              {language === 'bn' ? 'আপডেটেড' : 'Up to date'}
-            </Badge>
-          </div>
-
-          <Button variant="outline" className="w-full">
-            <Upload className="mr-2 h-4 w-4" />
-            {language === 'bn' ? 'ফার্মওয়্যার আপলোড করুন' : 'Upload Firmware'}
-          </Button>
-
           <ESP32CodeGenerator language={language} />
 
           <Separator />
