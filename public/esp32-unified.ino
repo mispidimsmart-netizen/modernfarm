@@ -14,14 +14,26 @@
  * ║  ESP32 restart হলেও profile মনে থাকে।                                 ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  *
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║  🏭 BIG FARM FAIL-SAFE DESIGN RULES (VERY IMPORTANT!)           ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  ✔ Each shed runs independently                                 ║
- * ║  ✔ One shed fail ≠ whole farm fail                              ║
- * ║  ✔ Cloud is advisor, ESP32 is guardian                          ║
- * ║  ✔ Manual override always available locally                     ║
- * ╚══════════════════════════════════════════════════════════════════╝
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  🏭 BIG FARM FAIL-SAFE DESIGN RULES (VERY IMPORTANT!)                   ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  ✔ Each shed runs independently                                         ║
+ * ║  ✔ One shed fail ≠ whole farm fail                                      ║
+ * ║  ✔ Cloud is advisor, ESP32 is guardian                                  ║
+ * ║  ✔ Manual override always available locally                             ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  🆕 7-MODULE ADVANCED AUTOMATION SYSTEM (v5.2)                          ║
+ * ╠══════════════════════════════════════════════════════════════════════════╣
+ * ║  MODULE A: Minimum Ventilation Timer (cyclic exhaust)                   ║
+ * ║  MODULE B: Enhanced Heater Control (age-based curve)                    ║
+ * ║  MODULE C: Intelligent Fogger Cooling (temp+humidity trigger)           ║
+ * ║  MODULE D: Broiler Airflow Growth Mode (age-based fan control)          ║
+ * ║  MODULE E: Lighting Soft Control (10-min PWM fade)                      ║
+ * ║  MODULE F: Offline Age Increment (24h local tick)                       ║
+ * ║  MODULE G: Priority System (Safety > Heat > Cool > Vent > Light)        ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  * 
  * SAFETY RULES (LOCAL - Cloud এর জন্য অপেক্ষা করে না!):
  * ┌───────────────────────────────────────────────────────────────────┐
@@ -30,6 +42,8 @@
  * │  ✓ Cloud Timeout: No sync > 5 min → LOCAL AUTO MODE              │
  * │  ✓ Water Failure: No pulse > 6 hours → Alert beep                │
  * │  ✓ Default Safe State: Unknown error → Fan ON (never stay OFF)   │
+ * │  ✓ Heater Safety: Temp > 34°C → FORCE HEATER OFF                 │
+ * │  ✓ Fogger Safety: Always requires exhaust fan running            │
  * └───────────────────────────────────────────────────────────────────┘
  * 
  * LAYER vs BROILER THRESHOLDS:
@@ -103,8 +117,10 @@
 #define EEPROM_CONFIG_ADDR       0      // Start address for FarmConfig
 #define EEPROM_MAGIC_ADDR        32     // Magic number address
 #define EEPROM_SETTINGS_START    64     // Settings start after config data
+#define EEPROM_ADV_SETTINGS_ADDR 128    // Advanced automation settings address
 
 #define FARM_CONFIG_MAGIC        0x46524D43    // "FRMC" = Farm Config Magic
+#define ADV_SETTINGS_MAGIC       0x41445653    // "ADVS" = Advanced Settings Magic
 
 // ═══════════════════════════════════════════════════════════════════════
 // 📦 FARM CONFIG STRUCTURE (EEPROM Stored)
@@ -134,6 +150,174 @@ String getFarmTypeStr() { return isLayer() ? "LAYER" : "BROILER"; }
 // Backward compatibility aliases
 #define farmProfile farmConfig.farmType
 #define broilerAgeDays farmConfig.chickAgeDays
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE A: MINIMUM VENTILATION SETTINGS
+// ═══════════════════════════════════════════════════════════════════════
+struct MinVentSettings {
+  bool enabled;
+  float tempThreshold;          // Activate below this temp (°C)
+  int cycleSeconds;             // Fan ON duration per cycle
+  int intervalMinutes;          // Cycle interval
+  bool ceilingFanAlwaysOn;      // Keep circulation fan on in min vent mode
+};
+
+MinVentSettings minVentSettings = {
+  .enabled = true,
+  .tempThreshold = 26.0,
+  .cycleSeconds = 40,
+  .intervalMinutes = 5,
+  .ceilingFanAlwaysOn = true
+};
+
+// Minimum Ventilation State
+bool minVentActive = false;
+bool minVentInCycle = false;
+unsigned long minVentCycleStart = 0;
+unsigned long lastMinVentCycle = 0;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE B: ENHANCED HEATER CONTROL SETTINGS
+// ═══════════════════════════════════════════════════════════════════════
+struct HeaterSettings {
+  bool enabled;
+  float layerOnTemp;            // Layer mode: heater ON below this
+  float layerOffTemp;           // Layer mode: heater OFF above this
+  float tolerance;              // Broiler mode: tolerance from target
+  float safetyMaxTemp;          // FORCE OFF above this (safety)
+};
+
+HeaterSettings heaterSettings = {
+  .enabled = true,
+  .layerOnTemp = 20.0,
+  .layerOffTemp = 24.0,
+  .tolerance = 0.7,
+  .safetyMaxTemp = 34.0
+};
+
+// Broiler Temperature Curve for Heater (Day-based)
+const float HEATER_BROILER_CURVE[][2] = {
+  {3, 33.0},    // Day 1-3: 33°C
+  {7, 31.0},    // Day 4-7: 31°C
+  {14, 29.0},   // Day 8-14: 29°C
+  {21, 26.0},   // Day 15-21: 26°C
+  {28, 24.0},   // Day 22-28: 24°C
+  {999, 22.0}   // Day 29+: 22°C
+};
+#define HEATER_CURVE_SIZE 6
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE C: INTELLIGENT FOGGER COOLING SETTINGS
+// ═══════════════════════════════════════════════════════════════════════
+struct FoggerSettings {
+  bool enabled;
+  float startTemp;              // Start fogger when temp >= this
+  float startHumidityMax;       // Start only if humidity < this
+  int onSeconds;                // Spray duration
+  int pauseSeconds;             // Pause between sprays
+  float stopTemp;               // Stop fogger when temp < this
+  float stopHumidity;           // Stop fogger when humidity >= this
+};
+
+FoggerSettings foggerSettings = {
+  .enabled = false,             // Default: disabled (needs solenoid valve)
+  .startTemp = 32.0,
+  .startHumidityMax = 85.0,
+  .onSeconds = 40,
+  .pauseSeconds = 120,
+  .stopTemp = 30.0,
+  .stopHumidity = 90.0
+};
+
+// Fogger State
+bool foggerOn = false;
+bool foggerActive = false;
+bool foggerInSpray = false;
+unsigned long foggerSprayStart = 0;
+unsigned long foggerPauseStart = 0;
+int foggerCycleCount = 0;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE D: BROILER AIRFLOW GROWTH MODE SETTINGS
+// ═══════════════════════════════════════════════════════════════════════
+struct AirflowSettings {
+  bool enabled;
+  int earlyAgeDays;             // OFF before this age (chicks need warmth)
+  int midAgeDays;               // Intermittent until this age
+  int midOnSeconds;             // ON duration for mid-age
+  int midIntervalMinutes;       // Interval for mid-age
+  int nightOnSeconds;           // ON duration for night (21+ days)
+  int nightIntervalMinutes;     // Interval for night (21+ days)
+};
+
+AirflowSettings airflowSettings = {
+  .enabled = true,
+  .earlyAgeDays = 10,
+  .midAgeDays = 20,
+  .midOnSeconds = 30,
+  .midIntervalMinutes = 3,
+  .nightOnSeconds = 60,
+  .nightIntervalMinutes = 5
+};
+
+// Circulation Fan State
+bool circulationFanOn = false;
+bool airflowInCycle = false;
+unsigned long airflowCycleStart = 0;
+unsigned long lastAirflowCycle = 0;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE E: LIGHTING SOFT CONTROL (PWM FADE)
+// ═══════════════════════════════════════════════════════════════════════
+#define LIGHT_PWM_CHANNEL 0
+#define LIGHT_PWM_FREQ    5000
+#define LIGHT_PWM_RESOLUTION 8
+
+struct LightingFadeSettings {
+  int fadeDurationMinutes;      // Fade duration (default: 10 min)
+};
+
+LightingFadeSettings lightingFadeSettings = {
+  .fadeDurationMinutes = 10
+};
+
+// Fade state
+int targetBrightness = 0;
+unsigned long fadeStartTime = 0;
+int fadeStartBrightness = 0;
+bool fadeInProgress = false;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE F: CURTAIN ADVISORY (Cloud-synced, not controlled locally)
+// ═══════════════════════════════════════════════════════════════════════
+struct CurtainAdvisorySettings {
+  bool enabled;
+  float openTempDiff;           // Suggest open if outdoor temp > indoor + diff
+  bool closeOnCold;             // Suggest close if too cold
+};
+
+CurtainAdvisorySettings curtainSettings = {
+  .enabled = true,
+  .openTempDiff = 3.0,
+  .closeOnCold = true
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE G: WATER ANALYTICS SETTINGS (Enhanced)
+// ═══════════════════════════════════════════════════════════════════════
+struct WaterAnalyticsSettings {
+  int dropThresholdPercent;     // Alert if drop > this %
+  bool nightSpikeEnabled;       // Detect night spikes
+  bool zeroFlowAlert;           // Alert on zero flow
+  int baselineHours;            // Hours for baseline calculation
+};
+
+WaterAnalyticsSettings waterAnalyticsSettings = {
+  .dropThresholdPercent = 30,
+  .nightSpikeEnabled = true,
+  .zeroFlowAlert = true,
+  .baselineHours = 24
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // 📋 RUNTIME RULES (Loaded at boot based on farmType)
@@ -182,11 +366,17 @@ bool wasWatchdogReset = false;
 // LOW = Relay ON, HIGH = Relay OFF
 // ═══════════════════════════════════════════════════════════════════════
 #define POWER_SENSE_PIN 35
-#define FAN_RELAY_PIN 25       // IN1 → GPIO 25 (Fan)
-#define LIGHT_RELAY_PIN 26     // IN2 → GPIO 26 (Light)
-#define ALARM_RELAY_PIN 33     // IN3 → GPIO 33 (Buzzer/Alarm)
-#define HEATER_RELAY_PIN 13    // IN4 → GPIO 13 (Heater)
+#define FAN_RELAY_PIN 25       // IN1 → GPIO 25 (Main Exhaust Fan)
+#define LIGHT_RELAY_PIN 26     // IN2 → GPIO 26 (Circulation/Ceiling Fan OR Light)
+#define ALARM_RELAY_PIN 33     // IN3 → GPIO 33 (Heater Gas Brooder)
+#define HEATER_RELAY_PIN 13    // IN4 → GPIO 13 (Fogger Solenoid Valve OR Heater)
 #define STATUS_LED_PIN 2       // Onboard LED
+
+// 🆕 Extended relay mapping for 7-module system
+// Option 1: Use existing 4-channel relay with multiplexing
+// Option 2: Add second 4-channel relay module
+#define CIRCULATION_RELAY_PIN LIGHT_RELAY_PIN  // Share with light (or external)
+#define FOGGER_RELAY_PIN HEATER_RELAY_PIN      // Share with heater (or external)
 
 // Manual Override Buttons
 #define MANUAL_OVERRIDE_BTN 32
@@ -327,6 +517,21 @@ void estimateLocalTime();
 void checkPendingCommands();       // ⚡ Real-time command polling
 void acknowledgeCommand(String commandId);  // Mark command as executed
 
+// 🆕 Module function prototypes
+void checkMinimumVentilation();
+void advancedHeaterControl();
+void foggerControl();
+void setFogger(bool on);
+void startFoggerSpray();
+void stopFogger(String reason);
+void broilerAirflowControl();
+void setCirculationFan(bool on);
+void runIntermittentAirflow(int onSeconds, int intervalMinutes);
+void updateLightingWithFade();
+void setLightWithFade(int newBrightness);
+float getHeaterTargetTemp(int ageDays);
+void handleAdvancedAutomationSettings(JsonObject& adv);
+
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
 Preferences preferences;
@@ -426,7 +631,7 @@ float lastVoltageRMS = 230.0;
  bool otaInProgress = false;
  int otaProgress = 0;
  String otaStatus = "idle";
- String firmwareVersion = "5.1.0";
+ String firmwareVersion = "5.2.0";  // Updated for 7-module system
   
  // ═══════════════════════════════════════════════════════════════════════
  // 💧 SMART WATER FLOW MONITORING
@@ -459,6 +664,11 @@ int lastServerSyncedAge = 0;               // Last age value from server
 unsigned long lastAgeSyncMillis = 0;       // Millis timestamp of last server sync
 unsigned long lastAgeIncreaseMillis = 0;   // Millis timestamp of last age increment
 bool ageFromServer = false;                // True if current age came from server
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 ADVANCED AUTOMATION SETTINGS VERSION (for cloud sync)
+// ═══════════════════════════════════════════════════════════════════════
+int cachedSettingsVersion = 0;
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🐔 UPDATE AGE FROM SERVER
@@ -703,10 +913,8 @@ void saveAgeTickTime() {
   preferences.end();
 }
 
-// Check if 24 hours passed and auto-increment age
-// Works even when offline - no internet required!
 // ═══════════════════════════════════════════════════════════════════════
-// 🐔 HANDLE OFFLINE AGE - Local 24h increment
+// 🆕 MODULE F: HANDLE OFFLINE AGE - Local 24h increment (ENHANCED)
 // Works without internet - temperature curve never freezes!
 // ═══════════════════════════════════════════════════════════════════════
 void handleOfflineAge() {
@@ -722,82 +930,80 @@ void handleOfflineAge() {
   
   if (millis() - lastAgeIncreaseMillis >= DAY) {
     // 24 hours passed - increment age
-    Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-    Serial.println("║  📅 LOCAL AGE TICK - 24 Hours Elapsed                         ║");
-    Serial.printf("║  Broiler Age: Day %d → Day %d                                  ║\n", 
-                  farmConfig.chickAgeDays, farmConfig.chickAgeDays + 1);
-    Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
-    
+    int oldAge = farmConfig.chickAgeDays;
     farmConfig.chickAgeDays++;
-    ageFromServer = false;             // Mark as local increment
-    ageSource = "LOCAL";
     lastAgeIncreaseMillis = millis();
-    saveFarmProfile();                 // Save to EEPROM
+    ageSource = "LOCAL";  // Mark as local increment
     
-    // Reload temperature rules for new age
+    Serial.printf("\n╔═══════════════════════════════════════════════════════════════╗\n");
+    Serial.printf("║  📅 OFFLINE AGE INCREMENT: Day %d → Day %d (LOCAL)            ║\n", 
+                  oldAge, farmConfig.chickAgeDays);
+    Serial.printf("╚═══════════════════════════════════════════════════════════════╝\n");
+    
+    saveFarmProfile();
+    saveAgeTickTime();
     loadBroilerRules();
-    
-    Serial.printf("✅ Temperature rules updated for Day %d\n", farmConfig.chickAgeDays);
   }
 }
 
-// Legacy alias for backward compatibility
+// Check if 24 hours passed and auto-increment age
+// Works even when offline - no internet required!
 void ageTick() {
   handleOfflineAge();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// 📋 LOAD RULES BASED ON FARM TYPE
+// LOAD RULES FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════
 
 void loadLayerRules() {
-  Serial.println("\n🥚 Loading LAYER rules...");
+  Serial.println("📋 Loading LAYER rules...");
   
-  // Fixed temperature range
-  rules.tempMin = LAYER_TEMP_IDEAL_MIN;         // 18°C
-  rules.tempMax = LAYER_TEMP_IDEAL_MAX;         // 27°C
-  rules.tempTarget = (rules.tempMin + rules.tempMax) / 2.0;  // 22.5°C
-  rules.tempFanHigh = LAYER_TEMP_FAN_HIGH;      // 30°C
-  rules.tempAlarm = LAYER_TEMP_ALARM;           // 33°C
-  rules.tempHeaterOn = LAYER_TEMP_HEATER;       // 18°C
+  // Temperature thresholds (fixed for layers)
+  rules.tempMin = LAYER_TEMP_IDEAL_MIN;                                 // 18°C
+  rules.tempMax = LAYER_TEMP_IDEAL_MAX;                                 // 27°C
+  rules.tempTarget = (rules.tempMin + rules.tempMax) / 2.0;             // 22.5°C
+  rules.tempFanHigh = LAYER_TEMP_FAN_HIGH;                              // 30°C
+  rules.tempAlarm = LAYER_TEMP_ALARM;                                   // 33°C
+  rules.tempHeaterOn = LAYER_TEMP_HEATER;                               // 18°C
   
-  // HSI thresholds (lower for layers - more sensitive)
-  rules.hsiFanLow = LAYER_HSI_FAN_LOW;          // 30
-  rules.hsiFanHigh = LAYER_HSI_FAN_HIGH;        // 35
-  rules.hsiEmergency = LAYER_HSI_EMERGENCY;     // 40
-  rules.hsiCritical = 999;                       // Not used for Layer
+  // HSI thresholds
+  rules.hsiFanLow = LAYER_HSI_FAN_LOW;                                  // 30
+  rules.hsiFanHigh = LAYER_HSI_FAN_HIGH;                                // 35
+  rules.hsiEmergency = LAYER_HSI_EMERGENCY;                             // 40
+  rules.hsiCritical = 45;                                               // N/A for layer
   
-  // Ammonia (stricter for layers)
-  rules.ammoniaFan = LAYER_AMMONIA_FAN;         // 15 ppm
-  rules.ammoniaAlarm = LAYER_AMMONIA_ALARM;     // 25 ppm
+  // Ammonia
+  rules.ammoniaFan = LAYER_AMMONIA_FAN;                                 // 15 ppm
+  rules.ammoniaAlarm = LAYER_AMMONIA_ALARM;                             // 25 ppm
   
   // Humidity
-  rules.humidityLow = LAYER_HUMIDITY_LOW;       // 40%
-  rules.humidityHigh = LAYER_HUMIDITY_HIGH;     // 75%
+  rules.humidityLow = LAYER_HUMIDITY_LOW;                               // 40%
+  rules.humidityHigh = LAYER_HUMIDITY_HIGH;                             // 75%
   
   // Feature flags
-  rules.useAgeBasedTemp = false;                // Fixed temp
-  rules.lightingProtection = true;              // 10min OFF → beep
+  rules.useAgeBasedTemp = false;                                        // Fixed temp
+  rules.lightingProtection = true;                                      // 10min beep
   
   Serial.println("   ✓ LAYER rules loaded:");
   Serial.printf("     Temp: %.0f-%.0f°C (fixed)\n", rules.tempMin, rules.tempMax);
   Serial.printf("     HSI: %.0f/%.0f/%.0f\n", rules.hsiFanLow, rules.hsiFanHigh, rules.hsiEmergency);
   Serial.printf("     NH3: %.0f/%.0f ppm\n", rules.ammoniaFan, rules.ammoniaAlarm);
-  Serial.println("     Lighting Protection: ON");
 }
 
 void loadBroilerRules() {
-  Serial.println("\n🐔 Loading BROILER rules...");
+  Serial.println("📋 Loading BROILER rules...");
   
-  // Age-based temperature (calculate from curve)
+  // Get age-based temperature from curve
   float tMin, tMax;
   getBroilerTargetTemp(farmConfig.chickAgeDays, tMin, tMax);
+  
   rules.tempMin = tMin;
   rules.tempMax = tMax;
   rules.tempTarget = (tMin + tMax) / 2.0;
-  rules.tempFanHigh = rules.tempTarget + BROILER_TEMP_FAN_DEV;    // +2°C
-  rules.tempAlarm = rules.tempTarget + BROILER_TEMP_ALARM_DEV;    // +4°C
-  rules.tempHeaterOn = rules.tempTarget - BROILER_TEMP_HEATER_DEV; // -2°C
+  rules.tempFanHigh = rules.tempTarget + BROILER_TEMP_FAN_DEV;          // +2°C
+  rules.tempAlarm = rules.tempTarget + BROILER_TEMP_ALARM_DEV;          // +4°C
+  rules.tempHeaterOn = rules.tempTarget - BROILER_TEMP_HEATER_DEV;      // -2°C
   
   // HSI thresholds (higher tolerance for broilers)
   rules.hsiFanLow = 35;                                           // Mild
@@ -937,10 +1143,22 @@ void getBroilerTargetTemp(int ageDays, float &minTemp, float &maxTemp) {
   maxTemp = BROILER_CURVE[BROILER_CURVE_SIZE - 1].maxTemp;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE B: GET HEATER TARGET TEMP (Broiler Age-Based Curve)
+// ═══════════════════════════════════════════════════════════════════════
+float getHeaterTargetTemp(int ageDays) {
+  for (int i = 0; i < HEATER_CURVE_SIZE; i++) {
+    if (ageDays <= HEATER_BROILER_CURVE[i][0]) {
+      return HEATER_BROILER_CURVE[i][1];
+    }
+  }
+  return 22.0;  // Default for very old broilers
+}
+
 // ================ HSI CALCULATION ================
 float calculateHSI(float temp, float hum) {
-  // Simple HSI = Temperature + (Humidity × 0.1)
-  return temp + (hum * 0.1);
+  // HSI = 0.8 × Temp + (Humidity/100) × (Temp - 14.4) + 46.4
+  return 0.8 * temp + (hum / 100.0) * (temp - 14.4) + 46.4;
 }
 
 // ================ WATER FLOW ISR ================
@@ -977,7 +1195,7 @@ void IRAM_ATTR waterPulseISR() {
    systemState = "STABILIZING";
    Serial.println("\n🛡️ STABILIZING MODE (30s) - Fan ON, Commands IGNORED, No Alerts");
    pinMode(FAN_RELAY_PIN, OUTPUT);
-   digitalWrite(FAN_RELAY_PIN, HIGH);
+   digitalWrite(FAN_RELAY_PIN, LOW);  // Active LOW - ON
    fanOn = true;
    fanSpeed = "HIGH";
    delay(BOOT_VENTILATION_DELAY);
@@ -1013,6 +1231,19 @@ void IRAM_ATTR waterPulseISR() {
      Serial.println("✅ Gas sensor warmup complete");
    }
  }
+
+void updateOnlineOfflineDuration() {
+  unsigned long now = millis();
+  unsigned long elapsed = (now - lastOnlineCheck) / 1000;
+  
+  if (cloudConnected) {
+    onlineDurationSec += elapsed;
+  } else {
+    offlineDurationSec += elapsed;
+  }
+  
+  lastOnlineCheck = now;
+}
  
 // ═══════════════════════════════════════════════════════════════════════
 // 🛡️ SENSOR SANITY FILTER FUNCTIONS
@@ -1140,15 +1371,11 @@ void advanceSensorRollingIndex() {
      if (!isnan(t) && t >= TEMP_SANITY_MIN && t <= TEMP_SANITY_MAX) {
        sum += t;
        validCount++;
-       Serial.printf("📊 DHT Temp[%d]: %.1f°C ✓\n", i, t);
-     } else {
-       Serial.printf("⚠️ DHT Temp[%d]: nan/invalid\n", i);
      }
      delay(300);  // DHT22 needs 2 sec between reads, 300ms is minimum
    }
    
    if (validCount == 0) {
-     Serial.println("❌ DHT Temp: All 3 readings failed!");
      return NAN;
    }
    return sum / validCount;
@@ -1164,15 +1391,11 @@ void advanceSensorRollingIndex() {
      if (!isnan(h) && h >= HUMIDITY_SANITY_MIN && h <= HUMIDITY_SANITY_MAX) {
        sum += h;
        validCount++;
-       Serial.printf("📊 DHT Humidity[%d]: %.1f%% ✓\n", i, h);
-     } else {
-       Serial.printf("⚠️ DHT Humidity[%d]: nan/invalid\n", i);
      }
      delay(300);
    }
    
    if (validCount == 0) {
-     Serial.println("❌ DHT Humidity: All 3 readings failed!");
      return NAN;
    }
    return sum / validCount;
@@ -1188,12 +1411,6 @@ void advanceSensorRollingIndex() {
  
  float readGasFiltered() {
    if (!gasReady()) {
-     // Avoid spamming Serial (can block and contribute to WDT resets)
-     static unsigned long lastWarmupMsg = 0;
-     if (millis() - lastWarmupMsg > 10000) {
-       Serial.println("🧪 Gas sensor warming up...");
-       lastWarmupMsg = millis();
-     }
      return 0;
    }
  
@@ -1256,209 +1473,126 @@ void advanceSensorRollingIndex() {
    powerVoltageRMS = newVoltage;
    bool lowVoltage = newVoltage < 180.0;
    if (lowVoltage) {
-     if (lowVoltageSince == 0) lowVoltageSince = millis();
-     if (millis() - lowVoltageSince >= POWER_PERSIST_DURATION) {
-       if (!powerFailConfirmed) {
-         powerFailConfirmed = true;
-         Serial.printf("⚠️ POWER FAILURE: %.1fV RMS\n", powerVoltageRMS);
-       }
+     if (lowVoltageSince == 0) {
+       lowVoltageSince = millis();
+     } else if (millis() - lowVoltageSince > POWER_PERSIST_DURATION) {
+       powerFailConfirmed = true;
        return true;
      }
    } else {
      lowVoltageSince = 0;
-     if (powerFailConfirmed) {
-       Serial.printf("✅ Power restored: %.1fV\n", powerVoltageRMS);
-       powerFailConfirmed = false;
-     }
+     powerFailConfirmed = false;
    }
    return false;
  }
- 
- void addToOfflineBuffer() {
-   offlineBuffer[offlineBufferHead].timestamp = millis() / 1000;
-   offlineBuffer[offlineBufferHead].temperature = temperature;
-   offlineBuffer[offlineBufferHead].humidity = humidity;
-   offlineBuffer[offlineBufferHead].ammonia = ammonia;
-   offlineBuffer[offlineBufferHead].waterFlow = waterFlow;
-   offlineBuffer[offlineBufferHead].powerOn = powerOn;
-   offlineBuffer[offlineBufferHead].hsi = currentHSI;
-   offlineBufferHead = (offlineBufferHead + 1) % OFFLINE_BUFFER_SIZE;
-   if (offlineBufferCount < OFFLINE_BUFFER_SIZE) offlineBufferCount++;
- }
- 
- void updateOnlineOfflineDuration() {
-   unsigned long now = millis();
-   unsigned long elapsed = (now - lastOnlineCheck) / 1000;
-   if (cloudConnected) onlineDurationSec += elapsed;
-   else offlineDurationSec += elapsed;
-   lastOnlineCheck = now;
- }
+
+// ═══════════════════════════════════════════════════════════════════════
+// 💧 WATER FLOW MONITORING FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+void calculateWaterFlow() {
+  static unsigned long lastCalc = 0;
+  static unsigned long lastPulseCount = 0;
   
- // ═══════════════════════════════════════════════════════════════════════
- // 💧 SMART WATER FLOW MONITORING
- // শুধুমাত্র সক্রিয় সময়ে (৫:০০-২২:০০) মনিটরিং
- // Rolling average এর সাথে তুলনা করে false alert প্রতিরোধ
- // ═══════════════════════════════════════════════════════════════════════
+  unsigned long now = millis();
+  if (now - lastCalc < 1000) return;  // Calculate every second
+  
+  unsigned long pulses = waterPulseCount - lastPulseCount;
+  lastPulseCount = waterPulseCount;
+  
+  // YF-S201: 450 pulses/liter
+  waterFlow = (pulses / 450.0) * 60.0;  // Liters per minute
+  lastCalc = now;
+}
+
+void updateWaterRollingAverage() {
+  if (waterHistoryCount < WATER_HISTORY_SIZE) {
+    waterHistoryCount++;
+  }
+  
+  // Calculate 24h rolling average
+  float sum = 0;
+  for (int i = 0; i < waterHistoryCount; i++) {
+    sum += waterFlowHistory[i];
+  }
+  waterRollingAvg = waterHistoryCount > 0 ? sum / waterHistoryCount : 0;
+  
+  // Calculate last 2 hours average
+  float sum2h = 0;
+  int count2h = min(WATER_2H_WINDOW_SIZE, waterHistoryCount);
+  for (int i = 0; i < count2h; i++) {
+    int idx = (waterHistoryIndex - 1 - i + WATER_HISTORY_SIZE) % WATER_HISTORY_SIZE;
+    sum2h += waterFlowHistory[idx];
+  }
+  water2hAvg = count2h > 0 ? sum2h / count2h : 0;
+}
+
+void waterHealthAlert() {
+  waterAnomalyAlertSent = true;
+  float dropPercent = ((waterRollingAvg - water2hAvg) / waterRollingAvg) * 100;
+  
+  Serial.printf("\n╔═══════════════════════════════════════════════════════════════╗\n");
+  Serial.printf("║  💧 WATER ANOMALY ALERT: %.0f%% drop detected!                 ║\n", dropPercent);
+  Serial.printf("║     2h avg: %.1f L/h, 24h avg: %.1f L/h                       ║\n", water2hAvg, waterRollingAvg);
+  Serial.printf("╚═══════════════════════════════════════════════════════════════╝\n");
+  
+  // Short beep to alert
+  digitalWrite(ALARM_RELAY_PIN, LOW);   // ON
+  delay(200);
+  digitalWrite(ALARM_RELAY_PIN, HIGH);  // OFF
+}
+
+void checkWaterAnomaly() {
+  // Only check during active hours (5:00 - 22:00)
+  if (currentHour < 5 || currentHour >= 22) {
+    return;
+  }
+  
+  // Need minimum data points for meaningful comparison
+  if (waterHistoryCount < WATER_MIN_DATA_POINTS) {
+    return;
+  }
+  
+  // Calculate drop threshold
+  float threshold = waterRollingAvg * (1.0 - (waterAnalyticsSettings.dropThresholdPercent / 100.0));
+  
+  if (waterRollingAvg > 0 && water2hAvg < threshold) {
+    // Anomaly detected - increment counter
+    waterAnomalyConsecutive++;
+    
+    // Second check passed - trigger alert
+    if (waterAnomalyConsecutive >= WATER_CONSECUTIVE_REQ && !waterAnomalyAlertSent) {
+      waterHealthAlert();
+    }
+  } else {
+    // Normal water consumption - reset counters
+    waterAnomalyConsecutive = 0;
+    waterAnomalyAlertSent = false;
+  }
+}
  
- // ═══════════════════════════════════════════════════════════════════════
- // 💧 WATER MONITORING ALLOWED - Daytime detection (5:00-22:00)
- // ═══════════════════════════════════════════════════════════════════════
- bool waterMonitoringAllowed() {
-   struct tm timeinfo;
-   if (!getLocalTime(&timeinfo)) {
-     return true;  // Safety fallback if RTC/cloud time unavailable
-   }
-   int h = timeinfo.tm_hour;
-   return (h >= 5 && h <= 22);  // 05:00-22:59 (23:00 onwards = night)
- }
- 
- // Legacy alias
- bool isActiveWaterHours() { return waterMonitoringAllowed(); }
- 
- // Calculate water flow rate from pulse count (YF-S201: 7.5 pulses per liter)
- float calculateWaterFlow() {
-   static unsigned long lastCalcTime = 0;
-   static float lastFlowRate = 0;
-   unsigned long now = millis();
-   
-   if (now - lastCalcTime < 1000) return lastFlowRate;
-   
-   noInterrupts();
-   unsigned long pulses = waterPulseCount;
-   waterPulseCount = 0;
-   interrupts();
-   
-   float elapsed = (now - lastCalcTime) / 1000.0;
-   lastCalcTime = now;
-   
-   // YF-S201: 7.5 pulses per liter, convert to L/hour
-   lastFlowRate = (pulses / 7.5) * (3600.0 / elapsed);
-   waterFlow = lastFlowRate;
-   
-   return lastFlowRate;
- }
- 
- // Update rolling average from history
- void updateWaterRollingAverage() {
-   float sum = 0;
-   int count = 0;
-   for (int i = 0; i < WATER_HISTORY_SIZE; i++) {
-     if (waterFlowHistory[i] > 0) {
-       sum += waterFlowHistory[i];
-       count++;
-     }
-   }
-   waterRollingAvg = (count > 0) ? (sum / count) : 0;
-   waterHistoryCount = count;
-   
-   // Calculate last 2 hours average
-   float sum2h = 0;
-   int count2h = 0;
-   // Get last 2 entries from history (circular buffer)
-   for (int i = 0; i < WATER_2H_WINDOW_SIZE; i++) {
-     int idx = (waterHistoryIndex - 1 - i + WATER_HISTORY_SIZE) % WATER_HISTORY_SIZE;
-     if (waterFlowHistory[idx] > 0) {
-       sum2h += waterFlowHistory[idx];
-       count2h++;
-     }
-   }
-   water2hAvg = (count2h > 0) ? (sum2h / count2h) : 0;
- }
- 
- // ═══════════════════════════════════════════════════════════════════════
- // 💧 WATER HEALTH ALERT - Smart detection with second check
- // ═══════════════════════════════════════════════════════════════════════
- void waterHealthAlert() {
-   float dropPercent = ((waterRollingAvg - water2hAvg) / waterRollingAvg) * 100;
-   
-   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-   Serial.println("║  💧 WATER HEALTH WARNING - Low Intake (2h vs 24h)             ║");
-   Serial.printf("║  Last 2h: %.1f L/h, 24h Avg: %.1f L/h (%.0f%% drop)            ║\n", 
-                 water2hAvg, waterRollingAvg, dropPercent);
-   Serial.printf("║  Consecutive cycles: %d                                        ║\n", waterAnomalyConsecutive);
-   Serial.println("║  ⚠️ Check bird health immediately!                            ║");
-   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
-   
-   // Trigger warning beep (health warning, not emergency alarm)
-   digitalWrite(ALARM_RELAY_PIN, HIGH);
-   delay(200);
-   digitalWrite(ALARM_RELAY_PIN, LOW);
-   delay(100);
-   digitalWrite(ALARM_RELAY_PIN, HIGH);
-   delay(200);
-   digitalWrite(ALARM_RELAY_PIN, LOW);
-   
-   waterAnomalyAlertSent = true;
- }
- 
- // Check for water anomaly - Smart detection with second check
- void checkWaterAnomaly() {
-   // Only monitor during daytime (5:00-22:00)
-   if (!waterMonitoringAllowed()) {
-     waterAnomalyAlertSent = false;
-     waterAnomalyConsecutive = 0;  // Reset on night hours
-     Serial.println("[Water] Night hours (22:00-05:00) - monitoring paused");
-     return;
-   }
-   
-   // Need minimum data points for meaningful comparison
-   if (waterHistoryCount < WATER_MIN_DATA_POINTS) {
-     Serial.printf("[Water] Insufficient data: %d/%d points\n", waterHistoryCount, WATER_MIN_DATA_POINTS);
-     return;
-   }
-   
-   // Smart detection: current2h < avg24h * 0.2 (80% drop threshold)
-   // Actually using 20% drop = current2h < avg24h * 0.8
-   float threshold = waterRollingAvg * (1.0 - WATER_DROP_THRESHOLD);
-   
-   if (waterRollingAvg > 0 && water2hAvg < threshold) {
-     // First detection - increment counter for second check
-     waterAnomalyConsecutive++;
-     
-     float dropPercent = ((waterRollingAvg - water2hAvg) / waterRollingAvg) * 100;
-     Serial.printf("[Water] Anomaly cycle %d: 2h avg=%.1f, 24h avg=%.1f (%.0f%% drop)\n", 
-                   waterAnomalyConsecutive, water2hAvg, waterRollingAvg, dropPercent);
-     
-     // Second check passed - trigger alert
-     bool secondCheck = (waterAnomalyConsecutive >= WATER_CONSECUTIVE_REQ);
-     if (secondCheck && !waterAnomalyAlertSent) {
-       waterHealthAlert();
-     }
-   } else {
-     // Normal water consumption - reset counters
-     if (waterAnomalyConsecutive > 0) {
-       Serial.printf("[Water] Consumption normal - reset (was %d cycles)\n", waterAnomalyConsecutive);
-     }
-     waterAnomalyConsecutive = 0;
-     waterAnomalyAlertSent = false;
-   }
- }
- 
- // Main water flow monitoring tick (called in loop)
- void waterFlowTick() {
-   unsigned long now = millis();
-   
-   // Update flow reading continuously
-   calculateWaterFlow();
-   
-   // Update hourly history
-   if (now - lastWaterHistoryUpdate >= WATER_UPDATE_INTERVAL) {
-     // Store current hour's flow in history
-     waterFlowHistory[waterHistoryIndex] = waterFlow;
-     waterHistoryIndex = (waterHistoryIndex + 1) % WATER_HISTORY_SIZE;
-     
-     // Recalculate rolling average
-     updateWaterRollingAverage();
-     
-     lastWaterHistoryUpdate = now;
-     
-     Serial.printf("[Water] Hourly update - Current: %.1f L/h, 2h Avg: %.1f L/h, 24h Avg: %.1f L/h\n", 
-                   waterFlow, water2hAvg, waterRollingAvg);
-   }
-   
-   // Check for anomalies during active hours
-   checkWaterAnomaly();
- }
+// Main water flow monitoring tick (called in loop)
+void waterFlowTick() {
+  unsigned long now = millis();
+  
+  // Update flow reading continuously
+  calculateWaterFlow();
+  
+  // Update hourly history
+  if (now - lastWaterHistoryUpdate >= WATER_UPDATE_INTERVAL) {
+    // Store current hour's flow in history
+    waterFlowHistory[waterHistoryIndex] = waterFlow;
+    waterHistoryIndex = (waterHistoryIndex + 1) % WATER_HISTORY_SIZE;
+    
+    // Recalculate rolling average
+    updateWaterRollingAverage();
+    
+    lastWaterHistoryUpdate = now;
+  }
+  
+  // Check for anomalies during active hours
+  checkWaterAnomaly();
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // 📦 OFFLINE BUFFER FUNCTIONS
@@ -1486,8 +1620,6 @@ void storeOfflineRecord() {
   
   offlineRecords[offlineRecordHead] = record;
   offlineRecordHead = (offlineRecordHead + 1) % OFFLINE_BUFFER_MAX;
-  
-  Serial.printf("📦 Offline buffer: %d/%d records stored\n", offlineRecordCount, OFFLINE_BUFFER_MAX);
 }
 
 void offlineBufferTick() {
@@ -1503,17 +1635,12 @@ void offlineBufferTick() {
 // Sync buffered data to cloud (called after reconnection)
 bool syncOfflineBuffer() {
   if (offlineRecordCount == 0) {
-    Serial.println("📦 No offline records to sync");
     return true;
   }
   
   if (!wifiConnected || offlineSyncInProgress) return false;
   
   offlineSyncInProgress = true;
-  
-  Serial.printf("\n╔═══════════════════════════════════════════════════════════════╗\n");
-  Serial.printf("║  📦 SYNCING OFFLINE BUFFER: %d records                        ║\n", offlineRecordCount);
-  Serial.printf("╚═══════════════════════════════════════════════════════════════╝\n");
   
   HTTPClient http;
   String url = String(API_URL) + "/sync-buffer";
@@ -1560,19 +1687,15 @@ bool syncOfflineBuffer() {
     offlineRecordTail = (offlineRecordTail + syncCount) % OFFLINE_BUFFER_MAX;
     offlineRecordCount -= syncCount;
     
-    Serial.printf("✅ Synced %d records, %d remaining\n", syncCount, offlineRecordCount);
-    
     offlineSyncInProgress = false;
     
     // If more records, schedule another sync
     if (offlineRecordCount > 0) {
-      Serial.println("   → More records to sync...");
       return false;  // Indicate more work needed
     }
     
     return true;  // All done
   } else {
-    Serial.printf("✗ Buffer sync failed: %d\n", httpCode);
     offlineSyncInProgress = false;
     return false;
   }
@@ -1584,7 +1707,6 @@ void clearOfflineBuffer() {
   offlineRecordHead = 0;
   offlineRecordTail = 0;
   offlineRecordCount = 0;
-  Serial.println("📦 Offline buffer cleared");
 }
  
 // ═══════════════════════════════════════════════════════════════════════
@@ -1619,6 +1741,50 @@ void setLightBrightness(int brightness) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE E: LIGHTING SOFT CONTROL (PWM FADE - 10 MINUTE)
+// ═══════════════════════════════════════════════════════════════════════
+void updateLightingWithFade() {
+  if (!fadeInProgress) return;
+  
+  unsigned long fadeDurationMs = lightingFadeSettings.fadeDurationMinutes * 60000UL;
+  unsigned long elapsed = millis() - fadeStartTime;
+  
+  if (elapsed >= fadeDurationMs) {
+    // Fade complete
+    lightBrightness = targetBrightness;
+    fadeInProgress = false;
+    Serial.printf("💡 Fade complete: brightness = %d%%\n", lightBrightness);
+  } else {
+    // Calculate current brightness
+    float progress = (float)elapsed / fadeDurationMs;
+    int diff = targetBrightness - fadeStartBrightness;
+    lightBrightness = fadeStartBrightness + (int)(diff * progress);
+  }
+  
+  // Apply PWM (if using LEDC channel)
+  int pwmValue = map(lightBrightness, 0, 100, 0, 255);
+  // ledcWrite(LIGHT_PWM_CHANNEL, pwmValue);
+  
+  // For relay mode: switch at 50% threshold
+  bool shouldBeOn = (lightBrightness >= 50);
+  if (shouldBeOn != lightOn) {
+    setLight(shouldBeOn);
+  }
+}
+
+void setLightWithFade(int newBrightness) {
+  if (newBrightness == lightBrightness && !fadeInProgress) return;
+  
+  targetBrightness = constrain(newBrightness, 0, 100);
+  fadeStartBrightness = lightBrightness;
+  fadeStartTime = millis();
+  fadeInProgress = true;
+  
+  Serial.printf("💡 Light fading: %d%% → %d%% (%d min)\n", 
+                fadeStartBrightness, targetBrightness, lightingFadeSettings.fadeDurationMinutes);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // 💡 LIGHTING SCHEDULE CONTROL
 // Cloud থেকে শিডিউল আসে, ESP32 লোকালি এক্সিকিউট করে
 // ═══════════════════════════════════════════════════════════════════════
@@ -1628,14 +1794,11 @@ void updateTimeFromCloud(int hour, int minute) {
   currentMinute = minute;
   lastTimeSync = millis();
   timeValid = true;
-  Serial.printf("⏰ Time synced from cloud: %02d:%02d\n", hour, minute);
 }
 
 void estimateLocalTime() {
   // If no time sync, estimate based on uptime
-  // This is a fallback - not accurate, but better than nothing
   if (!timeValid) {
-    // Assume we started at some point - use noon as default
     unsigned long uptimeMinutes = millis() / 60000;
     int estimatedMinutes = (12 * 60 + uptimeMinutes) % 1440;  // 1440 = 24*60
     currentHour = estimatedMinutes / 60;
@@ -1671,16 +1834,14 @@ void controlLighting() {
   int endMinutes = lightSchedule.endHour * 60 + lightSchedule.endMinute;
   
   bool shouldLightOn = false;
-  int targetBrightness = 0;
+  int scheduledBrightness = 0;
   
   // Handle overnight schedules (e.g., 22:00 - 05:00)
   bool isOvernight = (endMinutes < startMinutes);
   
   if (isOvernight) {
-    // Overnight schedule
     shouldLightOn = (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
   } else {
-    // Normal schedule
     shouldLightOn = (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
   }
   
@@ -1704,25 +1865,23 @@ void controlLighting() {
     // Calculate brightness with fade in/out
     if (minutesFromStart < lightSchedule.fadeInMinutes) {
       // Fade in (sunrise simulation)
-      targetBrightness = map(minutesFromStart, 0, lightSchedule.fadeInMinutes,
+      scheduledBrightness = map(minutesFromStart, 0, lightSchedule.fadeInMinutes,
                              lightSchedule.minBrightness, lightSchedule.maxBrightness);
     } else if (minutesToEnd < lightSchedule.fadeOutMinutes) {
       // Fade out (sunset simulation)
-      targetBrightness = map(minutesToEnd, 0, lightSchedule.fadeOutMinutes,
+      scheduledBrightness = map(minutesToEnd, 0, lightSchedule.fadeOutMinutes,
                              lightSchedule.minBrightness, lightSchedule.maxBrightness);
     } else {
       // Full brightness
-      targetBrightness = lightSchedule.maxBrightness;
+      scheduledBrightness = lightSchedule.maxBrightness;
     }
   } else {
-    targetBrightness = 0;
+    scheduledBrightness = 0;
   }
   
-  // Apply lighting change
-  if (targetBrightness != lightBrightness || shouldLightOn != lightOn) {
-    setLightBrightness(targetBrightness);
-    Serial.printf("💡 Lighting: %s (Brightness: %d%%, Time: %02d:%02d)\n", 
-                  shouldLightOn ? "ON" : "OFF", lightBrightness, currentHour, currentMinute);
+  // Apply lighting change with soft fade
+  if (scheduledBrightness != targetBrightness && !fadeInProgress) {
+    setLightWithFade(scheduledBrightness);
   }
 }
 
@@ -1734,19 +1893,15 @@ void checkLayerLightingProtection() {
   
   // Track light state changes
   if (lightOn && !lightWasOn) {
-    // Light just turned ON
     lightWasOn = true;
     lightOffStartTime = 0;
     lightingAlertActive = false;
   } 
   else if (!lightOn && lightWasOn) {
-    // Light just turned OFF
     lightWasOn = false;
     lightOffStartTime = now;
-    Serial.println("💡 Light OFF - Starting 10 min protection timer");
   }
   else if (!lightOn && !lightWasOn && lightOffStartTime == 0) {
-    // Initialize if light was already OFF at boot
     lightOffStartTime = now;
   }
   
@@ -1762,9 +1917,7 @@ void checkLayerLightingProtection() {
     bool isScheduledOn = (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
     
     if (isScheduledOn && offDuration > LIGHTING_ALERT_DELAY && !lightingAlertActive) {
-      // Light has been OFF for 10+ minutes during scheduled time
       lightingAlertActive = true;
-      Serial.println("⚠️ LAYER LIGHTING PROTECTION: Light OFF > 10 min during schedule!");
       
       // Short warning beep (not full alarm)
       digitalWrite(ALARM_RELAY_PIN, LOW);   // ON
@@ -1788,6 +1941,281 @@ void setHeater(bool on) {
   heaterOn = on;
   digitalWrite(HEATER_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
   Serial.printf("🔥 Heater: %s\n", on ? "ON" : "OFF");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE C: INTELLIGENT FOGGER CONTROL
+// ═══════════════════════════════════════════════════════════════════════
+void setFogger(bool on) {
+  foggerOn = on;
+  digitalWrite(FOGGER_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
+  Serial.printf("💨 Fogger: %s\n", on ? "ON" : "OFF");
+}
+
+void startFoggerSpray() {
+  setFogger(true);
+  foggerInSpray = true;
+  foggerSprayStart = millis();
+  Serial.printf("💨 Fogger spray ON (%ds)\n", foggerSettings.onSeconds);
+}
+
+void stopFogger(String reason) {
+  setFogger(false);
+  foggerActive = false;
+  foggerInSpray = false;
+  Serial.printf("💨 Fogger stopped: %s (cycles: %d)\n", reason.c_str(), foggerCycleCount);
+}
+
+void foggerControl() {
+  if (!foggerSettings.enabled) return;
+  
+  // Check stop conditions
+  if (temperature < foggerSettings.stopTemp || humidity >= foggerSettings.stopHumidity) {
+    if (foggerActive) {
+      stopFogger("condition_met");
+    }
+    return;
+  }
+  
+  // Check start conditions
+  if (!foggerActive && 
+      temperature >= foggerSettings.startTemp && 
+      humidity < foggerSettings.startHumidityMax) {
+    // Start fogger cycle
+    foggerActive = true;
+    foggerCycleCount = 0;
+    startFoggerSpray();
+    
+    // Exhaust fan MUST run during fogger
+    setFanState(true, "HIGH");
+    Serial.println("💨 Fogger activated - Exhaust ON");
+  }
+  
+  // Handle cycle timing
+  if (foggerActive) {
+    unsigned long now = millis();
+    
+    if (foggerInSpray) {
+      // Check if spray duration complete
+      if (now - foggerSprayStart >= (unsigned long)foggerSettings.onSeconds * 1000UL) {
+        setFogger(false);
+        foggerInSpray = false;
+        foggerPauseStart = now;
+        foggerCycleCount++;
+        Serial.printf("💨 Fogger pause (cycle %d)\n", foggerCycleCount);
+      }
+    } else {
+      // Check if pause duration complete
+      if (now - foggerPauseStart >= (unsigned long)foggerSettings.pauseSeconds * 1000UL) {
+        // Recheck conditions before next spray
+        if (temperature >= foggerSettings.startTemp && humidity < foggerSettings.startHumidityMax) {
+          startFoggerSpray();
+        } else {
+          stopFogger("condition_met");
+        }
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE D: BROILER AIRFLOW GROWTH MODE
+// ═══════════════════════════════════════════════════════════════════════
+void setCirculationFan(bool on) {
+  circulationFanOn = on;
+  digitalWrite(CIRCULATION_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
+  Serial.printf("🌀 Circulation Fan: %s\n", on ? "ON" : "OFF");
+}
+
+void runIntermittentAirflow(int onSeconds, int intervalMinutes) {
+  unsigned long now = millis();
+  unsigned long intervalMs = (unsigned long)intervalMinutes * 60000UL;
+  
+  if (!airflowInCycle && (now - lastAirflowCycle >= intervalMs)) {
+    airflowInCycle = true;
+    airflowCycleStart = now;
+    setCirculationFan(true);
+  }
+  
+  if (airflowInCycle) {
+    if (now - airflowCycleStart >= (unsigned long)onSeconds * 1000UL) {
+      airflowInCycle = false;
+      lastAirflowCycle = now;
+      setCirculationFan(false);
+    }
+  }
+}
+
+void broilerAirflowControl() {
+  if (!airflowSettings.enabled) return;
+  
+  // Layer mode: continuous low ventilation
+  if (isLayer()) {
+    setCirculationFan(true);  // Always on for layer
+    return;
+  }
+  
+  // Broiler mode: age-based airflow control
+  int age = farmConfig.chickAgeDays;
+  
+  // Age < 10 days: OFF (chicks need warmth, no draft)
+  if (age < airflowSettings.earlyAgeDays) {
+    setCirculationFan(false);
+    return;
+  }
+  
+  // Determine if day or night (6:00-20:00 = daytime)
+  bool isDaytime = (currentHour >= 6 && currentHour < 20);
+  
+  // Age 10-20 days: Intermittent (30s every 3 min)
+  if (age < airflowSettings.midAgeDays) {
+    runIntermittentAirflow(
+      airflowSettings.midOnSeconds, 
+      airflowSettings.midIntervalMinutes
+    );
+    return;
+  }
+  
+  // Age 21+ days
+  if (isDaytime) {
+    // Daytime: Continuous ON
+    setCirculationFan(true);
+  } else {
+    // Night: Intermittent (1 min every 5 min)
+    runIntermittentAirflow(
+      airflowSettings.nightOnSeconds, 
+      airflowSettings.nightIntervalMinutes
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE A: MINIMUM VENTILATION CONTROL
+// ═══════════════════════════════════════════════════════════════════════
+void checkMinimumVentilation() {
+  // Skip if not enabled or temp above threshold
+  if (!minVentSettings.enabled) return;
+  if (temperature >= minVentSettings.tempThreshold) {
+    minVentActive = false;
+    return;
+  }
+  
+  minVentActive = true;
+  unsigned long now = millis();
+  
+  // Ammonia override - continuous exhaust
+  if (ammonia > rules.ammoniaFan) {
+    setFanState(true, "HIGH");
+    Serial.println("🌬️ Min Vent: Ammonia override - continuous exhaust");
+    return;
+  }
+  
+  // Ceiling fan always on in min vent mode
+  if (minVentSettings.ceilingFanAlwaysOn) {
+    setCirculationFan(true);
+  }
+  
+  // Check if time for next cycle
+  unsigned long intervalMs = (unsigned long)minVentSettings.intervalMinutes * 60000UL;
+  
+  if (!minVentInCycle && (now - lastMinVentCycle >= intervalMs)) {
+    // Start cycle
+    minVentInCycle = true;
+    minVentCycleStart = now;
+    setFanState(true, "HIGH");
+    Serial.printf("🌬️ Min Vent: Exhaust ON (%ds cycle)\n", minVentSettings.cycleSeconds);
+  }
+  
+  // Check if cycle complete
+  if (minVentInCycle) {
+    unsigned long cycleDuration = (unsigned long)minVentSettings.cycleSeconds * 1000UL;
+    if (now - minVentCycleStart >= cycleDuration) {
+      minVentInCycle = false;
+      lastMinVentCycle = now;
+      setFanState(false, "OFF");
+      Serial.println("🌬️ Min Vent: Exhaust OFF");
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE B: ADVANCED HEATER CONTROL
+// ═══════════════════════════════════════════════════════════════════════
+void advancedHeaterControl() {
+  if (!heaterSettings.enabled) return;
+  
+  // SAFETY FIRST: Force OFF if too hot
+  if (temperature > heaterSettings.safetyMaxTemp) {
+    if (heaterOn) {
+      setHeater(false);
+      Serial.println("🚨 Heater FORCED OFF (>34°C safety limit)");
+    }
+    return;
+  }
+  
+  if (isLayer()) {
+    // Layer mode: Fixed thresholds
+    if (temperature < heaterSettings.layerOnTemp && !heaterOn) {
+      setHeater(true);
+      Serial.printf("🔥 Layer Heater ON (%.1f°C < %.1f°C)\n", temperature, heaterSettings.layerOnTemp);
+    }
+    else if (temperature > heaterSettings.layerOffTemp && heaterOn) {
+      setHeater(false);
+      Serial.printf("🔥 Layer Heater OFF (%.1f°C > %.1f°C)\n", temperature, heaterSettings.layerOffTemp);
+    }
+  } 
+  else if (isBroiler()) {
+    // Broiler mode: Age-based curve
+    float targetTemp = getHeaterTargetTemp(farmConfig.chickAgeDays);
+    
+    if (temperature < targetTemp - heaterSettings.tolerance && !heaterOn) {
+      setHeater(true);
+      Serial.printf("🔥 Broiler Heater ON (Day %d, %.1f°C < %.1f°C)\n", 
+                    farmConfig.chickAgeDays, temperature, targetTemp - heaterSettings.tolerance);
+    }
+    else if (temperature > targetTemp + heaterSettings.tolerance && heaterOn) {
+      setHeater(false);
+      Serial.printf("🔥 Broiler Heater OFF (Day %d, %.1f°C > %.1f°C)\n", 
+                    farmConfig.chickAgeDays, temperature, targetTemp + heaterSettings.tolerance);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE G: PRIORITY-BASED CONTROL ENGINE
+// Priority: Safety > Heating > Cooling (Fogger) > Ventilation > Lighting
+// ═══════════════════════════════════════════════════════════════════════
+void advancedControlLogic() {
+  // ===== PRE-CHECK: Manual Override =====
+  if (localManualOverride) {
+    Serial.println("⚠️ MANUAL OVERRIDE ACTIVE - Advanced automation skipped");
+    return;
+  }
+  
+  // ===== PRE-CHECK: Stabilizing Mode =====
+  if (stabilizingMode) {
+    return;
+  }
+  
+  Serial.println("\n═══ ADVANCED AUTOMATION (7-Module System) ═══");
+  
+  // === PRIORITY 1: SAFETY (Always runs first) ===
+  // Safety checks are in runSafetyChecks() - already called in main loop
+  
+  // === PRIORITY 2: HEATING ===
+  advancedHeaterControl();
+  
+  // === PRIORITY 3: COOLING (Fogger) ===
+  foggerControl();
+  
+  // === PRIORITY 4: VENTILATION ===
+  if (!foggerActive) {  // Don't override fogger's exhaust control
+    checkMinimumVentilation();
+    broilerAirflowControl();
+  }
+  
+  // === PRIORITY 5: LIGHTING ===
+  // Lighting is handled in main loop (controlLighting + updateLightingWithFade)
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1822,7 +2250,10 @@ void controlLogic() {
   Serial.printf("Temp=%.1f°C, Hum=%.1f%%, NH3=%.1f ppm, HSI=%.1f\n", 
                 temperature, humidity, ammonia, currentHSI);
   
-  // ===== MAIN DECISION: Farm Type Based Control =====
+  // ===== RUN ADVANCED 7-MODULE AUTOMATION =====
+  advancedControlLogic();
+  
+  // ===== MAIN DECISION: Farm Type Based Control (Legacy fallback) =====
   if (farmConfig.farmType == FARM_PROFILE_LAYER) {
     layerControl();
   } 
@@ -1840,23 +2271,13 @@ void controlLogic() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void layerControl() {
-  Serial.println("[Layer] Running control logic...");
-  
-  // ===== TEMPERATURE CONTROL =====
-  if (temperature < 18) {
-    Serial.printf("🥶 Temp %.1f°C < 18 → Heater ON\n", temperature);
-    setHeater(true);
-    setFanState(false, "OFF");
-    setAlarm(false);
-    systemState = "COLD";
-    return;
-  }
+  // Temperature control is now handled by advancedHeaterControl()
+  // Fan control based on temp/HSI
   
   if (temperature > 33) {
     Serial.printf("🚨 Temp %.1f°C > 33 → ALARM!\n", temperature);
     setFanState(true, "HIGH");
     setAlarm(true);
-    setHeater(false);
     systemState = "EMERGENCY";
     return;
   }
@@ -1865,151 +2286,133 @@ void layerControl() {
     Serial.printf("🔥 Temp %.1f°C > 30 → Fan HIGH\n", temperature);
     setFanState(true, "HIGH");
     setAlarm(false);
-    setHeater(false);
-    systemState = "HIGH_STRESS";
+    systemState = "HOT";
     return;
   }
   
-  if (temperature > 27) {
-    Serial.printf("⚠️ Temp %.1f°C > 27 → Fan LOW\n", temperature);
-    setFanState(true, "LOW");
-    setAlarm(false);
-    setHeater(false);
-    systemState = "MILD_STRESS";
-    return;
-  }
-  
-  // ===== HSI CONTROL =====
-  if (currentHSI > 40) {
-    Serial.printf("🚨 HSI %.1f > 40 → Emergency Ventilation!\n", currentHSI);
-    setFanState(true, "MAX");
-    setAlarm(true);
-    setHeater(false);
-    systemState = "EMERGENCY";
-    return;
-  }
-  
-  if (currentHSI > 35) {
-    Serial.printf("🔥 HSI %.1f > 35 → Fan HIGH\n", currentHSI);
-    setFanState(true, "HIGH");
-    setAlarm(false);
-    setHeater(false);
-    systemState = "HIGH_STRESS";
-    return;
-  }
-  
-  // ===== AMMONIA CONTROL =====
-  if (ammonia > 25) {
-    Serial.printf("🚨 NH3 %.1f > 25 ppm → ALARM!\n", ammonia);
+  // HSI-based control
+  if (currentHSI > rules.hsiEmergency) {
     setFanState(true, "HIGH");
     setAlarm(true);
-    setHeater(false);
-    systemState = "DANGER";
+    systemState = "HSI_EMERGENCY";
     return;
   }
   
-  if (ammonia > 15) {
-    Serial.printf("⚠️ NH3 %.1f > 15 ppm → Fan ON\n", ammonia);
+  if (currentHSI > rules.hsiFanHigh) {
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    systemState = "HSI_HIGH";
+    return;
+  }
+  
+  if (currentHSI > rules.hsiFanLow) {
     setFanState(true, "MEDIUM");
     setAlarm(false);
-    setHeater(false);
     systemState = "MILD_STRESS";
     return;
   }
   
-  // ===== IDEAL - ALL NORMAL =====
-  Serial.printf("✅ Layer IDEAL: %.1f°C, %.1f%%, %.1f ppm\n", temperature, humidity, ammonia);
-  setFanState(false, "OFF");
+  // Ammonia control
+  if (ammonia > rules.ammoniaAlarm) {
+    setFanState(true, "HIGH");
+    setAlarm(true);
+    systemState = "NH3_ALARM";
+    return;
+  }
+  
+  if (ammonia > rules.ammoniaFan) {
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    systemState = "NH3_HIGH";
+    return;
+  }
+  
+  // All normal
+  if (!minVentActive && !foggerActive) {
+    setFanState(false, "OFF");
+  }
   setAlarm(false);
-  setHeater(false);
   systemState = "NORMAL";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// BROILER CONTROL  
-// Age-based temperature, dynamic targets, growth-focused
+// BROILER CONTROL
+// Age-based temp, HSI with higher thresholds, no lighting protection
 // ═══════════════════════════════════════════════════════════════════════
 
 void broilerControl() {
-  // ===== GET TARGET TEMP FOR CURRENT AGE =====
-  float targetMin, targetMax;
-  getBroilerTargetTemp(broilerAgeDays, targetMin, targetMax);
-  float target = (targetMin + targetMax) / 2.0;
+  float target = rules.tempTarget;
   
-  Serial.printf("[Broiler] Day %d: Target=%.0f°C, Actual=%.1f°C\n", 
-                broilerAgeDays, target, temperature);
+  // Temperature control is now handled by advancedHeaterControl()
   
-  // ===== TEMPERATURE CONTROL (Age-Based) =====
-  if (temperature < target - 2) {
-    Serial.printf("🥶 Temp %.1f°C < Target-2 → Heater ON\n", temperature);
-    setHeater(true);
-    setFanState(false, "OFF");
-    setAlarm(false);
-    systemState = "COLD";
-    return;
-  }
-  
-  if (temperature > target + 4) {
-    Serial.printf("🚨 Temp %.1f°C > Target+4 → ALARM!\n", temperature);
+  // ALARM CONDITIONS
+  if (currentHSI > rules.hsiCritical) {
+    Serial.printf("🚨 HSI %.1f > %.0f → CRITICAL!\n", currentHSI, rules.hsiCritical);
     setFanState(true, "HIGH");
     setAlarm(true);
-    setHeater(false);
-    systemState = "EMERGENCY";
+    systemState = "CRITICAL";
     return;
   }
   
-  if (temperature > target + 2) {
-    Serial.printf("🔥 Temp %.1f°C > Target+2 → Fan ON\n", temperature);
-    setFanState(true, "HIGH");
-    setAlarm(false);
-    setHeater(false);
-    systemState = "HIGH_STRESS";
-    return;
-  }
-  
-  // ===== HSI CONTROL =====
-  if (currentHSI > 42) {
-    Serial.printf("🚨 HSI %.1f > 42 → Emergency Ventilation!\n", currentHSI);
-    setFanState(true, "MAX");
-    setAlarm(true);
-    setHeater(false);
-    systemState = "EMERGENCY";
-    return;
-  }
-  
-  if (currentHSI > 38) {
-    Serial.printf("🔥 HSI %.1f > 38 → Fan HIGH\n", currentHSI);
-    setFanState(true, "HIGH");
-    setAlarm(false);
-    setHeater(false);
-    systemState = "HIGH_STRESS";
-    return;
-  }
-  
-  // ===== AMMONIA CONTROL =====
-  if (ammonia > 30) {
-    Serial.printf("🚨 NH3 %.1f > 30 ppm → ALARM!\n", ammonia);
+  if (temperature > rules.tempAlarm) {
+    Serial.printf("🚨 Temp %.1f°C > %.0f → ALARM!\n", temperature, rules.tempAlarm);
     setFanState(true, "HIGH");
     setAlarm(true);
-    setHeater(false);
-    systemState = "DANGER";
+    systemState = "TEMP_ALARM";
     return;
   }
   
-  if (ammonia > 20) {
-    Serial.printf("⚠️ NH3 %.1f > 20 ppm → Fan ON\n", ammonia);
+  // HIGH STRESS
+  if (currentHSI > rules.hsiEmergency) {
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    systemState = "HSI_EMERGENCY";
+    return;
+  }
+  
+  if (temperature > rules.tempFanHigh) {
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    systemState = "HOT";
+    return;
+  }
+  
+  // MEDIUM STRESS
+  if (currentHSI > rules.hsiFanHigh) {
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    systemState = "HSI_HIGH";
+    return;
+  }
+  
+  // Ammonia control
+  if (ammonia > rules.ammoniaAlarm) {
+    setFanState(true, "HIGH");
+    setAlarm(true);
+    systemState = "NH3_ALARM";
+    return;
+  }
+  
+  if (ammonia > rules.ammoniaFan) {
+    setFanState(true, "HIGH");
+    setAlarm(false);
+    systemState = "NH3_HIGH";
+    return;
+  }
+  
+  // MILD STRESS
+  if (currentHSI > rules.hsiFanLow) {
     setFanState(true, "MEDIUM");
     setAlarm(false);
-    setHeater(false);
     systemState = "MILD_STRESS";
     return;
   }
   
-  // ===== IDEAL - ALL NORMAL =====
-  Serial.printf("✅ Broiler IDEAL: %.1f°C (Target %.0f°C), %.1f ppm\n", temperature, target, ammonia);
-  setFanState(false, "OFF");
+  // IDEAL - ALL NORMAL
+  if (!minVentActive && !foggerActive) {
+    setFanState(false, "OFF");
+  }
   setAlarm(false);
-  setHeater(false);
   systemState = "NORMAL";
 }
 
@@ -2019,15 +2422,10 @@ void broilerControl() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void failSafeCommon() {
-  // ═══════════════════════════════════════════════════════════════════════
   // 1️⃣ SENSOR MISSING → FAN ON
-  // সেন্সর থেকে ডাটা না পেলে - ফ্যান চালু রাখো (সেফটি)
-  // ═══════════════════════════════════════════════════════════════════════
   if (sensorErrorMode) {
-    Serial.println("🛡️ [FAILSAFE] Sensor missing → Fan ON!");
     setFanState(true, "HIGH");
     systemState = "SENSOR_ERROR";
-    // Pulse alarm every 20 seconds
     static unsigned long lastSensorBeep = 0;
     if (millis() - lastSensorBeep > 20000) {
       setAlarm(true);
@@ -2037,10 +2435,7 @@ void failSafeCommon() {
     }
   }
   
-  // ═══════════════════════════════════════════════════════════════════════
   // 2️⃣ NO INTERNET → LOCAL MODE
-  // ৫ মিনিট ক্লাউড না পেলে - লোকাল অটো মোডে চলো
-  // ═══════════════════════════════════════════════════════════════════════
   unsigned long timeSinceSync = millis() - lastCloudSync;
   
   if (timeSinceSync > CLOUD_TIMEOUT) {
@@ -2055,12 +2450,8 @@ void failSafeCommon() {
     }
   }
   
-  // ═══════════════════════════════════════════════════════════════════════
   // 3️⃣ WATER FAILURE → ALERT
-  // ৬ ঘণ্টা পানি না গেলে - বিপ দাও
-  // ═══════════════════════════════════════════════════════════════════════
   if (waterFailureMode) {
-    Serial.println("🛡️ [FAILSAFE] Water flow missing > 6 hours → Alert!");
     static unsigned long lastWaterBeep = 0;
     if (millis() - lastWaterBeep > 30000) {
       setAlarm(true);
@@ -2070,16 +2461,12 @@ void failSafeCommon() {
     }
   }
   
-  // ═══════════════════════════════════════════════════════════════════════
   // 4️⃣ LIGHTING PROTECTION (Layer Only)
-  // ১০ মিনিট লাইট বন্ধ থাকলে - বিপ দাও (শুধু লেয়ার)
-  // ═══════════════════════════════════════════════════════════════════════
   if (isLayer() && !lightOn) {
     static unsigned long lightOffStart = 0;
     if (lightOffStart == 0) {
       lightOffStart = millis();
     } else if (millis() - lightOffStart > 600000) {
-      Serial.println("🛡️ [FAILSAFE] Light OFF > 10 min → Alert!");
       static unsigned long lastLightBeep = 0;
       if (millis() - lastLightBeep > 60000) {
         setAlarm(true);
@@ -2088,15 +2475,9 @@ void failSafeCommon() {
         lastLightBeep = millis();
       }
     }
-  } else {
-    // Reset light off timer when light is on
-    // (handled by static variable reset on next call)
   }
   
-  // ═══════════════════════════════════════════════════════════════════════
   // 5️⃣ WATCHDOG FEED
-  // ৮ সেকেন্ড হ্যাং হলে - অটো রিস্টার্ট (hardware level)
-  // ═══════════════════════════════════════════════════════════════════════
   esp_task_wdt_reset();
 }
 
@@ -2110,7 +2491,7 @@ void runSafetyChecks() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void readSensors() {
-   // Use filtered readings (5-sample average from DHT)
+   // Use filtered readings (3-sample average from DHT)
    float t = readTempFiltered();
    float h = readHumidityFiltered();
   
@@ -2140,7 +2521,7 @@ void readSensors() {
   // Apply calibration offset from FarmConfig
    float ammoniaRaw2 = ammoniaRawMapped + farmConfig.nh3Offset;
    if (ammoniaRaw2 < 0) ammoniaRaw2 = 0;
-   ammonia = calculateAmmoniaMovingAvg(ammoniaRaw2);  // Moving avg filter
+   ammonia = calculateAmmoniaMovingAvg(ammoniaRaw2);
   
   // Check water flow
   if (waterPulseCount > 0) {
@@ -2152,7 +2533,7 @@ void readSensors() {
   }
   
   // Power sense
-   powerOn = !checkPowerFailure();  // RMS filter
+   powerOn = !checkPowerFailure();
    checkGasWarmup();
    
    // Store to offline buffer when disconnected
@@ -2164,7 +2545,6 @@ void readSensors() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void connectWiFi() {
-  // Use hardcoded credentials from Code Generator
   if (strlen(WIFI_SSID) > 0 && strcmp(WIFI_SSID, "YOUR_WIFI_SSID") != 0) {
     Serial.print("📡 Connecting to WiFi");
     WiFi.mode(WIFI_STA);
@@ -2204,7 +2584,7 @@ void syncWithCloud() {
   http.addHeader("x-device-token", DEVICE_TOKEN);
   http.setTimeout(10000);
   
-  StaticJsonDocument<512> doc;
+  StaticJsonDocument<1024> doc;
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
@@ -2222,28 +2602,41 @@ void syncWithCloud() {
   doc["broiler_age_days"] = broilerAgeDays;
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["uptime_seconds"] = millis() / 1000;
+  
   // Broiler age source tracking
   doc["broiler_age_source"] = ageSource;
   doc["last_server_age_sync_at"] = lastServerAgeSyncTime;
+  
   // Water monitoring fields
   doc["water_last_2h_avg"] = water2hAvg;
   doc["water_24h_rolling_avg"] = waterRollingAvg;
   doc["water_anomaly_consecutive_count"] = waterAnomalyConsecutive;
-   // Reliability fields
-   doc["firmware_version"] = firmwareVersion;
-   doc["restart_reason"] = restartReason;
-   doc["total_restarts"] = totalRestarts;
-   doc["safe_mode_active"] = safeModeActive;
-   doc["power_event_type"] = isPowerRelatedRestart() ? "POWER_EVENT" : "NORMAL";
-   doc["gas_warmup_done"] = gasWarmupDone;
-   doc["ammonia_avg_10"] = ammoniaAvg10;
-   doc["consecutive_high_ammonia"] = consecutiveHighAmmonia;
-   doc["power_voltage_rms"] = powerVoltageRMS;
-   doc["offline_buffer_count"] = offlineBufferCount;
-   doc["ota_status"] = otaStatus;
-   doc["ota_progress"] = otaProgress;
-   doc["online_duration_seconds"] = onlineDurationSec;
-   doc["offline_duration_seconds"] = offlineDurationSec;
+  
+  // Reliability fields
+  doc["firmware_version"] = firmwareVersion;
+  doc["restart_reason"] = restartReason;
+  doc["total_restarts"] = totalRestarts;
+  doc["safe_mode_active"] = safeModeActive;
+  doc["power_event_type"] = isPowerRelatedRestart() ? "POWER_EVENT" : "NORMAL";
+  doc["gas_warmup_done"] = gasWarmupDone;
+  doc["ammonia_avg_10"] = ammoniaAvg10;
+  doc["consecutive_high_ammonia"] = consecutiveHighAmmonia;
+  doc["power_voltage_rms"] = powerVoltageRMS;
+  doc["offline_buffer_count"] = offlineRecordCount;
+  doc["ota_status"] = otaStatus;
+  doc["ota_progress"] = otaProgress;
+  doc["online_duration_seconds"] = onlineDurationSec;
+  doc["offline_duration_seconds"] = offlineDurationSec;
+  
+  // 🆕 Advanced automation states
+  doc["circulation_fan_on"] = circulationFanOn;
+  doc["fogger_on"] = foggerOn;
+  doc["min_vent_active"] = minVentActive;
+  doc["fogger_active"] = foggerActive;
+  doc["fogger_cycle_count"] = foggerCycleCount;
+  doc["light_brightness"] = lightBrightness;
+  doc["fade_in_progress"] = fadeInProgress;
+  doc["cached_settings_version"] = cachedSettingsVersion;
   
   String payload;
   serializeJson(doc, payload);
@@ -2260,7 +2653,6 @@ void syncWithCloud() {
       Serial.println("✓ Cloud restored - exiting failsafe");
       failsafeMode = false;
       
-      // 📦 Sync offline buffer on reconnection
       if (offlineRecordCount > 0) {
         Serial.println("📦 Starting offline buffer sync...");
       }
@@ -2278,8 +2670,106 @@ void syncWithCloud() {
   http.end();
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 HANDLE ADVANCED AUTOMATION SETTINGS FROM CLOUD
+// ═══════════════════════════════════════════════════════════════════════
+void handleAdvancedAutomationSettings(JsonObject& adv) {
+  Serial.println("📥 Processing advanced automation settings from cloud...");
+  
+  // Module A: Minimum Ventilation
+  if (adv.containsKey("min_vent")) {
+    JsonObject mv = adv["min_vent"];
+    minVentSettings.enabled = mv["enabled"] | true;
+    minVentSettings.tempThreshold = mv["temp_threshold"] | 26.0;
+    minVentSettings.cycleSeconds = mv["cycle_seconds"] | 40;
+    minVentSettings.intervalMinutes = mv["interval_minutes"] | 5;
+    minVentSettings.ceilingFanAlwaysOn = mv["ceiling_fan_always_on"] | true;
+    Serial.printf("   Min Vent: %s, Threshold=%.1f°C, Cycle=%ds, Interval=%dmin\n",
+                  minVentSettings.enabled ? "ON" : "OFF",
+                  minVentSettings.tempThreshold,
+                  minVentSettings.cycleSeconds,
+                  minVentSettings.intervalMinutes);
+  }
+  
+  // Module B: Heater
+  if (adv.containsKey("heater")) {
+    JsonObject h = adv["heater"];
+    heaterSettings.enabled = h["enabled"] | true;
+    heaterSettings.layerOnTemp = h["on_temp"] | 20.0;
+    heaterSettings.layerOffTemp = h["off_temp"] | 24.0;
+    heaterSettings.tolerance = h["tolerance"] | 0.7;
+    Serial.printf("   Heater: %s, Layer ON<%.1f°C OFF>%.1f°C, Tolerance=%.1f\n",
+                  heaterSettings.enabled ? "ON" : "OFF",
+                  heaterSettings.layerOnTemp,
+                  heaterSettings.layerOffTemp,
+                  heaterSettings.tolerance);
+  }
+  
+  // Module C: Fogger
+  if (adv.containsKey("fogger")) {
+    JsonObject f = adv["fogger"];
+    foggerSettings.enabled = f["enabled"] | false;
+    foggerSettings.startTemp = f["start_temp"] | 32.0;
+    foggerSettings.startHumidityMax = f["start_humidity_max"] | 85.0;
+    foggerSettings.onSeconds = f["on_seconds"] | 40;
+    foggerSettings.pauseSeconds = f["pause_seconds"] | 120;
+    foggerSettings.stopTemp = f["stop_temp"] | 30.0;
+    foggerSettings.stopHumidity = f["stop_humidity"] | 90.0;
+    Serial.printf("   Fogger: %s, Start>=%.1f°C&<%.0f%%, ON=%ds, Pause=%ds\n",
+                  foggerSettings.enabled ? "ON" : "OFF",
+                  foggerSettings.startTemp,
+                  foggerSettings.startHumidityMax,
+                  foggerSettings.onSeconds,
+                  foggerSettings.pauseSeconds);
+  }
+  
+  // Module D: Airflow
+  if (adv.containsKey("airflow")) {
+    JsonObject a = adv["airflow"];
+    airflowSettings.enabled = a["enabled"] | true;
+    airflowSettings.earlyAgeDays = a["early_age_days"] | 10;
+    airflowSettings.midAgeDays = a["mid_age_days"] | 20;
+    airflowSettings.midOnSeconds = a["mid_on_seconds"] | 30;
+    airflowSettings.midIntervalMinutes = a["mid_interval_minutes"] | 3;
+    airflowSettings.nightOnSeconds = a["night_on_seconds"] | 60;
+    airflowSettings.nightIntervalMinutes = a["night_interval_minutes"] | 5;
+    Serial.printf("   Airflow: %s, Early<%dd, Mid<%dd, MidCycle=%ds/%dmin\n",
+                  airflowSettings.enabled ? "ON" : "OFF",
+                  airflowSettings.earlyAgeDays,
+                  airflowSettings.midAgeDays,
+                  airflowSettings.midOnSeconds,
+                  airflowSettings.midIntervalMinutes);
+  }
+  
+  // Module E: Lighting Fade
+  if (adv.containsKey("lighting")) {
+    JsonObject l = adv["lighting"];
+    lightingFadeSettings.fadeDurationMinutes = l["fade_duration_minutes"] | 10;
+    Serial.printf("   Lighting Fade: %d minutes\n", lightingFadeSettings.fadeDurationMinutes);
+  }
+  
+  // Module F: Curtain Advisory
+  if (adv.containsKey("curtain_advisory")) {
+    JsonObject c = adv["curtain_advisory"];
+    curtainSettings.enabled = c["enabled"] | true;
+    curtainSettings.openTempDiff = c["open_temp_diff"] | 3.0;
+    curtainSettings.closeOnCold = c["close_on_cold"] | true;
+  }
+  
+  // Module G: Water Analytics
+  if (adv.containsKey("water_analytics")) {
+    JsonObject w = adv["water_analytics"];
+    waterAnalyticsSettings.dropThresholdPercent = w["drop_threshold_percent"] | 30;
+    waterAnalyticsSettings.nightSpikeEnabled = w["night_spike_enabled"] | true;
+    waterAnalyticsSettings.zeroFlowAlert = w["zero_flow_alert"] | true;
+    waterAnalyticsSettings.baselineHours = w["baseline_hours"] | 24;
+  }
+  
+  Serial.println("✅ Advanced automation settings synced from cloud");
+}
+
 void handleCloudResponse(String response) {
-  StaticJsonDocument<1024> doc;
+  DynamicJsonDocument doc(2048);
   if (deserializeJson(doc, response)) return;
   
   // === FARM PROFILE SYNC FROM CLOUD ===
@@ -2302,6 +2792,24 @@ void handleCloudResponse(String response) {
     int newAge = doc["set_broiler_age"] | -1;
     setFarmProfileFromAPI(newProfile, newAge);
     Serial.println("✓ Farm profile set from cloud command!");
+  }
+  
+  // === TIME SYNC ===
+  if (doc.containsKey("current_hour") && doc.containsKey("current_minute")) {
+    int hour = doc["current_hour"] | 12;
+    int minute = doc["current_minute"] | 0;
+    updateTimeFromCloud(hour, minute);
+  }
+  
+  // === 🆕 ADVANCED AUTOMATION SETTINGS SYNC ===
+  if (doc.containsKey("advanced_automation")) {
+    JsonObject adv = doc["advanced_automation"];
+    handleAdvancedAutomationSettings(adv);
+    
+    // Update cached version if present
+    if (doc.containsKey("settings_version")) {
+      cachedSettingsVersion = doc["settings_version"] | 0;
+    }
   }
   
   // Ignore device commands in failsafe mode
@@ -2327,7 +2835,7 @@ void handleCloudResponse(String response) {
       bool cloudLightOn = status["light_on"] | false;
       if (cloudLightOn != lightOn) {
         setLight(cloudLightOn);
-        lightSchedule.manualOverride = true;  // Cloud took manual control
+        lightSchedule.manualOverride = true;
         Serial.printf("☁️ Cloud → Light: %s\n", cloudLightOn ? "ON" : "OFF");
       }
     }
@@ -2347,6 +2855,24 @@ void handleCloudResponse(String response) {
       if (cloudHeaterOn != heaterOn) {
         setHeater(cloudHeaterOn);
         Serial.printf("☁️ Cloud → Heater: %s\n", cloudHeaterOn ? "ON" : "OFF");
+      }
+    }
+    
+    // 🆕 Fogger control
+    if (status.containsKey("fogger_on")) {
+      bool cloudFoggerOn = status["fogger_on"] | false;
+      if (cloudFoggerOn != foggerOn) {
+        setFogger(cloudFoggerOn);
+        Serial.printf("☁️ Cloud → Fogger: %s\n", cloudFoggerOn ? "ON" : "OFF");
+      }
+    }
+    
+    // 🆕 Circulation fan control
+    if (status.containsKey("circulation_fan_on")) {
+      bool cloudCircOn = status["circulation_fan_on"] | false;
+      if (cloudCircOn != circulationFanOn) {
+        setCirculationFan(cloudCircOn);
+        Serial.printf("☁️ Cloud → Circulation Fan: %s\n", cloudCircOn ? "ON" : "OFF");
       }
     }
     
@@ -2374,67 +2900,46 @@ void checkFailsafeTimeout() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void checkPendingCommands() {
-  Serial.println("\n📡 Checking pending commands...");
-  
   if (!wifiConnected) {
-    Serial.println("   ❌ WiFi not connected, skipping");
     return;
   }
   
-  // NOTE: Manual commands from app should ALWAYS execute, even during stabilizing mode.
-  // Only skip if we are in failsafe mode (no cloud connection) - localManualOverride handles that case.
-  // safeModeActive is for sensor anomaly protection, not for blocking user commands.
-  // We allow commands during stabilizingMode so user can control relays immediately after boot.
   if (failsafeMode) {
-    Serial.println("   ⚠️ Failsafe mode active (offline), skipping cloud commands");
     return;
   }
   
   HTTPClient http;
 
-  // IMPORTANT: SHED_NAME may contain spaces (e.g., "Shed A").
-  // Query params must be URL-encoded or the server can return HTTP 400.
   String encodedShedName = String(SHED_NAME);
   encodedShedName.replace(" ", "%20");
 
   String url = String(API_URL) + "/commands?device_id=" + encodedShedName;
   
-  Serial.printf("   → URL: %s\n", url.c_str());
-  
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-device-token", DEVICE_TOKEN);
-  http.setTimeout(5000);  // 5 sec timeout for quick response
+  http.setTimeout(5000);
   
   int httpCode = http.GET();
-  Serial.printf("   → HTTP Response: %d\n", httpCode);
   
   if (httpCode == 200) {
     String response = http.getString();
-    Serial.printf("   → Response bytes: %d\n", response.length());
     
-    // NOTE: The command list can get large (many pending commands).
-    // Use a dynamic JSON document to avoid silent parse failures.
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, response);
     
     if (error) {
-      Serial.printf("   ❌ JSON parse failed: %s\n", error.c_str());
       return;
     }
 
     if (!doc.containsKey("commands")) {
-      Serial.println("   ⚠️ No 'commands' key in response");
       return;
     }
 
     JsonArray commands = doc["commands"].as<JsonArray>();
     if (commands.isNull() || commands.size() == 0) {
-      Serial.println("   (No pending commands)");
       return;
     }
-
-    Serial.printf("   → Pending commands: %d\n", (int)commands.size());
     
     for (JsonObject cmd : commands) {
       String commandId = cmd["id"] | "";
@@ -2448,26 +2953,25 @@ void checkPendingCommands() {
       // Execute command based on type
       if (commandType == "fan") {
         setFanState(commandValue, commandValue ? "HIGH" : "OFF");
-        Serial.printf("   ⚡ Fan: %s\n", commandValue ? "ON" : "OFF");
       }
       else if (commandType == "light") {
         setLight(commandValue);
-        lightSchedule.manualOverride = true;  // Manual control active
-        Serial.printf("   ⚡ Light: %s\n", commandValue ? "ON" : "OFF");
+        lightSchedule.manualOverride = true;
       }
       else if (commandType == "alarm") {
         setAlarm(commandValue);
-        Serial.printf("   ⚡ Alarm: %s\n", commandValue ? "ON" : "OFF");
       }
       else if (commandType == "heater") {
         setHeater(commandValue);
-        Serial.printf("   ⚡ Heater: %s\n", commandValue ? "ON" : "OFF");
+      }
+      else if (commandType == "fogger") {
+        setFogger(commandValue);
+      }
+      else if (commandType == "circulation_fan") {
+        setCirculationFan(commandValue);
       }
       else if (commandType == "manual_override") {
         localManualOverride = commandValue;
-        Serial.printf("   ⚡ Manual Override: %s\n", commandValue ? "ENABLED" : "DISABLED");
-      } else {
-        Serial.printf("   ⚠️ Unknown command_type: %s\n", commandType.c_str());
       }
       
       // Acknowledge command execution
@@ -2497,12 +3001,7 @@ void acknowledgeCommand(String commandId) {
   String payload;
   serializeJson(doc, payload);
   
-  int httpCode = http.POST(payload);
-  
-  if (httpCode == 200) {
-    Serial.printf("   ✓ Command %s acknowledged\n", commandId.substring(0, 8).c_str());
-  }
-  
+  http.POST(payload);
   http.end();
 }
 
@@ -2514,8 +3013,9 @@ void acknowledgeCommand(String commandId) {
 void setup() {
   Serial.begin(115200);
   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-   Serial.println("║    Smart Farm - ESP32 Unified Controller v5.1                 ║");
+   Serial.println("║    Smart Farm - ESP32 Unified Controller v5.2                 ║");
   Serial.println("║    🐔 UNIFIED CODEBASE: Farm Profile System                   ║");
+   Serial.println("║    🆕 7-MODULE ADVANCED AUTOMATION                            ║");
    Serial.println("║    🛡️ PRODUCTION RELIABILITY: Safe Mode + Filters            ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
   Serial.printf("  Shed: %s (%s)\n", SHED_NAME, SHED_ID);
@@ -2538,12 +3038,12 @@ void setup() {
   // ═══════════════════════════════════════════════════════════════════════
   
   Serial.println("\n🔌 RELAY PIN SETUP...");
-  Serial.printf("   FAN_RELAY_PIN (D5/IN1): GPIO %d\n", FAN_RELAY_PIN);
-  Serial.printf("   LIGHT_RELAY_PIN (D6/IN2): GPIO %d\n", LIGHT_RELAY_PIN);
-  Serial.printf("   ALARM_RELAY_PIN (D7/IN3): GPIO %d\n", ALARM_RELAY_PIN);
-  Serial.printf("   HEATER_RELAY_PIN (D8/IN4): GPIO %d\n", HEATER_RELAY_PIN);
+  Serial.printf("   FAN_RELAY_PIN (IN1): GPIO %d\n", FAN_RELAY_PIN);
+  Serial.printf("   LIGHT_RELAY_PIN (IN2): GPIO %d\n", LIGHT_RELAY_PIN);
+  Serial.printf("   ALARM_RELAY_PIN (IN3): GPIO %d\n", ALARM_RELAY_PIN);
+  Serial.printf("   HEATER_RELAY_PIN (IN4): GPIO %d\n", HEATER_RELAY_PIN);
   
-  // Set as OUTPUT first (ESP32 defaults pins to INPUT with internal pull-down)
+  // Set as OUTPUT first
   pinMode(FAN_RELAY_PIN, OUTPUT);
   pinMode(LIGHT_RELAY_PIN, OUTPUT);
   pinMode(ALARM_RELAY_PIN, OUTPUT);
@@ -2564,36 +3064,36 @@ void setup() {
   // ═══════════════════════════════════════════════════════════════════════
   Serial.println("\n🧪 RELAY TEST SEQUENCE STARTING...");
   
-  // Test D5 (IN1 - Fan)
-  Serial.println("   Testing D5 (IN1 - Fan) - GPIO 25...");
+  // Test IN1 (Fan/Exhaust)
+  Serial.printf("   Testing IN1 (Fan) - GPIO %d...\n", FAN_RELAY_PIN);
   digitalWrite(FAN_RELAY_PIN, LOW);  // ON
   delay(1000);
   digitalWrite(FAN_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ D5 test complete");
+  Serial.println("   ✓ IN1 test complete");
   delay(300);
   
-  // Test D6 (IN2 - Light)
-  Serial.println("   Testing D6 (IN2 - Light) - GPIO 26...");
+  // Test IN2 (Light/Circulation)
+  Serial.printf("   Testing IN2 (Light/Circulation) - GPIO %d...\n", LIGHT_RELAY_PIN);
   digitalWrite(LIGHT_RELAY_PIN, LOW);  // ON
   delay(1000);
   digitalWrite(LIGHT_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ D6 test complete");
+  Serial.println("   ✓ IN2 test complete");
   delay(300);
   
-  // Test D7 (IN3 - Alarm)
-  Serial.println("   Testing D7 (IN3 - Alarm) - GPIO 33...");
+  // Test IN3 (Alarm/Heater)
+  Serial.printf("   Testing IN3 (Alarm/Heater) - GPIO %d...\n", ALARM_RELAY_PIN);
   digitalWrite(ALARM_RELAY_PIN, LOW);  // ON
   delay(1000);
   digitalWrite(ALARM_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ D7 test complete");
+  Serial.println("   ✓ IN3 test complete");
   delay(300);
   
-  // Test D8 (IN4 - Heater)
-  Serial.println("   Testing D8 (IN4 - Heater) - GPIO 13...");
+  // Test IN4 (Heater/Fogger)
+  Serial.printf("   Testing IN4 (Heater/Fogger) - GPIO %d...\n", HEATER_RELAY_PIN);
   digitalWrite(HEATER_RELAY_PIN, LOW);  // ON
   delay(1000);
   digitalWrite(HEATER_RELAY_PIN, HIGH); // OFF
-  Serial.println("   ✓ D8 test complete");
+  Serial.println("   ✓ IN4 test complete");
   
   Serial.println("🧪 RELAY TEST COMPLETE!\n");
   delay(500);
@@ -2641,7 +3141,7 @@ void setup() {
   if (!sensorInitOK) {
     Serial.println("⚠️ SENSOR ERROR → Failsafe mode!");
     failsafeMode = true;
-    digitalWrite(FAN_RELAY_PIN, HIGH);
+    digitalWrite(FAN_RELAY_PIN, LOW);  // Active LOW - ON
     fanOn = true;
     fanSpeed = "HIGH";
   }
@@ -2669,7 +3169,7 @@ void setup() {
   
   // Boot fan sequence
   Serial.println("🌀 Boot fan: 20 sec air refresh...");
-  digitalWrite(FAN_RELAY_PIN, HIGH);
+  digitalWrite(FAN_RELAY_PIN, LOW);  // Active LOW - ON
   fanOn = true;
   fanSpeed = "HIGH";
   bootFanStart = millis();
@@ -2697,6 +3197,7 @@ void setup() {
    Serial.printf("║  Firmware: %s                                           ║\n", firmwareVersion.c_str());
    Serial.printf("║  Safe Mode: %s                                            ║\n", safeModeActive ? "YES" : "NO");
   Serial.println("║  Watchdog: 8 sec timeout                                   ║");
+  Serial.println("║  🆕 7-Module Advanced Automation: ENABLED                  ║");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
 
@@ -2708,7 +3209,6 @@ void loop() {
   static unsigned long lastSensorRead = 0;
   static unsigned long lastCloudAttempt = 0;
   static unsigned long lastRuleUpdate = 0;
-  static unsigned long lastDayCheck = 0;
   unsigned long now = millis();
   
   
@@ -2737,8 +3237,6 @@ void loop() {
   }
   
   // ⚡ REAL-TIME COMMAND CHECK (every 5 seconds)
-  // This enables instant relay control from the app
-  // Always poll when WiFi connected - manual override check is inside function
   if (now - lastCommandCheck >= COMMAND_CHECK_INTERVAL) {
     if (wifiConnected) {
       checkPendingCommands();
@@ -2760,8 +3258,7 @@ void loop() {
    if (bootFanDone && !safeModeActive) {
     controlLogic();
     
-    // 💡 LIGHTING SCHEDULE CONTROL
-    // Check every 10 seconds - Cloud থেকে শিডিউল, ESP32 লোকালি এক্সিকিউট
+    // 💡 LIGHTING SCHEDULE CONTROL + PWM FADE
     if (now - lastLightingCheck >= LIGHTING_CHECK_INTERVAL) {
       controlLighting();
       
@@ -2773,12 +3270,13 @@ void loop() {
       lastLightingCheck = now;
     }
     
+    // 🆕 Update lighting fade animation (runs every loop)
+    updateLightingWithFade();
+    
     // 💧 SMART WATER MONITORING
-    // Active hours only (5:00-22:00) + rolling average comparison
     waterFlowTick();
     
     // 🐔 OFFLINE AGE TICK (Broiler only)
-    // Works without internet - temperature curve never freezes!
     ageTick();
     
     // Update broiler age & temp rules every hour (Broiler only)
