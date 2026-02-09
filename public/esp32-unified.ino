@@ -233,6 +233,8 @@ FoggerSettings foggerSettings = {
 // Fogger State
 bool foggerOn = false;
 bool foggerActive = false;
+bool foggerManualOverride = false;  // 🔧 Manual override flag
+unsigned long foggerManualTime = 0;
 bool foggerInSpray = false;
 unsigned long foggerSprayStart = 0;
 unsigned long foggerPauseStart = 0;
@@ -263,6 +265,8 @@ AirflowSettings airflowSettings = {
 
 // Circulation Fan State
 bool circulationFanOn = false;
+bool circulationFanManualOverride = false;  // 🔧 Manual override flag
+unsigned long circulationFanManualTime = 0;
 bool airflowInCycle = false;
 unsigned long airflowCycleStart = 0;
 unsigned long lastAirflowCycle = 0;
@@ -619,6 +623,10 @@ bool powerOn = true;
 bool fanOn = false;
 bool lightOn = false;
 bool alarmOn = false;
+bool fanManualOverride = false;  // 🔧 Fan manual override
+unsigned long fanManualTime = 0;
+bool heaterManualOverride = false;  // 🔧 Heater manual override
+unsigned long heaterManualTime = 0;
 String fanSpeed = "OFF";
 float currentHSI = 0;
 String systemState = "NORMAL";
@@ -1806,6 +1814,11 @@ void setFanState(bool on, String speed) {
 }
 
 void setLight(bool on) {
+  // 🔧 FIX: Broiler mode → GPIO 26 is CIRCULATION FAN only, don't touch it for light
+  if (isBroiler()) {
+    lightOn = on;  // Track state but don't control pin (pin is for circulation fan)
+    return;
+  }
   lightOn = on;
   digitalWrite(LIGHT_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
   Serial.printf("💡 Light: %s\n", on ? "ON" : "OFF");
@@ -1818,7 +1831,7 @@ void setLightBrightness(int brightness) {
   // For PWM dimming (if using LEDC):
   // ledcWrite(LIGHT_PWM_CHANNEL, lightPWMValue);
   
-  // For relay (ON/OFF only):
+  // 🔧 FIX: For relay - direct ON/OFF control
   bool shouldBeOn = (lightBrightness > 0);
   if (shouldBeOn != lightOn) {
     setLight(shouldBeOn);
@@ -1856,8 +1869,8 @@ void updateLightingWithFade() {
   int pwmValue = map(lightBrightness, 0, 100, 0, 255);
   // ledcWrite(LIGHT_PWM_CHANNEL, pwmValue);
   
-  // For relay mode: switch at 50% threshold
-  bool shouldBeOn = (lightBrightness >= 50);
+  // 🔧 FIX: For relay mode - direct ON/OFF (relay can't do PWM dimming)
+  bool shouldBeOn = (lightBrightness > 0);
   if (shouldBeOn != lightOn) {
     setLight(shouldBeOn);
   }
@@ -2068,6 +2081,17 @@ void stopFogger(String reason) {
 void foggerControl() {
   if (!foggerSettings.enabled) return;
   
+  // 🔧 FIX: Skip if manual override is active (auto-expire after 60 min)
+  if (foggerManualOverride) {
+    if (foggerManualTime > 0 && (millis() - foggerManualTime >= LIGHT_MANUAL_OVERRIDE_TIMEOUT)) {
+      foggerManualOverride = false;
+      foggerManualTime = 0;
+      Serial.println("💨 Fogger manual override expired → back to auto");
+    } else {
+      return;
+    }
+  }
+  
   // Check stop conditions
   if (temperature < foggerSettings.stopTemp || humidity >= foggerSettings.stopHumidity) {
     if (foggerActive) {
@@ -2121,6 +2145,11 @@ void foggerControl() {
 // 🆕 MODULE D: BROILER AIRFLOW GROWTH MODE
 // ═══════════════════════════════════════════════════════════════════════
 void setCirculationFan(bool on) {
+  // 🔧 FIX: Layer mode → GPIO 26 is LIGHT only, don't touch it for circulation
+  if (isLayer()) {
+    circulationFanOn = on;  // Track state but don't control pin
+    return;
+  }
   circulationFanOn = on;
   digitalWrite(CIRCULATION_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
   Serial.printf("🌀 Circulation Fan: %s\n", on ? "ON" : "OFF");
@@ -2147,6 +2176,17 @@ void runIntermittentAirflow(int onSeconds, int intervalMinutes) {
 
 void broilerAirflowControl() {
   if (!airflowSettings.enabled) return;
+  
+  // 🔧 FIX: Skip if manual override is active (auto-expire after 60 min)
+  if (circulationFanManualOverride) {
+    if (circulationFanManualTime > 0 && (millis() - circulationFanManualTime >= LIGHT_MANUAL_OVERRIDE_TIMEOUT)) {
+      circulationFanManualOverride = false;
+      circulationFanManualTime = 0;
+      Serial.println("🌀 Circulation fan manual override expired → back to auto");
+    } else {
+      return;
+    }
+  }
   
   // 🔧 Layer mode: Skip - circulation is manual only for layers
   // (Layer farms use minimum ventilation module instead)
@@ -2209,8 +2249,8 @@ void checkMinimumVentilation() {
     return;
   }
   
-  // Ceiling fan always on in min vent mode
-  if (minVentSettings.ceilingFanAlwaysOn) {
+  // Ceiling fan always on in min vent mode (skip if manual override or Layer mode)
+  if (minVentSettings.ceilingFanAlwaysOn && !circulationFanManualOverride) {
     setCirculationFan(true);
   }
   
@@ -2242,6 +2282,18 @@ void checkMinimumVentilation() {
 // ═══════════════════════════════════════════════════════════════════════
 void advancedHeaterControl() {
   if (!heaterSettings.enabled) return;
+  
+  // 🔧 FIX: Skip if manual override is active (auto-expire after 60 min)
+  // Exception: Safety override always runs (>34°C)
+  if (heaterManualOverride && temperature <= heaterSettings.safetyMaxTemp) {
+    if (heaterManualTime > 0 && (millis() - heaterManualTime >= LIGHT_MANUAL_OVERRIDE_TIMEOUT)) {
+      heaterManualOverride = false;
+      heaterManualTime = 0;
+      Serial.println("🔥 Heater manual override expired → back to auto");
+    } else {
+      return;
+    }
+  }
   
   // SAFETY FIRST: Force OFF if too hot
   if (temperature > heaterSettings.safetyMaxTemp) {
@@ -2373,6 +2425,19 @@ void controlLogic() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void layerControl() {
+  // 🔧 FIX: Skip fan automation if manual override (except safety emergencies)
+  if (fanManualOverride) {
+    if (fanManualTime > 0 && (millis() - fanManualTime >= LIGHT_MANUAL_OVERRIDE_TIMEOUT)) {
+      fanManualOverride = false;
+      fanManualTime = 0;
+      Serial.println("🌀 Fan manual override expired → back to auto");
+    } else if (temperature <= 33 && ammonia <= rules.ammoniaAlarm) {
+      // Non-emergency: respect manual override
+      return;
+    }
+    // Emergency conditions (>33°C or ammonia alarm): override manual and protect birds
+  }
+  
   // Temperature control is now handled by advancedHeaterControl()
   // Fan control based on temp/HSI
   
@@ -2443,6 +2508,18 @@ void layerControl() {
 // ═══════════════════════════════════════════════════════════════════════
 
 void broilerControl() {
+  // 🔧 FIX: Skip fan automation if manual override (except safety emergencies)
+  if (fanManualOverride) {
+    if (fanManualTime > 0 && (millis() - fanManualTime >= LIGHT_MANUAL_OVERRIDE_TIMEOUT)) {
+      fanManualOverride = false;
+      fanManualTime = 0;
+      Serial.println("🌀 Fan manual override expired → back to auto");
+    } else if (currentHSI <= rules.hsiCritical && ammonia <= rules.ammoniaAlarm) {
+      // Non-emergency: respect manual override
+      return;
+    }
+  }
+  
   float target = rules.tempTarget;
   
   // Temperature control is now handled by advancedHeaterControl()
@@ -3287,6 +3364,8 @@ void checkPendingCommands() {
       // Execute command based on type
       if (commandType == "fan") {
         setFanState(commandValue, commandValue ? "HIGH" : "OFF");
+        fanManualOverride = true;
+        fanManualTime = millis();
       }
       else if (commandType == "light") {
         setLight(commandValue);
@@ -3298,12 +3377,18 @@ void checkPendingCommands() {
       }
       else if (commandType == "heater") {
         setHeater(commandValue);
+        heaterManualOverride = true;
+        heaterManualTime = millis();
       }
       else if (commandType == "fogger") {
         setFogger(commandValue);
+        foggerManualOverride = true;
+        foggerManualTime = millis();
       }
       else if (commandType == "circulation_fan") {
         setCirculationFan(commandValue);
+        circulationFanManualOverride = true;
+        circulationFanManualTime = millis();
       }
       else if (commandType == "manual_override") {
         localManualOverride = commandValue;

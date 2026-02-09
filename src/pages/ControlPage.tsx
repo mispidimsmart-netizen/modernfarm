@@ -157,11 +157,9 @@ export function ControlPage() {
         Object.entries(updated).forEach(([deviceKey, timer]) => {
           if (timer.endTime <= now) {
             // Timer expired - turn off device and return to auto mode
-            const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater';
-            if (['fan', 'light', 'alarm', 'heater'].includes(deviceKey)) {
-              sendCommand.mutate({ commandType: cmdType, commandValue: false });
-              setDeviceStatus({ [deviceKey]: false });
-            }
+            const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+            sendCommand.mutate({ commandType: cmdType, commandValue: false });
+            setDeviceStatus({ [deviceKey]: false });
             delete updated[deviceKey];
             hasChanges = true;
             
@@ -223,11 +221,9 @@ export function ControlPage() {
 
   // Handle stop
   const handleStop = (deviceKey: string) => {
-    const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater';
-    if (['fan', 'light', 'alarm', 'heater'].includes(deviceKey)) {
-      sendCommand.mutate({ commandType: cmdType, commandValue: false });
-      setDeviceStatus({ [deviceKey]: false });
-    }
+    const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+    sendCommand.mutate({ commandType: cmdType, commandValue: false });
+    setDeviceStatus({ [deviceKey]: false });
     
     // Clear timer
     setActiveTimers(prev => {
@@ -248,11 +244,9 @@ export function ControlPage() {
   const handleTimerConfirm = (durationMinutes: number) => {
     if (!pendingDevice) return;
     
-    const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater';
-    if (['fan', 'light', 'alarm', 'heater'].includes(pendingDevice.device)) {
-      sendCommand.mutate({ commandType: cmdType, commandValue: true });
-      setDeviceStatus({ [pendingDevice.device]: true });
-    }
+    const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+    sendCommand.mutate({ commandType: cmdType, commandValue: true });
+    setDeviceStatus({ [pendingDevice.device]: true });
     
     // Set timer
     setActiveTimers(prev => ({
