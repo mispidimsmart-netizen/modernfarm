@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
-type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override';
+type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'circulation_fan' | 'fogger';
 
 interface SendCommandParams {
   commandType: CommandType;
@@ -56,6 +56,12 @@ export function useSendDeviceCommand() {
         case 'manual_override':
           statusUpdate.manual_override = commandValue;
           break;
+        case 'circulation_fan':
+          statusUpdate.circulation_fan_on = commandValue;
+          break;
+        case 'fogger':
+          statusUpdate.fogger_on = commandValue;
+          break;
       }
 
       if (Object.keys(statusUpdate).length > 0) {
@@ -75,6 +81,8 @@ export function useSendDeviceCommand() {
         alarm: { en: 'Alarm', bn: 'অ্যালার্ম' },
         heater: { en: 'Heater', bn: 'হিটার' },
         manual_override: { en: 'Manual Override', bn: 'ম্যানুয়াল ওভাররাইড' },
+        circulation_fan: { en: 'Circulation Fan', bn: 'সার্কুলেশন ফ্যান' },
+        fogger: { en: 'Fogger', bn: 'ফগার' },
       };
 
       const name = commandNames[variables.commandType];
