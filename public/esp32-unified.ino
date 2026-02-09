@@ -468,9 +468,11 @@ const float LAYER_HUMIDITY_LOW = 40.0;
 const float LAYER_HUMIDITY_HIGH = 75.0;
 const float LAYER_AMMONIA_FAN = 15.0;
 const float LAYER_AMMONIA_ALARM = 25.0;
-const float LAYER_HSI_FAN_LOW = 30.0;
-const float LAYER_HSI_FAN_HIGH = 35.0;
-const float LAYER_HSI_EMERGENCY = 40.0;
+// 🔧 THI formula: HSI = 0.8×T + (H/100)×(T-14.4) + 46.4
+// At 27°C/85%: HSI≈78.7, At 30°C/70%: HSI≈81.3, At 33°C/80%: HSI≈87.7
+const float LAYER_HSI_FAN_LOW = 75.0;     // Mild stress → Fan MEDIUM
+const float LAYER_HSI_FAN_HIGH = 80.0;    // High stress → Fan HIGH
+const float LAYER_HSI_EMERGENCY = 85.0;   // Emergency → Alarm + MAX ventilation
 
 // --- BROILER THRESHOLDS ---
 const float BROILER_TEMP_FAN_DEV = 2.0;      // +2°C → fan HIGH
@@ -480,9 +482,10 @@ const float BROILER_HUMIDITY_LOW = 40.0;
 const float BROILER_HUMIDITY_HIGH = 75.0;
 const float BROILER_AMMONIA_FAN = 20.0;
 const float BROILER_AMMONIA_ALARM = 30.0;
-const float BROILER_HSI_FAN_HIGH = 38.0;
-const float BROILER_HSI_EMERGENCY = 42.0;
-const float BROILER_HSI_CRITICAL = 45.0;
+// 🔧 Broiler HSI thresholds (THI formula compatible)
+const float BROILER_HSI_FAN_HIGH = 78.0;    // Fan HIGH
+const float BROILER_HSI_EMERGENCY = 82.0;   // Alarm + MAX
+const float BROILER_HSI_CRITICAL = 86.0;    // Critical emergency
 
 // ═══════════════════════════════════════════════════════════════════════
 // 💡 LIGHTING SCHEDULE CONFIGURATION
@@ -1026,10 +1029,10 @@ void loadLayerRules() {
   rules.tempHeaterOn = LAYER_TEMP_HEATER;                               // 18°C
   
   // HSI thresholds
-  rules.hsiFanLow = LAYER_HSI_FAN_LOW;                                  // 30
-  rules.hsiFanHigh = LAYER_HSI_FAN_HIGH;                                // 35
-  rules.hsiEmergency = LAYER_HSI_EMERGENCY;                             // 40
-  rules.hsiCritical = 45;                                               // N/A for layer
+  rules.hsiFanLow = LAYER_HSI_FAN_LOW;                                  // 75
+  rules.hsiFanHigh = LAYER_HSI_FAN_HIGH;                                // 80
+  rules.hsiEmergency = LAYER_HSI_EMERGENCY;                             // 85
+  rules.hsiCritical = 90;                                               // Critical for layer
   
   // Ammonia
   rules.ammoniaFan = LAYER_AMMONIA_FAN;                                 // 15 ppm
@@ -1064,10 +1067,10 @@ void loadBroilerRules() {
   rules.tempHeaterOn = rules.tempTarget - BROILER_TEMP_HEATER_DEV;      // -2°C
   
   // HSI thresholds (higher tolerance for broilers)
-  rules.hsiFanLow = 35;                                           // Mild
-  rules.hsiFanHigh = BROILER_HSI_FAN_HIGH;                        // 38
-  rules.hsiEmergency = BROILER_HSI_EMERGENCY;                     // 42
-  rules.hsiCritical = BROILER_HSI_CRITICAL;                       // 45
+  rules.hsiFanLow = 75;                                           // Mild
+  rules.hsiFanHigh = BROILER_HSI_FAN_HIGH;                        // 78
+  rules.hsiEmergency = BROILER_HSI_EMERGENCY;                     // 82
+  rules.hsiCritical = BROILER_HSI_CRITICAL;                       // 86
   
   // Ammonia
   rules.ammoniaFan = BROILER_AMMONIA_FAN;                         // 20 ppm
@@ -2667,7 +2670,8 @@ void syncWithCloud() {
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-device-token", activeDeviceToken.c_str());
-  http.setTimeout(10000);
+  http.setTimeout(5000);  // 🔧 Reduced from 10s — WDT is 8s, must be shorter
+  esp_task_wdt_reset();   // Feed watchdog before HTTP call
   
   DynamicJsonDocument doc(3072);  // 🔧 Increased from 1024 - 40+ fields need more space
   doc["temperature"] = temperature;
@@ -2733,6 +2737,7 @@ void syncWithCloud() {
   serializeJson(doc, payload);
   
   int httpCode = http.POST(payload);
+  esp_task_wdt_reset();  // 🔧 Feed watchdog after HTTP response
   
   if (httpCode == 200) {
     String response = http.getString();
@@ -3229,8 +3234,10 @@ void checkPendingCommands() {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
+  esp_task_wdt_reset();  // 🔧 Feed watchdog before HTTP call
   
   int httpCode = http.GET();
+  esp_task_wdt_reset();  // 🔧 Feed watchdog after HTTP response
   
   if (httpCode == 200) {
     String response = http.getString();
@@ -3304,6 +3311,7 @@ void acknowledgeCommand(String commandId) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(3000);
+  esp_task_wdt_reset();  // 🔧 Feed watchdog
   
   StaticJsonDocument<256> doc;
   doc["command_ids"][0] = commandId;
@@ -3312,6 +3320,7 @@ void acknowledgeCommand(String commandId) {
   serializeJson(doc, payload);
   
   http.POST(payload);
+  esp_task_wdt_reset();  // 🔧 Feed watchdog
   http.end();
 }
 
