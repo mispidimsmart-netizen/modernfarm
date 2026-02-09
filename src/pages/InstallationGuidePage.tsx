@@ -144,10 +144,10 @@ const wiringConnections = [
   { component: 'ZMPT101B', pin: 'OUT', esp32Pin: 'GPIO 35', color: 'bg-cyan-500', note: 'AC ভোল্টেজ মনিটর' },
   { component: 'ZMPT101B', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'ZMPT101B', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'Relay IN1', pin: 'Exhaust Fan', esp32Pin: 'GPIO 25', color: 'bg-purple-500', note: '🌀 মূল এক্সহস্ট ফ্যান' },
-  { component: 'Relay IN2', pin: 'Circulation Fan', esp32Pin: 'GPIO 26', color: 'bg-blue-400', note: '💨 সার্কুলেশন/সিলিং ফ্যান' },
-  { component: 'Relay IN3', pin: 'Heater', esp32Pin: 'GPIO 33', color: 'bg-orange-500', note: '🔥 হিটার (ব্রয়লার ব্রুডিং)' },
-  { component: 'Relay IN4', pin: 'Fogger', esp32Pin: 'GPIO 13', color: 'bg-teal-500', note: '💦 ফগার সোলেনয়েড' },
+  { component: 'Relay IN1', pin: 'Exhaust Fan', esp32Pin: 'GPIO 25', color: 'bg-purple-500', note: '🌀 এক্সহস্ট ফ্যান (উভয় ফার্ম)' },
+  { component: 'Relay IN2', pin: 'Light / Circ Fan', esp32Pin: 'GPIO 26', color: 'bg-blue-400', note: '🥚লাইট | 🐔সার্কুলেশন ফ্যান' },
+  { component: 'Relay IN3', pin: 'Alarm / Heater', esp32Pin: 'GPIO 33', color: 'bg-orange-500', note: '🥚অ্যালার্ম | 🐔হিটার' },
+  { component: 'Relay IN4', pin: 'Fogger', esp32Pin: 'GPIO 13', color: 'bg-teal-500', note: '💦 ফগার (উভয় ফার্ম)' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: '🔔 অ্যালার্ম বাজার' },
@@ -266,14 +266,65 @@ const detailedWiringGuide = [
     pins: [
       { sensorPin: 'VCC (পাওয়ার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে মডিউল এর VCC → ESP32 এর VIN (5V)', warning: 'JD-VCC জাম্পার লাগানো আছে কিনা চেক করুন!' },
       { sensorPin: 'GND (গ্রাউন্ড)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে মডিউল এর GND → ESP32 এর GND', warning: null },
-      { sensorPin: 'IN1 (এক্সহস্ট ফ্যান)', esp32Pin: 'GPIO 25', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: রিলে IN1 → ESP32 এর GPIO 25 (🌀 মূল এক্সহস্ট ফ্যান)', warning: null },
-      { sensorPin: 'IN2 (সার্কুলেশন ফ্যান)', esp32Pin: 'GPIO 26', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 26 (💨 সিলিং/সার্কুলেশন ফ্যান)', warning: null },
-      { sensorPin: 'IN3 (হিটার)', esp32Pin: 'GPIO 33', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 কমলা তার: রিলে IN3 → ESP32 এর GPIO 33 (🔥 হিটার - ব্রয়লার ব্রুডিং)', warning: null },
-      { sensorPin: 'IN4 (ফগার)', esp32Pin: 'GPIO 13', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN4 → ESP32 এর GPIO 13 (💦 ফগার সোলেনয়েড)', warning: null },
+      { sensorPin: 'IN1 (এক্সহস্ট ফ্যান)', esp32Pin: 'GPIO 25', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: রিলে IN1 → ESP32 এর GPIO 25 (🌀 মূল এক্সহস্ট ফ্যান — উভয় ফার্মে একই)', warning: null },
+      { sensorPin: 'IN2 (লাইট / সার্কুলেশন ফ্যান)', esp32Pin: 'GPIO 26', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 26 (🥚 লেয়ার: লাইটিং PWM | 🐔 ব্রয়লার: সার্কুলেশন ফ্যান)', warning: '⚠️ লেয়ার ফার্মে লাইট এবং ব্রয়লার ফার্মে সার্কুলেশন ফ্যান কানেক্ট করুন' },
+      { sensorPin: 'IN3 (অ্যালার্ম / হিটার)', esp32Pin: 'GPIO 33', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 কমলা তার: রিলে IN3 → ESP32 এর GPIO 33 (🥚 লেয়ার: অ্যালার্ম বাজার | 🐔 ব্রয়লার: হিটার)', warning: '⚠️ লেয়ার ফার্মে বাজার এবং ব্রয়লার ফার্মে হিটার কানেক্ট করুন' },
+      { sensorPin: 'IN4 (ফগার)', esp32Pin: 'GPIO 13', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN4 → ESP32 এর GPIO 13 (💦 ফগার সোলেনয়েড — উভয় ফার্মে একই)', warning: null },
     ],
     extraNote: '⚙️ রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়, HIGH দিলে OFF হয়। বুট করার সময় ফ্লিকারিং রোধে কোডে বিশেষ প্রোটোকল ব্যবহার করা হয়েছে।',
     resistorNote: '📍 JD-VCC ও VCC জাম্পার সংযুক্ত রাখুন (একই পাওয়ার সোর্স)',
-    tips: ['🌀 IN1: এক্সহস্ট ফ্যান (HSI/তাপমাত্রা ভিত্তিক)', '💨 IN2: সার্কুলেশন ফ্যান (ব্রয়লার বয়স ভিত্তিক)', '🔥 IN3: হিটার (34°C এ Force OFF)', '💦 IN4: ফগার (32°C+ এবং 85% আর্দ্রতার নিচে)', 'হাই পাওয়ার ডিভাইস (১০০০W+) এর জন্য SSR বা কন্ট্যাক্টর ব্যবহার করুন'],
+    tips: ['🌀 IN1: এক্সহস্ট ফ্যান — উভয় ফার্মে ব্যবহৃত (HSI/তাপমাত্রা/অ্যামোনিয়া ভিত্তিক)', '💡🥚 IN2 লেয়ার: লাইটিং (PWM ডিমিং, ১৬ ঘণ্টা শিডিউল)', '💨🐔 IN2 ব্রয়লার: সার্কুলেশন ফ্যান (বয়স ১০+ দিন থেকে সক্রিয়)', '🔔🥚 IN3 লেয়ার: অ্যালার্ম বাজার (NH₃ > 25ppm বা HSI বিপদ)', '🔥🐔 IN3 ব্রয়লার: হিটার (বয়স-ভিত্তিক কার্ভ, 34°C তে Force OFF)', '💦 IN4: ফগার — উভয় ফার্মে ব্যবহৃত (32°C+ এবং 85% আর্দ্রতার নিচে)', '⚠️ IN2 ও IN3 এ আপনার ফার্ম টাইপ অনুযায়ী সঠিক ডিভাইস লাগান!', 'হাই পাওয়ার ডিভাইস (১০০০W+) এর জন্য SSR বা কন্ট্যাক্টর ব্যবহার করুন'],
+    hasFarmTypeMapping: true,
+    farmTypeMapping: {
+      title: '🏠 ফার্ম টাইপ অনুযায়ী রিলে ডিভাইস ম্যাপিং',
+      description: 'অ্যাপে ফার্ম টাইপ (লেয়ার/ব্রয়লার) সিলেক্ট করলে ESP32 স্বয়ংক্রিয়ভাবে সঠিক অটোমেশন লজিক প্রয়োগ করে। তবে রিলের আউটপুটে (NO পোর্ট) সঠিক ডিভাইস ফিজিক্যালি কানেক্ট করতে হবে।',
+      relays: [
+        {
+          relay: 'IN1',
+          gpio: 'GPIO 25',
+          shared: true,
+          sharedDevice: '🌀 এক্সজস্ট ফ্যান',
+          sharedNote: 'উভয় ফার্মে একই — তাপমাত্রা, HSI, অ্যামোনিয়া এবং ফগার চলাকালে স্বয়ংক্রিয় চালু হয়',
+          layerDevice: null,
+          broilerDevice: null,
+          layerAutomation: null,
+          broilerAutomation: null,
+        },
+        {
+          relay: 'IN2',
+          gpio: 'GPIO 26',
+          shared: false,
+          sharedDevice: null,
+          sharedNote: null,
+          layerDevice: '💡 লাইটিং (LED/CFL)',
+          broilerDevice: '💨 সার্কুলেশন ফ্যান (সিলিং ফ্যান)',
+          layerAutomation: 'PWM ডিমিং সহ ১৬ ঘণ্টা লাইট শিডিউল। ফেইড ইন (সূর্যোদয়) → ফুল ব্রাইটনেস → ফেইড আউট (সন্ধ্যা)। আলো কমলে ডিম উৎপাদন কমে — তাই ১৬ ঘণ্টা আলো বাধ্যতামূলক।',
+          broilerAutomation: 'বয়স < ১০ দিন: বন্ধ (ঠান্ডা বাতাস ক্ষতিকর)। ১০-২০ দিন: ৩ মিনিট পর পর ৩০ সেকেন্ড চলে। ২১+ দিন: দিনে একটানা, রাতে ৫ মিনিট পর পর ১ মিনিট।',
+        },
+        {
+          relay: 'IN3',
+          gpio: 'GPIO 33',
+          shared: false,
+          sharedDevice: null,
+          sharedNote: null,
+          layerDevice: '🔔 অ্যালার্ম বাজার (Piezo Buzzer)',
+          broilerDevice: '🔥 হিটার (ব্রুডিং হিটার)',
+          layerAutomation: 'অ্যামোনিয়া > 25 ppm হলে অ্যালার্ম চালু। HSI > 42 (তীব্র হিট স্ট্রেস) হলে জরুরি অ্যালার্ম। পাওয়ার আউটেজ শেষে সতর্কতা।',
+          broilerAutomation: 'বয়স-ভিত্তিক টেম্পারেচার কার্ভ: দিন ১-৩ = ৩৩°সে, দিন ৪-৭ = ৩১°সে, দিন ৮-১৪ = ২৯°সে, দিন ১৫-২১ = ২৬°সে, দিন ২২-২৮ = ২৪°সে, দিন ২৯+ = ২২°সে। টার্গেট থেকে -০.৭°সে নিচে হলে হিটার চালু, +০.৭°সে উপরে হলে বন্ধ। ৩৪°সে তে Force OFF (নিরাপত্তা)।',
+        },
+        {
+          relay: 'IN4',
+          gpio: 'GPIO 13',
+          shared: true,
+          sharedDevice: '💦 ফগার সোলেনয়েড ভালভ (12V DC)',
+          sharedNote: 'উভয় ফার্মে একই — তাপমাত্রা ≥ ৩২°সে এবং আর্দ্রতা < ৮৫% হলে ৪০ সেকেন্ড স্প্রে → ১২০ সেকেন্ড বিরতি চক্রে চলে',
+          layerDevice: null,
+          broilerDevice: null,
+          layerAutomation: null,
+          broilerAutomation: null,
+        },
+      ],
+    },
     hasAcWiring: true, // Special flag for AC wiring section
     acWiringInfo: {
       title: '⚡ রিলে আউটপুট সাইড - AC লোড কানেকশন (NC, COM, NO)',
@@ -1808,6 +1859,95 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                 <p className="text-xs text-muted-foreground mt-2 text-center">
                                   রিলে ON হলে COM ↔ NO কানেক্ট হয়, ফলে কারেন্ট প্রবাহিত হয়ে লোড চালু হয়।
                                 </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Farm Type Relay Mapping Section */}
+                          {sensor.hasFarmTypeMapping && sensor.farmTypeMapping && (
+                            <div className="mt-6 space-y-4">
+                              {/* Section Header */}
+                              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border-2 border-primary/30">
+                                <Bird className="h-5 w-5 text-primary" />
+                                <div>
+                                  <p className="font-bold text-sm">{sensor.farmTypeMapping.title}</p>
+                                  <p className="text-xs text-muted-foreground">{sensor.farmTypeMapping.description}</p>
+                                </div>
+                              </div>
+
+                              {/* Relay Cards */}
+                              <div className="space-y-3">
+                                {sensor.farmTypeMapping.relays.map((r, rIdx) => (
+                                  <div key={rIdx} className="rounded-lg border-2 border-border overflow-hidden">
+                                    {/* Relay Header */}
+                                    <div className={`p-2 flex items-center justify-between ${r.shared ? 'bg-accent/20' : 'bg-primary/10'}`}>
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant={r.shared ? "secondary" : "default"} className="text-xs font-mono">{r.relay}</Badge>
+                                        <span className="text-xs font-mono text-muted-foreground">{r.gpio}</span>
+                                      </div>
+                                      {r.shared && <Badge variant="outline" className="text-[10px]">উভয় ফার্মে একই</Badge>}
+                                    </div>
+
+                                    {r.shared ? (
+                                      /* Shared relay - single device */
+                                      <div className="p-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-lg">{r.sharedDevice?.split(' ')[0]}</span>
+                                          <span className="font-medium text-sm">{r.sharedDevice}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">{r.sharedNote}</p>
+                                      </div>
+                                    ) : (
+                                      /* Dual-use relay - different per farm type */
+                                      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
+                                        {/* Layer Column */}
+                                        <div className="p-3 space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <Egg className="h-4 w-4 text-amber-500" />
+                                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">🥚 লেয়ার ফার্ম</span>
+                                          </div>
+                                          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                            <p className="font-medium text-sm">{r.layerDevice}</p>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground space-y-1">
+                                            <p className="font-medium text-foreground text-xs">⚙️ অটোমেশন লজিক:</p>
+                                            <p>{r.layerAutomation}</p>
+                                          </div>
+                                        </div>
+
+                                        {/* Broiler Column */}
+                                        <div className="p-3 space-y-2">
+                                          <div className="flex items-center gap-2">
+                                            <Bird className="h-4 w-4 text-orange-500" />
+                                            <span className="text-xs font-bold text-orange-600 dark:text-orange-400">🐔 ব্রয়লার ফার্ম</span>
+                                          </div>
+                                          <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                                            <p className="font-medium text-sm">{r.broilerDevice}</p>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground space-y-1">
+                                            <p className="font-medium text-foreground text-xs">⚙️ অটোমেশন লজিক:</p>
+                                            <p>{r.broilerAutomation}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Important Note */}
+                              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                                <p className="text-sm font-bold flex items-center gap-2 mb-2">
+                                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                  ⚠️ গুরুত্বপূর্ণ তথ্য
+                                </p>
+                                <ul className="space-y-1 text-xs text-muted-foreground">
+                                  <li>• অ্যাপে ফার্ম টাইপ সিলেক্ট করলে ESP32 <strong>স্বয়ংক্রিয়ভাবে</strong> সঠিক সফটওয়্যার লজিক প্রয়োগ করে।</li>
+                                  <li>• তবে IN2 ও IN3 এর <strong>NO পোর্টে</strong> আপনার ফার্ম টাইপ অনুযায়ী সঠিক ডিভাইস ফিজিক্যালি কানেক্ট করতে হবে।</li>
+                                  <li>• <strong>লেয়ার ফার্ম:</strong> IN2 → লাইট, IN3 → বাজার কানেক্ট করুন।</li>
+                                  <li>• <strong>ব্রয়লার ফার্ম:</strong> IN2 → সার্কুলেশন ফ্যান, IN3 → হিটার কানেক্ট করুন।</li>
+                                  <li>• একই শেডে লেয়ার→ব্রয়লার পরিবর্তন করলে IN2 ও IN3 এর ডিভাইস পরিবর্তন করতে হবে।</li>
+                                </ul>
                               </div>
                             </div>
                           )}
