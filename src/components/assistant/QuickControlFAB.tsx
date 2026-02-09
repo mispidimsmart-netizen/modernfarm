@@ -59,7 +59,7 @@ export function QuickControlFAB() {
       await sendCommand({
         commandType: key,
         commandValue: newState,
-        deviceName: 'quick-control',
+        deviceName: 'Shed A',
       });
     } catch (error) {
       toast.error(language === 'bn' ? 'কমান্ড পাঠাতে ব্যর্থ' : 'Failed to send command');
