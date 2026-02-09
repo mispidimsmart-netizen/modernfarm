@@ -85,7 +85,7 @@ const partsList = [
     category: 'ফগার সিস্টেম (কুলিং)',
     categoryEn: 'Fogger System (Cooling)',
     items: [
-      { name: 'সোলেনয়েড ভালভ (220V AC, 1/2")', nameEn: 'Solenoid Valve 220V AC', quantity: 1, price: '৳৮০০-১২০০', priceRange: [800, 1200], shop: 'প্লাম্বিং দোকান, AliExpress', essential: true },
+      { name: 'সোলেনয়েড ভালভ (12V DC, 1/2")', nameEn: 'Solenoid Valve 12V DC', quantity: 1, price: '৳৮০০-৯০০', priceRange: [800, 900], shop: 'রোবটিক্স বিডি, AliExpress', essential: true },
       { name: 'ফগার নজল সেট (10-20 পিস)', nameEn: 'Fogger Nozzle Set', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
       { name: 'পিই পাইপ (4mm, 20 মিটার)', nameEn: 'PE Pipe 4mm', quantity: 1, price: '৳২০০-৩০০', priceRange: [200, 300], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
       { name: 'হাই প্রেসার পাম্প (ঐচ্ছিক)', nameEn: 'High Pressure Pump (Optional)', quantity: 1, price: '৳২০০০-৪০০০', priceRange: [2000, 4000], shop: 'পাম্প দোকান', essential: false },
@@ -95,7 +95,8 @@ const partsList = [
     category: 'পাওয়ার সাপ্লাই',
     categoryEn: 'Power Supply',
     items: [
-      { name: '5V 2A অ্যাডাপ্টার', nameEn: '5V 2A Power Adapter', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: '5V 2A অ্যাডাপ্টার (ESP32)', nameEn: '5V 2A Power Adapter', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: '12V 1A অ্যাডাপ্টার (সোলেনয়েড ভালভ)', nameEn: '12V 1A Adapter for Solenoid', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
       { name: 'ব্যাটারি ব্যাকআপ মডিউল (TP4056 + 18650)', nameEn: 'Battery Backup Module', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'রোবটিক্স বিডি', essential: false },
       { name: '18650 ব্যাটারি (3.7V 3000mAh)', nameEn: '18650 Battery', quantity: 2, price: '৳২৫০-৩৫০/পিস', priceRange: [500, 700], shop: 'টেকশপ বিডি', essential: false },
     ]
@@ -304,17 +305,18 @@ const detailedWiringGuide = [
     color: 'text-teal-500',
     bgColor: 'bg-teal-500/10',
     pins: [
-      { sensorPin: 'AC Live (ফেজ)', esp32Pin: 'Relay IN4 COM', wireColor: 'লাল/বাদামী', wireNameEn: 'RED/BROWN', instruction: '⚡ মেইন সুইচ থেকে আসা AC লাইভ (ফেজ) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', warning: '⚡ সতর্কতা: মেইন সুইচ বন্ধ করে কাজ করুন!' },
-      { sensorPin: 'সোলেনয়েড তার ১', esp32Pin: 'Relay IN4 NO', wireColor: 'যেকোনো', wireNameEn: 'ANY', instruction: '🔵 সোলেনয়েড ভালভের এক তার → রিলে IN4 এর NO (Normally Open) পোর্ট', warning: null },
-      { sensorPin: 'সোলেনয়েড তার ২', esp32Pin: 'মেইন Neutral', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '⚫ সোলেনয়েড ভালভের অন্য তার → মেইন নিউট্রাল (সরাসরি)', warning: null },
+      { sensorPin: '12V অ্যাডাপ্টার (+)', esp32Pin: 'Relay IN4 COM', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 12V DC অ্যাডাপ্টারের পজিটিভ (+) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', warning: null },
+      { sensorPin: 'সোলেনয়েড (+) তার', esp32Pin: 'Relay IN4 NO', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔵 সোলেনয়েড ভালভের লাল (+) তার → রিলে IN4 এর NO (Normally Open) পোর্ট', warning: null },
+      { sensorPin: 'সোলেনয়েড (−) তার', esp32Pin: '12V অ্যাডাপ্টার GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ সোলেনয়েড ভালভের কালো (−) তার → 12V অ্যাডাপ্টারের GND (−)', warning: null },
     ],
     extraNote: '💦 ফগার সিস্টেম স্বয়ংক্রিয়ভাবে চালু হয় যখন: তাপমাত্রা ≥ ৩২°সে এবং আর্দ্রতা < ৮৫%। চক্র: ৪০ সেকেন্ড স্প্রে → ১২০ সেকেন্ড বিরতি। বন্ধ হয়: তাপমাত্রা < ৩০°সে অথবা আর্দ্রতা ≥ ৯০%।',
     resistorNote: '📍 Relay IN4 ইতিমধ্যে GPIO 13-এ কানেক্ট করা আছে',
     tips: [
-      '✅ 220V AC সোলেনয়েড ব্যবহার করুন (সবচেয়ে সহজ ও সাশ্রয়ী)',
-      '🔌 রিলে দিয়ে AC লোড সুইচ করা হয় - DC সোলেনয়েডের জন্য আলাদা পাওয়ার সাপ্লাই লাগবে',
+      '✅ 12V DC সোলেনয়েড ভালভ ব্যবহার করুন (নিরাপদ ও সহজ)',
+      '🔋 আলাদা 12V 1A DC অ্যাডাপ্টার লাগবে (ESP32 এর 5V দিয়ে চলবে না)',
       '💧 পানির চাপ ভালো থাকলে পাম্প ছাড়াও কাজ হবে',
-      '🌡️ ফগার চলাকালে এক্সজস্ট ফ্যান স্বয়ংক্রিয় চালু থাকে'
+      '🌡️ ফগার চলাকালে এক্সজস্ট ফ্যান স্বয়ংক্রিয় চালু থাকে',
+      '🛡️ Normally Closed (NC) ভালভ — বিদ্যুৎ না থাকলে পানি বন্ধ থাকে'
     ],
     hasFoggerDiagram: true,
     foggerWiringInfo: {
@@ -325,7 +327,7 @@ const detailedWiringGuide = [
         points: [
           '💦 ফগার = কুয়াশা তৈরি করে তাপমাত্রা কমায়',
           '🔌 সোলেনয়েড ভালভ = বিদ্যুৎ দিয়ে চালু/বন্ধ হওয়া পানির ট্যাপ',
-          '⚡ 220V AC সোলেনয়েড সবচেয়ে সহজ - মেইন লাইনে রিলে দিয়ে সুইচ করা হয়',
+          '🔋 12V DC সোলেনয়েড — নিরাপদ (হাই ভোল্টেজ নেই), আলাদা 12V অ্যাডাপ্টার দিয়ে চালু হয়',
           '🔄 রিলে ON হলে ভালভ খোলে → পানি স্প্রে হয়'
         ]
       },
@@ -338,21 +340,22 @@ const detailedWiringGuide = [
       },
       connectionSteps: [
         { step: 1, title: 'রিলে ইনপুট (ইতিমধ্যে সম্পন্ন)', desc: 'ESP32 GPIO 13 → রিলে IN4 পিন', color: 'purple' },
-        { step: 2, title: 'AC লাইভ → রিলে COM', desc: 'মেইন সুইচ থেকে AC লাইভ (ফেজ) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', color: 'red' },
-        { step: 3, title: 'রিলে NO → সোলেনয়েড', desc: 'রিলে IN4 এর NO (ডান পোর্ট) → সোলেনয়েড ভালভের এক তার', color: 'blue' },
-        { step: 4, title: 'সোলেনয়েড → নিউট্রাল', desc: 'সোলেনয়েড ভালভের অন্য তার → মেইন নিউট্রাল (সরাসরি)', color: 'black' }
+        { step: 2, title: '12V (+) → রিলে COM', desc: '12V DC অ্যাডাপ্টারের পজিটিভ (+) → রিলে IN4 এর COM (মাঝের পোর্ট)', color: 'red' },
+        { step: 3, title: 'রিলে NO → সোলেনয়েড (+)', desc: 'রিলে IN4 এর NO (ডান পোর্ট) → সোলেনয়েড ভালভের লাল (+) তার', color: 'blue' },
+        { step: 4, title: 'সোলেনয়েড (−) → 12V GND', desc: 'সোলেনয়েড ভালভের কালো (−) তার → 12V অ্যাডাপ্টারের GND (−)', color: 'black' }
       ],
       partsNeeded: [
-        { name: 'সোলেনয়েড ভালভ 220V AC', spec: '1/2" বা 3/4" (পাইপ সাইজ অনুযায়ী)', price: '৳৮০০-১২০০' },
+        { name: 'সোলেনয়েড ভালভ 12V DC', spec: '1/2" প্লাস্টিক বডি (Normally Closed)', price: '৳৮০০-৯০০' },
+        { name: '12V 1A DC অ্যাডাপ্টার', spec: 'সোলেনয়েড ভালভের পাওয়ার সোর্স', price: '৳১৫০-২৫০' },
         { name: 'ফগার নজল', spec: '১০-২০ পিস (শেড সাইজ অনুযায়ী)', price: '৳৩০০-৫০০' },
         { name: 'পিই পাইপ', spec: '4mm বা 6mm, ২০ মিটার', price: '৳২০০-৩০০' },
         { name: 'T-কানেক্টর', spec: 'নজল সংযোগের জন্য', price: '৳১০০-২০০' }
       ],
       safetyWarnings: [
-        '⚡ সতর্কতা: 220V AC নিয়ে কাজ করার আগে মেইন সুইচ বন্ধ করুন!',
+        '🔋 12V DC — নিরাপদ লো ভোল্টেজ, তবুও সংযোগস্থল শুকনো রাখুন',
         '💧 পানি ও বিদ্যুৎ একসাথে বিপদজনক - সংযোগস্থল শুকনো রাখুন',
-        '🔌 সোলেনয়েড ভালভ IP65+ রেটিং এর হলে ভালো (ওয়াটারপ্রুফ)',
-        '👷 AC ওয়্যারিং অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে করান'
+        '➡️ ভালভের তীর চিহ্ন (→) পানির প্রবাহের দিকে রাখুন',
+        '🔌 ESP32 এর 5V দিয়ে সোলেনয়েড চালাবেন না — আলাদা 12V অ্যাডাপ্টার ব্যবহার করুন'
       ],
       troubleshooting: [
         { problem: 'পানি আসছে না', solutions: ['সোলেনয়েড ভালভের তীর চিহ্ন (→) পানির প্রবাহ দিকে আছে কিনা চেক করুন', 'মেইন পানি সাপ্লাই চালু আছে কিনা দেখুন', 'রিলে ক্লিক করছে কিনা শুনুন'] },
