@@ -195,16 +195,17 @@ HeaterSettings heaterSettings = {
   .safetyMaxTemp = 34.0
 };
 
-// Broiler Temperature Curve for Heater (Day-based)
+// 🔧 Broiler Temperature Curve for Heater (MUST match BROILER_CURVE for consistency)
 const float HEATER_BROILER_CURVE[][2] = {
-  {3, 33.0},    // Day 1-3: 33°C
-  {7, 31.0},    // Day 4-7: 31°C
-  {14, 29.0},   // Day 8-14: 29°C
-  {21, 26.0},   // Day 15-21: 26°C
-  {28, 24.0},   // Day 22-28: 24°C
-  {999, 22.0}   // Day 29+: 22°C
+  {3, 33.5},    // Day 1-3: 33-34°C midpoint
+  {7, 32.0},    // Day 4-7: 32°C
+  {14, 30.0},   // Day 8-14: 30°C
+  {21, 28.0},   // Day 15-21: 28°C
+  {28, 26.0},   // Day 22-28: 26°C
+  {35, 24.0},   // Day 29-35: 24°C
+  {999, 22.5}   // Day 36+: 22-23°C midpoint
 };
-#define HEATER_CURVE_SIZE 6
+#define HEATER_CURVE_SIZE 7
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🆕 MODULE C: INTELLIGENT FOGGER COOLING SETTINGS
@@ -1777,10 +1778,9 @@ bool syncOfflineBuffer() {
     return true;  // All done
   } else {
     offlineSyncInProgress = false;
+    http.end();  // 🔧 Moved before return to prevent memory leak
     return false;
   }
-  
-  http.end();
 }
 
 void clearOfflineBuffer() {
@@ -2129,9 +2129,9 @@ void runIntermittentAirflow(int onSeconds, int intervalMinutes) {
 void broilerAirflowControl() {
   if (!airflowSettings.enabled) return;
   
-  // Layer mode: continuous low ventilation
+  // 🔧 Layer mode: Skip - circulation is manual only for layers
+  // (Layer farms use minimum ventilation module instead)
   if (isLayer()) {
-    setCirculationFan(true);  // Always on for layer
     return;
   }
   
@@ -2331,9 +2331,12 @@ void controlLogic() {
                 temperature, humidity, ammonia, currentHSI);
   
   // ===== RUN ADVANCED 7-MODULE AUTOMATION =====
+  // 🔧 Advanced modules handle: Heater, Fogger, MinVent, Airflow
   advancedControlLogic();
   
-  // ===== MAIN DECISION: Farm Type Based Control (Legacy fallback) =====
+  // ===== MAIN DECISION: Farm Type Based Control =====
+  // 🔧 This handles: HSI-based fan speed, Ammonia alarms, Emergency states
+  // Note: Heater control is now ONLY in advancedControlLogic() to avoid conflicts
   if (farmConfig.farmType == FARM_PROFILE_LAYER) {
     layerControl();
   } 
@@ -2666,7 +2669,7 @@ void syncWithCloud() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
   
-  StaticJsonDocument<1024> doc;
+  DynamicJsonDocument doc(3072);  // 🔧 Increased from 1024 - 40+ fields need more space
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
