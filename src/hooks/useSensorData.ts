@@ -81,12 +81,16 @@ export function useDeviceControl() {
     light: deviceStatus.light_on,
     alarm: deviceStatus.alarm_on,
     heater: deviceStatus.heater_on ?? false,
+    circulation_fan: deviceStatus.circulation_fan_on ?? false,
+    fogger: deviceStatus.fogger_on ?? false,
   } : {
     power: true,
     fan: false,
     light: false,
     alarm: false,
     heater: false,
+    circulation_fan: false,
+    fogger: false,
   };
 
   const manualOverride = deviceStatus?.manual_override ?? false;

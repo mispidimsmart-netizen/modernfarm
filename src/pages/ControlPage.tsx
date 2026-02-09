@@ -202,8 +202,8 @@ export function ControlPage() {
       case 'fan': return status.fan;
       case 'light': return status.light;
       case 'heater': return status.heater ?? false;
-      case 'circulation_fan': return false; // Add to status if needed
-      case 'fogger': return false; // Add to status if needed
+      case 'circulation_fan': return status.circulation_fan ?? false;
+      case 'fogger': return status.fogger ?? false;
       default: return false;
     }
   }, [status]);
