@@ -37,14 +37,15 @@ export interface HeaterStatus {
   };
 }
 
-// Broiler temperature curve (based on days)
+// 🔧 Broiler temperature curve (MUST match firmware BROILER_CURVE for consistency)
 const BROILER_TEMP_CURVE = [
-  { minDays: 1, maxDays: 3, temp: 33 },
-  { minDays: 4, maxDays: 7, temp: 31 },
-  { minDays: 8, maxDays: 14, temp: 29 },
-  { minDays: 15, maxDays: 21, temp: 26 },
-  { minDays: 22, maxDays: 28, temp: 24 },
-  { minDays: 29, maxDays: 999, temp: 22 },
+  { minDays: 1, maxDays: 3, temp: 33.5 },
+  { minDays: 4, maxDays: 7, temp: 32 },
+  { minDays: 8, maxDays: 14, temp: 30 },
+  { minDays: 15, maxDays: 21, temp: 28 },
+  { minDays: 22, maxDays: 28, temp: 26 },
+  { minDays: 29, maxDays: 35, temp: 24 },
+  { minDays: 36, maxDays: 999, temp: 22.5 },
 ];
 
 function getBroilerTargetTemp(ageDays: number): number {
@@ -53,7 +54,7 @@ function getBroilerTargetTemp(ageDays: number): number {
       return range.temp;
     }
   }
-  return 22; // Default for 29+ days
+  return 22.5; // Default for 36+ days
 }
 
 interface UseHeaterControlProps {
