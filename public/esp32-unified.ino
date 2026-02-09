@@ -358,6 +358,7 @@ bool wasWatchdogReset = false;
 
 // ================ PIN DEFINITIONS ================
 #define DHT_PIN 4
+#define DHT2_PIN 15            // 🆕 Second DHT22 sensor (optional)
 #define DHT_TYPE DHT22
 #define MQ135_PIN 34
 #define WATER_FLOW_PIN 27
