@@ -287,6 +287,8 @@ int targetBrightness = 0;
 unsigned long fadeStartTime = 0;
 int fadeStartBrightness = 0;
 bool fadeInProgress = false;
+unsigned long lightManualOverrideTime = 0;  // When manual override was activated
+const unsigned long LIGHT_MANUAL_OVERRIDE_TIMEOUT = 3600000; // 60 min timeout
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🆕 MODULE F: CURTAIN ADVISORY (Cloud-synced, not controlled locally)
@@ -1829,6 +1831,12 @@ void setLightBrightness(int brightness) {
 void updateLightingWithFade() {
   if (!fadeInProgress) return;
   
+  // 🔧 FIX: Skip fade if manual override is active (user sent ON/OFF command)
+  if (lightSchedule.manualOverride || localManualOverride) {
+    fadeInProgress = false;
+    return;
+  }
+  
   unsigned long fadeDurationMs = lightingFadeSettings.fadeDurationMinutes * 60000UL;
   unsigned long elapsed = millis() - fadeStartTime;
   
@@ -1898,9 +1906,17 @@ void estimateLocalTime() {
 }
 
 void controlLighting() {
-  // Skip if manual override is active
+  // Skip if manual override is active (with 60-min auto-expire)
   if (lightSchedule.manualOverride || localManualOverride) {
-    return;
+    // Auto-expire light manual override after timeout
+    if (lightSchedule.manualOverride && lightManualOverrideTime > 0 &&
+        (millis() - lightManualOverrideTime >= LIGHT_MANUAL_OVERRIDE_TIMEOUT)) {
+      lightSchedule.manualOverride = false;
+      lightManualOverrideTime = 0;
+      Serial.println("💡 Light manual override expired → back to schedule");
+    } else {
+      return;
+    }
   }
   
   // Skip if schedule is disabled
@@ -2932,6 +2948,7 @@ void handleCloudResponse(String response) {
       if (cloudLightOn != lightOn) {
         setLight(cloudLightOn);
         lightSchedule.manualOverride = true;
+        lightManualOverrideTime = millis();
         Serial.printf("☁️ Cloud → Light: %s\n", cloudLightOn ? "ON" : "OFF");
       }
     }
@@ -3274,6 +3291,7 @@ void checkPendingCommands() {
       else if (commandType == "light") {
         setLight(commandValue);
         lightSchedule.manualOverride = true;
+        lightManualOverrideTime = millis();
       }
       else if (commandType == "alarm") {
         setAlarm(commandValue);
