@@ -118,12 +118,16 @@ export function useRealtimeDeviceStatus() {
     light: initialStatus.light_on,
     alarm: initialStatus.alarm_on,
     heater: initialStatus.heater_on ?? false,
+    circulation_fan: initialStatus.circulation_fan_on ?? false,
+    fogger: initialStatus.fogger_on ?? false,
   } : {
     power: true,
     fan: false,
     light: false,
     alarm: false,
     heater: false,
+    circulation_fan: false,
+    fogger: false,
   };
 
   const manualOverride = initialStatus?.manual_override ?? false;
