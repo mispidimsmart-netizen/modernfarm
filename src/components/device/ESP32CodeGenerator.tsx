@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info } from 'lucide-react';
-// @ts-ignore - Vite raw import for .ino file
-import firmwareTemplate from '/esp32-unified.ino?raw';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -138,8 +136,10 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
     setIsDownloading(true);
     
     try {
-      // Use the pre-imported firmware template (bundled via Vite ?raw)
-      let firmwareCode = firmwareTemplate;
+      // Fetch firmware template from public folder with cache-busting
+      const response = await fetch('/esp32-unified.ino?t=' + Date.now());
+      if (!response.ok) throw new Error('Failed to fetch firmware template');
+      let firmwareCode = await response.text();
       
       if (firmwareMode === 'hardcoded') {
         // Mode 1: Hardcoded credentials (for first-time setup)
