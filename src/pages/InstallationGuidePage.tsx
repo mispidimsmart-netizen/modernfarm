@@ -1355,24 +1355,24 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                 <div className="p-4 bg-slate-50 dark:bg-slate-900">
                                   <div className="flex flex-col items-center gap-4">
                                     
-                                    {/* AC Mains Source */}
-                                    <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border-2 border-destructive/30">
-                                      <Zap className="h-5 w-5 text-destructive" />
+                                    {/* 12V DC Adapter Source */}
+                                    <div className="flex items-center gap-2 p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border-2 border-green-500/30">
+                                      <Zap className="h-5 w-5 text-green-600" />
                                       <div className="text-center">
-                                        <span className="text-sm font-bold">AC 220V মেইন সুইচ</span>
-                                        <p className="text-xs text-muted-foreground">(ফগার পাম্প সাপ্লাই)</p>
+                                        <span className="text-sm font-bold">12V DC অ্যাডাপ্টার</span>
+                                        <p className="text-xs text-muted-foreground">(সোলেনয়েড ভালভ পাওয়ার সোর্স)</p>
                                       </div>
                                     </div>
                                     
-                                    {/* AC wires going down */}
+                                    {/* DC wires going down */}
                                     <div className="flex items-center gap-12">
                                       <div className="flex flex-col items-center">
                                         <div className="w-1 h-10 bg-red-500 rounded"></div>
-                                        <span className="text-xs text-red-500 font-bold">Live (ফেজ)</span>
+                                        <span className="text-xs text-red-500 font-bold">+ (পজিটিভ)</span>
                                       </div>
                                       <div className="flex flex-col items-center">
-                                        <div className="w-1 h-10 bg-blue-500 rounded"></div>
-                                        <span className="text-xs text-blue-500 font-bold">Neutral (নিউট্রাল)</span>
+                                        <div className="w-1 h-10 bg-gray-700 dark:bg-gray-400 rounded"></div>
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 font-bold">− (GND)</span>
                                       </div>
                                     </div>
                                     
@@ -1404,7 +1404,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                             <div className="w-10 h-10 bg-red-500 rounded border-2 border-red-600 flex items-center justify-center ring-2 ring-yellow-400">
                                               <span className="text-xs font-bold text-white">COM</span>
                                             </div>
-                                            <span className="text-xs text-white mt-1 font-bold">AC Live</span>
+                                            <span className="text-xs text-white mt-1 font-bold">12V (+)</span>
                                             <span className="text-[10px] text-green-200">← এখানে</span>
                                           </div>
                                           
@@ -1413,7 +1413,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                             <div className="w-10 h-10 bg-green-500 rounded border-2 border-green-600 flex items-center justify-center">
                                               <span className="text-xs font-bold text-white">NO</span>
                                             </div>
-                                            <span className="text-xs text-white mt-1">সোলেনয়েড</span>
+                                            <span className="text-xs text-white mt-1">ভালভ (+)</span>
                                           </div>
                                         </div>
                                       </div>
@@ -1434,18 +1434,18 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                       </div>
                                       <div>
                                         <span className="text-sm font-bold">সোলেনয়েড ভালভ</span>
-                                        <p className="text-xs text-muted-foreground">220V AC, 1/2" বা 3/4"</p>
+                                        <p className="text-xs text-muted-foreground">12V DC, 1/2" প্লাস্টিক (NC)</p>
                                         <div className="flex gap-2 mt-1">
-                                          <Badge variant="outline" className="text-xs bg-teal-500/10 text-teal-600 border-teal-300">তার ১ → NO</Badge>
-                                          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-300">তার ২ → Neutral</Badge>
+                                          <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-300">লাল (+) → NO</Badge>
+                                          <Badge variant="outline" className="text-xs bg-gray-500/10 text-gray-600 border-gray-300">কালো (−) → GND</Badge>
                                         </div>
                                       </div>
                                     </div>
                                     
-                                    {/* Neutral connection */}
+                                    {/* GND connection */}
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      <div className="w-1 h-6 bg-blue-500 rounded"></div>
-                                      <span>সোলেনয়েডের অন্য তার → সরাসরি Neutral</span>
+                                      <div className="w-1 h-6 bg-gray-600 rounded"></div>
+                                      <span>ভালভের কালো (−) তার → 12V অ্যাডাপ্টারের GND (−)</span>
                                     </div>
 
                                     {/* Fogger Nozzles */}
@@ -1469,11 +1469,11 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                     <div className="flex flex-wrap gap-3 justify-center">
                                       <div className="flex items-center gap-1">
                                         <div className="w-6 h-2 bg-red-500 rounded"></div>
-                                        <span className="text-xs">লাল/বাদামী = AC Live</span>
+                                        <span className="text-xs">লাল = 12V (+)</span>
                                       </div>
                                       <div className="flex items-center gap-1">
-                                        <div className="w-6 h-2 bg-blue-500 rounded"></div>
-                                        <span className="text-xs">নীল = AC Neutral</span>
+                                        <div className="w-6 h-2 bg-gray-700 dark:bg-gray-400 rounded"></div>
+                                        <span className="text-xs">কালো = GND (−)</span>
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <div className="w-6 h-2 bg-teal-500 rounded"></div>
@@ -1486,15 +1486,15 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                 {/* Summary Flow */}
                                 <div className="bg-muted/30 p-3 border-t">
                                   <div className="flex items-center justify-center gap-2 text-sm font-mono flex-wrap">
-                                    <span className="bg-red-500 text-white px-2 py-1 rounded text-xs">AC Live</span>
+                                    <span className="bg-green-600 text-white px-2 py-1 rounded text-xs">12V (+)</span>
                                     <span>→</span>
                                     <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">COM</span>
                                     <span className="text-muted-foreground">⟷</span>
                                     <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">NO</span>
                                     <span>→</span>
-                                    <span className="bg-teal-500 text-white px-2 py-1 rounded text-xs">সোলেনয়েড</span>
+                                    <span className="bg-teal-500 text-white px-2 py-1 rounded text-xs">ভালভ (+)</span>
                                     <span>→</span>
-                                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs">Neutral</span>
+                                    <span className="bg-gray-700 text-white px-2 py-1 rounded text-xs">GND (−)</span>
                                   </div>
                                 </div>
                               </div>
