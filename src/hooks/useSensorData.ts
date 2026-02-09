@@ -102,6 +102,8 @@ export function useDeviceControl() {
     if (newStatus.light !== undefined) updateData.light_on = newStatus.light;
     if (newStatus.alarm !== undefined) updateData.alarm_on = newStatus.alarm;
     if (newStatus.heater !== undefined) updateData.heater_on = newStatus.heater;
+    if (newStatus.circulation_fan !== undefined) updateData.circulation_fan_on = newStatus.circulation_fan;
+    if (newStatus.fogger !== undefined) updateData.fogger_on = newStatus.fogger;
     
     updateMutation.mutate(updateData);
   }, [updateMutation]);
