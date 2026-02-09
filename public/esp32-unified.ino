@@ -579,7 +579,13 @@ String getActiveToken();
 
 // ================ OBJECTS ================
 DHT dht(DHT_PIN, DHT_TYPE);
+DHT dht2(DHT2_PIN, DHT_TYPE);  // 🆕 Second DHT22 sensor (optional)
 Preferences preferences;
+
+// 🆕 Dual DHT22 state
+bool dht2Available = false;        // Whether second sensor responded at boot
+float temperature2 = 0;           // Second sensor temperature (individual)
+float humidity2 = 0;              // Second sensor humidity (individual)
 
 // ================ STATE VARIABLES ================
 bool wifiConnected = false;
@@ -1408,47 +1414,70 @@ void advanceSensorRollingIndex() {
 }
 
  // ═══════════════════════════════════════════════════════════════════════
- // 🌡️ DHT22 FILTERED READINGS (3-sample average + WDT safe)
+ // 🌡️ DHT22 DUAL SENSOR FILTERED READINGS (3-sample average + WDT safe)
+ // দুটি DHT22 থেকে গড় রিডিং নেয়। দ্বিতীয়টি না থাকলে শুধু প্রথমটি ব্যবহার হয়।
  // ═══════════════════════════════════════════════════════════════════════
  
- float readTempFiltered() {
+ float readSingleDHTTemp(DHT &sensor) {
    float sum = 0;
    int validCount = 0;
-   
    for (int i = 0; i < 3; i++) {
-     esp_task_wdt_reset();  // ✅ Feed watchdog
-     float t = dht.readTemperature();
+     esp_task_wdt_reset();
+     float t = sensor.readTemperature();
      if (!isnan(t) && t >= TEMP_SANITY_MIN && t <= TEMP_SANITY_MAX) {
        sum += t;
        validCount++;
      }
-     delay(300);  // DHT22 needs 2 sec between reads, 300ms is minimum
+     delay(300);
    }
-   
-   if (validCount == 0) {
-     return NAN;
-   }
-   return sum / validCount;
+   return (validCount > 0) ? sum / validCount : NAN;
  }
  
- float readHumidityFiltered() {
+ float readSingleDHTHum(DHT &sensor) {
    float sum = 0;
    int validCount = 0;
-   
    for (int i = 0; i < 3; i++) {
-     esp_task_wdt_reset();  // ✅ Feed watchdog
-     float h = dht.readHumidity();
+     esp_task_wdt_reset();
+     float h = sensor.readHumidity();
      if (!isnan(h) && h >= HUMIDITY_SANITY_MIN && h <= HUMIDITY_SANITY_MAX) {
        sum += h;
        validCount++;
      }
      delay(300);
    }
+   return (validCount > 0) ? sum / validCount : NAN;
+ }
+ 
+ float readTempFiltered() {
+   float avg1 = readSingleDHTTemp(dht);
+   float avg2 = NAN;
    
-   if (validCount == 0) {
-     return NAN;
+   if (dht2Available) {
+     avg2 = readSingleDHTTemp(dht2);
+     if (!isnan(avg2)) temperature2 = avg2;
    }
-   return sum / validCount;
+   
+   // Average both if available, fallback to whichever works
+   if (!isnan(avg1) && !isnan(avg2)) return (avg1 + avg2) / 2.0;
+   if (!isnan(avg1)) return avg1;
+   if (!isnan(avg2)) return avg2;
+   return NAN;
+ }
+ 
+ float readHumidityFiltered() {
+   float avg1 = readSingleDHTHum(dht);
+   float avg2 = NAN;
+   
+   if (dht2Available) {
+     avg2 = readSingleDHTHum(dht2);
+     if (!isnan(avg2)) humidity2 = avg2;
+   }
+   
+   // Average both if available, fallback to whichever works
+   if (!isnan(avg1) && !isnan(avg2)) return (avg1 + avg2) / 2.0;
+   if (!isnan(avg1)) return avg1;
+   if (!isnan(avg2)) return avg2;
+   return NAN;
  }
  
  // ═══════════════════════════════════════════════════════════════════════
@@ -2690,6 +2719,12 @@ void syncWithCloud() {
   doc["fade_in_progress"] = fadeInProgress;
   doc["cached_settings_version"] = cachedSettingsVersion;
   
+  // 🆕 Dual DHT22 sensor data
+  doc["dht2_available"] = dht2Available;
+  if (dht2Available) {
+    doc["temperature2"] = temperature2;
+    doc["humidity2"] = humidity2;
+  }
   String payload;
   serializeJson(doc, payload);
   
@@ -3539,18 +3574,34 @@ void setup() {
    // Initialize gas sensor warmup
    initGasWarmup();
    
-  // Initialize DHT
+  // Initialize DHT sensors
   dht.begin();
+  dht2.begin();  // 🆕 Second DHT22 (GPIO 15)
   delay(2000);
   
-  // Test sensors
+  // Test primary DHT sensor
   float testTemp = dht.readTemperature();
   float testHum = dht.readHumidity();
   sensorInitOK = !isnan(testTemp) && !isnan(testHum);
   lastValidSensor = millis();
   
+  // 🆕 Test second DHT sensor (optional - won't cause failsafe if absent)
+  float testTemp2 = dht2.readTemperature();
+  float testHum2 = dht2.readHumidity();
+  dht2Available = !isnan(testTemp2) && !isnan(testHum2);
+  
+  if (sensorInitOK) {
+    Serial.printf("✓ DHT22 #1 OK: %.1f°C, %.1f%%\n", testTemp, testHum);
+  }
+  if (dht2Available) {
+    Serial.printf("✓ DHT22 #2 OK: %.1f°C, %.1f%% (GPIO %d)\n", testTemp2, testHum2, DHT2_PIN);
+    Serial.println("📊 দুটি সেন্সরের গড় তাপমাত্রা ও আর্দ্রতা ব্যবহার করা হবে");
+  } else {
+    Serial.printf("ℹ️ DHT22 #2 not detected on GPIO %d — single sensor mode\n", DHT2_PIN);
+  }
+  
   if (!sensorInitOK) {
-    Serial.println("⚠️ SENSOR ERROR → Failsafe mode!");
+    Serial.println("⚠️ PRIMARY SENSOR ERROR → Failsafe mode!");
     failsafeMode = true;
     digitalWrite(FAN_RELAY_PIN, LOW);  // Active LOW - ON
     fanOn = true;
