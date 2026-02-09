@@ -228,19 +228,27 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
 `;
       firmwareCode = configHeader + firmwareCode;
 
-      // Create a blob and download
-      const blob = new Blob([firmwareCode], { type: 'text/plain' });
+      // Create a blob and download (PWA-compatible method)
+      const blob = new Blob([firmwareCode], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
+      a.style.display = 'none';
       const filename = firmwareMode === 'ota' 
         ? `farmeye-ota-${farmType}-${Date.now()}.ino`
         : `farmeye-${farmType}-${Date.now()}.ino`;
       a.download = filename;
+      a.setAttribute('target', '_blank');
       document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      // Use setTimeout for PWA/mobile compatibility
+      setTimeout(() => {
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }, 100);
       
       const successMsg = firmwareMode === 'ota' ? t.downloadOTASuccess : t.downloadSuccess;
       toast.success(successMsg, { duration: 5000 });
