@@ -53,6 +53,12 @@
  * ║            - Separate ON/OFF thresholds per relay stage                  ║
  * ║            - Anti-oscillation timers (min 60s ON, 60s OFF)              ║
  * ║            - Sensor fluctuation rejection filter                         ║
+ * ║  MODULE J: Sensor Validation Layer (pre-automation filter)              ║
+ * ║            - 5-sample median filter per sensor channel                   ║
+ * ║            - Spike rejection (>20% sudden change ignored)               ║
+ * ║            - Ammonia sustained threshold (45s confirm before action)     ║
+ * ║            - Invalid sensor → last stable value fallback                ║
+ * ║            - Sensor offline → safe ventilation mode                      ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  * 
  * SAFETY RULES (LOCAL - Cloud এর জন্য অপেক্ষা করে না!):
@@ -727,6 +733,14 @@ int evaluateHysteresisChannel(HysteresisChannel &ch, float sensorValue, bool inv
 void updateHysteresisThresholds();  // Sync thresholds from RuntimeRules
 void printHysteresisStatus();       // Debug print
 
+// 🆕 Module J: Sensor Validation Layer function prototypes
+float svlProcessReading(SensorValidationChannel &ch, float rawValue);
+float svlGetMedian(SensorValidationChannel &ch);
+bool svlIsSpikeRejected(SensorValidationChannel &ch, float rawValue);
+void svlCheckAmmoniaThreshold(float validatedNH3, float threshold);
+void svlCheckSensorOffline();
+void svlPrintStatus();
+
 // 🆕 OTA Update function prototypes
 void checkOTAUpdate();
 void performOTAUpdate(String firmwareUrl, int firmwareSize, String version);
@@ -818,7 +832,51 @@ bool sensorInitOK = true;
  float tempRollingBuffer[SENSOR_ROLLING_AVG_SIZE] = {0};
  float humRollingBuffer[SENSOR_ROLLING_AVG_SIZE] = {0};
  int sensorRollingIndex = 0;
- int sensorRollingCount = 0;
+  int sensorRollingCount = 0;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE J: SENSOR VALIDATION LAYER STATE
+// 5-sample median filter, spike rejection, sustained ammonia confirmation
+// ═══════════════════════════════════════════════════════════════════════
+#define SVL_MEDIAN_SIZE          5         // 5-sample median filter window
+#define SVL_SPIKE_PERCENT        20.0      // Reject >20% sudden change
+#define SVL_NH3_SUSTAIN_MS       45000UL   // 45 seconds sustained ammonia confirm
+#define SVL_SENSOR_OFFLINE_MS    30000UL   // 30 seconds = sensor offline
+
+struct SensorValidationChannel {
+  float medianBuffer[SVL_MEDIAN_SIZE];    // Circular buffer for median
+  int bufferIndex;                         // Current write position
+  int sampleCount;                         // Samples collected (max SVL_MEDIAN_SIZE)
+  float lastStableValue;                   // Last validated value (fallback)
+  float lastRawValue;                      // Previous raw reading (for spike detection)
+  unsigned long lastValidTime;             // millis() of last valid reading
+  bool isValid;                            // Current validity state
+  bool isOffline;                          // Sensor completely offline
+};
+
+// One channel per sensor type
+SensorValidationChannel svlTemp = {
+  .medianBuffer = {0}, .bufferIndex = 0, .sampleCount = 0,
+  .lastStableValue = 25.0, .lastRawValue = 25.0,
+  .lastValidTime = 0, .isValid = true, .isOffline = false
+};
+
+SensorValidationChannel svlHumidity = {
+  .medianBuffer = {0}, .bufferIndex = 0, .sampleCount = 0,
+  .lastStableValue = 60.0, .lastRawValue = 60.0,
+  .lastValidTime = 0, .isValid = true, .isOffline = false
+};
+
+SensorValidationChannel svlAmmonia = {
+  .medianBuffer = {0}, .bufferIndex = 0, .sampleCount = 0,
+  .lastStableValue = 0.0, .lastRawValue = 0.0,
+  .lastValidTime = 0, .isValid = true, .isOffline = false
+};
+
+// Ammonia sustained threshold state
+bool nh3ThresholdBreached = false;          // True when ammonia is above threshold
+unsigned long nh3ThresholdBreachStart = 0;  // When breach started
+bool nh3VentilationConfirmed = false;       // True after 45s sustained breach
 
  // Power Sensor Filter
  float powerVoltageRMS = 230.0;
@@ -853,7 +911,7 @@ float lastVoltageRMS = 230.0;
  int otaPendingSize = 0;
  unsigned long lastOTACheck = 0;
  const unsigned long OTA_CHECK_INTERVAL = 3600000UL;  // Check every 1 hour
- String firmwareVersion = "6.1.0";  // v6.1.0: Industrial Hysteresis Stabilization Engine
+ String firmwareVersion = "6.2.0";  // v6.2.0: Sensor Validation Layer (Module J)
   
  // ═══════════════════════════════════════════════════════════════════════
  // 💧 SMART WATER FLOW MONITORING
@@ -2442,8 +2500,8 @@ void checkMinimumVentilation() {
   minVentActive = true;
   unsigned long now = millis();
   
-  // Ammonia override - continuous exhaust
-  if (ammonia > rules.ammoniaFan) {
+  // Ammonia override - continuous exhaust (🆕 Module J: requires 45s sustained confirmation)
+  if (ammonia > rules.ammoniaAlarm || (ammonia > rules.ammoniaFan && nh3VentilationConfirmed)) {
     setFanState(true, "HIGH");
     Serial.println("🌬️ Min Vent: Ammonia override - continuous exhaust");
     return;
@@ -2863,7 +2921,8 @@ void layerControl() {
     return;
   }
   
-  if (ammonia > rules.ammoniaFan) {
+  // 🆕 Module J: Ammonia fan requires 45s sustained confirmation
+  if (ammonia > rules.ammoniaFan && nh3VentilationConfirmed) {
     setFanState(true, "HIGH");
     setAlarm(false);
     systemState = "NH3_HIGH";
@@ -2948,7 +3007,8 @@ void broilerControl() {
     return;
   }
   
-  if (ammonia > rules.ammoniaFan) {
+  // 🆕 Module J: Ammonia fan requires 45s sustained confirmation
+  if (ammonia > rules.ammoniaFan && nh3VentilationConfirmed) {
     setFanState(true, "HIGH");
     setAlarm(false);
     systemState = "NH3_HIGH";
@@ -3042,7 +3102,133 @@ void runSafetyChecks() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// SENSOR READING
+// 🆕 MODULE J: SENSOR VALIDATION LAYER IMPLEMENTATION
+// 5-sample median filter + spike rejection + sustained NH3 confirmation
+// ═══════════════════════════════════════════════════════════════════════
+
+void svlSortArray(float arr[], int n) {
+  for (int i = 1; i < n; i++) {
+    float key = arr[i];
+    int j = i - 1;
+    while (j >= 0 && arr[j] > key) {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+    arr[j + 1] = key;
+  }
+}
+
+float svlGetMedian(SensorValidationChannel &ch) {
+  if (ch.sampleCount == 0) return ch.lastStableValue;
+  int count = min(ch.sampleCount, (int)SVL_MEDIAN_SIZE);
+  float sorted[SVL_MEDIAN_SIZE];
+  for (int i = 0; i < count; i++) sorted[i] = ch.medianBuffer[i];
+  svlSortArray(sorted, count);
+  if (count % 2 == 0) return (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0;
+  return sorted[count / 2];
+}
+
+bool svlIsSpikeRejected(SensorValidationChannel &ch, float rawValue) {
+  if (ch.sampleCount < 2) return false;
+  if (ch.lastRawValue == 0) return false;
+  float percentChange = abs(rawValue - ch.lastRawValue) / abs(ch.lastRawValue) * 100.0;
+  if (percentChange > SVL_SPIKE_PERCENT) {
+    Serial.printf("⚡ SVL SPIKE REJECTED: %.1f → %.1f (%.0f%% > %.0f%%)\n",
+                  ch.lastRawValue, rawValue, percentChange, SVL_SPIKE_PERCENT);
+    return true;
+  }
+  return false;
+}
+
+float svlProcessReading(SensorValidationChannel &ch, float rawValue) {
+  unsigned long now = millis();
+  
+  // Handle NaN/invalid
+  if (isnan(rawValue)) {
+    if (ch.lastValidTime > 0 && (now - ch.lastValidTime) > SVL_SENSOR_OFFLINE_MS) {
+      if (!ch.isOffline) {
+        ch.isOffline = true;
+        ch.isValid = false;
+        Serial.printf("🚫 SVL: Sensor OFFLINE → fallback: %.1f\n", ch.lastStableValue);
+      }
+    }
+    return ch.lastStableValue;
+  }
+  
+  // Spike rejection
+  if (svlIsSpikeRejected(ch, rawValue)) {
+    return ch.lastStableValue;
+  }
+  
+  // Add to median buffer
+  ch.medianBuffer[ch.bufferIndex] = rawValue;
+  ch.bufferIndex = (ch.bufferIndex + 1) % SVL_MEDIAN_SIZE;
+  if (ch.sampleCount < SVL_MEDIAN_SIZE) ch.sampleCount++;
+  
+  // Calculate median
+  float median = svlGetMedian(ch);
+  
+  // Update state
+  ch.lastRawValue = rawValue;
+  ch.lastStableValue = median;
+  ch.lastValidTime = now;
+  ch.isValid = true;
+  ch.isOffline = false;
+  
+  return median;
+}
+
+void svlCheckAmmoniaThreshold(float validatedNH3, float threshold) {
+  unsigned long now = millis();
+  if (validatedNH3 > threshold) {
+    if (!nh3ThresholdBreached) {
+      nh3ThresholdBreached = true;
+      nh3ThresholdBreachStart = now;
+      Serial.printf("⏱️ SVL NH3: %.1f > %.1f - sustain timer START\n", validatedNH3, threshold);
+    } else if ((now - nh3ThresholdBreachStart) >= SVL_NH3_SUSTAIN_MS && !nh3VentilationConfirmed) {
+      nh3VentilationConfirmed = true;
+      Serial.printf("✅ SVL NH3: CONFIRMED after %lus → ventilation authorized\n",
+                    (now - nh3ThresholdBreachStart) / 1000);
+    }
+  } else {
+    if (nh3ThresholdBreached) {
+      Serial.printf("⏱️ SVL NH3: %.1f dropped below threshold - RESET\n", validatedNH3);
+    }
+    nh3ThresholdBreached = false;
+    nh3ThresholdBreachStart = 0;
+    nh3VentilationConfirmed = false;
+  }
+}
+
+void svlCheckSensorOffline() {
+  if (svlTemp.isOffline || svlHumidity.isOffline) {
+    if (!sensorErrorMode) {
+      sensorErrorMode = true;
+      Serial.println("🚫 SVL: Temp/Humidity OFFLINE → SAFE VENTILATION MODE");
+      setFanState(true, "HIGH");
+    }
+  }
+}
+
+void svlPrintStatus() {
+  Serial.println("\n╔═══ SENSOR VALIDATION LAYER ═══╗");
+  Serial.printf("║ TEMP: %s stable=%.1f°C (%d samples)\n",
+                svlTemp.isOffline ? "OFFLINE" : (svlTemp.isValid ? "OK" : "ERR"),
+                svlTemp.lastStableValue, svlTemp.sampleCount);
+  Serial.printf("║ HUM:  %s stable=%.1f%% (%d samples)\n",
+                svlHumidity.isOffline ? "OFFLINE" : (svlHumidity.isValid ? "OK" : "ERR"),
+                svlHumidity.lastStableValue, svlHumidity.sampleCount);
+  Serial.printf("║ NH3:  %s stable=%.1f ppm (%d samples)\n",
+                svlAmmonia.isOffline ? "OFFLINE" : (svlAmmonia.isValid ? "OK" : "ERR"),
+                svlAmmonia.lastStableValue, svlAmmonia.sampleCount);
+  Serial.printf("║ NH3 Sustain: %s (confirmed=%s)\n",
+                nh3ThresholdBreached ? "BREACHED" : "NORMAL",
+                nh3VentilationConfirmed ? "YES" : "NO");
+  Serial.println("╚═══════════════════════════════╝");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SENSOR READING (with Module J Validation Layer)
 // ═══════════════════════════════════════════════════════════════════════
 
 void readSensors() {
@@ -3050,19 +3236,21 @@ void readSensors() {
    float t = readTempFiltered();
    float h = readHumidityFiltered();
   
-  // Apply sanity filter + rolling average
+  // Apply sanity filter + rolling average (existing)
   float tFiltered = addToTempRollingAvg(t);
   float hFiltered = addToHumRollingAvg(h);
   advanceSensorRollingIndex();
   
-  if (!isnan(tFiltered) && !isnan(hFiltered)) {
-    // Apply calibration offset from FarmConfig to filtered values
-    temperature = tFiltered + farmConfig.tempOffset;
-    humidity = hFiltered;
+  // 🆕 Module J: Sensor Validation Layer (median + spike rejection)
+  float tValidated = svlProcessReading(svlTemp, tFiltered);
+  float hValidated = svlProcessReading(svlHumidity, hFiltered);
+  
+  if (!isnan(tValidated) && !isnan(hValidated) && !svlTemp.isOffline && !svlHumidity.isOffline) {
+    temperature = tValidated + farmConfig.tempOffset;
+    humidity = hValidated;
     lastValidSensor = millis();
     sensorErrorMode = false;
   } else {
-    // Check timeout
     if (millis() - lastValidSensor > SENSOR_TIMEOUT) {
       sensorErrorMode = true;
       Serial.println("⚠️ SENSOR TIMEOUT - Fan ON for safety!");
@@ -3073,10 +3261,18 @@ void readSensors() {
    // Read ammonia with warmup check + filtered
    float ammoniaRaw = readGasFiltered();
    float ammoniaRawMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
-  // Apply calibration offset from FarmConfig
    float ammoniaRaw2 = ammoniaRawMapped + farmConfig.nh3Offset;
    if (ammoniaRaw2 < 0) ammoniaRaw2 = 0;
-   ammonia = calculateAmmoniaMovingAvg(ammoniaRaw2);
+   float ammoniaMovAvg = calculateAmmoniaMovingAvg(ammoniaRaw2);
+   
+   // 🆕 Module J: Validate ammonia through SVL
+   ammonia = svlProcessReading(svlAmmonia, ammoniaMovAvg);
+   
+   // 🆕 Module J: Ammonia sustained threshold (45s confirm before ventilation)
+   svlCheckAmmoniaThreshold(ammonia, rules.ammoniaFan);
+   
+   // 🆕 Module J: Check sensor offline → safe ventilation mode
+   svlCheckSensorOffline();
   
   // Check water flow
   if (waterPulseCount > 0) {
