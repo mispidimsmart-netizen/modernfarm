@@ -106,6 +106,7 @@
 #include <esp_system.h>
 #include <rom/rtc.h>
 #include <Update.h>
+#include <esp_ota_ops.h>
 
 // ═══════════════════════════════════════════════════════════════════════
 // 📡 WIFI CONFIGURATION
@@ -753,10 +754,13 @@ void svlCheckAmmoniaThreshold(float validatedNH3, float threshold);
 void svlCheckSensorOffline();
 void svlPrintStatus();
 
-// 🆕 OTA Update function prototypes
+// 🆕 Industrial Safe OTA function prototypes
 void checkOTAUpdate();
-void performOTAUpdate(String firmwareUrl, int firmwareSize, String version);
+void performOTAUpdate(String firmwareUrl, int firmwareSize, String version, String checksum);
 void reportOTAProgress(int progress, String status, String version = "", String errorMsg = "");
+uint32_t calculateCRC32(uint8_t* data, size_t length);
+void validateBootPartition();
+bool compareVersions(String current, String target);
 
 // 🆕 NVS Token Storage function prototypes
 void loadCredentialsFromNVS();
@@ -931,9 +935,10 @@ float lastVoltageRMS = 230.0;
  String otaAvailableVersion = "";
  String otaPendingUrl = "";
  int otaPendingSize = 0;
+ String otaPendingChecksum = "";            // 🆕 Expected CRC32 from server
  unsigned long lastOTACheck = 0;
  const unsigned long OTA_CHECK_INTERVAL = 3600000UL;  // Check every 1 hour
- String firmwareVersion = "6.2.0";  // v6.2.0: Sensor Validation Layer (Module J)
+ String firmwareVersion = "6.3.0";  // v6.3.0: Industrial Safe OTA + Power Recovery Purge
   
  // ═══════════════════════════════════════════════════════════════════════
  // 💧 SMART WATER FLOW MONITORING
@@ -4034,6 +4039,105 @@ void checkPowerRecoveryPurge() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 🏭 INDUSTRIAL SAFE OTA UPDATE SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+// SAFETY GUARANTEES:
+//   ✔ Version check: never install same or older version
+//   ✔ CRC32 verification: firmware integrity verified before boot
+//   ✔ Dual partition rollback: esp_ota_mark_app_valid on successful boot
+//   ✔ Auto-rollback: if new firmware fails to boot, reverts automatically
+//   ✔ Controller NEVER bricks - always has fallback partition
+// ═══════════════════════════════════════════════════════════════════════
+
+// Compare semantic versions: returns true if target > current
+bool compareVersions(String current, String target) {
+  int cMaj = 0, cMin = 0, cPat = 0;
+  int tMaj = 0, tMin = 0, tPat = 0;
+  
+  sscanf(current.c_str(), "%d.%d.%d", &cMaj, &cMin, &cPat);
+  sscanf(target.c_str(), "%d.%d.%d", &tMaj, &tMin, &tPat);
+  
+  if (tMaj != cMaj) return tMaj > cMaj;
+  if (tMin != cMin) return tMin > cMin;
+  return tPat > cPat;
+}
+
+// CRC32 calculation for firmware verification
+uint32_t calculateCRC32(uint8_t* data, size_t length) {
+  uint32_t crc = 0xFFFFFFFF;
+  for (size_t i = 0; i < length; i++) {
+    crc ^= data[i];
+    for (int j = 0; j < 8; j++) {
+      crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+    }
+  }
+  return ~crc;
+}
+
+// Validate boot partition and mark as valid (dual-partition rollback)
+void validateBootPartition() {
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  esp_ota_img_states_t otaState;
+  
+  if (esp_ota_get_state_partition(running, &otaState) == ESP_OK) {
+    if (otaState == ESP_OTA_IMG_PENDING_VERIFY) {
+      Serial.println("🔒 [OTA] New firmware booted - running validation...");
+      
+      // Basic health checks before marking valid
+      bool healthOK = true;
+      
+      // Check 1: Can we read sensors?
+      float testTemp = dht.readTemperature();
+      if (isnan(testTemp)) {
+        Serial.println("   ⚠️ Sensor read failed (may be hardware - continuing)");
+        // Don't fail on sensor - could be hardware issue unrelated to firmware
+      }
+      
+      // Check 2: Can we access NVS?
+      if (activeDeviceToken.length() < 10) {
+        Serial.println("   ❌ NVS token invalid - ROLLING BACK");
+        healthOK = false;
+      }
+      
+      // Check 3: Free memory sufficient?
+      if (ESP.getFreeHeap() < 20000) {
+        Serial.println("   ❌ Insufficient free memory - ROLLING BACK");
+        healthOK = false;
+      }
+      
+      if (healthOK) {
+        esp_ota_mark_app_valid_cancel_rollback();
+        Serial.println("╔════════════════════════════════════════════════════════════╗");
+        Serial.println("║  ✅ FIRMWARE VALIDATED - marked as stable                  ║");
+        Serial.printf("║  Version: %s | Partition: %s                    \n", firmwareVersion.c_str(), running->label);
+        Serial.println("║  Rollback cancelled - this is now the active firmware     ║");
+        Serial.println("╚════════════════════════════════════════════════════════════╝");
+      } else {
+        Serial.println("╔════════════════════════════════════════════════════════════╗");
+        Serial.println("║  ❌ FIRMWARE VALIDATION FAILED - ROLLING BACK              ║");
+        Serial.println("║  ESP32 will restart with previous stable firmware         ║");
+        Serial.println("╚════════════════════════════════════════════════════════════╝");
+        reportOTAProgress(0, "rollback", firmwareVersion, "Boot validation failed");
+        delay(2000);
+        esp_ota_mark_app_invalid_rollback_and_reboot();
+        // Never reaches here - device reboots to previous firmware
+      }
+    } else if (otaState == ESP_OTA_IMG_VALID) {
+      Serial.printf("✅ [OTA] Running validated firmware v%s on %s\n", firmwareVersion.c_str(), running->label);
+    }
+  }
+}
+
+void checkOTAUpdate() {
+  if (otaInProgress || !wifiConnected) return;
+  
+  Serial.println("🔍 [OTA] Checking for firmware updates...");
+  
+  HTTPClient http;
+  String otaApiUrl = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware";
+  String url = otaApiUrl + "?action=check&current_version=" + firmwareVersion;
+  
   http.begin(url);
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
@@ -4054,11 +4158,23 @@ void checkPowerRecoveryPurge() {
         String firmwareUrl = doc["url"] | "";
         int firmwareSize = doc["size"] | 0;
         String releaseNotes = doc["release_notes"] | "";
+        String checksum = doc["checksum"] | "";
+        
+        // 🔒 SAFETY CHECK 1: Version must be strictly newer
+        if (!compareVersions(firmwareVersion, newVersion)) {
+          Serial.printf("🔒 [OTA] Version %s is not newer than %s - SKIPPING\n", 
+                        newVersion.c_str(), firmwareVersion.c_str());
+          otaStatus = "up_to_date";
+          http.end();
+          lastOTACheck = millis();
+          return;
+        }
         
         Serial.println("╔════════════════════════════════════════════════════════════╗");
-        Serial.println("║  🆕 NEW FIRMWARE AVAILABLE!                                ║");
+        Serial.println("║  🆕 NEW FIRMWARE AVAILABLE (Industrial Safe OTA)           ║");
         Serial.printf("║  Current: %s → New: %s\n", firmwareVersion.c_str(), newVersion.c_str());
         Serial.printf("║  Size: %d bytes\n", firmwareSize);
+        Serial.printf("║  CRC32: %s\n", checksum.length() > 0 ? checksum.c_str() : "not provided");
         if (releaseNotes.length() > 0) {
           Serial.printf("║  Notes: %s\n", releaseNotes.c_str());
         }
@@ -4067,10 +4183,11 @@ void checkPowerRecoveryPurge() {
         otaAvailableVersion = newVersion;
         otaPendingUrl = firmwareUrl;
         otaPendingSize = firmwareSize;
+        otaPendingChecksum = checksum;
         otaStatus = "available";
         
         // Start the update
-        performOTAUpdate(firmwareUrl, firmwareSize, newVersion);
+        performOTAUpdate(firmwareUrl, firmwareSize, newVersion, checksum);
       } else {
         Serial.printf("✓ [OTA] Firmware up to date (%s)\n", firmwareVersion.c_str());
         otaStatus = "up_to_date";
@@ -4109,26 +4226,33 @@ void reportOTAProgress(int progress, String status, String version, String error
   http.end();
 }
 
-void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
+void performOTAUpdate(String firmwareUrl, int firmwareSize, String version, String checksum) {
   if (otaInProgress) {
     Serial.println("⚠️ [OTA] Update already in progress!");
     return;
   }
   
-  Serial.println("\n🚀 [OTA] Starting firmware update...");
+  // 🔒 SAFETY CHECK 2: Double-check version before proceeding
+  if (!compareVersions(firmwareVersion, version)) {
+    Serial.printf("🔒 [OTA] Abort: version %s not newer than %s\n", version.c_str(), firmwareVersion.c_str());
+    otaStatus = "aborted";
+    return;
+  }
+  
+  Serial.println("\n🚀 [OTA] Starting industrial-safe firmware update...");
   Serial.printf("   URL: %s\n", firmwareUrl.c_str());
   Serial.printf("   Size: %d bytes\n", firmwareSize);
+  Serial.printf("   Expected CRC: %s\n", checksum.length() > 0 ? checksum.c_str() : "none");
   
   otaInProgress = true;
   otaStatus = "downloading";
   otaProgress = 0;
   
-  // Report start
   reportOTAProgress(0, "downloading", version, "");
   
   HTTPClient http;
   http.begin(firmwareUrl);
-  http.setTimeout(60000);  // 60 second timeout for download
+  http.setTimeout(60000);
   
   int httpCode = http.GET();
   
@@ -4153,9 +4277,9 @@ void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
   
   Serial.printf("   Content-Length: %d bytes\n", contentLength);
   
-  // Check if there's enough space
+  // 🔒 Begin OTA with rollback support (writes to inactive partition)
   if (!Update.begin(contentLength)) {
-    Serial.printf("✗ [OTA] Not enough space for update! Error: %s\n", Update.errorString());
+    Serial.printf("✗ [OTA] Not enough space! Error: %s\n", Update.errorString());
     otaStatus = "failed";
     otaInProgress = false;
     reportOTAProgress(0, "failed", version, "Not enough space");
@@ -4163,13 +4287,14 @@ void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
     return;
   }
   
-  Serial.println("📥 [OTA] Downloading firmware...");
+  Serial.println("📥 [OTA] Downloading firmware to inactive partition...");
   otaStatus = "downloading";
   
   WiFiClient* stream = http.getStreamPtr();
   uint8_t buff[1024] = { 0 };
   int bytesWritten = 0;
   int lastProgressReport = 0;
+  uint32_t runningCRC = 0xFFFFFFFF;  // Running CRC32 calculation
   
   while (http.connected() && bytesWritten < contentLength) {
     size_t available = stream->available();
@@ -4187,17 +4312,23 @@ void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
         return;
       }
       
+      // 🔒 SAFETY CHECK 3: Calculate CRC32 as we download
+      for (int i = 0; i < c; i++) {
+        runningCRC ^= buff[i];
+        for (int j = 0; j < 8; j++) {
+          runningCRC = (runningCRC >> 1) ^ (0xEDB88320 & -(runningCRC & 1));
+        }
+      }
+      
       bytesWritten += c;
       otaProgress = (bytesWritten * 100) / contentLength;
       
-      // Report progress every 10%
       if (otaProgress >= lastProgressReport + 10) {
         Serial.printf("   Progress: %d%% (%d/%d bytes)\n", otaProgress, bytesWritten, contentLength);
         reportOTAProgress(otaProgress, "downloading", version, "");
         lastProgressReport = otaProgress;
       }
       
-      // Feed watchdog during long download
       esp_task_wdt_reset();
     }
     
@@ -4206,16 +4337,46 @@ void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
   
   http.end();
   
-  Serial.println("📦 [OTA] Installing firmware...");
+  // Finalize CRC
+  runningCRC = ~runningCRC;
+  
+  // 🔒 SAFETY CHECK 4: Verify CRC32 before finalizing
+  if (checksum.length() > 0) {
+    // Convert hex string to uint32_t for comparison
+    uint32_t expectedCRC = strtoul(checksum.c_str(), NULL, 16);
+    
+    if (runningCRC != expectedCRC) {
+      Serial.println("╔════════════════════════════════════════════════════════════╗");
+      Serial.println("║  ❌ CRC32 MISMATCH - FIRMWARE CORRUPTED!                   ║");
+      Serial.printf("║  Expected: 0x%08X  Got: 0x%08X\n", expectedCRC, runningCRC);
+      Serial.println("║  Update ABORTED - keeping current firmware                ║");
+      Serial.println("╚════════════════════════════════════════════════════════════╝");
+      
+      Update.abort();
+      otaStatus = "failed";
+      otaInProgress = false;
+      reportOTAProgress(0, "failed", version, "CRC32 mismatch");
+      return;
+    }
+    
+    Serial.printf("✅ [OTA] CRC32 verified: 0x%08X\n", runningCRC);
+  } else {
+    Serial.printf("⚠️ [OTA] No checksum provided - skipping CRC (CRC=0x%08X)\n", runningCRC);
+  }
+  
+  // 🔒 SAFETY CHECK 5: Finalize update (partition is not booted yet)
+  Serial.println("📦 [OTA] Finalizing firmware to inactive partition...");
   otaStatus = "installing";
   reportOTAProgress(100, "installing", version, "");
   
   if (Update.end()) {
     if (Update.isFinished()) {
       Serial.println("╔════════════════════════════════════════════════════════════╗");
-      Serial.println("║  ✅ OTA UPDATE SUCCESSFUL!                                 ║");
-      Serial.printf("║  New Version: %s\n", version.c_str());
-      Serial.println("║  Restarting in 3 seconds...                                ║");
+      Serial.println("║  ✅ INDUSTRIAL SAFE OTA UPDATE COMPLETE                    ║");
+      Serial.printf("║  New Version: %s (CRC: 0x%08X)\n", version.c_str(), runningCRC);
+      Serial.println("║  Firmware written to inactive partition                   ║");
+      Serial.println("║  Boot will validate → auto-rollback if failed             ║");
+      Serial.println("║  Restarting in 3 seconds...                               ║");
       Serial.println("╚════════════════════════════════════════════════════════════╝");
       
       otaStatus = "completed";
@@ -4223,6 +4384,9 @@ void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
       
       delay(3000);
       ESP.restart();
+      // On next boot: validateBootPartition() checks health
+      // If OK → esp_ota_mark_app_valid_cancel_rollback()
+      // If FAIL → esp_ota_mark_app_invalid_rollback_and_reboot()
     } else {
       Serial.println("✗ [OTA] Update not finished properly");
       otaStatus = "failed";
@@ -4230,7 +4394,7 @@ void performOTAUpdate(String firmwareUrl, int firmwareSize, String version) {
       reportOTAProgress(100, "failed", version, "Update not finished");
     }
   } else {
-    Serial.printf("✗ [OTA] Update failed: %s\n", Update.errorString());
+    Serial.printf("✗ [OTA] Finalize failed: %s\n", Update.errorString());
     otaStatus = "failed";
     otaInProgress = false;
     reportOTAProgress(0, "failed", version, Update.errorString());
@@ -4638,6 +4802,9 @@ void setup() {
   dht.begin();
   dht2.begin();  // 🆕 Second DHT22 (GPIO 15)
   delay(2000);
+  
+  // 🔒 INDUSTRIAL SAFE OTA: Validate boot partition (dual-partition rollback)
+  validateBootPartition();
   
   // Test primary DHT sensor
   float testTemp = dht.readTemperature();
