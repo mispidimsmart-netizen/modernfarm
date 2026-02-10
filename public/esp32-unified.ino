@@ -48,7 +48,12 @@
  * ║  MODULE E: Lighting Soft Control (10-min PWM fade)                      ║
  * ║  MODULE F: Offline Age Increment (24h local tick)                       ║
  * ║  MODULE G: Priority System (Safety > Heat > Cool > Vent > Light)        ║
- * ║  MODULE H: Emergency Survival Mode (sensor+power failure)               ║
+ * ║  MODULE H: Emergency Survival Mode (v2.0 - Industrial Grade)            ║
+ * ║            - Triggers: sensor fail, watchdog reset, reboot,             ║
+ * ║              3-min invalid readings, cloud disconnect                    ║
+ * ║            - Cyclic fan: 2min ON / 2min OFF (bird survival)             ║
+ * ║            - Alarm active, cloud commands ignored                        ║
+ * ║            - Guaranteed survival without sensors                         ║
  * ║  MODULE I: Industrial Hysteresis Stabilization Engine                    ║
  * ║            - Separate ON/OFF thresholds per relay stage                  ║
  * ║            - Anti-oscillation timers (min 60s ON, 60s OFF)              ║
@@ -70,7 +75,7 @@
  * │  ✓ Default Safe State: Unknown error → Fan ON (never stay OFF)   │
  * │  ✓ Heater Safety: Temp > 34°C → FORCE HEATER OFF                 │
  * │  ✓ Fogger Safety: Always requires exhaust fan running            │
- * │  ✓ Emergency Survival: All sensors fail → Fan HIGH + Alarm       │
+ * │  ✓ Emergency Survival: sensor/watchdog/reboot → Cyclic Fan+Alarm │
  * └───────────────────────────────────────────────────────────────────┘
  * 
  * LAYER vs BROILER THRESHOLDS:
@@ -711,7 +716,9 @@ void estimateLocalTime();
 void checkPendingCommands();       // ⚡ Real-time command polling (manual overrides only)
 void acknowledgeCommand(String commandId);  // Mark command as executed
 void fetchConfigFromCloud();       // 🏭 Fetch config parameters (Industrial Safety Model)
-void enterEmergencySurvivalMode(); // 🏭 Emergency survival when all sensors fail
+void enterEmergencySurvivalMode(String reason); // 🏭 Emergency survival mode v2.0
+void checkEmergencySurvivalTriggers();           // Check all ESM trigger conditions
+void runEmergencySurvivalCycles();               // Run cyclic fan/alarm in ESM
 
 // 🆕 Module function prototypes
 void checkMinimumVentilation();
@@ -958,6 +965,22 @@ unsigned long lastConfigFetch = 0;        // Last config fetch timestamp
 bool configSynced = false;                // Whether initial config has been fetched
 bool emergencySurvivalMode = false;       // All sensors failed - max ventilation
 unsigned long emergencySurvivalStart = 0; // When emergency survival started
+
+// 🆕 MODULE H v2.0: Enhanced Emergency Survival State
+#define ESM_FAN_ON_DURATION    120000UL  // 2 minutes ON
+#define ESM_FAN_OFF_DURATION   120000UL  // 2 minutes OFF
+#define ESM_FAN_CYCLE_PERIOD   (ESM_FAN_ON_DURATION + ESM_FAN_OFF_DURATION)
+#define ESM_ALARM_ON_DURATION  30000UL   // 30 sec alarm ON
+#define ESM_ALARM_OFF_DURATION 30000UL   // 30 sec alarm OFF
+#define ESM_INVALID_TIMEOUT    180000UL  // 3 minutes of invalid readings → trigger
+
+bool esmFanCurrentlyOn = false;          // Current cyclic fan state
+unsigned long esmLastCycleCheck = 0;     // Last cycle state evaluation
+unsigned long invalidReadingsStart = 0;  // When continuous invalid readings began
+bool invalidReadingsActive = false;      // Tracking invalid reading streak
+bool esmTriggeredByWatchdog = false;     // Watchdog-triggered flag
+bool esmTriggeredByReboot = false;       // Reboot-triggered flag
+String esmTriggerReason = "";            // Human-readable trigger reason
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🐔 UPDATE AGE FROM SERVER
@@ -3756,59 +3779,172 @@ void fetchConfigFromCloud() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// 🏭 MODULE H: EMERGENCY SURVIVAL MODE
-// When ALL sensors fail AND cloud is unreachable:
-// - Fan HIGH (maximum ventilation to keep birds alive)
-// - Alarm pulsing (alert farm workers)
-// - Heater OFF (prevent fire risk)
-// - Fogger OFF (prevent flooding)
-// - Continue indefinitely until sensors recover or manual intervention
+// 🏭 MODULE H v2.0: EMERGENCY SURVIVAL MODE (Industrial Grade)
 // ═══════════════════════════════════════════════════════════════════════
-void enterEmergencySurvivalMode() {
+// TRIGGERS (any one activates ESM):
+//   1. Sensor failure (sensorErrorMode = true)
+//   2. Watchdog reset detected (RTC reset reason)
+//   3. Controller reboot detected (non-power-on reset)
+//   4. Invalid readings for 3 continuous minutes
+//   5. Sensor failure + cloud disconnect > 5 minutes
+//
+// BEHAVIOR:
+//   ✔ Fans: CYCLIC (2 min ON → 2 min OFF) - conserves power, ensures air
+//   ✔ Alarm: PULSING (30 sec ON → 30 sec OFF) - alerts farm workers
+//   ✔ Heater: OFF (fire prevention)
+//   ✔ Fogger: OFF (flood prevention)
+//   ✔ Cloud commands: IGNORED (local survival priority)
+//   ✔ Continues indefinitely until sensors recover
+//
+// GUARANTEES:
+//   Birds survive without sensors through cyclic ventilation
+//   No dangerous device states (heater/fogger off)
+//   Workers alerted via alarm
+// ═══════════════════════════════════════════════════════════════════════
+
+void enterEmergencySurvivalMode(String reason) {
   if (emergencySurvivalMode) return;  // Already in survival mode
   
   emergencySurvivalMode = true;
   emergencySurvivalStart = millis();
+  esmFanCurrentlyOn = true;           // Start with fan ON
+  esmLastCycleCheck = millis();
+  esmTriggerReason = reason;
   systemState = "EMERGENCY_SURVIVAL";
   
   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-  Serial.println("║  🚨🚨🚨 EMERGENCY SURVIVAL MODE ACTIVATED 🚨🚨🚨             ║");
+  Serial.println("║  🚨🚨🚨 EMERGENCY SURVIVAL MODE v2.0 ACTIVATED 🚨🚨🚨        ║");
   Serial.println("╠═══════════════════════════════════════════════════════════════╣");
-  Serial.println("║  All sensors failed + cloud unreachable                      ║");
-  Serial.println("║  Fan: HIGH (maximum ventilation)                             ║");
+  Serial.println("║  TRIGGER: " + reason);
+  Serial.println("║  Fan: CYCLIC (2 min ON / 2 min OFF)                         ║");
   Serial.println("║  Heater: OFF (fire safety)                                  ║");
   Serial.println("║  Fogger: OFF (flood prevention)                             ║");
-  Serial.println("║  Alarm: PULSING (worker alert)                              ║");
+  Serial.println("║  Alarm: PULSING (30s ON / 30s OFF)                          ║");
+  Serial.println("║  Cloud commands: IGNORED                                    ║");
   Serial.println("║  Will continue indefinitely until recovery                  ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
   
-  // Force safe state
-  setFanState(true, "HIGH");          // Maximum ventilation
+  // Force initial safe state
+  setFanState(true, "HIGH");          // Start with ventilation ON
   setHeater(false);                   // No fire risk
   setFogger(false);                   // No flood risk
   setCirculationFan(false);           // Conserve power
+  setAlarm(true);                     // Immediate alarm
 }
 
-void checkEmergencySurvival() {
-  // Enter emergency survival if: sensor error + no cloud for 5+ minutes
-  if (sensorErrorMode && !cloudConnected && (millis() - lastCloudSync > CLOUD_TIMEOUT)) {
-    enterEmergencySurvivalMode();
+// ---------------------------------------------------------------
+// Check all ESM trigger conditions
+// ---------------------------------------------------------------
+void checkEmergencySurvivalTriggers() {
+  unsigned long now = millis();
+  
+  // --- TRIGGER 1: Sensor failure + cloud timeout (original) ---
+  if (sensorErrorMode && !cloudConnected && (now - lastCloudSync > CLOUD_TIMEOUT)) {
+    enterEmergencySurvivalMode("SENSOR_FAIL + CLOUD_TIMEOUT (>5 min)");
+    return;
   }
   
-  // Exit emergency survival if sensors recover
-  if (emergencySurvivalMode && !sensorErrorMode) {
-    emergencySurvivalMode = false;
-    systemState = "NORMAL";
-    Serial.println("✅ EMERGENCY SURVIVAL ENDED - sensors recovered");
+  // --- TRIGGER 2: Sensor failure alone for extended period ---
+  if (sensorErrorMode && (now - lastValidSensor > ESM_INVALID_TIMEOUT)) {
+    enterEmergencySurvivalMode("SENSOR_FAIL (>3 min continuous)");
+    return;
   }
   
-  // Pulse alarm in emergency survival (20 sec on, 40 sec off)
-  if (emergencySurvivalMode) {
-    unsigned long elapsed = (millis() - emergencySurvivalStart) % 60000;
-    bool shouldAlarm = elapsed < 20000;
-    if (shouldAlarm != alarmOn) {
-      setAlarm(shouldAlarm);
+  // --- TRIGGER 3: Watchdog reset detected at boot ---
+  if (esmTriggeredByWatchdog) {
+    esmTriggeredByWatchdog = false;  // Clear flag, ESM will handle
+    enterEmergencySurvivalMode("WATCHDOG_RESET detected");
+    return;
+  }
+  
+  // --- TRIGGER 4: Abnormal reboot detected at boot ---
+  if (esmTriggeredByReboot) {
+    esmTriggeredByReboot = false;    // Clear flag, ESM will handle
+    enterEmergencySurvivalMode("ABNORMAL_REBOOT detected");
+    return;
+  }
+  
+  // --- TRIGGER 5: Invalid readings tracker (3 minutes continuous) ---
+  bool currentReadingsInvalid = (
+    isnan(temperature) || isnan(humidity) ||
+    temperature < TEMP_SANITY_MIN || temperature > TEMP_SANITY_MAX ||
+    humidity < HUMIDITY_SANITY_MIN || humidity > HUMIDITY_SANITY_MAX
+  );
+  
+  if (currentReadingsInvalid) {
+    if (!invalidReadingsActive) {
+      invalidReadingsActive = true;
+      invalidReadingsStart = now;
+      Serial.println("⚠️ Invalid readings detected - starting 3-min timer");
+    } else if (now - invalidReadingsStart >= ESM_INVALID_TIMEOUT) {
+      enterEmergencySurvivalMode("INVALID_READINGS (>3 min continuous)");
+      return;
     }
+  } else {
+    if (invalidReadingsActive) {
+      invalidReadingsActive = false;
+      Serial.println("✅ Valid readings restored - timer reset");
+    }
+  }
+  
+  // --- EXIT CONDITION: Sensors recovered with valid data ---
+  if (emergencySurvivalMode && !sensorErrorMode && !currentReadingsInvalid) {
+    emergencySurvivalMode = false;
+    invalidReadingsActive = false;
+    esmFanCurrentlyOn = false;
+    systemState = "NORMAL";
+    Serial.println("╔═══════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ✅ EMERGENCY SURVIVAL ENDED - sensors recovered             ║");
+    Serial.println("║  Trigger was: " + esmTriggerReason);
+    Serial.println("║  Duration: " + String((millis() - emergencySurvivalStart) / 1000) + " seconds");
+    Serial.println("╚═══════════════════════════════════════════════════════════════╝");
+    esmTriggerReason = "";
+  }
+}
+
+// ---------------------------------------------------------------
+// Run cyclic fan and alarm patterns during ESM
+// ---------------------------------------------------------------
+void runEmergencySurvivalCycles() {
+  if (!emergencySurvivalMode) return;
+  
+  unsigned long now = millis();
+  unsigned long elapsed = now - emergencySurvivalStart;
+  
+  // --- CYCLIC FAN: 2 min ON / 2 min OFF ---
+  unsigned long fanCyclePos = elapsed % ESM_FAN_CYCLE_PERIOD;
+  bool shouldFanBeOn = (fanCyclePos < ESM_FAN_ON_DURATION);
+  
+  if (shouldFanBeOn != esmFanCurrentlyOn) {
+    esmFanCurrentlyOn = shouldFanBeOn;
+    if (shouldFanBeOn) {
+      setFanState(true, "HIGH");
+      Serial.println("🔄 ESM: Fan cycle ON (2 min)");
+    } else {
+      setFanState(false, "OFF");
+      Serial.println("🔄 ESM: Fan cycle OFF (2 min rest)");
+    }
+  }
+  
+  // --- PULSING ALARM: 30 sec ON / 30 sec OFF ---
+  unsigned long alarmCyclePos = elapsed % (ESM_ALARM_ON_DURATION + ESM_ALARM_OFF_DURATION);
+  bool shouldAlarm = (alarmCyclePos < ESM_ALARM_ON_DURATION);
+  if (shouldAlarm != alarmOn) {
+    setAlarm(shouldAlarm);
+  }
+  
+  // --- Enforce safe state every cycle (heater/fogger stay OFF) ---
+  setHeater(false);
+  setFogger(false);
+  
+  // --- Periodic status log (every 60 seconds) ---
+  static unsigned long lastESMLog = 0;
+  if (now - lastESMLog >= 60000) {
+    lastESMLog = now;
+    Serial.println("📊 ESM Status: Fan=" + String(esmFanCurrentlyOn ? "ON" : "OFF") +
+                   " | Alarm=" + String(alarmOn ? "ON" : "OFF") +
+                   " | Duration=" + String(elapsed / 1000) + "s" +
+                   " | Trigger=" + esmTriggerReason);
   }
 }
   
@@ -4284,6 +4420,15 @@ void setup() {
    wasWatchdogReset = (restartReason == "WATCHDOG" || restartReason == "PANIC");
    Serial.printf("📋 Restart Reason: %s\n", restartReason.c_str());
    
+   // 🏭 MODULE H v2.0: Detect abnormal boot for Emergency Survival Mode
+   if (restartReason == "WATCHDOG" || restartReason == "PANIC") {
+     esmTriggeredByWatchdog = true;
+     Serial.println("🚨 WATCHDOG/PANIC reset detected → ESM will activate after boot");
+   } else if (restartReason != "POWER_ON" && restartReason != "SOFTWARE" && restartReason != "DEEP_SLEEP") {
+     esmTriggeredByReboot = true;
+     Serial.println("🚨 Abnormal reboot detected (" + restartReason + ") → ESM will activate after boot");
+   }
+   
    // Track restart count
    preferences.begin("device", false);
    totalRestarts = preferences.getInt("restarts", 0) + 1;
@@ -4561,8 +4706,11 @@ void loop() {
     checkOTAUpdate();
   }
   
-  // 🏭 EMERGENCY SURVIVAL CHECK (every loop)
-  checkEmergencySurvival();
+  // 🏭 EMERGENCY SURVIVAL CHECK (every loop - all triggers)
+  checkEmergencySurvivalTriggers();
+  
+  // 🏭 EMERGENCY SURVIVAL CYCLIC CONTROL (fan/alarm patterns)
+  runEmergencySurvivalCycles();
   
   // ===== CONTROL ENGINE (ALL automation runs locally) =====
    if (bootFanDone && !safeModeActive && !emergencySurvivalMode) {
