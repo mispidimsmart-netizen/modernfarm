@@ -64,6 +64,9 @@
  * ║            - Ammonia sustained threshold (45s confirm before action)     ║
  * ║            - Invalid sensor → last stable value fallback                ║
  * ║            - Sensor offline → safe ventilation mode                      ║
+ * ║  MODULE K: Power Recovery Ventilation Purge                             ║
+ * ║            - Outage > 3 min → 5 min forced ventilation on restore       ║
+ * ║            - Temperature readings ignored during purge                   ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  * 
  * SAFETY RULES (LOCAL - Cloud এর জন্য অপেক্ষা করে না!):
@@ -719,6 +722,8 @@ void fetchConfigFromCloud();       // 🏭 Fetch config parameters (Industrial S
 void enterEmergencySurvivalMode(String reason); // 🏭 Emergency survival mode v2.0
 void checkEmergencySurvivalTriggers();           // Check all ESM trigger conditions
 void runEmergencySurvivalCycles();               // Run cyclic fan/alarm in ESM
+void startPowerRecoveryPurge(unsigned long outageDuration); // 🆕 Module K
+void checkPowerRecoveryPurge();                              // 🆕 Module K
 
 // 🆕 Module function prototypes
 void checkMinimumVentilation();
@@ -823,6 +828,16 @@ bool sensorInitOK = true;
  unsigned long onlineDurationSec = 0;
  unsigned long offlineDurationSec = 0;
  unsigned long lastOnlineCheck = 0;
+
+ // ═══════════════════════════════════════════════════════════════════════
+ // 🆕 MODULE K: POWER RECOVERY VENTILATION PURGE
+ // After power outage > 3 min: run all fans for 5 min, ignore temp readings
+ // ═══════════════════════════════════════════════════════════════════════
+ #define PURGE_OUTAGE_THRESHOLD   180000UL   // 3 minutes minimum outage to trigger
+ #define PURGE_DURATION           300000UL   // 5 minutes purge ventilation
+ bool purgeActive = false;                   // Purge mode currently running
+ unsigned long purgeStartTime = 0;           // When purge started
+ unsigned long estimatedOutageDuration = 0;  // Estimated outage length (ms)
  
  // Gas Sensor Warmup
  bool gasWarmupDone = false;
@@ -1535,6 +1550,14 @@ void IRAM_ATTR waterPulseISR() {
    if (safeModeActive && now >= safeModeEndTime) {
      safeModeActive = false;
      Serial.println("✅ Safe mode ended → Normal automation resumed");
+     
+     // 🆕 MODULE K: Start purge if this was a power-related restart
+     // Estimate outage as time since last known uptime (conservative: assume > 3 min for power events)
+     if (isPowerRelatedRestart() && !purgeActive) {
+       // Power event restarts always get purge (outage duration unknown but assumed significant)
+       startPowerRecoveryPurge(PURGE_OUTAGE_THRESHOLD + 1);
+     }
+   }
    }
  }
  
@@ -3394,6 +3417,7 @@ void syncWithCloud() {
   doc["restart_reason"] = restartReason;
   doc["total_restarts"] = totalRestarts;
   doc["safe_mode_active"] = safeModeActive;
+  doc["purge_active"] = purgeActive;
   doc["power_event_type"] = isPowerRelatedRestart() ? "POWER_EVENT" : "NORMAL";
   doc["gas_warmup_done"] = gasWarmupDone;
   doc["ammonia_avg_10"] = ammoniaAvg10;
@@ -3947,7 +3971,69 @@ void runEmergencySurvivalCycles() {
                    " | Trigger=" + esmTriggerReason);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE K: POWER RECOVERY VENTILATION PURGE
+// After power outage > 3 minutes:
+//   1. Run ALL ventilation fans at HIGH for 5 minutes
+//   2. Ignore temperature readings during purge (prevent false shutoff)
+//   3. Return to normal automation after purge completes
+// Purpose: Clear accumulated ammonia, CO2, and stale air from shed
+// ═══════════════════════════════════════════════════════════════════════
+
+void startPowerRecoveryPurge(unsigned long outageDuration) {
+  if (purgeActive || emergencySurvivalMode) return;
   
+  if (outageDuration < PURGE_OUTAGE_THRESHOLD) {
+    Serial.println("⚡ Power outage < 3 min - no purge needed");
+    return;
+  }
+  
+  purgeActive = true;
+  purgeStartTime = millis();
+  estimatedOutageDuration = outageDuration;
+  
+  Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+  Serial.println("║  ⚡ POWER RECOVERY VENTILATION PURGE (Module K)              ║");
+  Serial.println("╠═══════════════════════════════════════════════════════════════╣");
+  Serial.printf( "║  Outage Duration: ~%lu seconds                               \n", outageDuration / 1000);
+  Serial.println("║  Action: ALL fans HIGH for 5 minutes                        ║");
+  Serial.println("║  Temperature readings: IGNORED (preventing false shutoff)   ║");
+  Serial.println("║  Normal automation resumes after purge                      ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+  
+  setFanState(true, "HIGH");
+  setCirculationFan(true);
+  setHeater(false);
+}
+
+void checkPowerRecoveryPurge() {
+  if (!purgeActive) return;
+  
+  unsigned long now = millis();
+  unsigned long elapsed = now - purgeStartTime;
+  
+  // Keep fans running during purge
+  if (!fanOn || fanSpeed != "HIGH") setFanState(true, "HIGH");
+  if (!circulationFanOn) setCirculationFan(true);
+  setHeater(false);
+  
+  // Periodic log
+  static unsigned long lastPurgeLog = 0;
+  if (now - lastPurgeLog >= 60000) {
+    lastPurgeLog = now;
+    Serial.printf("⚡ PURGE: %lu sec remaining | Fan=HIGH | Temp IGNORED\n", (PURGE_DURATION - elapsed) / 1000);
+  }
+  
+  // Check purge complete
+  if (elapsed >= PURGE_DURATION) {
+    purgeActive = false;
+    Serial.println("╔═══════════════════════════════════════════════════════════════╗");
+    Serial.println("║  ✅ VENTILATION PURGE COMPLETE - resuming normal automation  ║");
+    Serial.println("╚═══════════════════════════════════════════════════════════════╝");
+  }
+}
+
   http.begin(url);
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
@@ -4712,8 +4798,12 @@ void loop() {
   // 🏭 EMERGENCY SURVIVAL CYCLIC CONTROL (fan/alarm patterns)
   runEmergencySurvivalCycles();
   
+  // ⚡ MODULE K: POWER RECOVERY PURGE (every loop)
+  checkPowerRecoveryPurge();
+  
   // ===== CONTROL ENGINE (ALL automation runs locally) =====
-   if (bootFanDone && !safeModeActive && !emergencySurvivalMode) {
+  // Blocked during: safe mode, emergency survival, AND purge (temp ignored)
+   if (bootFanDone && !safeModeActive && !emergencySurvivalMode && !purgeActive) {
     controlLogic();
     
     // 💡 LIGHTING SCHEDULE CONTROL + PWM FADE
