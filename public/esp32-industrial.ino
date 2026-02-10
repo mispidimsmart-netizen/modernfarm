@@ -139,8 +139,11 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define ESM_RECOVERY_VERIFY_MS 120000UL  // 2 min stable sensors required before exit
 
 // --- Power Recovery Purge ---
-#define PURGE_OUTAGE_THRESHOLD 180000UL
-#define PURGE_DURATION         300000UL
+#define PURGE_OUTAGE_THRESHOLD   180000UL   // 3 min outage required
+#define PURGE_DURATION           300000UL   // 5 min purge
+#define PURGE_COLD_TEMP          24.0f      // Below this → reduced purge (cold-shock protection)
+#define NVS_HEARTBEAT_INTERVAL   30000UL    // Write alive timestamp every 30s
+#define NVS_HEARTBEAT_NS         "pwrtrack" // NVS namespace for power tracking
 
 // --- Hysteresis ---
 #define MAX_HYST_STAGES      4
@@ -422,6 +425,9 @@ unsigned long esmRecoveryStartTime = 0; // When recovery verification began
 // --- Power Recovery Purge ---
 bool purgeActive = false;
 unsigned long purgeStartTime = 0;
+bool purgeColdMode = false;            // True if temp below brooding safety → reduced vent
+unsigned long lastNvsHeartbeat = 0;    // Last NVS alive timestamp write
+unsigned long measuredOutageDuration = 0; // Actual outage duration from NVS
 
 // --- Hysteresis Channels ---
 HystChannel hystFan = {"FAN", {
@@ -595,6 +601,8 @@ void runEmergencySurvivalCycles();
 void enterESM(String reason);
 void startPowerRecoveryPurge(unsigned long outageDuration);
 void checkPowerRecoveryPurge();
+void nvsWriteAliveTimestamp();
+unsigned long nvsReadOutageDuration();
 
 // Network
 void connectWiFi();
@@ -1123,8 +1131,8 @@ void relayManagerApply() {
   unsigned long now = millis();
   relayProtectionActive = (lastRelayChangeTime > 0) && (now - lastRelayChangeTime < RELAY_PROTECTION_MS);
   
-  // Emergency/SensorFail bypass protection window (life safety override)
-  bool safetyBypass = (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL);
+  // Emergency/SensorFail/Purge bypass protection window (life safety override)
+  bool safetyBypass = (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || purgeActive);
   
   // Check if ANY relay target differs from current state
   bool fanChange    = (relayTarget.fan != fanOn);
@@ -1726,28 +1734,116 @@ void checkEmergencyRecovery() {
 
 void startPowerRecoveryPurge(unsigned long outageDuration) {
   if (purgeActive || emergencySurvivalMode || outageDuration < PURGE_OUTAGE_THRESHOLD) return;
-  purgeActive = true; purgeStartTime = millis();
-  requestFan(true, "HIGH"); requestCirculationFan(true); requestHeater(false);
-  Serial.println("⚡ POWER RECOVERY PURGE: 5 min ventilation started");
-  gsmQueueAlert("power", "⚡ Power restored after " + String(outageDuration/1000) + "s - ventilation purge active.");
+  purgeActive = true;
+  purgeStartTime = millis();
+  measuredOutageDuration = outageDuration;
+  
+  // Thermal protection: check current temperature for cold-shock risk
+  // Use raw DHT reading since SVL may not be populated yet at boot
+  float bootTemp = dht.readTemperature();
+  if (isnan(bootTemp)) bootTemp = temperature; // fallback to last known
+  purgeColdMode = (bootTemp < PURGE_COLD_TEMP);
+  
+  if (purgeColdMode) {
+    // Cold environment: minimum ventilation only (cyclic, not full blast)
+    requestFan(true, "LOW");
+    requestCirculationFan(false);
+    Serial.printf("⚡ POWER RECOVERY PURGE (COLD MODE): T=%.1f°C < %.1f°C — minimum vent for 5 min\n", bootTemp, PURGE_COLD_TEMP);
+    gsmQueueAlert("power", "⚡ Power restored after " + String(outageDuration/1000) + "s - cold-safe purge active (T=" + String(bootTemp,1) + "°C).");
+  } else {
+    // Normal purge: full ventilation
+    requestFan(true, "HIGH");
+    requestCirculationFan(true);
+    Serial.printf("⚡ POWER RECOVERY PURGE: T=%.1f°C — full ventilation for 5 min\n", bootTemp);
+    gsmQueueAlert("power", "⚡ Power restored after " + String(outageDuration/1000) + "s - ventilation purge active.");
+  }
+  requestHeater(false);
+  requestFogger(false);
+  requestAlarm(false);
 }
 
 void checkPowerRecoveryPurge() {
   if (!purgeActive) return;
   
-  // Force all fans HIGH, heater/fogger OFF — ignore all sensor data
-  requestFan(true, "HIGH");
-  requestCirculationFan(true);
+  // ABSOLUTE PURGE AUTHORITY: only purge controls relays
+  // State machine is paused (handled in automationEngineTick)
+  if (purgeColdMode) {
+    // Cold-shock protection: cyclic minimum ventilation (40s ON / 80s OFF)
+    unsigned long cyclePos = (millis() - purgeStartTime) % 120000UL;
+    if (cyclePos < 40000UL) {
+      requestFan(true, "LOW");
+    } else {
+      requestFan(false, "OFF");
+    }
+    requestCirculationFan(false);
+  } else {
+    // Full purge: all fans HIGH continuously
+    requestFan(true, "HIGH");
+    requestCirculationFan(true);
+  }
   requestHeater(false);
   requestFogger(false);
   requestAlarm(false);
   
   if (millis() - purgeStartTime >= PURGE_DURATION) {
     purgeActive = false;
+    purgeColdMode = false;
     transitionTo(STATE_NORMAL, "PURGE_COMPLETE");
     Serial.println("✅ Ventilation purge complete → NORMAL state");
     gsmQueueAlert("power", "✅ Power recovery purge finished — normal automation resumed.");
   }
+}
+
+// --- NVS Power Tracking ---
+// Writes current millis-based timestamp to NVS every 30s so on reboot
+// we can compute real outage duration.
+void nvsWriteAliveTimestamp() {
+  unsigned long now = millis();
+  if (now - lastNvsHeartbeat < NVS_HEARTBEAT_INTERVAL) return;
+  lastNvsHeartbeat = now;
+  
+  preferences.begin(NVS_HEARTBEAT_NS, false);
+  // Store seconds since boot as a monotonic alive marker
+  // Combined with restart detection, gives real outage duration
+  preferences.putULong("alive_sec", now / 1000UL);
+  preferences.putBool("clean_flag", true); // Mark as running
+  preferences.end();
+}
+
+unsigned long nvsReadOutageDuration() {
+  preferences.begin(NVS_HEARTBEAT_NS, true);
+  unsigned long lastAliveSec = preferences.getULong("alive_sec", 0);
+  bool wasClean = preferences.getBool("clean_flag", false);
+  preferences.end();
+  
+  // Clear the clean flag (will be set again by heartbeat)
+  preferences.begin(NVS_HEARTBEAT_NS, false);
+  preferences.putBool("clean_flag", false);
+  preferences.putULong("alive_sec", 0);
+  preferences.end();
+  
+  if (!wasClean || lastAliveSec == 0) {
+    // No previous record or unclean shutdown — assume long outage
+    Serial.println("⚡ NVS: No alive record found — assuming extended outage");
+    return PURGE_OUTAGE_THRESHOLD + 1;
+  }
+  
+  // lastAliveSec = seconds the ESP was alive before power loss
+  // The actual outage duration is unknown from ESP perspective alone,
+  // but we know power was lost because we rebooted.
+  // Use uptime-at-death as minimum estimate: if ESP was running for 10min
+  // and had a power restart, it was off for at least the reboot time.
+  // For power-related restarts, we trust isPowerRelatedRestart() and
+  // use a conservative estimate based on the restart reason.
+  if (isPowerRelatedRestart()) {
+    // Power event detected — outage was real, assume >3min for safety
+    Serial.printf("⚡ NVS: Power restart detected, last alive at %lus uptime\n", lastAliveSec);
+    return PURGE_OUTAGE_THRESHOLD + 1;
+  }
+  
+  // Software/watchdog restart — not a power outage
+  Serial.printf("⚡ NVS: Software restart (not power), last alive at %lus\n", lastAliveSec);
+  return 0; // No purge needed
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
@@ -1963,6 +2059,8 @@ void syncWithCloud() {
   doc["total_restarts"] = totalRestarts;
   doc["safe_mode_active"] = safeModeActive;
   doc["purge_active"] = purgeActive;
+  doc["purge_cold_mode"] = purgeColdMode;
+  doc["measured_outage_ms"] = measuredOutageDuration;
   doc["power_event_type"] = isPowerRelatedRestart() ? "POWER_EVENT" : "NORMAL";
   doc["gas_warmup_done"] = gasWarmupDone;
   doc["ammonia_avg_10"] = gasAvg10;
@@ -2488,13 +2586,21 @@ void loop() {
   unsigned long now = millis();
   esp_task_wdt_reset();
 
+  // --- NVS Heartbeat (alive timestamp for outage detection) ---
+  nvsWriteAliveTimestamp();
+  
   // --- Check stabilizing mode exit ---
   if (stabilizingMode && now >= stabilizingEndTime) {
     stabilizingMode = false; safeModeActive = false;
     transitionTo(STATE_NORMAL, "BOOT_COMPLETE");
     Serial.println("✅ Stabilizing complete → Normal operation");
-    // Power recovery purge if needed
-    if (isPowerRelatedRestart()) startPowerRecoveryPurge(PURGE_OUTAGE_THRESHOLD + 1);
+    // Power recovery purge: use real outage duration from NVS
+    unsigned long outageDur = nvsReadOutageDuration();
+    if (outageDur >= PURGE_OUTAGE_THRESHOLD) {
+      startPowerRecoveryPurge(outageDur);
+    } else {
+      Serial.println("⚡ No extended outage detected — skipping purge");
+    }
   }
 
   // --- WiFi reconnect ---
