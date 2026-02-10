@@ -1137,6 +1137,22 @@ void updateLightingWithFade() {
 // ║  SECTION 9: HYSTERESIS ENGINE                                         ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  MODULE I: INDUSTRIAL HYSTERESIS STABILIZATION                         ║
+// ║                                                                        ║
+// ║  Each stage has separate ON and OFF thresholds (deadband).             ║
+// ║  Example: Stage1 ON at 30°C, OFF at 28°C (2°C deadband)              ║
+// ║                                                                        ║
+// ║  Timing protection enforced per stage:                                 ║
+// ║    minimumOnTime  = 60 seconds (relay cannot turn OFF before this)     ║
+// ║    minimumOffTime = 60 seconds (relay cannot turn ON before this)      ║
+// ║  This PREVENTS relay chattering and rapid toggling.                    ║
+// ║                                                                        ║
+// ║  Result: activeStageLevel determines fan speed in runControlLogic():   ║
+// ║    0 = OFF, 1 = LOW, 2 = MEDIUM, 3 = HIGH                            ║
+// ║  Heater and fogger also gated by hysteresis timing.                    ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
 int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
   unsigned long now = millis();
   int highest = 0;
@@ -1145,10 +1161,22 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
     bool goOn  = inv ? (val <= s.onThreshold)  : (val >= s.onThreshold);
     bool goOff = inv ? (val >= s.offThreshold) : (val <= s.offThreshold);
     if (s.isActive) {
-      if (goOff && (now - s.lastOnTime >= s.minOnTime)) { s.isActive = false; s.lastOffTime = now; }
+      // Cannot turn OFF until minimumOnTime (60s) has elapsed
+      if (goOff && (now - s.lastOnTime >= s.minOnTime)) {
+        s.isActive = false;
+        s.lastOffTime = now;
+        Serial.printf("🔽 HYST %s Stage%d OFF (val=%.1f ≤ off=%.1f, was on %lus)\n",
+          ch.name, i+1, val, s.offThreshold, (now - s.lastOnTime)/1000);
+      }
     } else {
+      // Cannot turn ON until minimumOffTime (60s) has elapsed
       unsigned long offDur = (s.lastOffTime == 0) ? s.minOffTime : (now - s.lastOffTime);
-      if (goOn && offDur >= s.minOffTime) { s.isActive = true; s.lastOnTime = now; }
+      if (goOn && offDur >= s.minOffTime) {
+        s.isActive = true;
+        s.lastOnTime = now;
+        Serial.printf("🔼 HYST %s Stage%d ON (val=%.1f ≥ on=%.1f, was off %lus)\n",
+          ch.name, i+1, val, s.onThreshold, offDur/1000);
+      }
     }
     if (s.isActive) highest = i + 1;
   }
@@ -1271,29 +1299,44 @@ void runControlLogic() {
     broilerAirflowControl();
   }
 
-  // Priority 5: Main fan/alarm based on state
+  // Priority 5: Main fan/alarm based on hysteresis + state
+  // ⚠️ Fan speed is now driven by HYSTERESIS STAGE LEVEL, not raw state alone.
+  // This ensures timing protection (60s min ON/OFF) prevents relay chattering.
   switch (currentState) {
     case STATE_EMERGENCY:
       requestFan(true, "HIGH");
       requestAlarm(true);
-      // GSM alert for emergency
       gsmQueueAlert("temperature", "🚨 EMERGENCY! Temp=" + String(temperature,1) + "°C HSI=" + String(currentHSI,1));
       break;
     case STATE_DANGER:
       requestFan(true, "HIGH");
-      requestAlarm(ammonia > rules.ammoniaAlarm);
+      requestAlarm(hystAlarm.activeStageLevel > 0 || (ammonia > rules.ammoniaAlarm && nh3VentilationConfirmed));
       break;
-    case STATE_WARNING:
-      requestFan(true, currentHSI > rules.hsiFanHigh ? "HIGH" : "MEDIUM");
+    case STATE_WARNING: {
+      // Use hysteresis fan stage to determine speed (prevents chattering)
+      int fanStage = hystFan.activeStageLevel;
+      if (fanStage >= 3) requestFan(true, "HIGH");
+      else if (fanStage == 2) requestFan(true, "MEDIUM");
+      else if (fanStage == 1) requestFan(true, "LOW");
+      else requestFan(true, "LOW"); // WARNING state = at least LOW
       requestAlarm(false);
       break;
+    }
     case STATE_NORMAL:
-      if (!minVentActive && !foggerActive) requestFan(false, "OFF");
+      // Use hysteresis: only turn fan off if hysteresis agrees (timing protected)
+      if (!minVentActive && !foggerActive) {
+        if (hystFan.activeStageLevel > 0) {
+          // Hysteresis still active (within min-on-time or temp above off-threshold)
+          String speed = hystFan.activeStageLevel >= 3 ? "HIGH" : hystFan.activeStageLevel == 2 ? "MEDIUM" : "LOW";
+          requestFan(true, speed);
+        } else {
+          requestFan(false, "OFF");
+        }
+      }
       requestAlarm(false);
       break;
     case STATE_SENSOR_FAIL:
       requestFan(true, "HIGH");
-      // Periodic alarm for sensor fail
       { unsigned long elapsed = millis() - stateEnteredAt;
         requestAlarm((elapsed % 20000) < 200); }
       gsmQueueAlert("temperature", "⚠️ SENSOR FAIL! Fan ON for safety.");
@@ -1316,7 +1359,7 @@ void runControlLogic() {
   }
 }
 
-// --- Module B: Heater Control ---
+// --- Module B: Heater Control (gated by hysteresis timing) ---
 void advancedHeaterControl() {
   if (!heaterSettings.enabled) return;
   if (heaterManualOverride && temperature <= heaterSettings.safetyMaxTemp) {
@@ -1325,13 +1368,13 @@ void advancedHeaterControl() {
     } else return;
   }
   if (temperature > heaterSettings.safetyMaxTemp) { requestHeater(false); return; }
-  if (isLayer()) {
-    if (temperature < heaterSettings.layerOnTemp && !heaterOn) requestHeater(true);
-    else if (temperature > heaterSettings.layerOffTemp && heaterOn) requestHeater(false);
-  } else if (isBroiler()) {
-    float target = getHeaterTargetTemp(farmConfig.chickAgeDays);
-    if (temperature < target - heaterSettings.tolerance && !heaterOn) requestHeater(true);
-    else if (temperature > target + heaterSettings.tolerance && heaterOn) requestHeater(false);
+  
+  // Use hysteresis result instead of raw threshold comparison
+  // This enforces 60s min ON/OFF timing to prevent relay chattering
+  if (hystHeater.activeStageLevel > 0 && !heaterOn) {
+    requestHeater(true);
+  } else if (hystHeater.activeStageLevel == 0 && heaterOn) {
+    requestHeater(false);
   }
 }
 
