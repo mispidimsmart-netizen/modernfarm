@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Settings, TrendingUp, Wallet } from 'lucide-react';
+import { Settings, TrendingUp, Wallet, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -44,6 +44,11 @@ import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard'
 import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Industrial Dashboard Components
+import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
+import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
+import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 
 // Farmer-Friendly Assistant Components
 import { 
@@ -120,84 +125,51 @@ export function Dashboard() {
       <Header />
 
       <main className="page-container px-4">
-        {/* ============ SECTION 0: SHED SELECTOR (TOP) ============ */}
-        <div className="flex items-center gap-2 mb-4">
+        {/* ============ SHED SELECTOR ============ */}
+        <div className="flex items-center gap-2 mb-3">
           <ShedSelector />
           <ShedManagementSheet />
         </div>
 
-        {/* ============ SECTION 0.5: ALERT SUMMARY BANNER ============ */}
+        {/* ============ ALERT SUMMARY BANNER ============ */}
         <AlertSummaryBanner />
 
-        {/* ============ PANIC PREVENTION BANNER ============ */}
-        <div className="mx-0 mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-2.5 text-center">
-          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+        {/* ============ 1. HERO STATUS (Largest element) ============ */}
+        <div className="mb-3">
+          <IndustrialHeroStatus />
+        </div>
+
+        {/* ============ 2. CURRENT ACTION PANEL ============ */}
+        <div className="mb-3">
+          <CurrentActionPanel />
+        </div>
+
+        {/* ============ 3. CORE METRICS ROW (3 items only) ============ */}
+        <div className="mb-3">
+          <CoreMetricsRow />
+        </div>
+
+        {/* ============ 4. PANIC PREVENTION STRIP ============ */}
+        <div className="mb-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-2 text-center">
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
             {language === 'bn' 
-              ? '✅ খামার সম্পূর্ণ অটোমেটিক চলছে — কোন বাটন চাপার প্রয়োজন নেই'
-              : '✅ Farm is fully automatic — no button press needed'}
+              ? '✅ খামার সম্পূর্ণ অটোমেটিক চলছে — কিছু করার প্রয়োজন নেই'
+              : '✅ Farm is fully automatic — no action needed'}
           </p>
         </div>
 
-        {/* ============ SECTION 1: HERO FARM HEALTH BANNER ============ */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="mb-4"
+        {/* ============ 5. DETAILS BUTTON ============ */}
+        <Link
+          to="/alerts"
+          className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3 mb-4 transition-colors hover:bg-muted/50"
         >
-          <HeroFarmBanner />
-        </motion.div>
+          <span className="text-sm font-semibold text-foreground">
+            {language === 'bn' ? '📊 বিস্তারিত দেখুন' : '📊 View Details'}
+          </span>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </Link>
 
-        {/* ============ SECTION 2: COMFORT METERS ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.02 }}
-          className="mb-4"
-        >
-          <ComfortIndicators />
-        </motion.div>
-
-        {/* ============ SECTION 3: SUGGESTED ACTION CARD ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
-          className="mb-4"
-        >
-          <AdvisoryAssistant />
-        </motion.div>
-
-        {/* ============ SECTION 4: TODAY READABLE SUMMARY ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.06 }}
-          className="mb-4"
-        >
-          <TodayReadableSummary />
-        </motion.div>
-
-        {/* ============ SECTION 5: QUICK REFERENCE SENSORS ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="mb-4"
-        >
-          <QuickSensorDisplay />
-        </motion.div>
-
-        {/* ============ SECTION 6: SYSTEM ACTIVITY LOG ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-4"
-        >
-          <SystemActivityCard />
-        </motion.div>
-
-        {/* ============ SECTION 7: TABS (Home + Details) ============ */}
+        {/* ============ TABS (Home extras + Full Details) ============ */}
         <div className="mb-5">
           <Tabs defaultValue="home" className="w-full">
             <TabsList className="w-full grid grid-cols-2 h-11 rounded-2xl bg-muted/50 p-1 border border-border/50">
@@ -215,25 +187,19 @@ export function Dashboard() {
               </TabsTrigger>
             </TabsList>
             
-            {/* TAB: Home (Simple Assistant View) */}
+            {/* TAB: Home */}
             <TabsContent value="home" className="mt-4 space-y-4">
+              {/* Advisory */}
+              <AdvisoryAssistant />
+              
+              {/* Today Summary */}
+              <TodayReadableSummary />
+              
               {/* Weather */}
               <WeatherCard />
               
-              {/* Inside-Outside Temperature Delta */}
-              <InsideOutsideDeltaCard />
-              
-              {/* Quick Status Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <HeatStressStatusCard 
-                  hsiResult={hsiResult}
-                  temperature={sensorData.temperature}
-                  humidity={sensorData.humidity}
-                />
-                <SystemModeCard />
-              </div>
-              
-              {/* Quick Links */}
+              {/* System Activity */}
+              <SystemActivityCard />
               
               {/* Quick Links */}
               <div className="grid grid-cols-2 gap-3">
@@ -262,6 +228,25 @@ export function Dashboard() {
             <TabsContent value="details" className="mt-4 space-y-4">
               {/* Big Farm Overview */}
               <BigFarmOverview />
+              
+              {/* Comfort Indicators */}
+              <ComfortIndicators />
+              
+              {/* Inside-Outside Delta */}
+              <InsideOutsideDeltaCard />
+              
+              {/* Full Hero Banner */}
+              <HeroFarmBanner />
+              
+              {/* Quick Status Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <HeatStressStatusCard 
+                  hsiResult={hsiResult}
+                  temperature={sensorData.temperature}
+                  humidity={sensorData.humidity}
+                />
+                <SystemModeCard />
+              </div>
               
               {/* Technical Sensor Cards */}
               <div className="grid grid-cols-2 gap-3">
@@ -294,6 +279,9 @@ export function Dashboard() {
                   status={statusLevels.water}
                 />
               </div>
+              
+              {/* Quick Sensor Display */}
+              <QuickSensorDisplay />
               
               {/* Device Status */}
               <div className="grid grid-cols-4 gap-2">
