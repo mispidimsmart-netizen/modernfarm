@@ -49,6 +49,10 @@
  * ║  MODULE F: Offline Age Increment (24h local tick)                       ║
  * ║  MODULE G: Priority System (Safety > Heat > Cool > Vent > Light)        ║
  * ║  MODULE H: Emergency Survival Mode (sensor+power failure)               ║
+ * ║  MODULE I: Industrial Hysteresis Stabilization Engine                    ║
+ * ║            - Separate ON/OFF thresholds per relay stage                  ║
+ * ║            - Anti-oscillation timers (min 60s ON, 60s OFF)              ║
+ * ║            - Sensor fluctuation rejection filter                         ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  * 
  * SAFETY RULES (LOCAL - Cloud এর জন্য অপেক্ষা করে না!):
@@ -344,6 +348,128 @@ WaterAnalyticsSettings waterAnalyticsSettings = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE I: INDUSTRIAL HYSTERESIS STABILIZATION ENGINE
+// Prevents relay oscillation with separate ON/OFF thresholds and timers
+// ═══════════════════════════════════════════════════════════════════════
+
+// Maximum relay stages supported
+#define MAX_HYSTERESIS_STAGES  4
+#define HYSTERESIS_MIN_ON_TIME   60000UL   // 60 seconds minimum ON
+#define HYSTERESIS_MIN_OFF_TIME  60000UL   // 60 seconds minimum OFF
+
+// Individual hysteresis stage definition
+struct HysteresisStage {
+  float onThreshold;     // Activate when sensor EXCEEDS this value
+  float offThreshold;    // Deactivate when sensor DROPS BELOW this value
+  bool isActive;         // Current state of this stage
+  unsigned long lastOnTime;   // millis() when last turned ON
+  unsigned long lastOffTime;  // millis() when last turned OFF
+  unsigned long minOnTime;    // Minimum time to stay ON (ms)
+  unsigned long minOffTime;   // Minimum time to stay OFF (ms)
+};
+
+// Hysteresis channel (one per relay/device)
+struct HysteresisChannel {
+  const char* name;                           // Channel name for logging
+  HysteresisStage stages[MAX_HYSTERESIS_STAGES]; // Up to 4 stages
+  int stageCount;                             // Active stages in this channel
+  int activeStageLevel;                       // Highest active stage (0=OFF)
+  bool locked;                                // True = anti-oscillation timer active
+};
+
+// Define channels for each controllable device
+HysteresisChannel hystFan = {
+  .name = "EXHAUST_FAN",
+  .stages = {
+    // Stage 1: Temp >= 30°C ON, <= 28°C OFF
+    { .onThreshold = 30.0, .offThreshold = 28.0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    // Stage 2: Temp >= 32°C ON, <= 30°C OFF (HIGH speed)
+    { .onThreshold = 32.0, .offThreshold = 30.0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    // Stage 3: Temp >= 34°C ON, <= 32°C OFF (EMERGENCY)
+    { .onThreshold = 34.0, .offThreshold = 32.0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    // Stage 4: reserved
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME }
+  },
+  .stageCount = 3,
+  .activeStageLevel = 0,
+  .locked = false
+};
+
+HysteresisChannel hystHeater = {
+  .name = "HEATER",
+  .stages = {
+    // Stage 1: Temp <= onThreshold → ON, >= offThreshold → OFF (inverted logic)
+    { .onThreshold = 20.0, .offThreshold = 22.0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME }
+  },
+  .stageCount = 1,
+  .activeStageLevel = 0,
+  .locked = false
+};
+
+HysteresisChannel hystFogger = {
+  .name = "FOGGER",
+  .stages = {
+    // Stage 1: Temp >= 32°C ON, <= 30°C OFF
+    { .onThreshold = 32.0, .offThreshold = 30.0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME }
+  },
+  .stageCount = 1,
+  .activeStageLevel = 0,
+  .locked = false
+};
+
+HysteresisChannel hystAlarm = {
+  .name = "ALARM",
+  .stages = {
+    // Stage 1: Temp >= 35°C ON, <= 33°C OFF
+    { .onThreshold = 35.0, .offThreshold = 33.0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME },
+    { .onThreshold = 0, .offThreshold = 0, .isActive = false,
+      .lastOnTime = 0, .lastOffTime = 0,
+      .minOnTime = HYSTERESIS_MIN_ON_TIME, .minOffTime = HYSTERESIS_MIN_OFF_TIME }
+  },
+  .stageCount = 1,
+  .activeStageLevel = 0,
+  .locked = false
+};
+
+// ═══════════════════════════════════════════════════════════════════════
 // 📋 RUNTIME RULES (Loaded at boot based on farmType)
 // ═══════════════════════════════════════════════════════════════════════
 struct RuntimeRules {
@@ -596,6 +722,11 @@ void setLightWithFade(int newBrightness);
 float getHeaterTargetTemp(int ageDays);
 void handleAdvancedAutomationSettings(JsonObject& adv);
 
+// 🆕 Module I: Hysteresis Engine function prototypes
+int evaluateHysteresisChannel(HysteresisChannel &ch, float sensorValue, bool invertedLogic = false);
+void updateHysteresisThresholds();  // Sync thresholds from RuntimeRules
+void printHysteresisStatus();       // Debug print
+
 // 🆕 OTA Update function prototypes
 void checkOTAUpdate();
 void performOTAUpdate(String firmwareUrl, int firmwareSize, String version);
@@ -722,7 +853,7 @@ float lastVoltageRMS = 230.0;
  int otaPendingSize = 0;
  unsigned long lastOTACheck = 0;
  const unsigned long OTA_CHECK_INTERVAL = 3600000UL;  // Check every 1 hour
- String firmwareVersion = "6.0.0";  // Industrial Safety Model + Emergency Survival
+ String firmwareVersion = "6.1.0";  // v6.1.0: Industrial Hysteresis Stabilization Engine
   
  // ═══════════════════════════════════════════════════════════════════════
  // 💧 SMART WATER FLOW MONITORING
@@ -1089,6 +1220,9 @@ void loadLayerRules() {
   Serial.printf("     Temp: %.0f-%.0f°C (fixed)\n", rules.tempMin, rules.tempMax);
   Serial.printf("     HSI: %.0f/%.0f/%.0f\n", rules.hsiFanLow, rules.hsiFanHigh, rules.hsiEmergency);
   Serial.printf("     NH3: %.0f/%.0f ppm\n", rules.ammoniaFan, rules.ammoniaAlarm);
+  
+  // 🆕 Sync hysteresis thresholds from updated rules
+  updateHysteresisThresholds();
 }
 
 void loadBroilerRules() {
@@ -1128,6 +1262,9 @@ void loadBroilerRules() {
   Serial.printf("     Temp: %.0f-%.0f°C (age-based)\n", rules.tempMin, rules.tempMax);
   Serial.printf("     HSI: %.0f/%.0f/%.0f/%.0f\n", rules.hsiFanLow, rules.hsiFanHigh, rules.hsiEmergency, rules.hsiCritical);
   Serial.printf("     NH3: %.0f/%.0f ppm\n", rules.ammoniaFan, rules.ammoniaAlarm);
+  
+  // 🆕 Sync hysteresis thresholds from updated rules
+  updateHysteresisThresholds();
 }
 
 void updateBroilerTempRules() {
@@ -1146,7 +1283,11 @@ void updateBroilerTempRules() {
     rules.tempHeaterOn = rules.tempTarget - BROILER_TEMP_HEATER_DEV;
     
     Serial.printf("🔄 BROILER temp updated: Day %d → %.0f-%.0f°C\n", 
+    Serial.printf("🔄 BROILER temp updated: Day %d → %.0f-%.0f°C\n", 
                   farmConfig.chickAgeDays, rules.tempMin, rules.tempMax);
+    
+    // 🆕 Sync hysteresis thresholds when temp curve changes
+    updateHysteresisThresholds();
   }
 }
 
@@ -1836,6 +1977,36 @@ void clearOfflineBuffer() {
 // HW-316 Relay Module: Active LOW (LOW = ON, HIGH = OFF)
 // ═══════════════════════════════════════════════════════════════════════
 void setFanState(bool on, String speed) {
+  // 🆕 Module I: Hysteresis anti-oscillation check
+  // Safety overrides (sensor error, emergency) bypass hysteresis
+  if (!sensorErrorMode && !emergencySurvivalMode && systemState != "EMERGENCY" && systemState != "CRITICAL") {
+    if (on && hystFan.activeStageLevel == 0) {
+      // Hysteresis says fan should be OFF - check if anti-oscillation lock is active
+      bool anyLocked = false;
+      for (int i = 0; i < hystFan.stageCount; i++) {
+        if (!hystFan.stages[i].isActive && hystFan.stages[i].lastOffTime > 0 &&
+            (millis() - hystFan.stages[i].lastOffTime) < hystFan.stages[i].minOffTime) {
+          anyLocked = true;
+          break;
+        }
+      }
+      if (anyLocked) {
+        Serial.printf("🔒 HYST: Fan ON request blocked (anti-oscillation lock)\n");
+        return;  // Block the state change
+      }
+    }
+    if (!on && hystFan.activeStageLevel > 0) {
+      // Hysteresis says fan should be ON - check minimum ON timer
+      for (int i = 0; i < hystFan.stageCount; i++) {
+        if (hystFan.stages[i].isActive && 
+            (millis() - hystFan.stages[i].lastOnTime) < hystFan.stages[i].minOnTime) {
+          Serial.printf("🔒 HYST: Fan OFF request blocked (min ON time not met)\n");
+          return;  // Block the state change
+        }
+      }
+    }
+  }
+  
   fanOn = on;
   fanSpeed = speed;
   digitalWrite(FAN_RELAY_PIN, on ? LOW : HIGH);  // Active LOW
@@ -2399,6 +2570,169 @@ void advancedControlLogic() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// 🆕 MODULE I: INDUSTRIAL HYSTERESIS STABILIZATION ENGINE
+// Prevents relay chattering from rapid sensor fluctuations
+// Each stage has separate ON/OFF thresholds with anti-oscillation timers
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Evaluate a hysteresis channel against a sensor value.
+ * Returns the highest active stage level (0 = all OFF).
+ * 
+ * Normal logic (fan/fogger): ON when sensor > onThreshold, OFF when sensor < offThreshold
+ * Inverted logic (heater):   ON when sensor < onThreshold, OFF when sensor > offThreshold
+ * 
+ * Anti-oscillation: A stage cannot turn ON unless it's been OFF for minOffTime,
+ *                   and cannot turn OFF unless it's been ON for minOnTime.
+ */
+int evaluateHysteresisChannel(HysteresisChannel &ch, float sensorValue, bool invertedLogic) {
+  unsigned long now = millis();
+  int highestActive = 0;
+  
+  for (int i = 0; i < ch.stageCount; i++) {
+    HysteresisStage &s = ch.stages[i];
+    
+    bool shouldActivate = false;
+    bool shouldDeactivate = false;
+    
+    if (invertedLogic) {
+      // Heater: activate when cold (sensor < onThreshold), deactivate when warm (sensor > offThreshold)
+      shouldActivate = (sensorValue <= s.onThreshold);
+      shouldDeactivate = (sensorValue >= s.offThreshold);
+    } else {
+      // Fan/Fogger: activate when hot (sensor > onThreshold), deactivate when cool (sensor < offThreshold)
+      shouldActivate = (sensorValue >= s.onThreshold);
+      shouldDeactivate = (sensorValue <= s.offThreshold);
+    }
+    
+    if (s.isActive) {
+      // Currently ON - check if should turn OFF
+      if (shouldDeactivate) {
+        // Anti-oscillation: must have been ON for minOnTime
+        unsigned long onDuration = now - s.lastOnTime;
+        if (onDuration >= s.minOnTime) {
+          s.isActive = false;
+          s.lastOffTime = now;
+          Serial.printf("⚡ HYST [%s] Stage %d: OFF (sensor=%.1f, offThr=%.1f, was ON for %lus)\n",
+                        ch.name, i + 1, sensorValue, s.offThreshold, onDuration / 1000);
+        } else {
+          // Locked - still within minimum ON time
+          Serial.printf("🔒 HYST [%s] Stage %d: LOCKED ON (%lus / %lus min)\n",
+                        ch.name, i + 1, onDuration / 1000, s.minOnTime / 1000);
+        }
+      }
+    } else {
+      // Currently OFF - check if should turn ON
+      if (shouldActivate) {
+        // Anti-oscillation: must have been OFF for minOffTime
+        unsigned long offDuration = (s.lastOffTime == 0) ? s.minOffTime : (now - s.lastOffTime);
+        if (offDuration >= s.minOffTime) {
+          s.isActive = true;
+          s.lastOnTime = now;
+          Serial.printf("⚡ HYST [%s] Stage %d: ON (sensor=%.1f, onThr=%.1f, was OFF for %lus)\n",
+                        ch.name, i + 1, sensorValue, s.onThreshold, offDuration / 1000);
+        } else {
+          // Locked - still within minimum OFF time
+          Serial.printf("🔒 HYST [%s] Stage %d: LOCKED OFF (%lus / %lus min)\n",
+                        ch.name, i + 1, offDuration / 1000, s.minOffTime / 1000);
+        }
+      }
+    }
+    
+    if (s.isActive) {
+      highestActive = i + 1;
+    }
+  }
+  
+  ch.activeStageLevel = highestActive;
+  return highestActive;
+}
+
+/**
+ * Sync hysteresis thresholds from RuntimeRules (called after loadLayerRules/loadBroilerRules).
+ * This keeps hysteresis in sync with cloud-configured thresholds.
+ */
+void updateHysteresisThresholds() {
+  if (isLayer()) {
+    // Fan Stage 1: Medium speed
+    hystFan.stages[0].onThreshold = rules.tempMax;                    // 27°C default
+    hystFan.stages[0].offThreshold = rules.tempMax - 2.0;             // 25°C
+    // Fan Stage 2: High speed
+    hystFan.stages[1].onThreshold = LAYER_TEMP_FAN_HIGH;              // 30°C
+    hystFan.stages[1].offThreshold = LAYER_TEMP_FAN_HIGH - 2.0;      // 28°C
+    // Fan Stage 3: Emergency
+    hystFan.stages[2].onThreshold = LAYER_TEMP_ALARM;                 // 33°C
+    hystFan.stages[2].offThreshold = LAYER_TEMP_ALARM - 2.0;         // 31°C
+    hystFan.stageCount = 3;
+    
+    // Heater (inverted): ON when cold, OFF when warm
+    hystHeater.stages[0].onThreshold = rules.tempHeaterOn;            // 18°C
+    hystHeater.stages[0].offThreshold = rules.tempHeaterOn + 2.0;    // 20°C
+    hystHeater.stageCount = 1;
+    
+    // Alarm
+    hystAlarm.stages[0].onThreshold = LAYER_TEMP_ALARM;               // 33°C
+    hystAlarm.stages[0].offThreshold = LAYER_TEMP_ALARM - 2.0;       // 31°C
+    hystAlarm.stageCount = 1;
+    
+  } else {
+    // Broiler: thresholds relative to target temperature
+    float target = rules.tempTarget;
+    
+    // Fan Stage 1: Medium
+    hystFan.stages[0].onThreshold = target + 2.0;
+    hystFan.stages[0].offThreshold = target;
+    // Fan Stage 2: High
+    hystFan.stages[1].onThreshold = target + 4.0;
+    hystFan.stages[1].offThreshold = target + 2.0;
+    // Fan Stage 3: Emergency
+    hystFan.stages[2].onThreshold = target + 6.0;
+    hystFan.stages[2].offThreshold = target + 4.0;
+    hystFan.stageCount = 3;
+    
+    // Heater (inverted)
+    hystHeater.stages[0].onThreshold = target - heaterSettings.tolerance;
+    hystHeater.stages[0].offThreshold = target + heaterSettings.tolerance;
+    hystHeater.stageCount = 1;
+    
+    // Alarm
+    hystAlarm.stages[0].onThreshold = rules.tempAlarm;
+    hystAlarm.stages[0].offThreshold = rules.tempAlarm - 2.0;
+    hystAlarm.stageCount = 1;
+  }
+  
+  // Fogger (same for both farm types)
+  hystFogger.stages[0].onThreshold = foggerSettings.startTemp;
+  hystFogger.stages[0].offThreshold = foggerSettings.stopTemp;
+  hystFogger.stageCount = 1;
+  
+  Serial.println("✅ Hysteresis thresholds synced from rules");
+  printHysteresisStatus();
+}
+
+/**
+ * Debug print hysteresis status for all channels
+ */
+void printHysteresisStatus() {
+  Serial.println("\n╔═══ HYSTERESIS ENGINE STATUS ═══╗");
+  
+  HysteresisChannel* channels[] = { &hystFan, &hystHeater, &hystFogger, &hystAlarm };
+  int chCount = 4;
+  
+  for (int c = 0; c < chCount; c++) {
+    HysteresisChannel &ch = *channels[c];
+    Serial.printf("║ %s: activeLevel=%d/%d\n", ch.name, ch.activeStageLevel, ch.stageCount);
+    for (int i = 0; i < ch.stageCount; i++) {
+      HysteresisStage &s = ch.stages[i];
+      Serial.printf("║   Stage %d: ON@%.1f OFF@%.1f [%s]\n",
+                    i + 1, s.onThreshold, s.offThreshold,
+                    s.isActive ? "ACTIVE" : "idle");
+    }
+  }
+  Serial.println("╚════════════════════════════════╝");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // CONTROL ENGINE (MAIN DECISION)
 // Same loop, different rules based on farmType
 // ═══════════════════════════════════════════════════════════════════════
@@ -2430,6 +2764,18 @@ void controlLogic() {
   Serial.printf("Temp=%.1f°C, Hum=%.1f%%, NH3=%.1f ppm, HSI=%.1f\n", 
                 temperature, humidity, ammonia, currentHSI);
   
+  // ===== RUN HYSTERESIS ENGINE (Module I - anti-oscillation) =====
+  int fanStage = evaluateHysteresisChannel(hystFan, temperature, false);
+  evaluateHysteresisChannel(hystHeater, temperature, true);  // Inverted logic
+  evaluateHysteresisChannel(hystFogger, temperature, false);
+  evaluateHysteresisChannel(hystAlarm, temperature, false);
+  
+  Serial.printf("⚡ HYST: Fan=%d, Heater=%s, Fogger=%s, Alarm=%s\n",
+                fanStage,
+                hystHeater.activeStageLevel > 0 ? "ON" : "OFF",
+                hystFogger.activeStageLevel > 0 ? "ON" : "OFF",
+                hystAlarm.activeStageLevel > 0 ? "ON" : "OFF");
+  
   // ===== RUN ADVANCED 7-MODULE AUTOMATION =====
   // 🔧 Advanced modules handle: Heater, Fogger, MinVent, Airflow
   advancedControlLogic();
@@ -2437,6 +2783,7 @@ void controlLogic() {
   // ===== MAIN DECISION: Farm Type Based Control =====
   // 🔧 This handles: HSI-based fan speed, Ammonia alarms, Emergency states
   // Note: Heater control is now ONLY in advancedControlLogic() to avoid conflicts
+  // Note: Fan commands are filtered through hysteresis to prevent oscillation
   if (farmConfig.farmType == FARM_PROFILE_LAYER) {
     layerControl();
   } 
