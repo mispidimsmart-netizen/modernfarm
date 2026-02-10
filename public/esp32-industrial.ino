@@ -146,6 +146,10 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define HYST_MIN_ON_MS       60000UL
 #define HYST_MIN_OFF_MS      60000UL
 
+// --- Global Relay Protection ---
+// No relay change allowed within this window (prevents chattering across all channels)
+#define RELAY_PROTECTION_MS  60000UL
+
 // --- Buffers ---
 #define GAS_AVG_SIZE         10
 #define SENSOR_ROLLING_SIZE  5
@@ -372,6 +376,10 @@ bool fanOn = false, lightOn = false, alarmOn = false, heaterOn = false;
 bool foggerOn = false, circulationFanOn = false;
 String fanSpeed = "OFF";
 int lightBrightness = 0;
+
+// --- Global Relay Protection Timer ---
+unsigned long lastRelayChangeTime = 0;  // Timestamp of last relay state change
+bool relayProtectionActive = false;     // True if within 60s protection window
 
 // --- Manual Overrides ---
 bool localManualOverride = false;
@@ -700,11 +708,32 @@ void estimateLocalTime() {
 // ║  SECTION 6: STATE MACHINE                                             ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
+// State transition with timer gating
+// ⚠️ Downward transitions (e.g. DANGER→WARNING→NORMAL) are blocked until
+//    minimumOnTime (60s) has elapsed in current state. This prevents oscillation.
+//    Upward transitions (escalation to higher danger) are always allowed immediately.
+//    Blocked transitions are SILENT — no log spam.
 void transitionTo(SystemState newState, String reason) {
   if (newState == currentState) return;
+  unsigned long now = millis();
+  
+  // Upward escalation is always immediate (safety first)
+  bool isEscalation = (int)newState > (int)currentState;
+  // SENSOR_FAIL is always immediate
+  bool isSensorFail = (newState == STATE_SENSOR_FAIL);
+  
+  if (!isEscalation && !isSensorFail) {
+    // Downward transition: gate by minimum dwell time in current state
+    unsigned long dwellTime = now - stateEnteredAt;
+    if (dwellTime < HYST_MIN_ON_MS) {
+      // Blocked: not enough time in current state. SILENT — no log.
+      return;
+    }
+  }
+  
   previousState = currentState;
   currentState = newState;
-  stateEnteredAt = millis();
+  stateEnteredAt = now;
   Serial.printf("\n⚡ STATE: %s → %s [%s]\n", stateNames[previousState], stateNames[newState], reason.c_str());
 }
 
@@ -1074,41 +1103,79 @@ void requestCirculationFan(bool on)    { relayTarget.circulationFan = on; }
 void requestLight(int brightness)      { targetBrightness = constrain(brightness, 0, 100); }
 
 // Apply relay targets to hardware (called ONCE per loop iteration)
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  GLOBAL RELAY PROTECTION WINDOW (60s)                                  ║
+// ║  After ANY relay state change, no further relay changes are allowed    ║
+// ║  for 60 seconds. This prevents chattering across ALL channels.        ║
+// ║  Exception: EMERGENCY and SENSOR_FAIL bypass protection (life safety) ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
 void relayManagerApply() {
+  unsigned long now = millis();
+  relayProtectionActive = (lastRelayChangeTime > 0) && (now - lastRelayChangeTime < RELAY_PROTECTION_MS);
+  
+  // Emergency/SensorFail bypass protection window (life safety override)
+  bool safetyBypass = (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL);
+  
+  // Check if ANY relay target differs from current state
+  bool fanChange    = (relayTarget.fan != fanOn);
+  bool alarmChange  = (relayTarget.alarm != alarmOn);
+  bool heaterChange = (relayTarget.heater != heaterOn);
+  bool foggerChange = (relayTarget.fogger != foggerOn);
+  bool circChange   = (relayTarget.circulationFan != circulationFanOn);
+  bool anyChange    = fanChange || alarmChange || heaterChange || foggerChange || circChange;
+  
+  // If protection active and no safety bypass, skip all relay changes
+  if (relayProtectionActive && !safetyBypass && anyChange) {
+    // Silently blocked — relay protection window active
+    return;
+  }
+  
+  bool changed = false;
+  
   // Fan
-  if (relayTarget.fan != fanOn) {
+  if (fanChange) {
     fanOn = relayTarget.fan;
     digitalWrite(FAN_RELAY_PIN, fanOn ? LOW : HIGH);
+    changed = true;
   }
   fanSpeed = relayTarget.fanSpeed;
 
   // Alarm
-  if (relayTarget.alarm != alarmOn) {
+  if (alarmChange) {
     alarmOn = relayTarget.alarm;
     digitalWrite(ALARM_RELAY_PIN, alarmOn ? LOW : HIGH);
+    changed = true;
   }
 
   // Heater
-  if (relayTarget.heater != heaterOn) {
+  if (heaterChange) {
     heaterOn = relayTarget.heater;
     digitalWrite(HEATER_RELAY_PIN, heaterOn ? LOW : HIGH);
+    changed = true;
   }
 
   // Fogger (shares pin with heater in some configs)
-  if (relayTarget.fogger != foggerOn) {
+  if (foggerChange) {
     foggerOn = relayTarget.fogger;
     digitalWrite(FOGGER_RELAY_PIN, foggerOn ? LOW : HIGH);
+    changed = true;
   }
 
   // Circulation Fan (Layer: track only; Broiler: control pin)
-  if (relayTarget.circulationFan != circulationFanOn) {
+  if (circChange) {
     circulationFanOn = relayTarget.circulationFan;
     if (isBroiler()) {
       digitalWrite(CIRCULATION_RELAY_PIN, circulationFanOn ? LOW : HIGH);
     }
+    changed = true;
+  }
+  
+  // Start protection window if any relay actually changed
+  if (changed) {
+    lastRelayChangeTime = now;
   }
 
-  // Lighting PWM fade
+  // Lighting PWM fade (not gated by relay protection — gradual, no chattering risk)
   updateLightingWithFade();
 }
 
@@ -1156,6 +1223,8 @@ void updateLightingWithFade() {
 int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
   unsigned long now = millis();
   int highest = 0;
+  int previousLevel = ch.activeStageLevel;
+  
   for (int i = 0; i < ch.stageCount; i++) {
     HystStage &s = ch.stages[i];
     bool goOn  = inv ? (val <= s.onThreshold)  : (val >= s.onThreshold);
@@ -1168,6 +1237,7 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
         Serial.printf("🔽 HYST %s Stage%d OFF (val=%.1f ≤ off=%.1f, was on %lus)\n",
           ch.name, i+1, val, s.offThreshold, (now - s.lastOnTime)/1000);
       }
+      // Timer not expired: stage stays ON (no log spam)
     } else {
       // Cannot turn ON until minimumOffTime (60s) has elapsed
       unsigned long offDur = (s.lastOffTime == 0) ? s.minOffTime : (now - s.lastOffTime);
@@ -1180,6 +1250,31 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
     }
     if (s.isActive) highest = i + 1;
   }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // STAGE DOWNGRADE PROTECTION:
+  // When higher stage turns OFF, lower stages MUST remain ON.
+  // This prevents any gap in ventilation between stage transitions.
+  // Example: Stage3 OFF → Stage2 stays ON → no airflow interruption
+  // ═══════════════════════════════════════════════════════════════
+  if (highest < previousLevel && highest > 0) {
+    // Downgrade detected but lower stage still active → continuous output
+    Serial.printf("🔄 HYST %s: Downgrade %d→%d (lower stage maintains output)\n",
+      ch.name, previousLevel, highest);
+  }
+  // If ALL stages turned off (highest==0) but previous was active,
+  // enforce: stage 0 cannot go from active→off within protection window
+  if (highest == 0 && previousLevel > 0) {
+    // Check if lowest active stage's minOnTime is still running
+    HystStage &s0 = ch.stages[0];
+    if (s0.lastOnTime > 0 && (now - s0.lastOnTime < s0.minOnTime)) {
+      // Force stage 1 to remain on (prevent full ventilation drop)
+      s0.isActive = true;
+      highest = 1;
+      // No log — silent protection
+    }
+  }
+  
   ch.activeStageLevel = highest;
   return highest;
 }
