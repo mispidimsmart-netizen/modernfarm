@@ -2,6 +2,20 @@
  * Smart Farm - ESP32 Unified Fail-Safe Controller
  * 
  * ╔═══════════════════════════════════════════════════════════════════════╗
+ * ║  🏭 INDUSTRIAL SAFETY MODEL v6.0                                      ║
+ * ╠═══════════════════════════════════════════════════════════════════════╣
+ * ║  ARCHITECTURE PRINCIPLE:                                               ║
+ * ║    Cloud = Configuration Supervisor (sends parameters ONLY)            ║
+ * ║    ESP32 = Local Guardian (runs ALL automation, controls relays)        ║
+ * ║    Cloud NEVER directly controls relays.                               ║
+ * ║                                                                       ║
+ * ║  CONFIG SYNC:                                                          ║
+ * ║    GET /config → { targetTemp, birdAge, mode, thresholds, ... }       ║
+ * ║    ESP32 fetches config periodically, applies locally                  ║
+ * ║    ESP32 continues full operation without internet INDEFINITELY        ║
+ * ╚═══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔═══════════════════════════════════════════════════════════════════════╗
  * ║  🐔 UNIFIED CODEBASE - FARM PROFILE SYSTEM                           ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
  * ║  একটাই কোড! Farm Profile (EEPROM-এ সেভ) অনুযায়ী automation চলে       ║
@@ -19,12 +33,13 @@
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  ✔ Each shed runs independently                                         ║
  * ║  ✔ One shed fail ≠ whole farm fail                                      ║
- * ║  ✔ Cloud is advisor, ESP32 is guardian                                  ║
+ * ║  ✔ Cloud is CONFIGURATION SUPERVISOR, ESP32 is GUARDIAN                 ║
  * ║  ✔ Manual override always available locally                             ║
+ * ║  ✔ ESP32 runs indefinitely without internet                             ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  🆕 7-MODULE ADVANCED AUTOMATION SYSTEM (v5.2)                          ║
+ * ║  🆕 7-MODULE ADVANCED AUTOMATION SYSTEM (v6.0)                          ║
  * ╠══════════════════════════════════════════════════════════════════════════╣
  * ║  MODULE A: Minimum Ventilation Timer (cyclic exhaust)                   ║
  * ║  MODULE B: Enhanced Heater Control (age-based curve)                    ║
@@ -33,6 +48,7 @@
  * ║  MODULE E: Lighting Soft Control (10-min PWM fade)                      ║
  * ║  MODULE F: Offline Age Increment (24h local tick)                       ║
  * ║  MODULE G: Priority System (Safety > Heat > Cool > Vent > Light)        ║
+ * ║  MODULE H: Emergency Survival Mode (sensor+power failure)               ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  * 
  * SAFETY RULES (LOCAL - Cloud এর জন্য অপেক্ষা করে না!):
@@ -44,6 +60,7 @@
  * │  ✓ Default Safe State: Unknown error → Fan ON (never stay OFF)   │
  * │  ✓ Heater Safety: Temp > 34°C → FORCE HEATER OFF                 │
  * │  ✓ Fogger Safety: Always requires exhaust fan running            │
+ * │  ✓ Emergency Survival: All sensors fail → Fan HIGH + Alarm       │
  * └───────────────────────────────────────────────────────────────────┘
  * 
  * LAYER vs BROILER THRESHOLDS:
@@ -442,6 +459,7 @@ const unsigned long BOOT_FAN_DURATION = 20000;        // 20 sec air refresh
 const unsigned long SENSOR_TIMEOUT = 15000;           // 15 sec sensor timeout
 const unsigned long WATER_TIMEOUT = 21600000;         // 6 hours water timeout
 const unsigned long COMMAND_CHECK_INTERVAL = 5000;    // ⚡ 5 seconds - REAL-TIME commands
+const unsigned long CONFIG_FETCH_INTERVAL = 60000;    // 🏭 60 seconds - fetch config from cloud
 
 // ================ BROILER TEMPERATURE CURVE ================
 struct BroilerTempCurve {
@@ -558,8 +576,10 @@ void controlLighting();
 void checkLayerLightingProtection();
 void updateTimeFromCloud(int hour, int minute);
 void estimateLocalTime();
-void checkPendingCommands();       // ⚡ Real-time command polling
+void checkPendingCommands();       // ⚡ Real-time command polling (manual overrides only)
 void acknowledgeCommand(String commandId);  // Mark command as executed
+void fetchConfigFromCloud();       // 🏭 Fetch config parameters (Industrial Safety Model)
+void enterEmergencySurvivalMode(); // 🏭 Emergency survival when all sensors fail
 
 // 🆕 Module function prototypes
 void checkMinimumVentilation();
@@ -702,7 +722,7 @@ float lastVoltageRMS = 230.0;
  int otaPendingSize = 0;
  unsigned long lastOTACheck = 0;
  const unsigned long OTA_CHECK_INTERVAL = 3600000UL;  // Check every 1 hour
- String firmwareVersion = "5.2.0";  // Updated for 7-module system
+ String firmwareVersion = "6.0.0";  // Industrial Safety Model + Emergency Survival
   
  // ═══════════════════════════════════════════════════════════════════════
  // 💧 SMART WATER FLOW MONITORING
@@ -740,6 +760,15 @@ bool ageFromServer = false;                // True if current age came from serv
 // 🆕 ADVANCED AUTOMATION SETTINGS VERSION (for cloud sync)
 // ═══════════════════════════════════════════════════════════════════════
 int cachedSettingsVersion = 0;
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🏭 INDUSTRIAL SAFETY MODEL STATE
+// Config-only sync from cloud, local automation runs independently
+// ═══════════════════════════════════════════════════════════════════════
+unsigned long lastConfigFetch = 0;        // Last config fetch timestamp
+bool configSynced = false;                // Whether initial config has been fetched
+bool emergencySurvivalMode = false;       // All sensors failed - max ventilation
+unsigned long emergencySurvivalStart = 0; // When emergency survival started
 
 // ═══════════════════════════════════════════════════════════════════════
 // 🐔 UPDATE AGE FROM SERVER
@@ -2990,7 +3019,7 @@ void handleCloudResponse(String response) {
     updateTimeFromCloud(hour, minute);
   }
   
-  // === 🆕 ADVANCED AUTOMATION SETTINGS SYNC ===
+  // === 🆕 ADVANCED AUTOMATION SETTINGS SYNC (config parameters only) ===
   if (doc.containsKey("advanced_automation")) {
     JsonObject adv = doc["advanced_automation"];
     handleAdvancedAutomationSettings(adv);
@@ -3001,103 +3030,244 @@ void handleCloudResponse(String response) {
     }
   }
   
-  // Ignore device commands in failsafe mode
-   if (failsafeMode || safeModeActive || stabilizingMode) {
-     Serial.println("⚠️ SAFE/FAILSAFE/STABILIZING MODE: Ignoring cloud commands");
-    return;
-  }
-  
-  // Apply device commands from cloud (only when NOT in failsafe/manual override)
-  if (doc.containsKey("device_status") && !localManualOverride) {
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏭 INDUSTRIAL SAFETY MODEL:
+  // Cloud device_status relay commands are IGNORED.
+  // Cloud only sends configuration parameters.
+  // ESP32 runs ALL automation locally.
+  // Manual overrides come ONLY through the command queue system.
+  // ═══════════════════════════════════════════════════════════════════════
+  if (doc.containsKey("device_status")) {
+    // Only accept manual_override flag from device_status
     JsonObject status = doc["device_status"];
-    
-    // Fan control
-    bool cloudFanOn = status["fan_on"] | false;
-    String cloudFanSpeed = status["fan_speed"] | "OFF";
-    if (cloudFanOn != fanOn || cloudFanSpeed != fanSpeed) {
-      setFanState(cloudFanOn, cloudFanSpeed);
-      Serial.printf("☁️ Cloud → Fan: %s (%s)\n", cloudFanOn ? "ON" : "OFF", cloudFanSpeed.c_str());
-    }
-    
-    // Light control (manual override from cloud)
-    if (status.containsKey("light_on")) {
-      bool cloudLightOn = status["light_on"] | false;
-      if (cloudLightOn != lightOn) {
-        setLight(cloudLightOn);
-        lightSchedule.manualOverride = true;
-        lightManualOverrideTime = millis();
-        Serial.printf("☁️ Cloud → Light: %s\n", cloudLightOn ? "ON" : "OFF");
-      }
-    }
-    
-    // Alarm control
-    if (status.containsKey("alarm_on")) {
-      bool cloudAlarmOn = status["alarm_on"] | false;
-      if (cloudAlarmOn != alarmOn) {
-        setAlarm(cloudAlarmOn);
-        Serial.printf("☁️ Cloud → Alarm: %s\n", cloudAlarmOn ? "ON" : "OFF");
-      }
-    }
-    
-    // Heater control
-    if (status.containsKey("heater_on")) {
-      bool cloudHeaterOn = status["heater_on"] | false;
-      if (cloudHeaterOn != heaterOn) {
-        setHeater(cloudHeaterOn);
-        Serial.printf("☁️ Cloud → Heater: %s\n", cloudHeaterOn ? "ON" : "OFF");
-      }
-    }
-    
-    // 🆕 Fogger control
-    if (status.containsKey("fogger_on")) {
-      bool cloudFoggerOn = status["fogger_on"] | false;
-      if (cloudFoggerOn != foggerOn) {
-        setFogger(cloudFoggerOn);
-        Serial.printf("☁️ Cloud → Fogger: %s\n", cloudFoggerOn ? "ON" : "OFF");
-      }
-    }
-    
-    // 🆕 Circulation fan control
-    if (status.containsKey("circulation_fan_on")) {
-      bool cloudCircOn = status["circulation_fan_on"] | false;
-      if (cloudCircOn != circulationFanOn) {
-        setCirculationFan(cloudCircOn);
-        Serial.printf("☁️ Cloud → Circulation Fan: %s\n", cloudCircOn ? "ON" : "OFF");
-      }
-    }
-    
-    // Manual override flag from cloud
     if (status.containsKey("manual_override")) {
       localManualOverride = status["manual_override"] | false;
       if (localManualOverride) {
-        Serial.println("☁️ Cloud → Manual Override ENABLED");
+        Serial.println("☁️ Cloud → Manual Override flag ENABLED");
       }
+    }
+    // ALL relay control commands (fan_on, light_on, heater_on, etc.) are IGNORED
+    // Relay control happens ONLY through:
+    //   1. Local automation engine (controlLogic)
+    //   2. Manual command queue (checkPendingCommands - temporary overrides)
+    //   3. Safety systems (failsafe, emergency survival)
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🏭 FETCH CONFIG FROM CLOUD (Industrial Safety Model)
+// GET /config → receives ONLY parameters, NEVER relay states
+// ESP32 applies config to local automation rules
+// ═══════════════════════════════════════════════════════════════════════
+void fetchConfigFromCloud() {
+  if (!wifiConnected) return;
+  
+  HTTPClient http;
+  String url = String(API_URL) + "/config?device_id=" + activeShedName;
+  url.replace(" ", "%20");
+  
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
+  http.setTimeout(5000);
+  esp_task_wdt_reset();
+  
+  int httpCode = http.GET();
+  esp_task_wdt_reset();
+  
+  if (httpCode == 200) {
+    String response = http.getString();
+    DynamicJsonDocument doc(4096);
+    
+    if (deserializeJson(doc, response)) {
+      Serial.println("❌ Config JSON parse error");
+      http.end();
+      return;
+    }
+    
+    Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+    Serial.println("║  🏭 CONFIG SYNC (Industrial Safety Model)                     ║");
+    Serial.println("╚═══════════════════════════════════════════════════════════════╝");
+    
+    // === Farm Type & Age ===
+    String cloudFarmType = doc["farmType"] | "LAYER";
+    int cloudBirdAge = doc["birdAge"] | 1;
+    
+    if (cloudFarmType == "BROILER" && isLayer()) {
+      setFarmProfileFromAPI(FARM_PROFILE_BROILER, cloudBirdAge);
+    } else if (cloudFarmType == "LAYER" && isBroiler()) {
+      setFarmProfileFromAPI(FARM_PROFILE_LAYER);
+    } else if (isBroiler() && cloudBirdAge > 0) {
+      updateAgeFromServer(cloudBirdAge);
+    }
+    
+    // === Temperature Thresholds ===
+    if (doc.containsKey("thresholds")) {
+      JsonObject t = doc["thresholds"];
+      if (!rules.useAgeBasedTemp) {
+        // Layer mode: update fixed thresholds from cloud config
+        rules.tempMin = t["tempMin"] | rules.tempMin;
+        rules.tempMax = t["tempMax"] | rules.tempMax;
+        rules.tempTarget = (rules.tempMin + rules.tempMax) / 2.0;
+        rules.tempFanHigh = t["tempFanHigh"] | rules.tempFanHigh;
+      }
+      rules.ammoniaFan = t["ammoniaMax"] | rules.ammoniaFan;
+      rules.ammoniaAlarm = t["ammoniaAlarm"] | rules.ammoniaAlarm;
+      rules.humidityLow = t["humidityMin"] | rules.humidityLow;
+      rules.humidityHigh = t["humidityMax"] | rules.humidityHigh;
+    }
+    
+    // === HSI Thresholds ===
+    if (doc.containsKey("hsi")) {
+      JsonObject h = doc["hsi"];
+      rules.hsiFanLow = h["mild"] | rules.hsiFanLow;
+      rules.hsiFanHigh = h["moderate"] | rules.hsiFanHigh;
+      rules.hsiEmergency = h["severe"] | rules.hsiEmergency;
+      rules.hsiCritical = h["emergency"] | rules.hsiCritical;
+    }
+    
+    // === Heater Config ===
+    if (doc.containsKey("heater")) {
+      JsonObject he = doc["heater"];
+      heaterSettings.enabled = he["enabled"] | heaterSettings.enabled;
+      heaterSettings.layerOnTemp = he["onTemp"] | heaterSettings.layerOnTemp;
+      heaterSettings.layerOffTemp = he["offTemp"] | heaterSettings.layerOffTemp;
+      heaterSettings.tolerance = he["tolerance"] | heaterSettings.tolerance;
+    }
+    
+    // === Min Ventilation Config ===
+    if (doc.containsKey("minVent")) {
+      JsonObject mv = doc["minVent"];
+      minVentSettings.enabled = mv["enabled"] | minVentSettings.enabled;
+      minVentSettings.tempThreshold = mv["tempThreshold"] | minVentSettings.tempThreshold;
+      minVentSettings.cycleSeconds = mv["cycleSeconds"] | minVentSettings.cycleSeconds;
+      minVentSettings.intervalMinutes = mv["intervalMinutes"] | minVentSettings.intervalMinutes;
+      minVentSettings.ceilingFanAlwaysOn = mv["ceilingFanAlwaysOn"] | minVentSettings.ceilingFanAlwaysOn;
+    }
+    
+    // === Fogger Config ===
+    if (doc.containsKey("fogger")) {
+      JsonObject f = doc["fogger"];
+      foggerSettings.enabled = f["enabled"] | foggerSettings.enabled;
+      foggerSettings.startTemp = f["startTemp"] | foggerSettings.startTemp;
+      foggerSettings.startHumidityMax = f["startHumidityMax"] | foggerSettings.startHumidityMax;
+      foggerSettings.onSeconds = f["onSeconds"] | foggerSettings.onSeconds;
+      foggerSettings.pauseSeconds = f["pauseSeconds"] | foggerSettings.pauseSeconds;
+      foggerSettings.stopTemp = f["stopTemp"] | foggerSettings.stopTemp;
+      foggerSettings.stopHumidity = f["stopHumidity"] | foggerSettings.stopHumidity;
+    }
+    
+    // === Airflow Config ===
+    if (doc.containsKey("airflow")) {
+      JsonObject a = doc["airflow"];
+      airflowSettings.enabled = a["enabled"] | airflowSettings.enabled;
+      airflowSettings.earlyAgeDays = a["earlyAgeDays"] | airflowSettings.earlyAgeDays;
+      airflowSettings.midAgeDays = a["midAgeDays"] | airflowSettings.midAgeDays;
+      airflowSettings.midOnSeconds = a["midOnSeconds"] | airflowSettings.midOnSeconds;
+      airflowSettings.midIntervalMinutes = a["midIntervalMinutes"] | airflowSettings.midIntervalMinutes;
+      airflowSettings.nightOnSeconds = a["nightOnSeconds"] | airflowSettings.nightOnSeconds;
+      airflowSettings.nightIntervalMinutes = a["nightIntervalMinutes"] | airflowSettings.nightIntervalMinutes;
+    }
+    
+    // === Lighting Config ===
+    if (doc.containsKey("lighting")) {
+      JsonObject l = doc["lighting"];
+      lightSchedule.startHour = l["startHour"] | lightSchedule.startHour;
+      lightSchedule.startMinute = l["startMinute"] | lightSchedule.startMinute;
+      lightSchedule.endHour = l["endHour"] | lightSchedule.endHour;
+      lightSchedule.endMinute = l["endMinute"] | lightSchedule.endMinute;
+      lightSchedule.fadeInMinutes = l["fadeInMinutes"] | lightSchedule.fadeInMinutes;
+      lightSchedule.fadeOutMinutes = l["fadeOutMinutes"] | lightSchedule.fadeOutMinutes;
+      lightSchedule.minBrightness = l["minBrightness"] | lightSchedule.minBrightness;
+      lightSchedule.maxBrightness = l["maxBrightness"] | lightSchedule.maxBrightness;
+      lightingFadeSettings.fadeDurationMinutes = l["fadeDurationMinutes"] | lightingFadeSettings.fadeDurationMinutes;
+    }
+    
+    // === Time Sync ===
+    if (doc.containsKey("currentHour") && doc.containsKey("currentMinute")) {
+      updateTimeFromCloud(doc["currentHour"] | 12, doc["currentMinute"] | 0);
+    }
+    
+    // === Mode ===
+    String mode = doc["mode"] | "AUTO";
+    if (mode == "MANUAL") {
+      localManualOverride = true;
+    } else {
+      localManualOverride = false;
+    }
+    
+    configSynced = true;
+    lastConfigFetch = millis();
+    
+    Serial.printf("   Farm: %s, Age: %d, Mode: %s\n", cloudFarmType.c_str(), cloudBirdAge, mode.c_str());
+    Serial.printf("   Temp: %.0f-%.0f°C, NH3: %.0f/%.0f, HSI: %.0f/%.0f/%.0f\n",
+                  rules.tempMin, rules.tempMax, rules.ammoniaFan, rules.ammoniaAlarm,
+                  rules.hsiFanLow, rules.hsiFanHigh, rules.hsiEmergency);
+    Serial.println("   ✅ Config applied to local automation engine");
+    
+  } else {
+    Serial.printf("⚠️ Config fetch failed: %d (using local EEPROM values)\n", httpCode);
+  }
+  
+  http.end();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 🏭 MODULE H: EMERGENCY SURVIVAL MODE
+// When ALL sensors fail AND cloud is unreachable:
+// - Fan HIGH (maximum ventilation to keep birds alive)
+// - Alarm pulsing (alert farm workers)
+// - Heater OFF (prevent fire risk)
+// - Fogger OFF (prevent flooding)
+// - Continue indefinitely until sensors recover or manual intervention
+// ═══════════════════════════════════════════════════════════════════════
+void enterEmergencySurvivalMode() {
+  if (emergencySurvivalMode) return;  // Already in survival mode
+  
+  emergencySurvivalMode = true;
+  emergencySurvivalStart = millis();
+  systemState = "EMERGENCY_SURVIVAL";
+  
+  Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
+  Serial.println("║  🚨🚨🚨 EMERGENCY SURVIVAL MODE ACTIVATED 🚨🚨🚨             ║");
+  Serial.println("╠═══════════════════════════════════════════════════════════════╣");
+  Serial.println("║  All sensors failed + cloud unreachable                      ║");
+  Serial.println("║  Fan: HIGH (maximum ventilation)                             ║");
+  Serial.println("║  Heater: OFF (fire safety)                                  ║");
+  Serial.println("║  Fogger: OFF (flood prevention)                             ║");
+  Serial.println("║  Alarm: PULSING (worker alert)                              ║");
+  Serial.println("║  Will continue indefinitely until recovery                  ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+  
+  // Force safe state
+  setFanState(true, "HIGH");          // Maximum ventilation
+  setHeater(false);                   // No fire risk
+  setFogger(false);                   // No flood risk
+  setCirculationFan(false);           // Conserve power
+}
+
+void checkEmergencySurvival() {
+  // Enter emergency survival if: sensor error + no cloud for 5+ minutes
+  if (sensorErrorMode && !cloudConnected && (millis() - lastCloudSync > CLOUD_TIMEOUT)) {
+    enterEmergencySurvivalMode();
+  }
+  
+  // Exit emergency survival if sensors recover
+  if (emergencySurvivalMode && !sensorErrorMode) {
+    emergencySurvivalMode = false;
+    systemState = "NORMAL";
+    Serial.println("✅ EMERGENCY SURVIVAL ENDED - sensors recovered");
+  }
+  
+  // Pulse alarm in emergency survival (20 sec on, 40 sec off)
+  if (emergencySurvivalMode) {
+    unsigned long elapsed = (millis() - emergencySurvivalStart) % 60000;
+    bool shouldAlarm = elapsed < 20000;
+    if (shouldAlarm != alarmOn) {
+      setAlarm(shouldAlarm);
     }
   }
 }
-
-void checkFailsafeTimeout() {
-  if (millis() - lastCloudSync > CLOUD_TIMEOUT && !failsafeMode) {
-    Serial.println("\n⚠️ CLOUD TIMEOUT (5 min) → LOCAL AUTO MODE!");
-    failsafeMode = true;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// 📦 OTA (OVER-THE-AIR) FIRMWARE UPDATE SYSTEM
-// Check for updates every hour, download and install wirelessly
-// ═══════════════════════════════════════════════════════════════════════
-
-void checkOTAUpdate() {
-  if (!wifiConnected || otaInProgress) {
-    return;
-  }
-  
-  Serial.println("\n📡 [OTA] Checking for firmware updates...");
-  
-  HTTPClient http;
-  String otaApiUrl = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware";
-  String url = otaApiUrl + "?action=check&version=" + firmwareVersion + "&farm_type=" + getFarmTypeStr();
   
   http.begin(url);
   http.addHeader("x-device-token", activeDeviceToken.c_str());
@@ -3755,9 +3925,10 @@ void setup() {
   // Connect WiFi
   connectWiFi();
   
-  // Initial sync
+  // Initial sync - fetch config first, then sync sensor data
   if (wifiConnected) {
-    syncWithCloud();
+    fetchConfigFromCloud();  // 🏭 Get config parameters
+    syncWithCloud();          // Report sensor data & health
   }
    
    lastOnlineCheck = millis();
@@ -3768,6 +3939,7 @@ void setup() {
   
   Serial.println("\n╔════════════════════════════════════════════════════════════╗");
   Serial.println("║  ✅ BOOT COMPLETE                                          ║");
+  Serial.printf("║  🏭 Architecture: INDUSTRIAL SAFETY MODEL                  ║\n");
   Serial.printf("║  Profile: %s", getFarmTypeStr().c_str());
   if (isBroiler()) Serial.printf(" (Day %d)", broilerAgeDays);
   Serial.println("                                   ║");
@@ -3775,7 +3947,8 @@ void setup() {
    Serial.printf("║  Firmware: %s                                           ║\n", firmwareVersion.c_str());
    Serial.printf("║  Safe Mode: %s                                            ║\n", safeModeActive ? "YES" : "NO");
   Serial.println("║  Watchdog: 8 sec timeout                                   ║");
-  Serial.println("║  🆕 7-Module Advanced Automation: ENABLED                  ║");
+  Serial.println("║  🆕 8-Module Advanced Automation: ENABLED                  ║");
+  Serial.println("║  ☁️ Cloud: Config ONLY (no relay control)                  ║");
   Serial.println("╚════════════════════════════════════════════════════════════╝\n");
 }
 
@@ -3822,7 +3995,7 @@ void loop() {
     lastCommandCheck = now;
   }
   
-  // Sync with cloud (every 30 seconds)
+  // Sync sensor data with cloud (every 30 seconds)
   if (now - lastCloudAttempt >= CLOUD_SYNC_INTERVAL) {
     if (wifiConnected) {
       syncWithCloud();
@@ -3832,13 +4005,24 @@ void loop() {
     lastCloudAttempt = now;
   }
   
+  // 🏭 CONFIG FETCH (every 60 seconds - config parameters only)
+  if (now - lastConfigFetch >= CONFIG_FETCH_INTERVAL) {
+    if (wifiConnected) {
+      fetchConfigFromCloud();
+    }
+    // No timeout needed - ESP32 runs fine on EEPROM config without cloud
+  }
+  
   // 📦 OTA UPDATE CHECK (every 1 hour)
   if (now - lastOTACheck >= OTA_CHECK_INTERVAL && wifiConnected && !otaInProgress) {
     checkOTAUpdate();
   }
   
-  // ===== CONTROL ENGINE =====
-   if (bootFanDone && !safeModeActive) {
+  // 🏭 EMERGENCY SURVIVAL CHECK (every loop)
+  checkEmergencySurvival();
+  
+  // ===== CONTROL ENGINE (ALL automation runs locally) =====
+   if (bootFanDone && !safeModeActive && !emergencySurvivalMode) {
     controlLogic();
     
     // 💡 LIGHTING SCHEDULE CONTROL + PWM FADE

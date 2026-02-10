@@ -395,6 +395,16 @@ Deno.serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // 🆕 GET /config - Industrial Safety Model Config Endpoint
+    // Cloud sends ONLY configuration parameters. ESP32 runs ALL automation locally.
+    // Cloud NEVER directly controls relays.
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'GET' && path === 'config') {
+      const shedId = url.searchParams.get('shed_id');
+      return await getDeviceConfig(supabase, userId, shedId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // 🆕 GET /system-status - Complete system status for ESP32
     // Returns: settings, automation rules, device status, lighting, commands
     // This is the "one-call-gets-all" endpoint for ESP32 boot/sync
@@ -3245,6 +3255,186 @@ async function getAdvancedSettings(
     console.error('Get advanced settings error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to get advanced settings', code: 'FETCH_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏭 GET /config - INDUSTRIAL SAFETY MODEL
+// ═══════════════════════════════════════════════════════════════════════════
+// Cloud sends ONLY configuration parameters.
+// ESP32 runs ALL automation logic locally (temperature ventilation, HSI,
+// ammonia protection, minimum ventilation, emergency survival).
+// Cloud NEVER directly controls relays.
+//
+// Response format matches the user's specification:
+// { targetTemp, minVentilationPercent, birdAge, mode, ... }
+// ═══════════════════════════════════════════════════════════════════════════
+async function getDeviceConfig(supabase: any, userId: string, shedId: string | null) {
+  try {
+    // Fetch all config sources in parallel
+    const [profileRes, settingsRes, advancedRes, batchRes, deviceStatusRes, lightingRes] = await Promise.all([
+      supabase.from('profiles').select('farm_type, display_name').eq('id', userId).single(),
+      supabase.from('farm_settings').select('*').eq('user_id', userId).single(),
+      supabase.from('advanced_automation_settings').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('status', 'active').maybeSingle(),
+      supabase.from('device_status').select('manual_override, mode').eq('user_id', userId).maybeSingle(),
+      supabase.from('lighting_schedule').select('*').eq('user_id', userId).maybeSingle(),
+    ]);
+
+    const profile = profileRes.data;
+    const settings = settingsRes.data;
+    const advanced = advancedRes.data;
+    const batch = batchRes.data;
+    const deviceStatus = deviceStatusRes.data;
+    const lighting = lightingRes.data;
+
+    // Determine farm type
+    const farmType = profile?.farm_type || 'layer';
+    const isBroiler = farmType === 'broiler';
+
+    // Calculate bird age for broilers
+    let birdAge = 1;
+    if (isBroiler && batch?.start_date) {
+      const startDate = new Date(batch.start_date);
+      const now = new Date();
+      birdAge = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / 86400000) + 1);
+    }
+
+    // Get target temperature based on farm type and age
+    let targetTemp: { min: number; max: number };
+    if (isBroiler) {
+      targetTemp = getBroilerTargetTemp(birdAge);
+    } else {
+      targetTemp = {
+        min: settings?.temperature_min ?? 18,
+        max: settings?.temperature_max ?? 27,
+      };
+    }
+
+    // Determine mode
+    const mode = deviceStatus?.manual_override ? 'MANUAL' : (deviceStatus?.mode || 'AUTO');
+
+    // Current server time for ESP32 time sync
+    const now = new Date();
+
+    // Build config response - ONLY parameters, NEVER relay states
+    const config = {
+      // === Core Parameters ===
+      farmType: isBroiler ? 'BROILER' : 'LAYER',
+      birdAge: birdAge,
+      mode: mode,
+      targetTemp: (targetTemp.min + targetTemp.max) / 2,
+      targetTempMin: targetTemp.min,
+      targetTempMax: targetTemp.max,
+
+      // === Ventilation Thresholds ===
+      minVentilationPercent: advanced?.min_vent_enabled !== false ? 15 : 0,
+      minVent: {
+        enabled: advanced?.min_vent_enabled ?? true,
+        tempThreshold: advanced?.min_vent_temp_threshold ?? 26,
+        cycleSeconds: advanced?.min_vent_cycle_seconds ?? 40,
+        intervalMinutes: advanced?.min_vent_interval_minutes ?? 5,
+        ceilingFanAlwaysOn: advanced?.min_vent_ceiling_fan_always_on ?? true,
+      },
+
+      // === Temperature Thresholds ===
+      thresholds: {
+        tempMin: settings?.temperature_min ?? (isBroiler ? targetTemp.min : 18),
+        tempMax: settings?.temperature_max ?? (isBroiler ? targetTemp.max : 27),
+        tempFanHigh: isBroiler ? targetTemp.max + 2 : (settings?.fan_high_temp_min ?? 30),
+        humidityMin: settings?.humidity_min ?? 40,
+        humidityMax: settings?.humidity_max ?? 80,
+        ammoniaMax: settings?.ammonia_max ?? (isBroiler ? 20 : 15),
+        ammoniaAlarm: isBroiler ? 30 : 25,
+      },
+
+      // === HSI (Heat Stress Index) Thresholds ===
+      hsi: {
+        enabled: settings?.hsi_automation_enabled ?? true,
+        mild: settings?.hsi_mild_threshold ?? 75,
+        moderate: settings?.hsi_moderate_threshold ?? (isBroiler ? 78 : 80),
+        severe: settings?.hsi_severe_threshold ?? (isBroiler ? 82 : 85),
+        emergency: settings?.hsi_emergency_threshold ?? (isBroiler ? 86 : 90),
+      },
+
+      // === Heater Control ===
+      heater: {
+        enabled: advanced?.heater_enabled ?? true,
+        onTemp: advanced?.heater_on_temp ?? (isBroiler ? targetTemp.min - 2 : 20),
+        offTemp: advanced?.heater_off_temp ?? (isBroiler ? targetTemp.min : 24),
+        tolerance: advanced?.heater_tolerance ?? 0.7,
+        safetyMaxTemp: 34,  // HARD LIMIT - never override
+      },
+
+      // === Fogger Cooling ===
+      fogger: {
+        enabled: advanced?.fogger_enabled ?? false,
+        startTemp: advanced?.fogger_start_temp ?? 32,
+        startHumidityMax: advanced?.fogger_start_humidity_max ?? 85,
+        onSeconds: advanced?.fogger_on_seconds ?? 40,
+        pauseSeconds: advanced?.fogger_pause_seconds ?? 120,
+        stopTemp: advanced?.fogger_stop_temp ?? 30,
+        stopHumidity: advanced?.fogger_stop_humidity ?? 90,
+      },
+
+      // === Airflow (Broiler Growth Mode) ===
+      airflow: {
+        enabled: advanced?.airflow_enabled ?? true,
+        earlyAgeDays: advanced?.airflow_early_age_days ?? 10,
+        midAgeDays: advanced?.airflow_mid_age_days ?? 20,
+        midOnSeconds: advanced?.airflow_mid_on_seconds ?? 30,
+        midIntervalMinutes: advanced?.airflow_mid_interval_minutes ?? 3,
+        nightOnSeconds: advanced?.airflow_night_on_seconds ?? 60,
+        nightIntervalMinutes: advanced?.airflow_night_interval_minutes ?? 5,
+      },
+
+      // === Lighting Schedule ===
+      lighting: {
+        enabled: lighting?.gradual_enabled ?? true,
+        startHour: lighting ? parseInt(lighting.start_time?.split(':')[0] || '5') : 5,
+        startMinute: lighting ? parseInt(lighting.start_time?.split(':')[1] || '0') : 0,
+        endHour: lighting ? parseInt(lighting.end_time?.split(':')[0] || '21') : 21,
+        endMinute: lighting ? parseInt(lighting.end_time?.split(':')[1] || '0') : 0,
+        fadeInMinutes: lighting?.fade_in_minutes ?? 30,
+        fadeOutMinutes: lighting?.fade_out_minutes ?? 30,
+        minBrightness: lighting?.min_brightness ?? 0,
+        maxBrightness: lighting?.max_brightness ?? 100,
+        fadeDurationMinutes: advanced?.lighting_fade_duration_minutes ?? 10,
+      },
+
+      // === Fan Speed Ranges ===
+      fanSpeed: {
+        lowTempMin: settings?.fan_low_temp_min ?? 26,
+        lowTempMax: settings?.fan_low_temp_max ?? 28,
+        mediumTempMin: settings?.fan_medium_temp_min ?? 28,
+        mediumTempMax: settings?.fan_medium_temp_max ?? 30,
+        highTempMin: settings?.fan_high_temp_min ?? 30,
+      },
+
+      // === Time Sync ===
+      currentHour: now.getUTCHours() + 6, // Bangladesh = UTC+6
+      currentMinute: now.getMinutes(),
+      timestamp: now.toISOString(),
+
+      // === Metadata ===
+      configVersion: Date.now(),
+      architecture: 'INDUSTRIAL_SAFETY',
+      note: 'Cloud sends config only. ESP32 runs all automation. Relays never controlled by cloud.',
+    };
+
+    console.log(`[Config] User: ${userId}, Farm: ${farmType}, Age: ${birdAge}, Mode: ${mode}`);
+
+    return new Response(
+      JSON.stringify(config),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Get device config error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to get config', code: 'CONFIG_ERROR' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
