@@ -50,14 +50,14 @@ export const ALERT_TEMPLATES: Record<string, {
   level: AlertLevel;
 }> = {
   high_temperature: {
-    title: { en: 'Birds are getting too hot', bn: 'পাখিরা অতিরিক্ত গরম হয়ে যাচ্ছে' },
+    title: { en: 'Farm is too hot', bn: '🌡️ খামার বেশি গরম — স্বয়ংক্রিয়ভাবে ঠান্ডা করা হচ্ছে' },
     getMessage: (data) => ({
-      en: `Shed temperature is rising${data?.temp ? ` to ${data.temp}°C` : ''}. Birds may be stressed.`,
-      bn: `শেডের তাপমাত্রা বাড়ছে${data?.temp ? ` (${data.temp}°সে)` : ''}। পাখিরা অস্বস্তিতে থাকতে পারে।`,
+      en: `Temperature rising${data?.temp ? ` to ${data.temp}°C` : ''}. Auto-cooling active.`,
+      bn: `তাপমাত্রা বাড়ছে${data?.temp ? ` (${data.temp}°সে)` : ''}। স্বয়ংক্রিয়ভাবে ঠান্ডা করা হচ্ছে।`,
     }),
     getSuggestion: () => ({
-      en: 'Open curtains and check ventilation fans',
-      bn: 'পর্দা খুলুন এবং ভেন্টিলেশন ফ্যান চেক করুন',
+      en: 'System is auto-cooling. Check curtains if needed.',
+      bn: 'সিস্টেম নিজে ঠান্ডা করছে। প্রয়োজনে পর্দা চেক করুন।',
     }),
     level: 'danger',
   },
@@ -74,26 +74,26 @@ export const ALERT_TEMPLATES: Record<string, {
     level: 'danger',
   },
   high_ammonia: {
-    title: { en: 'Air quality getting poor', bn: 'বাতাসের মান খারাপ হচ্ছে' },
+    title: { en: 'Gas level rising', bn: '💨 খামারে গ্যাস বেড়েছে — বাতাস দেওয়া হচ্ছে' },
     getMessage: (data) => ({
-      en: `Ammonia level is rising${data?.ppm ? ` to ${data.ppm} ppm` : ''}. Birds may have breathing issues.`,
-      bn: `অ্যামোনিয়ার মাত্রা বাড়ছে${data?.ppm ? ` (${data.ppm} পিপিএম)` : ''}। পাখিদের শ্বাসকষ্ট হতে পারে।`,
+      en: `Ammonia level rising${data?.ppm ? ` to ${data.ppm} ppm` : ''}. Auto-ventilation active.`,
+      bn: `গ্যাসের মাত্রা বাড়ছে${data?.ppm ? ` (${data.ppm} পিপিএম)` : ''}। স্বয়ংক্রিয়ভাবে বাতাস দেওয়া হচ্ছে।`,
     }),
     getSuggestion: () => ({
-      en: 'Add fresh litter and increase ventilation',
-      bn: 'তাজা লিটার দিন এবং ভেন্টিলেশন বাড়ান',
+      en: 'System is auto-ventilating. Add fresh litter if possible.',
+      bn: 'সিস্টেম নিজে বাতাস দিচ্ছে। সম্ভব হলে তাজা লিটার দিন।',
     }),
     level: 'warning',
   },
   ammonia_danger: {
-    title: { en: 'Dangerous ammonia level', bn: 'বিপজ্জনক অ্যামোনিয়া মাত্রা' },
+    title: { en: 'Dangerous gas level', bn: '💨 খামারে গ্যাস অনেক বেশি — সর্বোচ্চ বাতাস দেওয়া হচ্ছে' },
     getMessage: () => ({
-      en: 'Ammonia has reached dangerous levels. Immediate ventilation needed.',
-      bn: 'অ্যামোনিয়া বিপদসীমায় পৌঁছেছে। এখনই ভেন্টিলেশন প্রয়োজন।',
+      en: 'Gas at dangerous level. Maximum ventilation active.',
+      bn: 'গ্যাস বিপদসীমায়। সর্বোচ্চ বাতাস দেওয়া হচ্ছে।',
     }),
     getSuggestion: () => ({
-      en: 'Open all vents and run exhaust fans at maximum',
-      bn: 'সব ভেন্ট খুলুন এবং এক্সহস্ট ফ্যান সর্বোচ্চ গতিতে চালান',
+      en: 'System is running max ventilation automatically.',
+      bn: 'সিস্টেম নিজে সর্বোচ্চ বাতাস দিচ্ছে।',
     }),
     level: 'danger',
   },
@@ -122,26 +122,38 @@ export const ALERT_TEMPLATES: Record<string, {
     level: 'info',
   },
   power_failure: {
-    title: { en: 'Power has gone out', bn: 'বিদ্যুৎ চলে গেছে' },
+    title: { en: 'Power outage', bn: '⚠️ খামারের বিদ্যুৎ চলে গেছে' },
     getMessage: () => ({
-      en: 'Main power supply interrupted. Running on backup battery.',
-      bn: 'বিদ্যুৎ সরবরাহ বিচ্ছিন্ন। ব্যাকআপ ব্যাটারিতে চলছে।',
+      en: 'Power supply interrupted. Running on backup.',
+      bn: 'বিদ্যুৎ সরবরাহ বিচ্ছিন্ন। ব্যাকআপে চলছে।',
     }),
     getSuggestion: () => ({
-      en: 'Check generator or contact electricity provider',
-      bn: 'জেনারেটর চেক করুন অথবা বিদ্যুৎ সরবরাহকারীর সাথে যোগাযোগ করুন',
+      en: 'Check generator. System will auto-purge when power returns.',
+      bn: 'জেনারেটর চেক করুন। বিদ্যুৎ ফিরলে সিস্টেম নিজে পরিষ্কার করবে।',
     }),
     level: 'danger',
   },
-  heat_stress: {
-    title: { en: 'Heat stress detected', bn: 'হিট স্ট্রেস শনাক্ত হয়েছে' },
+  power_restored: {
+    title: { en: 'Power restored', bn: '⚡ বিদ্যুৎ ফিরে এসেছে, খামার পরিষ্কার করা হচ্ছে' },
     getMessage: () => ({
-      en: 'Birds are experiencing heat stress. Immediate cooling required.',
-      bn: 'পাখিরা হিট স্ট্রেসে আছে। এখনই ঠান্ডা করা প্রয়োজন।',
+      en: 'Power is back. Farm purge running automatically.',
+      bn: 'বিদ্যুৎ ফিরে এসেছে। খামার স্বয়ংক্রিয়ভাবে পরিষ্কার হচ্ছে।',
     }),
     getSuggestion: () => ({
-      en: 'Start fogger and increase airflow immediately',
-      bn: 'এখনই ফগার চালু করুন এবং বাতাস চলাচল বাড়ান',
+      en: 'No action needed. System will return to normal after purge.',
+      bn: 'কিছু করার দরকার নেই। পরিষ্কারের পর সিস্টেম স্বাভাবিক হবে।',
+    }),
+    level: 'info',
+  },
+  heat_stress: {
+    title: { en: 'Extreme heat', bn: '🔥 অতিরিক্ত গরম — সর্বোচ্চ বাতাস দেওয়া হচ্ছে' },
+    getMessage: () => ({
+      en: 'Extreme heat detected. Maximum cooling active.',
+      bn: 'অতিরিক্ত গরম। সর্বোচ্চ বাতাস ও কুলিং চলছে।',
+    }),
+    getSuggestion: () => ({
+      en: 'System is auto-cooling at max. Check water supply.',
+      bn: 'সিস্টেম নিজে সর্বোচ্চ কুলিং দিচ্ছে। পানি সরবরাহ চেক করুন।',
     }),
     level: 'danger',
   },
@@ -158,14 +170,14 @@ export const ALERT_TEMPLATES: Record<string, {
     level: 'danger',
   },
   sensor_failure: {
-    title: { en: 'Sensor not working', bn: 'সেন্সর কাজ করছে না' },
+    title: { en: 'Sensor issue', bn: '🛠️ সেন্সর সমস্যা — খামার সেফটি মোডে চলছে' },
     getMessage: (data) => ({
-      en: `${data?.sensor || 'A sensor'} is not responding. Data may be inaccurate.`,
-      bn: `${data?.sensorBn || 'একটি সেন্সর'} সাড়া দিচ্ছে না। ডাটা ভুল হতে পারে।`,
+      en: `${data?.sensor || 'A sensor'} not responding. Farm running in safety mode.`,
+      bn: `${data?.sensorBn || 'একটি সেন্সর'} সাড়া দিচ্ছে না। খামার সেফটি মোডে চলছে।`,
     }),
     getSuggestion: () => ({
-      en: 'Check sensor connection or contact technician',
-      bn: 'সেন্সর সংযোগ চেক করুন অথবা টেকনিশিয়ানের সাথে যোগাযোগ করুন',
+      en: 'Farm is safe. Check sensor connection when convenient.',
+      bn: 'খামার নিরাপদ আছে। সুযোগে সেন্সর সংযোগ চেক করুন।',
     }),
     level: 'danger',
   },

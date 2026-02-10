@@ -34,7 +34,7 @@ export function QuickSensorDisplay() {
   const sensors = [
     {
       icon: Thermometer,
-      label: { bn: 'তাপমাত্রা', en: 'Temperature' },
+      label: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
       value: `${sensorData.temperature.toFixed(1)}°C`,
       color: 'text-orange-600 dark:text-orange-400',
       bg: 'bg-orange-50 dark:bg-orange-950/50',
@@ -50,7 +50,7 @@ export function QuickSensorDisplay() {
     },
     {
       icon: Wind,
-      label: { bn: 'অ্যামোনিয়া', en: 'Ammonia' },
+      label: { bn: 'গ্যাসের মাত্রা', en: 'Ammonia' },
       value: `${sensorData.ammonia.toFixed(0)} ppm`,
       subValue: ammoniaStatus.label[language],
       color: ammoniaStatus.color,

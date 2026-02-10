@@ -396,6 +396,15 @@ export function ControlPage() {
           ))}
         </div>
 
+        {/* Manual Control Warning */}
+        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-3 text-center">
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            {language === 'bn' 
+              ? '⚠️ সতর্কতা: অটোমেশন বন্ধ করলে মুরগির ক্ষতি হতে পারে'
+              : '⚠️ Warning: Disabling automation may harm birds'}
+          </p>
+        </div>
+
         {/* Success feedback area */}
         <motion.div
           initial={{ opacity: 0 }}

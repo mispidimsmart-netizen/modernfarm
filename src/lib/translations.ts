@@ -21,14 +21,41 @@ export const translations = {
 
   // Sensors
   sensors: {
-    temperature: { bn: 'তাপমাত্রা', en: 'Temperature' },
+    temperature: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
     humidity: { bn: 'আর্দ্রতা', en: 'Humidity' },
-    ammonia: { bn: 'অ্যামোনিয়া', en: 'Ammonia' },
+    ammonia: { bn: 'গ্যাসের মাত্রা', en: 'Ammonia' },
     water: { bn: 'পানি ব্যবহার', en: 'Water Usage' },
     power: { bn: 'বিদ্যুৎ', en: 'Power' },
     fan: { bn: 'ফ্যান', en: 'Fan' },
     light: { bn: 'লাইট', en: 'Light' },
     alarm: { bn: 'অ্যালার্ম', en: 'Alarm' },
+    ventilationStage: { bn: 'বাতাসের স্তর', en: 'Ventilation Stage' },
+  },
+
+  // Farm States (farmer-friendly)
+  farmStates: {
+    normal: { bn: '🟢 খামার স্বাভাবিক চলছে', en: '🟢 Farm Running Normal' },
+    warning: { bn: '🟡 পরিবেশ পরিবর্তন হচ্ছে — স্বয়ংক্রিয়ভাবে ঠিক করা হচ্ছে', en: '🟡 Environment Changing — Auto-Correcting' },
+    danger: { bn: '🟠 গরম/গ্যাস বেশি — ঠান্ডা করা হচ্ছে', en: '🟠 Heat/Gas High — Cooling Active' },
+    emergency: { bn: '🔴 প্রাণ বাঁচাতে সর্বোচ্চ বাতাস দেওয়া হচ্ছে', en: '🔴 Maximum Ventilation for Bird Safety' },
+    sensorFail: { bn: '⚪ সেন্সর সমস্যা — তবুও খামার নিরাপদ চলছে', en: '⚪ Sensor Issue — Farm Running Safely' },
+    purge: { bn: '🔵 বিদ্যুৎ ফিরে এসেছে — খামার পরিষ্কার করা হচ্ছে', en: '🔵 Power Restored — Purging Farm' },
+  },
+
+  // Fan running reasons
+  fanReasons: {
+    temperature: { bn: 'গরম কমানো হচ্ছে', en: 'Reducing heat' },
+    ammonia: { bn: 'গ্যাস বের করা হচ্ছে', en: 'Exhausting gas' },
+    nightVent: { bn: 'তাজা বাতাস দেওয়া হচ্ছে', en: 'Fresh air circulation' },
+    emergency: { bn: 'প্রাণ বাঁচাতে বাতাস দেওয়া হচ্ছে', en: 'Emergency ventilation for bird safety' },
+    powerRecovery: { bn: 'বিদ্যুৎ যাওয়ার পর পরিষ্কার করা হচ্ছে', en: 'Post-power-outage purge' },
+    sensorFail: { bn: 'সেন্সর না থাকায় সেফটি মোড চলছে', en: 'Safety mode due to sensor failure' },
+  },
+
+  // Safety messages
+  safety: {
+    autoRunning: { bn: 'খামার সম্পূর্ণ অটোমেটিক চলছে — কোন বাটন চাপার প্রয়োজন নেই', en: 'Farm is fully automatic — no button press needed' },
+    manualWarning: { bn: 'সতর্কতা: অটোমেশন বন্ধ করলে মুরগির ক্ষতি হতে পারে', en: 'Warning: Disabling automation may harm birds' },
   },
 
   // Units

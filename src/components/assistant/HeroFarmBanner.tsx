@@ -53,27 +53,27 @@ export function HeroFarmBanner() {
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
     
-    // DANGER state
+    // DANGER/EMERGENCY state
     if (temp > 38 || ammonia > 25 || hsi > 85) {
       return {
         state: 'danger',
         gradient: 'from-red-600 via-red-500 to-rose-600',
         borderColor: 'border-red-400/50',
         icon: AlertTriangle,
-        title: { bn: '🚨 বিপদ', en: '🚨 DANGER' },
-        subtitle: { bn: 'জরুরি ব্যবস্থা নিন!', en: 'Take immediate action!' },
+        title: { bn: '🔴 প্রাণ বাঁচাতে সর্বোচ্চ বাতাস দেওয়া হচ্ছে', en: '🔴 Maximum Ventilation Active' },
+        subtitle: { bn: 'সিস্টেম স্বয়ংক্রিয়ভাবে পাখিদের বাঁচাচ্ছে', en: 'System is protecting birds automatically' },
       };
     }
     
-    // HOT state
+    // HOT/WARNING state
     if (temp > 32 || hsi > 70) {
       return {
         state: 'hot',
         gradient: 'from-orange-600 via-amber-500 to-orange-600',
         borderColor: 'border-orange-400/50',
         icon: Thermometer,
-        title: { bn: '🔥 গরম', en: '🔥 HOT' },
-        subtitle: { bn: 'কুলিং প্রয়োজন', en: 'Cooling needed' },
+        title: { bn: '🟠 গরম/গ্যাস বেশি — ঠান্ডা করা হচ্ছে', en: '🟠 Heat High — Cooling Active' },
+        subtitle: { bn: 'স্বয়ংক্রিয়ভাবে ঠান্ডা করা হচ্ছে', en: 'Auto-cooling in progress' },
       };
     }
     
@@ -86,8 +86,8 @@ export function HeroFarmBanner() {
           gradient: 'from-blue-600 via-sky-500 to-blue-600',
           borderColor: 'border-blue-400/50',
           icon: Snowflake,
-          title: { bn: '❄️ ঠান্ডা', en: '❄️ COLD' },
-          subtitle: { bn: 'হিটিং প্রয়োজন', en: 'Heating needed' },
+          title: { bn: '🟡 পরিবেশ পরিবর্তন হচ্ছে — স্বয়ংক্রিয়ভাবে ঠিক করা হচ্ছে', en: '🟡 Environment Changing — Auto-Correcting' },
+          subtitle: { bn: 'তাপমাত্রা বাড়ানো হচ্ছে', en: 'Heating in progress' },
         };
       }
     } else if (temp < 18) {
@@ -96,8 +96,8 @@ export function HeroFarmBanner() {
         gradient: 'from-blue-600 via-sky-500 to-blue-600',
         borderColor: 'border-blue-400/50',
         icon: Snowflake,
-        title: { bn: '❄️ ঠান্ডা', en: '❄️ COLD' },
-        subtitle: { bn: 'হিটিং প্রয়োজন', en: 'Heating needed' },
+        title: { bn: '🟡 পরিবেশ পরিবর্তন হচ্ছে — স্বয়ংক্রিয়ভাবে ঠিক করা হচ্ছে', en: '🟡 Environment Changing — Auto-Correcting' },
+        subtitle: { bn: 'তাপমাত্রা বাড়ানো হচ্ছে', en: 'Heating in progress' },
       };
     }
     
@@ -107,8 +107,8 @@ export function HeroFarmBanner() {
       gradient: 'from-emerald-600 via-green-500 to-emerald-600',
       borderColor: 'border-emerald-400/50',
       icon: CheckCircle2,
-      title: { bn: '✅ সব ঠিক আছে', en: '✅ ALL GOOD' },
-      subtitle: { bn: 'খামার স্বাভাবিক আছে', en: 'Farm is running well' },
+      title: { bn: '🟢 খামার স্বাভাবিক চলছে', en: '🟢 Farm Running Normal' },
+      subtitle: { bn: 'খামার সম্পূর্ণ অটোমেটিক চলছে', en: 'Farm is fully automatic' },
     };
   }, [sensorData, hsiResult, isBroiler, batchStats]);
 
@@ -117,21 +117,28 @@ export function HeroFarmBanner() {
     if (deviceStatus.heater) {
       return { 
         icon: Flame, 
-        text: { bn: '🔥 হিটিং চলছে', en: '🔥 Heating Active' },
+        text: { bn: '🔥 তাপমাত্রা বাড়ানো হচ্ছে', en: '🔥 Heating Active' },
         color: 'text-orange-200'
       };
     }
     if (deviceStatus.fan) {
+      if (sensorData.ammonia > 15) {
+        return { 
+          icon: Wind, 
+          text: { bn: '💨 গ্যাস বের করা হচ্ছে', en: '💨 Exhausting Gas' },
+          color: 'text-purple-200'
+        };
+      }
       if (sensorData.temperature > 32) {
         return { 
           icon: Wind, 
-          text: { bn: '❄️ কুলিং মোড', en: '❄️ Cooling Mode' },
+          text: { bn: '❄️ গরম কমানো হচ্ছে', en: '❄️ Reducing Heat' },
           color: 'text-cyan-200'
         };
       }
       return { 
         icon: Fan, 
-        text: { bn: '🌬️ ভেন্টিলেশন চলছে', en: '🌬️ Ventilation Running' },
+        text: { bn: '🌬️ তাজা বাতাস দেওয়া হচ্ছে', en: '🌬️ Fresh Air Circulation' },
         color: 'text-teal-200'
       };
     }
@@ -145,7 +152,7 @@ export function HeroFarmBanner() {
     }
     return { 
       icon: Activity, 
-      text: { bn: '✨ স্বয়ংক্রিয় মোড', en: '✨ Auto Mode' },
+      text: { bn: '✨ খামার স্বয়ংক্রিয় চলছে', en: '✨ Farm Running Automatically' },
       color: 'text-emerald-200'
     };
   }, [deviceStatus, sensorData.temperature]);
