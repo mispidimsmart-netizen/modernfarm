@@ -1366,6 +1366,16 @@ void automationEngineTick() {
     transitionTo(newState, "sensor_eval");
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // AUTONOMOUS SURVIVAL VENTILATION
+  // If SENSOR_FAIL or EMERGENCY: enter ESM for cyclic fan operation
+  // Guarantees minimum breathable air with ZERO sensor dependency
+  // ═══════════════════════════════════════════════════════════════
+  if (currentState == STATE_SENSOR_FAIL && !emergencySurvivalMode) {
+    enterESM("SENSOR_FAIL_AUTO");
+    return;
+  }
+
   // Run hysteresis engine
   evaluateHysteresisChannel(hystFan, temperature, false);
   evaluateHysteresisChannel(hystHeater, temperature, true);
@@ -1431,10 +1441,17 @@ void runControlLogic() {
       requestAlarm(false);
       break;
     case STATE_SENSOR_FAIL:
-      requestFan(true, "HIGH");
+      // Should not reach here — SENSOR_FAIL auto-enters ESM above.
+      // Fallback safety: force cyclic survival ventilation inline.
       { unsigned long elapsed = millis() - stateEnteredAt;
-        requestAlarm((elapsed % 20000) < 200); }
-      gsmQueueAlert("temperature", "⚠️ SENSOR FAIL! Fan ON for safety.");
+        unsigned long fanCycle = ESM_FAN_ON_MS + ESM_FAN_OFF_MS;
+        bool shouldFan = (elapsed % fanCycle) < ESM_FAN_ON_MS;
+        requestFan(shouldFan, shouldFan ? "HIGH" : "OFF");
+        unsigned long alarmCycle = ESM_ALARM_ON_MS + ESM_ALARM_OFF_MS;
+        requestAlarm((elapsed % alarmCycle) < ESM_ALARM_ON_MS);
+        requestHeater(false); requestFogger(false);
+      }
+      gsmQueueAlert("temperature", "⚠️ SENSOR FAIL! Survival ventilation active.");
       break;
     default: break;
   }
