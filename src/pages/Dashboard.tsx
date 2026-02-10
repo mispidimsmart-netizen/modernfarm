@@ -129,6 +129,15 @@ export function Dashboard() {
         {/* ============ SECTION 0.5: ALERT SUMMARY BANNER ============ */}
         <AlertSummaryBanner />
 
+        {/* ============ PANIC PREVENTION BANNER ============ */}
+        <div className="mx-0 mb-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-2.5 text-center">
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            {language === 'bn' 
+              ? '✅ খামার সম্পূর্ণ অটোমেটিক চলছে — কোন বাটন চাপার প্রয়োজন নেই'
+              : '✅ Farm is fully automatic — no button press needed'}
+          </p>
+        </div>
+
         {/* ============ SECTION 1: HERO FARM HEALTH BANNER ============ */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
