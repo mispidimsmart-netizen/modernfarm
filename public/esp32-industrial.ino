@@ -102,7 +102,7 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define CLOUD_TIMEOUT            300000UL
 #define SAFE_MODE_DURATION       30000UL
 #define GAS_WARMUP_DURATION      300000UL
-#define SENSOR_TIMEOUT           15000UL
+#define SENSOR_TIMEOUT           90000UL    // 90 sec invalid → SENSOR_FAIL
 #define WATER_TIMEOUT            21600000UL
 #define OTA_CHECK_INTERVAL       3600000UL
 #define AGE_TICK_INTERVAL        86400000UL
@@ -118,11 +118,16 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define HUMIDITY_SANITY_MIN  10.0f
 #define HUMIDITY_SANITY_MAX  100.0f
 
-// --- Sensor Validation Layer ---
+// --- Sensor Validation Layer (Module J) ---
+// ALL automation uses SVL-validated values ONLY. Raw sensor data NEVER controls relays.
+// Median filter: 5-sample window per channel → removes noise
+// Spike rejection: >20% sudden change from last raw → ignored
+// NH3 confirmation: must breach threshold for 45s continuously before state change
+// Sensor timeout: 90s invalid readings → SENSOR_FAIL state
 #define SVL_MEDIAN_SIZE      5
 #define SVL_SPIKE_PERCENT    20.0f
 #define SVL_NH3_SUSTAIN_MS   45000UL
-#define SVL_SENSOR_OFFLINE_MS 30000UL
+#define SVL_SENSOR_OFFLINE_MS 90000UL    // 90 sec → SENSOR_FAIL
 
 // --- Emergency Survival ---
 #define ESM_FAN_ON_MS        120000UL
@@ -849,7 +854,17 @@ bool checkPowerFailure() {
   return false;
 }
 
-// --- SVL: Sensor Validation Layer ---
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  MODULE J: SENSOR VALIDATION LAYER (SVL)                               ║
+// ║  ⚠️ ALL state machine decisions use SVL output ONLY.                    ║
+// ║  Raw sensor values NEVER reach automation or relay control.            ║
+// ║                                                                        ║
+// ║  Pipeline: Raw → Sanity → Spike Reject → Median[5] → Validated        ║
+// ║  Timeout:  90s invalid → isOffline=true → SENSOR_FAIL state           ║
+// ║  Fallback: Invalid reading → lastStableValue used (automation safe)   ║
+// ║  NH3:      Must exceed threshold 45s continuously before WARNING      ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
 void svlSortArray(float a[], int n) {
   for (int i=1;i<n;i++) { float k=a[i]; int j=i-1; while(j>=0&&a[j]>k){a[j+1]=a[j];j--;} a[j+1]=k; }
 }
@@ -899,42 +914,70 @@ void svlCheckAmmoniaThreshold(float v, float threshold) {
 }
 
 void svlCheckSensorOffline() {
+  unsigned long now = millis();
+  // Check each channel for 90s timeout → SENSOR_FAIL
+  if (svlTemp.lastValidTime > 0 && (now - svlTemp.lastValidTime > SVL_SENSOR_OFFLINE_MS)) {
+    svlTemp.isOffline = true; svlTemp.isValid = false;
+  }
+  if (svlHumidity.lastValidTime > 0 && (now - svlHumidity.lastValidTime > SVL_SENSOR_OFFLINE_MS)) {
+    svlHumidity.isOffline = true; svlHumidity.isValid = false;
+  }
+  if (svlAmmonia.lastValidTime > 0 && (now - svlAmmonia.lastValidTime > SVL_SENSOR_OFFLINE_MS)) {
+    svlAmmonia.isOffline = true; svlAmmonia.isValid = false;
+  }
+  
+  // If any critical sensor offline → enter SENSOR_FAIL via sensorErrorMode
   if ((svlTemp.isOffline || svlHumidity.isOffline) && !sensorErrorMode) {
     sensorErrorMode = true;
+    Serial.println("🔴 SVL: Sensor offline >90s → SENSOR_FAIL (fan ON for safety)");
     requestFan(true, "HIGH");
+  }
+  // Recovery: if sensors come back online, clear error
+  if (!svlTemp.isOffline && !svlHumidity.isOffline && sensorErrorMode) {
+    sensorErrorMode = false;
+    Serial.println("🟢 SVL: Sensors recovered → clearing SENSOR_FAIL");
   }
 }
 
 // --- Sensor Manager Main Tick ---
+// ⚠️ CRITICAL: Only SVL-validated values are written to global state.
+//    Raw sensor data is NEVER used for automation decisions.
+//    Pipeline: Raw → Rolling Avg → SVL (median+spike) → Global State
 void sensorManagerTick() {
-  float t = readTempFiltered();
-  float h = readHumidityFiltered();
-  float tRoll = addToTempRolling(t);
-  float hRoll = addToHumRolling(h);
+  // Step 1: Read raw sensors (may return NAN)
+  float rawT = readTempFiltered();
+  float rawH = readHumidityFiltered();
+  
+  // Step 2: Rolling average (smoothing, handles NAN gracefully)
+  float tRoll = addToTempRolling(rawT);
+  float hRoll = addToHumRolling(rawH);
   rollingIndex = (rollingIndex + 1) % SENSOR_ROLLING_SIZE;
 
-  float tValid = svlProcessReading(svlTemp, tRoll);
-  float hValid = svlProcessReading(svlHumidity, hRoll);
+  // Step 3: SVL validation (median filter + spike rejection)
+  // Returns lastStableValue if reading is invalid or spike-rejected
+  float tValidated = svlProcessReading(svlTemp, tRoll);
+  float hValidated = svlProcessReading(svlHumidity, hRoll);
 
-  if (!isnan(tValid) && !isnan(hValid) && !svlTemp.isOffline && !svlHumidity.isOffline) {
-    temperature = tValid + farmConfig.tempOffset;
-    humidity = hValid;
+  // Step 4: Only validated values reach global state (automation inputs)
+  if (!svlTemp.isOffline && !svlHumidity.isOffline) {
+    temperature = tValidated + farmConfig.tempOffset;  // SVL-validated only
+    humidity = hValidated;                              // SVL-validated only
     lastValidSensor = millis();
-    sensorErrorMode = false;
-  } else {
-    if (millis() - lastValidSensor > SENSOR_TIMEOUT) {
-      sensorErrorMode = true;
-      requestFan(true, "HIGH");
-    }
   }
+  // If sensors offline >90s, sensorErrorMode set by svlCheckSensorOffline()
 
+  // Step 5: Ammonia pipeline (raw → moving avg → SVL → global)
   float ammoniaRaw = readGasFiltered();
   float ammMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
   float ammOffset = ammMapped + farmConfig.nh3Offset;
   if (ammOffset < 0) ammOffset = 0;
   float ammAvg = calculateGasMovingAvg(ammOffset);
-  ammonia = svlProcessReading(svlAmmonia, ammAvg);
+  ammonia = svlProcessReading(svlAmmonia, ammAvg);  // SVL-validated only
+  
+  // Step 6: NH3 45-second confirmation before state escalation
   svlCheckAmmoniaThreshold(ammonia, rules.ammoniaFan);
+  
+  // Step 7: Check all channels for 90s timeout
   svlCheckSensorOffline();
 
   if (waterPulseCount > 0) { lastWaterPulse = millis(); waterPulseCount = 0; waterFailureMode = false; }
