@@ -120,14 +120,15 @@ const char* FIRMWARE_VERSION = "7.0.0";
 
 // --- Sensor Validation Layer (Module J) ---
 // ALL automation uses SVL-validated values ONLY. Raw sensor data NEVER controls relays.
-// Median filter: 5-sample window per channel → removes noise
-// Spike rejection: >20% sudden change from last raw → ignored
-// NH3 confirmation: must breach threshold for 45s continuously before state change
-// Sensor timeout: 90s invalid readings → SENSOR_FAIL state
-#define SVL_MEDIAN_SIZE      5
-#define SVL_SPIKE_PERCENT    20.0f
-#define SVL_NH3_SUSTAIN_MS   45000UL
-#define SVL_SENSOR_OFFLINE_MS 90000UL    // 90 sec → SENSOR_FAIL
+// Pipeline: Raw → Store in buffer → Compute median → Spike compare vs median → Accept/Reject → Use
+// Spike rejection: >20% deviation from MEDIAN (not previous raw)
+// NH3 confirmation: must breach threshold for 45s continuously before ANY state escalation
+// Sensor timeout: 90s invalid → SENSOR_FAIL; 3min no valid → lastStableValue expires
+#define SVL_MEDIAN_SIZE          5
+#define SVL_SPIKE_PERCENT        20.0f
+#define SVL_NH3_SUSTAIN_MS       45000UL
+#define SVL_SENSOR_OFFLINE_MS    90000UL     // 90 sec → SENSOR_FAIL
+#define SVL_LAST_GOOD_EXPIRE_MS  180000UL    // 3 min → lastStableValue expires → SENSOR_FAIL
 
 // --- Emergency Survival ---
 #define ESM_FAN_ON_MS        120000UL
@@ -279,8 +280,9 @@ const float HEATER_BROILER_CURVE[][2] = {
 struct SVLChannel {
   float medianBuffer[SVL_MEDIAN_SIZE];
   int bufferIndex, sampleCount;
-  float lastStableValue, lastRawValue;
-  unsigned long lastValidTime;
+  float lastStableValue;
+  unsigned long lastValidTime;       // Last time a valid reading was accepted
+  unsigned long lastStableTime;      // Timestamp when lastStableValue was set
   bool isValid, isOffline;
 };
 
@@ -340,9 +342,9 @@ unsigned long lastWaterPulse = 0;
 bool waterFailureMode = false;
 
 // --- SVL Channels ---
-SVLChannel svlTemp     = {{0},0,0,25.0f,25.0f,0,true,false};
-SVLChannel svlHumidity = {{0},0,0,60.0f,60.0f,0,true,false};
-SVLChannel svlAmmonia  = {{0},0,0,0.0f,0.0f,0,true,false};
+SVLChannel svlTemp     = {{0},0,0,25.0f,0,0,true,false};
+SVLChannel svlHumidity = {{0},0,0,60.0f,0,0,true,false};
+SVLChannel svlAmmonia  = {{0},0,0,0.0f,0,0,true,false};
 bool nh3ThresholdBreached = false;
 unsigned long nh3ThresholdBreachStart = 0;
 bool nh3VentilationConfirmed = false;
@@ -707,8 +709,10 @@ void transitionTo(SystemState newState, String reason) {
 }
 
 // Evaluate current sensor data and determine correct state
+// ⚠️ CRITICAL: Only SVL-validated values are used here. NH3 state transitions
+//    require 45-second confirmation (nh3VentilationConfirmed) before ANY escalation.
 SystemState evaluateState() {
-  // SENSOR_FAIL takes priority if sensors offline
+  // SENSOR_FAIL takes priority if sensors offline or lastStableValue expired
   if (svlTemp.isOffline || svlHumidity.isOffline || sensorErrorMode) {
     return STATE_SENSOR_FAIL;
   }
@@ -719,11 +723,16 @@ SystemState evaluateState() {
   // Purge active
   if (purgeActive) return STATE_WARNING;
   
-  // HSI / Temperature based
+  // HSI / Temperature based (these use SVL-validated globals only)
   if (currentHSI > rules.hsiCritical || temperature > rules.tempAlarm) return STATE_EMERGENCY;
   if (currentHSI > rules.hsiEmergency || temperature > rules.tempFanHigh) return STATE_DANGER;
-  if (ammonia > rules.ammoniaAlarm) return STATE_DANGER;
-  if (currentHSI > rules.hsiFanHigh || (ammonia > rules.ammoniaFan && nh3VentilationConfirmed)) return STATE_WARNING;
+  
+  // NH3: ALL state escalation requires 45s confirmation — not just WARNING
+  // Without confirmation, ammonia does NOT change state (prevents false triggers)
+  if (ammonia > rules.ammoniaAlarm && nh3VentilationConfirmed) return STATE_DANGER;
+  if (ammonia > rules.ammoniaFan && nh3VentilationConfirmed) return STATE_WARNING;
+  
+  if (currentHSI > rules.hsiFanHigh) return STATE_WARNING;
   if (currentHSI > rules.hsiFanLow) return STATE_WARNING;
   
   return STATE_NORMAL;
@@ -855,14 +864,17 @@ bool checkPowerFailure() {
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
-// ║  MODULE J: SENSOR VALIDATION LAYER (SVL)                               ║
+// ║  MODULE J: SENSOR VALIDATION LAYER (SVL) v2.0                          ║
 // ║  ⚠️ ALL state machine decisions use SVL output ONLY.                    ║
 // ║  Raw sensor values NEVER reach automation or relay control.            ║
 // ║                                                                        ║
-// ║  Pipeline: Raw → Sanity → Spike Reject → Median[5] → Validated        ║
-// ║  Timeout:  90s invalid → isOffline=true → SENSOR_FAIL state           ║
-// ║  Fallback: Invalid reading → lastStableValue used (automation safe)   ║
-// ║  NH3:      Must exceed threshold 45s continuously before WARNING      ║
+// ║  Pipeline: Raw → Store in buffer → Median[5] → Spike compare vs       ║
+// ║            median → Accept or Reject → lastStableValue updated         ║
+// ║  Spike:    Compare new reading against MEDIAN, not previous raw        ║
+// ║  Timeout:  90s invalid → SENSOR_FAIL state                             ║
+// ║  Expiry:   3 min no valid → lastStableValue expires → SENSOR_FAIL     ║
+// ║  Fallback: Invalid reading → lastStableValue (until expired)          ║
+// ║  NH3:      Must exceed threshold 45s before ANY state escalation      ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
 void svlSortArray(float a[], int n) {
@@ -877,27 +889,65 @@ float svlGetMedian(SVLChannel &ch) {
   return (c%2==0) ? (sorted[c/2-1]+sorted[c/2])/2.0f : sorted[c/2];
 }
 
-bool svlIsSpikeRejected(SVLChannel &ch, float v) {
-  if (ch.sampleCount < 2 || ch.lastRawValue == 0) return false;
-  float pct = abs(v - ch.lastRawValue) / abs(ch.lastRawValue) * 100.0f;
+// Spike rejection: compare new value against MEDIAN (not previous raw)
+// This prevents slow drift from corrupting the reference point
+bool svlIsSpikeRejected(SVLChannel &ch, float raw) {
+  if (ch.sampleCount < 2) return false;
+  float currentMedian = svlGetMedian(ch);
+  if (currentMedian == 0) return false;
+  float pct = abs(raw - currentMedian) / abs(currentMedian) * 100.0f;
   return pct > SVL_SPIKE_PERCENT;
 }
 
+// Correct pipeline: Raw → Store → Median → Spike compare vs median → Accept/Reject
 float svlProcessReading(SVLChannel &ch, float raw) {
   unsigned long now = millis();
+  
+  // NAN handling: check both 90s offline and 3-min expiry
   if (isnan(raw)) {
     if (ch.lastValidTime > 0 && (now - ch.lastValidTime) > SVL_SENSOR_OFFLINE_MS) {
       ch.isOffline = true; ch.isValid = false;
     }
+    // Last good value expiry: if no valid reading for 3 minutes, force SENSOR_FAIL
+    if (ch.lastStableTime > 0 && (now - ch.lastStableTime) > SVL_LAST_GOOD_EXPIRE_MS) {
+      ch.isOffline = true; ch.isValid = false;
+      Serial.println("🔴 SVL: lastStableValue expired (3min) → SENSOR_FAIL");
+    }
     return ch.lastStableValue;
   }
-  if (svlIsSpikeRejected(ch, raw)) return ch.lastStableValue;
+  
+  // Step 1: Store raw into median buffer FIRST
   ch.medianBuffer[ch.bufferIndex] = raw;
   ch.bufferIndex = (ch.bufferIndex + 1) % SVL_MEDIAN_SIZE;
   if (ch.sampleCount < SVL_MEDIAN_SIZE) ch.sampleCount++;
+  
+  // Step 2: Calculate median from buffer (includes new sample)
   float median = svlGetMedian(ch);
-  ch.lastRawValue = raw; ch.lastStableValue = median;
-  ch.lastValidTime = now; ch.isValid = true; ch.isOffline = false;
+  
+  // Step 3: Spike compare against MEDIAN (not previous raw)
+  // If the new value deviates >20% from the median, reject it
+  // We check against the median WITHOUT the new value by using previous stable
+  if (ch.sampleCount > 2) {
+    float refMedian = ch.lastStableValue;  // Previous accepted median
+    if (refMedian != 0) {
+      float pct = abs(raw - refMedian) / abs(refMedian) * 100.0f;
+      if (pct > SVL_SPIKE_PERCENT) {
+        // Spike detected: undo the buffer insertion
+        ch.bufferIndex = (ch.bufferIndex - 1 + SVL_MEDIAN_SIZE) % SVL_MEDIAN_SIZE;
+        ch.medianBuffer[ch.bufferIndex] = ch.lastStableValue; // restore
+        if (ch.sampleCount > SVL_MEDIAN_SIZE) ch.sampleCount = SVL_MEDIAN_SIZE;
+        Serial.printf("⚠️ SVL: Spike rejected (%.1f vs median %.1f, %.0f%%)\n", raw, refMedian, pct);
+        return ch.lastStableValue;
+      }
+    }
+  }
+  
+  // Step 4: Reading accepted → update stable value with timestamp
+  ch.lastStableValue = median;
+  ch.lastStableTime = now;
+  ch.lastValidTime = now;
+  ch.isValid = true;
+  ch.isOffline = false;
   return median;
 }
 
@@ -907,6 +957,7 @@ void svlCheckAmmoniaThreshold(float v, float threshold) {
     if (!nh3ThresholdBreached) { nh3ThresholdBreached = true; nh3ThresholdBreachStart = now; }
     else if ((now - nh3ThresholdBreachStart) >= SVL_NH3_SUSTAIN_MS && !nh3VentilationConfirmed) {
       nh3VentilationConfirmed = true;
+      Serial.println("✅ SVL: NH3 confirmed above threshold for 45s → state escalation allowed");
     }
   } else {
     nh3ThresholdBreached = false; nh3ThresholdBreachStart = 0; nh3VentilationConfirmed = false;
@@ -915,6 +966,7 @@ void svlCheckAmmoniaThreshold(float v, float threshold) {
 
 void svlCheckSensorOffline() {
   unsigned long now = millis();
+  
   // Check each channel for 90s timeout → SENSOR_FAIL
   if (svlTemp.lastValidTime > 0 && (now - svlTemp.lastValidTime > SVL_SENSOR_OFFLINE_MS)) {
     svlTemp.isOffline = true; svlTemp.isValid = false;
@@ -926,10 +978,18 @@ void svlCheckSensorOffline() {
     svlAmmonia.isOffline = true; svlAmmonia.isValid = false;
   }
   
+  // Last good value expiry: 3 minutes with no valid reading → force offline
+  if (svlTemp.lastStableTime > 0 && (now - svlTemp.lastStableTime > SVL_LAST_GOOD_EXPIRE_MS)) {
+    svlTemp.isOffline = true; svlTemp.isValid = false;
+  }
+  if (svlHumidity.lastStableTime > 0 && (now - svlHumidity.lastStableTime > SVL_LAST_GOOD_EXPIRE_MS)) {
+    svlHumidity.isOffline = true; svlHumidity.isValid = false;
+  }
+  
   // If any critical sensor offline → enter SENSOR_FAIL via sensorErrorMode
   if ((svlTemp.isOffline || svlHumidity.isOffline) && !sensorErrorMode) {
     sensorErrorMode = true;
-    Serial.println("🔴 SVL: Sensor offline >90s → SENSOR_FAIL (fan ON for safety)");
+    Serial.println("🔴 SVL: Sensor offline/expired → SENSOR_FAIL (fan ON for safety)");
     requestFan(true, "HIGH");
   }
   // Recovery: if sensors come back online, clear error
