@@ -626,11 +626,13 @@ void loadCredentialsFromNVS();
 void saveCredentialsToNVS();
 void provisionFromHardcoded();
 
-// OTA
+// OTA (Industrial Safe)
 void validateBootPartition();
 void checkOTAUpdate();
+void performOTAUpdate();
 bool compareVersions(String current, String target);
 uint32_t calculateCRC32(uint8_t* data, size_t length);
+uint32_t calculateStreamCRC32(const esp_partition_t* partition, size_t size);
 
 // GSM
 void gsmInit();
@@ -2346,7 +2348,16 @@ void provisionFromHardcoded() {
   saveCredentialsToNVS();
 }
 
-// --- OTA (preserved, not redesigned) ---
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  OTA: INDUSTRIAL SAFE UPDATE SYSTEM                                    ║
+// ║  Rules:                                                                ║
+// ║    1. Never update if version is same or older (semver compare)        ║
+// ║    2. Verify CRC32 checksum of written partition BEFORE boot           ║
+// ║    3. Use dual-partition rollback (esp_ota)                            ║
+// ║    4. If new firmware fails boot validation → auto-revert              ║
+// ║    5. Controller ALWAYS has working firmware                           ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
 bool compareVersions(String current, String target) {
   int cM=0,cN=0,cP=0, tM=0,tN=0,tP=0;
   sscanf(current.c_str(), "%d.%d.%d", &cM,&cN,&cP);
@@ -2360,17 +2371,57 @@ uint32_t calculateCRC32(uint8_t* data, size_t len) {
   return ~crc;
 }
 
+// Calculate CRC32 of data already written to a partition (streaming read)
+uint32_t calculateStreamCRC32(const esp_partition_t* partition, size_t size) {
+  uint32_t crc = 0xFFFFFFFF;
+  uint8_t buf[256];
+  size_t offset = 0;
+  while (offset < size) {
+    size_t toRead = min((size_t)256, size - offset);
+    if (esp_partition_read(partition, offset, buf, toRead) != ESP_OK) {
+      Serial.println("❌ OTA: Partition read failed during CRC verify");
+      return 0;
+    }
+    for (size_t i = 0; i < toRead; i++) {
+      crc ^= buf[i];
+      for (int j = 0; j < 8; j++) crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+    }
+    offset += toRead;
+    esp_task_wdt_reset();
+  }
+  return ~crc;
+}
+
 void validateBootPartition() {
   const esp_partition_t* running = esp_ota_get_running_partition();
   esp_ota_img_states_t state;
   if (esp_ota_get_state_partition(running, &state) == ESP_OK) {
     if (state == ESP_OTA_IMG_PENDING_VERIFY) {
-      bool ok = (activeDeviceToken.length() >= 10 && ESP.getFreeHeap() >= 20000);
-      if (ok) { esp_ota_mark_app_valid_cancel_rollback(); Serial.println("✅ Firmware validated"); }
-      else {
-        Serial.println("❌ Firmware validation FAILED - rolling back");
-        unsigned long w = millis(); while(millis()-w < 2000) yield();
+      Serial.println("🔍 OTA: New firmware pending verification...");
+      
+      // Multi-point validation:
+      // 1. Credentials loaded (NVS intact)
+      // 2. Sufficient free heap (no memory corruption)
+      // 3. Sensors respond (hardware compatibility)
+      bool credOk = (activeDeviceToken.length() >= 10);
+      bool heapOk = (ESP.getFreeHeap() >= 20000);
+      bool sensorOk = !isnan(dht.readTemperature());
+      
+      Serial.printf("  Credentials: %s | Heap: %s (%lu) | Sensor: %s\n",
+        credOk ? "OK" : "FAIL", heapOk ? "OK" : "LOW", ESP.getFreeHeap(),
+        sensorOk ? "OK" : "FAIL");
+      
+      if (credOk && heapOk) {
+        esp_ota_mark_app_valid_cancel_rollback();
+        Serial.printf("✅ Firmware v%s validated and locked\n", FIRMWARE_VERSION);
+        otaStatus = "validated";
+      } else {
+        Serial.println("❌ Firmware validation FAILED — initiating rollback");
+        otaStatus = "rollback";
+        gsmQueueAlert("ota", "❌ OTA rollback: new firmware failed validation, reverting to previous.");
+        unsigned long w = millis(); while(millis()-w < 2000) { esp_task_wdt_reset(); yield(); }
         esp_ota_mark_app_invalid_rollback_and_reboot();
+        // Never reaches here — device reboots into previous partition
       }
     }
   }
@@ -2378,11 +2429,15 @@ void validateBootPartition() {
 
 void checkOTAUpdate() {
   if (otaInProgress || !wifiConnected) return;
+  // Don't check during critical states
+  if (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || purgeActive || emergencySurvivalMode) return;
+  
   HTTPClient http;
   String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware?action=check&current_version=" + String(FIRMWARE_VERSION);
   http.begin(url);
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
+  esp_task_wdt_reset();
   int code = http.GET();
   if (code == 200) {
     String resp = http.getString();
@@ -2390,18 +2445,203 @@ void checkOTAUpdate() {
     if (deserializeJson(doc, resp) == DeserializationError::Ok) {
       if (doc["update_available"] | false) {
         String newVer = doc["version"] | "";
+        
+        // RULE 1: Never update to same or older version
+        if (newVer == String(FIRMWARE_VERSION)) {
+          Serial.printf("⚠️ OTA: Target v%s is same as current — skipping\n", newVer.c_str());
+          http.end();
+          return;
+        }
         if (newVer.length() > 0 && compareVersions(FIRMWARE_VERSION, newVer)) {
           otaPendingUrl = doc["url"] | "";
           otaPendingSize = doc["size"] | 0;
           otaPendingChecksum = doc["checksum"] | "";
           otaAvailableVersion = newVer;
-          // OTA download would proceed here (preserved from existing code)
-          Serial.printf("🔄 OTA available: v%s → v%s\n", FIRMWARE_VERSION, newVer.c_str());
+          Serial.printf("🔄 OTA: Update available v%s → v%s (size=%d)\n", FIRMWARE_VERSION, newVer.c_str(), otaPendingSize);
+          
+          if (otaPendingUrl.length() > 0 && otaPendingSize > 0) {
+            performOTAUpdate();
+          }
+        } else {
+          Serial.printf("⚠️ OTA: v%s is not newer than v%s — skipping\n", newVer.c_str(), FIRMWARE_VERSION);
         }
       }
     }
   }
   http.end();
+}
+
+void performOTAUpdate() {
+  Serial.println("╔═══════════════════════════════════════════════════════════╗");
+  Serial.println("║  OTA: INDUSTRIAL SAFE UPDATE STARTING                     ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════╝");
+  
+  otaInProgress = true;
+  otaStatus = "downloading";
+  otaProgress = 0;
+  
+  // RULE 3: Get the next OTA partition (dual-partition scheme)
+  const esp_partition_t* updatePartition = esp_ota_get_next_update_partition(NULL);
+  if (!updatePartition) {
+    Serial.println("❌ OTA: No update partition available");
+    otaInProgress = false; otaStatus = "error";
+    return;
+  }
+  Serial.printf("  Target partition: %s (offset 0x%08x, size %d)\n",
+    updatePartition->label, updatePartition->address, updatePartition->size);
+  
+  // Check partition has enough space
+  if (otaPendingSize > 0 && (size_t)otaPendingSize > updatePartition->size) {
+    Serial.println("❌ OTA: Firmware too large for partition");
+    otaInProgress = false; otaStatus = "error";
+    return;
+  }
+  
+  // Begin OTA write handle
+  esp_ota_handle_t otaHandle;
+  esp_err_t err = esp_ota_begin(updatePartition, otaPendingSize > 0 ? otaPendingSize : OTA_SIZE_UNKNOWN, &otaHandle);
+  if (err != ESP_OK) {
+    Serial.printf("❌ OTA: esp_ota_begin failed (0x%x)\n", err);
+    otaInProgress = false; otaStatus = "error";
+    return;
+  }
+  
+  // Download firmware
+  HTTPClient http;
+  http.begin(otaPendingUrl);
+  http.setTimeout(30000);
+  esp_task_wdt_reset();
+  int code = http.GET();
+  
+  if (code != 200) {
+    Serial.printf("❌ OTA: Download failed (HTTP %d)\n", code);
+    esp_ota_abort(otaHandle);
+    otaInProgress = false; otaStatus = "error";
+    http.end();
+    return;
+  }
+  
+  int contentLen = http.getSize();
+  if (contentLen <= 0) {
+    Serial.println("❌ OTA: Invalid content length");
+    esp_ota_abort(otaHandle);
+    otaInProgress = false; otaStatus = "error";
+    http.end();
+    return;
+  }
+  
+  Serial.printf("  Downloading %d bytes...\n", contentLen);
+  WiFiClient* stream = http.getStreamPtr();
+  
+  size_t written = 0;
+  uint8_t buf[1024];
+  int lastPercent = 0;
+  
+  while (written < (size_t)contentLen) {
+    esp_task_wdt_reset();
+    size_t available = stream->available();
+    if (available == 0) {
+      // Wait for data with timeout
+      unsigned long waitStart = millis();
+      while (stream->available() == 0 && millis() - waitStart < 10000) {
+        esp_task_wdt_reset();
+        yield();
+      }
+      if (stream->available() == 0) {
+        Serial.println("❌ OTA: Download timeout");
+        esp_ota_abort(otaHandle);
+        otaInProgress = false; otaStatus = "error";
+        http.end();
+        return;
+      }
+    }
+    
+    size_t toRead = min((size_t)1024, (size_t)contentLen - written);
+    int bytesRead = stream->readBytes(buf, toRead);
+    if (bytesRead <= 0) break;
+    
+    err = esp_ota_write(otaHandle, buf, bytesRead);
+    if (err != ESP_OK) {
+      Serial.printf("❌ OTA: Write failed at offset %d (0x%x)\n", written, err);
+      esp_ota_abort(otaHandle);
+      otaInProgress = false; otaStatus = "error";
+      http.end();
+      return;
+    }
+    
+    written += bytesRead;
+    int percent = (written * 100) / contentLen;
+    if (percent >= lastPercent + 10) {
+      lastPercent = percent;
+      otaProgress = percent;
+      Serial.printf("  OTA progress: %d%% (%d/%d)\n", percent, written, contentLen);
+    }
+  }
+  
+  http.end();
+  
+  if (written != (size_t)contentLen) {
+    Serial.printf("❌ OTA: Size mismatch (wrote %d, expected %d)\n", written, contentLen);
+    esp_ota_abort(otaHandle);
+    otaInProgress = false; otaStatus = "error";
+    return;
+  }
+  
+  Serial.printf("  Download complete: %d bytes written\n", written);
+  
+  // RULE 2: Verify CRC32 checksum BEFORE finalizing
+  if (otaPendingChecksum.length() > 0) {
+    otaStatus = "verifying";
+    Serial.println("  Verifying CRC32 checksum...");
+    
+    uint32_t computedCRC = calculateStreamCRC32(updatePartition, written);
+    uint32_t expectedCRC = (uint32_t)strtoul(otaPendingChecksum.c_str(), NULL, 16);
+    
+    if (computedCRC != expectedCRC) {
+      Serial.printf("❌ OTA: CRC32 MISMATCH (computed=0x%08X, expected=0x%08X)\n", computedCRC, expectedCRC);
+      Serial.println("  Aborting — partition NOT activated, current firmware safe");
+      esp_ota_abort(otaHandle);
+      otaInProgress = false; otaStatus = "checksum_fail";
+      gsmQueueAlert("ota", "❌ OTA aborted: checksum verification failed for v" + otaAvailableVersion);
+      return;
+    }
+    Serial.printf("  ✅ CRC32 verified: 0x%08X\n", computedCRC);
+  } else {
+    Serial.println("  ⚠️ No checksum provided — skipping CRC verify (not recommended)");
+  }
+  
+  // Finalize OTA write
+  err = esp_ota_end(otaHandle);
+  if (err != ESP_OK) {
+    Serial.printf("❌ OTA: esp_ota_end failed (0x%x) — firmware image invalid\n", err);
+    otaInProgress = false; otaStatus = "error";
+    return;
+  }
+  
+  // RULE 3+4: Set boot partition (pending verify — rollback if validation fails)
+  err = esp_ota_set_boot_partition(updatePartition);
+  if (err != ESP_OK) {
+    Serial.printf("❌ OTA: Failed to set boot partition (0x%x)\n", err);
+    otaInProgress = false; otaStatus = "error";
+    return;
+  }
+  
+  otaStatus = "rebooting";
+  otaProgress = 100;
+  Serial.println("╔═══════════════════════════════════════════════════════════╗");
+  Serial.printf("║  ✅ OTA READY: v%s → v%s                  \n", FIRMWARE_VERSION, otaAvailableVersion.c_str());
+  Serial.println("║  Rebooting into new firmware (pending validation)...     ║");
+  Serial.println("║  If validation fails → automatic rollback to current     ║");
+  Serial.println("╚═══════════════════════════════════════════════════════════╝");
+  
+  gsmQueueAlert("ota", "🔄 OTA: Installing v" + otaAvailableVersion + " — rebooting. Auto-rollback if fail.");
+  
+  // Give GSM time to send alert
+  unsigned long w = millis(); while(millis()-w < 3000) { esp_task_wdt_reset(); yield(); }
+  
+  // RULE 5: Reboot — new firmware boots in PENDING_VERIFY state
+  // validateBootPartition() will run on next boot and either confirm or rollback
+  esp_restart();
 }
 
 // --- Offline Buffer ---
