@@ -131,11 +131,12 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define SVL_LAST_GOOD_EXPIRE_MS  180000UL    // 3 min → lastStableValue expires → SENSOR_FAIL
 
 // --- Emergency Survival ---
-#define ESM_FAN_ON_MS        120000UL
-#define ESM_FAN_OFF_MS       120000UL
+#define ESM_FAN_ON_MS        120000UL    // 2 min ON (max continuous ON)
+#define ESM_FAN_OFF_MS       120000UL    // 2 min OFF
 #define ESM_ALARM_ON_MS      30000UL
 #define ESM_ALARM_OFF_MS     30000UL
 #define ESM_INVALID_TIMEOUT  180000UL
+#define ESM_RECOVERY_VERIFY_MS 120000UL  // 2 min stable sensors required before exit
 
 // --- Power Recovery Purge ---
 #define PURGE_OUTAGE_THRESHOLD 180000UL
@@ -411,6 +412,13 @@ String esmTriggerReason = "";
 bool invalidReadingsActive = false;
 unsigned long invalidReadingsStart = 0;
 
+// ESM cycle timer (independent, never reset by state machine updates)
+unsigned long esmCycleOrigin = 0;       // Fixed origin for fan cycle timing
+
+// ESM recovery verification (2 min stable before exit)
+bool esmRecoveryStarted = false;        // True when sensors first become valid
+unsigned long esmRecoveryStartTime = 0; // When recovery verification began
+
 // --- Power Recovery Purge ---
 bool purgeActive = false;
 unsigned long purgeStartTime = 0;
@@ -582,7 +590,9 @@ void loadBroilerRules();
 
 // Emergency / Purge
 void checkEmergencyTriggers();
+void checkEmergencyRecovery();
 void runEmergencySurvivalCycles();
+void enterESM(String reason);
 void startPowerRecoveryPurge(unsigned long outageDuration);
 void checkPowerRecoveryPurge();
 
@@ -1623,18 +1633,20 @@ void checkEmergencyTriggers() {
     else if (now - invalidReadingsStart >= ESM_INVALID_TIMEOUT) { enterESM("INVALID_READINGS >3 min"); return; }
   } else {
     invalidReadingsActive = false;
-    // Auto-recovery
-    if (emergencySurvivalMode && !sensorErrorMode) {
-      emergencySurvivalMode = false; transitionTo(STATE_NORMAL, "ESM_RECOVERED");
-      gsmQueueAlert("temperature", "✅ Emergency survival ended - sensors recovered.");
-    }
+    // Recovery is now handled by checkEmergencyRecovery() with 2-min verification.
+    // NO instant exit here — prevents mode flapping.
   }
 }
 
 void enterESM(String reason) {
   if (emergencySurvivalMode) return;
-  emergencySurvivalMode = true; emergencySurvivalStart = millis();
-  esmFanOn = true; esmTriggerReason = reason;
+  emergencySurvivalMode = true;
+  emergencySurvivalStart = millis();
+  esmCycleOrigin = millis();  // Lock cycle timer origin (never reset after this)
+  esmFanOn = true;
+  esmTriggerReason = reason;
+  esmRecoveryStarted = false;  // Reset recovery verification
+  esmRecoveryStartTime = 0;
   transitionTo(STATE_EMERGENCY, "ESM: " + reason);
   requestFan(true, "HIGH"); requestHeater(false); requestFogger(false);
   requestCirculationFan(false); requestAlarm(true);
@@ -1642,20 +1654,73 @@ void enterESM(String reason) {
   Serial.println("🚨 EMERGENCY SURVIVAL MODE: " + reason);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ESM CYCLIC VENTILATION
+// Uses esmCycleOrigin as fixed timer (never reset by state machine updates)
+// Max continuous ON = 2 minutes (ESM_FAN_ON_MS)
+// Cycle: 2 min ON → 2 min OFF → repeat
+// Alarm: 30s ON → 30s OFF (pulsing)
+// All heating/fogger disabled
+// ═══════════════════════════════════════════════════════════════════════
 void runEmergencySurvivalCycles() {
-  unsigned long elapsed = millis() - emergencySurvivalStart;
+  // Cycle timer is locked to esmCycleOrigin — never resets
+  unsigned long elapsed = millis() - esmCycleOrigin;
   unsigned long fanCyclePeriod = ESM_FAN_ON_MS + ESM_FAN_OFF_MS;
-  bool shouldFan = (elapsed % fanCyclePeriod) < ESM_FAN_ON_MS;
+  unsigned long posInCycle = elapsed % fanCyclePeriod;
+  bool shouldFan = posInCycle < ESM_FAN_ON_MS;
+  
   if (shouldFan != esmFanOn) {
     esmFanOn = shouldFan;
     requestFan(shouldFan, shouldFan ? "HIGH" : "OFF");
   }
+  
   unsigned long alarmPeriod = ESM_ALARM_ON_MS + ESM_ALARM_OFF_MS;
   requestAlarm((elapsed % alarmPeriod) < ESM_ALARM_ON_MS);
   requestHeater(false); requestFogger(false);
   
-  // Check recovery
-  checkEmergencyTriggers();
+  // Check recovery (with 2-min verification)
+  checkEmergencyRecovery();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ESM RECOVERY VERIFICATION
+// Sensors must be valid AND stable for 2 continuous minutes before exit.
+// If sensors go invalid during verification → restart timer (no flapping).
+// ═══════════════════════════════════════════════════════════════════════
+void checkEmergencyRecovery() {
+  if (!emergencySurvivalMode) return;
+  
+  bool sensorsValid = !sensorErrorMode && !svlTemp.isOffline && !svlHumidity.isOffline &&
+    !isnan(temperature) && !isnan(humidity) &&
+    temperature >= TEMP_SANITY_MIN && temperature <= TEMP_SANITY_MAX &&
+    humidity >= HUMIDITY_SANITY_MIN && humidity <= HUMIDITY_SANITY_MAX;
+  
+  unsigned long now = millis();
+  
+  if (sensorsValid) {
+    if (!esmRecoveryStarted) {
+      // Start 2-minute verification window
+      esmRecoveryStarted = true;
+      esmRecoveryStartTime = now;
+      Serial.println("🟡 ESM: Sensors valid — starting 2-min recovery verification...");
+    } else if (now - esmRecoveryStartTime >= ESM_RECOVERY_VERIFY_MS) {
+      // 2 minutes of stable sensors confirmed → exit ESM
+      emergencySurvivalMode = false;
+      esmRecoveryStarted = false;
+      invalidReadingsActive = false;
+      transitionTo(STATE_NORMAL, "ESM_RECOVERED_VERIFIED");
+      gsmQueueAlert("temperature", "✅ Emergency survival ended - sensors stable for 2 min.");
+      Serial.println("🟢 ESM: Recovery verified (2 min stable) → NORMAL");
+    }
+    // else: still within verification window, keep cycling
+  } else {
+    // Sensors went invalid again during verification → restart timer
+    if (esmRecoveryStarted) {
+      esmRecoveryStarted = false;
+      esmRecoveryStartTime = 0;
+      Serial.println("🔴 ESM: Sensors invalid during verification — timer reset");
+    }
+  }
 }
 
 void startPowerRecoveryPurge(unsigned long outageDuration) {
