@@ -1,0 +1,92 @@
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Thermometer, Wind, Fan } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+
+export function CoreMetricsRow() {
+  const { language } = useAuth();
+  const { sensorData } = useRealtimeSensorData();
+  const { status: deviceStatus } = useRealtimeDeviceStatus();
+
+  // Temperature status
+  const tempStatus = useMemo(() => {
+    const t = sensorData.temperature;
+    if (t > 38) return { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/50', border: 'border-red-200 dark:border-red-800' };
+    if (t > 32) return { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50', border: 'border-orange-200 dark:border-orange-800' };
+    if (t < 18) return { color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/50', border: 'border-blue-200 dark:border-blue-800' };
+    return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
+  }, [sensorData.temperature]);
+
+  // Ventilation stage
+  const ventStage = useMemo(() => {
+    if (!deviceStatus.fan) {
+      return { label: { bn: 'বন্ধ', en: 'OFF' }, color: 'text-muted-foreground', bg: 'bg-muted/50', border: 'border-border' };
+    }
+    if (sensorData.temperature > 38 || sensorData.ammonia > 25) {
+      return { label: { bn: 'সর্বোচ্চ', en: 'MAX' }, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/50', border: 'border-red-200 dark:border-red-800' };
+    }
+    if (sensorData.temperature > 32) {
+      return { label: { bn: 'বেশি', en: 'HIGH' }, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50', border: 'border-orange-200 dark:border-orange-800' };
+    }
+    return { label: { bn: 'স্বাভাবিক', en: 'NORMAL' }, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
+  }, [deviceStatus.fan, sensorData.temperature, sensorData.ammonia]);
+
+  // Gas status
+  const gasStatus = useMemo(() => {
+    const a = sensorData.ammonia;
+    if (a > 25) return { label: { bn: 'বিপদ', en: 'DANGER' }, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/50', border: 'border-red-200 dark:border-red-800' };
+    if (a > 15) return { label: { bn: 'মাঝারি', en: 'MODERATE' }, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50', border: 'border-amber-200 dark:border-amber-800' };
+    return { label: { bn: 'নিরাপদ', en: 'SAFE' }, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
+  }, [sensorData.ammonia]);
+
+  const metrics = [
+    {
+      icon: Thermometer,
+      label: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
+      value: `${sensorData.temperature.toFixed(1)}°`,
+      ...tempStatus,
+    },
+    {
+      icon: Fan,
+      label: { bn: 'বাতাসের স্তর', en: 'Ventilation' },
+      value: ventStage.label[language],
+      ...ventStage,
+    },
+    {
+      icon: Wind,
+      label: { bn: 'গ্যাসের অবস্থা', en: 'Gas Level' },
+      value: gasStatus.label[language],
+      ...gasStatus,
+    },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="grid grid-cols-3 gap-2"
+    >
+      {metrics.map((m, i) => {
+        const Icon = m.icon;
+        return (
+          <div
+            key={i}
+            className={`rounded-2xl border p-3 ${m.bg} ${m.border} text-center`}
+          >
+            <div className="flex items-center justify-center gap-1 mb-1.5">
+              <Icon className={`h-4 w-4 ${m.color}`} />
+            </div>
+            <p className={`text-xl font-bold ${m.color} leading-none mb-1`}>
+              {m.value}
+            </p>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+              {m.label[language]}
+            </p>
+          </div>
+        );
+      })}
+    </motion.div>
+  );
+}
