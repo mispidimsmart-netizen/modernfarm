@@ -1361,9 +1361,10 @@ void automationEngineTick() {
   }
 
   // Power Recovery Purge overrides normal automation
+  // During purge: ALL sensor readings are ignored, no state evaluation occurs
   if (purgeActive) {
     checkPowerRecoveryPurge();
-    return;
+    return;  // Skip evaluateState(), checkEmergencyTriggers(), and all control logic
   }
 
   // Check emergency triggers
@@ -1733,10 +1734,19 @@ void startPowerRecoveryPurge(unsigned long outageDuration) {
 
 void checkPowerRecoveryPurge() {
   if (!purgeActive) return;
-  requestFan(true, "HIGH"); requestCirculationFan(true); requestHeater(false);
+  
+  // Force all fans HIGH, heater/fogger OFF — ignore all sensor data
+  requestFan(true, "HIGH");
+  requestCirculationFan(true);
+  requestHeater(false);
+  requestFogger(false);
+  requestAlarm(false);
+  
   if (millis() - purgeStartTime >= PURGE_DURATION) {
     purgeActive = false;
-    Serial.println("✅ Ventilation purge complete - resuming normal automation");
+    transitionTo(STATE_NORMAL, "PURGE_COMPLETE");
+    Serial.println("✅ Ventilation purge complete → NORMAL state");
+    gsmQueueAlert("power", "✅ Power recovery purge finished — normal automation resumed.");
   }
 }
 
