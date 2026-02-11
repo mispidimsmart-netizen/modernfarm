@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Wind, Thermometer, Droplets, Fan, Sun, AlertTriangle, 
-  ChevronDown, ChevronUp, Settings2, Zap, Gauge
+  ChevronDown, ChevronUp, Settings2, Zap, Gauge, ShieldCheck, ShieldAlert, Info, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
@@ -13,6 +13,48 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+
+// Critical (dangerous) settings that need double confirmation
+const CRITICAL_SETTINGS = ['min_vent', 'heater'];
+
+// Explanation text for each module
+const MODULE_EXPLANATIONS: Record<string, { bn: string; en: string }> = {
+  min_vent: {
+    bn: 'অক্সিজেনের জন্য সবসময় কিছু বাতাস প্রয়োজন — এটি বন্ধ করলে গ্যাস জমে শ্বাসকষ্ট হতে পারে',
+    en: 'Fresh air is always needed for oxygen — disabling can cause gas buildup and respiratory issues',
+  },
+  heater: {
+    bn: 'বাচ্চা মুরগির জন্য হিটার অত্যন্ত গুরুত্বপূর্ণ — ঠান্ডায় মৃত্যু হতে পারে',
+    en: 'Heater is critical for chicks — cold can be fatal',
+  },
+  fogger: {
+    bn: 'অতিরিক্ত গরমে তাপমাত্রা কমায় — খামারে ফগার থাকলে চালু করুন',
+    en: 'Reduces temperature during extreme heat — enable if fogger is installed',
+  },
+  airflow: {
+    bn: 'বয়স অনুযায়ী বাতাস চলাচল নিয়ন্ত্রণ করে — বাচ্চাদের জন্য কম, বড়দের জন্য বেশি',
+    en: 'Controls ventilation by age — less for chicks, more for adults',
+  },
+  curtain: {
+    bn: 'বাইরের তাপমাত্রা অনুযায়ী পর্দা খোলা/বন্ধের পরামর্শ দেয়',
+    en: 'Suggests curtain open/close based on outside temperature',
+  },
+  water: {
+    bn: 'পানির ব্যবহার হঠাৎ কমে গেলে স্বাস্থ্য সমস্যার ইঙ্গিত হতে পারে',
+    en: 'Sudden drop in water usage can indicate health problems',
+  },
+};
 
 export function AdvancedAutomationSettingsCard() {
   const { language } = useAuth();
@@ -21,10 +63,61 @@ export function AdvancedAutomationSettingsCard() {
   const { isLayer, isBroiler } = useFarmType();
   
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [criticalConfirm, setCriticalConfirm] = useState<{ id: string; newValue: boolean } | null>(null);
 
   const toggleSection = (section: string) => {
     setOpenSection(openSection === section ? null : section);
   };
+
+  // Handle critical setting toggle with double confirmation
+  const handleCriticalToggle = (sectionId: string, newValue: boolean, onToggle: (v: boolean) => void) => {
+    // Only confirm when DISABLING a critical setting
+    if (!newValue && CRITICAL_SETTINGS.includes(sectionId)) {
+      setCriticalConfirm({ id: sectionId, newValue });
+      return;
+    }
+    onToggle(newValue);
+  };
+
+  const handleConfirmCritical = () => {
+    if (!criticalConfirm) return;
+    const section = sections.find(s => s.id === criticalConfirm.id);
+    section?.onToggle?.(criticalConfirm.newValue);
+    setCriticalConfirm(null);
+  };
+
+  // Reset all to safe defaults
+  const handleResetDefaults = () => {
+    updateSettings.mutate({
+      min_vent_enabled: true,
+      min_vent_temp_threshold: 26,
+      min_vent_cycle_seconds: 40,
+      min_vent_interval_minutes: 5,
+      min_vent_ceiling_fan_always_on: true,
+      heater_enabled: true,
+      heater_on_temp: 20,
+      heater_off_temp: 24,
+      heater_tolerance: 0.7,
+      fogger_enabled: false,
+      fogger_start_temp: 32,
+      fogger_start_humidity_max: 85,
+      fogger_on_seconds: 40,
+      fogger_pause_seconds: 120,
+      fogger_stop_temp: 30,
+      fogger_stop_humidity: 90,
+      airflow_enabled: true,
+      curtain_advisory_enabled: true,
+      water_drop_threshold_percent: 30,
+      water_night_spike_enabled: true,
+      water_zero_flow_alert: true,
+    });
+    toast.success(
+      language === 'bn' ? '🔄 নিরাপদ ডিফল্ট সেটিং ফিরিয়ে আনা হয়েছে' : '🔄 Safe defaults restored'
+    );
+  };
+
+  // Check if all critical settings are enabled (safe)
+  const allCriticalSafe = (settings?.min_vent_enabled ?? true) && (settings?.heater_enabled ?? true);
 
   if (isLoading) {
     return (
@@ -46,6 +139,7 @@ export function AdvancedAutomationSettingsCard() {
       description: language === 'bn' ? 'শীতে গ্যাস জমা প্রতিরোধ' : 'Prevent gas accumulation in winter',
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
+      isCritical: true,
       enabled: settings?.min_vent_enabled ?? true,
       onToggle: (v: boolean) => updateSettings.mutate({ min_vent_enabled: v }),
       content: (
@@ -105,6 +199,7 @@ export function AdvancedAutomationSettingsCard() {
         : (language === 'bn' ? 'থ্রেশহোল্ড-ভিত্তিক নিয়ন্ত্রণ' : 'Threshold-based control'),
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
+      isCritical: true,
       enabled: settings?.heater_enabled ?? true,
       onToggle: (v: boolean) => updateSettings.mutate({ heater_enabled: v }),
       content: isLayer ? (
@@ -184,6 +279,7 @@ export function AdvancedAutomationSettingsCard() {
       description: language === 'bn' ? 'বুদ্ধিমান কুলিং সিস্টেম' : 'Intelligent cooling system',
       color: 'text-cyan-500',
       bgColor: 'bg-cyan-500/10',
+      isCritical: false,
       enabled: settings?.fogger_enabled ?? false,
       onToggle: (v: boolean) => updateSettings.mutate({ fogger_enabled: v }),
       content: (
@@ -271,6 +367,7 @@ export function AdvancedAutomationSettingsCard() {
       description: language === 'bn' ? 'বয়স-ভিত্তিক সার্কুলেশন' : 'Age-based circulation control',
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
+      isCritical: false,
       enabled: settings?.airflow_enabled ?? true,
       onToggle: (v: boolean) => updateSettings.mutate({ airflow_enabled: v }),
       hidden: isLayer,
@@ -309,6 +406,7 @@ export function AdvancedAutomationSettingsCard() {
       description: language === 'bn' ? 'AI-ভিত্তিক পরামর্শ' : 'AI-based recommendations',
       color: 'text-amber-500',
       bgColor: 'bg-amber-500/10',
+      isCritical: false,
       enabled: settings?.curtain_advisory_enabled ?? true,
       onToggle: (v: boolean) => updateSettings.mutate({ curtain_advisory_enabled: v }),
       content: (
@@ -342,6 +440,7 @@ export function AdvancedAutomationSettingsCard() {
       description: language === 'bn' ? 'স্বাস্থ্য মনিটরিং' : 'Health monitoring',
       color: 'text-emerald-500',
       bgColor: 'bg-emerald-500/10',
+      isCritical: false,
       enabled: true,
       content: (
         <div className="space-y-4 pt-2">
@@ -382,11 +481,11 @@ export function AdvancedAutomationSettingsCard() {
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl bg-card p-4 shadow-card"
     >
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-2">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Zap className="h-5 w-5 text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h3 className="font-semibold">
             {language === 'bn' ? 'অ্যাডভান্সড অটোমেশন' : 'Advanced Automation'}
           </h3>
@@ -394,7 +493,30 @@ export function AdvancedAutomationSettingsCard() {
             {language === 'bn' ? '৭টি স্মার্ট মডিউল' : '7 Smart Modules'}
           </p>
         </div>
+        {/* Lock/Safe indicator */}
+        {allCriticalSafe ? (
+          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium rounded-full bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1">
+            <ShieldCheck size={14} />
+            {language === 'bn' ? 'নিরাপদ' : 'Safe'}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium rounded-full bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1">
+            <ShieldAlert size={14} />
+            {language === 'bn' ? 'সতর্ক' : 'Warning'}
+          </span>
+        )}
       </div>
+
+      {/* Reset to safe defaults button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full mb-4 gap-2"
+        onClick={handleResetDefaults}
+      >
+        <RotateCcw size={14} />
+        {language === 'bn' ? 'নিরাপদ সেটিং ফিরিয়ে আনুন' : 'Reset to Safe Defaults'}
+      </Button>
 
       <div className="space-y-2">
         {sections.filter(s => !s.hidden).map((section) => (
@@ -408,13 +530,18 @@ export function AdvancedAutomationSettingsCard() {
                 <section.icon className={`h-4 w-4 ${section.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{section.title}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-medium truncate">{section.title}</p>
+                  {section.isCritical && (
+                    <ShieldAlert size={12} className="text-amber-500 shrink-0" />
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground truncate">{section.description}</p>
               </div>
               {section.onToggle && (
                 <Switch
                   checked={section.enabled}
-                  onCheckedChange={section.onToggle}
+                  onCheckedChange={(v) => handleCriticalToggle(section.id, v, section.onToggle!)}
                 />
               )}
               <CollapsibleTrigger asChild>
@@ -428,11 +555,64 @@ export function AdvancedAutomationSettingsCard() {
               </CollapsibleTrigger>
             </div>
             <CollapsibleContent className="pl-12">
+              {/* Explanation text */}
+              {MODULE_EXPLANATIONS[section.id] && (
+                <div className="flex items-start gap-2 mb-3 rounded-lg bg-muted/50 p-2.5">
+                  <Info size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    {MODULE_EXPLANATIONS[section.id][language]}
+                  </p>
+                </div>
+              )}
               {section.content}
             </CollapsibleContent>
           </Collapsible>
         ))}
       </div>
+
+      {/* Critical setting confirmation dialog */}
+      <AlertDialog open={!!criticalConfirm} onOpenChange={(open) => !open && setCriticalConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-red-500" />
+              {language === 'bn' ? 'বিপদজনক পরিবর্তন!' : 'Dangerous Change!'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p className="font-medium text-foreground">
+                {language === 'bn' 
+                  ? 'এতে মুরগির ক্ষতি হতে পারে — আপনি কি নিশ্চিত?'
+                  : 'This could harm the birds — are you sure?'}
+              </p>
+              {criticalConfirm?.id === 'min_vent' && (
+                <p className="text-sm">
+                  {language === 'bn'
+                    ? '⚠️ ভেন্টিলেশন বন্ধ করলে গ্যাস জমে মুরগির শ্বাসকষ্ট হতে পারে এবং মৃত্যুও ঘটতে পারে।'
+                    : '⚠️ Disabling ventilation can cause gas buildup leading to respiratory distress and death.'}
+                </p>
+              )}
+              {criticalConfirm?.id === 'heater' && (
+                <p className="text-sm">
+                  {language === 'bn'
+                    ? '⚠️ হিটার বন্ধ করলে শীতকালে বাচ্চা মুরগি মারা যেতে পারে।'
+                    : '⚠️ Disabling heater can kill chicks during cold weather.'}
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {language === 'bn' ? 'বাতিল' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmCritical}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {language === 'bn' ? 'হ্যাঁ, বন্ধ করুন' : 'Yes, Disable'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }
