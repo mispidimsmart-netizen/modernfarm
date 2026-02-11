@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   AlertTriangle, 
@@ -9,6 +10,9 @@ import {
   Lightbulb,
   Clock,
   CheckCircle2,
+  Eye,
+  ShieldAlert,
+  ShieldCheck,
   LucideIcon
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -74,10 +78,83 @@ const levelLabels: Record<AlertLevel, { en: string; bn: string }> = {
   info: { en: 'Info', bn: 'তথ্য' },
 };
 
+// Alert types where system handles automatically (no user action needed)
+const AUTO_HANDLED_TYPES = new Set([
+  'high_temperature', 'heat_stress', 'high_ammonia', 'ammonia_danger',
+  'power_restored', 'high_humidity', 'temperature_rising',
+]);
+
+// Alert types that need human attention (look at it)
+const ATTENTION_TYPES = new Set([
+  'low_water', 'curtain_suggestion', 'broiler_hot', 'sensor_failure',
+]);
+
+// Alert types requiring urgent human action
+const ACTION_REQUIRED_TYPES = new Set([
+  'power_failure', 'extreme_cold', 'broiler_cold', 'no_ventilation',
+]);
+
+function getActionIndicator(alertType: string, language: 'bn' | 'en'): {
+  text: string;
+  icon: LucideIcon;
+  color: string;
+} {
+  if (ACTION_REQUIRED_TYPES.has(alertType)) {
+    return {
+      text: language === 'bn' ? '⚡ দ্রুত ব্যবস্থা নিন' : '⚡ Take action now',
+      icon: ShieldAlert,
+      color: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/50',
+    };
+  }
+  if (ATTENTION_TYPES.has(alertType)) {
+    return {
+      text: language === 'bn' ? '👁️ একবার দেখে নিন' : '👁️ Check once',
+      icon: Eye,
+      color: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50',
+    };
+  }
+  // Auto-handled or default
+  return {
+    text: language === 'bn' ? '✅ আপনার কিছু করার প্রয়োজন নেই' : '✅ No action needed',
+    icon: ShieldCheck,
+    color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50',
+  };
+}
+
+function getAlertStatusLabel(alert: SmartAlert, language: 'bn' | 'en'): {
+  text: string;
+  color: string;
+} {
+  if (alert.resolvedAt) {
+    return {
+      text: language === 'bn' ? '✅ সমাধান হয়েছে' : '✅ Resolved',
+      color: 'text-emerald-600 dark:text-emerald-400',
+    };
+  }
+  
+  const now = new Date();
+  const diff = now.getTime() - alert.timestamp.getTime();
+  const minutesAgo = diff / 60000;
+  
+  if (minutesAgo < 30) {
+    return {
+      text: language === 'bn' ? '🔴 এখন চলছে' : '🔴 Ongoing',
+      color: 'text-red-600 dark:text-red-400',
+    };
+  }
+  
+  return {
+    text: language === 'bn' ? '⏱️ আগে হয়েছিল' : '⏱️ Past event',
+    color: 'text-muted-foreground',
+  };
+}
+
 export function SmartAlertCard({ alert, onAcknowledge, showTimeline = false }: SmartAlertCardProps) {
   const { language } = useAuth();
   const Icon = alertIcons[alert.type] || alertIcons.default;
   const styles = levelStyles[alert.level];
+  const actionIndicator = useMemo(() => getActionIndicator(alert.type, language), [alert.type, language]);
+  const alertStatus = useMemo(() => getAlertStatusLabel(alert, language), [alert, language]);
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -115,10 +192,13 @@ export function SmartAlertCard({ alert, onAcknowledge, showTimeline = false }: S
         </div>
 
         <div className="min-w-0 flex-1">
-          {/* Level Badge */}
-          <div className="mb-1 flex items-center gap-2">
+          {/* Level Badge + Status */}
+          <div className="mb-1 flex items-center gap-2 flex-wrap">
             <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', styles.badge)}>
               {levelLabels[alert.level][language]}
+            </span>
+            <span className={cn('text-xs font-medium', alertStatus.color)}>
+              {alertStatus.text}
             </span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock size={12} />
@@ -142,6 +222,12 @@ export function SmartAlertCard({ alert, onAcknowledge, showTimeline = false }: S
             <p className="text-sm font-medium text-foreground">
               {language === 'bn' ? alert.suggestionBn : alert.suggestion}
             </p>
+          </div>
+
+          {/* Action Indicator */}
+          <div className={cn('mt-2 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold', actionIndicator.color)}>
+            <actionIndicator.icon size={14} />
+            <span>{actionIndicator.text}</span>
           </div>
 
           {/* Timeline info */}

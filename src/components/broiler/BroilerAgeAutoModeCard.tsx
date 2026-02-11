@@ -141,16 +141,19 @@ export function BroilerAgeAutoModeCard({ enabled = true }: BroilerAgeAutoModeCar
             </div>
           )}
 
-          {/* Manual Apply Button */}
+          {/* Manual Apply Button — Primary & Prominent */}
           <Button 
-            variant="outline" 
+            variant="default" 
             size="sm" 
-            className="w-full text-xs"
+            className="w-full text-xs bg-primary hover:bg-primary/90 shadow-md"
             onClick={forceApply}
           >
             <RefreshCw className="h-3 w-3 mr-1" />
-            {language === 'bn' ? 'এখনই সেটিংস প্রয়োগ করুন' : 'Apply Settings Now'}
+            {language === 'bn' ? '✅ প্রস্তাবিত সেটিং প্রয়োগ করুন' : '✅ Apply Recommended Settings'}
           </Button>
+          <p className="text-center text-[10px] text-muted-foreground">
+            {language === 'bn' ? '🛡️ এটাই সবচেয়ে নিরাপদ সেটিং' : '🛡️ This is the safest setting'}
+          </p>
 
           {/* Current Settings Preview */}
           <div className="grid grid-cols-3 gap-2 text-xs">
