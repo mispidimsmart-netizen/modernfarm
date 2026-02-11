@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     // Get all active users with profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, farm_name, farm_type')
+      .select('id, farm_name, farm_type, sheds:sheds(id, farm_type)')
       .eq('is_blocked', false)
 
     if (profilesError) {
@@ -133,9 +133,10 @@ Deno.serve(async (req) => {
 
         const mortalityCount = mortalityData?.reduce((sum, m) => sum + (m.count || 0), 0) || 0
 
-        // Get today's egg production (for layer farms)
+        // Get today's egg production (check if any shed is layer type)
         let eggsCollected = 0
-        if (profile.farm_type === 'layer') {
+        const hasLayerShed = (profile as any).sheds?.some((s: any) => s.farm_type === 'layer') || profile.farm_type === 'layer'
+        if (hasLayerShed) {
           const { data: eggData } = await supabase
             .from('egg_production')
             .select('total_eggs')

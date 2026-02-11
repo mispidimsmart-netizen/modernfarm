@@ -475,7 +475,24 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
     
     const farmType = farm_profile === 0 ? 'layer' : 'broiler';
     
-    // Update user's profile with farm_type
+    // Update shed's farm_type (per-shed farm type support)
+    const shedId = body.shed_id;
+    if (shedId) {
+      const { error: shedError } = await supabase
+        .from('sheds')
+        .update({ 
+          farm_type: farmType,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', shedId)
+        .eq('user_id', userId);
+      
+      if (shedError) {
+        console.error('Error updating shed farm_type:', shedError);
+      }
+    }
+    
+    // Also update profile for backward compatibility
     const { error: profileError } = await supabase
       .from('profiles')
       .update({ 
@@ -558,14 +575,38 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       );
     }
     
-    // Check if user has broiler farm type
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('farm_type')
-      .eq('id', userId)
-      .single();
+    // Check if user's active shed has broiler farm type
+    // First try to get shed_id from active batch, then check shed's farm_type
+    const { data: activeBatchCheck } = await supabase
+      .from('broiler_batches')
+      .select('shed_id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     
-    if (profile?.farm_type !== 'broiler') {
+    let isBroilerShed = false;
+    if (activeBatchCheck?.shed_id) {
+      const { data: shed } = await supabase
+        .from('sheds')
+        .select('farm_type')
+        .eq('id', activeBatchCheck.shed_id)
+        .single();
+      isBroilerShed = shed?.farm_type === 'broiler';
+    }
+    
+    if (!isBroilerShed) {
+      // Fallback: check profile-level farm_type
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('farm_type')
+        .eq('id', userId)
+        .single();
+      isBroilerShed = profile?.farm_type === 'broiler';
+    }
+    
+    if (!isBroilerShed) {
       return new Response(
         JSON.stringify({ 
           error: 'Age update only available for broiler farms', 
@@ -2650,16 +2691,28 @@ async function handleFailsafeSync(
       .eq('user_id', userId)
       .single();
 
-    // 🐔 4b. Get user profile for farm_type
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('farm_type')
-      .eq('id', userId)
-      .single();
+    // 🐔 4b. Get shed's farm_type (per-shed support)
+    let shedFarmType = 'layer';
+    if (device.shed_id) {
+      const { data: shed } = await supabase
+        .from('sheds')
+        .select('farm_type')
+        .eq('id', device.shed_id)
+        .single();
+      shedFarmType = shed?.farm_type || 'layer';
+    } else {
+      // Fallback to profile-level farm_type
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('farm_type')
+        .eq('id', userId)
+        .single();
+      shedFarmType = profile?.farm_type || 'layer';
+    }
 
-    // 🐔 4c. Get active broiler batch for age calculation (if broiler farm)
+    // 🐔 4c. Get active broiler batch for age calculation (if broiler shed)
     let broilerAgeDays = 1;
-    if (profile?.farm_type === 'broiler') {
+    if (shedFarmType === 'broiler') {
       const { data: activeBatch } = await supabase
         .from('broiler_batches')
         .select('start_date')
@@ -2753,8 +2806,8 @@ async function handleFailsafeSync(
       settings_version: settingsVersion,
       needs_settings_update: needsSettingsUpdate,
       
-      // 🐔 Farm type and broiler age for ESP32 auto-config
-      farm_type: profile?.farm_type || 'layer',
+      // 🐔 Farm type and broiler age for ESP32 auto-config (per-shed)
+      farm_type: shedFarmType,
       broiler_age_days: broilerAgeDays,
       
       // Device status from database (what cloud wants)
@@ -3273,25 +3326,33 @@ async function getAdvancedSettings(
 // ═══════════════════════════════════════════════════════════════════════════
 async function getDeviceConfig(supabase: any, userId: string, shedId: string | null) {
   try {
-    // Fetch all config sources in parallel
-    const [profileRes, settingsRes, advancedRes, batchRes, deviceStatusRes, lightingRes] = await Promise.all([
-      supabase.from('profiles').select('farm_type, display_name').eq('id', userId).single(),
+    // Fetch all config sources in parallel (shed-aware)
+    const [shedRes, settingsRes, advancedRes, batchRes, deviceStatusRes, lightingRes] = await Promise.all([
+      shedId 
+        ? supabase.from('sheds').select('farm_type').eq('id', shedId).single()
+        : supabase.from('profiles').select('farm_type').eq('id', userId).single(),
       supabase.from('farm_settings').select('*').eq('user_id', userId).single(),
-      supabase.from('advanced_automation_settings').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('status', 'active').maybeSingle(),
-      supabase.from('device_status').select('manual_override, mode').eq('user_id', userId).maybeSingle(),
+      shedId
+        ? supabase.from('advanced_automation_settings').select('*').eq('user_id', userId).eq('shed_id', shedId).maybeSingle()
+        : supabase.from('advanced_automation_settings').select('*').eq('user_id', userId).is('shed_id', null).maybeSingle(),
+      shedId
+        ? supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('shed_id', shedId).eq('status', 'active').maybeSingle()
+        : supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('status', 'active').maybeSingle(),
+      shedId
+        ? supabase.from('device_status').select('manual_override, mode').eq('user_id', userId).eq('shed_id', shedId).maybeSingle()
+        : supabase.from('device_status').select('manual_override, mode').eq('user_id', userId).maybeSingle(),
       supabase.from('lighting_schedule').select('*').eq('user_id', userId).maybeSingle(),
     ]);
 
-    const profile = profileRes.data;
+    const shedData = shedRes.data;
     const settings = settingsRes.data;
     const advanced = advancedRes.data;
     const batch = batchRes.data;
     const deviceStatus = deviceStatusRes.data;
     const lighting = lightingRes.data;
 
-    // Determine farm type
-    const farmType = profile?.farm_type || 'layer';
+    // Determine farm type from shed (per-shed support)
+    const farmType = shedData?.farm_type || 'layer';
     const isBroiler = farmType === 'broiler';
 
     // Calculate bird age for broilers
