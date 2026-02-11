@@ -1,4 +1,5 @@
 import { useProfile } from '@/hooks/useFarmData';
+import { useSheds, useSelectedShed } from '@/hooks/useSheds';
 
 export type FarmType = 'layer' | 'broiler';
 
@@ -9,12 +10,23 @@ export interface FarmTypeConfig {
 }
 
 /**
- * Hook to get the current farm type and helper booleans
+ * Hook to get the current farm type based on the selected shed.
+ * Falls back to profile-level farm_type if no shed is selected.
  */
 export function useFarmType(): FarmTypeConfig {
   const { data: profile } = useProfile();
+  const { data: sheds } = useSheds();
   
-  const type: FarmType = (profile?.farm_type as FarmType) || 'layer';
+  let selectedShedId: string | null = null;
+  try {
+    const ctx = useSelectedShed();
+    selectedShedId = ctx.selectedShedId;
+  } catch {
+    // ShedProvider not available, use profile fallback
+  }
+  
+  const selectedShed = sheds?.find(s => s.id === selectedShedId);
+  const type: FarmType = (selectedShed?.farm_type as FarmType) || (profile?.farm_type as FarmType) || 'layer';
   
   return {
     type,

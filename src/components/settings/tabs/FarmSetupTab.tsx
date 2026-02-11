@@ -3,10 +3,11 @@ import { motion } from 'framer-motion';
 import { 
   Egg, Drumstick, Sun, Cloud, Snowflake, CloudRain, 
   Baby, TrendingUp, Factory, Flame, Wind, Check,
-  Wand2, ChevronRight, Home, AlertTriangle, Sparkles, RefreshCw
+  Wand2, ChevronRight, Home, AlertTriangle, Sparkles, RefreshCw, Info
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
+import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -165,6 +166,18 @@ export function FarmSetupTab() {
   const { language } = useAuth();
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
+  const { data: sheds } = useSheds();
+  const updateShed = useUpdateShed();
+  
+  let selectedShedId: string | null = null;
+  try {
+    const ctx = useSelectedShed();
+    selectedShedId = ctx.selectedShedId;
+  } catch {
+    // ShedProvider not available
+  }
+  
+  const selectedShed = sheds?.find(s => s.id === selectedShedId);
   const { data: activeBatch } = useActiveBatch();
   const { data: weatherData } = useWeatherCache();
   const { toast } = useToast();
@@ -178,7 +191,7 @@ export function FarmSetupTab() {
     );
   }, [weatherData]);
 
-  const [farmType, setFarmType] = useState<FarmType>((profile?.farm_type as FarmType) || 'layer');
+  const [farmType, setFarmType] = useState<FarmType>((selectedShed?.farm_type as FarmType) || (profile?.farm_type as FarmType) || 'layer');
   const [seasonOverride, setSeasonOverride] = useState<Season | null>(null);
   const [isSeasonManual, setIsSeasonManual] = useState(false);
   const [farmSize, setFarmSize] = useState<FarmSize>('medium');
@@ -247,8 +260,14 @@ export function FarmSetupTab() {
     
     try {
       if (pendingChange.type === 'farm_type' && pendingChange.value) {
-        setFarmType(pendingChange.value as FarmType);
-        await updateProfile.mutateAsync({ farm_type: pendingChange.value as FarmType });
+        const newType = pendingChange.value as FarmType;
+        setFarmType(newType);
+        // Update selected shed's farm_type
+        if (selectedShedId) {
+          await updateShed.mutateAsync({ id: selectedShedId, farm_type: newType } as any);
+        }
+        // Also update profile as fallback default
+        await updateProfile.mutateAsync({ farm_type: newType });
       } else if (pendingChange.type === 'season' && pendingChange.value) {
         setIsSeasonManual(true);
         setSeasonOverride(pendingChange.value as Season);
@@ -256,6 +275,9 @@ export function FarmSetupTab() {
         setIsProfileManual(true);
         setProfileOverride(pendingChange.value as ProfileType);
       } else if (pendingChange.type === 'apply') {
+        if (selectedShedId) {
+          await updateShed.mutateAsync({ id: selectedShedId, farm_type: farmType } as any);
+        }
         await updateProfile.mutateAsync({ farm_type: farmType });
       }
       
@@ -287,8 +309,12 @@ export function FarmSetupTab() {
           </CardTitle>
           <CardDescription>
             {language === 'bn' 
-              ? 'আপনার খামার কি ডিম না মাংসের জন্য?' 
-              : 'Is your farm for eggs or meat?'}
+              ? selectedShed 
+                ? `"${selectedShed.name}" শেডের জন্য — প্রতিটি শেডে ভিন্ন ধরণ থাকতে পারে`
+                : 'শেড সিলেক্ট করে প্রতিটি শেডের ধরণ আলাদা করুন'
+              : selectedShed
+                ? `For "${selectedShed.name_en}" — each shed can have a different type`
+                : 'Select a shed to set its type individually'}
           </CardDescription>
         </CardHeader>
         <CardContent>

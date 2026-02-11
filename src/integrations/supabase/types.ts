@@ -2249,6 +2249,7 @@ export type Database = {
           created_at: string
           description: string | null
           farm_id: string | null
+          farm_type: string
           id: string
           is_active: boolean | null
           name: string
@@ -2261,6 +2262,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           farm_id?: string | null
+          farm_type?: string
           id?: string
           is_active?: boolean | null
           name?: string
@@ -2273,6 +2275,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           farm_id?: string | null
+          farm_type?: string
           id?: string
           is_active?: boolean | null
           name?: string

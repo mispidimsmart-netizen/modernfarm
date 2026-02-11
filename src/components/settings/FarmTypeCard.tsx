@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Egg, Drumstick, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
+import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -62,11 +63,22 @@ export function FarmTypeCard() {
   const { language } = useAuth();
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
+  const { data: sheds } = useSheds();
+  const updateShed = useUpdateShed();
   const { toast } = useToast();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingType, setPendingType] = useState<FarmType | null>(null);
-
-  const currentType = (profile?.farm_type as FarmType) || 'layer';
+  
+  let selectedShedId: string | null = null;
+  try {
+    const ctx = useSelectedShed();
+    selectedShedId = ctx.selectedShedId;
+  } catch {
+    // ShedProvider not available
+  }
+  
+  const selectedShed = sheds?.find(s => s.id === selectedShedId);
+  const currentType = (selectedShed?.farm_type as FarmType) || (profile?.farm_type as FarmType) || 'layer';
 
   const handleTypeSelect = (type: FarmType) => {
     if (type === currentType) return;
@@ -78,6 +90,9 @@ export function FarmTypeCard() {
     if (!pendingType) return;
     
     try {
+      if (selectedShedId) {
+        await updateShed.mutateAsync({ id: selectedShedId, farm_type: pendingType } as any);
+      }
       await updateProfile.mutateAsync({ farm_type: pendingType });
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
