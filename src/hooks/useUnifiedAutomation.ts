@@ -90,12 +90,13 @@ export function useUnifiedAutomation({
     onHeaterChange: (on) => onDeviceChange?.('heater', on),
   });
 
-  // Module 3: Fogger Cooling
+  // Module 3: Fogger Cooling (Safe Sequence: valve → delay → pump)
   const foggerStatus = useFoggerCooling({
     temperature,
     humidity,
     enabled,
-    onFoggerChange: (on) => onDeviceChange?.('fogger', on),
+    onFoggerChange: (on) => onDeviceChange?.('fogger', on),       // Solenoid valve
+    onPumpChange: (on) => onDeviceChange?.('fogger_pump', on),     // High-pressure pump
     onExhaustFanChange: (on) => onDeviceChange?.('exhaust_fan', on),
   });
 
