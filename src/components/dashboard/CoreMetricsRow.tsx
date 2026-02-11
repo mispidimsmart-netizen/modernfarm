@@ -18,18 +18,38 @@ export function CoreMetricsRow() {
     return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
   }, [sensorData.temperature]);
 
-  // Ventilation stage
+  // Ventilation stage with human-readable explanation
   const ventStage = useMemo(() => {
     if (!deviceStatus.fan) {
-      return { label: { bn: 'বন্ধ', en: 'OFF' }, color: 'text-muted-foreground', bg: 'bg-muted/50', border: 'border-border' };
+      return { 
+        stage: 0,
+        label: { bn: 'বন্ধ', en: 'OFF' }, 
+        desc: { bn: 'খুব কম বাতাস (শুধু শ্বাসের জন্য)', en: 'Minimal air (breathing only)' },
+        color: 'text-muted-foreground', bg: 'bg-muted/50', border: 'border-border' 
+      };
     }
     if (sensorData.temperature > 38 || sensorData.ammonia > 25) {
-      return { label: { bn: 'সর্বোচ্চ', en: 'MAX' }, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/50', border: 'border-red-200 dark:border-red-800' };
+      return { 
+        stage: 3,
+        label: { bn: 'স্টেজ ৩', en: 'Stage 3' }, 
+        desc: { bn: 'বেশি গরম — পূর্ণ বাতাস', en: 'Too hot — Full ventilation' },
+        color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/50', border: 'border-red-200 dark:border-red-800' 
+      };
     }
     if (sensorData.temperature > 32) {
-      return { label: { bn: 'বেশি', en: 'HIGH' }, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50', border: 'border-orange-200 dark:border-orange-800' };
+      return { 
+        stage: 2,
+        label: { bn: 'স্টেজ ২', en: 'Stage 2' }, 
+        desc: { bn: 'ঠান্ডা করা হচ্ছে', en: 'Cooling active' },
+        color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-950/50', border: 'border-orange-200 dark:border-orange-800' 
+      };
     }
-    return { label: { bn: 'স্বাভাবিক', en: 'NORMAL' }, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
+    return { 
+      stage: 1,
+      label: { bn: 'স্টেজ ১', en: 'Stage 1' }, 
+      desc: { bn: 'স্বাভাবিক বাতাস', en: 'Normal airflow' },
+      color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' 
+    };
   }, [deviceStatus.fan, sensorData.temperature, sensorData.ammonia]);
 
   // Gas status
@@ -45,18 +65,21 @@ export function CoreMetricsRow() {
       icon: Thermometer,
       label: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
       value: `${sensorData.temperature.toFixed(1)}°`,
+      subtitle: null as string | null,
       ...tempStatus,
     },
     {
       icon: Fan,
       label: { bn: 'বাতাসের স্তর', en: 'Ventilation' },
       value: ventStage.label[language],
+      subtitle: ventStage.desc[language],
       ...ventStage,
     },
     {
       icon: Wind,
       label: { bn: 'গ্যাসের অবস্থা', en: 'Gas Level' },
       value: gasStatus.label[language],
+      subtitle: null as string | null,
       ...gasStatus,
     },
   ];
@@ -78,9 +101,14 @@ export function CoreMetricsRow() {
             <div className="flex items-center justify-center gap-1 mb-1.5">
               <Icon className={`h-4 w-4 ${m.color}`} />
             </div>
-            <p className={`text-xl font-bold ${m.color} leading-none mb-1`}>
+            <p className={`text-xl font-bold ${m.color} leading-none mb-0.5`}>
               {m.value}
             </p>
+            {m.subtitle && (
+              <p className={`text-[9px] font-medium ${m.color} opacity-80 mb-0.5`}>
+                {m.subtitle}
+              </p>
+            )}
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
               {m.label[language]}
             </p>

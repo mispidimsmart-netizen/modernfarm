@@ -34,7 +34,19 @@ export function AutomationDecisionLog() {
 
     // Fan turned on
     if (deviceStatus.fan && !prev.fan) {
-      if (sensorData.temperature > 32) {
+      if (sensorData.temperature > 38) {
+        newEntries.push({
+          id: `${Date.now()}-fan-emergency`,
+          time: now,
+          text: { bn: 'অতিরিক্ত গরম — প্রাণ বাঁচাতে সর্বোচ্চ বাতাস দেওয়া হচ্ছে', en: 'Extreme heat — maximum ventilation for bird safety' },
+        });
+      } else if (sensorData.ammonia > 25) {
+        newEntries.push({
+          id: `${Date.now()}-fan-gas-danger`,
+          time: now,
+          text: { bn: 'গ্যাস বিপদসীমায় — জরুরি বাতাস দেওয়া হচ্ছে', en: 'Gas at danger level — emergency ventilation' },
+        });
+      } else if (sensorData.temperature > 32) {
         newEntries.push({
           id: `${Date.now()}-fan-heat`,
           time: now,
@@ -44,13 +56,13 @@ export function AutomationDecisionLog() {
         newEntries.push({
           id: `${Date.now()}-fan-gas`,
           time: now,
-          text: { bn: 'গ্যাস বেড়েছে, বাতাস দেওয়া হচ্ছে', en: 'Gas high, ventilation started' },
+          text: { bn: 'গ্যাস বেড়েছে, তাজা বাতাস দেওয়া হচ্ছে', en: 'Gas rising, fresh air being supplied' },
         });
       } else {
         newEntries.push({
           id: `${Date.now()}-fan-on`,
           time: now,
-          text: { bn: 'বাতাস চালু হয়েছে', en: 'Ventilation started' },
+          text: { bn: 'খামারে তাজা বাতাস দেওয়া শুরু হয়েছে', en: 'Fresh air supply started' },
         });
       }
     }
@@ -60,7 +72,7 @@ export function AutomationDecisionLog() {
       newEntries.push({
         id: `${Date.now()}-fan-off`,
         time: now,
-        text: { bn: 'পরিবেশ স্বাভাবিক, বাতাস বন্ধ', en: 'Environment normal, ventilation stopped' },
+        text: { bn: 'পরিবেশ স্বাভাবিক হয়েছে, বাতাস বন্ধ করা হয়েছে', en: 'Environment normalized, ventilation stopped' },
       });
     }
 
@@ -69,7 +81,7 @@ export function AutomationDecisionLog() {
       newEntries.push({
         id: `${Date.now()}-heater-on`,
         time: now,
-        text: { bn: 'ঠান্ডা বেড়েছে, হিটার চালু', en: 'Cold detected, heater started' },
+        text: { bn: 'ঠান্ডা বেড়েছে, হিটার দিয়ে গরম করা হচ্ছে', en: 'Cold detected, heating in progress' },
       });
     }
 
@@ -78,7 +90,7 @@ export function AutomationDecisionLog() {
       newEntries.push({
         id: `${Date.now()}-heater-off`,
         time: now,
-        text: { bn: 'তাপমাত্রা স্বাভাবিক, হিটার বন্ধ', en: 'Temperature normal, heater stopped' },
+        text: { bn: 'তাপমাত্রা স্বাভাবিক হয়েছে, হিটার বন্ধ করা হয়েছে', en: 'Temperature normalized, heater stopped' },
       });
     }
 
