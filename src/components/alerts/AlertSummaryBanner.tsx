@@ -17,6 +17,7 @@ export function AlertSummaryBanner() {
         bg: 'bg-gradient-to-r from-red-500 to-red-600',
         icon: AlertTriangle,
         pulse: true,
+        label: { bn: 'দ্রুত দেখুন', en: 'Needs attention' },
       };
     }
     if (alertCounts.warning > 0) {
@@ -24,12 +25,14 @@ export function AlertSummaryBanner() {
         bg: 'bg-gradient-to-r from-amber-500 to-amber-600',
         icon: AlertCircle,
         pulse: false,
+        label: { bn: 'দেখে নিন', en: 'Check when free' },
       };
     }
     return {
       bg: 'bg-gradient-to-r from-blue-500 to-blue-600',
       icon: Info,
       pulse: false,
+      label: { bn: 'সিস্টেম নিজে সামলেছে', en: 'Auto-handled' },
     };
   };
 
@@ -58,6 +61,11 @@ export function AlertSummaryBanner() {
               {criticalAlert && (
                 <p className="truncate font-medium">
                   {language === 'bn' ? criticalAlert.titleBn : criticalAlert.title}
+                </p>
+              )}
+              {!criticalAlert && (
+                <p className="truncate font-medium">
+                  {style.label[language]}
                 </p>
               )}
               <div className="flex items-center gap-3 text-sm text-white/80">
