@@ -2,6 +2,11 @@
 /// <reference types="vite-plugin-pwa/react" />
 /// <reference types="vite-plugin-pwa/info" />
 
+// Extend ServiceWorkerRegistration with PushManager (not included in all TS libs)
+interface ServiceWorkerRegistration {
+  readonly pushManager: PushManager;
+}
+
 declare module 'virtual:pwa-register/react' {
   import type { Dispatch, SetStateAction } from 'react';
 
