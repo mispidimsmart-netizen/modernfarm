@@ -90,15 +90,19 @@ export function FarmTypeCard() {
     if (!pendingType) return;
     
     try {
+      // Primary: update the selected shed's farm_type
       if (selectedShedId) {
         await updateShed.mutateAsync({ id: selectedShedId, farm_type: pendingType } as any);
       }
-      await updateProfile.mutateAsync({ farm_type: pendingType });
+      // Backward compatibility: also update profile (only if no shed selected)
+      if (!selectedShedId) {
+        await updateProfile.mutateAsync({ farm_type: pendingType });
+      }
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' 
-          ? `${pendingType === 'layer' ? 'লেয়ার' : 'ব্রয়লার'} মোডে পরিবর্তন হয়েছে`
-          : `Switched to ${pendingType} mode`,
+          ? `${selectedShed ? (selectedShed as any).name + ' — ' : ''}${pendingType === 'layer' ? 'লেয়ার' : 'ব্রয়লার'} মোডে পরিবর্তন হয়েছে`
+          : `${selectedShed ? (selectedShed as any).name_en + ' — ' : ''}Switched to ${pendingType} mode`,
       });
       setShowConfirmDialog(false);
       setPendingType(null);
@@ -124,9 +128,13 @@ export function FarmTypeCard() {
                 {language === 'bn' ? 'খামারের ধরণ' : 'Farm Type'}
               </CardTitle>
               <CardDescription>
-                {language === 'bn' 
-                  ? 'আপনার খামারের ধরণ অনুযায়ী ফিচার পরিবর্তন হবে' 
-                  : 'Features will adapt based on farm type'}
+                {selectedShed 
+                  ? (language === 'bn' 
+                    ? `🏠 ${(selectedShed as any).name || 'শেড'} — এই শেডের ধরণ পরিবর্তন করুন` 
+                    : `🏠 ${(selectedShed as any).name_en || 'Shed'} — Change this shed's type`)
+                  : (language === 'bn' 
+                    ? 'আপনার খামারের ধরণ অনুযায়ী ফিচার পরিবর্তন হবে' 
+                    : 'Features will adapt based on farm type')}
               </CardDescription>
             </div>
           </div>
