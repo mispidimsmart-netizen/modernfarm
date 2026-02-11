@@ -1,16 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Fan, 
-  Lightbulb, 
-  Bell, 
-  Flame, 
-  Wind, 
-  Droplets,
-  ShieldAlert,
-  Timer,
-  Thermometer,
-  CheckCircle2,
+  Fan, Lightbulb, Bell, Flame, Wind, Droplets,
+  ShieldAlert, Timer, CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
@@ -32,21 +24,12 @@ import {
   type DeviceMode 
 } from '@/components/control';
 
-// Common device definitions
-const COMMON_DEVICES = [
-  {
-    key: 'fan',
-    icon: Fan,
-    name: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
-    description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
-  },
-  {
-    key: 'light',
-    icon: Lightbulb,
-    name: { bn: 'লাইট', en: 'Light' },
-    description: { bn: 'দৈনিক আলোক সময়সূচী নিয়ন্ত্রণ', en: 'Controls daily lighting schedule' },
-  },
-];
+// New industrial components
+import { StateExplanationHeader } from '@/components/control/StateExplanationHeader';
+import { WhyFanRunning } from '@/components/control/WhyFanRunning';
+import { LiveEnvironmentPanel } from '@/components/control/LiveEnvironmentPanel';
+import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
+import { FarmerSensorHealth } from '@/components/control/FarmerSensorHealth';
 
 // Broiler-specific devices (heater is more important)
 const BROILER_DEVICES = [
@@ -55,7 +38,7 @@ const BROILER_DEVICES = [
     icon: Flame,
     name: { bn: 'হিটার', en: 'Heater' },
     description: { bn: 'বাচ্চার তাপমাত্রা বজায় রাখে', en: 'Maintains chick temperature' },
-    priority: true, // Show first for broilers
+    priority: true,
   },
   {
     key: 'fan',
@@ -83,7 +66,7 @@ const BROILER_DEVICES = [
   },
 ];
 
-// Layer-specific devices (fogger less important, no heater needed usually)
+// Layer-specific devices
 const LAYER_DEVICES = [
   {
     key: 'fan',
@@ -124,20 +107,16 @@ export function ControlPage() {
   const { data: userRole } = useUserRole();
   const { data: permissions } = useUserPermissions();
   const { sensorData } = useRealtimeSensorData();
-  const { isBroiler, isLayer } = useFarmType();
+  const { isBroiler } = useFarmType();
   
-  // Select devices based on farm type
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
   
-  // Permission checks
   const canTemporaryControl = permissions?.canTemporaryControl ?? false;
   const canFullControl = permissions?.canFullControl ?? false;
   const canDisableAutomation = permissions?.canDisableAutomation ?? false;
   const isViewer = permissions?.role === 'viewer';
-  const isOwner = userRole?.role === 'owner';
   const { toast } = useToast();
 
-  // Timer state for manual control
   const [timerDialogOpen, setTimerDialogOpen] = useState(false);
   const [pendingDevice, setPendingDevice] = useState<{
     device: string;
@@ -146,7 +125,6 @@ export function ControlPage() {
   } | null>(null);
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
-  // Check and clear expired timers
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -156,7 +134,6 @@ export function ControlPage() {
         
         Object.entries(updated).forEach(([deviceKey, timer]) => {
           if (timer.endTime <= now) {
-            // Timer expired - turn off device and return to auto mode
             const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
             sendCommand.mutate({ commandType: cmdType, commandValue: false });
             setDeviceStatus({ [deviceKey]: false });
@@ -179,24 +156,20 @@ export function ControlPage() {
     return () => clearInterval(interval);
   }, [language, sendCommand, setDeviceStatus, toast]);
 
-  // Get remaining time for a device timer
   const getRemainingTime = useCallback((device: string) => {
     const timer = activeTimers[device];
     if (!timer) return null;
-    
     const remaining = Math.max(0, timer.endTime - Date.now());
     const minutes = Math.floor(remaining / 60000);
     const seconds = Math.floor((remaining % 60000) / 1000);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, [activeTimers]);
 
-  // Get device mode
   const getDeviceMode = useCallback((deviceKey: string): DeviceMode => {
     if (activeTimers[deviceKey]) return 'temporary';
     return 'auto';
   }, [activeTimers]);
 
-  // Check if device is active
   const isDeviceActive = useCallback((deviceKey: string) => {
     switch (deviceKey) {
       case 'fan': return status.fan;
@@ -208,7 +181,6 @@ export function ControlPage() {
     }
   }, [status]);
 
-  // Handle run temporarily
   const handleRunTemporarily = (deviceKey: string, deviceName: { bn: string; en: string }, icon: React.ElementType) => {
     const IconComponent = icon;
     setPendingDevice({
@@ -219,36 +191,26 @@ export function ControlPage() {
     setTimerDialogOpen(true);
   };
 
-  // Handle stop
   const handleStop = (deviceKey: string) => {
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
     sendCommand.mutate({ commandType: cmdType, commandValue: false });
     setDeviceStatus({ [deviceKey]: false });
-    
-    // Clear timer
     setActiveTimers(prev => {
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
     });
-
     toast({
       title: language === 'bn' ? '✅ বন্ধ হয়েছে' : '✅ Stopped',
-      description: language === 'bn' 
-        ? 'ডিভাইস অটো মোডে ফিরে গেছে' 
-        : 'Device returned to AUTO mode',
+      description: language === 'bn' ? 'ডিভাইস অটো মোডে ফিরে গেছে' : 'Device returned to AUTO mode',
     });
   };
 
-  // Handle timer confirmation
   const handleTimerConfirm = (durationMinutes: number) => {
     if (!pendingDevice) return;
-    
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
     sendCommand.mutate({ commandType: cmdType, commandValue: true });
     setDeviceStatus({ [pendingDevice.device]: true });
-    
-    // Set timer
     setActiveTimers(prev => ({
       ...prev,
       [pendingDevice.device]: {
@@ -256,22 +218,18 @@ export function ControlPage() {
         duration: durationMinutes,
       },
     }));
-    
     toast({
       title: language === 'bn' ? '✅ সাময়িক চালু' : '✅ Temporarily Started',
       description: language === 'bn' 
         ? `${pendingDevice.name} ${durationMinutes} মিনিট চলবে, তারপর অটো মোডে ফিরে যাবে` 
         : `${pendingDevice.name} will run for ${durationMinutes} minutes then return to auto`,
     });
-    
     setPendingDevice(null);
   };
 
-  // Handle automation toggle
   const handleAutomationToggle = (enabled: boolean) => {
     sendCommand.mutate({ commandType: 'manual_override', commandValue: !enabled });
     setManualOverride(!enabled);
-    
     toast({
       title: enabled 
         ? (language === 'bn' ? '🟢 অটোমেশন চালু' : '🟢 Automation Enabled')
@@ -284,14 +242,13 @@ export function ControlPage() {
 
   const hasTemporaryOverrides = Object.keys(activeTimers).length > 0;
 
-  // Dynamic safety protections based on sensor data
   const safetyProtections = DEFAULT_SAFETY_PROTECTIONS.map(p => ({
     ...p,
     isActive: p.key === 'heat_stress' 
       ? sensorData.temperature > 32 
       : p.key === 'gas_purge'
         ? sensorData.ammonia > 25
-        : true, // min_ventilation always active
+        : true,
   }));
 
   return (
@@ -299,118 +256,136 @@ export function ControlPage() {
       <Header />
 
       <main className="page-container px-4 space-y-4">
-        {/* SECTION 1: Automation Master Status - Only Admin can toggle */}
-        <AutomationStatusBanner
-          automationEnabled={!manualOverride}
-          hasTemporaryOverrides={hasTemporaryOverrides}
-          onToggleAutomation={handleAutomationToggle}
-          canToggle={canDisableAutomation}
-        />
+        {/* ===== 1. STATE EXPLANATION HEADER ===== */}
+        <StateExplanationHeader />
 
-        {/* Viewer restriction notice */}
-        {isViewer && (
-          <Card className="border-red-500/30 bg-red-500/5">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <ShieldAlert className="h-5 w-5 text-red-500" />
-                <div>
-                  <p className="font-medium text-foreground">
-                    {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View Only Access'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' 
-                      ? 'আপনি ভিউয়ার হিসেবে কোনো পরিবর্তন করতে পারবেন না'
-                      : 'As a viewer, you cannot make any changes'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {/* Farmer (temporary only) notice */}
-        {canTemporaryControl && !canFullControl && !isViewer && (
-          <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <ShieldAlert className="h-5 w-5 text-amber-500" />
-                <div>
-                  <p className="font-medium text-foreground">
-                    {language === 'bn' ? 'সাময়িক কন্ট্রোল' : 'Temporary Control Only'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' 
-                      ? 'আপনি শুধুমাত্র সাময়িক কন্ট্রোল করতে পারবেন, স্থায়ী পরিবর্তন নয়'
-                      : 'You can only make temporary changes, not permanent ones'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* ===== 2. WHY FAN IS RUNNING ===== */}
+        <WhyFanRunning />
 
-        {/* SECTION 4: Safety Locked Devices */}
-        <SafetyLockedDevices protections={safetyProtections} />
+        {/* ===== 3. LIVE ENVIRONMENT PANEL ===== */}
+        <LiveEnvironmentPanel />
 
-        {/* Active Timers Summary */}
-        {hasTemporaryOverrides && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardContent className="pt-3 pb-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Timer className="h-4 w-4 text-amber-500" />
-                  <span className="font-medium text-amber-600 dark:text-amber-400">
-                    {language === 'bn' 
-                      ? `${Object.keys(activeTimers).length}টি ডিভাইসে সাময়িক কন্ট্রোল সক্রিয়` 
-                      : `${Object.keys(activeTimers).length} device(s) in temporary control`}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {language === 'bn' 
-                    ? 'টাইমার শেষে স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে' 
-                    : 'Will return to AUTO mode when timer expires'}
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+        {/* ===== 4. AUTOMATION DECISION LOG ===== */}
+        <AutomationDecisionLog />
 
-        {/* SECTION 2 & 3: Device Control Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DEVICES.map((device) => (
-            <SafeDeviceCard
-              key={device.key}
-              deviceKey={device.key}
-              icon={device.icon}
-              name={device.name}
-              description={device.description}
-              isActive={isDeviceActive(device.key)}
-              mode={getDeviceMode(device.key)}
-              remainingTime={getRemainingTime(device.key)}
-              onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
-              onStopTemporarily={() => handleStop(device.key)}
-              disabled={!canTemporaryControl || sendCommand.isPending}
-            />
-          ))}
-        </div>
+        {/* ===== 5. SENSOR HEALTH ===== */}
+        <FarmerSensorHealth />
 
-        {/* Manual Control Warning */}
-        <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-4 py-3 text-center">
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+        {/* ===== 6. MANUAL CONTROL PROTECTION ===== */}
+        <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 text-center">
             {language === 'bn' 
               ? '⚠️ সতর্কতা: অটোমেশন বন্ধ করলে মুরগির ক্ষতি হতে পারে'
               : '⚠️ Warning: Disabling automation may harm birds'}
           </p>
+
+          {/* Automation Master Status */}
+          <AutomationStatusBanner
+            automationEnabled={!manualOverride}
+            hasTemporaryOverrides={hasTemporaryOverrides}
+            onToggleAutomation={handleAutomationToggle}
+            canToggle={canDisableAutomation}
+          />
+
+          {/* Viewer restriction */}
+          {isViewer && (
+            <Card className="border-red-500/30 bg-red-500/5">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <ShieldAlert className="h-5 w-5 text-red-500" />
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View Only Access'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {language === 'bn' 
+                        ? 'আপনি ভিউয়ার হিসেবে কোনো পরিবর্তন করতে পারবেন না'
+                        : 'As a viewer, you cannot make any changes'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Farmer (temporary only) notice */}
+          {canTemporaryControl && !canFullControl && !isViewer && (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <ShieldAlert className="h-5 w-5 text-amber-500" />
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {language === 'bn' ? 'সাময়িক কন্ট্রোল' : 'Temporary Control Only'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {language === 'bn' 
+                        ? 'আপনি শুধুমাত্র সাময়িক কন্ট্রোল করতে পারবেন, স্থায়ী পরিবর্তন নয়'
+                        : 'You can only make temporary changes, not permanent ones'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Safety Locked Devices */}
+          <SafetyLockedDevices protections={safetyProtections} />
+
+          {/* Active Timers Summary */}
+          {hasTemporaryOverrides && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardContent className="pt-3 pb-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Timer className="h-4 w-4 text-amber-500" />
+                    <span className="font-medium text-amber-600 dark:text-amber-400">
+                      {language === 'bn' 
+                        ? `${Object.keys(activeTimers).length}টি ডিভাইসে সাময়িক কন্ট্রোল সক্রিয়` 
+                        : `${Object.keys(activeTimers).length} device(s) in temporary control`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === 'bn' 
+                      ? 'টাইমার শেষে স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে' 
+                      : 'Will return to AUTO mode when timer expires'}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Device Control Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {DEVICES.map((device) => (
+              <SafeDeviceCard
+                key={device.key}
+                deviceKey={device.key}
+                icon={device.icon}
+                name={device.name}
+                description={device.description}
+                isActive={isDeviceActive(device.key)}
+                mode={getDeviceMode(device.key)}
+                remainingTime={getRemainingTime(device.key)}
+                onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
+                onStopTemporarily={() => handleStop(device.key)}
+                disabled={!canTemporaryControl || sendCommand.isPending}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Success feedback area */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-4"
-        >
+        {/* ===== 7. FARM SAFETY FOOTER ===== */}
+        <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 text-center">
+          <p className="text-xs font-medium text-muted-foreground">
+            {language === 'bn' 
+              ? '🛡️ নেট না থাকলেও খামার চলবে'
+              : '🛡️ Farm will run even without internet'}
+          </p>
+        </div>
+
+        {/* Auto-expire feedback */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-2">
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             <span className="text-sm">
