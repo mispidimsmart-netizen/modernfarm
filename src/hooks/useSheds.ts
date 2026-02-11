@@ -10,6 +10,7 @@ export interface Shed {
   name_en: string;
   description: string | null;
   bird_capacity: number;
+  farm_type: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

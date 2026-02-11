@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Warehouse, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Warehouse, Plus, Pencil, Trash2, X, Check, Egg, Drumstick } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function ShedManagementSheet() {
@@ -22,6 +23,7 @@ export function ShedManagementSheet() {
     name: '',
     name_en: '',
     bird_capacity: 0,
+    farm_type: 'layer' as string,
   });
 
   const handleAdd = async () => {
@@ -33,7 +35,7 @@ export function ShedManagementSheet() {
     try {
       await addShed.mutateAsync(formData);
       toast.success(language === 'bn' ? 'শেড যোগ করা হয়েছে' : 'Shed added');
-      setFormData({ name: '', name_en: '', bird_capacity: 0 });
+      setFormData({ name: '', name_en: '', bird_capacity: 0, farm_type: 'layer' });
       setIsAdding(false);
     } catch (error) {
       toast.error(language === 'bn' ? 'সমস্যা হয়েছে' : 'Error adding shed');
@@ -75,6 +77,7 @@ export function ShedManagementSheet() {
       name: shed.name,
       name_en: shed.name_en,
       bird_capacity: shed.bird_capacity,
+      farm_type: shed.farm_type || 'layer',
     });
   };
 
@@ -117,13 +120,37 @@ export function ShedManagementSheet() {
                     />
                   </div>
                 </div>
-                <div>
-                  <Label>{language === 'bn' ? 'মুরগির ধারণক্ষমতা' : 'Bird Capacity'}</Label>
-                  <Input
-                    type="number"
-                    value={formData.bird_capacity}
-                    onChange={(e) => setFormData({ ...formData, bird_capacity: parseInt(e.target.value) || 0 })}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>{language === 'bn' ? 'মুরগির ধারণক্ষমতা' : 'Bird Capacity'}</Label>
+                    <Input
+                      type="number"
+                      value={formData.bird_capacity}
+                      onChange={(e) => setFormData({ ...formData, bird_capacity: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <Label>{language === 'bn' ? 'খামারের ধরণ' : 'Farm Type'}</Label>
+                    <Select value={formData.farm_type} onValueChange={(v) => setFormData({ ...formData, farm_type: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="layer">
+                          <span className="flex items-center gap-1.5">
+                            <Egg className="h-3.5 w-3.5 text-amber-600" />
+                            {language === 'bn' ? 'লেয়ার' : 'Layer'}
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="broiler">
+                          <span className="flex items-center gap-1.5">
+                            <Drumstick className="h-3.5 w-3.5 text-orange-600" />
+                            {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleAdd} disabled={addShed.isPending}>
@@ -170,11 +197,23 @@ export function ShedManagementSheet() {
                           onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
                         />
                       </div>
-                      <Input
-                        type="number"
-                        value={formData.bird_capacity}
-                        onChange={(e) => setFormData({ ...formData, bird_capacity: parseInt(e.target.value) || 0 })}
-                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          type="number"
+                          value={formData.bird_capacity}
+                          onChange={(e) => setFormData({ ...formData, bird_capacity: parseInt(e.target.value) || 0 })}
+                          placeholder={language === 'bn' ? 'ধারণক্ষমতা' : 'Capacity'}
+                        />
+                        <Select value={formData.farm_type} onValueChange={(v) => setFormData({ ...formData, farm_type: v })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="layer">{language === 'bn' ? '🥚 লেয়ার' : '🥚 Layer'}</SelectItem>
+                            <SelectItem value="broiler">{language === 'bn' ? '🐔 ব্রয়লার' : '🐔 Broiler'}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleUpdate(shed.id)}>
                           <Check className="mr-1 h-4 w-4" />
@@ -192,6 +231,13 @@ export function ShedManagementSheet() {
                           <span className={`h-2.5 w-2.5 rounded-full ${shed.is_active ? 'bg-status-normal' : 'bg-status-off'}`} />
                           <span className="font-medium">
                             {language === 'bn' ? shed.name : shed.name_en}
+                          </span>
+                          <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-muted">
+                            {(shed as any).farm_type === 'broiler' ? (
+                              <><Drumstick className="h-2.5 w-2.5 text-orange-600" /> {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}</>
+                            ) : (
+                              <><Egg className="h-2.5 w-2.5 text-amber-600" /> {language === 'bn' ? 'লেয়ার' : 'Layer'}</>
+                            )}
                           </span>
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">

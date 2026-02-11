@@ -48,6 +48,9 @@ export function ShedSelector() {
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${shed.is_active ? 'bg-status-normal' : 'bg-status-off'}`} />
               {language === 'bn' ? shed.name : shed.name_en}
+              <span className="text-[10px] text-muted-foreground">
+                {(shed as any).farm_type === 'broiler' ? '🐔' : '🥚'}
+              </span>
             </div>
           </SelectItem>
         ))}
