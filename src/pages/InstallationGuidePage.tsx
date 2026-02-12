@@ -167,6 +167,85 @@ const wiringConnections = [
 // Detailed step-by-step wiring guide for each sensor
 const detailedWiringGuide = [
   {
+    id: 'power-setup',
+    name: '⚡ 12V পাওয়ার সেটআপ (অ্যাডাপ্টার + LM2596 + DC Connector)',
+    nameEn: '12V Power Setup (Adapter + LM2596 + DC Connector)',
+    icon: Zap,
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    pins: [
+      { sensorPin: 'DC Connector (+)', esp32Pin: '12V অ্যাডাপ্টার আউটপুট', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 12V অ্যাডাপ্টারের প্লাগ → DC Connector (5.5mm) এ ঢোকান। কানেক্টরের + টার্মিনাল থেকে লাল তার বের করুন', warning: null },
+      { sensorPin: 'DC Connector (-)', esp32Pin: '12V অ্যাডাপ্টার GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ DC কানেক্টরের - টার্মিনাল থেকে কালো তার বের করুন → এটি কমন GND হবে', warning: null },
+      { sensorPin: '12V (+) লাইন', esp32Pin: 'রিলে মডিউল JD-VCC', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 DC কানেক্টরের + থেকে লাল তার → রিলে মডিউলের JD-VCC পিনে সরাসরি দিন (12V)', warning: '⚠️ প্রথমে রিলে বোর্ডের JD-VCC ও VCC এর মাঝের হলুদ জাম্পার খুলে ফেলুন!' },
+      { sensorPin: '12V (+) লাইন', esp32Pin: 'LM2596 IN+ (ইনপুট)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 DC কানেক্টরের + থেকে আরেকটি লাল তার → LM2596 এর IN+ পিনে দিন', warning: null },
+      { sensorPin: 'GND লাইন', esp32Pin: 'LM2596 IN- (ইনপুট)', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ DC কানেক্টরের - থেকে কালো তার → LM2596 এর IN- পিনে দিন', warning: null },
+      { sensorPin: 'LM2596 OUT+ (আউটপুট)', esp32Pin: 'ESP32 VIN', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 LM2596 এর OUT+ → ESP32 এর VIN পিনে দিন (⚡ আগে মাল্টিমিটারে 5.0V সেট করুন!)', warning: '⛔ ESP32 কানেক্ট করার আগে অবশ্যই মাল্টিমিটার দিয়ে আউটপুট 5.0V নিশ্চিত করুন! ভুল ভোল্টেজে ESP32 পুড়ে যাবে!' },
+      { sensorPin: 'LM2596 OUT- (আউটপুট)', esp32Pin: 'ESP32 GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ LM2596 এর OUT- → ESP32 এর GND পিনে দিন', warning: null },
+      { sensorPin: 'রিলে GND', esp32Pin: 'কমন GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ রিলে মডিউলের GND → ESP32 GND / LM2596 OUT- তে কমন GND করুন', warning: null },
+      { sensorPin: 'রিলে VCC (সিগন্যাল)', esp32Pin: 'ESP32 VIN (5V)', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 রিলে মডিউলের VCC (সিগন্যাল সাইড) → LM2596 OUT+ বা ESP32 VIN (5V) তে দিন', warning: 'এটি JD-VCC না! এটি রিলে লজিক সিগন্যালের পাওয়ার।' },
+    ],
+    extraNote: '⚡ এই সেটআপে একটি 12V অ্যাডাপ্টার দিয়ে পুরো সিস্টেম চলে: 12V সরাসরি রিলে কয়েলে যায় (শক্তিশালী ক্লিক), এবং LM2596 দিয়ে 5V বানিয়ে ESP32 ও সেন্সরে দেওয়া হয়।',
+    resistorNote: null,
+    tips: [
+      '🔧 LM2596 স্ক্রু ঘুরিয়ে আউটপুট ভোল্টেজ 5.0V সেট করুন — ESP32 কানেক্টের আগে!',
+      '📏 মাল্টিমিটারের লাল প্রোব OUT+ এ এবং কালো প্রোব OUT- এ ধরে ভোল্টেজ মাপুন',
+      '⚠️ রিলে বোর্ডের JD-VCC জাম্পার অবশ্যই খুলুন — নইলে 12V ESP32 তে চলে যাবে!',
+      '🔌 সব GND একসাথে কমন করুন (অ্যাডাপ্টার, LM2596, ESP32, রিলে)',
+      '✅ সঠিক সেটআপে রিলে জোরে ক্লিক করবে এবং ESP32 স্থিতিশীলভাবে চলবে',
+    ],
+    hasPowerSetupDiagram: true,
+    powerSetupInfo: {
+      title: '🔌 12V পাওয়ার ডিস্ট্রিবিউশন ডায়াগ্রাম',
+      diagram: `12V 3A অ্যাডাপ্টার
+       │
+       ▼
+  DC Connector 5.5mm
+   (+)          (-)
+    │             │
+    ├─────────────┤ ← কমন GND বাস
+    │             │
+    ▼             ▼
+ ┌──┴──┐     ┌───┴───┐
+ │12V+ │     │  GND  │
+ └──┬──┘     └───┬───┘
+    │             │
+    ├──► রিলে JD-VCC (12V সরাসরি)
+    │        │
+    │        └──► রিলে GND
+    │
+    ▼
+ ┌────────────┐
+ │  LM2596    │
+ │  IN+ ← 12V│
+ │  IN- ← GND│
+ │            │
+ │  OUT+ → 5V │──► ESP32 VIN
+ │  OUT- → GND│──► ESP32 GND
+ └────────────┘        │
+                       ├──► রিলে VCC (সিগন্যাল, 5V)
+                       ├──► DHT22 VCC (3.3V পিন থেকে)
+                       └──► সেন্সর পাওয়ার`,
+      beforeStart: [
+        { step: 1, text: '12V অ্যাডাপ্টার প্লাগ ইন করবেন না — সব ওয়্যারিং শেষে প্লাগ করুন', icon: '🔌' },
+        { step: 2, text: 'LM2596 বোর্ডে ছোট সোনালি স্ক্রু আছে — ঘড়ির কাঁটার দিকে ঘুরালে ভোল্টেজ কমে', icon: '🔧' },
+        { step: 3, text: 'DC কানেক্টরে + ও - চিহ্নিত থাকে — সেন্টার পিন সাধারণত + হয়', icon: '📌' },
+      ],
+      jumperWarning: {
+        title: '⛔ রিলে জাম্পার সেটিং (অত্যন্ত গুরুত্বপূর্ণ!)',
+        before: 'JD-VCC [═] VCC ← জাম্পার ON (5V মোড — পুরানো)',
+        after: 'JD-VCC [ ] VCC ← জাম্পার OFF (12V মোড — নতুন)',
+        explanation: 'জাম্পার খুললে JD-VCC এ 12V এবং VCC তে 5V আলাদাভাবে দেওয়া যায়। না খুললে 12V সরাসরি ESP32 তে ঢুকে ESP32 পুড়ে যাবে!',
+      },
+      voltageCheckSteps: [
+        { step: 1, text: 'LM2596 এর IN+ ও IN- তে 12V কানেক্ট করুন (ESP32 ছাড়া)', icon: '🔴' },
+        { step: 2, text: 'মাল্টিমিটার DC মোডে সেট করুন', icon: '📟' },
+        { step: 3, text: 'লাল প্রোব OUT+ এ, কালো প্রোব OUT- এ ধরুন', icon: '📏' },
+        { step: 4, text: 'স্ক্রু ধীরে ধীরে ঘুরিয়ে ঠিক 5.0V সেট করুন (4.8V-5.2V গ্রহণযোগ্য)', icon: '🎯' },
+        { step: 5, text: '5V নিশ্চিত হলে অ্যাডাপ্টার খুলুন → ESP32 VIN এ কানেক্ট করুন → আবার প্লাগ করুন', icon: '✅' },
+      ],
+    },
+  },
+  {
     id: 'capacitor',
     name: '১০০μF ক্যাপাসিটর (পাওয়ার স্ট্যাবিলিটি)',
     nameEn: '100μF Capacitor (Power Stability)',
@@ -180,7 +259,7 @@ const detailedWiringGuide = [
     extraNote: '⚡ কেন দরকার: জেনারেটর/সোলার সুইচিং বা পাওয়ার ফ্লাকচুয়েশনের সময় ভোল্টেজ স্থিতিশীল রাখে এবং ESP32 রিস্টার্ট প্রতিরোধ করে।',
     resistorNote: null,
     tips: ['100μF 16V বা 25V ক্যাপাসিটর ব্যবহার করুন', 'যতটা সম্ভব ESP32 এর কাছাকাছি লাগান', 'পোলারিটি (+ / -) অবশ্যই মেলাতে হবে!'],
-    hasCapacitorDiagram: true, // Special flag for capacitor diagram
+    hasCapacitorDiagram: true,
   },
   {
     id: 'dht22',
@@ -1037,6 +1116,66 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                             ))}
                           </div>
                           
+                          {/* 12V Power Setup Diagram */}
+                          {'hasPowerSetupDiagram' in sensor && sensor.hasPowerSetupDiagram && 'powerSetupInfo' in sensor && sensor.powerSetupInfo && (() => {
+                            const pInfo = sensor.powerSetupInfo as any;
+                            return (
+                              <div className="mt-4 space-y-4">
+                                {/* Power Distribution Diagram */}
+                                <div className="rounded-lg border-2 border-destructive/30 overflow-hidden">
+                                  <div className="bg-destructive/10 p-2 border-b border-destructive/30">
+                                    <p className="text-xs font-bold text-center">{pInfo.title}</p>
+                                  </div>
+                                  <div className="p-3 overflow-x-auto">
+                                    <pre className="text-[10px] sm:text-xs font-mono whitespace-pre leading-relaxed">{pInfo.diagram}</pre>
+                                  </div>
+                                </div>
+
+                                {/* Before You Start */}
+                                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                                  <p className="text-xs font-bold mb-2">🛑 শুরুর আগে:</p>
+                                  <div className="space-y-1.5">
+                                    {pInfo.beforeStart.map((s: any, sIdx: number) => (
+                                      <div key={sIdx} className="flex items-start gap-2 text-xs">
+                                        <span>{s.icon}</span>
+                                        <span>{s.text}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Jumper Warning */}
+                                <div className="p-3 rounded-lg bg-destructive/10 border-2 border-destructive/40">
+                                  <p className="text-xs font-bold text-destructive mb-2">{pInfo.jumperWarning.title}</p>
+                                  <div className="grid grid-cols-2 gap-2 mb-2">
+                                    <div className="p-2 rounded bg-muted/50 text-center">
+                                      <p className="text-[10px] text-muted-foreground mb-1">❌ আগে (ভুল)</p>
+                                      <code className="text-xs font-mono">{pInfo.jumperWarning.before}</code>
+                                    </div>
+                                    <div className="p-2 rounded bg-primary/10 text-center border border-primary/30">
+                                      <p className="text-[10px] text-primary mb-1">✅ এখন (সঠিক)</p>
+                                      <code className="text-xs font-mono">{pInfo.jumperWarning.after}</code>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{pInfo.jumperWarning.explanation}</p>
+                                </div>
+
+                                {/* Voltage Check Steps */}
+                                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                                  <p className="text-xs font-bold mb-2">📟 LM2596 ভোল্টেজ সেটআপ (গুরুত্বপূর্ণ!):</p>
+                                  <div className="space-y-2">
+                                    {pInfo.voltageCheckSteps.map((s: any, sIdx: number) => (
+                                      <div key={sIdx} className="flex items-start gap-2 text-xs">
+                                        <Badge variant="outline" className="text-[10px] shrink-0">{s.icon} {s.step}</Badge>
+                                        <span>{s.text}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* Capacitor Wiring Diagram */}
                           {sensor.hasCapacitorDiagram && (
                             <div className="space-y-4">
