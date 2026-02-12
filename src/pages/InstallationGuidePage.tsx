@@ -85,10 +85,10 @@ const partsList = [
     category: 'ফগার সিস্টেম (কুলিং)',
     categoryEn: 'Fogger System (Cooling)',
     items: [
-      { name: 'সোলেনয়েড ভালভ (12V DC, 1/2")', nameEn: 'Solenoid Valve 12V DC', quantity: 1, price: '৳৮০০-৯০০', priceRange: [800, 900], shop: 'রোবটিক্স বিডি, AliExpress', essential: true },
+      { name: 'সোলেনয়েড ভালভ (AC 220V, 1/2", Normally Closed, Brass)', nameEn: 'Solenoid Valve AC 220V NC Brass', quantity: 1, price: '৳৫০০-৮০০', priceRange: [500, 800], shop: 'ইলেকট্রনিক্স দোকান, AliExpress', essential: true },
+      { name: 'অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প', nameEn: 'Automatic Water Pressure Booster Pump', quantity: 1, price: '৳২০০০-৪০০০', priceRange: [2000, 4000], shop: 'পাম্প দোকান, হার্ডওয়্যার দোকান', essential: true },
       { name: 'ফগার নজল সেট (10-20 পিস)', nameEn: 'Fogger Nozzle Set', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
       { name: 'পিই পাইপ (4mm, 20 মিটার)', nameEn: 'PE Pipe 4mm', quantity: 1, price: '৳২০০-৩০০', priceRange: [200, 300], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
-      { name: 'হাই প্রেসার পাম্প', nameEn: 'High Pressure Pump', quantity: 1, price: '৳২০০০-৪০০০', priceRange: [2000, 4000], shop: 'পাম্প দোকান', essential: true },
     ]
   },
   {
@@ -96,7 +96,7 @@ const partsList = [
     categoryEn: 'Power Supply',
     items: [
       { name: '5V 2A অ্যাডাপ্টার (ESP32)', nameEn: '5V 2A Power Adapter', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
-      { name: '12V 1A অ্যাডাপ্টার (সোলেনয়েড ভালভ)', nameEn: '12V 1A Adapter for Solenoid', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: '5V 2A অ্যাডাপ্টার (ESP32)', nameEn: '5V 2A Power Adapter', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
       { name: 'ব্যাটারি ব্যাকআপ মডিউল (TP4056 + 18650)', nameEn: 'Battery Backup Module', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'রোবটিক্স বিডি', essential: false },
       { name: '18650 ব্যাটারি (3.7V 3000mAh)', nameEn: '18650 Battery', quantity: 2, price: '৳২৫০-৩৫০/পিস', priceRange: [500, 700], shop: 'টেকশপ বিডি', essential: false },
     ]
@@ -147,7 +147,7 @@ const wiringConnections = [
   { component: 'Relay IN1', pin: 'Exhaust Fan', esp32Pin: 'GPIO 25', color: 'bg-purple-500', note: '🌀 এক্সহস্ট ফ্যান (উভয় ফার্ম)' },
   { component: 'Relay IN2', pin: 'Light / Circ Fan', esp32Pin: 'GPIO 26', color: 'bg-blue-400', note: '🥚লাইট | 🐔সার্কুলেশন ফ্যান' },
   { component: 'Relay IN3', pin: 'Alarm / Heater', esp32Pin: 'GPIO 33', color: 'bg-orange-500', note: '🥚অ্যালার্ম | 🐔হিটার' },
-  { component: 'Relay IN4', pin: 'Fogger', esp32Pin: 'GPIO 13', color: 'bg-teal-500', note: '💦 ফগার (উভয় ফার্ম)' },
+  { component: 'Relay IN4', pin: 'Fogger Valve', esp32Pin: 'GPIO 13', color: 'bg-teal-500', note: '💦 ফগার সোলেনয়েড ভালভ AC 220V (উভয় ফার্ম)' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: '🔔 অ্যালার্ম বাজার' },
@@ -336,8 +336,8 @@ const detailedWiringGuide = [
           relay: 'IN4',
           gpio: 'GPIO 13',
           shared: true,
-          sharedDevice: '💦 ফগার সোলেনয়েড ভালভ (12V DC)',
-          sharedNote: 'উভয় ফার্মে একই — নিরাপদ ক্রম: ভালভ খোলে → ২ সেকেন্ড অপেক্ষা → পাম্প চালু → স্প্রে → পাম্প বন্ধ → ২ সেকেন্ড অপেক্ষা → ভালভ বন্ধ। পাম্প কখনো বন্ধ ভালভের বিরুদ্ধে চলে না।',
+      sharedDevice: '💦 ফগার সোলেনয়েড ভালভ (AC 220V, Brass, NC)',
+      sharedNote: 'উভয় ফার্মে একই — নিরাপদ ক্রম: ভালভ খোলে → ২ সেকেন্ড অপেক্ষা → পাম্প চালু → স্প্রে → পাম্প বন্ধ → ২ সেকেন্ড অপেক্ষা → ভালভ বন্ধ। AC 220V ভালভ সরাসরি রিলে দিয়ে কন্ট্রোল হয়। বুস্টার পাম্প আলাদা কন্ট্যাক্টর/রিলে দিয়ে নিয়ন্ত্রিত।',
           layerDevice: null,
           broilerDevice: null,
           layerAutomation: null,
@@ -370,26 +370,27 @@ const detailedWiringGuide = [
   },
   {
     id: 'fogger',
-    name: '💦 ফগার সোলেনয়েড ভালভ (কুলিং সিস্টেম)',
-    nameEn: 'Fogger Solenoid Valve (Cooling System)',
+    name: '💦 ফগার কুলিং সিস্টেম (AC ভালভ + বুস্টার পাম্প)',
+    nameEn: 'Fogger Cooling System (AC Valve + Booster Pump)',
     icon: Droplets,
     color: 'text-teal-500',
     bgColor: 'bg-teal-500/10',
     pins: [
-      { sensorPin: '12V অ্যাডাপ্টার (+)', esp32Pin: 'Relay IN4 COM', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 12V DC অ্যাডাপ্টারের পজিটিভ (+) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', warning: null },
-      { sensorPin: 'সোলেনয়েড (+) তার', esp32Pin: 'Relay IN4 NO', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔵 সোলেনয়েড ভালভের লাল (+) তার → রিলে IN4 এর NO (Normally Open) পোর্ট', warning: null },
-      { sensorPin: 'সোলেনয়েড (−) তার', esp32Pin: '12V অ্যাডাপ্টার GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ সোলেনয়েড ভালভের কালো (−) তার → 12V অ্যাডাপ্টারের GND (−)', warning: null },
+      { sensorPin: 'AC Live (Phase)', esp32Pin: 'Relay IN4 COM', wireColor: 'লাল/বাদামী', wireNameEn: 'RED/BROWN', instruction: '⚡ মেইন সুইচ থেকে AC লাইভ (ফেজ) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', warning: '⚡ বিপদ! ২২০V AC — মেইন সুইচ বন্ধ করে কাজ করুন!' },
+      { sensorPin: 'সোলেনয়েড তার ১', esp32Pin: 'Relay IN4 NO', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ সোলেনয়েড ভালভের এক তার → রিলে IN4 এর NO (Normally Open) পোর্ট', warning: null },
+      { sensorPin: 'সোলেনয়েড তার ২', esp32Pin: 'AC Neutral', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 সোলেনয়েড ভালভের অন্য তার → সরাসরি AC নিউট্রাল', warning: null },
     ],
-    extraNote: '💦 ফগার কুলিং সিস্টেম নিরাপদ ক্রমিক নিয়ন্ত্রণ (Staged Control) ব্যবহার করে:\n\n🟢 চালু করার ক্রম (PREPARE → RUNNING):\n① সোলেনয়েড ভালভ খোলে → ② ২ সেকেন্ড অপেক্ষা (পানির চাপ তৈরি হতে দেয়) → ③ পাম্প চালু হয়\n\n🔴 বন্ধ করার ক্রম (STOPPING → OFF):\n① পাম্প বন্ধ → ② ২ সেকেন্ড অপেক্ষা (পাইপের চাপ কমতে দেয়) → ③ ভালভ বন্ধ\n\n🛡️ ফেইলসেফ: পাম্প চালু কিন্তু ভালভ বন্ধ → পাম্প তাৎক্ষণিক বন্ধ। ভালভ বন্ধ না হলে ৩ বার চেষ্টা → অ্যালার্ম।\n\nতাপমাত্রা ≥ ৩২°সে এবং আর্দ্রতা < ৮৫% হলে চালু হয়। বন্ধ হয়: তাপমাত্রা < ৩০°সে অথবা আর্দ্রতা ≥ ৯০%।',
+    extraNote: '💦 ফগার কুলিং সিস্টেম নিরাপদ ক্রমিক নিয়ন্ত্রণ (Staged Control) ব্যবহার করে:\n\n⚡ এই সিস্টেমে AC 220V Normally Closed Brass সোলেনয়েড ভালভ এবং অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প ব্যবহৃত হয়।\n\n🟢 চালু করার ক্রম (PREPARE → RUNNING):\n① সোলেনয়েড ভালভ খোলে (রিলে ON) → ② ২ সেকেন্ড অপেক্ষা (পানির চাপ তৈরি হতে দেয়) → ③ বুস্টার পাম্প চালু হয়\n\n🔴 বন্ধ করার ক্রম (STOPPING → OFF):\n① পাম্প বন্ধ → ② ২ সেকেন্ড অপেক্ষা (পাইপের চাপ কমতে দেয়) → ③ ভালভ বন্ধ (রিলে OFF)\n\n🛡️ ফেইলসেফ: পাম্প চালু কিন্তু ভালভ বন্ধ → পাম্প তাৎক্ষণিক বন্ধ। ভালভ বন্ধ না হলে ৩ বার চেষ্টা → অ্যালার্ম।\n\nতাপমাত্রা ≥ ৩২°সে এবং আর্দ্রতা < ৮৫% হলে চালু হয়। বন্ধ হয়: তাপমাত্রা < ৩০°সে অথবা আর্দ্রতা ≥ ৯০%।',
     resistorNote: '📍 Relay IN4 ইতিমধ্যে GPIO 13-এ কানেক্ট করা আছে',
     tips: [
-      '✅ 12V DC সোলেনয়েড ভালভ ব্যবহার করুন (নিরাপদ ও সহজ)',
-      '🔋 আলাদা 12V 1A DC অ্যাডাপ্টার লাগবে (ESP32 এর 5V দিয়ে চলবে না)',
-      '⚙️ হাই প্রেসার পাম্প আলাদা রিলে/কন্ট্যাক্টরের মাধ্যমে কন্ট্রোল হয়',
+      '✅ AC 220V Normally Closed (NC) Brass সোলেনয়েড ভালভ ব্যবহার করুন — বিদ্যুৎ না থাকলে পানি বন্ধ থাকে',
+      '⚡ ভালভ সরাসরি রিলে IN4 দিয়ে AC 220V কন্ট্রোল হয় — আলাদা অ্যাডাপ্টার লাগে না',
+      '💧 অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প পানির চাপ বাড়িয়ে নজলে কুয়াশা তৈরি করে',
+      '⚙️ বুস্টার পাম্প আলাদা কন্ট্যাক্টর/রিলে দিয়ে কন্ট্রোল হয় (হাই কারেন্ট ডিভাইস)',
       '🌡️ ফগার চলাকালে এক্সজস্ট ফ্যান স্বয়ংক্রিয় চালু থাকে',
-      '🛡️ Normally Closed (NC) ভালভ — বিদ্যুৎ না থাকলে পানি বন্ধ থাকে',
       '🔒 পাম্প কখনো বন্ধ ভালভের বিরুদ্ধে চলে না — হার্ডওয়্যার সুরক্ষিত',
-      '⚡ সিস্টেম রিসেট হলে সবকিছু SAFE OFF অবস্থায় পুনরায় শুরু হয়'
+      '⚡ সিস্টেম রিসেট হলে সবকিছু SAFE OFF অবস্থায় পুনরায় শুরু হয়',
+      '👷 AC ২২০V ওয়্যারিং অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে করান!'
     ],
     hasFoggerDiagram: true,
     foggerWiringInfo: {
@@ -399,36 +400,40 @@ const detailedWiringGuide = [
         title: 'সিস্টেম পরিচিতি',
         points: [
           '💦 ফগার = কুয়াশা তৈরি করে তাপমাত্রা কমায়',
-          '🔌 সোলেনয়েড ভালভ = বিদ্যুৎ দিয়ে চালু/বন্ধ হওয়া পানির ট্যাপ',
-          '🔋 12V DC সোলেনয়েড — নিরাপদ (হাই ভোল্টেজ নেই), আলাদা 12V অ্যাডাপ্টার দিয়ে চালু হয়',
-          '🔄 রিলে ON হলে ভালভ খোলে → পানি স্প্রে হয়'
+          '🔌 সোলেনয়েড ভালভ = বিদ্যুৎ দিয়ে চালু/বন্ধ হওয়া পানির ট্যাপ (AC 220V, Brass, NC)',
+          '💧 অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প = পানির চাপ বাড়িয়ে নজলে কুয়াশা তৈরি করে',
+          '⚡ AC 220V ভালভ সরাসরি রিলে IN4 দিয়ে কন্ট্রোল হয় (ফ্যান/লাইটের মতো)',
+          '🔄 রিলে ON হলে ভালভ খোলে → পানি আসে → পাম্প চাপ দেয় → নজলে কুয়াশা স্প্রে হয়'
         ]
       },
       automationLogic: {
         title: 'অটোমেশন লজিক (নিরাপদ ক্রমিক নিয়ন্ত্রণ)',
         startCondition: 'তাপমাত্রা ≥ ৩২°সে এবং আর্দ্রতা < ৮৫%',
-        cycle: '🟢 চালু: ভালভ খোলে → ২সে অপেক্ষা → পাম্প চালু → স্প্রে চক্র\n🔴 বন্ধ: পাম্প বন্ধ → ২সে অপেক্ষা → ভালভ বন্ধ',
+        cycle: '🟢 চালু: ভালভ খোলে (রিলে ON) → ২সে অপেক্ষা → বুস্টার পাম্প চালু → স্প্রে চক্র\n🔴 বন্ধ: পাম্প বন্ধ → ২সে অপেক্ষা → ভালভ বন্ধ (রিলে OFF)',
         stopCondition: 'তাপমাত্রা < ৩০°সে অথবা আর্দ্রতা ≥ ৯০%',
         safetyNote: 'ফগার চলাকালে এক্সজস্ট ফ্যান বাধ্যতামূলক চালু থাকে। পাম্প কখনো বন্ধ ভালভের বিরুদ্ধে চলে না।\n\n🛡️ কুলিং স্টেট: OFF → PREPARE (ভালভ খোলে) → RUNNING (পাম্প চালু) → STOPPING (পাম্প বন্ধ, ভালভ বন্ধের অপেক্ষা) → OFF\n\n⚠️ ফেইলসেফ: পাম্প ON + ভালভ OFF → পাম্প তাৎক্ষণিক বন্ধ | ভালভ আটকে গেলে → ৩ বার রিট্রাই → অ্যালার্ম'
       },
       connectionSteps: [
         { step: 1, title: 'রিলে ইনপুট (ইতিমধ্যে সম্পন্ন)', desc: 'ESP32 GPIO 13 → রিলে IN4 পিন', color: 'purple' },
-        { step: 2, title: '12V (+) → রিলে COM', desc: '12V DC অ্যাডাপ্টারের পজিটিভ (+) → রিলে IN4 এর COM (মাঝের পোর্ট)', color: 'red' },
-        { step: 3, title: 'রিলে NO → সোলেনয়েড (+)', desc: 'রিলে IN4 এর NO (ডান পোর্ট) → সোলেনয়েড ভালভের লাল (+) তার', color: 'blue' },
-        { step: 4, title: 'সোলেনয়েড (−) → 12V GND', desc: 'সোলেনয়েড ভালভের কালো (−) তার → 12V অ্যাডাপ্টারের GND (−)', color: 'black' }
+        { step: 2, title: 'AC Live → রিলে COM', desc: 'মেইন সুইচ থেকে AC লাইভ (ফেজ) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', color: 'red' },
+        { step: 3, title: 'রিলে NO → সোলেনয়েড', desc: 'রিলে IN4 এর NO (ডান পোর্ট) → সোলেনয়েড ভালভের এক তার', color: 'blue' },
+        { step: 4, title: 'সোলেনয়েড → AC Neutral', desc: 'সোলেনয়েড ভালভের অন্য তার → সরাসরি AC নিউট্রাল', color: 'black' },
+        { step: 5, title: 'বুস্টার পাম্প কানেকশন', desc: 'অটোমেটিক বুস্টার পাম্প আলাদা কন্ট্যাক্টর/রিলে দিয়ে AC 220V তে কানেক্ট করুন — ESP32 সফটওয়্যার থেকে কন্ট্রোল হয়', color: 'teal' }
       ],
       partsNeeded: [
-        { name: 'সোলেনয়েড ভালভ 12V DC', spec: '1/2" প্লাস্টিক বডি (Normally Closed)', price: '৳৮০০-৯০০' },
-        { name: '12V 1A DC অ্যাডাপ্টার', spec: 'সোলেনয়েড ভালভের পাওয়ার সোর্স', price: '৳১৫০-২৫০' },
+        { name: 'সোলেনয়েড ভালভ AC 220V', spec: '1/2" Brass বডি, Normally Closed (NC)', price: '৳৫০০-৮০০' },
+        { name: 'অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প', spec: 'AC 220V, ফগার নজলে চাপ দেওয়ার জন্য', price: '৳২০০০-৪০০০' },
         { name: 'ফগার নজল', spec: '১০-২০ পিস (শেড সাইজ অনুযায়ী)', price: '৳৩০০-৫০০' },
         { name: 'পিই পাইপ', spec: '4mm বা 6mm, ২০ মিটার', price: '৳২০০-৩০০' },
-        { name: 'T-কানেক্টর', spec: 'নজল সংযোগের জন্য', price: '৳১০০-২০০' }
+        { name: 'T-কানেক্টর', spec: 'নজল সংযোগের জন্য', price: '৳১০০-২০০' },
+        { name: 'কন্ট্যাক্টর/রিলে (পাম্পের জন্য)', spec: 'পাম্পের ওয়াটেজ অনুযায়ী নির্বাচন করুন', price: '৳৩০০-৬০০' }
       ],
       safetyWarnings: [
-        '🔋 12V DC — নিরাপদ লো ভোল্টেজ, তবুও সংযোগস্থল শুকনো রাখুন',
-        '💧 পানি ও বিদ্যুৎ একসাথে বিপদজনক - সংযোগস্থল শুকনো রাখুন',
+        '⚡ AC ২২০V — মেইন সুইচ বন্ধ করে কাজ করুন!',
+        '👷 AC ওয়্যারিং অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে করান!',
+        '💧 পানি ও বিদ্যুৎ একসাথে বিপদজনক — সংযোগস্থল শুকনো রাখুন',
         '➡️ ভালভের তীর চিহ্ন (→) পানির প্রবাহের দিকে রাখুন',
-        '🔌 ESP32 এর 5V দিয়ে সোলেনয়েড চালাবেন না — আলাদা 12V অ্যাডাপ্টার ব্যবহার করুন'
+        '🔌 বুস্টার পাম্পের জন্য আলাদা MCB/ফিউজ ব্যবহার করুন'
       ],
       troubleshooting: [
         { problem: 'পানি আসছে না', solutions: ['সোলেনয়েড ভালভের তীর চিহ্ন (→) পানির প্রবাহ দিকে আছে কিনা চেক করুন', 'মেইন পানি সাপ্লাই চালু আছে কিনা দেখুন', 'রিলে ক্লিক করছে কিনা শুনুন'] },
