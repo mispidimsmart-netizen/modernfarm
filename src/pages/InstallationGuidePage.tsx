@@ -247,18 +247,18 @@ const detailedWiringGuide = [
   },
   {
     id: 'capacitor',
-    name: '১০০μF ক্যাপাসিটর (পাওয়ার স্ট্যাবিলিটি)',
-    nameEn: '100μF Capacitor (Power Stability)',
+    name: '1000μF ক্যাপাসিটর (ESP32 পাওয়ার স্ট্যাবিলিটি — CRITICAL)',
+    nameEn: '1000μF Capacitor (ESP32 Power Stability — CRITICAL)',
     icon: Zap,
     color: 'text-amber-500',
     bgColor: 'bg-amber-500/10',
     pins: [
-      { sensorPin: '+ পা (লম্বা পা)', esp32Pin: 'VIN (5V)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ক্যাপাসিটরের লম্বা পা (+) → ESP32 এর VIN পিনে লাগান', warning: '⚠️ + ও - উল্টো লাগালে ক্যাপাসিটর ফেটে যেতে পারে!' },
+      { sensorPin: '+ পা (লম্বা পা)', esp32Pin: 'VIN (5V)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ক্যাপাসিটরের লম্বা পা (+) → ESP32 এর VIN পিনে লাগান', warning: '⚠️ পোলারিটি সতর্কতা: লম্বা পা = VIN (পজিটিভ), সাদা স্ট্রাইপ সাইড = GND (নেগেটিভ)। উল্টো লাগালে ক্যাপাসিটর ফেটে যেতে পারে!' },
       { sensorPin: '- পা (ছোট পা / সাদা স্ট্রাইপ)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ক্যাপাসিটরের ছোট পা (-) বা সাদা স্ট্রাইপ সাইড → ESP32 এর GND পিনে লাগান', warning: null },
     ],
-    extraNote: '⚡ কেন দরকার: জেনারেটর/সোলার সুইচিং বা পাওয়ার ফ্লাকচুয়েশনের সময় ভোল্টেজ স্থিতিশীল রাখে এবং ESP32 রিস্টার্ট প্রতিরোধ করে।',
+    extraNote: '🚨 CRITICAL: রিলে, ম্যাগনেটিক কন্টাক্টর বা বুস্টার পাম্প ON হলে হঠাৎ কারেন্ট স্পাইক হয় যা ESP32 রিবুট করে দেয়। 1000μF ক্যাপাসিটর এই ভোল্টেজ ড্রপ শোষণ করে ESP32 কে স্থিতিশীল রাখে।',
     resistorNote: null,
-    tips: ['100μF 16V বা 25V ক্যাপাসিটর ব্যবহার করুন', 'যতটা সম্ভব ESP32 এর কাছাকাছি লাগান', 'পোলারিটি (+ / -) অবশ্যই মেলাতে হবে!'],
+    tips: ['1000μF 16V বা 25V ইলেকট্রোলাইটিক ক্যাপাসিটর ব্যবহার করুন', 'যতটা সম্ভব ESP32 এর VIN-GND পিনের কাছাকাছি লাগান', 'পোলারিটি: লম্বা পা → VIN (+), সাদা স্ট্রাইপ সাইড → GND (−)', 'এটি ছাড়া রিলে/কন্টাক্টর সুইচিংয়ে ESP32 বারবার রিস্টার্ট হবে!'],
     hasCapacitorDiagram: true,
   },
   {
@@ -1049,7 +1049,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
 │  3.3V ──────────────────────▶ DHT22 VCC (শুধু DHT22)    │
 │  5V (VIN) ──────────────────▶ অন্যান্য সেন্সর + রিলে VCC│
 │  GND ───────────────────────▶ সব GND একসাথে             │
-│  100μF ক্যাপাসিটর ──────────▶ VIN ও GND এর মাঝে         │
+│  1000μF ক্যাপাসিটর (ESP32) ──▶ VIN ও GND এর মাঝে         │
 └─────────────────────────────────────────────────────────┘`}
                         </pre>
                       </div>
@@ -1231,7 +1231,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                                 <div className="absolute -top-1 left-0 right-0 flex justify-center">
                                                   <span className="text-[8px] text-green-400 font-bold">+</span>
                                                 </div>
-                                                <span className="text-[8px] text-white font-bold rotate-90">100μF</span>
+                                                <span className="text-[8px] text-white font-bold rotate-90">1000μF</span>
                                                 <div className="absolute top-0 bottom-0 right-0 w-1 bg-gray-400"></div>
                                               </div>
                                               {/* Legs */}
