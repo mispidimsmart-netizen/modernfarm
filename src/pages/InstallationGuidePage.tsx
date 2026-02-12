@@ -82,6 +82,15 @@ const partsList = [
     ]
   },
   {
+    category: 'সুইচিং ও প্রোটেকশন',
+    categoryEn: 'Switching & Protection',
+    items: [
+      { name: 'MCB মেইন (সার্কিট ব্রেকার) — 2P 32A C', nameEn: 'MCB Main Circuit Breaker 2P 32A C', quantity: 1, price: '৳৩৫০-৫৫০', priceRange: [350, 550], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+      { name: 'সাব MCB — 1P 6A (প্রতিটি রিলে লাইনের জন্য)', nameEn: 'Sub MCB 1P 6A', quantity: 4, price: '৳১২০-১৮০/পিস', priceRange: [480, 720], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+      { name: 'ম্যাগনেটিক কন্ট্যাক্টর CJX2-1210 (220VAC কয়েল)', nameEn: 'Magnetic Contactor CJX2-1210 220VAC', quantity: 1, price: '৳৪০০-৬৫০', priceRange: [400, 650], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+    ]
+  },
+  {
     category: 'ফগার সিস্টেম (কুলিং)',
     categoryEn: 'Fogger System (Cooling)',
     items: [
@@ -365,6 +374,74 @@ const detailedWiringGuide = [
         '🔌 ভুল কানেকশনে শর্ট সার্কিট বা আগুন লাগতে পারে!',
         '👷 অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে AC ওয়্যারিং করান।',
         '📋 কাজ শেষে সব সংযোগ ডাবল-চেক করুন।',
+      ],
+    },
+  },
+  {
+    id: 'mcb-contactor',
+    name: '⚡ MCB ও কন্ট্যাক্টর ওয়্যারিং (সুইচিং ও প্রোটেকশন)',
+    nameEn: 'MCB & Contactor Wiring (Switching & Protection)',
+    icon: Zap,
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+    pins: [],
+    extraNote: '⚡ এই সেকশনে MCB (সার্কিট ব্রেকার) এবং ম্যাগনেটিক কন্ট্যাক্টর কিভাবে লেয়ার ও ব্রয়লার ফার্মে আলাদাভাবে ওয়্যার করতে হবে তা বিস্তারিত দেওয়া হয়েছে।',
+    resistorNote: null,
+    tips: [],
+    hasMcbContactorWiring: true,
+    mcbContactorInfo: {
+      title: '⚡ MCB ও কন্ট্যাক্টর — লেয়ার ও ব্রয়লার ফার্ম',
+      description: 'শর্ট-সার্কিট ও ওভারলোড থেকে খামার রক্ষা করতে MCB এবং হাই-কারেন্ট লোড নিয়ন্ত্রণে কন্ট্যাক্টর ব্যবহার করা হয়।',
+      commonParts: [
+        { name: 'MCB মেইন 2P 32A C', purpose: 'পুরো সিস্টেমের মেইন সুইচ ও শর্ট-সার্কিট প্রটেকশন' },
+        { name: 'সাব MCB 1P 6A', purpose: 'প্রতিটি রিলে আউটপুট লাইনে আলাদা সুরক্ষা — একটি ডিভাইসে শর্ট হলে শুধু সেই লাইনের MCB ট্রিপ করে' },
+        { name: 'কন্ট্যাক্টর CJX2-1210 (220VAC)', purpose: 'বুস্টার পাম্পের মতো হাই-কারেন্ট লোড নিয়ন্ত্রণ — রিলে শুধু কন্ট্যাক্টরের কয়েল সুইচ করে, কন্ট্যাক্টর আসল লোড বহন করে' },
+      ],
+      layerWiring: {
+        title: '🥚 লেয়ার ফার্ম ওয়্যারিং',
+        diagram: 'মেইন AC ──► MCB 2P 32A ──┬──► Sub MCB 6A ──► Relay CH1 NO ──► এক্সহস্ট ফ্যান\n                          ├──► Sub MCB 6A ──► Relay CH2 NO ──► লাইট (LED/CFL)\n                          ├──► Sub MCB 6A ──► Relay CH3 NO ──► বাজার (DC পাওয়ার সাপ্লাই দিয়ে)\n                          └──► Sub MCB 6A ──► Relay CH4 NO ──► Contactor Coil ──► বুস্টার পাম্প + ভালভ',
+        relays: [
+          { ch: 'CH1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'HSI/তাপমাত্রা/অ্যামোনিয়া ভিত্তিক' },
+          { ch: 'CH2 (GPIO 26)', device: '💡 লাইট (LED/CFL)', mcb: 'Sub MCB 6A', contactor: false, note: '১৬ ঘণ্টা শিডিউল, ডিম উৎপাদনের জন্য' },
+          { ch: 'CH3 (GPIO 33)', device: '🔔 বাজার/অ্যালার্ম', mcb: 'Sub MCB 6A', contactor: false, note: 'DC পাওয়ার সাপ্লাই দিয়ে চলে' },
+          { ch: 'CH4 (GPIO 13)', device: '💦 সোলেনয়েড ভালভ + বুস্টার পাম্প', mcb: 'Sub MCB 6A', contactor: true, note: 'ভালভ সরাসরি রিলে, পাম্প কন্ট্যাক্টর দিয়ে' },
+        ],
+        contactorWiring: [
+          { step: 1, instruction: 'MCB 2P 32A থেকে AC Live → সাব MCB 6A (CH4 এর জন্য) → রিলে CH4 COM', color: 'red' },
+          { step: 2, instruction: 'রিলে CH4 NO → কন্ট্যাক্টর CJX2-1210 কয়েল A1 টার্মিনাল', color: 'orange' },
+          { step: 3, instruction: 'AC Neutral → কন্ট্যাক্টর কয়েল A2 টার্মিনাল', color: 'blue' },
+          { step: 4, instruction: 'কন্ট্যাক্টর মেইন কন্ট্যাক্ট L1 → MCB থেকে AC Live', color: 'red' },
+          { step: 5, instruction: 'কন্ট্যাক্টর মেইন কন্ট্যাক্ট T1 → বুস্টার পাম্প', color: 'green' },
+          { step: 6, instruction: 'সোলেনয়েড ভালভ আলাদাভাবে একই রিলে CH4 থেকে কন্ট্রোল হয়', color: 'teal' },
+        ],
+        totalContactor: 1,
+        contactorNote: 'লেয়ার ফার্মে ছোট ফ্যান ও লাইট ব্যবহার হয় বলে শুধু বুস্টার পাম্পের জন্য ১টি কন্ট্যাক্টর যথেষ্ট।',
+      },
+      broilerWiring: {
+        title: '🐔 ব্রয়লার ফার্ম ওয়্যারিং',
+        diagram: 'মেইন AC ──► MCB 2P 32A ──┬──► Sub MCB 6A ──► Relay CH1 NO ──► এক্সহস্ট ফ্যান\n                          ├──► Sub MCB 6A ──► Relay CH2 NO ──► সার্কুলেশন ফ্যান\n                          ├──► Sub MCB 6A ──► Relay CH3 NO ──► হিটার\n                          └──► Sub MCB 6A ──► Relay CH4 NO ──► Contactor Coil ──► বুস্টার পাম্প + ভালভ',
+        relays: [
+          { ch: 'CH1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বড় ইন্ডাস্ট্রিয়াল ফ্যান হলে (>1HP) কন্ট্যাক্টর লাগবে' },
+          { ch: 'CH2 (GPIO 26)', device: '💨 সার্কুলেশন ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বয়স ১০+ দিন থেকে সক্রিয়' },
+          { ch: 'CH3 (GPIO 33)', device: '🔥 হিটার (ব্রুডিং)', mcb: 'Sub MCB 6A', contactor: false, note: 'হিটার >1000W হলে কন্ট্যাক্টর বিবেচনা করুন' },
+          { ch: 'CH4 (GPIO 13)', device: '💦 সোলেনয়েড ভালভ + বুস্টার পাম্প', mcb: 'Sub MCB 6A', contactor: true, note: 'পাম্প কন্ট্যাক্টর দিয়ে, ভালভ সরাসরি রিলে' },
+        ],
+        contactorWiring: [
+          { step: 1, instruction: 'MCB 2P 32A থেকে AC Live → সাব MCB 6A (CH4 এর জন্য) → রিলে CH4 COM', color: 'red' },
+          { step: 2, instruction: 'রিলে CH4 NO → কন্ট্যাক্টর CJX2-1210 কয়েল A1 টার্মিনাল', color: 'orange' },
+          { step: 3, instruction: 'AC Neutral → কন্ট্যাক্টর কয়েল A2 টার্মিনাল', color: 'blue' },
+          { step: 4, instruction: 'কন্ট্যাক্টর মেইন কন্ট্যাক্ট L1 → MCB থেকে AC Live', color: 'red' },
+          { step: 5, instruction: 'কন্ট্যাক্টর মেইন কন্ট্যাক্ট T1 → বুস্টার পাম্প', color: 'green' },
+        ],
+        totalContactor: '1-2',
+        contactorNote: 'ব্রয়লার ফার্মে ছোট ফ্যান হলে ১টি (পাম্পের জন্য)। বড় ইন্ডাস্ট্রিয়াল এক্সহস্ট ফ্যান (>1HP / >5A) বা হাই-ওয়াটেজ হিটার (>1000W) থাকলে সেগুলোর জন্যও আলাদা কন্ট্যাক্টর লাগবে — সর্বোচ্চ ২-৩টি।',
+      },
+      safetyWarnings: [
+        '⚡ MCB এবং কন্ট্যাক্টর ইনস্টল করার আগে মেইন সুইচ বন্ধ করুন!',
+        '👷 AC 220V ওয়্যারিং অবশ্যই অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে করান!',
+        '🔧 MCB ও কন্ট্যাক্টর DIN রেইলে মাউন্ট করুন — খামার পরিবেশে নিরাপদ',
+        '🧪 সব সংযোগ শেষে মাল্টিমিটার দিয়ে ভোল্টেজ ও কন্টিনিউটি চেক করুন',
+        '🔌 প্রতিটি সাব MCB-র রেটিং ডিভাইসের কারেন্টের চেয়ে সামান্য বেশি হতে হবে',
       ],
     },
   },
@@ -1890,6 +1967,145 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                               </div>
                             </div>
                           )}
+
+                          {/* MCB & Contactor Wiring Section */}
+                          {'hasMcbContactorWiring' in sensor && sensor.hasMcbContactorWiring && 'mcbContactorInfo' in sensor && sensor.mcbContactorInfo && (() => {
+                            const info = sensor.mcbContactorInfo as any;
+                            return (
+                              <div className="mt-6 space-y-4">
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border-2 border-destructive/30">
+                                  <Zap className="h-5 w-5 text-destructive" />
+                                  <div>
+                                    <p className="font-bold text-sm">{info.title}</p>
+                                    <p className="text-xs text-muted-foreground">{info.description}</p>
+                                  </div>
+                                </div>
+
+                                <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                                  <p className="text-xs font-bold mb-2">🔧 প্রয়োজনীয় যন্ত্রাংশ:</p>
+                                  <div className="space-y-2">
+                                    {info.commonParts.map((part: any, pIdx: number) => (
+                                      <div key={pIdx} className="flex items-start gap-2 text-xs">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                                        <div>
+                                          <span className="font-semibold">{part.name}</span>
+                                          <span className="text-muted-foreground"> — {part.purpose}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Layer Wiring */}
+                                <div className="rounded-lg border-2 border-amber-500/30 overflow-hidden">
+                                  <div className="p-3 bg-amber-500/10">
+                                    <p className="font-bold text-sm flex items-center gap-2">
+                                      <Egg className="h-4 w-4" />
+                                      {info.layerWiring.title}
+                                    </p>
+                                  </div>
+                                  <div className="p-3 space-y-3">
+                                    <div className="p-2 rounded bg-muted/80 overflow-x-auto">
+                                      <pre className="text-[10px] sm:text-xs font-mono whitespace-pre leading-relaxed">{info.layerWiring.diagram}</pre>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead><tr className="border-b"><th className="text-left py-1.5 px-1">চ্যানেল</th><th className="text-left py-1.5 px-1">ডিভাইস</th><th className="text-left py-1.5 px-1">MCB</th><th className="text-left py-1.5 px-1">কন্ট্যাক্টর</th></tr></thead>
+                                        <tbody>
+                                          {info.layerWiring.relays.map((r: any, rIdx: number) => (
+                                            <tr key={rIdx} className="border-b border-border/50">
+                                              <td className="py-1.5 px-1 font-mono text-primary">{r.ch}</td>
+                                              <td className="py-1.5 px-1">{r.device}</td>
+                                              <td className="py-1.5 px-1">{r.mcb}</td>
+                                              <td className="py-1.5 px-1">{r.contactor ? '✅ হ্যাঁ' : '❌ না'}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
+                                      <p className="text-xs font-bold mb-2">🔌 কন্ট্যাক্টর ওয়্যারিং স্টেপ (পাম্পের জন্য):</p>
+                                      <div className="space-y-1.5">
+                                        {info.layerWiring.contactorWiring.map((s: any, sIdx: number) => (
+                                          <div key={sIdx} className="flex items-start gap-2 text-xs">
+                                            <Badge variant="outline" className="text-[10px] shrink-0">{s.step}</Badge>
+                                            <span>{s.instruction}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="p-2 rounded bg-accent/20 text-xs">
+                                      <span className="font-semibold">কন্ট্যাক্টর সংখ্যা: {info.layerWiring.totalContactor}টি</span>
+                                      <span className="text-muted-foreground"> — {info.layerWiring.contactorNote}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Broiler Wiring */}
+                                <div className="rounded-lg border-2 border-orange-500/30 overflow-hidden">
+                                  <div className="p-3 bg-orange-500/10">
+                                    <p className="font-bold text-sm flex items-center gap-2">
+                                      <Bird className="h-4 w-4" />
+                                      {info.broilerWiring.title}
+                                    </p>
+                                  </div>
+                                  <div className="p-3 space-y-3">
+                                    <div className="p-2 rounded bg-muted/80 overflow-x-auto">
+                                      <pre className="text-[10px] sm:text-xs font-mono whitespace-pre leading-relaxed">{info.broilerWiring.diagram}</pre>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead><tr className="border-b"><th className="text-left py-1.5 px-1">চ্যানেল</th><th className="text-left py-1.5 px-1">ডিভাইস</th><th className="text-left py-1.5 px-1">MCB</th><th className="text-left py-1.5 px-1">কন্ট্যাক্টর</th></tr></thead>
+                                        <tbody>
+                                          {info.broilerWiring.relays.map((r: any, rIdx: number) => (
+                                            <tr key={rIdx} className="border-b border-border/50">
+                                              <td className="py-1.5 px-1 font-mono text-primary">{r.ch}</td>
+                                              <td className="py-1.5 px-1">{r.device}</td>
+                                              <td className="py-1.5 px-1">{r.mcb}</td>
+                                              <td className="py-1.5 px-1">{r.contactor ? '✅ হ্যাঁ' : '❌ না'}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
+                                      <p className="text-xs font-bold mb-2">🔌 কন্ট্যাক্টর ওয়্যারিং স্টেপ (পাম্পের জন্য):</p>
+                                      <div className="space-y-1.5">
+                                        {info.broilerWiring.contactorWiring.map((s: any, sIdx: number) => (
+                                          <div key={sIdx} className="flex items-start gap-2 text-xs">
+                                            <Badge variant="outline" className="text-[10px] shrink-0">{s.step}</Badge>
+                                            <span>{s.instruction}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="p-2 rounded bg-accent/20 text-xs">
+                                      <span className="font-semibold">কন্ট্যাক্টর সংখ্যা: {info.broilerWiring.totalContactor}টি</span>
+                                      <span className="text-muted-foreground"> — {info.broilerWiring.contactorNote}</span>
+                                    </div>
+                                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs">
+                                      <p className="font-semibold text-amber-700 dark:text-amber-400">⚠️ বড় ইন্ডাস্ট্রিয়াল ফ্যান (&gt;1HP) বা হাই-ওয়াটেজ হিটার (&gt;1000W) থাকলে:</p>
+                                      <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                                        <li>• ফ্যানের জন্য আলাদা কন্ট্যাক্টর (CH1 রিলে → কন্ট্যাক্টর কয়েল → ফ্যান)</li>
+                                        <li>• হিটারের জন্য আলাদা কন্ট্যাক্টর (CH3 রিলে → কন্ট্যাক্টর কয়েল → হিটার)</li>
+                                        <li>• এক্ষেত্রে মোট ২-৩টি কন্ট্যাক্টর প্রয়োজন হবে</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Safety Warnings */}
+                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                                  <p className="text-xs font-bold mb-2 text-destructive">⚠️ নিরাপত্তা সতর্কতা:</p>
+                                  <ul className="space-y-1">
+                                    {info.safetyWarnings.map((w: string, wIdx: number) => (
+                                      <li key={wIdx} className="text-xs text-muted-foreground">{w}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Farm Type Relay Mapping Section */}
                           {sensor.hasFarmTypeMapping && sensor.farmTypeMapping && (
