@@ -104,8 +104,9 @@ const partsList = [
     category: 'পাওয়ার সাপ্লাই',
     categoryEn: 'Power Supply',
     items: [
-      { name: '5V 2A অ্যাডাপ্টার (ESP32)', nameEn: '5V 2A Power Adapter', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
-      { name: '5V 2A অ্যাডাপ্টার (ESP32)', nameEn: '5V 2A Power Adapter', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: '12V 3A DC অ্যাডাপ্টার (রিলে + ESP32)', nameEn: '12V 3A DC Power Adapter', quantity: 1, price: '৳২৫০-৪০০', priceRange: [250, 400], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'LM2596 DC-DC Buck Converter (12V → 5V, 3A)', nameEn: 'LM2596 Buck Converter 3A', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: true },
+      { name: '12V DC পাওয়ার কানেক্টর (5.5mm x 2.1mm)', nameEn: '12V DC Power Connector 5.5mm', quantity: 1, price: '৳৩০-৬০', priceRange: [30, 60], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
       { name: 'ব্যাটারি ব্যাকআপ মডিউল (TP4056 + 18650)', nameEn: 'Battery Backup Module', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'রোবটিক্স বিডি', essential: false },
       { name: '18650 ব্যাটারি (3.7V 3000mAh)', nameEn: '18650 Battery', quantity: 2, price: '৳২৫০-৩৫০/পিস', priceRange: [500, 700], shop: 'টেকশপ বিডি', essential: false },
     ]
@@ -628,7 +629,7 @@ const setupSteps = [
     icon: Cable,
     tasks: [
       'উপরের ওয়্যারিং ডায়াগ্রাম অনুযায়ী সব সেন্সর ও রিলে সংযোগ করুন',
-      'পাওয়ার সাপ্লাই সংযোগ করুন (5V 2A)',
+      '12V অ্যাডাপ্টার → DC Connector → LM2596 (5V সেট করুন) → ESP32 VIN; 12V সরাসরি → রিলে JD-VCC',
       'USB দিয়ে ESP32 কম্পিউটারে সংযোগ করুন',
       'সব সংযোগ দুইবার চেক করুন',
     ]
@@ -2363,8 +2364,8 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                   <div className="flex items-start gap-2 p-2 rounded bg-muted/50">
                     <span className="text-lg">⚡</span>
                     <div>
-                      <p className="font-medium">পাওয়ার সাপ্লাই কমপক্ষে 5V 2A হতে হবে</p>
-                      <p className="text-xs text-muted-foreground">কম পাওয়ারে ESP32 রিস্টার্ট হতে থাকবে</p>
+                      <p className="font-medium">12V 3A অ্যাডাপ্টার + LM2596 Buck Converter ব্যবহার করুন</p>
+                      <p className="text-xs text-muted-foreground">12V → রিলে JD-VCC, LM2596 (5V সেট) → ESP32 VIN। জাম্পার খুলে দিন!</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2 p-2 rounded bg-muted/50">
