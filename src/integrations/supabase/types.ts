@@ -1224,6 +1224,138 @@ export type Database = {
           },
         ]
       }
+      emergency_events: {
+        Row: {
+          actions_taken: Json | null
+          created_at: string
+          description: string | null
+          description_bn: string | null
+          device_token_id: string | null
+          id: string
+          metadata: Json | null
+          priority: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          sensor_snapshot: Json | null
+          shed_id: string | null
+          source: string | null
+          status: string
+          title: string
+          title_bn: string
+          trigger_type: string
+          updated_at: string
+          user_id: string
+          webhook_called: boolean | null
+          webhook_response: Json | null
+          webhook_url: string | null
+        }
+        Insert: {
+          actions_taken?: Json | null
+          created_at?: string
+          description?: string | null
+          description_bn?: string | null
+          device_token_id?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sensor_snapshot?: Json | null
+          shed_id?: string | null
+          source?: string | null
+          status?: string
+          title: string
+          title_bn: string
+          trigger_type: string
+          updated_at?: string
+          user_id: string
+          webhook_called?: boolean | null
+          webhook_response?: Json | null
+          webhook_url?: string | null
+        }
+        Update: {
+          actions_taken?: Json | null
+          created_at?: string
+          description?: string | null
+          description_bn?: string | null
+          device_token_id?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sensor_snapshot?: Json | null
+          shed_id?: string | null
+          source?: string | null
+          status?: string
+          title?: string
+          title_bn?: string
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+          webhook_called?: boolean | null
+          webhook_response?: Json | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_events_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_events_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emergency_webhook_config: {
+        Row: {
+          created_at: string
+          id: string
+          notify_on_critical: boolean | null
+          notify_on_info: boolean | null
+          notify_on_life_threatening: boolean | null
+          notify_on_warning: boolean | null
+          updated_at: string
+          user_id: string
+          webhook_enabled: boolean | null
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_on_critical?: boolean | null
+          notify_on_info?: boolean | null
+          notify_on_life_threatening?: boolean | null
+          notify_on_warning?: boolean | null
+          updated_at?: string
+          user_id: string
+          webhook_enabled?: boolean | null
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_on_critical?: boolean | null
+          notify_on_info?: boolean | null
+          notify_on_life_threatening?: boolean | null
+          notify_on_warning?: boolean | null
+          updated_at?: string
+          user_id?: string
+          webhook_enabled?: boolean | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
