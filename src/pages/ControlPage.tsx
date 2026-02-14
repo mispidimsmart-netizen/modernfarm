@@ -7,6 +7,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
+import { useBoundedOverride } from '@/hooks/useBoundedOverride';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
@@ -105,6 +106,7 @@ export function ControlPage() {
   const { language } = useAuth();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl();
   const sendCommand = useSendDeviceCommand();
+  const boundedOverride = useBoundedOverride();
   const { data: userRole } = useUserRole();
   const { data: permissions } = useUserPermissions();
   const { sensorData } = useRealtimeSensorData();
@@ -156,6 +158,14 @@ export function ControlPage() {
     
     return () => clearInterval(interval);
   }, [language, sendCommand, setDeviceStatus, toast]);
+
+  // Auto-revert: when bounded override expires, re-enable automation
+  useEffect(() => {
+    if (boundedOverride.remainingSeconds === 0 && manualOverride) {
+      sendCommand.mutate({ commandType: 'manual_override', commandValue: false });
+      setManualOverride(false);
+    }
+  }, [boundedOverride.remainingSeconds, manualOverride, sendCommand, setManualOverride]);
 
   const getRemainingTime = useCallback((device: string) => {
     const timer = activeTimers[device];
@@ -228,7 +238,20 @@ export function ControlPage() {
     setPendingDevice(null);
   };
 
-  const handleAutomationToggle = (enabled: boolean) => {
+  const handleAutomationToggle = (enabled: boolean, reason?: string) => {
+    if (!enabled) {
+      // Disabling automation — start bounded override with reason
+      const currentTemp = sensorData.temperature;
+      const isOutOfRange = !boundedOverride.isWithinBioLimits(currentTemp);
+      boundedOverride.startOverride(
+        { reason: reason || 'No reason provided', targetTemp: currentTemp },
+        isOutOfRange,
+      );
+    } else {
+      // Re-enabling automation — end override
+      boundedOverride.endOverride();
+    }
+
     sendCommand.mutate({ commandType: 'manual_override', commandValue: !enabled });
     setManualOverride(!enabled);
     toast({
@@ -289,6 +312,8 @@ export function ControlPage() {
             hasTemporaryOverrides={hasTemporaryOverrides}
             onToggleAutomation={handleAutomationToggle}
             canToggle={canDisableAutomation}
+            overrideRemainingSeconds={boundedOverride.remainingSeconds}
+            isOutOfBioRange={boundedOverride.isOutOfBioRange}
           />
 
           {/* Viewer restriction */}
