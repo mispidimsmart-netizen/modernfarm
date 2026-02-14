@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Activity, Clock, Wifi, WifiOff, Zap, 
   Radio, PackageX, Timer, BatteryWarning,
-  CircuitBoard, ToggleRight
+  CircuitBoard, ToggleRight, Signal
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -65,6 +65,14 @@ function getVoltageStatus(device: DeviceHealth): { value: string; level: Freshne
   if (v >= 200 && v <= 250) return { value: `${v.toFixed(0)}V`, level: 'green' };
   if (v >= 180 && v < 200) return { value: `${v.toFixed(0)}V ⚠️`, level: 'yellow' };
   return { value: `${v.toFixed(0)}V ❌`, level: 'red' };
+}
+
+function getSignalDisplay(device: DeviceHealth): { value: string; level: FreshnessLevel } {
+  const rssi = device.wifi_signal_strength;
+  if (rssi === null || rssi === undefined) return { value: '-', level: 'yellow' };
+  if (rssi >= -50) return { value: `${rssi} dBm`, level: 'green' };
+  if (rssi >= -70) return { value: `${rssi} dBm`, level: 'yellow' };
+  return { value: `${rssi} dBm`, level: 'red' };
 }
 
 function getRelayRuntime(device: DeviceHealth): string {
@@ -129,6 +137,7 @@ function DeviceTelemetryRow({ device, deviceName, language }: {
     voltage: language === 'bn' ? 'ভোল্টেজ' : 'Voltage',
     relayRuntime: language === 'bn' ? 'রিলে রানটাইম' : 'Relay Runtime',
     offlineDuration: language === 'bn' ? 'অফলাইন সময়' : 'Offline Duration',
+    signalStrength: language === 'bn' ? 'সিগনাল' : 'Signal',
   };
 
   return (
@@ -178,6 +187,12 @@ function DeviceTelemetryRow({ device, deviceName, language }: {
           label={t.voltage}
           value={voltage.value}
           level={voltage.level}
+        />
+        <TelemetryMetric
+          icon={<Wifi className="h-3 w-3" />}
+          label={t.signalStrength}
+          value={getSignalDisplay(device).value}
+          level={getSignalDisplay(device).level}
         />
         <TelemetryMetric
           icon={<ToggleRight className="h-3 w-3" />}

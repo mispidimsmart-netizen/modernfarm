@@ -30,11 +30,14 @@ const AMMONIA_SPIKE_WINDOW_MS = 10000;
 // === SENSOR TIMEOUT THRESHOLD ===
 const SENSOR_TIMEOUT_MS = 25 * 1000; // 25 seconds — triggers survival mode
 
-// === SURVIVAL MODE CONFIG ===
-const SURVIVAL_FAN_ON_MS = 120 * 1000;   // 2 min ON
-const SURVIVAL_FAN_OFF_MS = 120 * 1000;  // 2 min OFF
-const SURVIVAL_HEATER_DUTY_ON_MS = 30 * 1000;  // 30s ON
-const SURVIVAL_HEATER_DUTY_OFF_MS = 90 * 1000; // 90s OFF
+// === SURVIVAL MODE CONFIG (per spec) ===
+const SURVIVAL_FAN_ON_MS = 40 * 1000;    // 40s ON
+const SURVIVAL_FAN_OFF_MS = 20 * 1000;   // 20s OFF
+const SURVIVAL_HEATER_DUTY_ON_MS = 12 * 1000;  // ~10% duty (12s ON)
+const SURVIVAL_HEATER_DUTY_OFF_MS = 108 * 1000; // (108s OFF) = 10% of 120s cycle
+const MOTOR_MAX_RUNTIME_MS = 2 * 60 * 1000;     // 2 min max continuous motor runtime
+const HEATER_COOLDOWN_MS = 2 * 60 * 1000;       // 2 min heater cooldown
+const WATCHDOG_FREEZE_MS = 10 * 1000;            // 10s freeze detection
 
 // === OUT OF RANGE THRESHOLDS ===
 const VALID_RANGES: Record<string, { min: number; max: number; unit: string }> = {
@@ -82,6 +85,9 @@ export function useSensorValidation(sensorData: SensorData) {
   const lastSensorUpdateTime = useRef<number>(Date.now());
   const prevSensorDataRef = useRef<string>('');
   const survivalModeTriggeredRef = useRef(false);
+  const motorStartTimeRef = useRef<number | null>(null);
+  const heaterCooldownUntilRef = useRef<number>(0);
+  const lastLoopTickRef = useRef<number>(Date.now());
 
   const addReading = useCallback((
     history: React.MutableRefObject<SensorReading[]>,
@@ -417,53 +423,91 @@ export function useSensorValidation(sensorData: SensorData) {
     return () => clearInterval(interval);
   }, [user]);
 
-  // === SURVIVAL MODE: Fan cycling (2min ON / 2min OFF) ===
+  // === SURVIVAL MODE: Fan cycling (40s ON / 20s OFF) with 2min max runtime ===
   useEffect(() => {
-    if (!survivalMode) return;
+    if (!survivalMode) {
+      motorStartTimeRef.current = null;
+      return;
+    }
 
-    setSurvivalFanOn(true); // Start with fans ON
-    const cycleDuration = SURVIVAL_FAN_ON_MS + SURVIVAL_FAN_OFF_MS;
-
-    const interval = setInterval(() => {
-      setSurvivalFanOn(prev => !prev);
-    }, SURVIVAL_FAN_ON_MS); // Toggle at ON duration, will alternate
-
-    // Use a more precise cycling approach
+    setSurvivalFanOn(true);
+    motorStartTimeRef.current = Date.now();
     let fanOn = true;
-    const cycle = () => {
+
+    const tick = () => {
+      // Motor max runtime guard: force OFF after 2 min continuous
+      if (fanOn && motorStartTimeRef.current) {
+        const runtime = Date.now() - motorStartTimeRef.current;
+        if (runtime >= MOTOR_MAX_RUNTIME_MS) {
+          fanOn = false;
+          setSurvivalFanOn(false);
+          motorStartTimeRef.current = null;
+          console.log('[Survival] Motor max runtime reached — forced OFF');
+          return;
+        }
+      }
+
       fanOn = !fanOn;
       setSurvivalFanOn(fanOn);
+      if (fanOn) {
+        motorStartTimeRef.current = Date.now();
+      }
     };
 
-    const fanInterval = setInterval(cycle, fanOn ? SURVIVAL_FAN_ON_MS : SURVIVAL_FAN_OFF_MS);
+    // Precise cycling: 40s ON, 20s OFF
+    const interval = setInterval(tick, fanOn ? SURVIVAL_FAN_ON_MS : SURVIVAL_FAN_OFF_MS);
 
-    return () => {
-      clearInterval(interval);
-      clearInterval(fanInterval);
-    };
+    return () => clearInterval(interval);
   }, [survivalMode]);
 
-  // === SURVIVAL MODE: Heater duty cycle (30s ON / 90s OFF) ===
+  // === SURVIVAL MODE: Heater 10% duty cycle with 2min cooldown ===
   useEffect(() => {
     if (!survivalMode) return;
 
-    setSurvivalHeaterOn(false); // Start with heater OFF (safe default)
+    setSurvivalHeaterOn(false);
     let heaterOn = false;
 
     const toggleHeater = () => {
+      const now = Date.now();
+      if (!heaterOn && now < heaterCooldownUntilRef.current) {
+        // Still in cooldown — skip ON
+        return;
+      }
       heaterOn = !heaterOn;
       setSurvivalHeaterOn(heaterOn);
+      if (!heaterOn) {
+        // Heater just turned OFF — start cooldown
+        heaterCooldownUntilRef.current = now + HEATER_COOLDOWN_MS;
+      }
     };
 
-    // Initial ON after a brief delay
     const startTimeout = setTimeout(() => {
       toggleHeater();
-      // Then cycle
       const interval = setInterval(toggleHeater, heaterOn ? SURVIVAL_HEATER_DUTY_ON_MS : SURVIVAL_HEATER_DUTY_OFF_MS);
       return () => clearInterval(interval);
     }, 5000);
 
     return () => clearTimeout(startTimeout);
+  }, [survivalMode]);
+
+  // === WATCHDOG: Detect 10s main loop freeze ===
+  useEffect(() => {
+    if (!survivalMode) return;
+
+    const watchdog = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastLoopTickRef.current;
+      if (elapsed >= WATCHDOG_FREEZE_MS) {
+        console.error(`[Watchdog] Main loop frozen for ${(elapsed / 1000).toFixed(0)}s — resetting survival cycle`);
+        // Force reset survival state
+        setSurvivalFanOn(true);
+        setSurvivalHeaterOn(false);
+        motorStartTimeRef.current = Date.now();
+      }
+      lastLoopTickRef.current = now;
+    }, 5000);
+
+    return () => clearInterval(watchdog);
   }, [survivalMode]);
 
   // === MAIN VALIDATION LOOP ===
