@@ -10,6 +10,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
@@ -44,9 +45,14 @@ export interface DeviceStateModel {
   mismatches: string[]; // list of fields that differ
 }
 
+// === TARGET DEADBAND FILTER ===
+const TARGET_DEADBAND_TEMP = 1.0;        // Ignore cloud target changes < 1°C
+const TARGET_MIN_UPDATE_INTERVAL_MS = 120 * 1000; // Min 120s between target updates
+
 export function useDeviceStateModel() {
   const { user } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  const lastAcceptedTarget = useRef<{ temp: number | null; time: number }>({ temp: null, time: 0 });
 
   return useQuery({
     queryKey: ['device-state-model', user?.id, selectedShedId],
@@ -103,8 +109,25 @@ export function useDeviceStateModel() {
         }
       }
 
+      // === TARGET DEADBAND FILTER ===
+      // Reject cloud target changes < 1°C or < 120s apart
+      let filteredTargetTemp: number | null = (data as any).target_temperature ?? null;
+      const now = Date.now();
+      if (filteredTargetTemp !== null && lastAcceptedTarget.current.temp !== null) {
+        const delta = Math.abs(filteredTargetTemp - lastAcceptedTarget.current.temp);
+        const elapsed = now - lastAcceptedTarget.current.time;
+        if (delta < TARGET_DEADBAND_TEMP || elapsed < TARGET_MIN_UPDATE_INTERVAL_MS) {
+          // Reject small/rapid change — keep previous
+          filteredTargetTemp = lastAcceptedTarget.current.temp;
+        } else {
+          lastAcceptedTarget.current = { temp: filteredTargetTemp, time: now };
+        }
+      } else if (filteredTargetTemp !== null) {
+        lastAcceptedTarget.current = { temp: filteredTargetTemp, time: now };
+      }
+
       const environment: EnvironmentTarget = {
-        target_temperature: (data as any).target_temperature ?? null,
+        target_temperature: filteredTargetTemp,
         target_humidity: (data as any).target_humidity ?? null,
         target_air_quality: (data as any).target_air_quality ?? null,
         age_profile_days: (data as any).age_profile_days ?? null,

@@ -27,6 +27,11 @@ const AMMONIA_ZERO_TIMEOUT_MS = 15 * 60 * 1000;
 const AMMONIA_SPIKE_THRESHOLD = 25;
 const AMMONIA_SPIKE_WINDOW_MS = 10000;
 
+// === SENSOR FREEZE DETECTION (while devices running) ===
+const FREEZE_CHANGE_THRESHOLD = 0.2;  // °C — less than this = frozen
+const FREEZE_TIMEOUT_MS = 120 * 1000; // 120 seconds
+
+
 // === SENSOR TIMEOUT THRESHOLD ===
 const SENSOR_TIMEOUT_MS = 25 * 1000; // 25 seconds — triggers survival mode
 
@@ -50,7 +55,11 @@ const VALID_RANGES: Record<string, { min: number; max: number; unit: string }> =
 // === SAFE MODE DURATION ===
 const SAFE_MODE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
-export function useSensorValidation(sensorData: SensorData) {
+export interface SensorValidationOptions {
+  devicesRunning?: boolean; // true if fans/heaters are currently ON
+}
+
+export function useSensorValidation(sensorData: SensorData, options?: SensorValidationOptions) {
   const { user } = useAuth();
   const [issues, setIssues] = useState<SensorIssue[]>([]);
   const [ignoredSensors, setIgnoredSensors] = useState<Set<string>>(new Set());
@@ -81,6 +90,11 @@ export function useSensorValidation(sensorData: SensorData) {
   const ammoniaZeroStart = useRef<number | null>(null);
   const lastAlertSent = useRef<Record<string, number>>({});
   const lastIncidentLogged = useRef<Record<string, number>>({});
+
+  // Freeze detection refs: track max delta while devices running
+  const freezeWindowStart = useRef<number>(Date.now());
+  const freezeBaseTemp = useRef<number | null>(null);
+  const freezeMaxDelta = useRef<number>(0);
   const safeModeTriggeredRef = useRef(false);
   const lastSensorUpdateTime = useRef<number>(Date.now());
   const prevSensorDataRef = useRef<string>('');
@@ -548,6 +562,53 @@ export function useSensorValidation(sensorData: SensorData) {
     addReading(humidityHistory, sensorData.humidity);
     addReading(ammoniaHistory, sensorData.ammonia);
     addReading(waterHistory, sensorData.waterUsage);
+
+    // --- SENSOR FREEZE CHECK (while devices running) ---
+    const devicesRunning = options?.devicesRunning ?? false;
+    if (devicesRunning) {
+      const now = Date.now();
+      if (freezeBaseTemp.current === null) {
+        freezeBaseTemp.current = sensorData.temperature;
+        freezeWindowStart.current = now;
+        freezeMaxDelta.current = 0;
+      } else {
+        const delta = Math.abs(sensorData.temperature - freezeBaseTemp.current);
+        freezeMaxDelta.current = Math.max(freezeMaxDelta.current, delta);
+      }
+
+      const elapsed = now - freezeWindowStart.current;
+      if (elapsed >= FREEZE_TIMEOUT_MS) {
+        if (freezeMaxDelta.current < FREEZE_CHANGE_THRESHOLD) {
+          // Sensor is DEAD — frozen value while devices are active
+          const freezeIssue: SensorIssue = {
+            sensor: 'temperature',
+            type: 'stuck',
+            severity: 'danger',
+            message: {
+              bn: `🚨 সেন্সর ফ্রোজেন — ${FREEZE_TIMEOUT_MS / 1000}সে. ধরে <${FREEZE_CHANGE_THRESHOLD}°সি পরিবর্তন (ডিভাইস চলছে)। সেন্সর মৃত।`,
+              en: `🚨 Sensor FROZEN — <${FREEZE_CHANGE_THRESHOLD}°C change in ${FREEZE_TIMEOUT_MS / 1000}s while devices running. Sensor DEAD.`,
+            },
+            detectedAt: new Date(),
+            shouldIgnoreSensor: true,
+          };
+          newIssues.push(freezeIssue);
+          newIgnored.add('temperature');
+          dangerDetected = true;
+          sendSensorAlert(freezeIssue);
+          logIncident(freezeIssue);
+          console.error(`[SensorValidation] SENSOR FREEZE DETECTED: temp stuck at ${sensorData.temperature}°C for ${FREEZE_TIMEOUT_MS / 1000}s while devices running`);
+        }
+        // Reset window regardless
+        freezeBaseTemp.current = sensorData.temperature;
+        freezeWindowStart.current = now;
+        freezeMaxDelta.current = 0;
+      }
+    } else {
+      // Devices not running — reset freeze tracking
+      freezeBaseTemp.current = null;
+      freezeMaxDelta.current = 0;
+      freezeWindowStart.current = Date.now();
+    }
 
     // --- Out of Range checks ---
     const tempOOR = checkOutOfRange(sensorData.temperature, 'temperature');

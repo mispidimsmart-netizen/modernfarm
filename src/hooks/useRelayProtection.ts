@@ -203,29 +203,67 @@ export function useRelayProtection() {
   }, []);
 
   /**
-   * Check if heater appears stuck ON (temp rising after OFF command).
-   * Call with current temperature periodically.
+   * Check if heater appears stuck ON (welded relay).
+   * If temp rises continuously 60s after OFF → LIFE_THREATENING.
+   * Returns: 'welded' | 'ok' | 'checking'
    */
-  const checkStuckRelay = useCallback((currentTemp: number): boolean => {
+  const checkStuckRelay = useCallback((currentTemp: number): 'welded' | 'ok' | 'checking' => {
     const now = Date.now();
     for (const check of stuckChecks.current) {
       const elapsed = now - check.offCommandAt;
       if (elapsed >= STUCK_HEATER_CHECK_WINDOW_MS && elapsed < STUCK_HEATER_CHECK_WINDOW_MS * 2) {
         const tempRise = currentTemp - check.tempAtOff;
         if (tempRise >= STUCK_HEATER_TEMP_RISE) {
-          console.error(`[RelayProtection] STUCK RELAY DETECTED: heater OFF but temp rose ${tempRise.toFixed(1)}°C`);
-          logViolation('heater', `Stuck relay: temp rose ${tempRise.toFixed(1)}°C after OFF command`);
-          // Remove this check
+          console.error(`[RelayProtection] 🔴 WELDED RELAY: heater OFF but temp rose ${tempRise.toFixed(1)}°C in 60s`);
+
+          // Log as LIFE_THREATENING — disable heater permanently, force ventilation
+          if (user) {
+            (supabase.from('farm_audit_logs') as any).insert({
+              user_id: user.id,
+              user_email: user.email || '',
+              action_type: 'relay_weld_detected',
+              action_category: 'safety',
+              severity: 'critical',
+              source: 'relay_protection',
+              target_entity: 'heater',
+              metadata: {
+                temp_at_off: check.tempAtOff,
+                temp_now: currentTemp,
+                temp_rise: tempRise,
+                elapsed_ms: elapsed,
+                action: 'heater_disabled_ventilation_forced',
+              },
+            }).then(() => console.log('[RelayProtection] Weld incident logged'));
+
+            // Create LIFE_THREATENING emergency event
+            (supabase.from('emergency_events') as any).insert({
+              user_id: user.id,
+              trigger_type: 'heatstroke_risk',
+              priority: 'LIFE_THREATENING',
+              title: `🔴 WELDED RELAY: Heater stuck ON`,
+              title_bn: `🔴 রিলে ওয়েল্ড: হিটার আটকে গেছে`,
+              description: `Heater OFF commanded but temperature rose ${tempRise.toFixed(1)}°C. Heater disabled, forced ventilation active.`,
+              description_bn: `হিটার বন্ধের কমান্ড দেওয়া হয়েছে কিন্তু তাপমাত্রা ${tempRise.toFixed(1)}°সি বেড়েছে। হিটার নিষ্ক্রিয়, জোরপূর্বক বাতাস চালু।`,
+              actions_taken: ['force_ventilation', 'disable_heater', 'notify_owner', 'call_webhook'],
+              sensor_snapshot: { temp_at_off: check.tempAtOff, temp_now: currentTemp, temp_rise: tempRise },
+              source: 'relay_protection',
+            }).then(() => console.log('[RelayProtection] LIFE_THREATENING emergency event created'));
+          }
+
           stuckChecks.current = stuckChecks.current.filter(c => c !== check);
           setStatus(prev => ({ ...prev, stuckRelayDetected: 'heater' }));
-          return true;
+          return 'welded';
         }
         // Check passed — remove
         stuckChecks.current = stuckChecks.current.filter(c => c !== check);
+        return 'ok';
+      }
+      if (elapsed < STUCK_HEATER_CHECK_WINDOW_MS) {
+        return 'checking';
       }
     }
-    return false;
-  }, [logViolation]);
+    return 'ok';
+  }, [logViolation, user]);
 
   const updateStatus = useCallback(() => {
     const now = Date.now();

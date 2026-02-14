@@ -434,16 +434,40 @@ export function useEmergencyProtection() {
           }
         }
 
-        // 15 min ignored → escalate to secondary contact
+        // 15 min ignored → PERMANENT SURVIVAL MODE + escalate
         if ((priority === 'CRITICAL' || priority === 'LIFE_THREATENING') && age >= 15 * 60 * 1000) {
-          console.log('[Emergency] Alert ignored 15min — escalating to secondary');
+          console.log('[Emergency] Alert ignored 15min — PERMANENT SURVIVAL MODE + escalating');
           try {
+            // Enter permanent survival environment mode
+            await supabase
+              .from('device_health')
+              .update({ 
+                safe_mode_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                mode: 'SURVIVAL',
+              } as any)
+              .eq('user_id', user.id);
+
+            // Log permanent survival activation
+            await (supabase.from('farm_audit_logs') as any).insert({
+              user_id: user.id,
+              user_email: user.email || '',
+              action_type: 'permanent_survival_mode',
+              action_category: 'safety',
+              severity: 'critical',
+              source: 'emergency_protection',
+              metadata: {
+                reason: `CRITICAL alert ignored 15 min: ${event.title}`,
+                event_id: event.id,
+                duration: '24h survival mode',
+              },
+            });
+
             await supabase.functions.invoke('notification-escalation', {
               body: {
                 action: 'escalate',
                 priority: 'critical',
-                title: `🚨 ESCALATED: ${event.title}`,
-                body: 'Alert ignored for 15 minutes. Notifying secondary contact.',
+                title: `🚨 PERMANENT SURVIVAL: ${event.title}`,
+                body: 'Alert ignored 15 min. Farm entered permanent survival ventilation mode.',
                 user_id: user.id,
                 emergency_event_id: event.id,
               },
@@ -454,7 +478,7 @@ export function useEmergencyProtection() {
               .update({ status: 'escalated' })
               .eq('id', event.id);
           } catch (err) {
-            console.error('[Emergency] Escalation failed:', err);
+            console.error('[Emergency] Permanent survival escalation failed:', err);
           }
         }
       }
