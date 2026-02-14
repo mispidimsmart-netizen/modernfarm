@@ -6,8 +6,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function parseVersion(v: string): number[] {
+  const match = v.match(/v?(\d+)\.(\d+)\.(\d+)/);
+  return match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : [0, 0, 0];
+}
+
+function isNewer(latest: number[], current: number[]): boolean {
+  return latest[0] > current[0] ||
+    (latest[0] === current[0] && latest[1] > current[1]) ||
+    (latest[0] === current[0] && latest[1] === current[1] && latest[2] > current[2]);
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -20,280 +37,505 @@ serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    // For ESP32: Check for updates
+    // ─── POST /firmware/check ───
     if (action === 'check') {
-      const deviceToken = req.headers.get('x-device-token');
-      const currentVersion = url.searchParams.get('version') || 'v0.0.0';
-      const farmType = url.searchParams.get('farm_type') || 'all';
-
-      if (!deviceToken) {
-        return new Response(
-          JSON.stringify({ error: 'Missing device token' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Validate device token
-      const { data: device, error: deviceError } = await supabase
-        .from('device_tokens')
-        .select('id, user_id')
-        .eq('token', deviceToken)
-        .eq('is_active', true)
-        .single();
-
-      if (deviceError || !device) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid device token' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Get latest stable firmware
-      const { data: firmware, error: firmwareError } = await supabase
-        .from('ota_firmware')
-        .select('*')
-        .eq('is_active', true)
-        .eq('is_stable', true)
-        .or(`farm_type.eq.all,farm_type.eq.${farmType}`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (firmwareError || !firmware) {
-        return new Response(
-          JSON.stringify({ update_available: false, message: 'No firmware available' }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Compare versions
-      const parseVersion = (v: string) => {
-        const match = v.match(/v?(\d+)\.(\d+)\.(\d+)/);
-        if (!match) return [0, 0, 0];
-        return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])];
-      };
-
-      const current = parseVersion(currentVersion);
-      const latest = parseVersion(firmware.version);
-      
-      const isNewer = latest[0] > current[0] || 
-        (latest[0] === current[0] && latest[1] > current[1]) ||
-        (latest[0] === current[0] && latest[1] === current[1] && latest[2] > current[2]);
-
-      if (!isNewer) {
-        // Update last check timestamp
-        await supabase
-          .from('device_health')
-          .update({ ota_last_check_at: new Date().toISOString() })
-          .eq('device_token_id', device.id);
-
-        return new Response(
-          JSON.stringify({ update_available: false, current_version: currentVersion }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Update available
-      await supabase
-        .from('device_health')
-        .update({ 
-          ota_last_check_at: new Date().toISOString(),
-          ota_version_available: firmware.version,
-          ota_status: 'available'
-        })
-        .eq('device_token_id', device.id);
-
-      console.log(`[OTA] Update available for device ${device.id}: ${currentVersion} -> ${firmware.version}`);
-
-      return new Response(
-        JSON.stringify({
-          update_available: true,
-          version: firmware.version,
-          url: firmware.url,
-          size: firmware.file_size_bytes,
-          checksum: firmware.checksum,
-          release_notes: firmware.release_notes
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return await handleCheck(req, url, supabase);
     }
 
-    // For ESP32: Report update progress
-    if (action === 'progress' && req.method === 'POST') {
-      const deviceToken = req.headers.get('x-device-token');
-      const body = await req.json();
-      const { progress, status, version, error_message } = body;
-
-      if (!deviceToken) {
-        return new Response(
-          JSON.stringify({ error: 'Missing device token' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const { data: device } = await supabase
-        .from('device_tokens')
-        .select('id, user_id')
-        .eq('token', deviceToken)
-        .eq('is_active', true)
-        .single();
-
-      if (!device) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid device token' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Update device health
-      await supabase
-        .from('device_health')
-        .update({
-          ota_progress: progress,
-          ota_status: status,
-          ...(status === 'completed' && { firmware_version: version }),
-        })
-        .eq('device_token_id', device.id);
-
-      // Update OTA history
-      if (status === 'downloading' || status === 'installing') {
-        await supabase
-          .from('ota_update_history')
-          .update({ status, started_at: new Date().toISOString() })
-          .eq('device_token_id', device.id)
-          .eq('status', 'pending');
-      } else if (status === 'completed') {
-        await supabase
-          .from('ota_update_history')
-          .update({ 
-            status: 'completed', 
-            completed_at: new Date().toISOString(),
-            to_version: version
-          })
-          .eq('device_token_id', device.id)
-          .is('completed_at', null);
-
-        console.log(`[OTA] Update completed for device ${device.id}: ${version}`);
-      } else if (status === 'failed') {
-        await supabase
-          .from('ota_update_history')
-          .update({ 
-            status: 'failed', 
-            error_message,
-            completed_at: new Date().toISOString()
-          })
-          .eq('device_token_id', device.id)
-          .is('completed_at', null);
-
-        console.log(`[OTA] Update failed for device ${device.id}: ${error_message}`);
-      }
-
-      return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ─── POST /firmware/report ───
+    if (action === 'report' && req.method === 'POST') {
+      return await handleReport(req, supabase);
     }
 
-    // For Admin: Push update to specific device
+    // ─── POST /firmware/rollback ───
+    if (action === 'rollback' && req.method === 'POST') {
+      return await handleRollback(req, supabase);
+    }
+
+    // ─── Admin: push update ───
     if (action === 'push' && req.method === 'POST') {
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      
-      if (authError || !user) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const body = await req.json();
-      const { device_token_id, firmware_id } = body;
-
-      // Get device and firmware info
-      const [{ data: device }, { data: firmware }] = await Promise.all([
-        supabase.from('device_tokens').select('*').eq('id', device_token_id).single(),
-        supabase.from('ota_firmware').select('*').eq('id', firmware_id).single()
-      ]);
-
-      if (!device || !firmware) {
-        return new Response(
-          JSON.stringify({ error: 'Device or firmware not found' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Get current firmware version
-      const { data: health } = await supabase
-        .from('device_health')
-        .select('firmware_version')
-        .eq('device_token_id', device_token_id)
-        .single();
-
-      // Create OTA update history entry
-      await supabase.from('ota_update_history').insert({
-        user_id: user.id,
-        device_token_id,
-        firmware_id,
-        from_version: health?.firmware_version || 'unknown',
-        to_version: firmware.version,
-        status: 'pending'
-      });
-
-      // Update device health to trigger update
-      await supabase
-        .from('device_health')
-        .update({
-          ota_version_available: firmware.version,
-          ota_status: 'pending'
-        })
-        .eq('device_token_id', device_token_id);
-
-      console.log(`[OTA] Update pushed to device ${device.device_name}: ${firmware.version}`);
-
-      return new Response(
-        JSON.stringify({ success: true, message: 'Update pushed to device' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return await handlePush(req, supabase);
     }
 
-    // For Admin: List firmware
+    // ─── Admin: start canary rollout ───
+    if (action === 'start-rollout' && req.method === 'POST') {
+      return await handleStartRollout(req, supabase);
+    }
+
+    // ─── Admin: advance rollout batch ───
+    if (action === 'advance-rollout' && req.method === 'POST') {
+      return await handleAdvanceRollout(req, supabase);
+    }
+
+    // ─── Admin: list firmware ───
     if (action === 'list') {
-      const { data: firmwares, error } = await supabase
+      const { data, error } = await supabase
         .from('ota_firmware')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (error) {
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({ firmwares }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ firmwares: data });
     }
 
-    return new Response(
-      JSON.stringify({ error: 'Invalid action' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // ─── Legacy progress endpoint ───
+    if (action === 'progress' && req.method === 'POST') {
+      return await handleLegacyProgress(req, supabase);
+    }
 
+    return jsonResponse({ error: 'Invalid action' }, 400);
   } catch (error) {
     console.error('[OTA] Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ error: error.message }, 500);
   }
 });
+
+// ─────────────────────────────────────────────
+// POST /firmware/check — Device checks for update
+// ─────────────────────────────────────────────
+async function handleCheck(req: Request, url: URL, supabase: any) {
+  const deviceToken = req.headers.get('x-device-token');
+  const currentVersion = url.searchParams.get('version') || 'v0.0.0';
+  const farmType = url.searchParams.get('farm_type') || 'all';
+  const boardType = url.searchParams.get('board_type') || 'esp32';
+
+  if (!deviceToken) return jsonResponse({ error: 'Missing device token' }, 401);
+
+  const { data: device, error: deviceError } = await supabase
+    .from('device_tokens')
+    .select('id, user_id')
+    .eq('token', deviceToken)
+    .eq('is_active', true)
+    .single();
+
+  if (deviceError || !device) return jsonResponse({ error: 'Invalid device token' }, 401);
+
+  // Get firmware with active rollout or stable release, matching board type
+  const { data: firmware } = await supabase
+    .from('ota_firmware')
+    .select('*')
+    .eq('is_active', true)
+    .eq('board_type', boardType)
+    .or(`farm_type.eq.all,farm_type.eq.${farmType}`)
+    .in('rollout_status', ['stable', 'rolling'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!firmware) {
+    return jsonResponse({ update_available: false, message: 'No firmware available' });
+  }
+
+  const current = parseVersion(currentVersion);
+  const latest = parseVersion(firmware.version);
+
+  if (!isNewer(latest, current)) {
+    await supabase.from('device_health')
+      .update({ ota_last_check_at: new Date().toISOString() })
+      .eq('device_token_id', device.id);
+    return jsonResponse({ update_available: false, current_version: currentVersion });
+  }
+
+  // Check min_firmware_version compatibility
+  if (firmware.min_firmware_version) {
+    const minVer = parseVersion(firmware.min_firmware_version);
+    if (!isNewer(current, minVer) && JSON.stringify(current) !== JSON.stringify(minVer)) {
+      // current < min required — can't update directly
+      return jsonResponse({
+        update_available: false,
+        message: `Requires minimum firmware ${firmware.min_firmware_version}`,
+        min_version_required: firmware.min_firmware_version,
+      });
+    }
+  }
+
+  // If rolling out, check if this device is in the target batch
+  if (firmware.rollout_status === 'rolling') {
+    const eligible = await isDeviceInRollout(supabase, firmware.id, device.id);
+    if (!eligible) {
+      return jsonResponse({ update_available: false, message: 'Not in current rollout batch' });
+    }
+  }
+
+  // Update device health
+  await supabase.from('device_health').update({
+    ota_last_check_at: new Date().toISOString(),
+    ota_version_available: firmware.version,
+    ota_status: 'available',
+  }).eq('device_token_id', device.id);
+
+  console.log(`[OTA] Update available for device ${device.id}: ${currentVersion} → ${firmware.version}`);
+
+  return jsonResponse({
+    update_available: true,
+    version: firmware.version,
+    url: firmware.url,
+    size: firmware.file_size_bytes,
+    checksum: firmware.checksum,
+    crc32: firmware.crc32,
+    board_type: firmware.board_type,
+    release_notes: firmware.release_notes,
+    firmware_id: firmware.id,
+  });
+}
+
+// ─────────────────────────────────────────────
+// POST /firmware/report — Device reports install result
+// ─────────────────────────────────────────────
+async function handleReport(req: Request, supabase: any) {
+  const deviceToken = req.headers.get('x-device-token');
+  if (!deviceToken) return jsonResponse({ error: 'Missing device token' }, 401);
+
+  const { data: device } = await supabase
+    .from('device_tokens')
+    .select('id, user_id')
+    .eq('token', deviceToken)
+    .eq('is_active', true)
+    .single();
+
+  if (!device) return jsonResponse({ error: 'Invalid device token' }, 401);
+
+  const body = await req.json();
+  const {
+    firmware_id, status, version, error_message,
+    crc_validated, board_type, partition_used,
+    rollback_triggered, from_version,
+  } = body;
+
+  // Upsert install log
+  const logData: Record<string, unknown> = {
+    firmware_id,
+    device_token_id: device.id,
+    user_id: device.user_id,
+    to_version: version,
+    from_version: from_version || 'unknown',
+    status,
+    crc_validated: crc_validated || false,
+    board_type: board_type || 'esp32',
+    partition_used: partition_used || null,
+    rollback_triggered: rollback_triggered || false,
+    error_message: error_message || null,
+  };
+
+  if (status === 'downloading') logData.download_started_at = new Date().toISOString();
+  if (status === 'installing') logData.install_started_at = new Date().toISOString();
+  if (status === 'completed' || status === 'failed') logData.completed_at = new Date().toISOString();
+
+  // Check for existing log for this device+firmware
+  const { data: existing } = await supabase
+    .from('firmware_install_logs')
+    .select('id')
+    .eq('device_token_id', device.id)
+    .eq('firmware_id', firmware_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('firmware_install_logs')
+      .update(logData)
+      .eq('id', existing.id);
+  } else {
+    await supabase.from('firmware_install_logs').insert(logData);
+  }
+
+  // Update device health
+  const healthUpdate: Record<string, unknown> = { ota_status: status };
+  if (status === 'completed') healthUpdate.firmware_version = version;
+  await supabase.from('device_health').update(healthUpdate).eq('device_token_id', device.id);
+
+  // Update rollout batch counters
+  if (firmware_id && (status === 'completed' || status === 'failed')) {
+    await updateRolloutCounters(supabase, firmware_id, status);
+  }
+
+  console.log(`[OTA] Report: device=${device.id} status=${status} version=${version}`);
+
+  return jsonResponse({ success: true });
+}
+
+// ─────────────────────────────────────────────
+// POST /firmware/rollback — Admin triggers rollback
+// ─────────────────────────────────────────────
+async function handleRollback(req: Request, supabase: any) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const body = await req.json();
+  const { firmware_id, reason } = body;
+
+  // Abort all active rollout batches
+  await supabase.from('firmware_rollout_batches')
+    .update({
+      status: 'aborted',
+      abort_reason: reason || 'Manual rollback triggered',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('firmware_id', firmware_id)
+    .in('status', ['pending', 'active']);
+
+  // Mark firmware rollout as aborted
+  await supabase.from('ota_firmware')
+    .update({ rollout_status: 'aborted', rollout_percentage: 0 })
+    .eq('id', firmware_id);
+
+  console.log(`[OTA] Rollback triggered for firmware ${firmware_id} by ${user.id}: ${reason}`);
+
+  return jsonResponse({ success: true, message: 'Rollout aborted, devices will rollback on next boot' });
+}
+
+// ─────────────────────────────────────────────
+// Admin: Push update to specific device
+// ─────────────────────────────────────────────
+async function handlePush(req: Request, supabase: any) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { device_token_id, firmware_id } = await req.json();
+
+  const [{ data: device }, { data: firmware }] = await Promise.all([
+    supabase.from('device_tokens').select('*').eq('id', device_token_id).single(),
+    supabase.from('ota_firmware').select('*').eq('id', firmware_id).single(),
+  ]);
+
+  if (!device || !firmware) return jsonResponse({ error: 'Device or firmware not found' }, 404);
+
+  const { data: health } = await supabase
+    .from('device_health')
+    .select('firmware_version')
+    .eq('device_token_id', device_token_id)
+    .single();
+
+  await supabase.from('firmware_install_logs').insert({
+    firmware_id,
+    device_token_id,
+    user_id: user.id,
+    from_version: health?.firmware_version || 'unknown',
+    to_version: firmware.version,
+    status: 'pending',
+    board_type: firmware.board_type || 'esp32',
+  });
+
+  await supabase.from('device_health').update({
+    ota_version_available: firmware.version,
+    ota_status: 'pending',
+  }).eq('device_token_id', device_token_id);
+
+  console.log(`[OTA] Push update to ${device.device_name}: ${firmware.version}`);
+
+  return jsonResponse({ success: true, message: 'Update pushed to device' });
+}
+
+// ─────────────────────────────────────────────
+// Admin: Start canary rollout (5% → 25% → 100%)
+// ─────────────────────────────────────────────
+async function handleStartRollout(req: Request, supabase: any) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { firmware_id, stages } = await req.json();
+  const rolloutStages = stages || [5, 25, 100];
+
+  // Count total active devices
+  const { count: totalDevices } = await supabase
+    .from('device_tokens')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true);
+
+  // Create batches for each stage
+  for (let i = 0; i < rolloutStages.length; i++) {
+    await supabase.from('firmware_rollout_batches').insert({
+      firmware_id,
+      batch_number: i + 1,
+      target_percentage: rolloutStages[i],
+      status: i === 0 ? 'active' : 'pending',
+      started_at: i === 0 ? new Date().toISOString() : null,
+      total_devices: Math.ceil((totalDevices || 0) * rolloutStages[i] / 100),
+      created_by: user.id,
+    });
+  }
+
+  await supabase.from('ota_firmware').update({
+    rollout_status: 'rolling',
+    rollout_percentage: rolloutStages[0],
+  }).eq('id', firmware_id);
+
+  console.log(`[OTA] Canary rollout started: firmware=${firmware_id} stages=${rolloutStages}`);
+
+  return jsonResponse({ success: true, stages: rolloutStages, total_devices: totalDevices });
+}
+
+// ─────────────────────────────────────────────
+// Admin: Advance to next rollout batch
+// ─────────────────────────────────────────────
+async function handleAdvanceRollout(req: Request, supabase: any) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  const { firmware_id } = await req.json();
+
+  // Get current active batch
+  const { data: activeBatch } = await supabase
+    .from('firmware_rollout_batches')
+    .select('*')
+    .eq('firmware_id', firmware_id)
+    .eq('status', 'active')
+    .single();
+
+  if (!activeBatch) return jsonResponse({ error: 'No active rollout batch' }, 400);
+
+  // Check fail rate
+  const totalReports = activeBatch.success_count + activeBatch.fail_count;
+  if (totalReports > 0) {
+    const failRate = (activeBatch.fail_count / totalReports) * 100;
+    const { data: fw } = await supabase.from('ota_firmware').select('max_fail_rate').eq('id', firmware_id).single();
+    const maxFailRate = fw?.max_fail_rate || 3.0;
+
+    if (failRate > maxFailRate) {
+      // Auto-abort
+      await supabase.from('firmware_rollout_batches')
+        .update({ status: 'aborted', abort_reason: `Fail rate ${failRate.toFixed(1)}% exceeds ${maxFailRate}%`, completed_at: new Date().toISOString() })
+        .eq('id', activeBatch.id);
+      await supabase.from('ota_firmware')
+        .update({ rollout_status: 'aborted', rollout_percentage: 0 })
+        .eq('id', firmware_id);
+
+      console.log(`[OTA] Rollout auto-aborted: fail rate ${failRate.toFixed(1)}%`);
+      return jsonResponse({ error: `Rollout aborted: fail rate ${failRate.toFixed(1)}% exceeds ${maxFailRate}%`, aborted: true }, 400);
+    }
+  }
+
+  // Complete current batch
+  await supabase.from('firmware_rollout_batches')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', activeBatch.id);
+
+  // Activate next batch
+  const { data: nextBatch } = await supabase
+    .from('firmware_rollout_batches')
+    .select('*')
+    .eq('firmware_id', firmware_id)
+    .eq('status', 'pending')
+    .order('batch_number', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (nextBatch) {
+    await supabase.from('firmware_rollout_batches')
+      .update({ status: 'active', started_at: new Date().toISOString() })
+      .eq('id', nextBatch.id);
+    await supabase.from('ota_firmware')
+      .update({ rollout_percentage: nextBatch.target_percentage })
+      .eq('id', firmware_id);
+
+    console.log(`[OTA] Advanced to batch ${nextBatch.batch_number}: ${nextBatch.target_percentage}%`);
+    return jsonResponse({ success: true, batch: nextBatch.batch_number, percentage: nextBatch.target_percentage });
+  }
+
+  // All batches complete → mark stable
+  await supabase.from('ota_firmware')
+    .update({ rollout_status: 'stable', rollout_percentage: 100, is_stable: true })
+    .eq('id', firmware_id);
+
+  console.log(`[OTA] Rollout complete, firmware ${firmware_id} marked stable`);
+  return jsonResponse({ success: true, message: 'Rollout complete, firmware is now stable' });
+}
+
+// ─── Helpers ───
+
+async function isDeviceInRollout(supabase: any, firmwareId: string, deviceTokenId: string): Promise<boolean> {
+  // Get active batch percentage
+  const { data: batch } = await supabase
+    .from('firmware_rollout_batches')
+    .select('target_percentage')
+    .eq('firmware_id', firmwareId)
+    .eq('status', 'active')
+    .single();
+
+  if (!batch) return false;
+
+  // Simple deterministic selection: hash device ID to get consistent bucket
+  const hash = deviceTokenId.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+  const bucket = Math.abs(hash) % 100;
+  return bucket < batch.target_percentage;
+}
+
+async function updateRolloutCounters(supabase: any, firmwareId: string, status: string) {
+  const { data: batch } = await supabase
+    .from('firmware_rollout_batches')
+    .select('id, success_count, fail_count')
+    .eq('firmware_id', firmwareId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!batch) return;
+
+  const update: Record<string, number> = {};
+  if (status === 'completed') update.success_count = (batch.success_count || 0) + 1;
+  if (status === 'failed') update.fail_count = (batch.fail_count || 0) + 1;
+
+  await supabase.from('firmware_rollout_batches').update(update).eq('id', batch.id);
+
+  // Also update firmware-level counters
+  const fwUpdate: Record<string, unknown> = {};
+  if (status === 'completed') fwUpdate.total_installs = batch.success_count + 1;
+  if (status === 'failed') fwUpdate.failed_installs = batch.fail_count + 1;
+  await supabase.from('ota_firmware').update(fwUpdate).eq('id', firmwareId);
+
+  // Auto-abort check
+  const totalReports = (batch.success_count || 0) + (batch.fail_count || 0) + 1;
+  const failCount = status === 'failed' ? (batch.fail_count || 0) + 1 : (batch.fail_count || 0);
+  if (totalReports >= 3) {
+    const failRate = (failCount / totalReports) * 100;
+    const { data: fw } = await supabase.from('ota_firmware').select('max_fail_rate').eq('id', firmwareId).single();
+    if (fw && failRate > (fw.max_fail_rate || 3.0)) {
+      await supabase.from('firmware_rollout_batches')
+        .update({ status: 'aborted', abort_reason: `Auto-abort: ${failRate.toFixed(1)}% fail rate`, completed_at: new Date().toISOString() })
+        .eq('id', batch.id);
+      await supabase.from('ota_firmware')
+        .update({ rollout_status: 'aborted', rollout_percentage: 0 })
+        .eq('id', firmwareId);
+      console.log(`[OTA] Auto-abort: ${failRate.toFixed(1)}% fail rate for firmware ${firmwareId}`);
+    }
+  }
+}
+
+// ─── Legacy progress handler ───
+async function handleLegacyProgress(req: Request, supabase: any) {
+  const deviceToken = req.headers.get('x-device-token');
+  if (!deviceToken) return jsonResponse({ error: 'Missing device token' }, 401);
+
+  const { data: device } = await supabase
+    .from('device_tokens')
+    .select('id, user_id')
+    .eq('token', deviceToken)
+    .eq('is_active', true)
+    .single();
+
+  if (!device) return jsonResponse({ error: 'Invalid device token' }, 401);
+
+  const { progress, status, version, error_message } = await req.json();
+
+  await supabase.from('device_health').update({
+    ota_progress: progress,
+    ota_status: status,
+    ...(status === 'completed' && { firmware_version: version }),
+  }).eq('device_token_id', device.id);
+
+  return jsonResponse({ success: true });
+}

@@ -1425,6 +1425,144 @@ export type Database = {
         }
         Relationships: []
       }
+      firmware_install_logs: {
+        Row: {
+          board_type: string | null
+          completed_at: string | null
+          crc_validated: boolean | null
+          created_at: string
+          device_token_id: string
+          download_started_at: string | null
+          error_message: string | null
+          firmware_id: string
+          from_version: string | null
+          id: string
+          install_started_at: string | null
+          partition_used: string | null
+          rollback_triggered: boolean | null
+          rollout_batch_id: string | null
+          status: string
+          to_version: string
+          user_id: string
+        }
+        Insert: {
+          board_type?: string | null
+          completed_at?: string | null
+          crc_validated?: boolean | null
+          created_at?: string
+          device_token_id: string
+          download_started_at?: string | null
+          error_message?: string | null
+          firmware_id: string
+          from_version?: string | null
+          id?: string
+          install_started_at?: string | null
+          partition_used?: string | null
+          rollback_triggered?: boolean | null
+          rollout_batch_id?: string | null
+          status?: string
+          to_version: string
+          user_id: string
+        }
+        Update: {
+          board_type?: string | null
+          completed_at?: string | null
+          crc_validated?: boolean | null
+          created_at?: string
+          device_token_id?: string
+          download_started_at?: string | null
+          error_message?: string | null
+          firmware_id?: string
+          from_version?: string | null
+          id?: string
+          install_started_at?: string | null
+          partition_used?: string | null
+          rollback_triggered?: boolean | null
+          rollout_batch_id?: string | null
+          status?: string
+          to_version?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firmware_install_logs_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "firmware_install_logs_firmware_id_fkey"
+            columns: ["firmware_id"]
+            isOneToOne: false
+            referencedRelation: "ota_firmware"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "firmware_install_logs_rollout_batch_id_fkey"
+            columns: ["rollout_batch_id"]
+            isOneToOne: false
+            referencedRelation: "firmware_rollout_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      firmware_rollout_batches: {
+        Row: {
+          abort_reason: string | null
+          batch_number: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          fail_count: number
+          firmware_id: string
+          id: string
+          started_at: string | null
+          status: string
+          success_count: number
+          target_percentage: number
+          total_devices: number
+        }
+        Insert: {
+          abort_reason?: string | null
+          batch_number?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          fail_count?: number
+          firmware_id: string
+          id?: string
+          started_at?: string | null
+          status?: string
+          success_count?: number
+          target_percentage?: number
+          total_devices?: number
+        }
+        Update: {
+          abort_reason?: string | null
+          batch_number?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          fail_count?: number
+          firmware_id?: string
+          id?: string
+          started_at?: string | null
+          status?: string
+          success_count?: number
+          target_percentage?: number
+          total_devices?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firmware_rollout_batches_firmware_id_fkey"
+            columns: ["firmware_id"]
+            isOneToOne: false
+            referencedRelation: "ota_firmware"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flock_info: {
         Row: {
           age_weeks: number
@@ -1719,50 +1857,71 @@ export type Database = {
       }
       ota_firmware: {
         Row: {
+          board_type: string | null
           checksum: string | null
+          crc32: string | null
           created_at: string
           created_by: string | null
+          failed_installs: number | null
           farm_type: string | null
           file_size_bytes: number | null
           filename: string
           id: string
           is_active: boolean | null
           is_stable: boolean | null
+          max_fail_rate: number | null
           min_firmware_version: string | null
           release_notes: string | null
           release_notes_bn: string | null
+          rollout_percentage: number | null
+          rollout_status: string | null
+          total_installs: number | null
           url: string
           version: string
         }
         Insert: {
+          board_type?: string | null
           checksum?: string | null
+          crc32?: string | null
           created_at?: string
           created_by?: string | null
+          failed_installs?: number | null
           farm_type?: string | null
           file_size_bytes?: number | null
           filename: string
           id?: string
           is_active?: boolean | null
           is_stable?: boolean | null
+          max_fail_rate?: number | null
           min_firmware_version?: string | null
           release_notes?: string | null
           release_notes_bn?: string | null
+          rollout_percentage?: number | null
+          rollout_status?: string | null
+          total_installs?: number | null
           url: string
           version: string
         }
         Update: {
+          board_type?: string | null
           checksum?: string | null
+          crc32?: string | null
           created_at?: string
           created_by?: string | null
+          failed_installs?: number | null
           farm_type?: string | null
           file_size_bytes?: number | null
           filename?: string
           id?: string
           is_active?: boolean | null
           is_stable?: boolean | null
+          max_fail_rate?: number | null
           min_firmware_version?: string | null
           release_notes?: string | null
           release_notes_bn?: string | null
+          rollout_percentage?: number | null
+          rollout_status?: string | null
+          total_installs?: number | null
           url?: string
           version?: string
         }
