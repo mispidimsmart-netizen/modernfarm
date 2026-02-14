@@ -65,6 +65,18 @@
 // ║  SECTION 1: CONFIGURATION & CONSTANTS                                 ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
+// --- Overflow-safe elapsed time helper ---
+// Uses unsigned subtraction which is inherently overflow-safe on uint32.
+// millis() wraps at ~49.7 days; (now - past) always gives correct elapsed
+// as long as the interval is < 49.7 days (which all our intervals are).
+inline unsigned long safeElapsed(unsigned long now, unsigned long since) {
+  return now - since;  // unsigned subtraction handles overflow correctly
+}
+// Convenience: check if interval has passed (overflow-safe)
+inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long interval) {
+  return safeElapsed(now, since) >= interval;
+}
+
 // --- Firmware ---
 const char* FIRMWARE_VERSION = "7.0.0";
 
@@ -112,6 +124,16 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define STATUS_LOG_INTERVAL      60000UL
 #define GSM_QUEUE_INTERVAL       5000UL
 #define GSM_COOLDOWN_DEFAULT     1800000UL
+#define GSM_CRITICAL_COOLDOWN_MS 120000UL  // Critical alerts resend every 2 minutes
+
+// --- OTA Environment Stability Gate ---
+#define OTA_STABILITY_WINDOW_MS  600000UL  // 10 minutes stable required before OTA
+#define OTA_STABLE_TEMP_MIN      18.0f     // Must be above this
+#define OTA_STABLE_TEMP_MAX      36.0f     // Must be below this
+
+// --- Manual Override Safety Band ---
+#define OVERRIDE_SAFE_TEMP_MIN   26.0f     // Cannot let temp drop below (birds die)
+#define OVERRIDE_SAFE_TEMP_MAX   35.0f     // Cannot let temp rise above (birds die)
 
 // --- Sensor Sanity ---
 #define TEMP_SANITY_MIN      0.0f
@@ -150,6 +172,11 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define MAX_HYST_STAGES      4
 #define HYST_MIN_ON_MS       60000UL
 #define HYST_MIN_OFF_MS      60000UL
+
+// --- Per-Sensor Safety Zones ---
+// Instead of averaging, each sensor has an independent safety zone.
+// If ANY sensor exceeds the danger threshold, emergency activates.
+// This prevents a cool sensor masking a hot sensor near birds.
 
 // --- Global Relay Protection ---
 // No relay change allowed within this window (prevents chattering across all channels)
@@ -522,6 +549,10 @@ String otaStatus = "idle", otaAvailableVersion = "", otaPendingUrl = "", otaPend
 int otaPendingSize = 0;
 unsigned long lastOTACheck = 0;
 
+// --- OTA Environment Stability Tracking ---
+bool otaEnvironmentStable = false;
+unsigned long otaStableStartTime = 0;  // When environment first became stable
+
 // --- Offline Buffer ---
 OfflineRecord offlineBuffer[OFFLINE_BUFFER_SIZE];
 int offlineBufHead = 0, offlineBufCount = 0;
@@ -798,17 +829,24 @@ SystemState evaluateState() {
   // Purge active
   if (purgeActive) return STATE_WARNING;
   
-  // HSI / Temperature based (these use SVL-validated globals only)
-  if (currentHSI > rules.hsiCritical || temperature > rules.tempAlarm) return STATE_EMERGENCY;
-  if (currentHSI > rules.hsiEmergency || temperature > rules.tempFanHigh) return STATE_DANGER;
+  // ═══════════════════════════════════════════════════════════════
+  // PER-SENSOR SAFETY ZONES:
+  // Use worstCaseMaxTemp (hottest sensor) for ALL heat danger decisions.
+  // If ANY sensor shows danger, system responds — prevents masking.
+  // ═══════════════════════════════════════════════════════════════
+  float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+  float safetyHSI = calculateHSI(safetyTemp, humidity);
   
-  // NH3: ALL state escalation requires 45s confirmation — not just WARNING
-  // Without confirmation, ammonia does NOT change state (prevents false triggers)
+  // HSI / Temperature based (using worst-case)
+  if (safetyHSI > rules.hsiCritical || safetyTemp > rules.tempAlarm) return STATE_EMERGENCY;
+  if (safetyHSI > rules.hsiEmergency || safetyTemp > rules.tempFanHigh) return STATE_DANGER;
+  
+  // NH3: ALL state escalation requires 45s confirmation
   if (ammonia > rules.ammoniaAlarm && nh3VentilationConfirmed) return STATE_DANGER;
   if (ammonia > rules.ammoniaFan && nh3VentilationConfirmed) return STATE_WARNING;
   
-  if (currentHSI > rules.hsiFanHigh) return STATE_WARNING;
-  if (currentHSI > rules.hsiFanLow) return STATE_WARNING;
+  if (safetyHSI > rules.hsiFanHigh) return STATE_WARNING;
+  if (safetyHSI > rules.hsiFanLow) return STATE_WARNING;
   
   return STATE_NORMAL;
 }
@@ -1163,10 +1201,16 @@ void requestLight(int brightness)      { targetBrightness = constrain(brightness
 // ╚═══════════════════════════════════════════════════════════════════════╝
 void relayManagerApply() {
   unsigned long now = millis();
-  relayProtectionActive = (lastRelayChangeTime > 0) && (now - lastRelayChangeTime < RELAY_PROTECTION_MS);
+  relayProtectionActive = (lastRelayChangeTime > 0) && (safeElapsed(now, lastRelayChangeTime) < RELAY_PROTECTION_MS);
   
-  // Emergency/SensorFail/Purge bypass protection window (life safety override)
-  bool safetyBypass = (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || purgeActive);
+  // ═══════════════════════════════════════════════════════════════════
+  // EMERGENCY BYPASS: DANGER, EMERGENCY, SENSOR_FAIL, and active purge
+  // bypass ALL relay protection timers. Life safety > hardware longevity.
+  // ═══════════════════════════════════════════════════════════════════
+  bool safetyBypass = (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || 
+                       purgeActive || emergencySurvivalMode ||
+                       safetyEngine.state == STATE_EMERGENCY_COOL ||
+                       safetyEngine.state == STATE_EMERGENCY_HEAT);
   
   // Check if ANY relay target differs from current state
   bool fanChange    = (relayTarget.fan != fanOn);
@@ -1277,53 +1321,55 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
   int highest = 0;
   int previousLevel = ch.activeStageLevel;
   
+  // ═══════════════════════════════════════════════════════════════
+  // EMERGENCY BYPASS: In DANGER+ states, hysteresis timing protection
+  // is SKIPPED. Relays respond instantly to save lives.
+  // ═══════════════════════════════════════════════════════════════
+  bool emergencyBypass = (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode);
+  
   for (int i = 0; i < ch.stageCount; i++) {
     HystStage &s = ch.stages[i];
     bool goOn  = inv ? (val <= s.onThreshold)  : (val >= s.onThreshold);
     bool goOff = inv ? (val >= s.offThreshold) : (val <= s.offThreshold);
     if (s.isActive) {
-      // Cannot turn OFF until minimumOnTime (60s) has elapsed
-      if (goOff && (now - s.lastOnTime >= s.minOnTime)) {
+      // In emergency: skip min-on-time, allow instant OFF
+      if (goOff && (emergencyBypass || safeElapsed(now, s.lastOnTime) >= s.minOnTime)) {
         s.isActive = false;
         s.lastOffTime = now;
-        Serial.printf("🔽 HYST %s Stage%d OFF (val=%.1f ≤ off=%.1f, was on %lus)\n",
-          ch.name, i+1, val, s.offThreshold, (now - s.lastOnTime)/1000);
+        Serial.printf("🔽 HYST %s Stage%d OFF (val=%.1f ≤ off=%.1f, was on %lus)%s\n",
+          ch.name, i+1, val, s.offThreshold, safeElapsed(now, s.lastOnTime)/1000,
+          emergencyBypass ? " [EMERGENCY BYPASS]" : "");
       }
-      // Timer not expired: stage stays ON (no log spam)
     } else {
-      // Cannot turn ON until minimumOffTime (60s) has elapsed
-      unsigned long offDur = (s.lastOffTime == 0) ? s.minOffTime : (now - s.lastOffTime);
-      if (goOn && offDur >= s.minOffTime) {
+      // In emergency: skip min-off-time, allow instant ON
+      unsigned long offDur = (s.lastOffTime == 0) ? s.minOffTime : safeElapsed(now, s.lastOffTime);
+      if (goOn && (emergencyBypass || offDur >= s.minOffTime)) {
         s.isActive = true;
         s.lastOnTime = now;
-        Serial.printf("🔼 HYST %s Stage%d ON (val=%.1f ≥ on=%.1f, was off %lus)\n",
-          ch.name, i+1, val, s.onThreshold, offDur/1000);
+        Serial.printf("🔼 HYST %s Stage%d ON (val=%.1f ≥ on=%.1f, was off %lus)%s\n",
+          ch.name, i+1, val, s.onThreshold, offDur/1000,
+          emergencyBypass ? " [EMERGENCY BYPASS]" : "");
       }
     }
     if (s.isActive) highest = i + 1;
   }
   
   // ═══════════════════════════════════════════════════════════════
-  // STAGE DOWNGRADE PROTECTION:
+  // STAGE DOWNGRADE PROTECTION (only in non-emergency):
   // When higher stage turns OFF, lower stages MUST remain ON.
-  // This prevents any gap in ventilation between stage transitions.
-  // Example: Stage3 OFF → Stage2 stays ON → no airflow interruption
+  // In emergency: no downgrade protection (instant response needed)
   // ═══════════════════════════════════════════════════════════════
-  if (highest < previousLevel && highest > 0) {
-    // Downgrade detected but lower stage still active → continuous output
-    Serial.printf("🔄 HYST %s: Downgrade %d→%d (lower stage maintains output)\n",
-      ch.name, previousLevel, highest);
-  }
-  // If ALL stages turned off (highest==0) but previous was active,
-  // enforce: stage 0 cannot go from active→off within protection window
-  if (highest == 0 && previousLevel > 0) {
-    // Check if lowest active stage's minOnTime is still running
-    HystStage &s0 = ch.stages[0];
-    if (s0.lastOnTime > 0 && (now - s0.lastOnTime < s0.minOnTime)) {
-      // Force stage 1 to remain on (prevent full ventilation drop)
-      s0.isActive = true;
-      highest = 1;
-      // No log — silent protection
+  if (!emergencyBypass) {
+    if (highest < previousLevel && highest > 0) {
+      Serial.printf("🔄 HYST %s: Downgrade %d→%d (lower stage maintains output)\n",
+        ch.name, previousLevel, highest);
+    }
+    if (highest == 0 && previousLevel > 0) {
+      HystStage &s0 = ch.stages[0];
+      if (s0.lastOnTime > 0 && safeElapsed(now, s0.lastOnTime) < s0.minOnTime) {
+        s0.isActive = true;
+        highest = 1;
+      }
     }
   }
   
@@ -1429,11 +1475,43 @@ void automationEngineTick() {
     return;
   }
 
-  // Run hysteresis engine
-  evaluateHysteresisChannel(hystFan, temperature, false);
-  evaluateHysteresisChannel(hystHeater, temperature, true);
-  evaluateHysteresisChannel(hystFogger, temperature, false);
-  evaluateHysteresisChannel(hystAlarm, temperature, false);
+  // ═══════════════════════════════════════════════════════════════
+  // PER-SENSOR SAFETY ZONES:
+  // Use worst-case temps for hysteresis instead of averaged temperature.
+  // Fan/Alarm/Fogger use worstCaseMaxTemp (hottest sensor = cooling urgency)
+  // Heater uses worstCaseMinTemp (coldest sensor = heating urgency)
+  // ═══════════════════════════════════════════════════════════════
+  float fanSafetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+  float heaterSafetyTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
+  
+  evaluateHysteresisChannel(hystFan, fanSafetyTemp, false);
+  evaluateHysteresisChannel(hystHeater, heaterSafetyTemp, true);
+  evaluateHysteresisChannel(hystFogger, fanSafetyTemp, false);
+  evaluateHysteresisChannel(hystAlarm, fanSafetyTemp, false);
+
+  // ═══════════════════════════════════════════════════════════════
+  // MANUAL OVERRIDE SAFETY BAND ENFORCEMENT (continuous check):
+  // Even if manual override is active, force safety actions if
+  // temperature leaves the bio-safe band [26°C - 35°C].
+  // ═══════════════════════════════════════════════════════════════
+  if (localManualOverride || fanManualOverride || heaterManualOverride) {
+    if (fanSafetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
+      // Override band breached high: force fan ON, heater OFF
+      requestFan(true, "HIGH");
+      requestHeater(false);
+      heaterManualOverride = false;
+      Serial.printf("⛔ OVERRIDE SAFETY: Temp %.1f°C >= %.1f°C max — forcing fan ON, heater OFF\n",
+        fanSafetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+    }
+    if (heaterSafetyTemp <= OVERRIDE_SAFE_TEMP_MIN && isBroiler()) {
+      // Override band breached low: force heater ON (broiler chicks)
+      if (safetyEngine.isHeaterAllowed() && !safetyEngine.isHeaterLocked()) {
+        requestHeater(true);
+        Serial.printf("⛔ OVERRIDE SAFETY: Temp %.1f°C <= %.1f°C min — forcing heater ON\n",
+          heaterSafetyTemp, OVERRIDE_SAFE_TEMP_MIN);
+      }
+    }
+  }
 
   // Run control logic based on state
   runControlLogic();
@@ -1938,18 +2016,34 @@ void gsmQueueAlert(String alertType, String message) {
   if (alertType == "power" && !smsAlertPower) return;
   if (alertType == "water" && !smsAlertWater) return;
   
-  // Cooldown check
-  if (millis() - lastSmsSentTime < smsCooldownMs) return;
+  // ═══════════════════════════════════════════════════════════════
+  // CRITICAL ALERT SMS BYPASS:
+  // EMERGENCY/SENSOR_FAIL/SURVIVAL states bypass normal SMS cooldown.
+  // Critical alerts resend every 2 minutes instead of 30 minutes.
+  // This ensures the farmer is ALWAYS notified of life-threatening conditions.
+  // ═══════════════════════════════════════════════════════════════
+  bool isCriticalState = (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || 
+                          emergencySurvivalMode || 
+                          safetyEngine.state == STATE_EMERGENCY_COOL || 
+                          safetyEngine.state == STATE_EMERGENCY_HEAT ||
+                          safetyEngine.state == STATE_SURVIVAL);
   
-  // Check for duplicates in queue
-  for (int i = 0; i < MAX_GSM_QUEUE; i++) {
-    if (gsmQueue[i].pending && gsmQueue[i].alertType == alertType) return; // Already queued
+  unsigned long effectiveCooldown = isCriticalState ? GSM_CRITICAL_COOLDOWN_MS : smsCooldownMs;
+  
+  if (!intervalPassed(millis(), lastSmsSentTime, effectiveCooldown)) return;
+  
+  // For critical alerts, allow duplicate types in queue (resend same alert)
+  if (!isCriticalState) {
+    // Normal: check for duplicates in queue
+    for (int i = 0; i < MAX_GSM_QUEUE; i++) {
+      if (gsmQueue[i].pending && gsmQueue[i].alertType == alertType) return;
+    }
   }
   
   // Find empty slot
   for (int i = 0; i < MAX_GSM_QUEUE; i++) {
     if (!gsmQueue[i].pending) {
-      gsmQueue[i].message = "[Smart Farm]\n" + message;
+      gsmQueue[i].message = "[Smart Farm" + String(isCriticalState ? " 🚨CRITICAL" : "") + "]\n" + message;
       gsmQueue[i].alertType = alertType;
       gsmQueue[i].pending = true;
       return;
@@ -2227,25 +2321,55 @@ void checkCommands() {
         String type = cmd["command_type"] | "";
         bool value = cmd["command_value"] | false;
         String id = cmd["id"] | "";
+        
+        // ═══════════════════════════════════════════════════════════
+        // MANUAL OVERRIDE SAFETY BAND ENFORCEMENT
+        // Manual heater ON rejected if temp >= OVERRIDE_SAFE_TEMP_MAX
+        // Manual fan OFF rejected if temp >= OVERRIDE_SAFE_TEMP_MAX
+        // This prevents human error from killing birds.
+        // ═══════════════════════════════════════════════════════════
+        float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+        float safetyTempMin = dualSensorAvailable ? worstCaseMinTemp : temperature;
+        
         if (type == "exhaust_fan" || type == "fan") {
-          fanManualOverride = true; fanManualTime = millis();
-          requestFan(value, value ? "HIGH" : "OFF");
+          // Block fan OFF if temp is in danger zone
+          if (!value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
+            Serial.printf("⛔ MANUAL FAN OFF REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+          } else {
+            fanManualOverride = true; fanManualTime = millis();
+            requestFan(value, value ? "HIGH" : "OFF");
+          }
         } else if (type == "heater") {
-          heaterManualOverride = true; heaterManualTime = millis();
-          requestHeater(value);
+          // Block heater ON if temp is already at/above safety max
+          if (value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
+            Serial.printf("⛔ MANUAL HEATER ON REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+          } else {
+            heaterManualOverride = true; heaterManualTime = millis();
+            requestHeater(value);
+          }
         } else if (type == "light") {
           lightSchedule.manualOverride = true; lightManualOverrideTime = millis();
           requestLight(value ? 100 : 0);
         } else if (type == "alarm") {
           requestAlarm(value);
         } else if (type == "fogger") {
-          foggerManualOverride = true; foggerManualTime = millis();
-          requestFogger(value);
+          // Block fogger OFF if temp is in danger zone
+          if (!value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
+            Serial.printf("⛔ MANUAL FOGGER OFF REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+          } else {
+            foggerManualOverride = true; foggerManualTime = millis();
+            requestFogger(value);
+          }
         } else if (type == "circulation_fan") {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
         } else if (type == "stop_automation") {
-          localManualOverride = value;
+          // Block automation stop if environment is unsafe
+          if (value && (safetyTemp >= OVERRIDE_SAFE_TEMP_MAX || safetyTempMin <= OVERRIDE_SAFE_TEMP_MIN)) {
+            Serial.printf("⛔ STOP AUTOMATION REJECTED: temp outside safety band [%.1f-%.1f°C]\n", OVERRIDE_SAFE_TEMP_MIN, OVERRIDE_SAFE_TEMP_MAX);
+          } else {
+            localManualOverride = value;
+          }
         }
         // Acknowledge
         if (id.length() > 0) {
@@ -2475,6 +2599,39 @@ void checkOTAUpdate() {
   if (otaInProgress || !wifiConnected) return;
   // Don't check during critical states
   if (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || purgeActive || emergencySurvivalMode) return;
+  // Don't check during any active manual override
+  if (localManualOverride || fanManualOverride || heaterManualOverride || foggerManualOverride) return;
+  
+  // ═══════════════════════════════════════════════════════════════
+  // OTA ENVIRONMENT STABILITY GATE:
+  // OTA only allowed when environment has been stable for 10 minutes.
+  // "Stable" = NORMAL state + temp within safe range + no sensor issues
+  // This prevents OTA during thermal events (main loop freezes during download)
+  // ═══════════════════════════════════════════════════════════════
+  unsigned long now = millis();
+  bool envStable = (currentState == STATE_NORMAL && 
+                    temperature >= OTA_STABLE_TEMP_MIN && temperature <= OTA_STABLE_TEMP_MAX &&
+                    !sensorErrorMode && !svlTemp.isOffline && !svlHumidity.isOffline &&
+                    thermalModelPlausible);
+  
+  if (envStable) {
+    if (!otaEnvironmentStable) {
+      otaEnvironmentStable = true;
+      otaStableStartTime = now;
+      Serial.println("📋 OTA: Environment stable — starting 10-min stability window");
+    }
+    // Must be stable for full window before OTA allowed
+    if (!intervalPassed(now, otaStableStartTime, OTA_STABILITY_WINDOW_MS)) {
+      return; // Not stable long enough yet
+    }
+  } else {
+    if (otaEnvironmentStable) {
+      otaEnvironmentStable = false;
+      Serial.printf("⚠️ OTA: Environment unstable (state=%s, T=%.1f°C) — stability window reset\n",
+        stateNames[currentState], temperature);
+    }
+    return; // Environment not stable
+  }
   
   HTTPClient http;
   String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware?action=check&current_version=" + String(FIRMWARE_VERSION);
@@ -2946,7 +3103,7 @@ void callBackendSafetyEngine() {
   doc["heater_on_ms_15min"] = 0;
   doc["fan_on_ms_15min"] = 0;
   doc["fan_on_ms_10min"] = 0;
-  doc["heater_continuous_ms"] = heaterOn ? (int)(now - heaterOnSince) : 0;
+  doc["heater_continuous_ms"] = heaterOn ? (int)safeElapsed(now, heaterOnSince) : 0;
   doc["fan_effect_verified"] = fanEffectVerified;
   doc["fan_effect_failures"] = fanEffectFailures;
   doc["heater_effect_verified"] = heaterEffectVerified;
@@ -3000,10 +3157,10 @@ void loop() {
     }
   }
 
-  // --- WiFi reconnect ---
+  // --- WiFi reconnect (overflow-safe) ---
   if (WiFi.status() != WL_CONNECTED) {
     wifiConnected = false;
-    if (now - lastWifiAttempt >= WIFI_RECONNECT_INTERVAL) {
+    if (intervalPassed(now, lastWifiAttempt, WIFI_RECONNECT_INTERVAL)) {
       lastWifiAttempt = now; connectWiFi();
     }
   } else if (!wifiConnected) {
@@ -3011,7 +3168,7 @@ void loop() {
   }
 
   // --- Sensor Manager (read all sensors, filter, validate) ---
-  if (now - lastSensorRead >= SENSOR_READ_INTERVAL) {
+  if (intervalPassed(now, lastSensorRead, SENSOR_READ_INTERVAL)) {
     lastSensorRead = now;
     sensorManagerTick();
   }
@@ -3029,20 +3186,20 @@ void loop() {
   // --- Relay Manager (single hardware write point) ---
   relayManagerApply();
 
-  // --- Cloud Sync ---
-  if (wifiConnected && now - lastCloudSyncAttempt >= CLOUD_SYNC_INTERVAL) {
+  // --- Cloud Sync (overflow-safe) ---
+  if (wifiConnected && intervalPassed(now, lastCloudSyncAttempt, CLOUD_SYNC_INTERVAL)) {
     lastCloudSyncAttempt = now;
     syncWithCloud();
   }
 
-  // --- Command Check ---
-  if (wifiConnected && now - lastCommandCheck >= COMMAND_CHECK_INTERVAL) {
+  // --- Command Check (overflow-safe) ---
+  if (wifiConnected && intervalPassed(now, lastCommandCheck, COMMAND_CHECK_INTERVAL)) {
     lastCommandCheck = now;
     checkCommands();
   }
 
-  // --- Config Fetch ---
-  if (wifiConnected && now - lastConfigFetch >= CONFIG_FETCH_INTERVAL) {
+  // --- Config Fetch (overflow-safe) ---
+  if (wifiConnected && intervalPassed(now, lastConfigFetch, CONFIG_FETCH_INTERVAL)) {
     lastConfigFetch = now;
     fetchConfig();
   }
@@ -3050,8 +3207,8 @@ void loop() {
   // --- Backend Safety Engine (every 60s) ---
   callBackendSafetyEngine();
 
-  // --- OTA Check ---
-  if (wifiConnected && now - lastOTACheck >= OTA_CHECK_INTERVAL) {
+  // --- OTA Check (overflow-safe) ---
+  if (wifiConnected && intervalPassed(now, lastOTACheck, OTA_CHECK_INTERVAL)) {
     lastOTACheck = now;
     checkOTAUpdate();
   }
@@ -3059,21 +3216,21 @@ void loop() {
   // --- Offline Age Tracking ---
   checkOfflineAgeIncrement();
 
-  // --- Offline Buffer ---
-  if (!cloudConnected && now - lastOfflineStore >= OFFLINE_STORE_INTERVAL) {
+  // --- Offline Buffer (overflow-safe) ---
+  if (!cloudConnected && intervalPassed(now, lastOfflineStore, OFFLINE_STORE_INTERVAL)) {
     lastOfflineStore = now;
     offlineBufferStore();
   }
 
-  // --- GSM Queue Processing (async, one message per tick) ---
-  if (now - lastGsmQueueCheck >= GSM_QUEUE_INTERVAL) {
+  // --- GSM Queue Processing (overflow-safe) ---
+  if (intervalPassed(now, lastGsmQueueCheck, GSM_QUEUE_INTERVAL)) {
     lastGsmQueueCheck = now;
     gsmProcessQueue();
   }
 
-  // --- Online/Offline Duration Tracking ---
-  if (now - lastOnlineCheck >= 10000) {
-    unsigned long elapsed = (now - lastOnlineCheck) / 1000;
+  // --- Online/Offline Duration Tracking (overflow-safe) ---
+  if (intervalPassed(now, lastOnlineCheck, 10000)) {
+    unsigned long elapsed = safeElapsed(now, lastOnlineCheck) / 1000;
     if (cloudConnected) onlineDurationSec += elapsed; else offlineDurationSec += elapsed;
     lastOnlineCheck = now;
   }
@@ -3081,23 +3238,29 @@ void loop() {
   // --- Status LED ---
   updateStatusLED();
 
-  // --- Manual Override Button Check ---
+  // --- Manual Override Button Check (overflow-safe) ---
   static unsigned long btnPressStart = 0;
   static bool btnWasPressed = false;
   bool btnPressed = (digitalRead(MANUAL_OVERRIDE_BTN) == LOW);
   if (btnPressed && !btnWasPressed) { btnPressStart = now; btnWasPressed = true; }
   if (!btnPressed && btnWasPressed) { btnWasPressed = false; }
-  if (btnPressed && btnWasPressed && (now - btnPressStart >= 3000)) {
-    localManualOverride = !localManualOverride;
+  if (btnPressed && btnWasPressed && safeElapsed(now, btnPressStart) >= 3000) {
+    // Block manual override toggle if environment is unsafe
+    float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+    if (!localManualOverride || (safetyTemp < OVERRIDE_SAFE_TEMP_MAX && safetyTemp > OVERRIDE_SAFE_TEMP_MIN)) {
+      localManualOverride = !localManualOverride;
+      Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
+    } else {
+      Serial.printf("⛔ Manual Override toggle BLOCKED: temp %.1f°C outside safety band\n", safetyTemp);
+    }
     btnWasPressed = false;
-    Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
   }
 
-  // --- Periodic Status Log ---
-  if (now - lastStatusLog >= STATUS_LOG_INTERVAL) {
+  // --- Periodic Status Log (overflow-safe) ---
+  if (intervalPassed(now, lastStatusLog, STATUS_LOG_INTERVAL)) {
     lastStatusLog = now;
-    Serial.printf("📊 [%s] T=%.1f°C H=%.1f%% NH3=%.1f HSI=%.1f | Fan=%s Heater=%s Alarm=%s Fogger=%s | WiFi=%s\n",
-      stateNames[currentState], temperature, humidity, ammonia, currentHSI,
+    Serial.printf("📊 [%s] T=%.1f°C(max=%.1f min=%.1f) H=%.1f%% NH3=%.1f HSI=%.1f | Fan=%s Heater=%s Alarm=%s Fogger=%s | WiFi=%s\n",
+      stateNames[currentState], temperature, worstCaseMaxTemp, worstCaseMinTemp, humidity, ammonia, currentHSI,
       fanSpeed.c_str(), heaterOn?"ON":"OFF", alarmOn?"ON":"OFF", foggerOn?"ON":"OFF",
       wifiConnected?"OK":"FAIL");
   }
