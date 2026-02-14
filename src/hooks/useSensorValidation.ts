@@ -27,6 +27,15 @@ const AMMONIA_ZERO_TIMEOUT_MS = 15 * 60 * 1000;
 const AMMONIA_SPIKE_THRESHOLD = 25;
 const AMMONIA_SPIKE_WINDOW_MS = 10000;
 
+// === SENSOR TIMEOUT THRESHOLD ===
+const SENSOR_TIMEOUT_MS = 25 * 1000; // 25 seconds — triggers survival mode
+
+// === SURVIVAL MODE CONFIG ===
+const SURVIVAL_FAN_ON_MS = 120 * 1000;   // 2 min ON
+const SURVIVAL_FAN_OFF_MS = 120 * 1000;  // 2 min OFF
+const SURVIVAL_HEATER_DUTY_ON_MS = 30 * 1000;  // 30s ON
+const SURVIVAL_HEATER_DUTY_OFF_MS = 90 * 1000; // 90s OFF
+
 // === OUT OF RANGE THRESHOLDS ===
 const VALID_RANGES: Record<string, { min: number; max: number; unit: string }> = {
   temperature: { min: -10, max: 60, unit: '°C' },
@@ -44,6 +53,9 @@ export function useSensorValidation(sensorData: SensorData) {
   const [ignoredSensors, setIgnoredSensors] = useState<Set<string>>(new Set());
   const [safeModeActive, setSafeModeActive] = useState(false);
   const [safeModeUntil, setSafeModeUntil] = useState<Date | null>(null);
+  const [survivalMode, setSurvivalMode] = useState(false);
+  const [survivalFanOn, setSurvivalFanOn] = useState(true);
+  const [survivalHeaterOn, setSurvivalHeaterOn] = useState(false);
 
   // History refs
   const tempHistory = useRef<SensorReading[]>([]);
@@ -67,6 +79,9 @@ export function useSensorValidation(sensorData: SensorData) {
   const lastAlertSent = useRef<Record<string, number>>({});
   const lastIncidentLogged = useRef<Record<string, number>>({});
   const safeModeTriggeredRef = useRef(false);
+  const lastSensorUpdateTime = useRef<number>(Date.now());
+  const prevSensorDataRef = useRef<string>('');
+  const survivalModeTriggeredRef = useRef(false);
 
   const addReading = useCallback((
     history: React.MutableRefObject<SensorReading[]>,
@@ -353,11 +368,136 @@ export function useSensorValidation(sensorData: SensorData) {
     return () => clearInterval(interval);
   }, [safeModeActive, safeModeUntil]);
 
+  // === SENSOR TIMEOUT → SURVIVAL MODE ===
+  useEffect(() => {
+    const sensorFingerprint = `${sensorData.temperature}-${sensorData.humidity}-${sensorData.ammonia}-${sensorData.waterUsage}`;
+    if (sensorFingerprint !== prevSensorDataRef.current) {
+      prevSensorDataRef.current = sensorFingerprint;
+      lastSensorUpdateTime.current = Date.now();
+
+      // Exit survival mode when fresh data arrives
+      if (survivalModeTriggeredRef.current) {
+        survivalModeTriggeredRef.current = false;
+        setSurvivalMode(false);
+        console.log('[SensorValidation] Fresh sensor data — exiting survival mode');
+      }
+    }
+  }, [sensorData]);
+
+  // === CHECK SENSOR TIMEOUT PERIODICALLY ===
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastSensorUpdateTime.current;
+
+      if (elapsed >= SENSOR_TIMEOUT_MS && !survivalModeTriggeredRef.current) {
+        survivalModeTriggeredRef.current = true;
+        setSurvivalMode(true);
+        console.log(`[SensorValidation] SURVIVAL MODE: No sensor update for ${(elapsed / 1000).toFixed(0)}s`);
+
+        // Log incident
+        if (user) {
+          (supabase.from('farm_audit_logs') as any).insert({
+            user_id: user.id,
+            user_email: user.email || '',
+            action_type: 'survival_mode_activated',
+            action_category: 'safety',
+            severity: 'critical',
+            source: 'sensor_validation',
+            metadata: {
+              timeout_seconds: elapsed / 1000,
+              threshold_seconds: SENSOR_TIMEOUT_MS / 1000,
+              fan_cycle: `${SURVIVAL_FAN_ON_MS / 1000}s ON / ${SURVIVAL_FAN_OFF_MS / 1000}s OFF`,
+              heater_duty: `${SURVIVAL_HEATER_DUTY_ON_MS / 1000}s ON / ${SURVIVAL_HEATER_DUTY_OFF_MS / 1000}s OFF`,
+            },
+          }).then(() => console.log('[SensorValidation] Survival mode incident logged'));
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // === SURVIVAL MODE: Fan cycling (2min ON / 2min OFF) ===
+  useEffect(() => {
+    if (!survivalMode) return;
+
+    setSurvivalFanOn(true); // Start with fans ON
+    const cycleDuration = SURVIVAL_FAN_ON_MS + SURVIVAL_FAN_OFF_MS;
+
+    const interval = setInterval(() => {
+      setSurvivalFanOn(prev => !prev);
+    }, SURVIVAL_FAN_ON_MS); // Toggle at ON duration, will alternate
+
+    // Use a more precise cycling approach
+    let fanOn = true;
+    const cycle = () => {
+      fanOn = !fanOn;
+      setSurvivalFanOn(fanOn);
+    };
+
+    const fanInterval = setInterval(cycle, fanOn ? SURVIVAL_FAN_ON_MS : SURVIVAL_FAN_OFF_MS);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(fanInterval);
+    };
+  }, [survivalMode]);
+
+  // === SURVIVAL MODE: Heater duty cycle (30s ON / 90s OFF) ===
+  useEffect(() => {
+    if (!survivalMode) return;
+
+    setSurvivalHeaterOn(false); // Start with heater OFF (safe default)
+    let heaterOn = false;
+
+    const toggleHeater = () => {
+      heaterOn = !heaterOn;
+      setSurvivalHeaterOn(heaterOn);
+    };
+
+    // Initial ON after a brief delay
+    const startTimeout = setTimeout(() => {
+      toggleHeater();
+      // Then cycle
+      const interval = setInterval(toggleHeater, heaterOn ? SURVIVAL_HEATER_DUTY_ON_MS : SURVIVAL_HEATER_DUTY_OFF_MS);
+      return () => clearInterval(interval);
+    }, 5000);
+
+    return () => clearTimeout(startTimeout);
+  }, [survivalMode]);
+
   // === MAIN VALIDATION LOOP ===
   useEffect(() => {
     const newIssues: SensorIssue[] = [];
     const newIgnored = new Set<string>();
     let dangerDetected = false;
+
+    // --- SENSOR TIMEOUT CHECK: ignore last reading if > 25s stale ---
+    const sensorAge = Date.now() - lastSensorUpdateTime.current;
+    if (sensorAge >= SENSOR_TIMEOUT_MS) {
+      const timeoutIssue: SensorIssue = {
+        sensor: 'temperature',
+        type: 'disconnected',
+        severity: 'danger',
+        message: {
+          bn: `🚨 সেন্সর টাইমআউট — ${(sensorAge / 1000).toFixed(0)}সে. ধরে কোনো ডাটা নেই। সারভাইভাল মোড সক্রিয়।`,
+          en: `🚨 Sensor timeout — no data for ${(sensorAge / 1000).toFixed(0)}s. Survival mode active.`,
+        },
+        detectedAt: new Date(),
+        shouldIgnoreSensor: true,
+      };
+      newIssues.push(timeoutIssue);
+      newIgnored.add('temperature');
+      newIgnored.add('humidity');
+      newIgnored.add('ammonia');
+      newIgnored.add('water');
+      dangerDetected = true;
+
+      // All sensors ignored — skip further validation
+      setIssues(newIssues);
+      setIgnoredSensors(newIgnored);
+      return;
+    }
 
     // Add readings to history
     addReading(tempHistory, sensorData.temperature);
@@ -425,6 +565,9 @@ export function useSensorValidation(sensorData: SensorData) {
     ignoredSensors,
     safeModeActive,
     safeModeUntil,
+    survivalMode,
+    survivalFanOn,
+    survivalHeaterOn,
     shouldIgnoreSensor: (sensor: string) => ignoredSensors.has(sensor),
     getIssuesBySensor: (sensor: SensorIssue['sensor']) =>
       issues.filter(i => i.sensor === sensor),
