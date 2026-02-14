@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { useFarmType } from '@/hooks/useFarmType';
+import { validateAgeRange, AGE_MAX } from '@/lib/ageValidation';
 
 /**
  * Broiler Age-Based Environment Profiles
@@ -143,9 +144,13 @@ export function useBroilerAgeAutoMode(enabled: boolean = true) {
   const lastCheckDay = useRef<number | null>(null);
 
   // Calculate current age
-  const ageDays = activeBatch 
+  const rawAgeDays = activeBatch 
     ? Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (24 * 60 * 60 * 1000)) + 1
     : 0;
+  
+  // Clamp age to biological range (0-60 days)
+  const ageValidation = validateAgeRange(rawAgeDays);
+  const ageDays = ageValidation.valid ? rawAgeDays : Math.min(Math.max(rawAgeDays, 0), AGE_MAX);
 
   const currentProfile = getProfileForAge(ageDays);
 
