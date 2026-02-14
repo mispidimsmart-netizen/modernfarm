@@ -137,7 +137,8 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
     
     try {
       // Fetch firmware template from public folder with cache-busting
-      const response = await fetch('/esp32-unified.ino?t=' + Date.now());
+      // IMPORTANT: Use esp32-industrial.ino (v7.0+) — the ONLY authorized firmware
+      const response = await fetch('/esp32-industrial.ino?t=' + Date.now());
       if (!response.ok) throw new Error('Failed to fetch firmware template');
       let firmwareCode = await response.text();
       
