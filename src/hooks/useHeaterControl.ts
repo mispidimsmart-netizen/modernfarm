@@ -74,6 +74,12 @@ export function useHeaterControl({
   const { data: activeBatch } = useActiveBatch();
   
   const lastHeaterState = useRef<boolean | null>(null);
+  const heaterOnSinceRef = useRef<number | null>(null);
+  const heaterCooldownUntilRef = useRef<number>(0);
+
+  // Heater max runtime & cooldown constants
+  const HEATER_MAX_RUNTIME_MS = 5 * 60 * 1000;  // 5 min max continuous
+  const HEATER_COOLDOWN_MS = 2 * 60 * 1000;      // 2 min cooldown
   
   const [status, setStatus] = useState<HeaterStatus>({
     isOn: false,
@@ -160,6 +166,40 @@ export function useHeaterControl({
           en: `Temperature ideal - Day ${ageDays} (${target}°C ± ${tolerance})`,
         };
       }
+    }
+
+    // === HEATER RUNTIME PROTECTION ===
+    const now = Date.now();
+
+    // Check cooldown
+    if (shouldHeaterBeOn && now < heaterCooldownUntilRef.current) {
+      shouldHeaterBeOn = false;
+      message = {
+        bn: `⏳ হিটার কুলডাউন চলছে (${Math.ceil((heaterCooldownUntilRef.current - now) / 1000)}সে বাকি)`,
+        en: `⏳ Heater cooldown (${Math.ceil((heaterCooldownUntilRef.current - now) / 1000)}s remaining)`,
+      };
+    }
+
+    // Check max runtime (5 min)
+    if (shouldHeaterBeOn && heaterOnSinceRef.current) {
+      const runtime = now - heaterOnSinceRef.current;
+      if (runtime >= HEATER_MAX_RUNTIME_MS) {
+        shouldHeaterBeOn = false;
+        heaterCooldownUntilRef.current = now + HEATER_COOLDOWN_MS;
+        heaterOnSinceRef.current = null;
+        message = {
+          bn: `⚠️ হিটার সর্বোচ্চ রানটাইম (৫ মিনিট) — কুলডাউন শুরু`,
+          en: `⚠️ Heater max runtime (5 min) — cooldown started`,
+        };
+        console.warn('[HeaterControl] Max runtime exceeded — forced OFF, cooldown 2 min');
+      }
+    }
+
+    // Track ON duration
+    if (shouldHeaterBeOn && !heaterOnSinceRef.current) {
+      heaterOnSinceRef.current = now;
+    } else if (!shouldHeaterBeOn) {
+      heaterOnSinceRef.current = null;
     }
 
     // Only trigger callback if state actually changed

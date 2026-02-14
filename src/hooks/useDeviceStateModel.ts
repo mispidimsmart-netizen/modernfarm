@@ -25,9 +25,17 @@ export interface DeviceStateLayer {
   fan_speed: string;
 }
 
+export interface EnvironmentTarget {
+  target_temperature: number | null;
+  target_humidity: number | null;
+  target_air_quality: number | null;
+  age_profile_days: number | null;
+}
+
 export interface DeviceStateModel {
   desired: DeviceStateLayer;
   actual: DeviceStateLayer;
+  environment: EnvironmentTarget;
   safety_override: boolean;
   safety_override_reason: string | null;
   safety_override_at: string | null;
@@ -95,9 +103,17 @@ export function useDeviceStateModel() {
         }
       }
 
+      const environment: EnvironmentTarget = {
+        target_temperature: (data as any).target_temperature ?? null,
+        target_humidity: (data as any).target_humidity ?? null,
+        target_air_quality: (data as any).target_air_quality ?? null,
+        age_profile_days: (data as any).age_profile_days ?? null,
+      };
+
       return {
         desired,
         actual,
+        environment,
         safety_override: (data as any).safety_override ?? false,
         safety_override_reason: (data as any).safety_override_reason ?? null,
         safety_override_at: (data as any).safety_override_at ?? null,
