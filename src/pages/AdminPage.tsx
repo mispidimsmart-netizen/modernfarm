@@ -470,10 +470,12 @@ export default function AdminPage() {
                                     variant="outline" 
                                     className={u.farm_type === 'broiler' 
                                       ? 'border-amber-500/30 text-amber-400 text-xs' 
-                                      : 'border-green-500/30 text-green-400 text-xs'
+                                      : u.farm_type === 'mixed'
+                                        ? 'border-purple-500/30 text-purple-400 text-xs'
+                                        : 'border-green-500/30 text-green-400 text-xs'
                                     }
                                   >
-                                    {u.farm_type === 'broiler' ? '🐔' : '🥚'} {u.farm_type === 'broiler' ? labels.broiler : labels.layer}
+                                    {u.farm_type === 'broiler' ? '🐔' : u.farm_type === 'mixed' ? '🥚🐔' : '🥚'} {u.farm_type === 'broiler' ? labels.broiler : u.farm_type === 'mixed' ? 'মিক্সড' : labels.layer}
                                   </Badge>
                                 </div>
                                 <p className="text-sm text-purple-300">{u.farm_name}</p>
