@@ -97,6 +97,7 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
   const currentVersion = url.searchParams.get('version') || 'v0.0.0';
   const farmType = url.searchParams.get('farm_type') || 'all';
   const boardType = url.searchParams.get('board_type') || 'esp32';
+  const releaseChannel = url.searchParams.get('channel') || 'stable';
 
   if (!deviceToken) return jsonResponse({ error: 'Missing device token' }, 401);
 
@@ -109,7 +110,67 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
 
   if (deviceError || !device) return jsonResponse({ error: 'Invalid device token' }, 401);
 
-  // Get firmware with active rollout or stable release, matching board type
+  // ─── Check firmware_registry first (new system) ───
+  const { data: registryFirmware } = await supabase
+    .from('firmware_registry')
+    .select('*')
+    .eq('is_active', true)
+    .eq('release_channel', releaseChannel)
+    .order('version_code', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (registryFirmware) {
+    const current = parseVersion(currentVersion);
+    const latest = parseVersion(registryFirmware.version);
+
+    if (!isNewer(latest, current)) {
+      await supabase.from('device_health')
+        .update({ ota_last_check_at: new Date().toISOString() })
+        .eq('device_token_id', device.id);
+      return jsonResponse({ update_available: false, current_version: currentVersion });
+    }
+
+    // ─── Hardware compatibility check via firmware_registry ───
+    const { data: compatResult } = await supabase
+      .rpc('check_firmware_compatibility', {
+        _device_token_id: device.id,
+        _firmware_id: registryFirmware.id,
+      });
+
+    if (compatResult && !compatResult.compatible) {
+      console.log(`[OTA] Firmware ${registryFirmware.version} incompatible with device ${device.id}: ${JSON.stringify(compatResult.reasons)}`);
+      return jsonResponse({
+        update_available: false,
+        message: 'Firmware incompatible with device hardware',
+        compatibility: compatResult,
+      });
+    }
+
+    // Update device health
+    await supabase.from('device_health').update({
+      ota_last_check_at: new Date().toISOString(),
+      ota_version_available: registryFirmware.version,
+      ota_status: 'available',
+    }).eq('device_token_id', device.id);
+
+    console.log(`[OTA] Registry update available for device ${device.id}: ${currentVersion} → ${registryFirmware.version} (${releaseChannel})`);
+
+    return jsonResponse({
+      update_available: true,
+      version: registryFirmware.version,
+      url: registryFirmware.file_url,
+      size: registryFirmware.file_size_bytes,
+      crc32: registryFirmware.crc32_checksum,
+      release_channel: registryFirmware.release_channel,
+      release_notes: registryFirmware.changelog,
+      firmware_id: registryFirmware.id,
+      source: 'firmware_registry',
+      compatibility: compatResult || { compatible: true, reasons: [] },
+    });
+  }
+
+  // ─── Fallback to legacy ota_firmware table ───
   const { data: firmware } = await supabase
     .from('ota_firmware')
     .select('*')
@@ -119,7 +180,7 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
     .in('rollout_status', ['stable', 'rolling'])
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!firmware) {
     return jsonResponse({ update_available: false, message: 'No firmware available' });
@@ -139,7 +200,6 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
   if (firmware.min_firmware_version) {
     const minVer = parseVersion(firmware.min_firmware_version);
     if (!isNewer(current, minVer) && JSON.stringify(current) !== JSON.stringify(minVer)) {
-      // current < min required — can't update directly
       return jsonResponse({
         update_available: false,
         message: `Requires minimum firmware ${firmware.min_firmware_version}`,
@@ -163,7 +223,7 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
     ota_status: 'available',
   }).eq('device_token_id', device.id);
 
-  console.log(`[OTA] Update available for device ${device.id}: ${currentVersion} → ${firmware.version}`);
+  console.log(`[OTA] Legacy update available for device ${device.id}: ${currentVersion} → ${firmware.version}`);
 
   return jsonResponse({
     update_available: true,
@@ -175,6 +235,7 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
     board_type: firmware.board_type,
     release_notes: firmware.release_notes,
     firmware_id: firmware.id,
+    source: 'ota_firmware',
   });
 }
 
@@ -302,10 +363,41 @@ async function handlePush(req: Request, supabase: any) {
 
   const [{ data: device }, { data: firmware }] = await Promise.all([
     supabase.from('device_tokens').select('*').eq('id', device_token_id).single(),
-    supabase.from('ota_firmware').select('*').eq('id', firmware_id).single(),
+    supabase.from('ota_firmware').select('*').eq('id', firmware_id).maybeSingle(),
   ]);
 
-  if (!device || !firmware) return jsonResponse({ error: 'Device or firmware not found' }, 404);
+  if (!device) return jsonResponse({ error: 'Device not found' }, 404);
+
+  // Try firmware_registry if not found in ota_firmware
+  let firmwareData = firmware;
+  let source = 'ota_firmware';
+  if (!firmwareData) {
+    const { data: regFw } = await supabase
+      .from('firmware_registry')
+      .select('*')
+      .eq('id', firmware_id)
+      .single();
+    if (!regFw) return jsonResponse({ error: 'Firmware not found' }, 404);
+    firmwareData = regFw;
+    source = 'firmware_registry';
+  }
+
+  // ─── Compatibility check before push ───
+  if (source === 'firmware_registry') {
+    const { data: compatResult } = await supabase
+      .rpc('check_firmware_compatibility', {
+        _device_token_id: device_token_id,
+        _firmware_id: firmware_id,
+      });
+
+    if (compatResult && !compatResult.compatible) {
+      console.log(`[OTA] Push blocked: firmware incompatible with device ${device_token_id}`);
+      return jsonResponse({
+        error: 'Firmware incompatible with device hardware',
+        compatibility: compatResult,
+      }, 400);
+    }
+  }
 
   const { data: health } = await supabase
     .from('device_health')
@@ -318,19 +410,19 @@ async function handlePush(req: Request, supabase: any) {
     device_token_id,
     user_id: user.id,
     from_version: health?.firmware_version || 'unknown',
-    to_version: firmware.version,
+    to_version: firmwareData.version,
     status: 'pending',
-    board_type: firmware.board_type || 'esp32',
+    board_type: firmwareData.board_type || 'esp32',
   });
 
   await supabase.from('device_health').update({
-    ota_version_available: firmware.version,
+    ota_version_available: firmwareData.version,
     ota_status: 'pending',
   }).eq('device_token_id', device_token_id);
 
-  console.log(`[OTA] Push update to ${device.device_name}: ${firmware.version}`);
+  console.log(`[OTA] Push update to ${device.device_name}: ${firmwareData.version} (source: ${source})`);
 
-  return jsonResponse({ success: true, message: 'Update pushed to device' });
+  return jsonResponse({ success: true, message: 'Update pushed to device', source });
 }
 
 // ─────────────────────────────────────────────
