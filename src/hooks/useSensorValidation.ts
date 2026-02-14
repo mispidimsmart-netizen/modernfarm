@@ -3,9 +3,24 @@ import { SensorData } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
+// === FORMAL SENSOR STATE MACHINE ===
+export type SensorState = 'VALID' | 'UNSTABLE' | 'FAILED' | 'PHYSICALLY_IMPOSSIBLE';
+
+export interface SensorStateInfo {
+  state: SensorState;
+  reason: string | null;
+  since: Date | null;
+  heaterAuthorityBlocked: boolean;  // true = heater disabled
+  forcePeriodicVent: boolean;       // true = 40s ON / 20s OFF
+}
+
+// Biological range — outside this = FAILED (not hardware range)
+const BIOLOGICAL_TEMP_MIN = 5;   // °C — below this sensor likely disconnected or impossible
+const BIOLOGICAL_TEMP_MAX = 50;  // °C — above this sensor likely failed
+
 export interface SensorIssue {
   sensor: 'temperature' | 'humidity' | 'ammonia' | 'water';
-  type: 'stuck' | 'spike' | 'disconnected' | 'invalid' | 'out_of_range';
+  type: 'stuck' | 'spike' | 'disconnected' | 'invalid' | 'out_of_range' | 'physically_impossible';
   severity: 'info' | 'warning' | 'danger';
   message: { bn: string; en: string };
   detectedAt: Date;
@@ -102,6 +117,14 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     reason: null,
   });
 
+  // === SENSOR STATE MACHINE ===
+  const [sensorStates, setSensorStates] = useState<Record<string, SensorStateInfo>>({
+    temperature: { state: 'VALID', reason: null, since: null, heaterAuthorityBlocked: false, forcePeriodicVent: false },
+    humidity: { state: 'VALID', reason: null, since: null, heaterAuthorityBlocked: false, forcePeriodicVent: false },
+    ammonia: { state: 'VALID', reason: null, since: null, heaterAuthorityBlocked: false, forcePeriodicVent: false },
+    water: { state: 'VALID', reason: null, since: null, heaterAuthorityBlocked: false, forcePeriodicVent: false },
+  });
+
   // History refs
   const tempHistory = useRef<SensorReading[]>([]);
   const humidityHistory = useRef<SensorReading[]>([]);
@@ -153,6 +176,33 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
   const motorStartTimeRef = useRef<number | null>(null);
   const heaterCooldownUntilRef = useRef<number>(0);
   const lastLoopTickRef = useRef<number>(Date.now());
+
+  // === SENSOR STATE MACHINE TRANSITION ===
+  const transitionSensorState = useCallback((
+    sensor: string,
+    newState: SensorState,
+    reason: string,
+  ) => {
+    setSensorStates(prev => {
+      const current = prev[sensor];
+      if (!current || current.state === newState) return prev;
+
+      const isCritical = newState === 'FAILED' || newState === 'PHYSICALLY_IMPOSSIBLE';
+
+      console.log(`[SensorStateMachine] ${sensor}: ${current.state} → ${newState} — ${reason}`);
+
+      return {
+        ...prev,
+        [sensor]: {
+          state: newState,
+          reason,
+          since: new Date(),
+          heaterAuthorityBlocked: isCritical,
+          forcePeriodicVent: isCritical,
+        },
+      };
+    });
+  }, []);
 
   const addReading = useCallback((
     history: React.MutableRefObject<SensorReading[]>,
@@ -790,9 +840,54 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
 
     // --- Send alerts & log for OOR issues ---
     for (const issue of newIssues) {
-      if (issue.type === 'out_of_range') {
+      if (issue.type === 'out_of_range' || issue.type === 'physically_impossible') {
         sendSensorAlert(issue);
         logIncident(issue);
+      }
+    }
+
+    // --- BIOLOGICAL RANGE CHECK (PHYSICALLY_IMPOSSIBLE) ---
+    const temp = sensorData.temperature;
+    if (temp < BIOLOGICAL_TEMP_MIN || temp > BIOLOGICAL_TEMP_MAX) {
+      const bioIssue: SensorIssue = {
+        sensor: 'temperature',
+        type: 'physically_impossible',
+        severity: 'danger',
+        message: {
+          bn: `🚨 অসম্ভব তাপমাত্রা: ${temp.toFixed(1)}°সি — সেন্সর বিকল। হিটার বন্ধ, বাতাস চালু।`,
+          en: `🚨 Impossible temperature: ${temp.toFixed(1)}°C — sensor failed. Heater disabled, ventilation forced.`,
+        },
+        detectedAt: new Date(),
+        shouldIgnoreSensor: true,
+      };
+      newIssues.push(bioIssue);
+      newIgnored.add('temperature');
+      dangerDetected = true;
+      transitionSensorState('temperature', 'PHYSICALLY_IMPOSSIBLE', `Temperature ${temp.toFixed(1)}°C outside biological range (${BIOLOGICAL_TEMP_MIN}-${BIOLOGICAL_TEMP_MAX}°C)`);
+      sendSensorAlert(bioIssue);
+      logIncident(bioIssue);
+    }
+
+    // --- SENSOR STATE MACHINE TRANSITIONS ---
+    const newSensorStates: Record<string, SensorState> = {};
+    for (const sensor of ['temperature', 'humidity', 'ammonia', 'water'] as const) {
+      const sensorIssues = newIssues.filter(i => i.sensor === sensor);
+      const hasDanger = sensorIssues.some(i => i.severity === 'danger');
+      const hasPhysImpossible = sensorIssues.some(i => i.type === 'physically_impossible');
+      const hasDrift = sensorIssues.some(i => i.type === 'invalid'); // drift = physically contradicts
+      const hasWarning = sensorIssues.some(i => i.severity === 'warning');
+
+      if (hasPhysImpossible || hasDrift) {
+        newSensorStates[sensor] = 'PHYSICALLY_IMPOSSIBLE';
+        transitionSensorState(sensor, 'PHYSICALLY_IMPOSSIBLE', sensorIssues.find(i => i.type === 'physically_impossible' || i.type === 'invalid')?.message.en || 'Physics contradiction');
+      } else if (hasDanger) {
+        newSensorStates[sensor] = 'FAILED';
+        transitionSensorState(sensor, 'FAILED', sensorIssues.find(i => i.severity === 'danger')?.message.en || 'Sensor failed');
+      } else if (hasWarning) {
+        newSensorStates[sensor] = 'UNSTABLE';
+        transitionSensorState(sensor, 'UNSTABLE', sensorIssues.find(i => i.severity === 'warning')?.message.en || 'Sensor unstable');
+      } else {
+        transitionSensorState(sensor, 'VALID', '');
       }
     }
 
@@ -805,7 +900,7 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
 
     setIssues(newIssues);
     setIgnoredSensors(newIgnored);
-  }, [sensorData, addReading, checkStuck, checkSpike, checkOutOfRange, checkAmmoniaDisconnected, checkAmmoniaSpike, sendSensorAlert, logIncident, activateSafeMode]);
+  }, [sensorData, addReading, checkStuck, checkSpike, checkOutOfRange, checkAmmoniaDisconnected, checkAmmoniaSpike, sendSensorAlert, logIncident, activateSafeMode, transitionSensorState]);
 
   // === ENVIRONMENTAL PLAUSIBILITY VALIDATION (20-min physical model) ===
   useEffect(() => {
@@ -920,6 +1015,9 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     plausTempAtStart.current = sensorData.temperature;
   }, [sensorData, options?.heaterOn, options?.fanOn, user]);
 
+  // Computed: is temp sensor in a critical state?
+  const tempSensorCritical = sensorStates.temperature?.state === 'FAILED' || sensorStates.temperature?.state === 'PHYSICALLY_IMPOSSIBLE';
+
   return {
     issues,
     hasIssues: issues.length > 0,
@@ -930,6 +1028,8 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     survivalFanOn,
     survivalHeaterOn,
     plausibility,
+    sensorStates,
+    tempSensorCritical,
     shouldIgnoreSensor: (sensor: string) => ignoredSensors.has(sensor),
     getIssuesBySensor: (sensor: SensorIssue['sensor']) =>
       issues.filter(i => i.sensor === sensor),
