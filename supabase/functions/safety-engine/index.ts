@@ -166,6 +166,58 @@ Deno.serve(async (req) => {
         });
       }
 
+      // ═══ FORENSIC: Auto-log every evaluate call to safety_timeline ═══
+      await supabase.from("safety_timeline").insert({
+        user_id: input.user_id,
+        farm_id: input.farm_id || null,
+        shed_id: input.shed_id || null,
+        system_state: result.system_state,
+        uptime_ms: input.uptime_ms || 0,
+        requested_fan: input.fan_on,
+        requested_heater: input.heater_on,
+        requested_fogger: input.fogger_on || false,
+        requested_circulation_fan: input.circulation_fan_on || false,
+        actual_fan: input.fan_on,
+        actual_heater: input.heater_on,
+        actual_fogger: input.fogger_on || false,
+        actual_circulation_fan: input.circulation_fan_on || false,
+        relay_mismatch: false,
+        temperature: input.temperature,
+        temperature2: input.temperature_sensor2,
+        worst_case_max_temp: result.worst_case_max_temp,
+        worst_case_min_temp: result.worst_case_min_temp,
+        humidity: input.humidity,
+        ammonia: input.ammonia,
+        water_usage: input.water_usage,
+        hsi_value: input.hsi_value,
+        safety_override_active: result.safe_mode_active || result.survival_mode,
+        safety_override_reason: result.heater_blocked_reason,
+        heater_allowed: result.heater_allowed,
+        heater_blocked_reason: result.heater_blocked_reason,
+        force_ventilation: result.force_ventilation,
+        fan_effect_verified: input.fan_effect_verified,
+        fan_effect_failures: input.fan_effect_failures,
+        heater_effect_verified: input.heater_effect_verified,
+        heater_effect_failures: input.heater_effect_failures,
+        thermal_model_plausible: result.thermal_model_invalid === false,
+        thermal_model_deviation: input.thermal_model_deviation,
+        source: "backend_evaluate",
+        event_type: "periodic",
+        event_detail: result.system_state,
+        manual_override_active: input.override_active,
+        override_target_temp: input.override_target_temp,
+        reboot_heater_locked: result.reboot_heater_locked,
+        reboot_vent_purge: result.reboot_vent_purge,
+        reboot_nh3_muted: result.reboot_nh3_muted,
+      });
+
+      // Prune entries older than 24h
+      await supabase
+        .from("safety_timeline")
+        .delete()
+        .eq("user_id", input.user_id)
+        .lt("recorded_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
       // Log critical events
       if (result.system_state === "SURVIVAL" || result.system_state === "SENSOR_FAIL" || result.system_state === "EMERGENCY") {
         await supabase.from("farm_audit_logs").insert({
@@ -233,6 +285,82 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ ok: true, safety: result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ═══ FORENSIC LOG ACTION: Direct entry from firmware ═══
+    if (action === "forensic_log") {
+      const entry = await req.json();
+      
+      const { error } = await supabase.from("safety_timeline").insert({
+        user_id: entry.user_id,
+        farm_id: entry.farm_id || null,
+        shed_id: entry.shed_id || null,
+        system_state: entry.system_state || "UNKNOWN",
+        uptime_ms: entry.uptime_ms || 0,
+        requested_fan: entry.requested_fan ?? false,
+        requested_fan_speed: entry.requested_fan_speed || "OFF",
+        requested_heater: entry.requested_heater ?? false,
+        requested_fogger: entry.requested_fogger ?? false,
+        requested_alarm: entry.requested_alarm ?? false,
+        requested_circulation_fan: entry.requested_circulation_fan ?? false,
+        actual_fan: entry.actual_fan ?? false,
+        actual_fan_speed: entry.actual_fan_speed || "OFF",
+        actual_heater: entry.actual_heater ?? false,
+        actual_fogger: entry.actual_fogger ?? false,
+        actual_alarm: entry.actual_alarm ?? false,
+        actual_circulation_fan: entry.actual_circulation_fan ?? false,
+        relay_mismatch: entry.relay_mismatch ?? false,
+        mismatch_details: entry.mismatch_details || null,
+        temperature: entry.temperature,
+        temperature2: entry.temperature2,
+        worst_case_max_temp: entry.worst_case_max_temp,
+        worst_case_min_temp: entry.worst_case_min_temp,
+        humidity: entry.humidity,
+        ammonia: entry.ammonia,
+        water_usage: entry.water_usage,
+        hsi_value: entry.hsi_value,
+        temp_delta_1min: entry.temp_delta_1min,
+        temp_delta_5min: entry.temp_delta_5min,
+        humidity_delta_1min: entry.humidity_delta_1min,
+        safety_override_active: entry.safety_override_active ?? false,
+        safety_override_reason: entry.safety_override_reason || null,
+        heater_allowed: entry.heater_allowed ?? true,
+        heater_blocked_reason: entry.heater_blocked_reason || null,
+        force_ventilation: entry.force_ventilation ?? false,
+        fan_effect_verified: entry.fan_effect_verified,
+        fan_effect_failures: entry.fan_effect_failures || 0,
+        heater_effect_verified: entry.heater_effect_verified,
+        heater_effect_failures: entry.heater_effect_failures || 0,
+        thermal_model_plausible: entry.thermal_model_plausible ?? true,
+        thermal_model_deviation: entry.thermal_model_deviation,
+        source: entry.source || "firmware",
+        event_type: entry.event_type || "periodic",
+        event_detail: entry.event_detail || null,
+        manual_override_active: entry.manual_override_active ?? false,
+        override_target_temp: entry.override_target_temp,
+        reboot_heater_locked: entry.reboot_heater_locked ?? false,
+        reboot_vent_purge: entry.reboot_vent_purge ?? false,
+        reboot_nh3_muted: entry.reboot_nh3_muted ?? false,
+      });
+
+      if (error) {
+        console.error("Forensic log insert error:", error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Prune old entries (>24h) for this user
+      await supabase
+        .from("safety_timeline")
+        .delete()
+        .eq("user_id", entry.user_id)
+        .lt("recorded_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

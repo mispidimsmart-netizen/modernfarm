@@ -3333,6 +3333,183 @@ export type Database = {
           },
         ]
       }
+      safety_timeline: {
+        Row: {
+          actual_alarm: boolean
+          actual_circulation_fan: boolean
+          actual_fan: boolean
+          actual_fan_speed: string | null
+          actual_fogger: boolean
+          actual_heater: boolean
+          ammonia: number | null
+          event_detail: string | null
+          event_type: string
+          fan_effect_failures: number | null
+          fan_effect_verified: boolean | null
+          farm_id: string | null
+          force_ventilation: boolean | null
+          heater_allowed: boolean | null
+          heater_blocked_reason: string | null
+          heater_effect_failures: number | null
+          heater_effect_verified: boolean | null
+          hsi_value: number | null
+          humidity: number | null
+          humidity_delta_1min: number | null
+          id: string
+          manual_override_active: boolean | null
+          mismatch_details: string | null
+          override_target_temp: number | null
+          reboot_heater_locked: boolean | null
+          reboot_nh3_muted: boolean | null
+          reboot_vent_purge: boolean | null
+          recorded_at: string
+          relay_mismatch: boolean
+          requested_alarm: boolean
+          requested_circulation_fan: boolean
+          requested_fan: boolean
+          requested_fan_speed: string | null
+          requested_fogger: boolean
+          requested_heater: boolean
+          safety_override_active: boolean | null
+          safety_override_reason: string | null
+          shed_id: string | null
+          source: string
+          system_state: string
+          temp_delta_1min: number | null
+          temp_delta_5min: number | null
+          temperature: number | null
+          temperature2: number | null
+          thermal_model_deviation: number | null
+          thermal_model_plausible: boolean | null
+          uptime_ms: number | null
+          user_id: string
+          water_usage: number | null
+          worst_case_max_temp: number | null
+          worst_case_min_temp: number | null
+        }
+        Insert: {
+          actual_alarm?: boolean
+          actual_circulation_fan?: boolean
+          actual_fan?: boolean
+          actual_fan_speed?: string | null
+          actual_fogger?: boolean
+          actual_heater?: boolean
+          ammonia?: number | null
+          event_detail?: string | null
+          event_type?: string
+          fan_effect_failures?: number | null
+          fan_effect_verified?: boolean | null
+          farm_id?: string | null
+          force_ventilation?: boolean | null
+          heater_allowed?: boolean | null
+          heater_blocked_reason?: string | null
+          heater_effect_failures?: number | null
+          heater_effect_verified?: boolean | null
+          hsi_value?: number | null
+          humidity?: number | null
+          humidity_delta_1min?: number | null
+          id?: string
+          manual_override_active?: boolean | null
+          mismatch_details?: string | null
+          override_target_temp?: number | null
+          reboot_heater_locked?: boolean | null
+          reboot_nh3_muted?: boolean | null
+          reboot_vent_purge?: boolean | null
+          recorded_at?: string
+          relay_mismatch?: boolean
+          requested_alarm?: boolean
+          requested_circulation_fan?: boolean
+          requested_fan?: boolean
+          requested_fan_speed?: string | null
+          requested_fogger?: boolean
+          requested_heater?: boolean
+          safety_override_active?: boolean | null
+          safety_override_reason?: string | null
+          shed_id?: string | null
+          source?: string
+          system_state?: string
+          temp_delta_1min?: number | null
+          temp_delta_5min?: number | null
+          temperature?: number | null
+          temperature2?: number | null
+          thermal_model_deviation?: number | null
+          thermal_model_plausible?: boolean | null
+          uptime_ms?: number | null
+          user_id: string
+          water_usage?: number | null
+          worst_case_max_temp?: number | null
+          worst_case_min_temp?: number | null
+        }
+        Update: {
+          actual_alarm?: boolean
+          actual_circulation_fan?: boolean
+          actual_fan?: boolean
+          actual_fan_speed?: string | null
+          actual_fogger?: boolean
+          actual_heater?: boolean
+          ammonia?: number | null
+          event_detail?: string | null
+          event_type?: string
+          fan_effect_failures?: number | null
+          fan_effect_verified?: boolean | null
+          farm_id?: string | null
+          force_ventilation?: boolean | null
+          heater_allowed?: boolean | null
+          heater_blocked_reason?: string | null
+          heater_effect_failures?: number | null
+          heater_effect_verified?: boolean | null
+          hsi_value?: number | null
+          humidity?: number | null
+          humidity_delta_1min?: number | null
+          id?: string
+          manual_override_active?: boolean | null
+          mismatch_details?: string | null
+          override_target_temp?: number | null
+          reboot_heater_locked?: boolean | null
+          reboot_nh3_muted?: boolean | null
+          reboot_vent_purge?: boolean | null
+          recorded_at?: string
+          relay_mismatch?: boolean
+          requested_alarm?: boolean
+          requested_circulation_fan?: boolean
+          requested_fan?: boolean
+          requested_fan_speed?: string | null
+          requested_fogger?: boolean
+          requested_heater?: boolean
+          safety_override_active?: boolean | null
+          safety_override_reason?: string | null
+          shed_id?: string | null
+          source?: string
+          system_state?: string
+          temp_delta_1min?: number | null
+          temp_delta_5min?: number | null
+          temperature?: number | null
+          temperature2?: number | null
+          thermal_model_deviation?: number | null
+          thermal_model_plausible?: boolean | null
+          uptime_ms?: number | null
+          user_id?: string
+          water_usage?: number | null
+          worst_case_max_temp?: number | null
+          worst_case_min_temp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_timeline_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_timeline_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_notifications: {
         Row: {
           advisory_type: string | null
