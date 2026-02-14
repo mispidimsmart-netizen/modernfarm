@@ -1787,6 +1787,77 @@ export type Database = {
           },
         ]
       }
+      farm_setup_status: {
+        Row: {
+          created_at: string
+          current_step: number
+          farm_id: string
+          id: string
+          relay_test_results: Json | null
+          setup_completed: boolean
+          setup_completed_at: string | null
+          simulation_results: Json | null
+          step_automation_profile_selected: boolean
+          step_chick_age_set: boolean
+          step_controller_registered: boolean
+          step_farm_created: boolean
+          step_relays_tested: boolean
+          step_sensors_calibrated: boolean
+          step_shed_added: boolean
+          step_simulation_passed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_step?: number
+          farm_id: string
+          id?: string
+          relay_test_results?: Json | null
+          setup_completed?: boolean
+          setup_completed_at?: string | null
+          simulation_results?: Json | null
+          step_automation_profile_selected?: boolean
+          step_chick_age_set?: boolean
+          step_controller_registered?: boolean
+          step_farm_created?: boolean
+          step_relays_tested?: boolean
+          step_sensors_calibrated?: boolean
+          step_shed_added?: boolean
+          step_simulation_passed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_step?: number
+          farm_id?: string
+          id?: string
+          relay_test_results?: Json | null
+          setup_completed?: boolean
+          setup_completed_at?: string | null
+          simulation_results?: Json | null
+          step_automation_profile_selected?: boolean
+          step_chick_age_set?: boolean
+          step_controller_registered?: boolean
+          step_farm_created?: boolean
+          step_relays_tested?: boolean
+          step_sensors_calibrated?: boolean
+          step_shed_added?: boolean
+          step_simulation_passed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farm_setup_status_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: true
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farms: {
         Row: {
           created_at: string

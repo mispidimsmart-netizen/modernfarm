@@ -61,7 +61,7 @@ import { AlertSummaryBanner } from '@/components/alerts';
 
 // Emergency Protection
 import { EmergencyProtectionBanner } from '@/components/emergency/EmergencyProtectionBanner';
-
+import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected } = useRealtimeSensorData();
@@ -133,6 +133,9 @@ export function Dashboard() {
           <ShedSelector />
           <ShedManagementSheet />
         </div>
+
+        {/* ============ SETUP REMINDER ============ */}
+        <SetupReminderBanner />
 
         {/* ============ EMERGENCY PROTECTION BANNER ============ */}
         <EmergencyProtectionBanner />
