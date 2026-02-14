@@ -30,6 +30,7 @@ import { WhyFanRunning } from '@/components/control/WhyFanRunning';
 import { LiveEnvironmentPanel } from '@/components/control/LiveEnvironmentPanel';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
 import { FarmerSensorHealth } from '@/components/control/FarmerSensorHealth';
+import { DeviceLiveTelemetry } from '@/components/device/DeviceLiveTelemetry';
 
 // Broiler-specific devices (heater is more important)
 const BROILER_DEVICES = [
@@ -268,7 +269,10 @@ export function ControlPage() {
         {/* ===== 4. AUTOMATION DECISION LOG ===== */}
         <AutomationDecisionLog />
 
-        {/* ===== 5. SENSOR HEALTH ===== */}
+        {/* ===== 5. LIVE TELEMETRY ===== */}
+        <DeviceLiveTelemetry />
+
+        {/* ===== 6. SENSOR HEALTH ===== */}
         <FarmerSensorHealth />
 
         {/* ===== 6. MANUAL CONTROL PROTECTION ===== */}
