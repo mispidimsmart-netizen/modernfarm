@@ -61,10 +61,27 @@ const VALID_RANGES: Record<string, { min: number; max: number; unit: string }> =
 // === SAFE MODE DURATION ===
 const SAFE_MODE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
+// === ENVIRONMENTAL PLAUSIBILITY MODEL ===
+const PLAUSIBILITY_WINDOW_MS = 20 * 60 * 1000;        // 20-minute evaluation window
+const PLAUSIBILITY_CHECK_INTERVAL_MS = 60 * 1000;     // check every 60s
+const PLAUSIBILITY_HEATER_EXPECTED_RATE = 0.06;        // °C/min expected rise while heater ON
+const PLAUSIBILITY_FAN_EXPECTED_RATE = 0.04;           // °C/min expected drop while fan ON
+const PLAUSIBILITY_TOLERANCE = 0.5;                    // allow 50% shortfall before flagging
+const HEATER_AUTHORITY_DEGRADED_PERCENT = 60;          // reduce heater to 60% duty when degraded
+
 export interface SensorValidationOptions {
   devicesRunning?: boolean; // true if fans/heaters are currently ON
   heaterOn?: boolean;       // true if heater relay is ON
   fanOn?: boolean;          // true if exhaust fan relay is ON
+}
+
+export interface PlausibilityStatus {
+  isDegraded: boolean;
+  heaterAuthorityPercent: number;  // 100 = full, 60 = degraded
+  expectedTempChange: number;
+  actualTempChange: number;
+  degradedSince: Date | null;
+  reason: string | null;
 }
 
 export function useSensorValidation(sensorData: SensorData, options?: SensorValidationOptions) {
@@ -76,6 +93,14 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
   const [survivalMode, setSurvivalMode] = useState(false);
   const [survivalFanOn, setSurvivalFanOn] = useState(true);
   const [survivalHeaterOn, setSurvivalHeaterOn] = useState(false);
+  const [plausibility, setPlausibility] = useState<PlausibilityStatus>({
+    isDegraded: false,
+    heaterAuthorityPercent: 100,
+    expectedTempChange: 0,
+    actualTempChange: 0,
+    degradedSince: null,
+    reason: null,
+  });
 
   // History refs
   const tempHistory = useRef<SensorReading[]>([]);
@@ -112,6 +137,15 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
   const driftTempAtWindowStart = useRef<number | null>(null);
   const driftLastTickAt = useRef<number>(Date.now());
   const driftAlertSent = useRef<boolean>(false);
+
+  // Plausibility model refs
+  const plausHeaterAccum = useRef<number>(0);    // ms heater ON in 20min window
+  const plausFanAccum = useRef<number>(0);       // ms fan ON in 20min window
+  const plausWindowStart = useRef<number>(Date.now());
+  const plausTempAtStart = useRef<number | null>(null);
+  const plausLastTick = useRef<number>(Date.now());
+  const plausDegradedSince = useRef<Date | null>(null);
+  const plausAlertSent = useRef<boolean>(false);
 
   const lastSensorUpdateTime = useRef<number>(Date.now());
   const prevSensorDataRef = useRef<string>('');
@@ -773,6 +807,119 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     setIgnoredSensors(newIgnored);
   }, [sensorData, addReading, checkStuck, checkSpike, checkOutOfRange, checkAmmoniaDisconnected, checkAmmoniaSpike, sendSensorAlert, logIncident, activateSafeMode]);
 
+  // === ENVIRONMENTAL PLAUSIBILITY VALIDATION (20-min physical model) ===
+  useEffect(() => {
+    const now = Date.now();
+    const tickDelta = now - plausLastTick.current;
+    plausLastTick.current = now;
+
+    // Accumulate device ON time
+    if (options?.heaterOn) plausHeaterAccum.current += tickDelta;
+    if (options?.fanOn) plausFanAccum.current += tickDelta;
+
+    // Set baseline at window start
+    if (plausTempAtStart.current === null) {
+      plausTempAtStart.current = sensorData.temperature;
+      plausWindowStart.current = now;
+    }
+
+    const windowElapsed = now - plausWindowStart.current;
+    if (windowElapsed < PLAUSIBILITY_WINDOW_MS) return;
+
+    // Evaluate plausibility
+    const actualChange = sensorData.temperature - (plausTempAtStart.current ?? sensorData.temperature);
+    const heaterMinutes = plausHeaterAccum.current / 60000;
+    const fanMinutes = plausFanAccum.current / 60000;
+
+    // Expected change from physical model
+    const expectedHeaterRise = heaterMinutes * PLAUSIBILITY_HEATER_EXPECTED_RATE;
+    const expectedFanDrop = fanMinutes * PLAUSIBILITY_FAN_EXPECTED_RATE;
+    const expectedNetChange = expectedHeaterRise - expectedFanDrop;
+
+    let degraded = false;
+    let reason = '';
+
+    // Only evaluate if devices ran enough to expect measurable change
+    const totalDeviceMinutes = heaterMinutes + fanMinutes;
+    if (totalDeviceMinutes >= 6) {
+      const expectedMagnitude = Math.abs(expectedNetChange);
+      const actualInExpectedDirection = expectedNetChange >= 0 ? actualChange : -actualChange;
+      const expectedWithTolerance = expectedMagnitude * PLAUSIBILITY_TOLERANCE;
+
+      if (actualInExpectedDirection < expectedWithTolerance && expectedMagnitude > 0.3) {
+        degraded = true;
+        reason = `Physical model mismatch: expected ${expectedNetChange >= 0 ? '+' : ''}${expectedNetChange.toFixed(1)}°C over 20min (heater ${heaterMinutes.toFixed(0)}min, fan ${fanMinutes.toFixed(0)}min), actual ${actualChange >= 0 ? '+' : ''}${actualChange.toFixed(1)}°C`;
+      }
+    }
+
+    if (degraded) {
+      const degradedSince = plausDegradedSince.current || new Date();
+      plausDegradedSince.current = degradedSince;
+
+      setPlausibility({
+        isDegraded: true,
+        heaterAuthorityPercent: HEATER_AUTHORITY_DEGRADED_PERCENT,
+        expectedTempChange: expectedNetChange,
+        actualTempChange: actualChange,
+        degradedSince,
+        reason,
+      });
+
+      // Send maintenance warning once per degradation episode
+      if (!plausAlertSent.current && user) {
+        plausAlertSent.current = true;
+
+        // Alert
+        supabase.from('alerts').insert({
+          user_id: user.id,
+          alert_type: 'system' as any,
+          severity: 'warning' as any,
+          message: `⚠️ Sensor degraded: ${reason}. Heater authority reduced to ${HEATER_AUTHORITY_DEGRADED_PERCENT}%. Maintenance recommended.`,
+          message_bn: `⚠️ সেন্সর অবনতি: পরিবেশগত প্রতিক্রিয়া প্রত্যাশার চেয়ে ধীর। হিটার ক্ষমতা ${HEATER_AUTHORITY_DEGRADED_PERCENT}%-এ হ্রাস। রক্ষণাবেক্ষণ প্রয়োজন।`,
+        }).then(() => console.log('[Plausibility] Maintenance warning sent'));
+
+        // Audit log
+        (supabase.from('farm_audit_logs') as any).insert({
+          user_id: user.id,
+          user_email: user.email || '',
+          action_type: 'sensor_plausibility_degraded',
+          action_category: 'safety',
+          severity: 'warning',
+          source: 'sensor_validation',
+          metadata: {
+            expected_change: expectedNetChange,
+            actual_change: actualChange,
+            heater_minutes: heaterMinutes,
+            fan_minutes: fanMinutes,
+            heater_authority_percent: HEATER_AUTHORITY_DEGRADED_PERCENT,
+            reason,
+          },
+        }).then(() => console.log('[Plausibility] Degradation incident logged'));
+      }
+    } else {
+      // Clear degradation if model passes
+      if (plausDegradedSince.current) {
+        console.log('[Plausibility] Sensor plausibility restored');
+      }
+      plausDegradedSince.current = null;
+      plausAlertSent.current = false;
+      setPlausibility({
+        isDegraded: false,
+        heaterAuthorityPercent: 100,
+        expectedTempChange: expectedNetChange,
+        actualTempChange: actualChange,
+        degradedSince: null,
+        reason: null,
+      });
+    }
+
+    // Reset window
+    plausHeaterAccum.current = 0;
+    plausFanAccum.current = 0;
+    plausWindowStart.current = now;
+    plausTempAtStart.current = sensorData.temperature;
+  }, [sensorData, options?.heaterOn, options?.fanOn, user]);
+
   return {
     issues,
     hasIssues: issues.length > 0,
@@ -782,6 +929,7 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     survivalMode,
     survivalFanOn,
     survivalHeaterOn,
+    plausibility,
     shouldIgnoreSensor: (sensor: string) => ignoredSensors.has(sensor),
     getIssuesBySensor: (sensor: SensorIssue['sensor']) =>
       issues.filter(i => i.sensor === sensor),
