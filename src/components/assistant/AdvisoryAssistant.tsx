@@ -52,11 +52,12 @@ export function AdvisoryAssistant() {
 
     // 0. Sensor Validation Issues (highest priority)
     sensorIssues.forEach(issue => {
-      const iconMap = {
+      const iconMap: Record<string, React.ElementType> = {
         stuck: AlertOctagon,
         spike: AlertTriangle,
         disconnected: Unplug,
         invalid: AlertTriangle,
+        out_of_range: AlertOctagon,
       };
       result.push({
         id: `sensor-${issue.sensor}-${issue.type}`,
