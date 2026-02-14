@@ -1254,6 +1254,74 @@ export type Database = {
         }
         Relationships: []
       }
+      farm_audit_logs: {
+        Row: {
+          action_category: string
+          action_type: string
+          created_at: string
+          device_name: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          new_value: Json | null
+          old_value: Json | null
+          severity: string
+          shed_id: string | null
+          source: string
+          target_entity: string | null
+          target_id: string | null
+          user_email: string | null
+          user_id: string
+          user_role: string | null
+        }
+        Insert: {
+          action_category?: string
+          action_type: string
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          severity?: string
+          shed_id?: string | null
+          source?: string
+          target_entity?: string | null
+          target_id?: string | null
+          user_email?: string | null
+          user_id: string
+          user_role?: string | null
+        }
+        Update: {
+          action_category?: string
+          action_type?: string
+          created_at?: string
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          new_value?: Json | null
+          old_value?: Json | null
+          severity?: string
+          shed_id?: string | null
+          source?: string
+          target_entity?: string | null
+          target_id?: string | null
+          user_email?: string | null
+          user_id?: string
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farm_audit_logs_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_settings: {
         Row: {
           ammonia_max: number
@@ -2880,6 +2948,8 @@ export type Database = {
         | "viewer"
         | "farmer"
         | "admin"
+        | "manager"
+        | "technician"
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
@@ -3013,7 +3083,16 @@ export const Constants = {
     Enums: {
       alert_severity: ["info", "warning", "danger"],
       alert_type: ["temperature", "ammonia", "power", "water"],
-      app_role: ["owner", "worker", "super_admin", "viewer", "farmer", "admin"],
+      app_role: [
+        "owner",
+        "worker",
+        "super_admin",
+        "viewer",
+        "farmer",
+        "admin",
+        "manager",
+        "technician",
+      ],
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
