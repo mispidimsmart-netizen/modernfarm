@@ -993,6 +993,57 @@ export type Database = {
           },
         ]
       }
+      device_hardware_profiles: {
+        Row: {
+          board_type: string
+          created_at: string
+          device_token_id: string
+          farm_id: string | null
+          features: Json
+          gpio_map: Json
+          id: string
+          relay_count: number
+          updated_at: string
+        }
+        Insert: {
+          board_type?: string
+          created_at?: string
+          device_token_id: string
+          farm_id?: string | null
+          features?: Json
+          gpio_map?: Json
+          id?: string
+          relay_count?: number
+          updated_at?: string
+        }
+        Update: {
+          board_type?: string
+          created_at?: string
+          device_token_id?: string
+          farm_id?: string | null
+          features?: Json
+          gpio_map?: Json
+          id?: string
+          relay_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_hardware_profiles_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: true
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_hardware_profiles_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_health: {
         Row: {
           ammonia_avg_10: number | null
@@ -2112,6 +2163,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      firmware_registry: {
+        Row: {
+          changelog: string | null
+          changelog_bn: string | null
+          compatibility_matrix: Json
+          crc32_checksum: string | null
+          created_at: string
+          created_by: string | null
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          is_active: boolean
+          max_hardware: Json
+          min_hardware: Json
+          release_channel: string
+          version: string
+          version_code: number
+        }
+        Insert: {
+          changelog?: string | null
+          changelog_bn?: string | null
+          compatibility_matrix?: Json
+          crc32_checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          is_active?: boolean
+          max_hardware?: Json
+          min_hardware?: Json
+          release_channel?: string
+          version: string
+          version_code: number
+        }
+        Update: {
+          changelog?: string | null
+          changelog_bn?: string | null
+          compatibility_matrix?: Json
+          crc32_checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          is_active?: boolean
+          max_hardware?: Json
+          min_hardware?: Json
+          release_channel?: string
+          version?: string
+          version_code?: number
+        }
+        Relationships: []
       }
       firmware_rollout_batches: {
         Row: {
@@ -3711,6 +3816,10 @@ export type Database = {
       can_access_farm: {
         Args: { _owner_id: string; _user_id: string }
         Returns: boolean
+      }
+      check_firmware_compatibility: {
+        Args: { _device_token_id: string; _firmware_id: string }
+        Returns: Json
       }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }

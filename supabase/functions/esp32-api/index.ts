@@ -495,6 +495,51 @@ Deno.serve(async (req) => {
       return await handleUpdateAge(bodyData, supabase, userId);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔧 HARDWARE PROFILE REGISTRATION
+    // ESP32 self-registers its board_type, relay_count, features on boot
+    // POST /hardware-profile { board_type, relay_count, features, gpio_map }
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'POST' && path === 'hardware-profile') {
+      return await handleHardwareProfile(bodyData, supabase, userId, deviceToken, deviceFarmId);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔍 FIRMWARE COMPATIBILITY CHECK
+    // GET /firmware-compat?firmware_id=xxx
+    // Returns compatibility result for this device + firmware pair
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'GET' && path === 'firmware-compat') {
+      const firmwareId = url.searchParams.get('firmware_id');
+      if (!firmwareId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing firmware_id', code: 'MISSING_PARAM' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      // Get device token ID
+      const { data: devToken } = await supabase
+        .from('device_tokens')
+        .select('id')
+        .eq('token', deviceToken)
+        .single();
+      if (!devToken) {
+        return new Response(
+          JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: compatResult } = await supabase
+        .rpc('check_firmware_compatibility', {
+          _device_token_id: devToken.id,
+          _firmware_id: firmwareId,
+        });
+      return new Response(
+        JSON.stringify({ success: true, compatibility: compatResult }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -620,6 +665,80 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
 interface UpdateAgePayload {
   age_days: number;
   batch_id?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 HARDWARE PROFILE REGISTRATION
+// ESP32 sends board_type, relay_count, features[], gpio_map on boot
+// Upserts into device_hardware_profiles for compatibility checking
+// ═══════════════════════════════════════════════════════════════════════════
+async function handleHardwareProfile(
+  body: any, supabase: any, userId: string, deviceToken: string, farmId?: string | null
+) {
+  try {
+    const { board_type, relay_count, features, gpio_map } = body;
+
+    if (!board_type) {
+      return new Response(
+        JSON.stringify({ error: 'Missing board_type', code: 'MISSING_FIELD' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get device token ID
+    const { data: device } = await supabase
+      .from('device_tokens')
+      .select('id, farm_id')
+      .eq('token', deviceToken)
+      .single();
+
+    if (!device) {
+      return new Response(
+        JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const profileData = {
+      device_token_id: device.id,
+      farm_id: farmId || device.farm_id || null,
+      board_type: board_type || 'esp32_devkit_v1',
+      relay_count: relay_count ?? 4,
+      features: features || [],
+      gpio_map: gpio_map || {},
+    };
+
+    // Upsert: update if exists, insert if not
+    const { data: existing } = await supabase
+      .from('device_hardware_profiles')
+      .select('id')
+      .eq('device_token_id', device.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('device_hardware_profiles')
+        .update(profileData)
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('device_hardware_profiles')
+        .insert(profileData);
+    }
+
+    console.log(`[HW] Hardware profile registered: ${board_type}, ${relay_count} relays, features=${JSON.stringify(features)}`);
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Hardware profile registered' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('[HW] Hardware profile error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to register hardware profile', code: 'HW_ERROR' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 }
 
 async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: string) {
