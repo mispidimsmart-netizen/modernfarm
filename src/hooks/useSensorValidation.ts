@@ -18,9 +18,9 @@ interface SensorReading {
 }
 
 // === SENSOR HEALTH THRESHOLDS ===
-const TEMP_STUCK_TIMEOUT_MS = 10 * 60 * 1000;
-const HUMIDITY_STUCK_TIMEOUT_MS = 20 * 60 * 1000;
-const AMMONIA_STUCK_TIMEOUT_MS = 10 * 60 * 1000;
+const TEMP_STUCK_TIMEOUT_MS = 2 * 60 * 1000;      // 2 min — per spec: identical reading for 2 minutes
+const HUMIDITY_STUCK_TIMEOUT_MS = 2 * 60 * 1000;   // 2 min — per spec
+const AMMONIA_STUCK_TIMEOUT_MS = 2 * 60 * 1000;    // 2 min — per spec
 const SPIKE_THRESHOLD_TEMP = 8;
 const SPIKE_WINDOW_MS = 5000;
 const AMMONIA_ZERO_TIMEOUT_MS = 15 * 60 * 1000;
@@ -160,8 +160,8 @@ export function useSensorValidation(sensorData: SensorData) {
         ammonia: { bn: 'অ্যামোনিয়া', en: 'Ammonia' },
         water: { bn: 'পানি', en: 'Water' },
       };
-      const timeLabel = sensor === 'humidity' ? '২০+' : '১০+';
-      const timeLabelEn = sensor === 'humidity' ? '20+' : '10+';
+      const timeLabel = '২+';
+      const timeLabelEn = '2+';
 
       return {
         sensor,

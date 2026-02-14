@@ -1066,6 +1066,7 @@ export type Database = {
           free_memory_bytes: number | null
           gas_sensor_warmup_done: boolean | null
           gas_sensor_warmup_start: string | null
+          heater_total_runtime_seconds: number | null
           hsi: number | null
           id: string
           is_online: boolean | null
@@ -1079,6 +1080,7 @@ export type Database = {
           last_server_age_sync_at: string | null
           min_vent_last_cycle_at: string | null
           mode: string | null
+          motor_total_runtime_seconds: number | null
           offline_buffer_count: number | null
           offline_duration_seconds: number | null
           online_duration_seconds: number | null
@@ -1090,10 +1092,13 @@ export type Database = {
           power_event_type: string | null
           power_source: string | null
           power_voltage_rms: number | null
+          relay_toggle_violations: number | null
           restart_count: number | null
           restart_reason: string | null
           safe_mode_until: string | null
           shed_id: string | null
+          stuck_relay_detected: boolean | null
+          stuck_relay_device: string | null
           total_restarts: number | null
           updated_at: string
           uptime_seconds: number | null
@@ -1127,6 +1132,7 @@ export type Database = {
           free_memory_bytes?: number | null
           gas_sensor_warmup_done?: boolean | null
           gas_sensor_warmup_start?: string | null
+          heater_total_runtime_seconds?: number | null
           hsi?: number | null
           id?: string
           is_online?: boolean | null
@@ -1140,6 +1146,7 @@ export type Database = {
           last_server_age_sync_at?: string | null
           min_vent_last_cycle_at?: string | null
           mode?: string | null
+          motor_total_runtime_seconds?: number | null
           offline_buffer_count?: number | null
           offline_duration_seconds?: number | null
           online_duration_seconds?: number | null
@@ -1151,10 +1158,13 @@ export type Database = {
           power_event_type?: string | null
           power_source?: string | null
           power_voltage_rms?: number | null
+          relay_toggle_violations?: number | null
           restart_count?: number | null
           restart_reason?: string | null
           safe_mode_until?: string | null
           shed_id?: string | null
+          stuck_relay_detected?: boolean | null
+          stuck_relay_device?: string | null
           total_restarts?: number | null
           updated_at?: string
           uptime_seconds?: number | null
@@ -1188,6 +1198,7 @@ export type Database = {
           free_memory_bytes?: number | null
           gas_sensor_warmup_done?: boolean | null
           gas_sensor_warmup_start?: string | null
+          heater_total_runtime_seconds?: number | null
           hsi?: number | null
           id?: string
           is_online?: boolean | null
@@ -1201,6 +1212,7 @@ export type Database = {
           last_server_age_sync_at?: string | null
           min_vent_last_cycle_at?: string | null
           mode?: string | null
+          motor_total_runtime_seconds?: number | null
           offline_buffer_count?: number | null
           offline_duration_seconds?: number | null
           online_duration_seconds?: number | null
@@ -1212,10 +1224,13 @@ export type Database = {
           power_event_type?: string | null
           power_source?: string | null
           power_voltage_rms?: number | null
+          relay_toggle_violations?: number | null
           restart_count?: number | null
           restart_reason?: string | null
           safe_mode_until?: string | null
           shed_id?: string | null
+          stuck_relay_detected?: boolean | null
+          stuck_relay_device?: string | null
           total_restarts?: number | null
           updated_at?: string
           uptime_seconds?: number | null
@@ -1261,6 +1276,7 @@ export type Database = {
       }
       device_status: {
         Row: {
+          age_profile_days: number | null
           alarm_on: boolean
           circulation_fan_on: boolean | null
           curtain_position: string | null
@@ -1291,10 +1307,14 @@ export type Database = {
           safety_override_reason: string | null
           shed_id: string | null
           state_mismatch: boolean | null
+          target_air_quality: number | null
+          target_humidity: number | null
+          target_temperature: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          age_profile_days?: number | null
           alarm_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
@@ -1325,10 +1345,14 @@ export type Database = {
           safety_override_reason?: string | null
           shed_id?: string | null
           state_mismatch?: boolean | null
+          target_air_quality?: number | null
+          target_humidity?: number | null
+          target_temperature?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          age_profile_days?: number | null
           alarm_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
@@ -1359,6 +1383,9 @@ export type Database = {
           safety_override_reason?: string | null
           shed_id?: string | null
           state_mismatch?: boolean | null
+          target_air_quality?: number | null
+          target_humidity?: number | null
+          target_temperature?: number | null
           updated_at?: string
           user_id?: string
         }
