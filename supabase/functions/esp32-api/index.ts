@@ -64,41 +64,39 @@ async function applyHSIAutomation(
     }
 
     // Apply automation based on HSI level
+    // IMPORTANT: Cloud writes to desired_* columns ONLY
+    // ESP32 is the single source of truth for actual relay state
     const updates: Record<string, any> = { updated_at: new Date().toISOString() };
     
     switch (level) {
       case 'DANGER':
-        // HSI > 40: Fan HIGH + Alarm ON
-        updates.fan_on = true;
-        updates.fan_speed = 'HIGH';
-        updates.alarm_on = true;
-        console.log(`🚨 [Shed: ${shedId || 'default'}] HSI DANGER (${hsi.toFixed(1)}) → Fan HIGH + Alarm ON`);
+        updates.desired_fan_on = true;
+        updates.desired_fan_speed = 'HIGH';
+        updates.desired_alarm_on = true;
+        console.log(`🚨 [Shed: ${shedId || 'default'}] HSI DANGER (${hsi.toFixed(1)}) → desired: Fan HIGH + Alarm ON`);
         break;
         
       case 'HIGH':
-        // HSI 35-40: Fan HIGH
-        updates.fan_on = true;
-        updates.fan_speed = 'HIGH';
-        console.log(`⚠️ [Shed: ${shedId || 'default'}] HSI HIGH (${hsi.toFixed(1)}) → Fan HIGH`);
+        updates.desired_fan_on = true;
+        updates.desired_fan_speed = 'HIGH';
+        console.log(`⚠️ [Shed: ${shedId || 'default'}] HSI HIGH (${hsi.toFixed(1)}) → desired: Fan HIGH`);
         break;
         
       case 'MILD':
-        // HSI 30-35: Fan LOW
-        updates.fan_on = true;
-        updates.fan_speed = 'LOW';
-        console.log(`🌡️ [Shed: ${shedId || 'default'}] HSI MILD (${hsi.toFixed(1)}) → Fan LOW`);
+        updates.desired_fan_on = true;
+        updates.desired_fan_speed = 'LOW';
+        console.log(`🌡️ [Shed: ${shedId || 'default'}] HSI MILD (${hsi.toFixed(1)}) → desired: Fan LOW`);
         break;
         
       case 'NORMAL':
-        // HSI < 30: Can turn off (but check ammonia first in calling code)
-        updates.fan_on = false;
-        updates.fan_speed = 'OFF';
-        updates.alarm_on = false;
-        console.log(`✅ [Shed: ${shedId || 'default'}] HSI NORMAL (${hsi.toFixed(1)}) → Fan OFF`);
+        updates.desired_fan_on = false;
+        updates.desired_fan_speed = 'OFF';
+        updates.desired_alarm_on = false;
+        console.log(`✅ [Shed: ${shedId || 'default'}] HSI NORMAL (${hsi.toFixed(1)}) → desired: Fan OFF`);
         break;
     }
     
-    // Update device_status for specific shed or default
+    // Update desired_state for specific shed or default
     let updateQuery = supabase
       .from('device_status')
       .update(updates)
@@ -183,6 +181,12 @@ interface DeviceStatePayload {
   online_duration_seconds?: number;
   offline_duration_seconds?: number;
   total_restarts?: number;
+  // State authority model fields
+  safety_override?: boolean;
+  safety_override_reason?: string;
+  heater_on?: boolean;
+  fogger_on?: boolean;
+  circulation_fan_on?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -1224,12 +1228,13 @@ async function handleDeviceState(
       console.error('Failed to update device health:', healthError);
     }
 
-    // Update device_status for the specific shed
+    // Update device_status with ACTUAL state from ESP32 (device is source of truth)
     const statusUpdate: Record<string, any> = {
       updated_at: new Date().toISOString(),
+      last_device_ack_at: new Date().toISOString(),
     };
 
-    // Map fan_speed to fan_on and fan_speed
+    // Map fan_speed to fan_on and fan_speed (actual state from device)
     if (body.fan_speed) {
       statusUpdate.fan_speed = body.fan_speed;
       statusUpdate.fan_on = body.fan_speed !== 'OFF';
@@ -1248,7 +1253,40 @@ async function handleDeviceState(
       statusUpdate.alarm_on = body.alarm === 'ON';
     }
 
-    // Update device_status
+    // Handle safety_override from device
+    if (typeof (body as any).safety_override === 'boolean') {
+      statusUpdate.safety_override = (body as any).safety_override;
+      statusUpdate.safety_override_reason = (body as any).safety_override_reason || null;
+      if ((body as any).safety_override) {
+        statusUpdate.safety_override_at = new Date().toISOString();
+      }
+    }
+
+    // Compute state_mismatch between desired and actual
+    // First get current desired state
+    let desiredQuery = supabase
+      .from('device_status')
+      .select('desired_fan_on, desired_light_on, desired_alarm_on, desired_heater_on, desired_fogger_on, desired_circulation_fan_on')
+      .eq('user_id', userId);
+    if (shedId) {
+      desiredQuery = desiredQuery.eq('shed_id', shedId);
+    }
+    const { data: desiredData } = await desiredQuery.maybeSingle();
+
+    if (desiredData) {
+      const actualFan = statusUpdate.fan_on ?? body.fan_on ?? false;
+      const actualLight = statusUpdate.light_on ?? body.light_on ?? false;
+      const actualAlarm = statusUpdate.alarm_on ?? (body.alarm === 'ON') ?? false;
+      
+      const hasMismatch = 
+        (desiredData.desired_fan_on !== actualFan) ||
+        (desiredData.desired_light_on !== actualLight) ||
+        (desiredData.desired_alarm_on !== actualAlarm);
+      
+      statusUpdate.state_mismatch = hasMismatch;
+    }
+
+    // Update device_status (actual state)
     let statusQuery = supabase
       .from('device_status')
       .update(statusUpdate)
@@ -2104,12 +2142,12 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
     commands.push({ user_id: userId, device_name: deviceName, command_type: 'power', command_value: powerValue });
   }
 
-  // Handle mode
+  // Handle mode - write to desired_manual_override (cloud never sets actual)
   if (body.mode) {
     const manualOverride = body.mode === 'MANUAL';
     await supabase
       .from('device_status')
-      .update({ manual_override: manualOverride })
+      .update({ desired_manual_override: manualOverride })
       .eq('user_id', userId);
   }
 
@@ -2338,37 +2376,38 @@ async function handleManualControl(body: ManualControlPayload, supabase: any, us
   const alarmValue = parseValue(body.alarm);
   const powerValue = parseValue(body.power);
 
-  // Build update object for device_status
-  const statusUpdate: Record<string, boolean> = {};
-  if (fanValue !== undefined) statusUpdate.fan_on = fanValue;
-  if (lightValue !== undefined) statusUpdate.light_on = lightValue;
-  if (alarmValue !== undefined) statusUpdate.alarm_on = alarmValue;
-  if (powerValue !== undefined) statusUpdate.power_on = powerValue;
+  // Build desired_state update (cloud writes desired only, never actual)
+  const desiredUpdate: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (fanValue !== undefined) desiredUpdate.desired_fan_on = fanValue;
+  if (lightValue !== undefined) desiredUpdate.desired_light_on = lightValue;
+  if (alarmValue !== undefined) desiredUpdate.desired_alarm_on = alarmValue;
   
   // Enable manual override when using manual control
   if (body.manual_override !== undefined) {
-    statusUpdate.manual_override = body.manual_override;
+    desiredUpdate.desired_manual_override = body.manual_override;
   } else {
-    statusUpdate.manual_override = true;
+    desiredUpdate.desired_manual_override = true;
   }
 
-  if (Object.keys(statusUpdate).length === 0) {
+  if (Object.keys(desiredUpdate).length <= 1) {
     return new Response(
       JSON.stringify({ error: 'No control values provided', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  // Update device status directly
+  // Update desired_state only (ESP32 decides final relay state)
   const { error: updateError } = await supabase
     .from('device_status')
-    .update(statusUpdate)
+    .update(desiredUpdate)
     .eq('user_id', userId);
 
   if (updateError) {
-    console.error('Error updating device status:', updateError);
+    console.error('Error updating desired state:', updateError);
     return new Response(
-      JSON.stringify({ error: 'Failed to update device status', code: 'UPDATE_FAILED' }),
+      JSON.stringify({ error: 'Failed to update desired state', code: 'UPDATE_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -2392,16 +2431,17 @@ async function handleManualControl(body: ManualControlPayload, supabase: any, us
     await supabase.from('device_commands').insert(commands);
   }
 
-  console.log(`Manual control applied: ${JSON.stringify(statusUpdate)} for device ${deviceName}`);
+  console.log(`Manual control desired_state: ${JSON.stringify(desiredUpdate)} for device ${deviceName}`);
 
   return new Response(
     JSON.stringify({ 
       success: true, 
-      message: 'Manual control applied',
+      message: 'Desired state updated (device decides final state)',
       device_id: deviceName,
-      status_updated: statusUpdate,
+      desired_state_updated: desiredUpdate,
       commands_queued: commands.length,
-      manual_override: statusUpdate.manual_override
+      manual_override: desiredUpdate.desired_manual_override ?? true,
+      note: 'ESP32 is the single source of truth. If safety_override is active, device will ignore desired state.'
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
@@ -2941,15 +2981,26 @@ async function handleFailsafeSync(
       });
     }
 
-    // 2. Update device status
+    // 2. Update device_status with ACTUAL state from ESP32 (device is source of truth)
+    // Cloud never writes actual relay state - only ESP32 does via sync
     const deviceStatusUpdate: Record<string, any> = {
       updated_at: now,
+      last_device_ack_at: now,
     };
+    // These are actual states reported by the device
     if (body.fan_on !== undefined) deviceStatusUpdate.fan_on = body.fan_on;
     if (body.light_on !== undefined) deviceStatusUpdate.light_on = body.light_on;
     if (body.alarm_on !== undefined) deviceStatusUpdate.alarm_on = body.alarm_on;
     if (body.power_on !== undefined) deviceStatusUpdate.power_on = body.power_on;
     if (body.fan_speed !== undefined) deviceStatusUpdate.fan_speed = body.fan_speed;
+    // Safety override from device
+    if (typeof (body as any).safety_override === 'boolean') {
+      deviceStatusUpdate.safety_override = (body as any).safety_override;
+      deviceStatusUpdate.safety_override_reason = (body as any).safety_override_reason || null;
+      if ((body as any).safety_override) {
+        deviceStatusUpdate.safety_override_at = now;
+      }
+    }
 
     await supabase
       .from('device_status')
@@ -3119,7 +3170,36 @@ async function handleFailsafeSync(
       farm_type: shedFarmType,
       broiler_age_days: broilerAgeDays,
       
-      // Device status from database (what cloud wants)
+      // Desired state (what cloud wants - ESP32 decides final)
+      desired_state: currentStatus ? {
+        fan_on: currentStatus.desired_fan_on ?? false,
+        light_on: currentStatus.desired_light_on ?? false,
+        alarm_on: currentStatus.desired_alarm_on ?? false,
+        heater_on: currentStatus.desired_heater_on ?? false,
+        fogger_on: currentStatus.desired_fogger_on ?? false,
+        circulation_fan_on: currentStatus.desired_circulation_fan_on ?? false,
+        manual_override: currentStatus.desired_manual_override ?? false,
+        fan_speed: currentStatus.desired_fan_speed ?? 'OFF',
+      } : null,
+      
+      // Actual state (what device last reported)
+      actual_state: currentStatus ? {
+        fan_on: currentStatus.fan_on,
+        light_on: currentStatus.light_on,
+        alarm_on: currentStatus.alarm_on,
+        power_on: currentStatus.power_on,
+        fan_speed: currentStatus.fan_speed,
+        manual_override: currentStatus.manual_override,
+        heater_on: currentStatus.heater_on ?? false,
+        fogger_on: currentStatus.fogger_on ?? false,
+        circulation_fan_on: currentStatus.circulation_fan_on ?? false,
+      } : null,
+      
+      // Safety override status
+      safety_override: currentStatus?.safety_override ?? false,
+      state_mismatch: currentStatus?.state_mismatch ?? false,
+      
+      // Legacy: device_status (kept for backward compatibility)
       device_status: currentStatus ? {
         fan_on: currentStatus.fan_on,
         light_on: currentStatus.light_on,
@@ -3133,7 +3213,7 @@ async function handleFailsafeSync(
       } : null,
       
       // Manual override status
-      manual_override: currentStatus?.manual_override ?? false,
+      manual_override: currentStatus?.desired_manual_override ?? currentStatus?.manual_override ?? false,
       
       // Pending commands for execution
       commands: pendingCommands || [],
