@@ -1,15 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+/**
+ * Bounded Override — DISPLAY ONLY
+ * 
+ * Override time limits and bio-range enforcement run on
+ * ESP32 firmware and backend safety-engine.
+ * This hook reads safety_status and provides display + command interface.
+ * 
+ * startOverride/endOverride still write to device_status (user intent),
+ * but the ENFORCEMENT (auto-revert, bio limits) is firmware-side.
+ */
+
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useSafetyStatus } from './useSafetyStatus';
+import { useSelectedShed } from './useSheds';
 import { toast } from 'sonner';
 
-// Biological hard limits — birds die outside this range
-const BIO_TEMP_MIN = 26; // °C
-const BIO_TEMP_MAX = 35; // °C
-
-// Timers
-const EXTREME_OVERRIDE_REVERT_MS = 15 * 60 * 1000; // 15 min for out-of-range
-const MAX_OVERRIDE_DURATION_MS = 20 * 60 * 1000;   // 20 min absolute max
+const BIO_TEMP_MIN = 26;
+const BIO_TEMP_MAX = 35;
 
 export interface OverrideRequest {
   reason: string;
@@ -26,145 +34,80 @@ export interface BoundedOverrideState {
 
 export function useBoundedOverride() {
   const { user, language } = useAuth();
-  const [state, setState] = useState<BoundedOverrideState>({
-    isOverrideActive: false,
-    overrideStartTime: null,
-    overrideReason: null,
-    isOutOfBioRange: false,
-    remainingSeconds: null,
-  });
+  const safety = useSafetyStatus();
+  const { selectedShedId } = useSelectedShed();
 
-  const revertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const clearTimers = useCallback(() => {
-    if (revertTimerRef.current) clearTimeout(revertTimerRef.current);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    revertTimerRef.current = null;
-    countdownRef.current = null;
-  }, []);
-
-  // Check if a target temperature is within biological safety
   const isWithinBioLimits = useCallback((temp: number) => {
     return temp >= BIO_TEMP_MIN && temp <= BIO_TEMP_MAX;
   }, []);
 
-  // Log override event to audit log
-  const logOverrideEvent = useCallback(async (
-    actionType: string,
-    reason: string,
-    oldValue?: Record<string, unknown>,
-    newValue?: Record<string, unknown>,
-  ) => {
+  // Send override request to device_status — firmware enforces limits
+  const startOverride = useCallback(async (request: OverrideRequest, _isOutOfRange: boolean) => {
     if (!user) return;
 
     try {
-      const { data: membership } = await supabase
-        .from('farm_members')
-        .select('farm_id')
+      await supabase
+        .from('device_status')
+        .update({
+          manual_override: true,
+          updated_at: new Date().toISOString(),
+        })
         .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
+        .eq('shed_id', selectedShedId || '');
 
-      await supabase.from('farm_audit_logs').insert([{
+      // Log override intent
+      await (supabase.from('farm_audit_logs') as any).insert({
         user_id: user.id,
-        farm_id: membership?.farm_id ?? null,
-        action_type: actionType,
+        action_type: 'override_requested',
         action_category: 'safety_override',
-        severity: actionType === 'override_bio_exceeded' ? 'critical' : 'warning',
+        severity: _isOutOfRange ? 'critical' : 'warning',
         source: 'app',
-        metadata: JSON.parse(JSON.stringify({ override_reason: reason })),
-        old_value: oldValue ? JSON.parse(JSON.stringify(oldValue)) : null,
-        new_value: newValue ? JSON.parse(JSON.stringify(newValue)) : null,
-      }]);
+        metadata: {
+          override_reason: request.reason,
+          target_temp: request.targetTemp,
+          is_out_of_range: _isOutOfRange,
+        },
+      });
+
+      toast.info(
+        language === 'bn' ? '⏱️ ম্যানুয়াল ওভাররাইড সক্রিয়' : '⏱️ Manual override activated',
+        { description: language === 'bn' ? 'ফার্মওয়্যার সময়সীমা প্রয়োগ করবে' : 'Firmware will enforce time limits' }
+      );
     } catch (err) {
-      console.error('Failed to log override event:', err);
+      console.error('Failed to start override:', err);
     }
-  }, [user]);
+  }, [user, selectedShedId, language]);
 
-  // Auto-revert function
-  const autoRevert = useCallback((reason: string) => {
-    clearTimers();
-    setState({
-      isOverrideActive: false,
-      overrideStartTime: null,
-      overrideReason: null,
-      isOutOfBioRange: false,
-      remainingSeconds: null,
-    });
+  // Send end-override request
+  const endOverride = useCallback(async () => {
+    if (!user) return;
 
-    logOverrideEvent('override_auto_reverted', reason);
+    try {
+      await supabase
+        .from('device_status')
+        .update({
+          manual_override: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .eq('shed_id', selectedShedId || '');
 
-    toast.warning(
-      language === 'bn'
-        ? '🛡️ সিস্টেম স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে গেছে'
-        : '🛡️ System automatically returned to AUTO mode',
-      {
-        description: language === 'bn'
-          ? 'ম্যানুয়াল ওভাররাইডের সময়সীমা শেষ হয়েছে'
-          : 'Manual override time limit expired',
-      }
-    );
-  }, [clearTimers, language, logOverrideEvent]);
-
-  // Start bounded override
-  const startOverride = useCallback((request: OverrideRequest, isOutOfRange: boolean) => {
-    const now = Date.now();
-    const revertMs = isOutOfRange ? EXTREME_OVERRIDE_REVERT_MS : MAX_OVERRIDE_DURATION_MS;
-
-    clearTimers();
-
-    setState({
-      isOverrideActive: true,
-      overrideStartTime: now,
-      overrideReason: request.reason,
-      isOutOfBioRange: isOutOfRange,
-      remainingSeconds: Math.floor(revertMs / 1000),
-    });
-
-    // Log the override start
-    logOverrideEvent(
-      isOutOfRange ? 'override_bio_exceeded' : 'override_started',
-      request.reason,
-      undefined,
-      { target_temp: request.targetTemp, is_out_of_range: isOutOfRange },
-    );
-
-    // Set auto-revert timer
-    revertTimerRef.current = setTimeout(() => {
-      autoRevert(isOutOfRange ? 'bio_limit_timeout_15m' : 'max_duration_timeout_20m');
-    }, revertMs);
-
-    // Countdown timer
-    const endTime = now + revertMs;
-    countdownRef.current = setInterval(() => {
-      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-      setState(prev => ({ ...prev, remainingSeconds: remaining }));
-      if (remaining <= 0) {
-        if (countdownRef.current) clearInterval(countdownRef.current);
-      }
-    }, 1000);
-  }, [clearTimers, logOverrideEvent, autoRevert]);
-
-  // End override (user manually re-enables automation)
-  const endOverride = useCallback(() => {
-    clearTimers();
-    if (state.isOverrideActive) {
-      logOverrideEvent('override_ended_by_user', state.overrideReason ?? 'manual');
+      toast.success(
+        language === 'bn' ? '✅ অটো মোডে ফিরে এসেছে' : '✅ Returned to AUTO mode'
+      );
+    } catch (err) {
+      console.error('Failed to end override:', err);
     }
-    setState({
-      isOverrideActive: false,
-      overrideStartTime: null,
-      overrideReason: null,
-      isOutOfBioRange: false,
-      remainingSeconds: null,
-    });
-  }, [clearTimers, logOverrideEvent, state.isOverrideActive, state.overrideReason]);
+  }, [user, selectedShedId, language]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => clearTimers();
-  }, [clearTimers]);
+  // Read state from safety_status (display-only)
+  const state: BoundedOverrideState = {
+    isOverrideActive: safety.overrideActive,
+    overrideStartTime: null,
+    overrideReason: safety.status.override_reason,
+    isOutOfBioRange: safety.status.override_out_of_bio_range,
+    remainingSeconds: safety.overrideRemainingSeconds,
+  };
 
   return {
     ...state,

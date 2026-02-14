@@ -3171,6 +3171,168 @@ export type Database = {
         }
         Relationships: []
       }
+      safety_status: {
+        Row: {
+          airflow_consecutive_failures: number
+          airflow_fail_reason: string | null
+          airflow_ineffective: boolean
+          airflow_last_verified_at: string | null
+          airflow_verified: boolean
+          created_at: string
+          current_temp_rate: number
+          emergency_active: boolean
+          emergency_priority: string | null
+          farm_id: string | null
+          force_ventilation: boolean
+          heater_allowed: boolean
+          heater_authority_percent: number
+          heater_blocked_reason: string | null
+          heater_runtime_ms: number
+          hsi_fan_activated: boolean
+          hsi_level: string | null
+          hsi_value: number | null
+          id: string
+          last_updated_by: string
+          locked_relays: string[]
+          mandatory_fan_pulse_active: boolean
+          min_vent_duty_required: boolean
+          motor_runtime_ms: number
+          override_active: boolean
+          override_out_of_bio_range: boolean
+          override_reason: string | null
+          override_remaining_seconds: number | null
+          plausibility_degraded: boolean
+          plausibility_reason: string | null
+          rapid_temp_rise_detected: boolean
+          relay_violations: number
+          safe_mode_active: boolean
+          safe_mode_until: string | null
+          sensor_drift_detected: boolean
+          sensor_drift_reason: string | null
+          sensor_issues: Json
+          sensor_state: Json
+          shed_id: string | null
+          stuck_relay_detected: string | null
+          survival_fan_on: boolean
+          survival_heater_on: boolean
+          survival_mode: boolean
+          system_state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          airflow_consecutive_failures?: number
+          airflow_fail_reason?: string | null
+          airflow_ineffective?: boolean
+          airflow_last_verified_at?: string | null
+          airflow_verified?: boolean
+          created_at?: string
+          current_temp_rate?: number
+          emergency_active?: boolean
+          emergency_priority?: string | null
+          farm_id?: string | null
+          force_ventilation?: boolean
+          heater_allowed?: boolean
+          heater_authority_percent?: number
+          heater_blocked_reason?: string | null
+          heater_runtime_ms?: number
+          hsi_fan_activated?: boolean
+          hsi_level?: string | null
+          hsi_value?: number | null
+          id?: string
+          last_updated_by?: string
+          locked_relays?: string[]
+          mandatory_fan_pulse_active?: boolean
+          min_vent_duty_required?: boolean
+          motor_runtime_ms?: number
+          override_active?: boolean
+          override_out_of_bio_range?: boolean
+          override_reason?: string | null
+          override_remaining_seconds?: number | null
+          plausibility_degraded?: boolean
+          plausibility_reason?: string | null
+          rapid_temp_rise_detected?: boolean
+          relay_violations?: number
+          safe_mode_active?: boolean
+          safe_mode_until?: string | null
+          sensor_drift_detected?: boolean
+          sensor_drift_reason?: string | null
+          sensor_issues?: Json
+          sensor_state?: Json
+          shed_id?: string | null
+          stuck_relay_detected?: string | null
+          survival_fan_on?: boolean
+          survival_heater_on?: boolean
+          survival_mode?: boolean
+          system_state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          airflow_consecutive_failures?: number
+          airflow_fail_reason?: string | null
+          airflow_ineffective?: boolean
+          airflow_last_verified_at?: string | null
+          airflow_verified?: boolean
+          created_at?: string
+          current_temp_rate?: number
+          emergency_active?: boolean
+          emergency_priority?: string | null
+          farm_id?: string | null
+          force_ventilation?: boolean
+          heater_allowed?: boolean
+          heater_authority_percent?: number
+          heater_blocked_reason?: string | null
+          heater_runtime_ms?: number
+          hsi_fan_activated?: boolean
+          hsi_level?: string | null
+          hsi_value?: number | null
+          id?: string
+          last_updated_by?: string
+          locked_relays?: string[]
+          mandatory_fan_pulse_active?: boolean
+          min_vent_duty_required?: boolean
+          motor_runtime_ms?: number
+          override_active?: boolean
+          override_out_of_bio_range?: boolean
+          override_reason?: string | null
+          override_remaining_seconds?: number | null
+          plausibility_degraded?: boolean
+          plausibility_reason?: string | null
+          rapid_temp_rise_detected?: boolean
+          relay_violations?: number
+          safe_mode_active?: boolean
+          safe_mode_until?: string | null
+          sensor_drift_detected?: boolean
+          sensor_drift_reason?: string | null
+          sensor_issues?: Json
+          sensor_state?: Json
+          shed_id?: string | null
+          stuck_relay_detected?: string | null
+          survival_fan_on?: boolean
+          survival_heater_on?: boolean
+          survival_mode?: boolean
+          system_state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_status_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_status_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_notifications: {
         Row: {
           advisory_type: string | null

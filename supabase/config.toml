@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.notification-escalation]
 verify_jwt = false
+
+[functions.safety-engine]
+verify_jwt = false
