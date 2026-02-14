@@ -51,6 +51,7 @@ import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
 import { AppDocumentation } from '@/components/admin/AppDocumentation';
 import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
+import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 
 const t = {
   bn: {
@@ -553,7 +554,7 @@ export default function AdminPage() {
 
           <TabsContent value="system" className="mt-4 space-y-4">
             <SystemHealthCard language={language} />
-            
+            <ForensicTimelineCard />
             {/* Calibration Wizard Card */}
             <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
               <CardHeader className="border-b border-cyan-500/10">

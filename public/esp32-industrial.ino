@@ -715,6 +715,52 @@ void updateActuatorEffectTracking();
 void updateThermalModel();
 void updateWorstCaseSensors();
 
+// Forensic Logging
+void recordForensicEntry(String eventType, String eventDetail);
+void recordRelayMismatch();
+
+// ─── Forensic logging state ───
+#define FORENSIC_LOG_INTERVAL_MS      60000UL   // Periodic log every 60s
+#define FORENSIC_MISMATCH_INTERVAL_MS 10000UL   // Mismatch check every 10s
+unsigned long lastForensicLog = 0;
+unsigned long lastMismatchCheck = 0;
+
+// Env response tracking (1min and 5min deltas)
+float tempHistory1min[6] = {0};  // 6 slots × 10s = 60s history
+float tempHistory5min[30] = {0}; // 30 slots × 10s = 300s history
+float humHistory1min[6] = {0};
+int tempHistIdx = 0;
+int tempHist5Idx = 0;
+unsigned long lastHistUpdate = 0;
+
+void updateEnvironmentHistory() {
+  unsigned long now = millis();
+  if (!intervalPassed(now, lastHistUpdate, 10000UL)) return;
+  lastHistUpdate = now;
+  
+  tempHistory1min[tempHistIdx % 6] = temperature;
+  humHistory1min[tempHistIdx % 6] = humidity;
+  tempHistIdx++;
+  
+  tempHistory5min[tempHist5Idx % 30] = temperature;
+  tempHist5Idx++;
+}
+
+float getTempDelta1min() {
+  if (tempHistIdx < 6) return 0;
+  return temperature - tempHistory1min[(tempHistIdx - 6) % 6];
+}
+
+float getTempDelta5min() {
+  if (tempHist5Idx < 30) return 0;
+  return temperature - tempHistory5min[(tempHist5Idx - 30) % 30];
+}
+
+float getHumDelta1min() {
+  if (tempHistIdx < 6) return 0;
+  return humidity - humHistory1min[(tempHistIdx - 6) % 6];
+}
+
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 5: HELPER FUNCTIONS                                          ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
@@ -1269,6 +1315,14 @@ void relayManagerApply() {
   // Start protection window if any relay actually changed
   if (changed) {
     lastRelayChangeTime = now;
+    // ═══ FORENSIC: Log every relay state change with requested vs actual ═══
+    String detail = "";
+    if (fanChange) detail += "FAN:" + String(relayTarget.fan?"REQ_ON":"REQ_OFF") + "→" + String(fanOn?"ON":"OFF") + " ";
+    if (heaterChange) detail += "HTR:" + String(relayTarget.heater?"REQ_ON":"REQ_OFF") + "→" + String(heaterOn?"ON":"OFF") + " ";
+    if (foggerChange) detail += "FOG:" + String(relayTarget.fogger?"REQ_ON":"REQ_OFF") + "→" + String(foggerOn?"ON":"OFF") + " ";
+    if (alarmChange) detail += "ALM:" + String(relayTarget.alarm?"REQ_ON":"REQ_OFF") + "→" + String(alarmOn?"ON":"OFF") + " ";
+    if (circChange) detail += "CIRC:" + String(relayTarget.circulationFan?"REQ_ON":"REQ_OFF") + "→" + String(circulationFanOn?"ON":"OFF");
+    recordForensicEntry("relay_change", detail);
   }
 
   // Lighting PWM fade (not gated by relay protection — gradual, no chattering risk)
@@ -3133,6 +3187,131 @@ void callBackendSafetyEngine() {
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  SECTION 16.6: FORENSIC LOGGING                                        ║
+// ║  Records: requested relay state, actual relay state, environment       ║
+// ║  response. Sent to backend for 24h safety timeline storage.            ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+void recordForensicEntry(String eventType, String eventDetail) {
+  if (!wifiConnected) return; // Only log when online (offline entries handled by offline buffer)
+  
+  HTTPClient http;
+  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/safety-engine?action=forensic_log";
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhid2Z1dnFyZmd0ZWZvemFqeWZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMDI5ODksImV4cCI6MjA4NTU3ODk4OX0.3yCPVRrzrfvpwBIBKITkfm-Y3dsVzo_QUzVs3RNlHC8");
+  http.setTimeout(3000);
+  esp_task_wdt_reset();
+
+  DynamicJsonDocument doc(2048);
+  doc["user_id"] = activeFarmId;
+  doc["farm_id"] = activeFarmId;
+  doc["shed_id"] = activeShedId;
+  doc["system_state"] = stateNames[currentState];
+  doc["uptime_ms"] = (long)millis();
+  
+  // Requested relay state (what software wanted)
+  doc["requested_fan"] = relayTarget.fan;
+  doc["requested_fan_speed"] = relayTarget.fanSpeed;
+  doc["requested_heater"] = relayTarget.heater;
+  doc["requested_fogger"] = relayTarget.fogger;
+  doc["requested_alarm"] = relayTarget.alarm;
+  doc["requested_circulation_fan"] = relayTarget.circulationFan;
+  
+  // Actual relay state (what hardware reports)
+  doc["actual_fan"] = fanOn;
+  doc["actual_fan_speed"] = fanSpeed;
+  doc["actual_heater"] = heaterOn;
+  doc["actual_fogger"] = foggerOn;
+  doc["actual_alarm"] = alarmOn;
+  doc["actual_circulation_fan"] = circulationFanOn;
+  
+  // Relay mismatch detection
+  bool mismatch = (relayTarget.fan != fanOn) || (relayTarget.heater != heaterOn) ||
+                  (relayTarget.fogger != foggerOn) || (relayTarget.alarm != alarmOn) ||
+                  (relayTarget.circulationFan != circulationFanOn);
+  doc["relay_mismatch"] = mismatch;
+  if (mismatch) {
+    String details = "";
+    if (relayTarget.fan != fanOn) details += "FAN(req=" + String(relayTarget.fan) + " act=" + String(fanOn) + ") ";
+    if (relayTarget.heater != heaterOn) details += "HTR(req=" + String(relayTarget.heater) + " act=" + String(heaterOn) + ") ";
+    if (relayTarget.fogger != foggerOn) details += "FOG(req=" + String(relayTarget.fogger) + " act=" + String(foggerOn) + ") ";
+    if (relayTarget.alarm != alarmOn) details += "ALM(req=" + String(relayTarget.alarm) + " act=" + String(alarmOn) + ") ";
+    doc["mismatch_details"] = details;
+  }
+  
+  // Environment snapshot
+  doc["temperature"] = temperature;
+  doc["temperature2"] = dht2Available ? temperature2 : (float)NAN;
+  doc["worst_case_max_temp"] = worstCaseMaxTemp;
+  doc["worst_case_min_temp"] = worstCaseMinTemp;
+  doc["humidity"] = humidity;
+  doc["ammonia"] = ammonia;
+  doc["water_usage"] = waterFlow;
+  doc["hsi_value"] = currentHSI;
+  
+  // Environment response deltas
+  doc["temp_delta_1min"] = getTempDelta1min();
+  doc["temp_delta_5min"] = getTempDelta5min();
+  doc["humidity_delta_1min"] = getHumDelta1min();
+  
+  // Safety state
+  doc["safety_override_active"] = safetyEngine.state != STATE_NORMAL;
+  doc["heater_allowed"] = !safetyEngine.isHeaterLocked();
+  doc["force_ventilation"] = safetyEngine.isVentPurgeActive() || emergencySurvivalMode;
+  doc["fan_effect_verified"] = fanEffectVerified;
+  doc["fan_effect_failures"] = fanEffectFailures;
+  doc["heater_effect_verified"] = heaterEffectVerified;
+  doc["heater_effect_failures"] = heaterEffectFailures;
+  doc["thermal_model_plausible"] = thermalModelPlausible;
+  doc["thermal_model_deviation"] = thermalModelDeviation;
+  
+  // Manual override
+  doc["manual_override_active"] = localManualOverride;
+  
+  // Reboot safety
+  doc["reboot_heater_locked"] = safetyEngine.isHeaterLocked();
+  doc["reboot_vent_purge"] = safetyEngine.isVentPurgeActive();
+  doc["reboot_nh3_muted"] = safetyEngine.isNH3AlertMuted();
+  
+  // Event type
+  doc["event_type"] = eventType;
+  doc["event_detail"] = eventDetail;
+  doc["source"] = "firmware";
+
+  String payload;
+  serializeJson(doc, payload);
+  int code = http.POST(payload);
+  esp_task_wdt_reset();
+
+  if (code != 200) {
+    Serial.printf("⚠️ Forensic log: HTTP %d\n", code);
+  }
+  http.end();
+}
+
+void recordRelayMismatch() {
+  // Detect if actual GPIO state differs from what we think it is
+  bool gpioFan = (digitalRead(FAN_RELAY_PIN) == LOW);
+  bool gpioHeater = (digitalRead(HEATER_RELAY_PIN) == LOW);
+  bool gpioAlarm = (digitalRead(ALARM_RELAY_PIN) == LOW);
+  
+  bool hardwareMismatch = (gpioFan != fanOn) || (gpioHeater != heaterOn) || (gpioAlarm != alarmOn);
+  bool softwareMismatch = (relayTarget.fan != fanOn) || (relayTarget.heater != heaterOn);
+  
+  if (hardwareMismatch || softwareMismatch) {
+    String detail = "HW_MISMATCH:";
+    if (gpioFan != fanOn) detail += " FAN(gpio=" + String(gpioFan) + " sw=" + String(fanOn) + ")";
+    if (gpioHeater != heaterOn) detail += " HTR(gpio=" + String(gpioHeater) + " sw=" + String(heaterOn) + ")";
+    if (gpioAlarm != alarmOn) detail += " ALM(gpio=" + String(gpioAlarm) + " sw=" + String(alarmOn) + ")";
+    if (softwareMismatch) detail += " SW_MISMATCH";
+    
+    Serial.println("🔴 FORENSIC: " + detail);
+    recordForensicEntry("relay_mismatch", detail);
+  }
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 17: MAIN LOOP (non-blocking, millis-based)                   ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
@@ -3176,6 +3355,9 @@ void loop() {
   // --- Automation Engine (single decision loop) ---
   automationEngineTick();
 
+  // --- Environment history for forensic deltas ---
+  updateEnvironmentHistory();
+
   // --- Actuator Effect Validation + Thermal Model ---
   updateActuatorEffectTracking();
   updateThermalModel();
@@ -3185,6 +3367,16 @@ void loop() {
 
   // --- Relay Manager (single hardware write point) ---
   relayManagerApply();
+
+  // --- Forensic logging (periodic + mismatch detection) ---
+  if (intervalPassed(now, lastForensicLog, FORENSIC_LOG_INTERVAL_MS)) {
+    lastForensicLog = now;
+    recordForensicEntry("periodic", stateNames[currentState]);
+  }
+  if (intervalPassed(now, lastMismatchCheck, FORENSIC_MISMATCH_INTERVAL_MS)) {
+    lastMismatchCheck = now;
+    recordRelayMismatch();
+  }
 
   // --- Cloud Sync (overflow-safe) ---
   if (wifiConnected && intervalPassed(now, lastCloudSyncAttempt, CLOUD_SYNC_INTERVAL)) {
