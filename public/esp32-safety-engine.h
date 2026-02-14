@@ -1,23 +1,23 @@
 /**
- * ESP32 Offline-First Safety Engine v2.0
+ * ESP32 Invariant-Based Safety Arbiter v3.0
  * FarmEye Poultry Controller
  * 
- * Hard safety rules that ALWAYS override cloud commands.
- * Works without internet. Stores last valid config in NVS flash.
- * 
- * v2.0 Changes:
- *   - Actuator effect validation (fan must cool, heater must heat)
- *   - Thermal model plausibility (±3°C deviation = sensor invalid)
- *   - Worst-case sensor selection (max temp for cooling, min for heating)
- *   - Post-reboot safety protocol (3 min heater lockout, vent purge, NH3 mute)
- *   - Bird age jump rejection (>2 days/24h blocked)
- *   - Backend safety-engine integration (60s periodic call)
- * 
- * Include this header in your main esp32-industrial.ino
- * Usage: #include "esp32-safety-engine.h"
- * 
- * NOTE: All duration math uses unsigned subtraction which is
- * inherently overflow-safe for unsigned long (wraps at ~49.7 days).
+ * ARCHITECTURE: Invariant-based, NOT state-based.
+ * Safety invariants are evaluated every 500ms INDEPENDENTLY of automation.
+ * The arbiter directly writes to GPIO pins, bypassing the relay manager.
+ * No configuration, mode, override, or timer can suppress a safety invariant.
+ *
+ * INVARIANTS (must NEVER be violated):
+ *   INV-1: If temp > lethal_high → ventilation forced continuously
+ *   INV-2: If temp < lethal_low  → heating allowed regardless of mode
+ *   INV-3: Actuator protection timers cannot block safety reactions
+ *   INV-4: Manual override cannot disable safety evaluation
+ *   INV-5: OTA update cannot pause safety loop
+ *   INV-6: Multiple logical devices cannot share physical pin
+ *   INV-7: Missing/unreliable sensor → worst-case survival environment
+ *   INV-8: Notification channels escalate independently of connectivity
+ *
+ * Include: #include "esp32-safety-engine.h"
  */
 
 #ifndef SAFETY_ENGINE_H
@@ -25,142 +25,138 @@
 
 #include <Preferences.h>
 
-// Overflow-safe elapsed time (same as in main firmware)
+// Overflow-safe elapsed time
 #ifndef SAFE_ELAPSED_DEFINED
 #define SAFE_ELAPSED_DEFINED
 inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
-  return now - since;  // unsigned subtraction handles overflow
+  return now - since;
 }
 #endif
 
-// ─── SAFETY CONSTANTS (non-negotiable) ───
-#define SAFE_TEMP_MAX          38.0f   // °C → force all fans ON
-#define SAFE_TEMP_MIN          28.0f   // °C → heater ON
-#define HEATER_MAX_RUN_SEC     300     // 5 minutes max continuous
-#define HEATER_COOLDOWN_SEC    120     // 2 minutes cooldown
-#define MOTOR_MAX_RUN_SEC      120     // 2 minutes max continuous
-#define SENSOR_TIMEOUT_MS      20000   // 20s no update → SAFE MODE
-#define CLOUD_TIMEOUT_MS       60000   // 60s no cloud → OFFLINE MODE
-#define WDT_TIMEOUT_SEC        10      // Watchdog: 10s loop stuck → reset
-#define RELAY_ACTIVE           LOW     // Active-LOW relay logic
+// ─── SAFETY INVARIANT CONSTANTS (non-negotiable, cannot be overridden) ───
+#define SAFETY_ARBITER_INTERVAL_MS   500       // Arbiter runs every 500ms
+#define LETHAL_TEMP_HIGH             38.0f     // °C → INV-1: force all ventilation
+#define LETHAL_TEMP_LOW              15.0f     // °C → INV-2: force heating
+#define SURVIVABLE_TEMP_HIGH         35.0f     // °C → warning threshold
+#define SURVIVABLE_TEMP_LOW          20.0f     // °C → warning threshold
+#define HEATER_MAX_CONTINUOUS_SEC    300       // 5 min max, then cooldown
+#define HEATER_COOLDOWN_SEC          120       // 2 min cooldown
+#define SENSOR_MISSING_TIMEOUT_MS    20000     // 20s → INV-7: survival mode
+#define CLOUD_OFFLINE_TIMEOUT_MS     60000     // 60s → offline autonomous
+#define WDT_TIMEOUT_SEC              10
+#define RELAY_ACTIVE_LOW             LOW
 
 // ─── ACTUATOR EFFECT VALIDATION ───
-#define EFFECT_VALIDATION_WINDOW_MS  360000UL  // 6 minutes observation window
-#define FAN_EXPECTED_COOLING_C       0.5f      // Must drop ≥0.5°C when fan ON 6 min
-#define HEATER_EXPECTED_HEATING_C    1.0f      // Must rise ≥1.0°C when heater ON 6 min
-#define EFFECT_CHECK_INTERVAL_MS     60000UL   // Check every 60s
+#define EFFECT_WINDOW_MS             360000UL  // 6 min observation
+#define FAN_MIN_COOLING_C            0.5f
+#define HEATER_MIN_HEATING_C         1.0f
 
-// ─── THERMAL MODEL PLAUSIBILITY ───
-#define THERMAL_MODEL_MAX_DEVIATION  3.0f      // °C deviation from expected → sensor invalid
-#define THERMAL_HEATER_RATE          0.06f     // Expected °C/min when heater ON
-#define THERMAL_FAN_RATE            -0.04f     // Expected °C/min when fan ON (cooling)
-#define THERMAL_PASSIVE_RATE         0.0f      // Expected °C/min when idle
+// ─── THERMAL MODEL ───
+#define THERMAL_MAX_DEVIATION_C      3.0f
+#define THERMAL_HEATER_RATE_PER_MIN  0.06f
+#define THERMAL_FAN_RATE_PER_MIN    -0.04f
 
 // ─── POST-REBOOT SAFETY ───
-#define REBOOT_HEATER_LOCKOUT_MS     180000UL  // 3 minutes heater disabled after reboot
-#define REBOOT_VENT_PURGE_MS         180000UL  // 3 minutes forced ventilation after reboot
-#define REBOOT_NH3_ALERT_MUTE_MS     300000UL  // 5 minutes NH3 alerts muted (vent still active)
+#define REBOOT_HEATER_LOCKOUT_MS     180000UL
+#define REBOOT_VENT_PURGE_MS         180000UL
+#define REBOOT_NH3_MUTE_MS           300000UL
 
 // ─── BIRD AGE VALIDATION ───
-#define AGE_MIN_DAYS             0
-#define AGE_MAX_DAYS             60
-#define AGE_MAX_JUMP_PER_24H     2
+#define AGE_MIN_DAYS                 0
+#define AGE_MAX_DAYS                 60
+#define AGE_MAX_JUMP_PER_24H         2
 
-// ─── BACKEND SAFETY ENGINE INTEGRATION ───
-#define SAFETY_ENGINE_CALL_INTERVAL_MS  60000UL  // Call backend every 60 seconds
+// ─── BACKEND SAFETY ENGINE ───
+#define SAFETY_ENGINE_CALL_INTERVAL_MS 60000UL
 
-// ─── SAFETY STATES ───
-enum SafetyState {
-  STATE_NORMAL,
-  STATE_SAFE_MODE,
-  STATE_OFFLINE_AUTONOMOUS,
-  STATE_EMERGENCY_HEAT,
-  STATE_EMERGENCY_COOL,
-  STATE_SENSOR_FAIL,
-  STATE_ACTUATOR_FAIL,
-  STATE_SURVIVAL
-};
+// ─── GPIO VALIDATION ───
+#define MAX_GPIO_PINS                40
 
-// ─── STORED AUTOMATION PROFILE ───
-struct AutomationProfile {
-  float temp_min;
-  float temp_max;
-  float humidity_min;
-  float humidity_max;
-  float ammonia_max;
-  bool  fan_enabled;
-  bool  heater_enabled;
-  bool  fogger_enabled;
-  bool  light_on;
-  uint32_t checksum;
-};
-
-// ─── DEVICE TIMERS ───
-struct DeviceTimer {
-  unsigned long startedAt;
-  unsigned long stoppedAt;
-  bool running;
+// ─── SAFETY ARBITER RESULT (what the arbiter decided THIS tick) ───
+struct SafetyArbiterResult {
+  bool forceFanOn;           // INV-1, INV-7: fan MUST be on
+  bool forceHeaterOff;       // INV-1: heater MUST be off (overheat)
+  bool forceHeaterOn;        // INV-2: heater MUST be on (cold)
+  bool sensorSurvivalMode;   // INV-7: no reliable sensor data
+  bool safetyActive;         // Any invariant is currently being enforced
+  const char* reason;        // Human-readable reason for safety action
 };
 
 // ─── ACTUATOR EFFECT TRACKER ───
 struct ActuatorEffectTracker {
-  float tempAtStart;          // Temperature when actuator was turned ON
-  unsigned long onSince;      // millis() when turned ON
-  bool tracking;              // Currently tracking effect
-  int consecutiveFailures;    // How many consecutive effect checks failed
-  bool effectVerified;        // Last check passed
+  float tempAtStart;
+  unsigned long onSince;
+  bool tracking;
+  int consecutiveFailures;
+  bool effectVerified;
 };
 
 // ─── THERMAL MODEL STATE ───
 struct ThermalModelState {
-  float expectedTemp;          // What temp SHOULD be based on actuator activity
-  float lastModelUpdate;       // When model was last recalculated
-  bool sensorPlausible;        // Is current reading within model bounds
-  int implausibleCount;        // Consecutive implausible readings
-  String implausibleReason;    // Why sensor is considered implausible
+  float expectedTemp;
+  float lastModelUpdate;
+  bool sensorPlausible;
+  int implausibleCount;
+  String implausibleReason;
 };
 
 // ─── REBOOT SAFETY STATE ───
 struct RebootSafetyState {
-  bool heaterLocked;           // Heater disabled post-reboot
-  bool ventPurgeActive;        // Forced ventilation post-reboot
-  bool nh3AlertsMuted;         // NH3 alerts muted (vent still responds)
-  unsigned long bootTime;      // millis() at boot
+  bool heaterLocked;
+  bool ventPurgeActive;
+  bool nh3AlertsMuted;
+  unsigned long bootTime;
 };
 
 // ─── AGE VALIDATION STATE ───
 struct AgeValidationState {
   int lastAcceptedAge;
-  unsigned long lastAgeChangeTime;  // millis() of last accepted age change
+  unsigned long lastAgeChangeTime;
   int rejectedCount;
+};
+
+// ─── GPIO ASSIGNMENT RECORD (for INV-6 validation) ───
+struct GpioAssignment {
+  int pin;
+  const char* deviceName;
 };
 
 class SafetyEngine {
 public:
-  SafetyState state;
+  SafetyArbiterResult lastResult;
   ActuatorEffectTracker fanEffect;
   ActuatorEffectTracker heaterEffect;
   ThermalModelState thermalModel;
   RebootSafetyState rebootSafety;
   AgeValidationState ageValidation;
   
-  // Worst-case sensor values (from dual DHT22)
-  float worstCaseMaxTemp;    // MAX of both sensors (for cooling decisions)
-  float worstCaseMinTemp;    // MIN of both sensors (for heating decisions)
+  // Worst-case sensor values
+  float worstCaseMaxTemp;
+  float worstCaseMinTemp;
   bool dualSensorAvailable;
   
   // Backend safety engine
   unsigned long lastSafetyEngineCall;
   bool backendSafetyActive;
   
-  SafetyEngine() : state(STATE_NORMAL) {
+  // GPIO validation
+  bool gpioConflictDetected;
+  String gpioConflictDetail;
+  
+  // Arbiter timing
+  unsigned long lastArbiterTick;
+  
+  // Direct GPIO pin references (set by firmware at init)
+  int fanPin;
+  int heaterPin;
+  int alarmPin;
+
+  SafetyEngine() {
     _lastSensorUpdate = 0;
     _lastCloudSync = 0;
-    _heaterTimer = {0, 0, false};
-    _motorTimers[0] = {0, 0, false};
-    _motorTimers[1] = {0, 0, false};
-    _motorTimers[2] = {0, 0, false};
-    _safetyOverride = false;
+    _heaterRunning = false;
+    _heaterStartedAt = 0;
+    _heaterStoppedAt = 0;
     
     fanEffect = {0, 0, false, 0, false};
     heaterEffect = {0, 0, false, 0, false};
@@ -173,112 +169,218 @@ public:
     dualSensorAvailable = false;
     lastSafetyEngineCall = 0;
     backendSafetyActive = false;
+    gpioConflictDetected = false;
+    gpioConflictDetail = "";
+    lastArbiterTick = 0;
+    fanPin = -1;
+    heaterPin = -1;
+    alarmPin = -1;
+    
+    lastResult = {false, false, false, false, false, "INIT"};
   }
 
-  // ─── INIT: Call in setup() ───
-  void begin() {
+  // ─── INIT ───
+  void begin(int _fanPin, int _heaterPin, int _alarmPin) {
     esp_task_wdt_init(WDT_TIMEOUT_SEC, true);
     esp_task_wdt_add(NULL);
-    _loadProfile();
     
-    _lastSensorUpdate = millis();
-    _lastCloudSync = millis();
+    fanPin = _fanPin;
+    heaterPin = _heaterPin;
+    alarmPin = _alarmPin;
+    
     rebootSafety.bootTime = millis();
     rebootSafety.heaterLocked = true;
     rebootSafety.ventPurgeActive = true;
     rebootSafety.nh3AlertsMuted = true;
-    state = STATE_NORMAL;
+    _lastSensorUpdate = millis();
+    _lastCloudSync = millis();
+    lastArbiterTick = millis();
     
     // Load last accepted age from NVS
     Preferences prefs;
     prefs.begin("age_safety", true);
     ageValidation.lastAcceptedAge = prefs.getInt("last_age", 0);
-    ageValidation.lastAgeChangeTime = 0; // Reset on reboot (millis-based)
+    ageValidation.lastAgeChangeTime = 0;
     prefs.end();
     
-    Serial.println(F("[SAFETY] Engine v2.0 started"));
-    Serial.println(F("[SAFETY] Post-reboot: heater LOCKED 3min, vent PURGE 3min, NH3 alerts MUTED 5min"));
+    Serial.println(F("[SAFETY] Invariant-Based Arbiter v3.0 started"));
+    Serial.println(F("[SAFETY] Post-reboot: heater LOCKED 3min, vent PURGE 3min, NH3 MUTED 5min"));
   }
 
-  // ─── MAIN TICK ───
-  bool tick(float temperature, float humidity, float ammonia, 
-            bool sensorValid, bool fanOn, bool heaterOn,
-            float temp2 = NAN, bool dht2ok = false) {
+  // ═══════════════════════════════════════════════════════════════════
+  // INV-6: GPIO CONFLICT VALIDATION (call at boot)
+  // Detects duplicate GPIO assignments that could cause pin conflicts.
+  // Returns false if conflict found (firmware should HALT).
+  // ═══════════════════════════════════════════════════════════════════
+  bool validateGpioAssignments(GpioAssignment* assignments, int count) {
+    gpioConflictDetected = false;
+    gpioConflictDetail = "";
+    
+    for (int i = 0; i < count; i++) {
+      for (int j = i + 1; j < count; j++) {
+        if (assignments[i].pin == assignments[j].pin) {
+          gpioConflictDetected = true;
+          gpioConflictDetail = String("CONFLICT: GPIO ") + String(assignments[i].pin) + 
+            " shared by '" + String(assignments[i].deviceName) + 
+            "' and '" + String(assignments[j].deviceName) + "'";
+          Serial.println("[SAFETY] 🔴 " + gpioConflictDetail);
+          return false;
+        }
+      }
+    }
+    Serial.printf("[SAFETY] ✅ GPIO validation passed (%d pins, 0 conflicts)\n", count);
+    return true;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SAFETY ARBITER: The core 500ms invariant enforcer.
+  // 
+  // This function evaluates ALL safety invariants and DIRECTLY writes
+  // to GPIO pins when a violation is detected. It does NOT go through
+  // the relay manager, automation engine, or any other abstraction.
+  //
+  // It CANNOT be blocked by:
+  //   - Manual override
+  //   - OTA update
+  //   - Relay protection timers
+  //   - Stabilizing mode
+  //   - Power recovery purge
+  //   - Any state machine transition
+  //
+  // Call this from loop() BEFORE and AFTER all other processing.
+  // ═══════════════════════════════════════════════════════════════════
+  SafetyArbiterResult arbiterTick(
+    float temperature, float humidity, float ammonia,
+    bool sensorValid, bool fanCurrentlyOn, bool heaterCurrentlyOn,
+    float temp2, bool dht2ok
+  ) {
     esp_task_wdt_reset();
     unsigned long now = millis();
-    _safetyOverride = false;
-
-    // ── Update worst-case sensor values ──
+    
+    // Rate limit to 500ms
+    if (_safeElapsed(now, lastArbiterTick) < SAFETY_ARBITER_INTERVAL_MS) {
+      return lastResult;
+    }
+    lastArbiterTick = now;
+    
+    // Start fresh
+    SafetyArbiterResult result = {false, false, false, false, false, "NORMAL"};
+    
+    // ── Update worst-case sensors ──
     updateWorstCase(temperature, temp2, dht2ok);
     
-    // ── Post-reboot safety protocol ──
+    // ── Post-reboot protocol ──
     checkRebootSafety(now);
     
-    // ── Sensor timeout (overflow-safe) ──
+    // ── Update sensor timestamp ──
     if (sensorValid) _lastSensorUpdate = now;
-    if (_safeElapsed(now, _lastSensorUpdate) > SENSOR_TIMEOUT_MS) {
-      _enterSafeMode("SENSOR_TIMEOUT");
-      return true;
+    
+    // ══════════════════════════════════════════════════════════════
+    // INV-7: MISSING/UNRELIABLE SENSOR → WORST-CASE SURVIVAL
+    // If no valid sensor data for 20s, assume worst case:
+    //   - Force ventilation ON (prevents heat death)
+    //   - Force heater OFF (prevents fire/overheat)
+    // This is NOT a state — it's a continuous invariant.
+    // ══════════════════════════════════════════════════════════════
+    if (_safeElapsed(now, _lastSensorUpdate) > SENSOR_MISSING_TIMEOUT_MS || !sensorValid) {
+      result.forceFanOn = true;
+      result.forceHeaterOff = true;
+      result.sensorSurvivalMode = true;
+      result.safetyActive = true;
+      result.reason = "INV7_SENSOR_MISSING";
+      _directWriteRelay(fanPin, true);     // Fan ON
+      _directWriteRelay(heaterPin, false); // Heater OFF
+      lastResult = result;
+      return result;
     }
-    if (!sensorValid) return _safetyOverride;
-
-    // ── Thermal model plausibility ──
-    checkThermalPlausibility(temperature, fanOn, heaterOn, now);
+    
+    // ══════════════════════════════════════════════════════════════
+    // INV-1: LETHAL HIGH TEMPERATURE → FORCED CONTINUOUS VENTILATION
+    // If ANY sensor reads above lethal threshold, ALL fans ON.
+    // No duty cycle. No timer. No off period. CONTINUOUS.
+    // ══════════════════════════════════════════════════════════════
+    float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+    if (safetyTemp > LETHAL_TEMP_HIGH) {
+      result.forceFanOn = true;
+      result.forceHeaterOff = true;
+      result.safetyActive = true;
+      result.reason = "INV1_LETHAL_HEAT";
+      _directWriteRelay(fanPin, true);     // Fan ON — NO EXCEPTIONS
+      _directWriteRelay(heaterPin, false); // Heater OFF
+      Serial.printf("[ARBITER] INV-1: %.1f°C > %.1f°C → CONTINUOUS ventilation\n", 
+                    safetyTemp, LETHAL_TEMP_HIGH);
+      lastResult = result;
+      return result;
+    }
+    
+    // ══════════════════════════════════════════════════════════════
+    // INV-2: LETHAL LOW TEMPERATURE → HEATING ALLOWED
+    // Heating bypasses cooldown timers, reboot lockout, and overrides.
+    // Exception: if temp is ALSO above lethal high (impossible but safe).
+    // ══════════════════════════════════════════════════════════════
+    float heatingTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
+    if (heatingTemp < LETHAL_TEMP_LOW && !rebootSafety.heaterLocked) {
+      result.forceHeaterOn = true;
+      result.safetyActive = true;
+      result.reason = "INV2_LETHAL_COLD";
+      _directWriteRelay(heaterPin, true);  // Heater ON — bypasses all timers
+      Serial.printf("[ARBITER] INV-2: %.1f°C < %.1f°C → FORCED heating\n",
+                    heatingTemp, LETHAL_TEMP_LOW);
+      // Don't return — fan control should still be evaluated
+    }
+    
+    // ── Reboot heater lockout (still enforced unless INV-2 overrides) ──
+    if (rebootSafety.heaterLocked && !result.forceHeaterOn) {
+      result.forceHeaterOff = true;
+      result.safetyActive = true;
+      result.reason = "REBOOT_HEATER_LOCK";
+      _directWriteRelay(heaterPin, false);
+    }
+    
+    // ── Reboot vent purge ──
+    if (rebootSafety.ventPurgeActive) {
+      result.forceFanOn = true;
+      result.safetyActive = true;
+      if (!result.reason || String(result.reason) == "NORMAL") {
+        result.reason = "REBOOT_VENT_PURGE";
+      }
+      _directWriteRelay(fanPin, true);
+    }
+    
+    // ── Heater max runtime enforcement (INV-3: cannot block safety) ──
+    // The heater cooldown is enforced EXCEPT when INV-2 is active.
+    if (_heaterRunning && !result.forceHeaterOn) {
+      if (_safeElapsed(now, _heaterStartedAt) > (HEATER_MAX_CONTINUOUS_SEC * 1000UL)) {
+        result.forceHeaterOff = true;
+        result.safetyActive = true;
+        result.reason = "HEATER_MAX_RUNTIME";
+        _directWriteRelay(heaterPin, false);
+        _heaterRunning = false;
+        _heaterStoppedAt = now;
+      }
+    }
     
     // ── Actuator effect validation ──
-    checkActuatorEffects(temperature, fanOn, heaterOn, now);
+    checkActuatorEffects(temperature, fanCurrentlyOn, heaterCurrentlyOn, now);
     
-    // ── Overheat emergency (use WORST CASE max temp) ──
-    float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
-    if (safetyTemp > SAFE_TEMP_MAX) {
-      state = STATE_EMERGENCY_COOL;
-      _safetyOverride = true;
-      _forceAllFansOn();
-      _forceHeaterOff();
-      Serial.printf("[SAFETY] EMERGENCY COOL: %.1f°C > %.1f°C (worst-case)\n", 
-                    safetyTemp, SAFE_TEMP_MAX);
-    }
-    // ── Cold emergency (use WORST CASE min temp) ──
-    else if (!rebootSafety.heaterLocked) {
-      float heatingTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
-      if (heatingTemp < SAFE_TEMP_MIN) {
-        state = STATE_EMERGENCY_HEAT;
-        _startHeaterSafe(now);
-      }
-    }
-    // ── Normal range ──
-    if (state == STATE_EMERGENCY_COOL || state == STATE_EMERGENCY_HEAT) {
-      if (safetyTemp <= SAFE_TEMP_MAX && safetyTemp >= SAFE_TEMP_MIN) {
-        state = STATE_NORMAL;
-      }
-    }
-
-    // ── Heater cooldown ──
-    _enforceHeaterLimits(now);
+    // ── Thermal model plausibility ──
+    checkThermalPlausibility(temperature, fanCurrentlyOn, heaterCurrentlyOn, now);
     
-    // ── Motor runtime limits ──
-    for (int i = 0; i < 3; i++) _enforceMotorLimit(i, now);
-
-    // ── Cloud timeout (overflow-safe) ──
-    if (_safeElapsed(now, _lastCloudSync) > CLOUD_TIMEOUT_MS) {
-      if (state == STATE_NORMAL) state = STATE_OFFLINE_AUTONOMOUS;
+    // ── Cloud timeout ──
+    if (_safeElapsed(now, _lastCloudSync) > CLOUD_OFFLINE_TIMEOUT_MS) {
+      // Offline but NOT a safety violation — automation continues locally
     }
-
-    // ── Reboot heater lockout ──
-    if (rebootSafety.heaterLocked) {
-      _safetyOverride = true;
-      _forceHeaterOff();
-    }
-
-    return _safetyOverride;
+    
+    lastResult = result;
+    return result;
   }
 
   // ─── WORST-CASE SENSOR SELECTION ───
   void updateWorstCase(float t1, float t2, bool t2ok) {
     dualSensorAvailable = t2ok && !isnan(t2);
     if (dualSensorAvailable) {
-      worstCaseMaxTemp = max(t1, t2);  // Use HIGHEST for cooling decisions
-      worstCaseMinTemp = min(t1, t2);  // Use LOWEST for heating decisions
+      worstCaseMaxTemp = max(t1, t2);
+      worstCaseMinTemp = min(t1, t2);
     } else {
       worstCaseMaxTemp = t1;
       worstCaseMinTemp = t1;
@@ -287,7 +389,7 @@ public:
 
   // ─── ACTUATOR EFFECT VALIDATION ───
   void checkActuatorEffects(float currentTemp, bool fanOn, bool heaterOn, unsigned long now) {
-    // --- Fan effect tracking ---
+    // Fan effect
     if (fanOn && !fanEffect.tracking) {
       fanEffect.tempAtStart = currentTemp;
       fanEffect.onSince = now;
@@ -295,27 +397,22 @@ public:
     } else if (!fanOn) {
       fanEffect.tracking = false;
     }
-    
-    if (fanEffect.tracking && (_safeElapsed(now, fanEffect.onSince) >= EFFECT_VALIDATION_WINDOW_MS)) {
-      float tempDrop = fanEffect.tempAtStart - currentTemp;
-      if (tempDrop < FAN_EXPECTED_COOLING_C) {
+    if (fanEffect.tracking && (_safeElapsed(now, fanEffect.onSince) >= EFFECT_WINDOW_MS)) {
+      float drop = fanEffect.tempAtStart - currentTemp;
+      if (drop < FAN_MIN_COOLING_C) {
         fanEffect.consecutiveFailures++;
         fanEffect.effectVerified = false;
-        Serial.printf("[SAFETY] ⚠️ FAN EFFECT FAIL #%d: Expected ≥%.1f°C drop, got %.2f°C\n",
-                      fanEffect.consecutiveFailures, FAN_EXPECTED_COOLING_C, tempDrop);
-        if (fanEffect.consecutiveFailures >= 2) {
-          _enterSurvivalMode("FAN_NO_COOLING_EFFECT");
-        }
+        Serial.printf("[ARBITER] FAN EFFECT FAIL #%d: Expected ≥%.1f°C drop, got %.2f°C\n",
+                      fanEffect.consecutiveFailures, FAN_MIN_COOLING_C, drop);
       } else {
         fanEffect.consecutiveFailures = 0;
         fanEffect.effectVerified = true;
       }
-      // Reset tracking for next window
       fanEffect.tempAtStart = currentTemp;
       fanEffect.onSince = now;
     }
     
-    // --- Heater effect tracking ---
+    // Heater effect
     if (heaterOn && !heaterEffect.tracking) {
       heaterEffect.tempAtStart = currentTemp;
       heaterEffect.onSince = now;
@@ -323,17 +420,13 @@ public:
     } else if (!heaterOn) {
       heaterEffect.tracking = false;
     }
-    
-    if (heaterEffect.tracking && (_safeElapsed(now, heaterEffect.onSince) >= EFFECT_VALIDATION_WINDOW_MS)) {
-      float tempRise = currentTemp - heaterEffect.tempAtStart;
-      if (tempRise < HEATER_EXPECTED_HEATING_C) {
+    if (heaterEffect.tracking && (_safeElapsed(now, heaterEffect.onSince) >= EFFECT_WINDOW_MS)) {
+      float rise = currentTemp - heaterEffect.tempAtStart;
+      if (rise < HEATER_MIN_HEATING_C) {
         heaterEffect.consecutiveFailures++;
         heaterEffect.effectVerified = false;
-        Serial.printf("[SAFETY] ⚠️ HEATER EFFECT FAIL #%d: Expected ≥%.1f°C rise, got %.2f°C\n",
-                      heaterEffect.consecutiveFailures, HEATER_EXPECTED_HEATING_C, tempRise);
-        if (heaterEffect.consecutiveFailures >= 2) {
-          _enterSurvivalMode("HEATER_NO_HEATING_EFFECT");
-        }
+        Serial.printf("[ARBITER] HEATER EFFECT FAIL #%d: Expected ≥%.1f°C rise, got %.2f°C\n",
+                      heaterEffect.consecutiveFailures, HEATER_MIN_HEATING_C, rise);
       } else {
         heaterEffect.consecutiveFailures = 0;
         heaterEffect.effectVerified = true;
@@ -350,327 +443,150 @@ public:
       thermalModel.lastModelUpdate = now;
       return;
     }
-    
     float elapsedMin = _safeElapsed(now, (unsigned long)thermalModel.lastModelUpdate) / 60000.0f;
     if (elapsedMin < 1.0f) return;
     
-    // Calculate expected temperature based on actuator activity
-    float rate = THERMAL_PASSIVE_RATE;
-    if (heaterOn) rate = THERMAL_HEATER_RATE;
-    else if (fanOn) rate = THERMAL_FAN_RATE;
+    float rate = 0.0f;
+    if (heaterOn) rate = THERMAL_HEATER_RATE_PER_MIN;
+    else if (fanOn) rate = THERMAL_FAN_RATE_PER_MIN;
     
     thermalModel.expectedTemp += rate * elapsedMin;
-    // Clamp to sane range
     thermalModel.expectedTemp = constrain(thermalModel.expectedTemp, 0.0f, 55.0f);
     
     float deviation = abs(actualTemp - thermalModel.expectedTemp);
-    
-    if (deviation > THERMAL_MODEL_MAX_DEVIATION) {
+    if (deviation > THERMAL_MAX_DEVIATION_C) {
       thermalModel.implausibleCount++;
       thermalModel.sensorPlausible = false;
       thermalModel.implausibleReason = "Deviation " + String(deviation, 1) + 
         "°C (actual=" + String(actualTemp, 1) + " expected=" + 
         String(thermalModel.expectedTemp, 1) + ")";
-      
-      Serial.printf("[SAFETY] ⚠️ THERMAL PLAUSIBILITY FAIL #%d: %s\n",
+      Serial.printf("[ARBITER] THERMAL FAIL #%d: %s\n",
                     thermalModel.implausibleCount, thermalModel.implausibleReason.c_str());
-      
-      if (thermalModel.implausibleCount >= 3) {
-        // 3 consecutive 1-min checks failed = sensor invalid
-        _enterSurvivalMode("SENSOR_THERMAL_IMPLAUSIBLE");
-      }
     } else {
-      // Plausible reading — sync model to actual (prevents drift)
       thermalModel.implausibleCount = 0;
       thermalModel.sensorPlausible = true;
-      thermalModel.expectedTemp = actualTemp; // Re-anchor
+      thermalModel.expectedTemp = actualTemp;
       thermalModel.implausibleReason = "";
     }
-    
     thermalModel.lastModelUpdate = now;
   }
 
-  // ─── POST-REBOOT SAFETY PROTOCOL ───
+  // ─── POST-REBOOT SAFETY ───
   void checkRebootSafety(unsigned long now) {
     unsigned long sinceReboot = _safeElapsed(now, rebootSafety.bootTime);
-    
-    // Heater lockout: 3 minutes
     if (rebootSafety.heaterLocked && sinceReboot >= REBOOT_HEATER_LOCKOUT_MS) {
       rebootSafety.heaterLocked = false;
-      Serial.println(F("[SAFETY] Post-reboot heater lockout EXPIRED — heater now allowed"));
+      Serial.println(F("[ARBITER] Post-reboot heater lockout EXPIRED"));
     }
-    
-    // Ventilation purge: 3 minutes forced fan
-    if (rebootSafety.ventPurgeActive) {
-      if (sinceReboot >= REBOOT_VENT_PURGE_MS) {
-        rebootSafety.ventPurgeActive = false;
-        Serial.println(F("[SAFETY] Post-reboot ventilation purge COMPLETE"));
-      } else {
-        _forceAllFansOn();
-        _safetyOverride = true;
-      }
+    if (rebootSafety.ventPurgeActive && sinceReboot >= REBOOT_VENT_PURGE_MS) {
+      rebootSafety.ventPurgeActive = false;
+      Serial.println(F("[ARBITER] Post-reboot vent purge COMPLETE"));
     }
-    
-    // NH3 alert mute: 5 minutes (ventilation still responds to NH3, just no SMS/alerts)
-    if (rebootSafety.nh3AlertsMuted && sinceReboot >= REBOOT_NH3_ALERT_MUTE_MS) {
+    if (rebootSafety.nh3AlertsMuted && sinceReboot >= REBOOT_NH3_MUTE_MS) {
       rebootSafety.nh3AlertsMuted = false;
-      Serial.println(F("[SAFETY] Post-reboot NH3 alert mute EXPIRED — alerts now active"));
+      Serial.println(F("[ARBITER] Post-reboot NH3 alert mute EXPIRED"));
     }
   }
 
   // ─── BIRD AGE VALIDATION ───
-  // Returns true if age is accepted, false if rejected
   bool validateAgeChange(int newAge, int currentAge) {
     unsigned long now = millis();
-    
-    // Rule 1: Range check (0–60 days)
     if (newAge < AGE_MIN_DAYS || newAge > AGE_MAX_DAYS) {
-      Serial.printf("[SAFETY] AGE REJECTED: %d outside range [%d-%d]\n", 
-                    newAge, AGE_MIN_DAYS, AGE_MAX_DAYS);
+      Serial.printf("[ARBITER] AGE REJECTED: %d outside [%d-%d]\n", newAge, AGE_MIN_DAYS, AGE_MAX_DAYS);
       ageValidation.rejectedCount++;
       return false;
     }
-    
-    // Rule 2: Jump check (max 2 days change per 24h)
     int ageDelta = abs(newAge - currentAge);
     if (ageDelta > AGE_MAX_JUMP_PER_24H) {
-      // Check if enough time has passed (24h in millis)
       if (ageValidation.lastAgeChangeTime > 0) {
-        unsigned long timeSinceLastChange = _safeElapsed(now, ageValidation.lastAgeChangeTime);
-        if (timeSinceLastChange < 86400000UL) { // 24 hours in ms
-          Serial.printf("[SAFETY] AGE REJECTED: Jump %d→%d (delta=%d) exceeds max %d in 24h\n",
-                        currentAge, newAge, ageDelta, AGE_MAX_JUMP_PER_24H);
+        if (_safeElapsed(now, ageValidation.lastAgeChangeTime) < 86400000UL) {
+          Serial.printf("[ARBITER] AGE REJECTED: Jump %d→%d exceeds max %d/24h\n",
+                        currentAge, newAge, AGE_MAX_JUMP_PER_24H);
           ageValidation.rejectedCount++;
           return false;
         }
       }
     }
-    
-    // Accepted
     ageValidation.lastAcceptedAge = newAge;
     ageValidation.lastAgeChangeTime = now;
-    
-    // Persist to NVS
     Preferences prefs;
     prefs.begin("age_safety", false);
     prefs.putInt("last_age", newAge);
     prefs.end();
-    
-    Serial.printf("[SAFETY] AGE ACCEPTED: %d → %d\n", currentAge, newAge);
+    Serial.printf("[ARBITER] AGE ACCEPTED: %d → %d\n", currentAge, newAge);
     return true;
   }
 
-  // ─── Is NH3 alert currently muted (post-reboot) ───
-  bool isNH3AlertMuted() { return rebootSafety.nh3AlertsMuted; }
+  // ─── QUERY METHODS ───
+  bool isNH3AlertMuted()    { return rebootSafety.nh3AlertsMuted; }
+  bool isHeaterLocked()     { return rebootSafety.heaterLocked; }
+  bool isVentPurgeActive()  { return rebootSafety.ventPurgeActive; }
+  bool isSafetyActive()     { return lastResult.safetyActive; }
   
-  // ─── Is heater currently locked (post-reboot) ───
-  bool isHeaterLocked() { return rebootSafety.heaterLocked; }
-  
-  // ─── Is vent purge active (post-reboot) ───
-  bool isVentPurgeActive() { return rebootSafety.ventPurgeActive; }
+  bool isHeaterAllowed() {
+    if (lastResult.forceHeaterOff) return false;
+    if (lastResult.forceHeaterOn)  return true;
+    if (rebootSafety.heaterLocked) return false;
+    unsigned long now = millis();
+    if (_heaterRunning) {
+      return _safeElapsed(now, _heaterStartedAt) < (HEATER_MAX_CONTINUOUS_SEC * 1000UL);
+    }
+    if (_heaterStoppedAt > 0) {
+      return _safeElapsed(now, _heaterStoppedAt) > (HEATER_COOLDOWN_SEC * 1000UL);
+    }
+    return true;
+  }
 
-  // ─── Should call backend safety engine ───
+  // ─── HEATER/MOTOR TRACKING ───
+  void notifyHeaterOn()  { if (!_heaterRunning) { _heaterStartedAt = millis(); _heaterRunning = true; } }
+  void notifyHeaterOff() { _heaterRunning = false; _heaterStoppedAt = millis(); }
+  
+  // ─── CLOUD SYNC ───
+  void notifyCloudSync() { _lastCloudSync = millis(); }
+  void notifySensorUpdate() { _lastSensorUpdate = millis(); }
+
+  // ─── BACKEND SAFETY ENGINE TIMING ───
   bool shouldCallBackendSafety(unsigned long now) {
     return (_safeElapsed(now, lastSafetyEngineCall) >= SAFETY_ENGINE_CALL_INTERVAL_MS);
   }
-  
-  void markSafetyEngineCalled(unsigned long now) {
-    lastSafetyEngineCall = now;
-  }
+  void markSafetyEngineCalled(unsigned long now) { lastSafetyEngineCall = now; }
 
-  // ─── Cloud sync notification ───
-  void notifyCloudSync() {
-    _lastCloudSync = millis();
-    if (state == STATE_OFFLINE_AUTONOMOUS) {
-      state = STATE_NORMAL;
+  // ─── OTA SAFETY GATE ───
+  // OTA must call this in its download loop to maintain safety.
+  // Returns true if OTA must abort immediately.
+  bool otaSafetyCheck(float currentTemp, bool sensorValid) {
+    // Run a mini-arbiter: check lethal invariants only
+    if (!sensorValid || _safeElapsed(millis(), _lastSensorUpdate) > SENSOR_MISSING_TIMEOUT_MS) {
+      // Sensor gone during OTA → abort, force fan
+      _directWriteRelay(fanPin, true);
+      _directWriteRelay(heaterPin, false);
+      return true; // ABORT OTA
     }
-  }
-
-  void notifySensorUpdate() {
-    _lastSensorUpdate = millis();
-    if (state == STATE_SAFE_MODE || state == STATE_SENSOR_FAIL) {
-      state = STATE_NORMAL;
+    if (currentTemp > LETHAL_TEMP_HIGH) {
+      _directWriteRelay(fanPin, true);
+      _directWriteRelay(heaterPin, false);
+      return true; // ABORT OTA
     }
-  }
-
-  // ─── Profile management ───
-  void saveProfile(float tMin, float tMax, float hMin, float hMax, float aMax,
-                   bool fan, bool heater, bool fogger, bool light) {
-    _profile.temp_min = tMin;
-    _profile.temp_max = tMax;
-    _profile.humidity_min = hMin;
-    _profile.humidity_max = hMax;
-    _profile.ammonia_max = aMax;
-    _profile.fan_enabled = fan;
-    _profile.heater_enabled = heater;
-    _profile.fogger_enabled = fogger;
-    _profile.light_on = light;
-    _profile.checksum = _calcChecksum(_profile);
-
-    Preferences prefs;
-    prefs.begin("safety", false);
-    prefs.putBytes("profile", &_profile, sizeof(AutomationProfile));
-    prefs.end();
-  }
-
-  AutomationProfile getProfile() { return _profile; }
-
-  // ─── Motor/Heater tracking ───
-  void notifyMotorOn(int idx) {
-    if (idx < 0 || idx >= 3) return;
-    if (!_motorTimers[idx].running) {
-      _motorTimers[idx].startedAt = millis();
-      _motorTimers[idx].running = true;
+    if (currentTemp < LETHAL_TEMP_LOW) {
+      _directWriteRelay(heaterPin, true);
+      // Don't abort for cold — heater is on, OTA can continue
     }
-  }
-  void notifyMotorOff(int idx) {
-    if (idx < 0 || idx >= 3) return;
-    _motorTimers[idx].running = false;
-    _motorTimers[idx].stoppedAt = millis();
-  }
-  void notifyHeaterOn() {
-    if (!_heaterTimer.running) {
-      _heaterTimer.startedAt = millis();
-      _heaterTimer.running = true;
-    }
-  }
-  void notifyHeaterOff() {
-    _heaterTimer.running = false;
-    _heaterTimer.stoppedAt = millis();
+    return false; // OTA can continue
   }
 
-  bool isHeaterAllowed() {
-    if (rebootSafety.heaterLocked) return false;
-    unsigned long now = millis();
-    if (_heaterTimer.running) {
-      return _safeElapsed(now, _heaterTimer.startedAt) < (HEATER_MAX_RUN_SEC * 1000UL);
-    }
-    if (_heaterTimer.stoppedAt > 0) {
-      return _safeElapsed(now, _heaterTimer.stoppedAt) > (HEATER_COOLDOWN_SEC * 1000UL);
-    }
-    return true;
-  }
-
-  bool isMotorAllowed(int idx) {
-    if (idx < 0 || idx >= 3) return false;
-    if (!_motorTimers[idx].running) return true;
-    return (_safeElapsed(millis(), _motorTimers[idx].startedAt)) < (MOTOR_MAX_RUN_SEC * 1000UL);
-  }
-
-  // ─── Override function pointers ───
-  void (*onForceAllFansOn)()  = nullptr;
-  void (*onForceHeaterOn)()   = nullptr;
-  void (*onForceHeaterOff)()  = nullptr;
-  void (*onForceMotorOff)(int motorIdx) = nullptr;
-
-  const char* getStateName() {
-    switch (state) {
-      case STATE_NORMAL:              return "NORMAL";
-      case STATE_SAFE_MODE:           return "SAFE_MODE";
-      case STATE_OFFLINE_AUTONOMOUS:  return "OFFLINE_AUTO";
-      case STATE_EMERGENCY_HEAT:      return "EMERGENCY_HEAT";
-      case STATE_EMERGENCY_COOL:      return "EMERGENCY_COOL";
-      case STATE_SENSOR_FAIL:         return "SENSOR_FAIL";
-      case STATE_ACTUATOR_FAIL:       return "ACTUATOR_FAIL";
-      case STATE_SURVIVAL:            return "SURVIVAL";
-      default:                        return "UNKNOWN";
-    }
-  }
+  const char* getResultReason() { return lastResult.reason; }
 
 private:
   unsigned long _lastSensorUpdate;
   unsigned long _lastCloudSync;
-  DeviceTimer _heaterTimer;
-  DeviceTimer _motorTimers[3];
-  AutomationProfile _profile;
-  bool _safetyOverride;
+  bool _heaterRunning;
+  unsigned long _heaterStartedAt;
+  unsigned long _heaterStoppedAt;
 
-  void _enterSafeMode(const char* reason) {
-    if (state != STATE_SAFE_MODE) {
-      state = STATE_SAFE_MODE;
-      Serial.printf("[SAFETY] SAFE MODE: %s\n", reason);
-      _forceAllFansOn();
-      _forceHeaterOff();
-    }
-    _safetyOverride = true;
-  }
-
-  void _enterSurvivalMode(const char* reason) {
-    if (state != STATE_SURVIVAL) {
-      state = STATE_SURVIVAL;
-      Serial.printf("[SAFETY] 🔴 SURVIVAL MODE: %s\n", reason);
-      _forceAllFansOn();
-      _forceHeaterOff();
-    }
-    _safetyOverride = true;
-  }
-
-  void _forceAllFansOn() {
-    if (onForceAllFansOn) onForceAllFansOn();
-  }
-
-  void _forceHeaterOff() {
-    _heaterTimer.running = false;
-    _heaterTimer.stoppedAt = millis();
-    if (onForceHeaterOff) onForceHeaterOff();
-  }
-
-  void _startHeaterSafe(unsigned long now) {
-    if (isHeaterAllowed()) {
-      _safetyOverride = true;
-      if (!_heaterTimer.running) {
-        _heaterTimer.startedAt = now;
-        _heaterTimer.running = true;
-      }
-      if (onForceHeaterOn) onForceHeaterOn();
-    }
-  }
-
-  void _enforceHeaterLimits(unsigned long now) {
-    if (!_heaterTimer.running) return;
-    if (_safeElapsed(now, _heaterTimer.startedAt) > (HEATER_MAX_RUN_SEC * 1000UL)) {
-      _forceHeaterOff();
-      _safetyOverride = true;
-    }
-  }
-
-  void _enforceMotorLimit(int idx, unsigned long now) {
-    if (!_motorTimers[idx].running) return;
-    if (_safeElapsed(now, _motorTimers[idx].startedAt) > (MOTOR_MAX_RUN_SEC * 1000UL)) {
-      _motorTimers[idx].running = false;
-      _motorTimers[idx].stoppedAt = now;
-      if (onForceMotorOff) onForceMotorOff(idx);
-      _safetyOverride = true;
-    }
-  }
-
-  void _loadProfile() {
-    Preferences prefs;
-    prefs.begin("safety", true);
-    size_t len = prefs.getBytesLength("profile");
-    if (len == sizeof(AutomationProfile)) {
-      prefs.getBytes("profile", &_profile, sizeof(AutomationProfile));
-      if (_profile.checksum != _calcChecksum(_profile)) _setDefaults();
-    } else {
-      _setDefaults();
-    }
-    prefs.end();
-  }
-
-  void _setDefaults() {
-    _profile = {22.0f, 32.0f, 40.0f, 80.0f, 25.0f, true, true, false, false, 0};
-    _profile.checksum = _calcChecksum(_profile);
-  }
-
-  uint32_t _calcChecksum(AutomationProfile& p) {
-    uint8_t* data = (uint8_t*)&p;
-    size_t len = sizeof(AutomationProfile) - sizeof(uint32_t);
-    uint32_t sum1 = 0, sum2 = 0;
-    for (size_t i = 0; i < len; i++) {
-      sum1 = (sum1 + data[i]) % 255;
-      sum2 = (sum2 + sum1) % 255;
-    }
-    return (sum2 << 8) | sum1;
+  // Direct GPIO write — bypasses relay manager entirely
+  void _directWriteRelay(int pin, bool on) {
+    if (pin < 0) return;
+    digitalWrite(pin, on ? RELAY_ACTIVE_LOW : !RELAY_ACTIVE_LOW);
   }
 };
 

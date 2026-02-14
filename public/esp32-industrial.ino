@@ -90,10 +90,16 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define FAN_RELAY_PIN        25
 #define LIGHT_RELAY_PIN      26
 #define ALARM_RELAY_PIN      33
+// ═══════════════════════════════════════════════════════════════
+// INV-6: Each logical device MUST have its own physical GPIO pin.
+// HEATER and FOGGER were previously both on GPIO 13 — LETHAL BUG.
+// Fogger moved to GPIO 12. If hardware has only 4 relays, fogger
+// must be on a separate relay channel or disabled.
+// ═══════════════════════════════════════════════════════════════
 #define HEATER_RELAY_PIN     13
+#define FOGGER_RELAY_PIN     12    // INV-6: MUST NOT share with heater
 #define STATUS_LED_PIN       2
 #define CIRCULATION_RELAY_PIN LIGHT_RELAY_PIN
-#define FOGGER_RELAY_PIN     HEATER_RELAY_PIN
 #define MANUAL_OVERRIDE_BTN  32
 #define MANUAL_FAN_BTN       14
 
@@ -1255,8 +1261,7 @@ void relayManagerApply() {
   // ═══════════════════════════════════════════════════════════════════
   bool safetyBypass = (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || 
                        purgeActive || emergencySurvivalMode ||
-                       safetyEngine.state == STATE_EMERGENCY_COOL ||
-                       safetyEngine.state == STATE_EMERGENCY_HEAT);
+                       safetyEngine.isSafetyActive());
   
   // Check if ANY relay target differs from current state
   bool fanChange    = (relayTarget.fan != fanOn);
@@ -1492,9 +1497,21 @@ void loadBroilerRules() {
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
 void automationEngineTick() {
-  // Skip if manual override
-  if (localManualOverride) return;
+  // ═══════════════════════════════════════════════════════════════
+  // INV-4: Manual override CANNOT skip safety evaluation.
+  // Safety arbiter runs independently (in loop()), but automation
+  // engine must still evaluate safety bands during manual override.
+  // Only NORMAL automation logic is skipped, not safety checks.
+  // ═══════════════════════════════════════════════════════════════
   if (stabilizingMode) return;
+  
+  // If safety arbiter is forcing actions, apply them regardless of override
+  if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
+  if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
+  if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+  
+  // Manual override skips AUTOMATION only, not safety
+  if (localManualOverride && !safetyEngine.lastResult.safetyActive) return;
 
   // Emergency Survival overrides everything
   if (emergencySurvivalMode) {
@@ -1838,23 +1855,54 @@ void enterESM(String reason) {
 // All heating/fogger disabled
 // ═══════════════════════════════════════════════════════════════════════
 void runEmergencySurvivalCycles() {
-  // Cycle timer is locked to esmCycleOrigin — never resets
-  unsigned long elapsed = millis() - esmCycleOrigin;
-  unsigned long fanCyclePeriod = ESM_FAN_ON_MS + ESM_FAN_OFF_MS;
-  unsigned long posInCycle = elapsed % fanCyclePeriod;
-  bool shouldFan = posInCycle < ESM_FAN_ON_MS;
+  // ═══════════════════════════════════════════════════════════════
+  // TEMPERATURE-AWARE SURVIVAL (replaces fixed 50% duty cycle)
+  // 
+  // Old: 2min ON / 2min OFF regardless of temperature → LETHAL.
+  //      In 40°C ambient, 2min OFF = birds die.
+  //
+  // New: Uses actual temperature to decide ventilation intensity.
+  //      No sensor → assume worst case → CONTINUOUS ventilation.
+  //      INV-1 and INV-7 are enforced by the arbiter independently.
+  // ═══════════════════════════════════════════════════════════════
+  unsigned long now = millis();
   
-  if (shouldFan != esmFanOn) {
-    esmFanOn = shouldFan;
-    requestFan(shouldFan, shouldFan ? "HIGH" : "OFF");
+  // Always check for recovery
+  checkEmergencyRecovery();
+  
+  bool hasSomeTemp = !isnan(temperature) && !svlTemp.isOffline;
+  
+  if (hasSomeTemp) {
+    if (temperature > SURVIVABLE_TEMP_HIGH) {
+      // Hot: CONTINUOUS ventilation, alarm ON, heater OFF
+      requestFan(true, "HIGH");
+      requestAlarm(true);
+      requestHeater(false);
+    } else if (temperature < LETHAL_TEMP_LOW) {
+      // Cold: reduced ventilation + heating allowed
+      unsigned long cycle = ESM_FAN_ON_MS + ESM_FAN_OFF_MS;
+      unsigned long elapsed = _safeElapsed(now, esmCycleOrigin) % cycle;
+      bool shouldFan = elapsed < ESM_FAN_ON_MS;
+      requestFan(shouldFan, shouldFan ? "LOW" : "OFF");
+      if (safetyEngine.isHeaterAllowed()) requestHeater(true);
+      requestAlarm(false);
+    } else {
+      // Moderate temp: 80% duty cycle (2min ON, 1min OFF)
+      unsigned long cycle = ESM_FAN_ON_MS + (ESM_FAN_OFF_MS / 2);
+      unsigned long elapsed = _safeElapsed(now, esmCycleOrigin) % cycle;
+      bool shouldFan = elapsed < ESM_FAN_ON_MS;
+      requestFan(shouldFan, shouldFan ? "HIGH" : "OFF");
+      requestHeater(false);
+      requestAlarm(false);
+    }
+  } else {
+    // NO valid temperature: assume WORST CASE → CONTINUOUS
+    requestFan(true, "HIGH");
+    requestHeater(false);
+    requestAlarm(true);
   }
   
-  unsigned long alarmPeriod = ESM_ALARM_ON_MS + ESM_ALARM_OFF_MS;
-  requestAlarm((elapsed % alarmPeriod) < ESM_ALARM_ON_MS);
-  requestHeater(false); requestFogger(false);
-  
-  // Check recovery (with 2-min verification)
-  checkEmergencyRecovery();
+  requestFogger(false);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2507,12 +2555,23 @@ void updateAgeFromServer(int newAge) {
 void checkOfflineAgeIncrement() {
   if (!isBroiler()) return;
   if (millis() - lastAgeIncreaseMillis >= AGE_TICK_INTERVAL) {
-    farmConfig.chickAgeDays++;
-    lastAgeIncreaseMillis = millis();
-    ageSource = "LOCAL";
-    saveFarmProfile();
-    loadBroilerRules();
-    saveAgeTickTime();
+    int newAge = farmConfig.chickAgeDays + 1;
+    // ═══════════════════════════════════════════════════════════
+    // Offline age increment MUST go through safety validation.
+    // Previously bypassed validateAgeChange() — LETHAL BUG.
+    // Wrong age → wrong temp curve → birds freeze or overheat.
+    // ═══════════════════════════════════════════════════════════
+    if (safetyEngine.validateAgeChange(newAge, farmConfig.chickAgeDays)) {
+      farmConfig.chickAgeDays = newAge;
+      lastAgeIncreaseMillis = millis();
+      ageSource = "LOCAL";
+      saveFarmProfile();
+      loadBroilerRules();
+      saveAgeTickTime();
+    } else {
+      Serial.printf("⚠️ OFFLINE AGE INCREMENT REJECTED: %d → %d\n", farmConfig.chickAgeDays, newAge);
+      lastAgeIncreaseMillis = millis(); // Prevent retry spam
+    }
   }
 }
 
@@ -2794,6 +2853,22 @@ void performOTAUpdate() {
   
   while (written < (size_t)contentLen) {
     esp_task_wdt_reset();
+    
+    // ═══════════════════════════════════════════════════════════
+    // INV-5: OTA CANNOT PAUSE SAFETY LOOP
+    // Read a fresh sensor value and run safety arbiter check.
+    // If lethal condition detected → ABORT OTA immediately.
+    // ═══════════════════════════════════════════════════════════
+    float otaTemp = dht.readTemperature();
+    bool otaSensorOk = !isnan(otaTemp);
+    if (safetyEngine.otaSafetyCheck(otaTemp, otaSensorOk)) {
+      Serial.println("🔴 OTA ABORTED: Safety invariant violated during download");
+      esp_ota_abort(otaHandle);
+      otaInProgress = false; otaStatus = "safety_abort";
+      http.end();
+      gsmQueueAlert("ota", "🔴 OTA aborted — safety violation during update!");
+      return;
+    }
     size_t available = stream->available();
     if (available == 0) {
       // Wait for data with timeout
@@ -2995,12 +3070,44 @@ void setup() {
   pinMode(LIGHT_RELAY_PIN, OUTPUT);  digitalWrite(LIGHT_RELAY_PIN, HIGH);
   pinMode(ALARM_RELAY_PIN, OUTPUT);  digitalWrite(ALARM_RELAY_PIN, HIGH);
   pinMode(HEATER_RELAY_PIN, OUTPUT); digitalWrite(HEATER_RELAY_PIN, HIGH);
+  pinMode(FOGGER_RELAY_PIN, OUTPUT); digitalWrite(FOGGER_RELAY_PIN, HIGH);  // INV-6: separate pin
   pinMode(STATUS_LED_PIN, OUTPUT);
+
+  // ═══════════════════════════════════════════════════════════════
+  // INV-6: GPIO CONFLICT VALIDATION AT BOOT
+  // Verifies no two logical devices share the same physical GPIO.
+  // If conflict detected → HALT (prevents lethal pin collision).
+  // ═══════════════════════════════════════════════════════════════
+  GpioAssignment gpioMap[] = {
+    {FAN_RELAY_PIN,    "ExhaustFan"},
+    {LIGHT_RELAY_PIN,  "Light/CircFan"},
+    {ALARM_RELAY_PIN,  "Alarm/Heater(L)"},
+    {HEATER_RELAY_PIN, "Heater"},
+    {FOGGER_RELAY_PIN, "Fogger"},
+    {DHT_PIN,          "DHT22_1"},
+    {DHT2_PIN,         "DHT22_2"},
+    {MQ135_PIN,        "MQ137_NH3"},
+    {POWER_SENSE_PIN,  "ZMPT101B"},
+    {WATER_FLOW_PIN,   "YFS201"}
+  };
+  if (!safetyEngine.validateGpioAssignments(gpioMap, 10)) {
+    // FATAL: GPIO conflict detected — HALT with alarm
+    Serial.println("🔴 FATAL: GPIO CONFLICT — SYSTEM HALTED");
+    Serial.println("🔴 " + safetyEngine.gpioConflictDetail);
+    digitalWrite(ALARM_RELAY_PIN, LOW); // Alarm ON to alert farmer
+    while (true) {
+      digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+      unsigned long w = millis(); while(millis()-w < 200) yield();
+    }
+  }
+
+  // --- Safety Engine Init (must have GPIO pins for direct relay control) ---
+  safetyEngine.begin(FAN_RELAY_PIN, HEATER_RELAY_PIN, ALARM_RELAY_PIN);
 
   // --- Gradual Relay Test (non-blocking wait) ---
   Serial.println("🔌 Relay test sequence...");
-  const int relayPins[] = {FAN_RELAY_PIN, LIGHT_RELAY_PIN, ALARM_RELAY_PIN, HEATER_RELAY_PIN};
-  for (int i = 0; i < 4; i++) {
+  const int relayPins[] = {FAN_RELAY_PIN, LIGHT_RELAY_PIN, ALARM_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN};
+  for (int i = 0; i < 5; i++) {
     digitalWrite(relayPins[i], LOW);   // ON
     unsigned long w = millis(); while(millis()-w < 1000) { esp_task_wdt_reset(); yield(); }
     digitalWrite(relayPins[i], HIGH);  // OFF
@@ -3346,6 +3453,15 @@ void loop() {
     wifiConnected = true;
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // SAFETY ARBITER: Runs every 500ms INDEPENDENTLY of automation.
+  // Directly writes to GPIO pins. Cannot be blocked by any mode,
+  // override, OTA, or timer. This is the FIRST and LAST thing
+  // that runs each loop iteration.
+  // ═══════════════════════════════════════════════════════════════
+  safetyEngine.arbiterTick(temperature, humidity, ammonia, 
+    !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+
   // --- Sensor Manager (read all sensors, filter, validate) ---
   if (intervalPassed(now, lastSensorRead, SENSOR_READ_INTERVAL)) {
     lastSensorRead = now;
@@ -3362,8 +3478,9 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Engine v2 tick (reboot safety, worst-case, effect validation) ---
-  safetyEngine.tick(temperature, humidity, ammonia, !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+  // --- Safety Arbiter AGAIN after all processing (catch any unsafe relay states) ---
+  safetyEngine.arbiterTick(temperature, humidity, ammonia,
+    !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 
   // --- Relay Manager (single hardware write point) ---
   relayManagerApply();
