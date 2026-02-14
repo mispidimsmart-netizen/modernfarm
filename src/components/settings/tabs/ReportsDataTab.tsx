@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FileText, Bell, Calendar, 
-  Download, BarChart3, Clock, Loader2, CheckCircle2
+  Download, BarChart3, Clock, Loader2, CheckCircle2, ScrollText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -307,6 +307,19 @@ export function ReportsDataTab() {
               <p className="font-medium">{language === 'bn' ? 'রিপোর্ট দেখুন' : 'View Reports'}</p>
               <p className="text-xs text-muted-foreground">
                 {language === 'bn' ? 'বিস্তারিত বিশ্লেষণ' : 'Detailed analytics'}
+              </p>
+            </div>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="w-full justify-start h-12 mt-2"
+            onClick={() => window.location.href = '/audit-log'}
+          >
+            <ScrollText className="mr-3 h-5 w-5 text-primary" />
+            <div className="text-left">
+              <p className="font-medium">{language === 'bn' ? 'অডিট লগ' : 'Audit Log'}</p>
+              <p className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'সিস্টেম কার্যকলাপ ও পরিবর্তনের ইতিহাস' : 'System activity & change history'}
               </p>
             </div>
           </Button>
