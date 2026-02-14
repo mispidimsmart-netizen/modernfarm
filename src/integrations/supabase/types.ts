@@ -706,6 +706,71 @@ export type Database = {
           },
         ]
       }
+      device_command_log: {
+        Row: {
+          acked_at: string | null
+          command_id: string
+          command_type: string
+          command_value: boolean
+          created_at: string
+          device_name: string
+          error_message: string | null
+          expired_at: string | null
+          id: string
+          max_retries: number
+          retry_count: number
+          sent_at: string | null
+          shed_id: string | null
+          source: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          acked_at?: string | null
+          command_id: string
+          command_type: string
+          command_value?: boolean
+          created_at?: string
+          device_name?: string
+          error_message?: string | null
+          expired_at?: string | null
+          id?: string
+          max_retries?: number
+          retry_count?: number
+          sent_at?: string | null
+          shed_id?: string | null
+          source?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          acked_at?: string | null
+          command_id?: string
+          command_type?: string
+          command_value?: boolean
+          created_at?: string
+          device_name?: string
+          error_message?: string | null
+          expired_at?: string | null
+          id?: string
+          max_retries?: number
+          retry_count?: number
+          sent_at?: string | null
+          shed_id?: string | null
+          source?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_command_log_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_commands: {
         Row: {
           command_type: string

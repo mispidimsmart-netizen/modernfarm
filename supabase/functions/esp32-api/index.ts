@@ -340,6 +340,25 @@ Deno.serve(async (req) => {
       return await acknowledgeCommands(bodyData, supabase, userId);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔄 COMMAND ACK PROTOCOL v2
+    // POST /commands-ack-v2 - Device acknowledges with command_id + result
+    // GET  /command-status   - Check command delivery status
+    // POST /command-retry    - Cloud retries unacknowledged commands
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'POST' && path === 'commands-ack-v2') {
+      return await acknowledgeCommandsV2(bodyData, supabase, userId);
+    }
+
+    if (req.method === 'GET' && path === 'command-status') {
+      const commandId = url.searchParams.get('command_id');
+      return await getCommandStatus(supabase, userId, commandId);
+    }
+
+    if (req.method === 'POST' && path === 'command-retry') {
+      return await retryUnackedCommands(supabase, userId);
+    }
+
     if (req.method === 'POST' && path === 'control') {
       return await handleControlCommand(bodyData, supabase, userId);
     }
@@ -1741,12 +1760,48 @@ async function getDeviceCommands(supabase: any, userId: string, deviceName: stri
     );
   }
 
-  console.log(`Returning ${data?.length || 0} pending commands for device ${deviceName || 'all'}`);
+  // Also fetch matching command_ids from device_command_log for ACK protocol
+  let logQuery = supabase
+    .from('device_command_log')
+    .select('command_id, command_type, command_value')
+    .eq('user_id', userId)
+    .in('status', ['pending', 'sent'])
+    .order('created_at', { ascending: true });
+
+  if (deviceName) {
+    logQuery = logQuery.eq('device_name', deviceName);
+  }
+
+  const { data: logData } = await logQuery;
+
+  // Mark pending log entries as 'sent'
+  if (logData && logData.length > 0) {
+    const pendingIds = logData.map((l: any) => l.command_id);
+    await supabase
+      .from('device_command_log')
+      .update({ status: 'sent', sent_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .in('command_id', pendingIds)
+      .eq('status', 'pending');
+  }
+
+  // Merge command_ids into response
+  const commandsWithIds = (data || []).map((cmd: any) => {
+    const match = (logData || []).find((l: any) => 
+      l.command_type === cmd.command_type && l.command_value === cmd.command_value
+    );
+    return {
+      ...cmd,
+      command_id: match?.command_id || null,
+    };
+  });
+
+  console.log(`Returning ${commandsWithIds.length} pending commands for device ${deviceName || 'all'}`);
 
   return new Response(
     JSON.stringify({ 
       success: true, 
-      commands: data || [],
+      commands: commandsWithIds,
       device_id: deviceName,
       timestamp: new Date().toISOString()
     }),
@@ -1783,6 +1838,191 @@ async function acknowledgeCommands(body: { command_ids: string[] }, supabase: an
 
   return new Response(
     JSON.stringify({ success: true, acknowledged: body.command_ids.length }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔄 COMMAND ACK PROTOCOL v2 HANDLERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /commands-ack-v2
+ * Device sends ACK with command_id and execution result.
+ * Body: { acks: [{ command_id: string, success: boolean, error?: string }] }
+ */
+async function acknowledgeCommandsV2(
+  body: { acks: { command_id: string; success: boolean; error?: string }[] },
+  supabase: any,
+  userId: string
+) {
+  if (!body.acks || !Array.isArray(body.acks) || body.acks.length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'Missing acks array', code: 'INVALID_DATA' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  let acked = 0;
+  let failed = 0;
+
+  for (const ack of body.acks) {
+    const status = ack.success ? 'acked' : 'failed';
+    const { error } = await supabase
+      .from('device_command_log')
+      .update({
+        status,
+        acked_at: new Date().toISOString(),
+        error_message: ack.error || null,
+      })
+      .eq('command_id', ack.command_id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error(`ACK error for ${ack.command_id}:`, error);
+      failed++;
+    } else {
+      acked++;
+    }
+
+    // Also mark legacy device_commands as executed
+    if (ack.success) {
+      // Find matching command by type from the log
+      const { data: logEntry } = await supabase
+        .from('device_command_log')
+        .select('command_type, device_name')
+        .eq('command_id', ack.command_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (logEntry) {
+        await supabase
+          .from('device_commands')
+          .update({ executed: true, executed_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('command_type', logEntry.command_type)
+          .eq('device_name', logEntry.device_name)
+          .eq('executed', false);
+      }
+    }
+  }
+
+  console.log(`ACK v2: ${acked} acked, ${failed} failed`);
+
+  return new Response(
+    JSON.stringify({ success: true, acked, failed }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+/**
+ * GET /command-status?command_id=CMD_xxx
+ * Check delivery status of a specific command.
+ */
+async function getCommandStatus(supabase: any, userId: string, commandId: string | null) {
+  if (!commandId) {
+    // Return all recent commands (last 50)
+    const { data, error } = await supabase
+      .from('device_command_log')
+      .select('command_id, command_type, command_value, status, retry_count, created_at, sent_at, acked_at, error_message')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch command logs', code: 'FETCH_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, commands: data || [] }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const { data, error } = await supabase
+    .from('device_command_log')
+    .select('*')
+    .eq('command_id', commandId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return new Response(
+      JSON.stringify({ error: 'Command not found', code: 'NOT_FOUND' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ success: true, command: data }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+/**
+ * POST /command-retry
+ * Cloud retries unacknowledged commands (no ACK within 5s, max 3 retries).
+ * Auto-called by frontend or cron. Marks expired commands as 'expired'.
+ */
+async function retryUnackedCommands(supabase: any, userId: string) {
+  const now = new Date();
+  const fiveSecondsAgo = new Date(now.getTime() - 5000).toISOString();
+
+  // Find commands that were sent > 5s ago and not yet acked
+  const { data: staleCommands, error } = await supabase
+    .from('device_command_log')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'sent')
+    .lt('sent_at', fiveSecondsAgo)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch stale commands', code: 'FETCH_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  let retried = 0;
+  let expired = 0;
+
+  for (const cmd of (staleCommands || [])) {
+    if (cmd.retry_count >= cmd.max_retries) {
+      // Max retries exceeded → mark expired
+      await supabase
+        .from('device_command_log')
+        .update({ status: 'expired', expired_at: now.toISOString() })
+        .eq('id', cmd.id);
+      expired++;
+    } else {
+      // Retry: re-insert into device_commands and increment retry_count
+      await supabase.from('device_commands').insert({
+        user_id: userId,
+        device_name: cmd.device_name,
+        command_type: cmd.command_type,
+        command_value: cmd.command_value,
+      });
+
+      await supabase
+        .from('device_command_log')
+        .update({ 
+          retry_count: cmd.retry_count + 1,
+          sent_at: now.toISOString(),
+          status: 'sent',
+        })
+        .eq('id', cmd.id);
+      retried++;
+    }
+  }
+
+  console.log(`Command retry: ${retried} retried, ${expired} expired`);
+
+  return new Response(
+    JSON.stringify({ success: true, retried, expired }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
@@ -1825,7 +2065,7 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
     commands.push({ user_id: userId, device_name: deviceName, command_type: 'power', command_value: powerValue });
   }
 
-  // Handle mode - AUTO means disable manual override, MANUAL means enable it
+  // Handle mode
   if (body.mode) {
     const manualOverride = body.mode === 'MANUAL';
     await supabase
@@ -1841,7 +2081,18 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
     );
   }
 
-  // Insert commands for ESP32 to pick up
+  // ── Duplicate prevention: cancel pending commands for same device+type ──
+  for (const cmd of commands) {
+    await supabase
+      .from('device_command_log')
+      .update({ status: 'superseded', expired_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('device_name', cmd.device_name)
+      .eq('command_type', cmd.command_type)
+      .in('status', ['pending', 'sent']);
+  }
+
+  // Insert into legacy device_commands table
   const { error } = await supabase.from('device_commands').insert(commands);
 
   if (error) {
@@ -1852,13 +2103,32 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
     );
   }
 
-  console.log(`Queued ${commands.length} control commands for device ${deviceName}`);
+  // ── Also log to device_command_log with unique command_id ──
+  const commandLogs = commands.map(cmd => ({
+    user_id: userId,
+    command_id: `CMD_${Date.now()}_${cmd.command_type}_${Math.random().toString(36).substring(2, 8)}`,
+    device_name: cmd.device_name,
+    command_type: cmd.command_type,
+    command_value: cmd.command_value,
+    status: 'pending',
+    sent_at: new Date().toISOString(),
+    source: 'cloud',
+  }));
+
+  const { error: logError } = await supabase.from('device_command_log').insert(commandLogs);
+  if (logError) {
+    console.error('Command log insert error (non-fatal):', logError);
+  }
+
+  const commandIds = commandLogs.map(l => l.command_id);
+  console.log(`Queued ${commands.length} commands for ${deviceName}: ${commandIds.join(', ')}`);
 
   return new Response(
     JSON.stringify({ 
       success: true, 
       message: 'Commands queued',
       commands_queued: commands.length,
+      command_ids: commandIds,
       device_id: deviceName,
       mode: body.mode || 'unchanged'
     }),
