@@ -54,6 +54,12 @@ const DRIFT_FAN_EXPECTED_DROP = 0.5;     // °C — fan >6min must produce ≥0.
 const FREEZE_CHANGE_THRESHOLD = 0.2;  // °C — less than this = frozen
 const FREEZE_TIMEOUT_MS = 120 * 1000; // 120 seconds
 
+// === CONTINUOUS AIRFLOW VERIFICATION ===
+// Every 10 minutes: if fan active, temp or humidity must trend toward cooling
+const AIRFLOW_VERIFY_WINDOW_MS = 10 * 60 * 1000;        // 10-minute evaluation window
+const AIRFLOW_MIN_FAN_ACTIVE_MS = 4 * 60 * 1000;        // fan must be ON ≥4min to evaluate
+const AIRFLOW_EXPECTED_TEMP_DROP = 0.3;                   // °C — minimum temp drop expected
+const AIRFLOW_EXPECTED_HUMIDITY_DROP = 1.0;               // % — minimum humidity drop expected
 
 // === SENSOR TIMEOUT THRESHOLD ===
 const SENSOR_TIMEOUT_MS = 25 * 1000; // 25 seconds — triggers survival mode
@@ -90,6 +96,16 @@ export interface SensorValidationOptions {
   devicesRunning?: boolean; // true if fans/heaters are currently ON
   heaterOn?: boolean;       // true if heater relay is ON
   fanOn?: boolean;          // true if exhaust fan relay is ON
+}
+
+export interface AirflowVerificationStatus {
+  verified: boolean;
+  ineffective: boolean;
+  heatingBlocked: boolean;
+  forcePeriodicVent: boolean;
+  lastVerifiedAt: Date | null;
+  failReason: string | null;
+  consecutiveFailures: number;
 }
 
 export interface PlausibilityStatus {
@@ -171,6 +187,25 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
   const plausLastTick = useRef<number>(Date.now());
   const plausDegradedSince = useRef<Date | null>(null);
   const plausAlertSent = useRef<boolean>(false);
+
+  // Continuous airflow verification refs
+  const airflowVerifyStart = useRef<number>(Date.now());
+  const airflowFanAccum = useRef<number>(0);
+  const airflowTempAtStart = useRef<number | null>(null);
+  const airflowHumidityAtStart = useRef<number | null>(null);
+  const airflowLastTick = useRef<number>(Date.now());
+  const airflowAlertSent = useRef<boolean>(false);
+  const airflowConsecutiveFails = useRef<number>(0);
+
+  const [airflowVerification, setAirflowVerification] = useState<AirflowVerificationStatus>({
+    verified: true,
+    ineffective: false,
+    heatingBlocked: false,
+    forcePeriodicVent: false,
+    lastVerifiedAt: null,
+    failReason: null,
+    consecutiveFailures: 0,
+  });
 
   const lastSensorUpdateTime = useRef<number>(Date.now());
   const prevSensorDataRef = useRef<string>('');
@@ -1046,6 +1081,143 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     plausTempAtStart.current = sensorData.temperature;
   }, [sensorData, options?.heaterOn, options?.fanOn, user]);
 
+  // === CONTINUOUS AIRFLOW VERIFICATION (10-minute cycle) ===
+  useEffect(() => {
+    const now = Date.now();
+    const tickDelta = now - airflowLastTick.current;
+    airflowLastTick.current = now;
+
+    // Accumulate fan ON time
+    if (options?.fanOn) airflowFanAccum.current += tickDelta;
+
+    // Set baseline at window start
+    if (airflowTempAtStart.current === null) {
+      airflowTempAtStart.current = sensorData.temperature;
+      airflowHumidityAtStart.current = sensorData.humidity;
+      airflowVerifyStart.current = now;
+    }
+
+    const windowElapsed = now - airflowVerifyStart.current;
+    if (windowElapsed < AIRFLOW_VERIFY_WINDOW_MS) return;
+
+    // === EVALUATE ===
+    const fanActiveMs = airflowFanAccum.current;
+
+    // Only evaluate if fan was active long enough to expect an effect
+    if (fanActiveMs >= AIRFLOW_MIN_FAN_ACTIVE_MS) {
+      const tempDrop = (airflowTempAtStart.current ?? sensorData.temperature) - sensorData.temperature;
+      const humidityDrop = (airflowHumidityAtStart.current ?? sensorData.humidity) - sensorData.humidity;
+
+      // Either temp or humidity must show cooling trend
+      const tempCooling = tempDrop >= AIRFLOW_EXPECTED_TEMP_DROP;
+      const humidityCooling = humidityDrop >= AIRFLOW_EXPECTED_HUMIDITY_DROP;
+      const coolingObserved = tempCooling || humidityCooling;
+
+      if (!coolingObserved) {
+        // === AIRFLOW INEFFECTIVE ===
+        airflowConsecutiveFails.current += 1;
+        const failCount = airflowConsecutiveFails.current;
+        const failReason = `Fan active ${(fanActiveMs / 60000).toFixed(1)}min in 10min window but temp dropped only ${tempDrop.toFixed(2)}°C (need ≥${AIRFLOW_EXPECTED_TEMP_DROP}°C) and humidity dropped only ${humidityDrop.toFixed(1)}% (need ≥${AIRFLOW_EXPECTED_HUMIDITY_DROP}%). Ventilation ineffective — possible blocked duct, broken belt, or motor failure.`;
+
+        console.error(`[AirflowVerify] VENTILATION INEFFECTIVE (fail #${failCount}): ${failReason}`);
+
+        setAirflowVerification({
+          verified: false,
+          ineffective: true,
+          heatingBlocked: true,
+          forcePeriodicVent: true,
+          lastVerifiedAt: new Date(),
+          failReason,
+          consecutiveFailures: failCount,
+        });
+
+        // Enter survival mode on first failure
+        if (!survivalModeTriggeredRef.current) {
+          survivalModeTriggeredRef.current = true;
+          setSurvivalMode(true);
+          console.error('[AirflowVerify] Airflow ineffective → SURVIVAL MODE (40s ON / 20s OFF)');
+        }
+
+        // Alert & log (throttled — once per failure episode)
+        if (!airflowAlertSent.current && user) {
+          airflowAlertSent.current = true;
+
+          // CRITICAL alert
+          supabase.from('alerts').insert({
+            user_id: user.id,
+            alert_type: 'system' as any,
+            severity: 'danger' as any,
+            message: `🔴 VENTILATION INEFFECTIVE: ${failReason}. Heating blocked. Maintenance required immediately.`,
+            message_bn: `🔴 ভেন্টিলেশন অকার্যকর: ফ্যান চলছে কিন্তু শীতলীকরণ হচ্ছে না। হিটার বন্ধ। এখনই মেরামত প্রয়োজন।`,
+          }).then(() => console.log('[AirflowVerify] maintenance_required alert sent'));
+
+          // Emergency event
+          (supabase.from('emergency_events') as any).insert({
+            user_id: user.id,
+            trigger_type: 'sensor_offline',
+            priority: 'CRITICAL',
+            title: '🔴 VENTILATION INEFFECTIVE: Fan running but no cooling effect',
+            title_bn: '🔴 ভেন্টিলেশন অকার্যকর: ফ্যান চলছে কিন্তু শীতল হচ্ছে না',
+            description: failReason,
+            description_bn: `ফ্যান ${(fanActiveMs / 60000).toFixed(0)} মিনিট চলেছে কিন্তু তাপমাত্রা মাত্র ${tempDrop.toFixed(1)}°সি কমেছে। সম্ভাব্য কারণ: ভাঙা বেল্ট, ব্লক ডাক্ট, মোটর ফেইলার।`,
+            actions_taken: ['force_ventilation', 'disable_heater', 'notify_owner'],
+            sensor_snapshot: {
+              temp_at_start: airflowTempAtStart.current,
+              temp_at_end: sensorData.temperature,
+              temp_drop: tempDrop,
+              humidity_at_start: airflowHumidityAtStart.current,
+              humidity_at_end: sensorData.humidity,
+              humidity_drop: humidityDrop,
+              fan_active_ms: fanActiveMs,
+              consecutive_failures: failCount,
+            },
+            source: 'airflow_verification',
+          }).then(() => console.log('[AirflowVerify] CRITICAL emergency event created'));
+
+          // Audit log: maintenance_required
+          (supabase.from('farm_audit_logs') as any).insert({
+            user_id: user.id,
+            user_email: user.email || '',
+            action_type: 'airflow_verification_failed',
+            action_category: 'safety',
+            severity: 'critical',
+            source: 'airflow_verification',
+            metadata: {
+              fan_active_ms: fanActiveMs,
+              temp_drop: tempDrop,
+              humidity_drop: humidityDrop,
+              consecutive_failures: failCount,
+              action: 'heating_blocked_survival_ventilation_maintenance_required',
+            },
+          }).then(() => console.log('[AirflowVerify] airflow_verification_failed audit logged'));
+        }
+      } else {
+        // === AIRFLOW VERIFIED ===
+        airflowConsecutiveFails.current = 0;
+        airflowAlertSent.current = false;
+
+        setAirflowVerification({
+          verified: true,
+          ineffective: false,
+          heatingBlocked: false,
+          forcePeriodicVent: false,
+          lastVerifiedAt: new Date(),
+          failReason: null,
+          consecutiveFailures: 0,
+        });
+
+        console.log(`[AirflowVerify] PASS: temp dropped ${tempDrop.toFixed(2)}°C, humidity dropped ${humidityDrop.toFixed(1)}% with fan active ${(fanActiveMs / 60000).toFixed(1)}min`);
+      }
+    }
+    // else: fan wasn't active enough — skip evaluation, keep previous state
+
+    // Reset window
+    airflowFanAccum.current = 0;
+    airflowVerifyStart.current = now;
+    airflowTempAtStart.current = sensorData.temperature;
+    airflowHumidityAtStart.current = sensorData.humidity;
+  }, [sensorData, options?.fanOn, user]);
+
   // Computed: is temp sensor in a critical state?
   const tempSensorCritical = sensorStates.temperature?.state === 'FAILED' || sensorStates.temperature?.state === 'PHYSICALLY_IMPOSSIBLE';
 
@@ -1059,6 +1231,7 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
     survivalFanOn,
     survivalHeaterOn,
     plausibility,
+    airflowVerification,
     sensorStates,
     tempSensorCritical,
     shouldIgnoreSensor: (sensor: string) => ignoredSensors.has(sensor),
