@@ -1,4 +1,4 @@
-import { lazy, Suspense, memo } from "react";
+import { lazy, Suspense, memo, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -220,24 +220,35 @@ const AppWithRoutes = memo(function AppWithRoutes() {
   return <AppRoutes />;
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <FarmProvider>
-          <ShedProvider>
-            <Toaster />
-            <Sonner />
-            <OfflineIndicator />
-            <PWAUpdateBanner />
-            <BrowserRouter>
-              <AppWithRoutes />
-            </BrowserRouter>
-          </ShedProvider>
-        </FarmProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error('[App] Unhandled rejection:', event.reason);
+      event.preventDefault();
+    };
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => window.removeEventListener('unhandledrejection', handleRejection);
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <FarmProvider>
+            <ShedProvider>
+              <Toaster />
+              <Sonner />
+              <OfflineIndicator />
+              <PWAUpdateBanner />
+              <BrowserRouter>
+                <AppWithRoutes />
+              </BrowserRouter>
+            </ShedProvider>
+          </FarmProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
