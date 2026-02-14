@@ -6,8 +6,10 @@ import { useAuth } from '@/context/AuthContext';
 import { useFarmType, getBroilerTempRangeByDays } from './useFarmType';
 import { useActiveBatch } from './useBroilerData';
 import { differenceInDays, parseISO } from 'date-fns';
+import { mapAlertLevelToPriority, useDispatchNotification, type NotificationPriority } from './useNotificationPriority';
 
 export type AlertLevel = 'info' | 'warning' | 'danger';
+export type { NotificationPriority };
 
 export interface SmartAlert {
   id: string;
@@ -23,6 +25,7 @@ export interface SmartAlert {
   acknowledged: boolean;
   resolvedAt?: Date;
   groupId?: string;
+  priority: NotificationPriority;
 }
 
 // Anti-spam cooldown periods in milliseconds
@@ -322,11 +325,12 @@ export function useSmartAlerts() {
         age: broilerAgeDays,
       });
       const suggestion = template.getSuggestion();
+      const level = (alert.severity as AlertLevel) || template.level;
 
       return {
         id: alert.id,
         type: alert.alert_type,
-        level: (alert.severity as AlertLevel) || template.level,
+        level,
         title: template.title.en,
         titleBn: template.title.bn,
         message: msgData.en,
@@ -335,6 +339,7 @@ export function useSmartAlerts() {
         suggestionBn: suggestion.bn,
         timestamp: new Date(alert.created_at),
         acknowledged: alert.acknowledged,
+        priority: mapAlertLevelToPriority(level),
       };
     });
 
@@ -362,6 +367,7 @@ export function useSmartAlerts() {
           suggestionBn: coldSuggestion.bn,
           timestamp: new Date(),
           acknowledged: false,
+          priority: mapAlertLevelToPriority(coldTemplate.level),
         });
       }
 
@@ -383,6 +389,7 @@ export function useSmartAlerts() {
           suggestionBn: hotSuggestion.bn,
           timestamp: new Date(),
           acknowledged: false,
+          priority: mapAlertLevelToPriority(hotTemplate.level),
         });
       }
     }
