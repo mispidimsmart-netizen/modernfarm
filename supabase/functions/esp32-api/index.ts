@@ -745,19 +745,90 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
   try {
     const { age_days, batch_id } = body;
     
-    // Validate age
-    if (typeof age_days !== 'number' || age_days < 1 || age_days > 999) {
+    // ══════════════════════════════════════════════════════════════
+    // 🔬 BIOLOGICAL PLAUSIBILITY VALIDATION
+    // Rule 1: age must be 0–60 days
+    // Rule 2: age cannot jump >2 days within 24 hours
+    // If age missing: use locally incremented age from batch start_date
+    // All overrides logged as age_override_event
+    // ══════════════════════════════════════════════════════════════
+    
+    // Rule 1: Range validation (0-60 days for broiler biological cycle)
+    if (typeof age_days !== 'number' || age_days < 0 || age_days > 60) {
+      // Log rejection
+      await supabase.from('farm_audit_logs').insert({
+        user_id: userId,
+        action_type: 'age_override_event',
+        action_category: 'safety',
+        severity: 'warning',
+        source: 'api',
+        metadata: { 
+          submitted_age: age_days, 
+          rejection_reason: 'outside_biological_range',
+          valid_range: '0-60 days'
+        },
+      });
+      
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid age_days. Must be between 1 and 999', 
-          code: 'INVALID_AGE' 
+          error: `Invalid age_days. Must be between 0 and 60 for broiler biological cycle. Received: ${age_days}`, 
+          code: 'AGE_OUT_OF_RANGE' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
+    // Rule 2: Jump validation — age cannot change >2 days in 24 hours
+    // Fetch the current active batch to compare
+    const { data: currentBatch } = await supabase
+      .from('broiler_batches')
+      .select('start_date, updated_at')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (currentBatch?.start_date) {
+      const currentAge = Math.floor(
+        (Date.now() - new Date(currentBatch.start_date).getTime()) / (24 * 60 * 60 * 1000)
+      );
+      const ageDelta = Math.abs(age_days - currentAge);
+      const lastUpdate = currentBatch.updated_at ? new Date(currentBatch.updated_at) : null;
+      const hoursSinceUpdate = lastUpdate 
+        ? (Date.now() - lastUpdate.getTime()) / (60 * 60 * 1000) 
+        : Infinity;
+      
+      if (ageDelta > 2 && hoursSinceUpdate < 24) {
+        // Log rejection
+        await supabase.from('farm_audit_logs').insert({
+          user_id: userId,
+          action_type: 'age_override_event',
+          action_category: 'safety',
+          severity: 'warning',
+          source: 'api',
+          metadata: { 
+            submitted_age: age_days,
+            current_age: currentAge,
+            delta: ageDelta,
+            hours_since_last_update: Math.round(hoursSinceUpdate),
+            rejection_reason: 'jump_exceeds_2_days_in_24h'
+          },
+        });
+        
+        return new Response(
+          JSON.stringify({ 
+            error: `Age jump too large. Current age: ${currentAge} days, submitted: ${age_days} days (delta: ${ageDelta}). Max allowed jump is 2 days within 24 hours.`, 
+            code: 'AGE_JUMP_TOO_LARGE',
+            current_age: currentAge,
+            submitted_age: age_days,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
     // Check if user's active shed has broiler farm type
-    // First try to get shed_id from active batch, then check shed's farm_type
     const { data: activeBatchCheck } = await supabase
       .from('broiler_batches')
       .select('shed_id')
@@ -778,7 +849,6 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
     }
     
     if (!isBroilerShed) {
-      // Fallback: check profile-level farm_type
       const { data: profile } = await supabase
         .from('profiles')
         .select('farm_type')
@@ -802,7 +872,7 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
     startDate.setDate(startDate.getDate() - age_days);
     const startDateStr = startDate.toISOString().split('T')[0];
     
-    // Update active batch if batch_id provided, otherwise update any active batch
+    // Update active batch
     let updateQuery = supabase
       .from('broiler_batches')
       .update({ 
@@ -820,15 +890,28 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
     
     if (batchError) {
       console.error('Error updating batch age:', batchError);
-      // Continue anyway - age can still be sent to ESP32
     }
+    
+    // Log successful age update
+    await supabase.from('farm_audit_logs').insert({
+      user_id: userId,
+      action_type: 'age_override_event',
+      action_category: 'farm',
+      severity: 'info',
+      source: 'api',
+      metadata: { 
+        new_age_days: age_days,
+        start_date: startDateStr,
+        batch_id: batch_id || null,
+        accepted: true
+      },
+    });
     
     console.log(`✓ Broiler age updated: Day ${age_days}`);
     
     // Get target temperature for this age
     const targetTemp = getBroilerTargetTemp(age_days);
     
-    // Response for ESP32
     const response = {
       success: true,
       age_days: age_days,

@@ -109,9 +109,17 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
                 <Input
                   type="number"
                   min="0"
+                  max="8"
                   value={formData.age_weeks || ''}
                   onChange={(e) => setFormData(p => ({ ...p, age_weeks: parseInt(e.target.value) || 0 }))}
                 />
+                {formData.age_weeks * 7 > 60 && (
+                  <p className="text-xs text-destructive">
+                    {language === 'bn' 
+                      ? '⚠️ সর্বোচ্চ ৬০ দিন (≈৮ সপ্তাহ)' 
+                      : '⚠️ Max 60 days (≈8 weeks)'}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>{t.breed[language]}</Label>

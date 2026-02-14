@@ -399,11 +399,84 @@ export function useUpdateFlockInfo() {
 
   return useMutation({
     mutationFn: async (data: Partial<FlockInfo>) => {
+      if (!user) throw new Error('Not authenticated');
+
+      // Age plausibility validation (age_weeks → convert to days for validation)
+      if (data.age_weeks !== undefined) {
+        const newAgeDays = data.age_weeks * 7;
+        
+        // Range validation: 0–60 days = 0–8.5 weeks
+        if (newAgeDays < 0 || newAgeDays > 60) {
+          // Log rejection
+          await (supabase.from('farm_audit_logs') as any).insert({
+            user_id: user.id,
+            action_type: 'age_override_event',
+            action_category: 'safety',
+            severity: 'warning',
+            source: 'app',
+            metadata: { 
+              submitted_age_weeks: data.age_weeks,
+              submitted_age_days: newAgeDays,
+              rejection_reason: 'outside_biological_range_0_60_days',
+            },
+          });
+          throw new Error(`Age ${data.age_weeks} weeks (${newAgeDays} days) is outside biological range (0-60 days)`);
+        }
+
+        // Jump validation: fetch current flock info
+        const { data: currentFlock } = await supabase
+          .from('flock_info')
+          .select('age_weeks, updated_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (currentFlock) {
+          const currentAgeDays = (currentFlock.age_weeks || 0) * 7;
+          const ageDeltaDays = Math.abs(newAgeDays - currentAgeDays);
+          const lastUpdate = currentFlock.updated_at ? new Date(currentFlock.updated_at) : null;
+          const hoursSinceUpdate = lastUpdate 
+            ? (Date.now() - lastUpdate.getTime()) / (60 * 60 * 1000) 
+            : Infinity;
+
+          if (ageDeltaDays > 2 && hoursSinceUpdate < 24) {
+            // Log rejection
+            await (supabase.from('farm_audit_logs') as any).insert({
+              user_id: user.id,
+              action_type: 'age_override_event',
+              action_category: 'safety',
+              severity: 'warning',
+              source: 'app',
+              metadata: { 
+                submitted_age_weeks: data.age_weeks,
+                current_age_weeks: currentFlock.age_weeks,
+                delta_days: ageDeltaDays,
+                hours_since_last_update: Math.round(hoursSinceUpdate),
+                rejection_reason: 'jump_exceeds_2_days_in_24h',
+              },
+            });
+            throw new Error(`Age jump too large: ${ageDeltaDays} days change within ${Math.round(hoursSinceUpdate)} hours. Max 2 days per 24 hours.`);
+          }
+        }
+
+        // Log accepted age change
+        await (supabase.from('farm_audit_logs') as any).insert({
+          user_id: user.id,
+          action_type: 'age_override_event',
+          action_category: 'farm',
+          severity: 'info',
+          source: 'app',
+          metadata: { 
+            new_age_weeks: data.age_weeks,
+            accepted: true,
+          },
+        });
+      }
+
       const { error } = await supabase
         .from('flock_info')
         .upsert({
           ...data,
-          user_id: user!.id,
+          user_id: user.id,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
       
@@ -413,8 +486,8 @@ export function useUpdateFlockInfo() {
       queryClient.invalidateQueries({ queryKey: ['flock-info'] });
       toast({ title: 'ফ্লক তথ্য আপডেট হয়েছে' });
     },
-    onError: () => {
-      toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({ title: error.message || 'ত্রুটি হয়েছে', variant: 'destructive' });
     },
   });
 }
