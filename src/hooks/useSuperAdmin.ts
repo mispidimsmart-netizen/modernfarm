@@ -80,22 +80,38 @@ export function useSuperAdmin() {
         throw profilesError;
       }
 
-      // Get sheds count per user
+      // Get sheds with farm_type per user (farm_type is shed-level, not profile-level)
       const { data: sheds, error: shedsError } = await supabase
         .from('sheds')
-        .select('user_id');
+        .select('user_id, farm_type');
 
       if (shedsError) {
         console.error('Error fetching sheds:', shedsError);
       }
 
-      // Count sheds per user
+      // Count sheds per user AND determine effective farm_type from sheds
       const shedCounts: Record<string, number> = {};
+      const shedFarmTypes: Record<string, Set<string>> = {};
       sheds?.forEach(shed => {
         shedCounts[shed.user_id] = (shedCounts[shed.user_id] || 0) + 1;
+        if (!shedFarmTypes[shed.user_id]) {
+          shedFarmTypes[shed.user_id] = new Set();
+        }
+        if (shed.farm_type) {
+          shedFarmTypes[shed.user_id].add(shed.farm_type);
+        }
       });
 
-      // Map profiles with shed counts
+      // Determine effective farm_type: if user has broiler sheds, show broiler; 
+      // if mixed, show 'mixed'; otherwise use shed data or fallback to profile
+      const getEffectiveFarmType = (userId: string, profileFarmType: string | null): string => {
+        const types = shedFarmTypes[userId];
+        if (!types || types.size === 0) return profileFarmType || 'layer';
+        if (types.size > 1) return 'mixed';
+        return Array.from(types)[0];
+      };
+
+      // Map profiles with shed counts and real farm_type
       const users: AdminUser[] = profiles.map(profile => ({
         id: profile.id,
         phone: profile.phone,
@@ -104,7 +120,7 @@ export function useSuperAdmin() {
         created_at: profile.created_at,
         user_name: (profile as any).user_name || null,
         email: (profile as any).email || null,
-        farm_type: (profile as any).farm_type || 'layer',
+        farm_type: getEffectiveFarmType(profile.id, (profile as any).farm_type),
         is_blocked: (profile as any).is_blocked || false,
         blocked_at: (profile as any).blocked_at || null,
         blocked_by: (profile as any).blocked_by || null,
