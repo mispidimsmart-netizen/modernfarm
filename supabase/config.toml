@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.ota-firmware]
 verify_jwt = false
+
+[functions.emergency-webhook]
+verify_jwt = false
