@@ -2421,6 +2421,226 @@ export type Database = {
           },
         ]
       }
+      notification_delivery_log: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_id: string | null
+          body: string | null
+          channel: string
+          created_at: string
+          emergency_event_id: string | null
+          error_message: string | null
+          escalated_to: string | null
+          farm_id: string | null
+          id: string
+          is_escalated: boolean | null
+          max_repeats: number | null
+          next_repeat_at: string | null
+          priority: string
+          repeat_count: number | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_id?: string | null
+          body?: string | null
+          channel: string
+          created_at?: string
+          emergency_event_id?: string | null
+          error_message?: string | null
+          escalated_to?: string | null
+          farm_id?: string | null
+          id?: string
+          is_escalated?: boolean | null
+          max_repeats?: number | null
+          next_repeat_at?: string | null
+          priority?: string
+          repeat_count?: number | null
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_id?: string | null
+          body?: string | null
+          channel?: string
+          created_at?: string
+          emergency_event_id?: string | null
+          error_message?: string | null
+          escalated_to?: string | null
+          farm_id?: string | null
+          id?: string
+          is_escalated?: boolean | null
+          max_repeats?: number | null
+          next_repeat_at?: string | null
+          priority?: string
+          repeat_count?: number | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_log_emergency_event_id_fkey"
+            columns: ["emergency_event_id"]
+            isOneToOne: false
+            referencedRelation: "emergency_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_delivery_log_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_escalation_config: {
+        Row: {
+          created_at: string
+          critical_push: boolean | null
+          critical_repeat_minutes: number | null
+          critical_sms: boolean | null
+          critical_sound: boolean | null
+          critical_webhook: boolean | null
+          escalation_cooldown_minutes: number | null
+          escalation_enabled: boolean | null
+          farm_id: string | null
+          id: string
+          ignored_critical_threshold: number | null
+          important_push: boolean | null
+          important_sms: boolean | null
+          important_sound: boolean | null
+          normal_push: boolean | null
+          normal_sms: boolean | null
+          normal_sound: boolean | null
+          secondary_phone: string | null
+          secondary_phone_label: string | null
+          updated_at: string
+          urgent_push: boolean | null
+          urgent_repeat_minutes: number | null
+          urgent_sms: boolean | null
+          urgent_sound: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          critical_push?: boolean | null
+          critical_repeat_minutes?: number | null
+          critical_sms?: boolean | null
+          critical_sound?: boolean | null
+          critical_webhook?: boolean | null
+          escalation_cooldown_minutes?: number | null
+          escalation_enabled?: boolean | null
+          farm_id?: string | null
+          id?: string
+          ignored_critical_threshold?: number | null
+          important_push?: boolean | null
+          important_sms?: boolean | null
+          important_sound?: boolean | null
+          normal_push?: boolean | null
+          normal_sms?: boolean | null
+          normal_sound?: boolean | null
+          secondary_phone?: string | null
+          secondary_phone_label?: string | null
+          updated_at?: string
+          urgent_push?: boolean | null
+          urgent_repeat_minutes?: number | null
+          urgent_sms?: boolean | null
+          urgent_sound?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          critical_push?: boolean | null
+          critical_repeat_minutes?: number | null
+          critical_sms?: boolean | null
+          critical_sound?: boolean | null
+          critical_webhook?: boolean | null
+          escalation_cooldown_minutes?: number | null
+          escalation_enabled?: boolean | null
+          farm_id?: string | null
+          id?: string
+          ignored_critical_threshold?: number | null
+          important_push?: boolean | null
+          important_sms?: boolean | null
+          important_sound?: boolean | null
+          normal_push?: boolean | null
+          normal_sms?: boolean | null
+          normal_sound?: boolean | null
+          secondary_phone?: string | null
+          secondary_phone_label?: string | null
+          updated_at?: string
+          urgent_push?: boolean | null
+          urgent_repeat_minutes?: number | null
+          urgent_sms?: boolean | null
+          urgent_sound?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_escalation_config_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_escalation_tracker: {
+        Row: {
+          created_at: string
+          escalated_at: string | null
+          escalation_resolved_at: string | null
+          farm_id: string | null
+          id: string
+          ignored_critical_count: number | null
+          is_escalated: boolean | null
+          last_ignored_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          escalated_at?: string | null
+          escalation_resolved_at?: string | null
+          farm_id?: string | null
+          id?: string
+          ignored_critical_count?: number | null
+          is_escalated?: boolean | null
+          last_ignored_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          escalated_at?: string | null
+          escalation_resolved_at?: string | null
+          farm_id?: string | null
+          id?: string
+          ignored_critical_count?: number | null
+          is_escalated?: boolean | null
+          last_ignored_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_escalation_tracker_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offline_sync_queue: {
         Row: {
           created_at: string

@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.emergency-webhook]
 verify_jwt = false
+
+[functions.notification-escalation]
+verify_jwt = false

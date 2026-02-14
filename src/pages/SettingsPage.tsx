@@ -25,6 +25,7 @@ import { NotificationSoundCard } from '@/components/settings/NotificationSoundCa
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
+import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { 
   FarmSetupTab, 
   OperationPreferencesTab, 
@@ -372,6 +373,9 @@ export function SettingsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Priority & Escalation */}
+                  <NotificationPriorityCard />
 
                   {/* Notification Sounds */}
                   <NotificationSoundCard />
