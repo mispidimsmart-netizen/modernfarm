@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 
-export type SetupStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type SetupStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export const SETUP_STEPS = [
   { step: 1, key: 'step_farm_created', icon: '🏠', en: 'Create Farm', bn: 'খামার তৈরি' },
@@ -13,7 +13,8 @@ export const SETUP_STEPS = [
   { step: 5, key: 'step_sensors_calibrated', icon: '🌡️', en: 'Calibrate Sensors', bn: 'সেন্সর ক্যালিব্রেশন' },
   { step: 6, key: 'step_chick_age_set', icon: '🐣', en: 'Set Chick Age', bn: 'বাচ্চার বয়স সেট' },
   { step: 7, key: 'step_automation_profile_selected', icon: '⚙️', en: 'Automation Profile', bn: 'অটোমেশন প্রোফাইল' },
-  { step: 8, key: 'step_simulation_passed', icon: '🧪', en: 'Simulation Test', bn: 'সিমুলেশন টেস্ট' },
+  { step: 8, key: 'hardware_validation_passed', icon: '🔧', en: 'Hardware Validation', bn: 'হার্ডওয়্যার ভ্যালিডেশন' },
+  { step: 9, key: 'step_simulation_passed', icon: '🧪', en: 'Simulation Test', bn: 'সিমুলেশন টেস্ট' },
 ] as const;
 
 export function useFarmSetupStatus() {
@@ -64,6 +65,7 @@ export function useIsSetupComplete() {
   const { data: status, isLoading } = useFarmSetupStatus();
   return {
     isComplete: status?.setup_completed ?? true, // default true for backward compat
+    isHardwareValidated: status?.hardware_validation_passed ?? false,
     isLoading,
     status,
   };

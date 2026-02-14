@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Loader2, Wifi, WifiOff, QrCode, RotateCcw } from 'lucide-react';
+import { HardwareValidation } from '@/components/setup/HardwareValidation';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useFarmSetupStatus, useUpdateSetupStep, SETUP_STEPS } from '@/hooks/useFarmSetup';
@@ -464,17 +465,17 @@ export default function FarmSetupWizardPage() {
     
     const updates: Record<string, any> = {
       [stepConfig.key]: true,
-      current_step: Math.min(nextStep, 8),
+      current_step: Math.min(nextStep, 9),
     };
 
-    if (stepNum === 8) {
+    if (stepNum === 9) {
       updates.setup_completed = true;
       updates.setup_completed_at = new Date().toISOString();
     }
 
     await updateStep.mutateAsync(updates);
 
-    if (stepNum === 8) {
+    if (stepNum === 9) {
       navigate('/', { replace: true });
     } else {
       setActiveStep(nextStep);
@@ -489,7 +490,7 @@ export default function FarmSetupWizardPage() {
     );
   }
 
-  const progressPercent = ((activeStep - 1) / 8) * 100;
+  const progressPercent = ((activeStep - 1) / 9) * 100;
 
   const stepComponents: Record<number, React.ReactNode> = {
     1: <StepFarmCreate onComplete={() => completeStep(1)} />,
@@ -499,7 +500,19 @@ export default function FarmSetupWizardPage() {
     5: <StepCalibrateSensors onComplete={() => completeStep(5)} />,
     6: <StepSetChickAge onComplete={() => completeStep(6)} />,
     7: <StepAutomationProfile onComplete={() => completeStep(7)} />,
-    8: <StepSimulationTest onComplete={() => completeStep(8)} />,
+    8: <HardwareValidation 
+         onComplete={async (results) => {
+           await updateStep.mutateAsync({
+             hardware_validation_passed: true,
+             hardware_validation_at: new Date().toISOString(),
+             hardware_validation_results: results,
+             current_step: 9,
+           });
+           setActiveStep(9);
+         }}
+         onSkip={() => setActiveStep(9)}
+       />,
+    9: <StepSimulationTest onComplete={() => completeStep(9)} />,
   };
 
   const currentStepConfig = SETUP_STEPS[activeStep - 1];
@@ -513,7 +526,7 @@ export default function FarmSetupWizardPage() {
             {language === 'bn' ? '🚀 খামার সেটআপ' : '🚀 Farm Setup'}
           </h1>
           <span className="text-xs text-muted-foreground font-mono">
-            {activeStep}/8
+            {activeStep}/9
           </span>
         </div>
         <Progress value={progressPercent} className="h-2 rounded-full" />

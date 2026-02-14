@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import { Shield, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useIsSetupComplete } from '@/hooks/useFarmSetup';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 /**
  * Wraps pages that require setup to be complete.
  * Shows a blocker with a link to the setup wizard if incomplete.
+ * Also blocks automation if hardware validation hasn't passed.
  */
 export function SetupBlocker({ children }: { children: React.ReactNode }) {
   const { language } = useAuth();
   const navigate = useNavigate();
-  const { isComplete, isLoading } = useIsSetupComplete();
+  const { isComplete, isHardwareValidated, isLoading } = useIsSetupComplete();
 
   if (isLoading) return null;
 
@@ -31,6 +32,27 @@ export function SetupBlocker({ children }: { children: React.ReactNode }) {
         </p>
         <Button onClick={() => navigate('/setup')} className="h-12 px-8 text-base rounded-xl">
           {language === 'bn' ? '🚀 সেটআপ শুরু করুন' : '🚀 Start Setup'}
+        </Button>
+      </div>
+    );
+  }
+
+  if (!isHardwareValidated) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+        <div className="rounded-full bg-amber-500/10 p-4 mb-4">
+          <ShieldAlert className="h-10 w-10 text-amber-500" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground mb-2">
+          {language === 'bn' ? '🔧 হার্ডওয়্যার ভ্যালিডেশন প্রয়োজন' : '🔧 Hardware Validation Required'}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+          {language === 'bn'
+            ? 'অটোমেশন সক্রিয় করার আগে হার্ডওয়্যার পরীক্ষা (রিলে টগল, সেন্সর রেসপন্স) সফল হতে হবে।'
+            : 'Hardware validation (relay toggle, sensor response) must pass before enabling automation.'}
+        </p>
+        <Button onClick={() => navigate('/setup')} className="h-12 px-8 text-base rounded-xl">
+          {language === 'bn' ? '🔧 ভ্যালিডেশন করুন' : '🔧 Run Validation'}
         </Button>
       </div>
     );
