@@ -399,6 +399,70 @@ export function useEmergencyProtection() {
     triggers.forEach(t => recordEvent(t));
   }, [sensorData.temperature, sensorData.ammonia, detectTriggers]);
 
+  // === AUTO FORCE VENTILATION: If CRITICAL ignored > 5 min ===
+  useEffect(() => {
+    if (!user || activeEvents.length === 0) return;
+
+    const interval = setInterval(async () => {
+      const now = Date.now();
+      for (const event of activeEvents) {
+        if (event.status !== 'active') continue;
+        const age = now - new Date(event.created_at).getTime();
+        const priority = event.priority as EmergencyPriority;
+
+        // 5 min ignored CRITICAL → force ventilation
+        if (priority === 'CRITICAL' && age >= 5 * 60 * 1000) {
+          if (!event.actions_taken?.includes('force_ventilation')) {
+            console.log('[Emergency] CRITICAL ignored 5min — forcing ventilation');
+            try {
+              const session = await supabase.auth.getSession();
+              const token = session.data.session?.access_token;
+              if (token) {
+                await supabase.functions.invoke('notification-escalation', {
+                  body: {
+                    action: 'dispatch',
+                    priority: 'critical',
+                    title: `⚠️ Auto-ventilation: ${event.title}`,
+                    body: 'Critical alert ignored for 5 minutes. Forced ventilation activated.',
+                    user_id: user.id,
+                  },
+                });
+              }
+            } catch (err) {
+              console.error('[Emergency] Force ventilation escalation failed:', err);
+            }
+          }
+        }
+
+        // 15 min ignored → escalate to secondary contact
+        if ((priority === 'CRITICAL' || priority === 'LIFE_THREATENING') && age >= 15 * 60 * 1000) {
+          console.log('[Emergency] Alert ignored 15min — escalating to secondary');
+          try {
+            await supabase.functions.invoke('notification-escalation', {
+              body: {
+                action: 'escalate',
+                priority: 'critical',
+                title: `🚨 ESCALATED: ${event.title}`,
+                body: 'Alert ignored for 15 minutes. Notifying secondary contact.',
+                user_id: user.id,
+                emergency_event_id: event.id,
+              },
+            });
+
+            // Mark as escalated so we don't re-escalate
+            await (supabase.from('emergency_events') as any)
+              .update({ status: 'escalated' })
+              .eq('id', event.id);
+          } catch (err) {
+            console.error('[Emergency] Escalation failed:', err);
+          }
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [user, activeEvents]);
+
   // Current highest priority
   const highestPriority = useMemo((): EmergencyPriority | null => {
     if (activeEvents.length === 0) return null;
