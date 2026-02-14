@@ -42,11 +42,13 @@ const AMMONIA_ZERO_TIMEOUT_MS = 15 * 60 * 1000;
 const AMMONIA_SPIKE_THRESHOLD = 25;
 const AMMONIA_SPIKE_WINDOW_MS = 10000;
 
-// === SENSOR DRIFT DETECTION (contradicts physical effect) ===
-const DRIFT_EVALUATION_WINDOW_MS = 10 * 60 * 1000; // 10 min window
-const DRIFT_DEVICE_ACTIVE_THRESHOLD_MS = 6 * 60 * 1000; // 6 min active within window
-const DRIFT_HEATER_EXPECTED_RISE = 0.8; // °C expected after 6 min heater
-const DRIFT_FAN_EXPECTED_DROP = 0.5;    // °C expected after 6 min fan
+// === SLOW SENSOR DRIFT DETECTION ===
+// Detects gradual offset where sensor reads believably but incorrectly
+const DRIFT_EVALUATION_WINDOW_MS = 15 * 60 * 1000;          // 15-minute sliding window
+const DRIFT_HEATER_ACTIVE_THRESHOLD_MS = 8 * 60 * 1000;     // heater ON >8min within window
+const DRIFT_FAN_ACTIVE_THRESHOLD_MS = 6 * 60 * 1000;        // fan ON >6min within window
+const DRIFT_HEATER_EXPECTED_RISE = 1.0;  // °C — heater >8min must produce ≥1°C rise
+const DRIFT_FAN_EXPECTED_DROP = 0.5;     // °C — fan >6min must produce ≥0.5°C drop
 
 // === SENSOR FREEZE DETECTION (while devices running) ===
 const FREEZE_CHANGE_THRESHOLD = 0.2;  // °C — less than this = frozen
@@ -738,16 +740,16 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
         let driftDetected = false;
         let driftReason = '';
 
-        // Heater ON >6min but temp didn't rise 0.8°C
-        if (heaterOnTime >= DRIFT_DEVICE_ACTIVE_THRESHOLD_MS && tempChange < DRIFT_HEATER_EXPECTED_RISE) {
+        // Heater ON >8min within 15min but temp didn't rise ≥1°C → sensor unreliable
+        if (heaterOnTime >= DRIFT_HEATER_ACTIVE_THRESHOLD_MS && tempChange < DRIFT_HEATER_EXPECTED_RISE) {
           driftDetected = true;
-          driftReason = `Heater ON ${(heaterOnTime / 60000).toFixed(1)}min but temp only rose ${tempChange.toFixed(2)}°C (expected ≥${DRIFT_HEATER_EXPECTED_RISE}°C)`;
+          driftReason = `Heater ON ${(heaterOnTime / 60000).toFixed(1)}min in ${(windowElapsed / 60000).toFixed(0)}min window but temp only rose ${tempChange.toFixed(2)}°C (expected ≥${DRIFT_HEATER_EXPECTED_RISE}°C). Sensor unreliable — slow drift suspected.`;
         }
 
-        // Fan ON >6min but temp didn't drop 0.5°C
-        if (fanOnTime >= DRIFT_DEVICE_ACTIVE_THRESHOLD_MS && (-tempChange) < DRIFT_FAN_EXPECTED_DROP) {
+        // Fan ON >6min within 15min but temp didn't drop ≥0.5°C → sensor unreliable
+        if (fanOnTime >= DRIFT_FAN_ACTIVE_THRESHOLD_MS && (-tempChange) < DRIFT_FAN_EXPECTED_DROP) {
           driftDetected = true;
-          driftReason = `Fan ON ${(fanOnTime / 60000).toFixed(1)}min but temp only dropped ${(-tempChange).toFixed(2)}°C (expected ≥${DRIFT_FAN_EXPECTED_DROP}°C)`;
+          driftReason = `Fan ON ${(fanOnTime / 60000).toFixed(1)}min in ${(windowElapsed / 60000).toFixed(0)}min window but temp only dropped ${(-tempChange).toFixed(2)}°C (expected ≥${DRIFT_FAN_EXPECTED_DROP}°C). Sensor unreliable — slow drift suspected.`;
         }
 
         if (driftDetected && !driftAlertSent.current) {
@@ -757,8 +759,8 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
             type: 'invalid',
             severity: 'danger',
             message: {
-              bn: `🚨 সেন্সর ড্রিফট — ${driftReason}। সেন্সর বিশ্বাসযোগ্য নয়, সারভাইভাল মোড সক্রিয়।`,
-              en: `🚨 Sensor DRIFT — ${driftReason}. Sensor unreliable, survival mode active.`,
+              bn: `🚨 সেন্সর ড্রিফট — ${driftReason}। হিটার বন্ধ, সারভাইভাল ভেন্টিলেশন সক্রিয়।`,
+              en: `🚨 Sensor DRIFT — ${driftReason}. Heater disabled, survival ventilation active.`,
             },
             detectedAt: new Date(),
             shouldIgnoreSensor: true,
@@ -768,16 +770,23 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
           dangerDetected = true;
           sendSensorAlert(driftIssue);
           logIncident(driftIssue);
-          console.error(`[SensorValidation] SENSOR DRIFT DETECTED: ${driftReason}`);
+          console.error(`[SensorValidation] SLOW SENSOR DRIFT DETECTED: ${driftReason}`);
 
-          // Create LIFE_THREATENING emergency event
+          // === FORCE SURVIVAL MODE ===
+          if (!survivalModeTriggeredRef.current) {
+            survivalModeTriggeredRef.current = true;
+            setSurvivalMode(true);
+            console.error('[SensorValidation] Drift → SURVIVAL MODE activated (40s ON / 20s OFF, heater 10% duty)');
+          }
+
+          // === LIFE_THREATENING emergency event ===
           if (user) {
             (supabase.from('emergency_events') as any).insert({
               user_id: user.id,
               trigger_type: 'sensor_offline',
               priority: 'LIFE_THREATENING',
-              title: '🔴 Sensor drift: readings contradict physical reality',
-              title_bn: '🔴 সেন্সর ড্রিফট: রিডিং বাস্তবতার সাথে মেলে না',
+              title: '🔴 SENSOR DRIFT: Temperature readings contradict physical reality',
+              title_bn: '🔴 সেন্সর ড্রিফট: তাপমাত্রা রিডিং বাস্তবতার সাথে মেলে না',
               description: driftReason,
               description_bn: driftReason,
               actions_taken: ['force_ventilation', 'disable_heater', 'notify_owner', 'call_webhook'],
@@ -787,9 +796,31 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
                 temp_change: tempChange,
                 heater_on_ms: heaterOnTime,
                 fan_on_ms: fanOnTime,
+                window_ms: windowElapsed,
+                drift_type: heaterOnTime >= DRIFT_HEATER_ACTIVE_THRESHOLD_MS ? 'heater_no_effect' : 'fan_no_effect',
               },
-              source: 'sensor_validation',
+              source: 'sensor_drift_detection',
             }).then(() => console.log('[SensorValidation] Drift LIFE_THREATENING event created'));
+
+            // === Audit log: sensor_drift_detected ===
+            (supabase.from('farm_audit_logs') as any).insert({
+              user_id: user.id,
+              user_email: user.email || '',
+              action_type: 'sensor_drift_detected',
+              action_category: 'safety',
+              severity: 'critical',
+              source: 'sensor_drift_detection',
+              metadata: {
+                reason: driftReason,
+                temp_at_start: driftTempAtWindowStart.current,
+                temp_at_end: sensorData.temperature,
+                temp_change: tempChange,
+                heater_on_ms: heaterOnTime,
+                fan_on_ms: fanOnTime,
+                window_ms: windowElapsed,
+                action: 'survival_mode_activated_heater_disabled',
+              },
+            }).then(() => console.log('[SensorValidation] sensor_drift_detected audit logged'));
           }
         }
 
