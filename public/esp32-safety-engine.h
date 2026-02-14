@@ -15,12 +15,23 @@
  * 
  * Include this header in your main esp32-industrial.ino
  * Usage: #include "esp32-safety-engine.h"
+ * 
+ * NOTE: All duration math uses unsigned subtraction which is
+ * inherently overflow-safe for unsigned long (wraps at ~49.7 days).
  */
 
 #ifndef SAFETY_ENGINE_H
 #define SAFETY_ENGINE_H
 
 #include <Preferences.h>
+
+// Overflow-safe elapsed time (same as in main firmware)
+#ifndef SAFE_ELAPSED_DEFINED
+#define SAFE_ELAPSED_DEFINED
+inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
+  return now - since;  // unsigned subtraction handles overflow
+}
+#endif
 
 // ─── SAFETY CONSTANTS (non-negotiable) ───
 #define SAFE_TEMP_MAX          38.0f   // °C → force all fans ON
@@ -203,9 +214,9 @@ public:
     // ── Post-reboot safety protocol ──
     checkRebootSafety(now);
     
-    // ── Sensor timeout ──
+    // ── Sensor timeout (overflow-safe) ──
     if (sensorValid) _lastSensorUpdate = now;
-    if ((now - _lastSensorUpdate) > SENSOR_TIMEOUT_MS) {
+    if (_safeElapsed(now, _lastSensorUpdate) > SENSOR_TIMEOUT_MS) {
       _enterSafeMode("SENSOR_TIMEOUT");
       return true;
     }
@@ -248,8 +259,8 @@ public:
     // ── Motor runtime limits ──
     for (int i = 0; i < 3; i++) _enforceMotorLimit(i, now);
 
-    // ── Cloud timeout ──
-    if ((now - _lastCloudSync) > CLOUD_TIMEOUT_MS) {
+    // ── Cloud timeout (overflow-safe) ──
+    if (_safeElapsed(now, _lastCloudSync) > CLOUD_TIMEOUT_MS) {
       if (state == STATE_NORMAL) state = STATE_OFFLINE_AUTONOMOUS;
     }
 
@@ -285,7 +296,7 @@ public:
       fanEffect.tracking = false;
     }
     
-    if (fanEffect.tracking && (now - fanEffect.onSince >= EFFECT_VALIDATION_WINDOW_MS)) {
+    if (fanEffect.tracking && (_safeElapsed(now, fanEffect.onSince) >= EFFECT_VALIDATION_WINDOW_MS)) {
       float tempDrop = fanEffect.tempAtStart - currentTemp;
       if (tempDrop < FAN_EXPECTED_COOLING_C) {
         fanEffect.consecutiveFailures++;
@@ -313,7 +324,7 @@ public:
       heaterEffect.tracking = false;
     }
     
-    if (heaterEffect.tracking && (now - heaterEffect.onSince >= EFFECT_VALIDATION_WINDOW_MS)) {
+    if (heaterEffect.tracking && (_safeElapsed(now, heaterEffect.onSince) >= EFFECT_VALIDATION_WINDOW_MS)) {
       float tempRise = currentTemp - heaterEffect.tempAtStart;
       if (tempRise < HEATER_EXPECTED_HEATING_C) {
         heaterEffect.consecutiveFailures++;
@@ -340,8 +351,8 @@ public:
       return;
     }
     
-    float elapsedMin = (now - (unsigned long)thermalModel.lastModelUpdate) / 60000.0f;
-    if (elapsedMin < 1.0f) return; // Only check every minute
+    float elapsedMin = _safeElapsed(now, (unsigned long)thermalModel.lastModelUpdate) / 60000.0f;
+    if (elapsedMin < 1.0f) return;
     
     // Calculate expected temperature based on actuator activity
     float rate = THERMAL_PASSIVE_RATE;
@@ -381,7 +392,7 @@ public:
 
   // ─── POST-REBOOT SAFETY PROTOCOL ───
   void checkRebootSafety(unsigned long now) {
-    unsigned long sinceReboot = now - rebootSafety.bootTime;
+    unsigned long sinceReboot = _safeElapsed(now, rebootSafety.bootTime);
     
     // Heater lockout: 3 minutes
     if (rebootSafety.heaterLocked && sinceReboot >= REBOOT_HEATER_LOCKOUT_MS) {
@@ -425,7 +436,7 @@ public:
     if (ageDelta > AGE_MAX_JUMP_PER_24H) {
       // Check if enough time has passed (24h in millis)
       if (ageValidation.lastAgeChangeTime > 0) {
-        unsigned long timeSinceLastChange = now - ageValidation.lastAgeChangeTime;
+        unsigned long timeSinceLastChange = _safeElapsed(now, ageValidation.lastAgeChangeTime);
         if (timeSinceLastChange < 86400000UL) { // 24 hours in ms
           Serial.printf("[SAFETY] AGE REJECTED: Jump %d→%d (delta=%d) exceeds max %d in 24h\n",
                         currentAge, newAge, ageDelta, AGE_MAX_JUMP_PER_24H);
@@ -460,7 +471,7 @@ public:
 
   // ─── Should call backend safety engine ───
   bool shouldCallBackendSafety(unsigned long now) {
-    return (now - lastSafetyEngineCall >= SAFETY_ENGINE_CALL_INTERVAL_MS);
+    return (_safeElapsed(now, lastSafetyEngineCall) >= SAFETY_ENGINE_CALL_INTERVAL_MS);
   }
   
   void markSafetyEngineCalled(unsigned long now) {
@@ -532,10 +543,10 @@ public:
     if (rebootSafety.heaterLocked) return false;
     unsigned long now = millis();
     if (_heaterTimer.running) {
-      return (now - _heaterTimer.startedAt) < (HEATER_MAX_RUN_SEC * 1000UL);
+      return _safeElapsed(now, _heaterTimer.startedAt) < (HEATER_MAX_RUN_SEC * 1000UL);
     }
     if (_heaterTimer.stoppedAt > 0) {
-      return (now - _heaterTimer.stoppedAt) > (HEATER_COOLDOWN_SEC * 1000UL);
+      return _safeElapsed(now, _heaterTimer.stoppedAt) > (HEATER_COOLDOWN_SEC * 1000UL);
     }
     return true;
   }
@@ -543,7 +554,7 @@ public:
   bool isMotorAllowed(int idx) {
     if (idx < 0 || idx >= 3) return false;
     if (!_motorTimers[idx].running) return true;
-    return (millis() - _motorTimers[idx].startedAt) < (MOTOR_MAX_RUN_SEC * 1000UL);
+    return (_safeElapsed(millis(), _motorTimers[idx].startedAt)) < (MOTOR_MAX_RUN_SEC * 1000UL);
   }
 
   // ─── Override function pointers ───
@@ -617,7 +628,7 @@ private:
 
   void _enforceHeaterLimits(unsigned long now) {
     if (!_heaterTimer.running) return;
-    if ((now - _heaterTimer.startedAt) > (HEATER_MAX_RUN_SEC * 1000UL)) {
+    if (_safeElapsed(now, _heaterTimer.startedAt) > (HEATER_MAX_RUN_SEC * 1000UL)) {
       _forceHeaterOff();
       _safetyOverride = true;
     }
@@ -625,7 +636,7 @@ private:
 
   void _enforceMotorLimit(int idx, unsigned long now) {
     if (!_motorTimers[idx].running) return;
-    if ((now - _motorTimers[idx].startedAt) > (MOTOR_MAX_RUN_SEC * 1000UL)) {
+    if (_safeElapsed(now, _motorTimers[idx].startedAt) > (MOTOR_MAX_RUN_SEC * 1000UL)) {
       _motorTimers[idx].running = false;
       _motorTimers[idx].stoppedAt = now;
       if (onForceMotorOff) onForceMotorOff(idx);
