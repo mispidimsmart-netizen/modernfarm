@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
+import { FarmProvider } from "./context/FarmContext";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { RoleProtectedRoute } from "./components/auth";
@@ -214,15 +215,17 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <ShedProvider>
-          <Toaster />
-          <Sonner />
-          <OfflineIndicator />
-          <PWAUpdateBanner />
-          <BrowserRouter>
-            <AppWithRoutes />
-          </BrowserRouter>
-        </ShedProvider>
+        <FarmProvider>
+          <ShedProvider>
+            <Toaster />
+            <Sonner />
+            <OfflineIndicator />
+            <PWAUpdateBanner />
+            <BrowserRouter>
+              <AppWithRoutes />
+            </BrowserRouter>
+          </ShedProvider>
+        </FarmProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

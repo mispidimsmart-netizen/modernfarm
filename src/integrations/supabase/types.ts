@@ -28,6 +28,7 @@ export type Database = {
           curtain_advisory_enabled: boolean | null
           curtain_close_on_cold: boolean | null
           curtain_open_temp_diff: number | null
+          farm_id: string | null
           fogger_enabled: boolean | null
           fogger_on_seconds: number | null
           fogger_pause_seconds: number | null
@@ -67,6 +68,7 @@ export type Database = {
           curtain_advisory_enabled?: boolean | null
           curtain_close_on_cold?: boolean | null
           curtain_open_temp_diff?: number | null
+          farm_id?: string | null
           fogger_enabled?: boolean | null
           fogger_on_seconds?: number | null
           fogger_pause_seconds?: number | null
@@ -106,6 +108,7 @@ export type Database = {
           curtain_advisory_enabled?: boolean | null
           curtain_close_on_cold?: boolean | null
           curtain_open_temp_diff?: number | null
+          farm_id?: string | null
           fogger_enabled?: boolean | null
           fogger_on_seconds?: number | null
           fogger_pause_seconds?: number | null
@@ -134,6 +137,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "advanced_automation_settings_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "advanced_automation_settings_shed_id_fkey"
             columns: ["shed_id"]
             isOneToOne: false
@@ -147,6 +157,7 @@ export type Database = {
           acknowledged: boolean
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at: string
+          farm_id: string | null
           id: string
           message: string
           message_bn: string
@@ -158,6 +169,7 @@ export type Database = {
           acknowledged?: boolean
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at?: string
+          farm_id?: string | null
           id?: string
           message: string
           message_bn: string
@@ -169,6 +181,7 @@ export type Database = {
           acknowledged?: boolean
           alert_type?: Database["public"]["Enums"]["alert_type"]
           created_at?: string
+          farm_id?: string | null
           id?: string
           message?: string
           message_bn?: string
@@ -177,6 +190,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "alerts_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "alerts_shed_id_fkey"
             columns: ["shed_id"]
@@ -195,6 +215,7 @@ export type Database = {
           condition_value: number
           created_at: string
           enabled: boolean
+          farm_id: string | null
           id: string
           name: string
           user_id: string
@@ -207,6 +228,7 @@ export type Database = {
           condition_value: number
           created_at?: string
           enabled?: boolean
+          farm_id?: string | null
           id?: string
           name: string
           user_id: string
@@ -219,11 +241,20 @@ export type Database = {
           condition_value?: number
           created_at?: string
           enabled?: boolean
+          farm_id?: string | null
           id?: string
           name?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       automation_rules_new: {
         Row: {
@@ -231,6 +262,7 @@ export type Database = {
           condition: string
           created_at: string
           enabled: boolean
+          farm_id: string | null
           id: string
           parameter: string
           user_id: string
@@ -241,6 +273,7 @@ export type Database = {
           condition: string
           created_at?: string
           enabled?: boolean
+          farm_id?: string | null
           id?: string
           parameter: string
           user_id: string
@@ -251,12 +284,21 @@ export type Database = {
           condition?: string
           created_at?: string
           enabled?: boolean
+          farm_id?: string | null
           id?: string
           parameter?: string
           user_id?: string
           value?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_new_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       broiler_batches: {
         Row: {
@@ -268,6 +310,7 @@ export type Database = {
           created_at: string
           current_bird_count: number
           expected_end_date: string | null
+          farm_id: string | null
           id: string
           initial_bird_count: number
           notes: string | null
@@ -287,6 +330,7 @@ export type Database = {
           created_at?: string
           current_bird_count?: number
           expected_end_date?: string | null
+          farm_id?: string | null
           id?: string
           initial_bird_count?: number
           notes?: string | null
@@ -306,6 +350,7 @@ export type Database = {
           created_at?: string
           current_bird_count?: number
           expected_end_date?: string | null
+          farm_id?: string | null
           id?: string
           initial_bird_count?: number
           notes?: string | null
@@ -317,6 +362,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "broiler_batches_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "broiler_batches_shed_id_fkey"
             columns: ["shed_id"]
@@ -331,6 +383,7 @@ export type Database = {
           batch_id: string
           cost_per_kg: number | null
           created_at: string
+          farm_id: string | null
           feed_date: string
           feed_type: string | null
           id: string
@@ -342,6 +395,7 @@ export type Database = {
           batch_id: string
           cost_per_kg?: number | null
           created_at?: string
+          farm_id?: string | null
           feed_date?: string
           feed_type?: string | null
           id?: string
@@ -353,6 +407,7 @@ export type Database = {
           batch_id?: string
           cost_per_kg?: number | null
           created_at?: string
+          farm_id?: string | null
           feed_date?: string
           feed_type?: string | null
           id?: string
@@ -368,6 +423,13 @@ export type Database = {
             referencedRelation: "broiler_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "broiler_feed_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       broiler_mortality: {
@@ -376,6 +438,7 @@ export type Database = {
           cause: string | null
           count: number
           created_at: string
+          farm_id: string | null
           id: string
           notes: string | null
           record_date: string
@@ -386,6 +449,7 @@ export type Database = {
           cause?: string | null
           count?: number
           created_at?: string
+          farm_id?: string | null
           id?: string
           notes?: string | null
           record_date?: string
@@ -396,6 +460,7 @@ export type Database = {
           cause?: string | null
           count?: number
           created_at?: string
+          farm_id?: string | null
           id?: string
           notes?: string | null
           record_date?: string
@@ -409,6 +474,13 @@ export type Database = {
             referencedRelation: "broiler_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "broiler_mortality_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       broiler_sales: {
@@ -417,6 +489,7 @@ export type Database = {
           bird_count: number
           buyer_name: string | null
           created_at: string
+          farm_id: string | null
           id: string
           notes: string | null
           price_per_kg: number
@@ -430,6 +503,7 @@ export type Database = {
           bird_count: number
           buyer_name?: string | null
           created_at?: string
+          farm_id?: string | null
           id?: string
           notes?: string | null
           price_per_kg: number
@@ -443,6 +517,7 @@ export type Database = {
           bird_count?: number
           buyer_name?: string | null
           created_at?: string
+          farm_id?: string | null
           id?: string
           notes?: string | null
           price_per_kg?: number
@@ -459,6 +534,13 @@ export type Database = {
             referencedRelation: "broiler_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "broiler_sales_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       broiler_weights: {
@@ -466,6 +548,7 @@ export type Database = {
           average_weight_grams: number
           batch_id: string
           created_at: string
+          farm_id: string | null
           id: string
           max_weight_grams: number | null
           min_weight_grams: number | null
@@ -479,6 +562,7 @@ export type Database = {
           average_weight_grams: number
           batch_id: string
           created_at?: string
+          farm_id?: string | null
           id?: string
           max_weight_grams?: number | null
           min_weight_grams?: number | null
@@ -492,6 +576,7 @@ export type Database = {
           average_weight_grams?: number
           batch_id?: string
           created_at?: string
+          farm_id?: string | null
           id?: string
           max_weight_grams?: number | null
           min_weight_grams?: number | null
@@ -509,6 +594,13 @@ export type Database = {
             referencedRelation: "broiler_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "broiler_weights_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
         ]
       }
       daily_reports: {
@@ -517,6 +609,7 @@ export type Database = {
           avg_temperature: number | null
           created_at: string
           egg_production: number | null
+          farm_id: string | null
           id: string
           report_date: string
           total_water_usage: number | null
@@ -527,6 +620,7 @@ export type Database = {
           avg_temperature?: number | null
           created_at?: string
           egg_production?: number | null
+          farm_id?: string | null
           id?: string
           report_date?: string
           total_water_usage?: number | null
@@ -537,12 +631,21 @@ export type Database = {
           avg_temperature?: number | null
           created_at?: string
           egg_production?: number | null
+          farm_id?: string | null
           id?: string
           report_date?: string
           total_water_usage?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "daily_reports_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       daily_summary: {
         Row: {
@@ -551,6 +654,7 @@ export type Database = {
           avg_humidity: number | null
           avg_temperature: number | null
           created_at: string
+          farm_id: string | null
           health_score: number
           id: string
           mortality_count: number | null
@@ -567,6 +671,7 @@ export type Database = {
           avg_humidity?: number | null
           avg_temperature?: number | null
           created_at?: string
+          farm_id?: string | null
           health_score?: number
           id?: string
           mortality_count?: number | null
@@ -583,6 +688,7 @@ export type Database = {
           avg_humidity?: number | null
           avg_temperature?: number | null
           created_at?: string
+          farm_id?: string | null
           health_score?: number
           id?: string
           mortality_count?: number | null
@@ -593,7 +699,15 @@ export type Database = {
           total_water_usage?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "daily_summary_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       device_calibration: {
         Row: {
@@ -605,6 +719,7 @@ export type Database = {
           fan_direction_test_passed: boolean | null
           fan_direction_tested_at: string | null
           farm_height_meters: number | null
+          farm_id: string | null
           farm_length_meters: number | null
           farm_width_meters: number | null
           heater_temp_rise: number | null
@@ -636,6 +751,7 @@ export type Database = {
           fan_direction_test_passed?: boolean | null
           fan_direction_tested_at?: string | null
           farm_height_meters?: number | null
+          farm_id?: string | null
           farm_length_meters?: number | null
           farm_width_meters?: number | null
           heater_temp_rise?: number | null
@@ -667,6 +783,7 @@ export type Database = {
           fan_direction_test_passed?: boolean | null
           fan_direction_tested_at?: string | null
           farm_height_meters?: number | null
+          farm_id?: string | null
           farm_length_meters?: number | null
           farm_width_meters?: number | null
           heater_temp_rise?: number | null
@@ -698,6 +815,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "device_calibration_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "device_calibration_shed_id_fkey"
             columns: ["shed_id"]
             isOneToOne: false
@@ -716,6 +840,7 @@ export type Database = {
           device_name: string
           error_message: string | null
           expired_at: string | null
+          farm_id: string | null
           id: string
           max_retries: number
           retry_count: number
@@ -734,6 +859,7 @@ export type Database = {
           device_name?: string
           error_message?: string | null
           expired_at?: string | null
+          farm_id?: string | null
           id?: string
           max_retries?: number
           retry_count?: number
@@ -752,6 +878,7 @@ export type Database = {
           device_name?: string
           error_message?: string | null
           expired_at?: string | null
+          farm_id?: string | null
           id?: string
           max_retries?: number
           retry_count?: number
@@ -762,6 +889,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "device_command_log_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "device_command_log_shed_id_fkey"
             columns: ["shed_id"]
@@ -779,6 +913,7 @@ export type Database = {
           device_name: string
           executed: boolean
           executed_at: string | null
+          farm_id: string | null
           id: string
           user_id: string
         }
@@ -789,6 +924,7 @@ export type Database = {
           device_name?: string
           executed?: boolean
           executed_at?: string | null
+          farm_id?: string | null
           id?: string
           user_id: string
         }
@@ -799,16 +935,26 @@ export type Database = {
           device_name?: string
           executed?: boolean
           executed_at?: string | null
+          farm_id?: string | null
           id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "device_commands_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       device_control: {
         Row: {
           alarm: boolean
           device_id: string
           fan: boolean
+          farm_id: string | null
           id: string
           light: boolean
           mode: string
@@ -819,6 +965,7 @@ export type Database = {
           alarm?: boolean
           device_id?: string
           fan?: boolean
+          farm_id?: string | null
           id?: string
           light?: boolean
           mode?: string
@@ -829,13 +976,22 @@ export type Database = {
           alarm?: boolean
           device_id?: string
           fan?: boolean
+          farm_id?: string | null
           id?: string
           light?: boolean
           mode?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "device_control_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       device_health: {
         Row: {
@@ -1137,6 +1293,7 @@ export type Database = {
         Row: {
           created_at: string
           device_name: string
+          farm_id: string | null
           id: string
           is_active: boolean
           last_seen_at: string | null
@@ -1147,6 +1304,7 @@ export type Database = {
         Insert: {
           created_at?: string
           device_name?: string
+          farm_id?: string | null
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
@@ -1157,6 +1315,7 @@ export type Database = {
         Update: {
           created_at?: string
           device_name?: string
+          farm_id?: string | null
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
@@ -1165,6 +1324,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "device_tokens_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "device_tokens_shed_id_fkey"
             columns: ["shed_id"]
@@ -1178,6 +1344,7 @@ export type Database = {
         Row: {
           broken: number
           created_at: string
+          farm_id: string | null
           grade_a: number
           grade_b: number
           grade_c: number
@@ -1191,6 +1358,7 @@ export type Database = {
         Insert: {
           broken?: number
           created_at?: string
+          farm_id?: string | null
           grade_a?: number
           grade_b?: number
           grade_c?: number
@@ -1204,6 +1372,7 @@ export type Database = {
         Update: {
           broken?: number
           created_at?: string
+          farm_id?: string | null
           grade_a?: number
           grade_b?: number
           grade_c?: number
@@ -1215,6 +1384,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "egg_production_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "egg_production_shed_id_fkey"
             columns: ["shed_id"]
@@ -1231,6 +1407,7 @@ export type Database = {
           description: string | null
           description_bn: string | null
           device_token_id: string | null
+          farm_id: string | null
           id: string
           metadata: Json | null
           priority: string
@@ -1256,6 +1433,7 @@ export type Database = {
           description?: string | null
           description_bn?: string | null
           device_token_id?: string | null
+          farm_id?: string | null
           id?: string
           metadata?: Json | null
           priority?: string
@@ -1281,6 +1459,7 @@ export type Database = {
           description?: string | null
           description_bn?: string | null
           device_token_id?: string | null
+          farm_id?: string | null
           id?: string
           metadata?: Json | null
           priority?: string
@@ -1309,6 +1488,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "emergency_events_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "emergency_events_shed_id_fkey"
             columns: ["shed_id"]
             isOneToOne: false
@@ -1320,6 +1506,7 @@ export type Database = {
       emergency_webhook_config: {
         Row: {
           created_at: string
+          farm_id: string | null
           id: string
           notify_on_critical: boolean | null
           notify_on_info: boolean | null
@@ -1332,6 +1519,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          farm_id?: string | null
           id?: string
           notify_on_critical?: boolean | null
           notify_on_info?: boolean | null
@@ -1344,6 +1532,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          farm_id?: string | null
           id?: string
           notify_on_critical?: boolean | null
           notify_on_info?: boolean | null
@@ -1354,7 +1543,15 @@ export type Database = {
           webhook_enabled?: boolean | null
           webhook_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "emergency_webhook_config_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {
@@ -1363,6 +1560,7 @@ export type Database = {
           created_at: string
           description: string | null
           expense_date: string
+          farm_id: string | null
           id: string
           user_id: string
         }
@@ -1372,6 +1570,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           expense_date?: string
+          farm_id?: string | null
           id?: string
           user_id: string
         }
@@ -1381,10 +1580,19 @@ export type Database = {
           created_at?: string
           description?: string | null
           expense_date?: string
+          farm_id?: string | null
           id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       farm_audit_logs: {
         Row: {
@@ -1392,6 +1600,7 @@ export type Database = {
           action_type: string
           created_at: string
           device_name: string | null
+          farm_id: string | null
           id: string
           ip_address: string | null
           metadata: Json | null
@@ -1411,6 +1620,7 @@ export type Database = {
           action_type: string
           created_at?: string
           device_name?: string | null
+          farm_id?: string | null
           id?: string
           ip_address?: string | null
           metadata?: Json | null
@@ -1430,6 +1640,7 @@ export type Database = {
           action_type?: string
           created_at?: string
           device_name?: string | null
+          farm_id?: string | null
           id?: string
           ip_address?: string | null
           metadata?: Json | null
@@ -1446,10 +1657,52 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "farm_audit_logs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "farm_audit_logs_shed_id_fkey"
             columns: ["shed_id"]
             isOneToOne: false
             referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farm_members: {
+        Row: {
+          created_at: string
+          farm_id: string
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          farm_id: string
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          farm_id?: string
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farm_members_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
             referencedColumns: ["id"]
           },
         ]
@@ -1463,6 +1716,7 @@ export type Database = {
           fan_low_temp_min: number
           fan_medium_temp_max: number
           fan_medium_temp_min: number
+          farm_id: string | null
           hsi_automation_enabled: boolean
           hsi_emergency_threshold: number
           hsi_mild_threshold: number
@@ -1485,6 +1739,7 @@ export type Database = {
           fan_low_temp_min?: number
           fan_medium_temp_max?: number
           fan_medium_temp_min?: number
+          farm_id?: string | null
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -1507,6 +1762,7 @@ export type Database = {
           fan_low_temp_min?: number
           fan_medium_temp_max?: number
           fan_medium_temp_min?: number
+          farm_id?: string | null
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -1521,7 +1777,15 @@ export type Database = {
           user_id?: string
           water_anomaly_threshold?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "farm_settings_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       farms: {
         Row: {
@@ -1563,6 +1827,7 @@ export type Database = {
         Row: {
           consumption_date: string
           created_at: string
+          farm_id: string | null
           feed_type: string
           id: string
           notes: string | null
@@ -1572,6 +1837,7 @@ export type Database = {
         Insert: {
           consumption_date?: string
           created_at?: string
+          farm_id?: string | null
           feed_type?: string
           id?: string
           notes?: string | null
@@ -1581,17 +1847,27 @@ export type Database = {
         Update: {
           consumption_date?: string
           created_at?: string
+          farm_id?: string | null
           feed_type?: string
           id?: string
           notes?: string | null
           quantity_kg?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feed_consumption_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feed_inventory: {
         Row: {
           created_at: string
+          farm_id: string | null
           feed_type: string
           id: string
           notes: string | null
@@ -1603,6 +1879,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          farm_id?: string | null
           feed_type?: string
           id?: string
           notes?: string | null
@@ -1614,6 +1891,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          farm_id?: string | null
           feed_type?: string
           id?: string
           notes?: string | null
@@ -1623,7 +1901,15 @@ export type Database = {
           unit_price?: number
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feed_inventory_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       firmware_install_logs: {
         Row: {
@@ -1634,6 +1920,7 @@ export type Database = {
           device_token_id: string
           download_started_at: string | null
           error_message: string | null
+          farm_id: string | null
           firmware_id: string
           from_version: string | null
           id: string
@@ -1653,6 +1940,7 @@ export type Database = {
           device_token_id: string
           download_started_at?: string | null
           error_message?: string | null
+          farm_id?: string | null
           firmware_id: string
           from_version?: string | null
           id?: string
@@ -1672,6 +1960,7 @@ export type Database = {
           device_token_id?: string
           download_started_at?: string | null
           error_message?: string | null
+          farm_id?: string | null
           firmware_id?: string
           from_version?: string | null
           id?: string
@@ -1689,6 +1978,13 @@ export type Database = {
             columns: ["device_token_id"]
             isOneToOne: false
             referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "firmware_install_logs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
             referencedColumns: ["id"]
           },
           {
@@ -1768,6 +2064,7 @@ export type Database = {
           age_weeks: number
           breed: string | null
           created_at: string
+          farm_id: string | null
           id: string
           purchase_date: string | null
           shed_id: string | null
@@ -1779,6 +2076,7 @@ export type Database = {
           age_weeks?: number
           breed?: string | null
           created_at?: string
+          farm_id?: string | null
           id?: string
           purchase_date?: string | null
           shed_id?: string | null
@@ -1790,6 +2088,7 @@ export type Database = {
           age_weeks?: number
           breed?: string | null
           created_at?: string
+          farm_id?: string | null
           id?: string
           purchase_date?: string | null
           shed_id?: string | null
@@ -1798,6 +2097,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "flock_info_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "flock_info_shed_id_fkey"
             columns: ["shed_id"]
@@ -1813,6 +2119,7 @@ export type Database = {
           category: string
           created_at: string
           description: string | null
+          farm_id: string | null
           id: string
           income_date: string
           quantity: number | null
@@ -1824,6 +2131,7 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          farm_id?: string | null
           id?: string
           income_date?: string
           quantity?: number | null
@@ -1835,19 +2143,29 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string | null
+          farm_id?: string | null
           id?: string
           income_date?: string
           quantity?: number | null
           unit_price?: number | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "income_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lighting_schedule: {
         Row: {
           end_time: string
           fade_in_minutes: number
           fade_out_minutes: number
+          farm_id: string | null
           gradual_enabled: boolean
           id: string
           manual_override: boolean
@@ -1862,6 +2180,7 @@ export type Database = {
           end_time?: string
           fade_in_minutes?: number
           fade_out_minutes?: number
+          farm_id?: string | null
           gradual_enabled?: boolean
           id?: string
           manual_override?: boolean
@@ -1876,6 +2195,7 @@ export type Database = {
           end_time?: string
           fade_in_minutes?: number
           fade_out_minutes?: number
+          farm_id?: string | null
           gradual_enabled?: boolean
           id?: string
           manual_override?: boolean
@@ -1886,7 +2206,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lighting_schedule_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mode_profiles: {
         Row: {
@@ -3069,6 +3397,10 @@ export type Database = {
       }
       is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      user_can_access_farm: {
+        Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       alert_severity: "info" | "warning" | "danger"

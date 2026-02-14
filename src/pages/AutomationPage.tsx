@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Zap, ChevronRight, Activity } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { 
   useFarmSettings, 
   useUpdateFarmSettings,
@@ -28,6 +29,7 @@ type DeviceType = Database['public']['Enums']['device_type'];
 
 export function AutomationPage() {
   const { language } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { data: farmSettings } = useFarmSettings();
   const updateSettings = useUpdateFarmSettings();
   const { data: automationRules } = useAutomationRules();
@@ -48,7 +50,7 @@ export function AutomationPage() {
 
   const handleAddRule = () => {
     if (newRule.name.trim()) {
-      addRule.mutate(newRule);
+      addRule.mutate({ ...newRule, farm_id: selectedFarmId });
       setNewRule({
         name: '',
         condition_sensor: 'temperature',

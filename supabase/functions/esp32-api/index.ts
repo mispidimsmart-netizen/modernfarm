@@ -248,10 +248,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify device token and get user
+    // Verify device token, get user AND farm_id (multi-tenant isolation)
     const { data: device, error: deviceError } = await supabase
       .from('device_tokens')
-      .select('user_id, is_active')
+      .select('user_id, is_active, farm_id, shed_id')
       .eq('token', deviceToken)
       .single();
 
@@ -271,6 +271,45 @@ Deno.serve(async (req) => {
     }
 
     const userId = device.user_id;
+    const deviceFarmId = device.farm_id;
+    const deviceShedId = device.shed_id;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🔒 MULTI-TENANT ISOLATION MIDDLEWARE
+    // Verify that the device token is bound to a valid farm
+    // and the user has access to that farm via farm_members
+    // Cross-farm API access is blocked at this layer
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (!deviceFarmId) {
+      console.warn(`Device token ${deviceToken.substring(0, 8)}... has no farm_id bound`);
+      // Allow legacy devices without farm_id for backward compatibility
+      // but log for monitoring
+    } else {
+      // Verify farm membership
+      const { data: farmMember, error: farmError } = await supabase
+        .from('farm_members')
+        .select('id')
+        .eq('farm_id', deviceFarmId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (farmError || !farmMember) {
+        console.error(`🚫 Cross-farm access blocked: user ${userId} not member of farm ${deviceFarmId}`);
+        return new Response(
+          JSON.stringify({ error: 'Access denied: not a member of this farm', code: 'FARM_ACCESS_DENIED' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // If request body contains farm_id, verify it matches device's farm
+      if (bodyData?.farm_id && bodyData.farm_id !== deviceFarmId) {
+        console.error(`🚫 Farm ID mismatch: device bound to ${deviceFarmId}, request targets ${bodyData.farm_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Farm ID mismatch: device not authorized for this farm', code: 'FARM_MISMATCH' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Update device last seen
     await supabase
