@@ -27,6 +27,12 @@ const AMMONIA_ZERO_TIMEOUT_MS = 15 * 60 * 1000;
 const AMMONIA_SPIKE_THRESHOLD = 25;
 const AMMONIA_SPIKE_WINDOW_MS = 10000;
 
+// === SENSOR DRIFT DETECTION (contradicts physical effect) ===
+const DRIFT_EVALUATION_WINDOW_MS = 10 * 60 * 1000; // 10 min window
+const DRIFT_DEVICE_ACTIVE_THRESHOLD_MS = 6 * 60 * 1000; // 6 min active within window
+const DRIFT_HEATER_EXPECTED_RISE = 0.8; // °C expected after 6 min heater
+const DRIFT_FAN_EXPECTED_DROP = 0.5;    // °C expected after 6 min fan
+
 // === SENSOR FREEZE DETECTION (while devices running) ===
 const FREEZE_CHANGE_THRESHOLD = 0.2;  // °C — less than this = frozen
 const FREEZE_TIMEOUT_MS = 120 * 1000; // 120 seconds
@@ -57,6 +63,8 @@ const SAFE_MODE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
 export interface SensorValidationOptions {
   devicesRunning?: boolean; // true if fans/heaters are currently ON
+  heaterOn?: boolean;       // true if heater relay is ON
+  fanOn?: boolean;          // true if exhaust fan relay is ON
 }
 
 export function useSensorValidation(sensorData: SensorData, options?: SensorValidationOptions) {
@@ -96,6 +104,15 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
   const freezeBaseTemp = useRef<number | null>(null);
   const freezeMaxDelta = useRef<number>(0);
   const safeModeTriggeredRef = useRef(false);
+
+  // Drift detection refs
+  const driftHeaterOnAccum = useRef<number>(0);  // ms heater ON in window
+  const driftFanOnAccum = useRef<number>(0);     // ms fan ON in window
+  const driftWindowStart = useRef<number>(Date.now());
+  const driftTempAtWindowStart = useRef<number | null>(null);
+  const driftLastTickAt = useRef<number>(Date.now());
+  const driftAlertSent = useRef<boolean>(false);
+
   const lastSensorUpdateTime = useRef<number>(Date.now());
   const prevSensorDataRef = useRef<string>('');
   const survivalModeTriggeredRef = useRef(false);
@@ -608,6 +625,98 @@ export function useSensorValidation(sensorData: SensorData, options?: SensorVali
       freezeBaseTemp.current = null;
       freezeMaxDelta.current = 0;
       freezeWindowStart.current = Date.now();
+    }
+
+    // --- SENSOR DRIFT REALITY CHECK ---
+    // Detect sensor that contradicts physical effect of heater/fan
+    {
+      const now = Date.now();
+      const tickDelta = now - driftLastTickAt.current;
+      driftLastTickAt.current = now;
+
+      // Accumulate device ON time
+      if (options?.heaterOn) driftHeaterOnAccum.current += tickDelta;
+      if (options?.fanOn) driftFanOnAccum.current += tickDelta;
+
+      // Set baseline at window start
+      if (driftTempAtWindowStart.current === null) {
+        driftTempAtWindowStart.current = sensorData.temperature;
+        driftWindowStart.current = now;
+      }
+
+      const windowElapsed = now - driftWindowStart.current;
+
+      if (windowElapsed >= DRIFT_EVALUATION_WINDOW_MS) {
+        const tempChange = sensorData.temperature - (driftTempAtWindowStart.current ?? sensorData.temperature);
+        const heaterOnTime = driftHeaterOnAccum.current;
+        const fanOnTime = driftFanOnAccum.current;
+
+        let driftDetected = false;
+        let driftReason = '';
+
+        // Heater ON >6min but temp didn't rise 0.8°C
+        if (heaterOnTime >= DRIFT_DEVICE_ACTIVE_THRESHOLD_MS && tempChange < DRIFT_HEATER_EXPECTED_RISE) {
+          driftDetected = true;
+          driftReason = `Heater ON ${(heaterOnTime / 60000).toFixed(1)}min but temp only rose ${tempChange.toFixed(2)}°C (expected ≥${DRIFT_HEATER_EXPECTED_RISE}°C)`;
+        }
+
+        // Fan ON >6min but temp didn't drop 0.5°C
+        if (fanOnTime >= DRIFT_DEVICE_ACTIVE_THRESHOLD_MS && (-tempChange) < DRIFT_FAN_EXPECTED_DROP) {
+          driftDetected = true;
+          driftReason = `Fan ON ${(fanOnTime / 60000).toFixed(1)}min but temp only dropped ${(-tempChange).toFixed(2)}°C (expected ≥${DRIFT_FAN_EXPECTED_DROP}°C)`;
+        }
+
+        if (driftDetected && !driftAlertSent.current) {
+          driftAlertSent.current = true;
+          const driftIssue: SensorIssue = {
+            sensor: 'temperature',
+            type: 'invalid',
+            severity: 'danger',
+            message: {
+              bn: `🚨 সেন্সর ড্রিফট — ${driftReason}। সেন্সর বিশ্বাসযোগ্য নয়, সারভাইভাল মোড সক্রিয়।`,
+              en: `🚨 Sensor DRIFT — ${driftReason}. Sensor unreliable, survival mode active.`,
+            },
+            detectedAt: new Date(),
+            shouldIgnoreSensor: true,
+          };
+          newIssues.push(driftIssue);
+          newIgnored.add('temperature');
+          dangerDetected = true;
+          sendSensorAlert(driftIssue);
+          logIncident(driftIssue);
+          console.error(`[SensorValidation] SENSOR DRIFT DETECTED: ${driftReason}`);
+
+          // Create LIFE_THREATENING emergency event
+          if (user) {
+            (supabase.from('emergency_events') as any).insert({
+              user_id: user.id,
+              trigger_type: 'sensor_offline',
+              priority: 'LIFE_THREATENING',
+              title: '🔴 Sensor drift: readings contradict physical reality',
+              title_bn: '🔴 সেন্সর ড্রিফট: রিডিং বাস্তবতার সাথে মেলে না',
+              description: driftReason,
+              description_bn: driftReason,
+              actions_taken: ['force_ventilation', 'disable_heater', 'notify_owner', 'call_webhook'],
+              sensor_snapshot: {
+                temp_at_start: driftTempAtWindowStart.current,
+                temp_at_end: sensorData.temperature,
+                temp_change: tempChange,
+                heater_on_ms: heaterOnTime,
+                fan_on_ms: fanOnTime,
+              },
+              source: 'sensor_validation',
+            }).then(() => console.log('[SensorValidation] Drift LIFE_THREATENING event created'));
+          }
+        }
+
+        // Reset window
+        driftHeaterOnAccum.current = 0;
+        driftFanOnAccum.current = 0;
+        driftWindowStart.current = now;
+        driftTempAtWindowStart.current = sensorData.temperature;
+        // Reset alert flag after one clean window
+        if (!driftDetected) driftAlertSent.current = false;
+      }
     }
 
     // --- Out of Range checks ---
