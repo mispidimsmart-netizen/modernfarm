@@ -38,19 +38,27 @@ export function useWeatherCache() {
     queryKey: ['weather_cache', user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
-        .from('weather_cache')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('fetched_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data as WeatherData | null;
+      try {
+        const { data, error } = await supabase
+          .from('weather_cache')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('fetched_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) {
+          console.error('[Weather] Cache fetch error:', error.message);
+          return null;
+        }
+        return data as WeatherData | null;
+      } catch (err) {
+        console.error('[Weather] Unexpected error:', err);
+        return null;
+      }
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 15 * 60 * 1000, // Auto refresh every 15 minutes
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
   });
 }
 
