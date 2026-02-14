@@ -38,36 +38,39 @@ export function useSendDeviceCommand() {
 
       if (error) throw error;
 
-      // Also update device_status for immediate UI feedback
-      const statusUpdate: Record<string, boolean> = {};
+      // Update desired_state columns only (cloud never sets actual state)
+      // ESP32 is the single source of truth for actual_state
+      const desiredUpdate: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
       switch (commandType) {
         case 'fan':
-          statusUpdate.fan_on = commandValue;
+          desiredUpdate.desired_fan_on = commandValue;
           break;
         case 'light':
-          statusUpdate.light_on = commandValue;
+          desiredUpdate.desired_light_on = commandValue;
           break;
         case 'alarm':
-          statusUpdate.alarm_on = commandValue;
+          desiredUpdate.desired_alarm_on = commandValue;
           break;
         case 'heater':
-          statusUpdate.heater_on = commandValue;
+          desiredUpdate.desired_heater_on = commandValue;
           break;
         case 'manual_override':
-          statusUpdate.manual_override = commandValue;
+          desiredUpdate.desired_manual_override = commandValue;
           break;
         case 'circulation_fan':
-          statusUpdate.circulation_fan_on = commandValue;
+          desiredUpdate.desired_circulation_fan_on = commandValue;
           break;
         case 'fogger':
-          statusUpdate.fogger_on = commandValue;
+          desiredUpdate.desired_fogger_on = commandValue;
           break;
       }
 
-      if (Object.keys(statusUpdate).length > 0) {
+      if (Object.keys(desiredUpdate).length > 1) {
         await supabase
           .from('device_status')
-          .update(statusUpdate)
+          .update(desiredUpdate)
           .eq('user_id', user.id);
       }
     },

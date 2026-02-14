@@ -1213,6 +1213,14 @@ export type Database = {
           alarm_on: boolean
           circulation_fan_on: boolean | null
           curtain_position: string | null
+          desired_alarm_on: boolean | null
+          desired_circulation_fan_on: boolean | null
+          desired_fan_on: boolean | null
+          desired_fan_speed: string | null
+          desired_fogger_on: boolean | null
+          desired_heater_on: boolean | null
+          desired_light_on: boolean | null
+          desired_manual_override: boolean | null
           device_id: string | null
           fan_on: boolean
           fan_speed: string
@@ -1222,11 +1230,16 @@ export type Database = {
           hsi: number | null
           id: string
           last_cloud_sync: string | null
+          last_device_ack_at: string | null
           light_on: boolean
           manual_override: boolean
           mode: string | null
           power_on: boolean
+          safety_override: boolean | null
+          safety_override_at: string | null
+          safety_override_reason: string | null
           shed_id: string | null
+          state_mismatch: boolean | null
           updated_at: string
           user_id: string
         }
@@ -1234,6 +1247,14 @@ export type Database = {
           alarm_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
+          desired_alarm_on?: boolean | null
+          desired_circulation_fan_on?: boolean | null
+          desired_fan_on?: boolean | null
+          desired_fan_speed?: string | null
+          desired_fogger_on?: boolean | null
+          desired_heater_on?: boolean | null
+          desired_light_on?: boolean | null
+          desired_manual_override?: boolean | null
           device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
@@ -1243,11 +1264,16 @@ export type Database = {
           hsi?: number | null
           id?: string
           last_cloud_sync?: string | null
+          last_device_ack_at?: string | null
           light_on?: boolean
           manual_override?: boolean
           mode?: string | null
           power_on?: boolean
+          safety_override?: boolean | null
+          safety_override_at?: string | null
+          safety_override_reason?: string | null
           shed_id?: string | null
+          state_mismatch?: boolean | null
           updated_at?: string
           user_id: string
         }
@@ -1255,6 +1281,14 @@ export type Database = {
           alarm_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
+          desired_alarm_on?: boolean | null
+          desired_circulation_fan_on?: boolean | null
+          desired_fan_on?: boolean | null
+          desired_fan_speed?: string | null
+          desired_fogger_on?: boolean | null
+          desired_heater_on?: boolean | null
+          desired_light_on?: boolean | null
+          desired_manual_override?: boolean | null
           device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
@@ -1264,11 +1298,16 @@ export type Database = {
           hsi?: number | null
           id?: string
           last_cloud_sync?: string | null
+          last_device_ack_at?: string | null
           light_on?: boolean
           manual_override?: boolean
           mode?: string | null
           power_on?: boolean
+          safety_override?: boolean | null
+          safety_override_at?: string | null
+          safety_override_reason?: string | null
           shed_id?: string | null
+          state_mismatch?: boolean | null
           updated_at?: string
           user_id?: string
         }
