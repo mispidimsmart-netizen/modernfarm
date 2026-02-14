@@ -1882,6 +1882,9 @@ export type Database = {
           created_at: string
           current_step: number
           farm_id: string
+          hardware_validation_at: string | null
+          hardware_validation_passed: boolean
+          hardware_validation_results: Json | null
           id: string
           relay_test_results: Json | null
           setup_completed: boolean
@@ -1902,6 +1905,9 @@ export type Database = {
           created_at?: string
           current_step?: number
           farm_id: string
+          hardware_validation_at?: string | null
+          hardware_validation_passed?: boolean
+          hardware_validation_results?: Json | null
           id?: string
           relay_test_results?: Json | null
           setup_completed?: boolean
@@ -1922,6 +1928,9 @@ export type Database = {
           created_at?: string
           current_step?: number
           farm_id?: string
+          hardware_validation_at?: string | null
+          hardware_validation_passed?: boolean
+          hardware_validation_results?: Json | null
           id?: string
           relay_test_results?: Json | null
           setup_completed?: boolean
