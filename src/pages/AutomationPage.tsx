@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database } from '@/integrations/supabase/types';
 import { AutomationEngineDashboard } from '@/components/automation/AutomationEngineDashboard';
+import { SetupBlocker } from '@/components/setup/SetupBlocker';
 
 type SensorType = Database['public']['Enums']['sensor_type'];
 type OperatorType = Database['public']['Enums']['operator_type'];
@@ -81,6 +82,7 @@ export function AutomationPage() {
       <Header />
 
       <main className="page-container px-4 pb-24">
+        <SetupBlocker>
         <Tabs defaultValue="engine" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="engine" className="gap-1.5">
@@ -314,6 +316,7 @@ export function AutomationPage() {
             </motion.div>
           </TabsContent>
         </Tabs>
+        </SetupBlocker>
       </main>
 
       <BottomNav />

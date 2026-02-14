@@ -26,6 +26,7 @@ const InstallationGuidePage = lazy(() => import("./pages/InstallationGuidePage")
 const AuditLogPage = lazy(() => import("./pages/AuditLogPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const FarmSetupWizardPage = lazy(() => import("./pages/FarmSetupWizardPage"));
 
 
 // Optimized QueryClient with better caching
@@ -130,6 +131,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <AutomationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/setup"
+          element={
+            <ProtectedRoute>
+              <FarmSetupWizardPage />
             </ProtectedRoute>
           }
         />
