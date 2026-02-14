@@ -46,6 +46,26 @@ const BIO_OVERRIDE_MAX = 35;
 const HEATER_MAX_CONTINUOUS_MS = 5 * 60 * 1000;
 const RAPID_RISE_THRESHOLD = 0.5; // °C/min
 
+// === ACTUATOR EFFECT VALIDATION ===
+const EFFECT_VALIDATION_WINDOW_MS = 6 * 60 * 1000; // 6 minutes
+const FAN_EXPECTED_COOLING = 0.5;   // Must drop ≥0.5°C
+const HEATER_EXPECTED_HEATING = 1.0; // Must rise ≥1.0°C
+
+// === THERMAL MODEL PLAUSIBILITY ===
+const THERMAL_MODEL_MAX_DEVIATION = 3.0; // °C
+const THERMAL_HEATER_RATE = 0.06;  // °C/min expected heating
+const THERMAL_FAN_RATE = -0.04;    // °C/min expected cooling
+
+// === REBOOT SAFETY ===
+const REBOOT_HEATER_LOCKOUT_MS = 3 * 60 * 1000;
+const REBOOT_VENT_PURGE_MS = 3 * 60 * 1000;
+const REBOOT_NH3_ALERT_MUTE_MS = 5 * 60 * 1000;
+
+// === BIRD AGE VALIDATION ===
+const AGE_MIN_DAYS = 0;
+const AGE_MAX_DAYS = 60;
+const AGE_MAX_JUMP_PER_24H = 2;
+
 interface EvaluationInput {
   user_id: string;
   farm_id?: string;
@@ -55,6 +75,10 @@ interface EvaluationInput {
   humidity: number;
   ammonia: number;
   water_usage: number;
+  // Dual sensor worst-case values
+  temperature_sensor2: number | null;
+  worst_case_max_temp: number | null;  // MAX of both sensors (cooling)
+  worst_case_min_temp: number | null;  // MIN of both sensors (heating)
   // Device states
   fan_on: boolean;
   heater_on: boolean;
@@ -62,18 +86,18 @@ interface EvaluationInput {
   circulation_fan_on: boolean;
   fan_available: boolean;
   // Accumulated runtime (from firmware counters)
-  heater_on_ms_15min: number; // heater ON time in last 15 min
-  fan_on_ms_15min: number;    // fan ON time in last 15 min
-  fan_on_ms_10min: number;    // fan ON time in last 10 min
-  heater_continuous_ms: number; // current continuous heater runtime
+  heater_on_ms_15min: number;
+  fan_on_ms_15min: number;
+  fan_on_ms_10min: number;
+  heater_continuous_ms: number;
   // Temperature history from firmware
   temp_15min_ago: number | null;
   temp_10min_ago: number | null;
   humidity_10min_ago: number | null;
-  temp_1min_ago: number | null; // for rapid rise detection
+  temp_1min_ago: number | null;
   // Heater off tracking
-  heater_off_temp: number | null;     // temp when heater was turned off
-  heater_off_elapsed_ms: number | null; // ms since heater was turned off
+  heater_off_temp: number | null;
+  heater_off_elapsed_ms: number | null;
   // HSI
   hsi_value: number | null;
   hsi_level: string | null;
@@ -82,6 +106,24 @@ interface EvaluationInput {
   override_reason: string | null;
   override_remaining_seconds: number | null;
   override_target_temp: number | null;
+  // Actuator effect validation (from firmware)
+  fan_effect_verified: boolean;
+  fan_effect_failures: number;
+  heater_effect_verified: boolean;
+  heater_effect_failures: number;
+  // Thermal model (from firmware)
+  thermal_model_plausible: boolean;
+  thermal_model_deviation: number | null;
+  thermal_model_reason: string | null;
+  // Reboot safety state
+  uptime_ms: number;
+  reboot_heater_locked: boolean;
+  reboot_vent_purge_active: boolean;
+  reboot_nh3_muted: boolean;
+  // Bird age
+  bird_age_days: number | null;
+  bird_age_previous: number | null;
+  bird_age_last_change_ms: number | null;
 }
 
 Deno.serve(async (req) => {
@@ -213,6 +255,11 @@ function evaluateSafety(input: EvaluationInput) {
   let emergency_priority: string | null = null;
   let emergency_active = false;
 
+  // === WORST-CASE SENSOR SELECTION ===
+  // Use MAX temp for cooling/overheat decisions, MIN temp for heating decisions
+  const safetyTempMax = input.worst_case_max_temp ?? input.temperature;
+  const safetyTempMin = input.worst_case_min_temp ?? input.temperature;
+
   // === SENSOR STATE EVALUATION ===
   const sensorState: Record<string, string> = {
     temperature: "VALID",
@@ -222,15 +269,86 @@ function evaluateSafety(input: EvaluationInput) {
   };
   const sensorIssues: Array<{ sensor: string; type: string; message: string }> = [];
 
-  // Biological range check
-  if (input.temperature < BIO_TEMP_MIN || input.temperature > BIO_TEMP_MAX) {
+  // Biological range check (use worst-case max)
+  if (safetyTempMax < BIO_TEMP_MIN || safetyTempMax > BIO_TEMP_MAX) {
     sensorState.temperature = "PHYSICALLY_IMPOSSIBLE";
     sensorIssues.push({
       sensor: "temperature",
       type: "physically_impossible",
-      message: `Temperature ${input.temperature}°C outside biological range (${BIO_TEMP_MIN}-${BIO_TEMP_MAX}°C)`,
+      message: `Temperature ${safetyTempMax}°C outside biological range (${BIO_TEMP_MIN}-${BIO_TEMP_MAX}°C)`,
     });
     system_state = "SENSOR_FAIL";
+  }
+
+  // === THERMAL MODEL PLAUSIBILITY ===
+  let thermal_model_invalid = false;
+  let thermal_model_reason: string | null = null;
+  if (input.thermal_model_plausible === false && input.thermal_model_deviation !== null) {
+    if (input.thermal_model_deviation > THERMAL_MODEL_MAX_DEVIATION) {
+      thermal_model_invalid = true;
+      thermal_model_reason = input.thermal_model_reason || 
+        `Sensor deviates ${input.thermal_model_deviation.toFixed(1)}°C from thermal model (max ${THERMAL_MODEL_MAX_DEVIATION}°C)`;
+      sensorState.temperature = "PHYSICALLY_IMPOSSIBLE";
+      sensorIssues.push({
+        sensor: "temperature",
+        type: "thermal_model_implausible",
+        message: thermal_model_reason,
+      });
+      if (system_state === "NORMAL") system_state = "SENSOR_FAIL";
+    }
+  }
+
+  // === ACTUATOR EFFECT VALIDATION ===
+  let actuator_effect_failure = false;
+  let actuator_fail_reason: string | null = null;
+  
+  if (input.fan_effect_failures >= 2) {
+    actuator_effect_failure = true;
+    actuator_fail_reason = `Fan ON but no cooling effect (${input.fan_effect_failures} consecutive failures)`;
+    system_state = "SURVIVAL";
+    emergency_priority = "LIFE_THREATENING";
+    emergency_active = true;
+  }
+  if (input.heater_effect_failures >= 2) {
+    actuator_effect_failure = true;
+    actuator_fail_reason = (actuator_fail_reason ? actuator_fail_reason + "; " : "") +
+      `Heater ON but no heating effect (${input.heater_effect_failures} consecutive failures)`;
+    system_state = "SURVIVAL";
+    emergency_priority = "LIFE_THREATENING";
+    emergency_active = true;
+  }
+
+  // === REBOOT SAFETY EVALUATION ===
+  let reboot_heater_locked = false;
+  let reboot_vent_purge = false;
+  let reboot_nh3_muted = false;
+  
+  if (input.uptime_ms < REBOOT_HEATER_LOCKOUT_MS) {
+    reboot_heater_locked = true;
+  }
+  if (input.uptime_ms < REBOOT_VENT_PURGE_MS) {
+    reboot_vent_purge = true;
+  }
+  if (input.uptime_ms < REBOOT_NH3_ALERT_MUTE_MS) {
+    reboot_nh3_muted = true;
+  }
+
+  // === BIRD AGE VALIDATION ===
+  let age_valid = true;
+  let age_rejection_reason: string | null = null;
+  
+  if (input.bird_age_days !== null) {
+    if (input.bird_age_days < AGE_MIN_DAYS || input.bird_age_days > AGE_MAX_DAYS) {
+      age_valid = false;
+      age_rejection_reason = `Age ${input.bird_age_days}d outside range [${AGE_MIN_DAYS}-${AGE_MAX_DAYS}]`;
+    }
+    if (age_valid && input.bird_age_previous !== null && input.bird_age_last_change_ms !== null) {
+      const ageDelta = Math.abs(input.bird_age_days - input.bird_age_previous);
+      if (ageDelta > AGE_MAX_JUMP_PER_24H && input.bird_age_last_change_ms < 86400000) {
+        age_valid = false;
+        age_rejection_reason = `Age jump ${input.bird_age_previous}→${input.bird_age_days} (${ageDelta}d) exceeds max ${AGE_MAX_JUMP_PER_24H}d/24h`;
+      }
+    }
   }
 
   // === SENSOR DRIFT DETECTION ===
@@ -238,9 +356,8 @@ function evaluateSafety(input: EvaluationInput) {
   let sensor_drift_reason: string | null = null;
 
   if (input.temp_15min_ago !== null) {
-    const tempChange = input.temperature - input.temp_15min_ago;
+    const tempChange = safetyTempMax - input.temp_15min_ago;
 
-    // Heater ON >8min in 15min but temp didn't rise ≥1°C
     if (
       input.heater_on_ms_15min >= DRIFT_HEATER_ACTIVE_THRESHOLD_MS &&
       tempChange < DRIFT_HEATER_EXPECTED_RISE
@@ -253,7 +370,6 @@ function evaluateSafety(input: EvaluationInput) {
       emergency_active = true;
     }
 
-    // Fan ON >6min in 15min but temp didn't drop ≥0.5°C
     if (
       input.fan_on_ms_15min >= DRIFT_FAN_ACTIVE_THRESHOLD_MS &&
       -tempChange < DRIFT_FAN_EXPECTED_DROP
@@ -271,14 +387,14 @@ function evaluateSafety(input: EvaluationInput) {
   let airflow_verified = true;
   let airflow_ineffective = false;
   let airflow_fail_reason: string | null = null;
-  let airflow_consecutive_failures = 0;
+  const airflow_consecutive_failures = 0;
 
   if (
     input.fan_on_ms_10min >= AIRFLOW_MIN_FAN_ACTIVE_MS &&
     input.temp_10min_ago !== null &&
     input.humidity_10min_ago !== null
   ) {
-    const tempDrop = input.temp_10min_ago - input.temperature;
+    const tempDrop = input.temp_10min_ago - safetyTempMax;
     const humidityDrop = input.humidity_10min_ago - input.humidity;
     const coolingObserved =
       tempDrop >= AIRFLOW_EXPECTED_TEMP_DROP || humidityDrop >= AIRFLOW_EXPECTED_HUMIDITY_DROP;
@@ -302,7 +418,7 @@ function evaluateSafety(input: EvaluationInput) {
     input.heater_off_elapsed_ms >= 60000 &&
     input.heater_off_elapsed_ms < 120000
   ) {
-    const tempRise = input.temperature - input.heater_off_temp;
+    const tempRise = safetyTempMax - input.heater_off_temp;
     if (tempRise >= STUCK_HEATER_TEMP_RISE) {
       stuck_relay_detected = "heater";
       system_state = "EMERGENCY";
@@ -320,10 +436,23 @@ function evaluateSafety(input: EvaluationInput) {
   let rapid_temp_rise_detected = false;
   let current_temp_rate = 0;
 
+  // Rule: reboot heater lockout
+  if (reboot_heater_locked) {
+    heater_allowed = false;
+    heater_blocked_reason = "Post-reboot heater lockout (3 min)";
+  }
+
   // Rule: sensor invalid → block heater
   if (sensorState.temperature !== "VALID") {
     heater_allowed = false;
     heater_blocked_reason = "Temperature sensor FAILED — heater blocked for safety";
+    force_ventilation = true;
+  }
+
+  // Rule: thermal model implausible → block heater
+  if (thermal_model_invalid) {
+    heater_allowed = false;
+    heater_blocked_reason = "Thermal model implausible — heater blocked";
     force_ventilation = true;
   }
 
@@ -344,19 +473,26 @@ function evaluateSafety(input: EvaluationInput) {
 
   // Rule: rapid temp rise while heater ON → force ventilation
   if (input.temp_1min_ago !== null && input.heater_on) {
-    current_temp_rate = (input.temperature - input.temp_1min_ago); // °C/min approximation
+    current_temp_rate = (safetyTempMax - input.temp_1min_ago);
     if (current_temp_rate > RAPID_RISE_THRESHOLD) {
       rapid_temp_rise_detected = true;
       force_ventilation = true;
     }
   }
 
-  // Drift/airflow failures always force ventilation & block heating
-  if (sensor_drift_detected || airflow_ineffective) {
+  // Reboot vent purge overrides
+  if (reboot_vent_purge) {
+    force_ventilation = true;
+  }
+
+  // Drift/airflow/actuator failures always force ventilation & block heating
+  if (sensor_drift_detected || airflow_ineffective || actuator_effect_failure) {
     heater_allowed = false;
     heater_blocked_reason = sensor_drift_detected
       ? "Sensor drift detected — heater disabled"
-      : "Airflow ineffective — heater disabled";
+      : airflow_ineffective
+      ? "Airflow ineffective — heater disabled"
+      : "Actuator effect failure — heater disabled";
     force_ventilation = true;
   }
 
@@ -374,11 +510,11 @@ function evaluateSafety(input: EvaluationInput) {
   }
 
   // === SURVIVAL MODE ===
-  const survival_mode = system_state === "SURVIVAL" || sensor_drift_detected;
+  const survival_mode = system_state === "SURVIVAL" || sensor_drift_detected || actuator_effect_failure;
   const survival_fan_on = survival_mode;
-  const survival_heater_on = false; // heater always off in survival
+  const survival_heater_on = false;
 
-  // === HSI EVALUATION ===
+  // === HSI EVALUATION (use worst-case max temp) ===
   let hsi_fan_activated = false;
   if (input.hsi_value !== null && input.hsi_value >= 75) {
     hsi_fan_activated = true;
@@ -392,33 +528,37 @@ function evaluateSafety(input: EvaluationInput) {
       if (system_state === "NORMAL" || system_state === "WARNING") system_state = "EMERGENCY";
     }
   }
-  if (input.temperature > 38) {
+  if (safetyTempMax > 38) {
     if (system_state === "NORMAL") system_state = "DANGER";
     if (!emergency_priority) emergency_priority = "CRITICAL";
     emergency_active = true;
   }
-  if (input.temperature > 40) {
+  if (safetyTempMax > 40) {
     emergency_priority = "LIFE_THREATENING";
     emergency_active = true;
     system_state = "EMERGENCY";
   }
 
-  // Ammonia
+  // Ammonia (respect reboot NH3 mute for alerts, but still force ventilation)
   if (input.ammonia > 35) {
-    emergency_priority = "LIFE_THREATENING";
-    emergency_active = true;
-    force_ventilation = true;
+    if (!reboot_nh3_muted) {
+      emergency_priority = "LIFE_THREATENING";
+      emergency_active = true;
+    }
+    force_ventilation = true; // Always ventilate regardless of mute
     if (system_state !== "SURVIVAL") system_state = "EMERGENCY";
   } else if (input.ammonia > 25) {
-    if (!emergency_priority || emergency_priority === "WARNING") emergency_priority = "CRITICAL";
-    emergency_active = true;
-    force_ventilation = true;
+    if (!reboot_nh3_muted) {
+      if (!emergency_priority || emergency_priority === "WARNING") emergency_priority = "CRITICAL";
+      emergency_active = true;
+    }
+    force_ventilation = true; // Always ventilate
     if (system_state === "NORMAL") system_state = "WARNING";
   }
 
-  // === PLAUSIBILITY (simplified — firmware tracks detailed model) ===
-  const plausibility_degraded = sensor_drift_detected;
-  const heater_authority_percent = sensor_drift_detected ? 0 : plausibility_degraded ? 60 : 100;
+  // === PLAUSIBILITY ===
+  const plausibility_degraded = sensor_drift_detected || thermal_model_invalid;
+  const heater_authority_percent = sensor_drift_detected ? 0 : thermal_model_invalid ? 30 : plausibility_degraded ? 60 : 100;
 
   return {
     system_state,
@@ -439,7 +579,7 @@ function evaluateSafety(input: EvaluationInput) {
     heater_allowed,
     heater_blocked_reason,
     mandatory_fan_pulse_active,
-    rapid_temp_rise_detected: rapid_temp_rise_detected,
+    rapid_temp_rise_detected,
     force_ventilation,
     min_vent_duty_required,
     current_temp_rate,
@@ -456,9 +596,21 @@ function evaluateSafety(input: EvaluationInput) {
     safe_mode_until: null,
     plausibility_degraded,
     heater_authority_percent,
-    plausibility_reason: sensor_drift_reason,
+    plausibility_reason: sensor_drift_reason || thermal_model_reason,
     hsi_value: input.hsi_value,
     hsi_level: input.hsi_level,
     hsi_fan_activated,
+    // New v2 fields
+    actuator_effect_failure,
+    actuator_fail_reason,
+    thermal_model_invalid,
+    thermal_model_reason,
+    worst_case_max_temp: safetyTempMax,
+    worst_case_min_temp: safetyTempMin,
+    reboot_heater_locked,
+    reboot_vent_purge,
+    reboot_nh3_muted,
+    age_valid,
+    age_rejection_reason,
   };
 }

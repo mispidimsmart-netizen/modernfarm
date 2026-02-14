@@ -59,6 +59,7 @@
 #include <Update.h>
 #include <esp_ota_ops.h>
 #include <HardwareSerial.h>
+#include "esp32-safety-engine.h"
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 1: CONFIGURATION & CONSTANTS                                 ║
@@ -336,6 +337,25 @@ DHT dht(DHT_PIN, DHT_TYPE);
 DHT dht2(DHT2_PIN, DHT_TYPE);
 Preferences preferences;
 HardwareSerial gsmSerial(2);
+SafetyEngine safetyEngine;
+
+// --- Actuator Effect Tracking (firmware-level counters for backend) ---
+float tempAtFanStart = NAN, tempAtHeaterStart = NAN;
+unsigned long fanOnSince = 0, heaterOnSince = 0;
+int fanEffectFailures = 0, heaterEffectFailures = 0;
+bool fanEffectVerified = true, heaterEffectVerified = true;
+
+// --- Thermal Model (firmware-level) ---
+float thermalExpectedTemp = 25.0f;
+unsigned long lastThermalModelUpdate = 0;
+bool thermalModelPlausible = true;
+float thermalModelDeviation = 0.0f;
+String thermalModelReason = "";
+int thermalImplausibleCount = 0;
+
+// --- Worst-Case Sensor Values ---
+float worstCaseMaxTemp = 25.0f;
+float worstCaseMinTemp = 25.0f;
 
 // --- Sensor State ---
 float temperature = 25.0f, humidity = 60.0f, ammonia = 0.0f;
@@ -658,6 +678,12 @@ void updateStatusLED();
 // ISR
 void IRAM_ATTR waterPulseISR();
 
+// Backend Safety Engine Integration
+void callBackendSafetyEngine();
+void updateActuatorEffectTracking();
+void updateThermalModel();
+void updateWorstCaseSensors();
+
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 5: HELPER FUNCTIONS                                          ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
@@ -818,9 +844,15 @@ float readTempFiltered() {
   float a1 = readSingleDHTTemp(dht);
   float a2 = NAN;
   if (dht2Available) { a2 = readSingleDHTTemp(dht2); if (!isnan(a2)) temperature2 = a2; }
-  if (!isnan(a1) && !isnan(a2)) return (a1 + a2) / 2.0f;
-  if (!isnan(a1)) return a1;
-  if (!isnan(a2)) return a2;
+  
+  // Update worst-case sensor values BEFORE averaging
+  if (!isnan(a1) && !isnan(a2)) {
+    worstCaseMaxTemp = max(a1, a2);  // Use MAX for cooling/overheat decisions
+    worstCaseMinTemp = min(a1, a2);  // Use MIN for heating decisions
+    return (a1 + a2) / 2.0f;
+  }
+  if (!isnan(a1)) { worstCaseMaxTemp = a1; worstCaseMinTemp = a1; return a1; }
+  if (!isnan(a2)) { worstCaseMaxTemp = a2; worstCaseMinTemp = a2; return a2; }
   return NAN;
 }
 
@@ -2267,13 +2299,25 @@ void saveFarmProfile() {
 
 void updateAge(int newAge) {
   if (newAge < 1 || newAge > 999 || newAge == farmConfig.chickAgeDays) return;
+  // Validate age change through safety engine
+  if (!safetyEngine.validateAgeChange(newAge, farmConfig.chickAgeDays)) {
+    Serial.printf("⚠️ AGE REJECTED: %d → %d (safety validation failed)\n", farmConfig.chickAgeDays, newAge);
+    return;
+  }
   farmConfig.chickAgeDays = newAge;
   saveFarmProfile();
   if (isBroiler()) loadBroilerRules();
 }
 
 void updateAgeFromServer(int newAge) {
-  if (!isBroiler() || newAge <= 0 || newAge < farmConfig.chickAgeDays) return;
+  if (!isBroiler() || newAge <= 0) return;
+  
+  // Bird age validation: reject if outside 0-60 or jump >2 days in 24h
+  if (!safetyEngine.validateAgeChange(newAge, farmConfig.chickAgeDays)) {
+    Serial.printf("⚠️ AGE REJECTED by safety engine: %d → %d\n", farmConfig.chickAgeDays, newAge);
+    return; // Keep current age
+  }
+  
   if (newAge != farmConfig.chickAgeDays) {
     farmConfig.chickAgeDays = newAge; loadBroilerRules();
   }
@@ -2819,6 +2863,119 @@ void setup() {
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  SECTION 16.5: BACKEND SAFETY ENGINE INTEGRATION                      ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+void updateActuatorEffectTracking() {
+  unsigned long now = millis();
+  // Fan effect tracking
+  if (fanOn && fanOnSince == 0) { tempAtFanStart = temperature; fanOnSince = now; }
+  if (!fanOn) { fanOnSince = 0; }
+  if (fanOn && fanOnSince > 0 && (now - fanOnSince >= 360000UL)) {
+    float drop = tempAtFanStart - temperature;
+    if (drop < 0.5f) { fanEffectFailures++; fanEffectVerified = false; }
+    else { fanEffectFailures = 0; fanEffectVerified = true; }
+    tempAtFanStart = temperature; fanOnSince = now;
+    if (fanEffectFailures >= 2) enterESM("FAN_NO_COOLING_EFFECT");
+  }
+  // Heater effect tracking
+  if (heaterOn && heaterOnSince == 0) { tempAtHeaterStart = temperature; heaterOnSince = now; }
+  if (!heaterOn) { heaterOnSince = 0; }
+  if (heaterOn && heaterOnSince > 0 && (now - heaterOnSince >= 360000UL)) {
+    float rise = temperature - tempAtHeaterStart;
+    if (rise < 1.0f) { heaterEffectFailures++; heaterEffectVerified = false; }
+    else { heaterEffectFailures = 0; heaterEffectVerified = true; }
+    tempAtHeaterStart = temperature; heaterOnSince = now;
+    if (heaterEffectFailures >= 2) enterESM("HEATER_NO_HEATING_EFFECT");
+  }
+}
+
+void updateThermalModel() {
+  unsigned long now = millis();
+  if (lastThermalModelUpdate == 0) { thermalExpectedTemp = temperature; lastThermalModelUpdate = now; return; }
+  float elapsedMin = (now - lastThermalModelUpdate) / 60000.0f;
+  if (elapsedMin < 1.0f) return;
+  float rate = 0.0f;
+  if (heaterOn) rate = 0.06f;
+  else if (fanOn) rate = -0.04f;
+  thermalExpectedTemp += rate * elapsedMin;
+  thermalExpectedTemp = constrain(thermalExpectedTemp, 0.0f, 55.0f);
+  thermalModelDeviation = abs(temperature - thermalExpectedTemp);
+  if (thermalModelDeviation > 3.0f) {
+    thermalImplausibleCount++;
+    thermalModelPlausible = false;
+    thermalModelReason = "Dev " + String(thermalModelDeviation,1) + "C (act=" + String(temperature,1) + " exp=" + String(thermalExpectedTemp,1) + ")";
+    if (thermalImplausibleCount >= 3) enterESM("SENSOR_THERMAL_IMPLAUSIBLE");
+  } else {
+    thermalImplausibleCount = 0; thermalModelPlausible = true;
+    thermalExpectedTemp = temperature; thermalModelReason = "";
+  }
+  lastThermalModelUpdate = now;
+}
+
+void callBackendSafetyEngine() {
+  if (!wifiConnected || emergencySurvivalMode) return;
+  unsigned long now = millis();
+  if (now - safetyEngine.lastSafetyEngineCall < 60000UL) return;
+  safetyEngine.markSafetyEngineCalled(now);
+
+  HTTPClient http;
+  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/safety-engine?action=evaluate";
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhid2Z1dnFyZmd0ZWZvemFqeWZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMDI5ODksImV4cCI6MjA4NTU3ODk4OX0.3yCPVRrzrfvpwBIBKITkfm-Y3dsVzo_QUzVs3RNlHC8");
+  http.setTimeout(5000);
+  esp_task_wdt_reset();
+
+  DynamicJsonDocument doc(2048);
+  doc["user_id"] = activeFarmId; // farm owner resolved server-side
+  doc["farm_id"] = activeFarmId;
+  doc["shed_id"] = activeShedId;
+  doc["temperature"] = temperature;
+  doc["humidity"] = humidity;
+  doc["ammonia"] = ammonia;
+  doc["water_usage"] = waterFlow;
+  doc["temperature_sensor2"] = dht2Available ? temperature2 : (float)NAN;
+  doc["worst_case_max_temp"] = worstCaseMaxTemp;
+  doc["worst_case_min_temp"] = worstCaseMinTemp;
+  doc["fan_on"] = fanOn;
+  doc["heater_on"] = heaterOn;
+  doc["fogger_on"] = foggerOn;
+  doc["circulation_fan_on"] = circulationFanOn;
+  doc["fan_available"] = true;
+  doc["heater_on_ms_15min"] = 0;
+  doc["fan_on_ms_15min"] = 0;
+  doc["fan_on_ms_10min"] = 0;
+  doc["heater_continuous_ms"] = heaterOn ? (int)(now - heaterOnSince) : 0;
+  doc["fan_effect_verified"] = fanEffectVerified;
+  doc["fan_effect_failures"] = fanEffectFailures;
+  doc["heater_effect_verified"] = heaterEffectVerified;
+  doc["heater_effect_failures"] = heaterEffectFailures;
+  doc["thermal_model_plausible"] = thermalModelPlausible;
+  doc["thermal_model_deviation"] = thermalModelDeviation;
+  doc["uptime_ms"] = (int)now;
+  doc["reboot_heater_locked"] = safetyEngine.isHeaterLocked();
+  doc["reboot_vent_purge_active"] = safetyEngine.isVentPurgeActive();
+  doc["reboot_nh3_muted"] = safetyEngine.isNH3AlertMuted();
+  doc["bird_age_days"] = farmConfig.chickAgeDays;
+  doc["hsi_value"] = currentHSI;
+  doc["override_active"] = localManualOverride;
+
+  String payload;
+  serializeJson(doc, payload);
+  int code = http.POST(payload);
+  esp_task_wdt_reset();
+
+  if (code == 200) {
+    safetyEngine.backendSafetyActive = true;
+    Serial.println("✅ Backend safety-engine: evaluated");
+  } else {
+    Serial.printf("⚠️ Backend safety-engine: HTTP %d\n", code);
+  }
+  http.end();
+}
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 17: MAIN LOOP (non-blocking, millis-based)                   ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
@@ -2862,6 +3019,13 @@ void loop() {
   // --- Automation Engine (single decision loop) ---
   automationEngineTick();
 
+  // --- Actuator Effect Validation + Thermal Model ---
+  updateActuatorEffectTracking();
+  updateThermalModel();
+
+  // --- Safety Engine v2 tick (reboot safety, worst-case, effect validation) ---
+  safetyEngine.tick(temperature, humidity, ammonia, !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+
   // --- Relay Manager (single hardware write point) ---
   relayManagerApply();
 
@@ -2882,6 +3046,9 @@ void loop() {
     lastConfigFetch = now;
     fetchConfig();
   }
+
+  // --- Backend Safety Engine (every 60s) ---
+  callBackendSafetyEngine();
 
   // --- OTA Check ---
   if (wifiConnected && now - lastOTACheck >= OTA_CHECK_INTERVAL) {
