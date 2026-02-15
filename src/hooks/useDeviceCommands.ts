@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
 
 type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'circulation_fan' | 'fogger';
@@ -18,14 +19,13 @@ interface SendCommandParams {
  */
 export function useSendDeviceCommand() {
   const { user, language } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A' }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Insert command into device_commands table
-      // IMPORTANT: device_name must match ESP32's SHED_NAME constant
       const { error } = await supabase
         .from('device_commands')
         .insert({
@@ -34,6 +34,7 @@ export function useSendDeviceCommand() {
           command_type: commandType,
           command_value: commandValue,
           executed: false,
+          farm_id: selectedFarmId,
         });
 
       if (error) throw error;
