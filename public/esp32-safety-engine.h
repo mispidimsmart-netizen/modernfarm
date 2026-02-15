@@ -25,6 +25,30 @@
 
 #include <Preferences.h>
 
+// ─── SENSOR VALIDATION CHANNEL (must be before any function using it) ───
+#define SVL_MEDIAN_SIZE_H 5
+struct SVLChannel {
+  float medianBuffer[SVL_MEDIAN_SIZE_H];
+  int bufferIndex, sampleCount;
+  float lastStableValue;
+  unsigned long lastValidTime;
+  unsigned long lastStableTime;
+  bool isValid, isOffline;
+};
+
+// ─── HYSTERESIS STRUCTURES (must be before any function using it) ───
+#define MAX_HYST_STAGES_H 4
+struct HystStage {
+  float onThreshold, offThreshold;
+  bool isActive;
+  unsigned long lastOnTime, lastOffTime, minOnTime, minOffTime;
+};
+struct HystChannel {
+  const char* name;
+  HystStage stages[MAX_HYST_STAGES_H];
+  int stageCount, activeStageLevel;
+};
+
 // Overflow-safe elapsed time
 #ifndef SAFE_ELAPSED_DEFINED
 #define SAFE_ELAPSED_DEFINED
