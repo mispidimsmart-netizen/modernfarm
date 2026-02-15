@@ -318,27 +318,9 @@ const float HEATER_BROILER_CURVE[][2] = {
 };
 #define HEATER_CURVE_SIZE 7
 
-// --- Sensor Validation Channel ---
-struct SVLChannel {
-  float medianBuffer[SVL_MEDIAN_SIZE];
-  int bufferIndex, sampleCount;
-  float lastStableValue;
-  unsigned long lastValidTime;       // Last time a valid reading was accepted
-  unsigned long lastStableTime;      // Timestamp when lastStableValue was set
-  bool isValid, isOffline;
-};
-
-// --- Hysteresis ---
-struct HystStage {
-  float onThreshold, offThreshold;
-  bool isActive;
-  unsigned long lastOnTime, lastOffTime, minOnTime, minOffTime;
-};
-struct HystChannel {
-  const char* name;
-  HystStage stages[MAX_HYST_STAGES];
-  int stageCount, activeStageLevel;
-};
+// --- Sensor Validation Channel (defined in esp32-safety-engine.h) ---
+// SVLChannel, HystStage, HystChannel are now in the header file
+// to prevent Arduino IDE auto-prototype ordering issues.
 
 // --- Relay Command (single authority) ---
 struct RelayState {
@@ -886,7 +868,7 @@ SystemState evaluateState() {
   // Use worstCaseMaxTemp (hottest sensor) for ALL heat danger decisions.
   // If ANY sensor shows danger, system responds — prevents masking.
   // ═══════════════════════════════════════════════════════════════
-  float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+  float safetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
   float safetyHSI = calculateHSI(safetyTemp, humidity);
   
   // HSI / Temperature based (using worst-case)
@@ -1552,8 +1534,8 @@ void automationEngineTick() {
   // Fan/Alarm/Fogger use worstCaseMaxTemp (hottest sensor = cooling urgency)
   // Heater uses worstCaseMinTemp (coldest sensor = heating urgency)
   // ═══════════════════════════════════════════════════════════════
-  float fanSafetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
-  float heaterSafetyTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
+  float fanSafetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
+  float heaterSafetyTemp = dht2Available ? worstCaseMinTemp : temperature;
   
   evaluateHysteresisChannel(hystFan, fanSafetyTemp, false);
   evaluateHysteresisChannel(hystHeater, heaterSafetyTemp, true);
@@ -2126,9 +2108,7 @@ void gsmQueueAlert(String alertType, String message) {
   // ═══════════════════════════════════════════════════════════════
   bool isCriticalState = (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || 
                           emergencySurvivalMode || 
-                          safetyEngine.state == STATE_EMERGENCY_COOL || 
-                          safetyEngine.state == STATE_EMERGENCY_HEAT ||
-                          safetyEngine.state == STATE_SURVIVAL);
+                          safetyEngine.isSafetyActive());
   
   unsigned long effectiveCooldown = isCriticalState ? GSM_CRITICAL_COOLDOWN_MS : smsCooldownMs;
   
@@ -2430,8 +2410,8 @@ void checkCommands() {
         // Manual fan OFF rejected if temp >= OVERRIDE_SAFE_TEMP_MAX
         // This prevents human error from killing birds.
         // ═══════════════════════════════════════════════════════════
-        float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
-        float safetyTempMin = dualSensorAvailable ? worstCaseMinTemp : temperature;
+        float safetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
+        float safetyTempMin = dht2Available ? worstCaseMinTemp : temperature;
         
         if (type == "exhaust_fan" || type == "fan") {
           // Block fan OFF if temp is in danger zone
@@ -3363,7 +3343,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["humidity_delta_1min"] = getHumDelta1min();
   
   // Safety state
-  doc["safety_override_active"] = safetyEngine.state != STATE_NORMAL;
+  doc["safety_override_active"] = safetyEngine.isSafetyActive();
   doc["heater_allowed"] = !safetyEngine.isHeaterLocked();
   doc["force_ventilation"] = safetyEngine.isVentPurgeActive() || emergencySurvivalMode;
   doc["fan_effect_verified"] = fanEffectVerified;
@@ -3555,7 +3535,7 @@ void loop() {
   if (!btnPressed && btnWasPressed) { btnWasPressed = false; }
   if (btnPressed && btnWasPressed && safeElapsed(now, btnPressStart) >= 3000) {
     // Block manual override toggle if environment is unsafe
-    float safetyTemp = dualSensorAvailable ? worstCaseMaxTemp : temperature;
+    float safetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
     if (!localManualOverride || (safetyTemp < OVERRIDE_SAFE_TEMP_MAX && safetyTemp > OVERRIDE_SAFE_TEMP_MIN)) {
       localManualOverride = !localManualOverride;
       Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
