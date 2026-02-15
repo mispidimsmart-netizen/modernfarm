@@ -3173,6 +3173,10 @@ export type Database = {
       }
       safety_status: {
         Row: {
+          actuator_effect_failure: boolean | null
+          actuator_fail_reason: string | null
+          age_rejection_reason: string | null
+          age_valid: boolean | null
           airflow_consecutive_failures: number
           airflow_fail_reason: string | null
           airflow_ineffective: boolean
@@ -3204,6 +3208,9 @@ export type Database = {
           plausibility_degraded: boolean
           plausibility_reason: string | null
           rapid_temp_rise_detected: boolean
+          reboot_heater_locked: boolean | null
+          reboot_nh3_muted: boolean | null
+          reboot_vent_purge: boolean | null
           relay_violations: number
           safe_mode_active: boolean
           safe_mode_until: string | null
@@ -3217,10 +3224,18 @@ export type Database = {
           survival_heater_on: boolean
           survival_mode: boolean
           system_state: string
+          thermal_model_invalid: boolean | null
+          thermal_model_reason: string | null
           updated_at: string
           user_id: string
+          worst_case_max_temp: number | null
+          worst_case_min_temp: number | null
         }
         Insert: {
+          actuator_effect_failure?: boolean | null
+          actuator_fail_reason?: string | null
+          age_rejection_reason?: string | null
+          age_valid?: boolean | null
           airflow_consecutive_failures?: number
           airflow_fail_reason?: string | null
           airflow_ineffective?: boolean
@@ -3252,6 +3267,9 @@ export type Database = {
           plausibility_degraded?: boolean
           plausibility_reason?: string | null
           rapid_temp_rise_detected?: boolean
+          reboot_heater_locked?: boolean | null
+          reboot_nh3_muted?: boolean | null
+          reboot_vent_purge?: boolean | null
           relay_violations?: number
           safe_mode_active?: boolean
           safe_mode_until?: string | null
@@ -3265,10 +3283,18 @@ export type Database = {
           survival_heater_on?: boolean
           survival_mode?: boolean
           system_state?: string
+          thermal_model_invalid?: boolean | null
+          thermal_model_reason?: string | null
           updated_at?: string
           user_id: string
+          worst_case_max_temp?: number | null
+          worst_case_min_temp?: number | null
         }
         Update: {
+          actuator_effect_failure?: boolean | null
+          actuator_fail_reason?: string | null
+          age_rejection_reason?: string | null
+          age_valid?: boolean | null
           airflow_consecutive_failures?: number
           airflow_fail_reason?: string | null
           airflow_ineffective?: boolean
@@ -3300,6 +3326,9 @@ export type Database = {
           plausibility_degraded?: boolean
           plausibility_reason?: string | null
           rapid_temp_rise_detected?: boolean
+          reboot_heater_locked?: boolean | null
+          reboot_nh3_muted?: boolean | null
+          reboot_vent_purge?: boolean | null
           relay_violations?: number
           safe_mode_active?: boolean
           safe_mode_until?: string | null
@@ -3313,8 +3342,12 @@ export type Database = {
           survival_heater_on?: boolean
           survival_mode?: boolean
           system_state?: string
+          thermal_model_invalid?: boolean | null
+          thermal_model_reason?: string | null
           updated_at?: string
           user_id?: string
+          worst_case_max_temp?: number | null
+          worst_case_min_temp?: number | null
         }
         Relationships: [
           {
