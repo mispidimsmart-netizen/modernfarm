@@ -229,30 +229,52 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
 `;
       firmwareCode = configHeader + firmwareCode;
 
-      // Create a blob and download (PWA-compatible method)
-      const blob = new Blob([firmwareCode], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.style.display = 'none';
-      const filename = firmwareMode === 'ota' 
-        ? `farmeye-ota-${farmType}-${Date.now()}.ino`
-        : `farmeye-${farmType}-${Date.now()}.ino`;
-      a.download = filename;
-      a.setAttribute('target', '_blank');
-      document.body.appendChild(a);
-      
-      // Use setTimeout for PWA/mobile compatibility
-      setTimeout(() => {
+      // Helper to trigger a file download
+      const triggerDownload = (content: string, filename: string) => {
+        const blob = new Blob([content], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.style.display = 'none';
+        a.download = filename;
+        a.setAttribute('target', '_blank');
+        document.body.appendChild(a);
         a.click();
         setTimeout(() => {
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         }, 1000);
+      };
+
+      // Download the .ino file
+      const inoFilename = firmwareMode === 'ota' 
+        ? `farmeye-ota-${farmType}-${Date.now()}.ino`
+        : `farmeye-${farmType}-${Date.now()}.ino`;
+      
+      setTimeout(() => {
+        triggerDownload(firmwareCode, inoFilename);
       }, 100);
+
+      // Also download the required safety engine header file
+      try {
+        const headerResponse = await fetch('/esp32-safety-engine.h?t=' + Date.now());
+        if (headerResponse.ok) {
+          const headerCode = await headerResponse.text();
+          setTimeout(() => {
+            triggerDownload(headerCode, 'esp32-safety-engine.h');
+          }, 600);
+        }
+      } catch (headerErr) {
+        console.warn('Could not download safety header:', headerErr);
+      }
       
       const successMsg = firmwareMode === 'ota' ? t.downloadOTASuccess : t.downloadSuccess;
-      toast.success(successMsg, { duration: 5000 });
+      toast.success(
+        (language === 'bn' 
+          ? '✅ ফার্মওয়্যার + Safety Engine হেডার ডাউনলোড হয়েছে! দুটি ফাইল একই ফোল্ডারে রাখুন।'
+          : '✅ Firmware + Safety Engine header downloaded! Keep both files in the same folder.'),
+        { duration: 6000 }
+      );
     } catch (error) {
       console.error('Download error:', error);
       toast.error(t.downloadFailed);
