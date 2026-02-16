@@ -3499,6 +3499,12 @@ void loop() {
   if (wifiConnected && intervalPassed(now, lastCommandCheck, COMMAND_CHECK_INTERVAL)) {
     lastCommandCheck = now;
     checkCommands();
+    // ═══ CRITICAL: Apply relay states IMMEDIATELY after manual commands ═══
+    // Without this, automationEngineTick() in the next loop iteration
+    // overwrites relayTarget before relayManagerApply() can act on manual commands.
+    if (manualCommandPending) {
+      relayManagerApply();
+    }
   }
 
   // --- Config Fetch (overflow-safe) ---
