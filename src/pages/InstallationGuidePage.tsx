@@ -157,7 +157,7 @@ const wiringConnections = [
   { component: 'Relay IN1', pin: 'Exhaust Fan', esp32Pin: 'GPIO 25', color: 'bg-purple-500', note: '🌀 এক্সহস্ট ফ্যান (উভয় ফার্ম)' },
   { component: 'Relay IN2', pin: 'Light / Circ Fan', esp32Pin: 'GPIO 26', color: 'bg-blue-400', note: '🥚লাইট | 🐔সার্কুলেশন ফ্যান' },
   { component: 'Relay IN3', pin: 'Alarm / Heater', esp32Pin: 'GPIO 33', color: 'bg-orange-500', note: '🥚অ্যালার্ম | 🐔হিটার' },
-  { component: 'Relay IN4', pin: 'Fogger Valve', esp32Pin: 'GPIO 13', color: 'bg-teal-500', note: '💦 ফগার সোলেনয়েড ভালভ AC 220V (উভয় ফার্ম)' },
+  { component: 'Relay IN4', pin: 'Fogger Valve', esp32Pin: 'GPIO 12', color: 'bg-teal-500', note: '💦 ফগার সোলেনয়েড ভালভ AC 220V (উভয় ফার্ম)' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: '🔔 অ্যালার্ম বাজার' },
@@ -378,7 +378,7 @@ const detailedWiringGuide = [
       { sensorPin: 'IN1 (এক্সহস্ট ফ্যান)', esp32Pin: 'GPIO 25', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: রিলে IN1 → ESP32 এর GPIO 25 (🌀 মূল এক্সহস্ট ফ্যান — উভয় ফার্মে একই)', warning: null },
       { sensorPin: 'IN2 (লাইট / সার্কুলেশন ফ্যান)', esp32Pin: 'GPIO 26', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 26 (🥚 লেয়ার: লাইটিং PWM | 🐔 ব্রয়লার: সার্কুলেশন ফ্যান)', warning: '⚠️ লেয়ার ফার্মে লাইট এবং ব্রয়লার ফার্মে সার্কুলেশন ফ্যান কানেক্ট করুন' },
       { sensorPin: 'IN3 (অ্যালার্ম / হিটার)', esp32Pin: 'GPIO 33', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 কমলা তার: রিলে IN3 → ESP32 এর GPIO 33 (🥚 লেয়ার: অ্যালার্ম বাজার | 🐔 ব্রয়লার: হিটার)', warning: '⚠️ লেয়ার ফার্মে বাজার এবং ব্রয়লার ফার্মে হিটার কানেক্ট করুন' },
-      { sensorPin: 'IN4 (ফগার)', esp32Pin: 'GPIO 13', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN4 → ESP32 এর GPIO 13 (💦 ফগার সোলেনয়েড — উভয় ফার্মে একই)', warning: null },
+      { sensorPin: 'IN4 (ফগার)', esp32Pin: 'GPIO 12', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN4 → ESP32 এর GPIO 12 (💦 ফগার সোলেনয়েড — উভয় ফার্মে একই)', warning: null },
     ],
     extraNote: '⚙️ রিলে Active LOW - মানে ESP32 থেকে LOW সিগন্যাল দিলে রিলে ON হয়, HIGH দিলে OFF হয়। বুট করার সময় ফ্লিকারিং রোধে কোডে বিশেষ প্রোটোকল ব্যবহার করা হয়েছে।',
     resistorNote: '📍 JD-VCC ও VCC জাম্পার সংযুক্ত রাখুন (একই পাওয়ার সোর্স)',
@@ -423,9 +423,9 @@ const detailedWiringGuide = [
         },
         {
           relay: 'IN4',
-          gpio: 'GPIO 13',
+          gpio: 'GPIO 12',
           shared: true,
-      sharedDevice: '💦 ফগার সোলেনয়েড ভালভ (AC 220V, Brass, NC)',
+          sharedDevice: '💦 ফগার সোলেনয়েড ভালভ (AC 220V, Brass, NC)',
       sharedNote: 'উভয় ফার্মে একই — নিরাপদ ক্রম: ভালভ খোলে → ২ সেকেন্ড অপেক্ষা → পাম্প চালু → স্প্রে → পাম্প বন্ধ → ২ সেকেন্ড অপেক্ষা → ভালভ বন্ধ। AC 220V ভালভ সরাসরি রিলে দিয়ে কন্ট্রোল হয়। বুস্টার পাম্প আলাদা কন্ট্যাক্টর/রিলে দিয়ে নিয়ন্ত্রিত।',
           layerDevice: null,
           broilerDevice: null,
@@ -484,7 +484,7 @@ const detailedWiringGuide = [
           { ch: 'CH1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'HSI/তাপমাত্রা/অ্যামোনিয়া ভিত্তিক' },
           { ch: 'CH2 (GPIO 26)', device: '💡 লাইট (LED/CFL)', mcb: 'Sub MCB 6A', contactor: false, note: '১৬ ঘণ্টা শিডিউল, ডিম উৎপাদনের জন্য' },
           { ch: 'CH3 (GPIO 33)', device: '🔔 বাজার/অ্যালার্ম', mcb: 'Sub MCB 6A', contactor: false, note: 'DC পাওয়ার সাপ্লাই দিয়ে চলে' },
-          { ch: 'CH4 (GPIO 13)', device: '💦 সোলেনয়েড ভালভ + বুস্টার পাম্প', mcb: 'Sub MCB 6A', contactor: true, note: 'ভালভ সরাসরি রিলে, পাম্প কন্ট্যাক্টর দিয়ে' },
+          { ch: 'CH4 (GPIO 12)', device: '💦 সোলেনয়েড ভালভ + বুস্টার পাম্প', mcb: 'Sub MCB 6A', contactor: true, note: 'ভালভ সরাসরি রিলে, পাম্প কন্ট্যাক্টর দিয়ে' },
         ],
         contactorWiring: [
           { step: 1, instruction: 'MCB 2P 32A থেকে AC Live → সাব MCB 6A (CH4 এর জন্য) → রিলে CH4 COM', color: 'red' },
@@ -504,7 +504,7 @@ const detailedWiringGuide = [
           { ch: 'CH1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বড় ইন্ডাস্ট্রিয়াল ফ্যান হলে (>1HP) কন্ট্যাক্টর লাগবে' },
           { ch: 'CH2 (GPIO 26)', device: '💨 সার্কুলেশন ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বয়স ১০+ দিন থেকে সক্রিয়' },
           { ch: 'CH3 (GPIO 33)', device: '🔥 হিটার (ব্রুডিং)', mcb: 'Sub MCB 6A', contactor: false, note: 'হিটার >1000W হলে কন্ট্যাক্টর বিবেচনা করুন' },
-          { ch: 'CH4 (GPIO 13)', device: '💦 সোলেনয়েড ভালভ + বুস্টার পাম্প', mcb: 'Sub MCB 6A', contactor: true, note: 'পাম্প কন্ট্যাক্টর দিয়ে, ভালভ সরাসরি রিলে' },
+          { ch: 'CH4 (GPIO 12)', device: '💦 সোলেনয়েড ভালভ + বুস্টার পাম্প', mcb: 'Sub MCB 6A', contactor: true, note: 'পাম্প কন্ট্যাক্টর দিয়ে, ভালভ সরাসরি রিলে' },
         ],
         contactorWiring: [
           { step: 1, instruction: 'MCB 2P 32A থেকে AC Live → সাব MCB 6A (CH4 এর জন্য) → রিলে CH4 COM', color: 'red' },
@@ -538,7 +538,7 @@ const detailedWiringGuide = [
       { sensorPin: 'সোলেনয়েড তার ২', esp32Pin: 'AC Neutral', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 সোলেনয়েড ভালভের অন্য তার → সরাসরি AC নিউট্রাল', warning: null },
     ],
     extraNote: '💦 ফগার কুলিং সিস্টেম নিরাপদ ক্রমিক নিয়ন্ত্রণ (Staged Control) ব্যবহার করে:\n\n⚡ এই সিস্টেমে AC 220V Normally Closed Brass সোলেনয়েড ভালভ এবং অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প ব্যবহৃত হয়।\n\n🟢 চালু করার ক্রম (PREPARE → RUNNING):\n① সোলেনয়েড ভালভ খোলে (রিলে ON) → ② ২ সেকেন্ড অপেক্ষা (পানির চাপ তৈরি হতে দেয়) → ③ বুস্টার পাম্প চালু হয়\n\n🔴 বন্ধ করার ক্রম (STOPPING → OFF):\n① পাম্প বন্ধ → ② ২ সেকেন্ড অপেক্ষা (পাইপের চাপ কমতে দেয়) → ③ ভালভ বন্ধ (রিলে OFF)\n\n🛡️ ফেইলসেফ: পাম্প চালু কিন্তু ভালভ বন্ধ → পাম্প তাৎক্ষণিক বন্ধ। ভালভ বন্ধ না হলে ৩ বার চেষ্টা → অ্যালার্ম।\n\nতাপমাত্রা ≥ ৩২°সে এবং আর্দ্রতা < ৮৫% হলে চালু হয়। বন্ধ হয়: তাপমাত্রা < ৩০°সে অথবা আর্দ্রতা ≥ ৯০%।',
-    resistorNote: '📍 Relay IN4 ইতিমধ্যে GPIO 13-এ কানেক্ট করা আছে',
+    resistorNote: '📍 Relay IN4 ইতিমধ্যে GPIO 12-এ কানেক্ট করা আছে',
     tips: [
       '✅ AC 220V Normally Closed (NC) Brass সোলেনয়েড ভালভ ব্যবহার করুন — বিদ্যুৎ না থাকলে পানি বন্ধ থাকে',
       '⚡ ভালভ সরাসরি রিলে IN4 দিয়ে AC 220V কন্ট্রোল হয় — আলাদা অ্যাডাপ্টার লাগে না',
@@ -571,7 +571,7 @@ const detailedWiringGuide = [
         safetyNote: 'ফগার চলাকালে এক্সজস্ট ফ্যান বাধ্যতামূলক চালু থাকে। পাম্প কখনো বন্ধ ভালভের বিরুদ্ধে চলে না।\n\n🛡️ কুলিং স্টেট: OFF → PREPARE (ভালভ খোলে) → RUNNING (পাম্প চালু) → STOPPING (পাম্প বন্ধ, ভালভ বন্ধের অপেক্ষা) → OFF\n\n⚠️ ফেইলসেফ: পাম্প ON + ভালভ OFF → পাম্প তাৎক্ষণিক বন্ধ | ভালভ আটকে গেলে → ৩ বার রিট্রাই → অ্যালার্ম'
       },
       connectionSteps: [
-        { step: 1, title: 'রিলে ইনপুট (ইতিমধ্যে সম্পন্ন)', desc: 'ESP32 GPIO 13 → রিলে IN4 পিন', color: 'purple' },
+        { step: 1, title: 'রিলে ইনপুট (ইতিমধ্যে সম্পন্ন)', desc: 'ESP32 GPIO 12 → রিলে IN4 পিন', color: 'purple' },
         { step: 2, title: 'AC Live → রিলে COM', desc: 'মেইন সুইচ থেকে AC লাইভ (ফেজ) তার → রিলে IN4 এর COM (মাঝের পোর্ট)', color: 'red' },
         { step: 3, title: 'রিলে NO → সোলেনয়েড', desc: 'রিলে IN4 এর NO (ডান পোর্ট) → সোলেনয়েড ভালভের এক তার', color: 'blue' },
         { step: 4, title: 'সোলেনয়েড → AC Neutral', desc: 'সোলেনয়েড ভালভের অন্য তার → সরাসরি AC নিউট্রাল', color: 'black' },
@@ -1037,7 +1037,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
 │  GPIO 25 ───────────────────▶ IN1 (🌀 এক্সহস্ট ফ্যান)   │
 │  GPIO 26 ───────────────────▶ IN2 (💨 সার্কুলেশন ফ্যান) │
 │  GPIO 33 ───────────────────▶ IN3 (🔥 হিটার)            │
-│  GPIO 13 ───────────────────▶ IN4 (💦 ফগার)             │
+│  GPIO 12 ───────────────────▶ IN4 (💦 ফগার)             │
 │                                                          │
 │  অন্যান্য আউটপুট:                                        │
 │  ────────────────                                        │
@@ -1675,7 +1675,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                     {/* Relay Module Section */}
                                     <div className="w-full max-w-sm">
                                       <div className="bg-teal-600 rounded-t-lg p-2 text-center">
-                                        <span className="text-white text-xs font-bold">রিলে IN4 (GPIO 13 দ্বারা নিয়ন্ত্রিত)</span>
+                                        <span className="text-white text-xs font-bold">রিলে IN4 (GPIO 12 দ্বারা নিয়ন্ত্রিত)</span>
                                       </div>
                                       
                                       {/* Relay Terminals */}
@@ -1773,7 +1773,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <div className="w-6 h-2 bg-teal-500 rounded"></div>
-                                        <span className="text-xs">সায়ান = GPIO 13 → IN4</span>
+                                        <span className="text-xs">সায়ান = GPIO 12 → IN4</span>
                                       </div>
                                     </div>
                                   </div>
