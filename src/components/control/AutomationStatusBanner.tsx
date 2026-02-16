@@ -239,12 +239,13 @@ export function AutomationStatusBanner({
               {language === 'bn' ? 'বাতিল' : 'Cancel'}
             </AlertDialogCancel>
             {confirmStep === 1 ? (
-              <AlertDialogAction
+              <button
+                type="button"
                 onClick={handleFirstConfirm}
-                className="bg-amber-500 hover:bg-amber-600"
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 bg-amber-500 text-white hover:bg-amber-600 transition-colors"
               >
                 {language === 'bn' ? 'তবুও বন্ধ করুন' : 'Disable Anyway'}
-              </AlertDialogAction>
+              </button>
             ) : (
               <AlertDialogAction
                 onClick={handleSecondConfirm}
