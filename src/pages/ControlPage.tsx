@@ -159,15 +159,8 @@ export function ControlPage() {
     return () => clearInterval(interval);
   }, [language, sendCommand, setDeviceStatus, toast]);
 
-  // Auto-revert: when bounded override expires, re-enable automation
-  // Only revert if remainingSeconds is a positive number that reached 0
-  // (null means no active timer — don't revert)
-  useEffect(() => {
-    if (boundedOverride.remainingSeconds !== null && boundedOverride.remainingSeconds <= 0 && manualOverride) {
-      sendCommand.mutate({ commandType: 'manual_override', commandValue: false });
-      setManualOverride(false);
-    }
-  }, [boundedOverride.remainingSeconds, manualOverride, sendCommand, setManualOverride]);
+  // Auto-revert is handled by ESP32 firmware and backend safety-engine.
+  // Frontend does NOT auto-revert — it only reads override status from safety_status.
 
   const getRemainingTime = useCallback((device: string) => {
     const timer = activeTimers[device];
