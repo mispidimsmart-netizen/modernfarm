@@ -247,7 +247,7 @@ export function ControlPage() {
       boundedOverride.endOverride();
     }
 
-    sendCommand.mutate({ commandType: 'manual_override', commandValue: !enabled });
+    sendCommand.mutate({ commandType: 'stop_automation', commandValue: !enabled });
     setManualOverride(!enabled);
     toast({
       title: enabled 

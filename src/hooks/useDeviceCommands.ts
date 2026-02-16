@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
 
-type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'circulation_fan' | 'fogger';
+type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'stop_automation' | 'circulation_fan' | 'fogger';
 
 interface SendCommandParams {
   commandType: CommandType;
@@ -58,6 +58,7 @@ export function useSendDeviceCommand() {
           desiredUpdate.desired_heater_on = commandValue;
           break;
         case 'manual_override':
+        case 'stop_automation':
           desiredUpdate.desired_manual_override = commandValue;
           break;
         case 'circulation_fan':
@@ -85,6 +86,7 @@ export function useSendDeviceCommand() {
         alarm: { en: 'Alarm', bn: 'অ্যালার্ম' },
         heater: { en: 'Heater', bn: 'হিটার' },
         manual_override: { en: 'Manual Override', bn: 'ম্যানুয়াল ওভাররাইড' },
+        stop_automation: { en: 'Stop Automation', bn: 'অটোমেশন বন্ধ' },
         circulation_fan: { en: 'Circulation Fan', bn: 'সার্কুলেশন ফ্যান' },
         fogger: { en: 'Fogger', bn: 'ফগার' },
       };
