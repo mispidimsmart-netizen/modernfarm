@@ -37,7 +37,7 @@
  * ║    GPIO 25 (IN1): Exhaust Fan                                         ║
  * ║    GPIO 26 (IN2): Light (Layer) / Circulation Fan (Broiler)           ║
  * ║    GPIO 33 (IN3): Alarm (Layer) / Heater (Broiler)                    ║
- * ║    GPIO 13 (IN4): Fogger Solenoid                                     ║
+ * ║    GPIO 12 (IN4): Fogger Solenoid                                     ║
  * ║    GPIO 4:  DHT22 #1     GPIO 15: DHT22 #2                           ║
  * ║    GPIO 34: MQ-137 NH3   GPIO 35: ZMPT101B Voltage                   ║
  * ║    GPIO 27: YF-S201 Water Flow                                        ║
@@ -92,12 +92,11 @@ const char* FIRMWARE_VERSION = "7.0.0";
 #define ALARM_RELAY_PIN      33
 // ═══════════════════════════════════════════════════════════════
 // INV-6: Each logical device MUST have its own physical GPIO pin.
-// HEATER and FOGGER were previously both on GPIO 13 — LETHAL BUG.
-// Fogger moved to GPIO 12. If hardware has only 4 relays, fogger
-// must be on a separate relay channel or disabled.
+// 4-Channel Relay Map: 25, 26, 33, 12
+// Heater shares IN3 with Alarm (mapped to GPIO 33)
 // ═══════════════════════════════════════════════════════════════
-#define HEATER_RELAY_PIN     13
-#define FOGGER_RELAY_PIN     12    // INV-6: MUST NOT share with heater
+#define HEATER_RELAY_PIN     33    // Shared with Alarm (IN3)
+#define FOGGER_RELAY_PIN     12    // IN4 (Remapped from 13 to fix hardware conflict)
 #define STATUS_LED_PIN       2
 #define CIRCULATION_RELAY_PIN LIGHT_RELAY_PIN
 #define MANUAL_OVERRIDE_BTN  32

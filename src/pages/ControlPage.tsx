@@ -12,6 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useFarmType } from '@/hooks/useFarmType';
+import { useSelectedShed } from '@/hooks/useSheds';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
@@ -104,7 +105,8 @@ const LAYER_DEVICES = [
 
 export function ControlPage() {
   const { language } = useAuth();
-  const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl();
+  const { selectedShedId } = useSelectedShed();
+  const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
   const { data: userRole } = useUserRole();
@@ -138,7 +140,7 @@ export function ControlPage() {
         Object.entries(updated).forEach(([deviceKey, timer]) => {
           if (timer.endTime <= now) {
             const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
-            sendCommand.mutate({ commandType: cmdType, commandValue: false });
+            sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
             setDeviceStatus({ [deviceKey]: false });
             delete updated[deviceKey];
             hasChanges = true;
@@ -199,7 +201,7 @@ export function ControlPage() {
 
   const handleStop = (deviceKey: string) => {
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
-    sendCommand.mutate({ commandType: cmdType, commandValue: false });
+    sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: false });
     setActiveTimers(prev => {
       const updated = { ...prev };
@@ -215,7 +217,7 @@ export function ControlPage() {
   const handleTimerConfirm = (durationMinutes: number) => {
     if (!pendingDevice) return;
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
-    sendCommand.mutate({ commandType: cmdType, commandValue: true });
+    sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
     setDeviceStatus({ [pendingDevice.device]: true });
     setActiveTimers(prev => ({
       ...prev,
@@ -247,7 +249,7 @@ export function ControlPage() {
       boundedOverride.endOverride();
     }
 
-    sendCommand.mutate({ commandType: 'stop_automation', commandValue: !enabled });
+    sendCommand.mutate({ commandType: 'stop_automation', commandValue: !enabled, shedId: selectedShedId || undefined });
     setManualOverride(!enabled);
     toast({
       title: enabled 

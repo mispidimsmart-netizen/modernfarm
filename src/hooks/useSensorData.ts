@@ -71,9 +71,9 @@ export function useStatusLevels(sensorData: SensorData) {
 }
 
 // Combined device control hook
-export function useDeviceControl() {
-  const { data: deviceStatus, isLoading } = useDeviceStatus();
-  const updateMutation = useUpdateDeviceStatus();
+export function useDeviceControl(shedId?: string | null) {
+  const { data: deviceStatus, isLoading } = useDeviceStatus(shedId);
+  const updateMutation = useUpdateDeviceStatus(shedId);
 
   const status: DeviceStatus = deviceStatus ? {
     power: deviceStatus.power_on,

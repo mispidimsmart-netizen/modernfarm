@@ -91,18 +91,27 @@ export function useUpdateFarmSettings() {
 }
 
 // Device status hooks
-export function useDeviceStatus() {
+export function useDeviceStatus(shedId?: string | null) {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['device_status', user?.id],
+    queryKey: ['device_status', user?.id, shedId],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      let query = supabase
         .from('device_status')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
+      
+      if (shedId) {
+        query = query.eq('shed_id', shedId);
+      } else {
+        // Fallback: look for a record with null shed_id or just take the first one
+        // Better to encourage shedId usage
+        query = query.order('updated_at', { ascending: false });
+      }
+
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as DeviceStatus;
     },
@@ -110,17 +119,23 @@ export function useDeviceStatus() {
   });
 }
 
-export function useUpdateDeviceStatus() {
+export function useUpdateDeviceStatus(shedId?: string | null) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
   return useMutation({
     mutationFn: async (status: Partial<DeviceStatus>) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
+      let query = supabase
         .from('device_status')
         .update(status)
         .eq('user_id', user.id);
+      
+      if (shedId) {
+        query = query.eq('shed_id', shedId);
+      }
+
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
