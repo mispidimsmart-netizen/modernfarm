@@ -160,8 +160,10 @@ export function ControlPage() {
   }, [language, sendCommand, setDeviceStatus, toast]);
 
   // Auto-revert: when bounded override expires, re-enable automation
+  // Only revert if remainingSeconds is a positive number that reached 0
+  // (null means no active timer — don't revert)
   useEffect(() => {
-    if (boundedOverride.remainingSeconds === 0 && manualOverride) {
+    if (boundedOverride.remainingSeconds !== null && boundedOverride.remainingSeconds <= 0 && manualOverride) {
       sendCommand.mutate({ commandType: 'manual_override', commandValue: false });
       setManualOverride(false);
     }

@@ -46,14 +46,21 @@ export function useBoundedOverride() {
     if (!user) return;
 
     try {
-      await supabase
+      let query = supabase
         .from('device_status')
         .update({
           manual_override: true,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id)
-        .eq('shed_id', selectedShedId || '');
+        .eq('user_id', user.id);
+      
+      if (selectedShedId) {
+        query = query.eq('shed_id', selectedShedId);
+      } else {
+        query = query.is('shed_id', null);
+      }
+      
+      await query;
 
       // Log override intent
       await (supabase.from('farm_audit_logs') as any).insert({
@@ -83,14 +90,21 @@ export function useBoundedOverride() {
     if (!user) return;
 
     try {
-      await supabase
+      let query = supabase
         .from('device_status')
         .update({
           manual_override: false,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user.id)
-        .eq('shed_id', selectedShedId || '');
+        .eq('user_id', user.id);
+      
+      if (selectedShedId) {
+        query = query.eq('shed_id', selectedShedId);
+      } else {
+        query = query.is('shed_id', null);
+      }
+      
+      await query;
 
       toast.success(
         language === 'bn' ? '✅ অটো মোডে ফিরে এসেছে' : '✅ Returned to AUTO mode'
