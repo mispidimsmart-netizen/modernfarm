@@ -3072,11 +3072,13 @@ void setup() {
   // Verifies no two logical devices share the same physical GPIO.
   // If conflict detected → HALT (prevents lethal pin collision).
   // ═══════════════════════════════════════════════════════════════
+  // ═══ ALARM_RELAY_PIN (33) == HEATER_RELAY_PIN (33) intentionally ═══
+  // They share IN3: Alarm for Layer, Heater for Broiler. 
+  // Combined into single entry to avoid false GPIO conflict HALT.
   GpioAssignment gpioMap[] = {
     {FAN_RELAY_PIN,    "ExhaustFan"},
     {LIGHT_RELAY_PIN,  "Light/CircFan"},
-    {ALARM_RELAY_PIN,  "Alarm/Heater(L)"},
-    {HEATER_RELAY_PIN, "Heater"},
+    {ALARM_RELAY_PIN,  "Alarm+Heater(IN3)"},  // Shared pin: Layer=Alarm, Broiler=Heater
     {FOGGER_RELAY_PIN, "Fogger"},
     {DHT_PIN,          "DHT22_1"},
     {DHT2_PIN,         "DHT22_2"},
@@ -3084,7 +3086,7 @@ void setup() {
     {POWER_SENSE_PIN,  "ZMPT101B"},
     {WATER_FLOW_PIN,   "YFS201"}
   };
-  if (!safetyEngine.validateGpioAssignments(gpioMap, 10)) {
+  if (!safetyEngine.validateGpioAssignments(gpioMap, 9)) {
     // FATAL: GPIO conflict detected — HALT with alarm
     Serial.println("🔴 FATAL: GPIO CONFLICT — SYSTEM HALTED");
     Serial.println("🔴 " + safetyEngine.gpioConflictDetail);
