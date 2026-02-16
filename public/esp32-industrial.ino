@@ -418,6 +418,7 @@ int lightBrightness = 0;
 // --- Global Relay Protection Timer ---
 unsigned long lastRelayChangeTime = 0;  // Timestamp of last relay state change
 bool relayProtectionActive = false;     // True if within 60s protection window
+bool manualCommandPending = false;      // Bypass relay protection for manual commands
 
 // --- Manual Overrides ---
 bool localManualOverride = false;
@@ -1252,10 +1253,15 @@ void relayManagerApply() {
   bool circChange   = (relayTarget.circulationFan != circulationFanOn);
   bool anyChange    = fanChange || alarmChange || heaterChange || foggerChange || circChange;
   
-  // If protection active and no safety bypass, skip all relay changes
-  if (relayProtectionActive && !safetyBypass && anyChange) {
-    // Silently blocked — relay protection window active
+  // If protection active and no safety bypass AND not manual command, skip all relay changes
+  // Manual commands from user must ALWAYS be honored — protection is only for automation oscillation
+  if (relayProtectionActive && !safetyBypass && !manualCommandPending && anyChange) {
+    // Silently blocked — relay protection window active (automation only)
     return;
+  }
+  // Clear manual command flag after processing
+  if (manualCommandPending && anyChange) {
+    manualCommandPending = false;
   }
   
   bool changed = false;
@@ -2412,10 +2418,14 @@ void checkCommands() {
         float safetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
         float safetyTempMin = dht2Available ? worstCaseMinTemp : temperature;
         
+        // ═══ All manual commands set bypass flag ═══
+        manualCommandPending = true;
+        
         if (type == "exhaust_fan" || type == "fan") {
           // Block fan OFF if temp is in danger zone
           if (!value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
             Serial.printf("⛔ MANUAL FAN OFF REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+            manualCommandPending = false;
           } else {
             fanManualOverride = true; fanManualTime = millis();
             requestFan(value, value ? "HIGH" : "OFF");
@@ -2424,6 +2434,7 @@ void checkCommands() {
           // Block heater ON if temp is already at/above safety max
           if (value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
             Serial.printf("⛔ MANUAL HEATER ON REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+            manualCommandPending = false;
           } else {
             heaterManualOverride = true; heaterManualTime = millis();
             requestHeater(value);
@@ -2437,6 +2448,7 @@ void checkCommands() {
           // Block fogger OFF if temp is in danger zone
           if (!value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
             Serial.printf("⛔ MANUAL FOGGER OFF REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
+            manualCommandPending = false;
           } else {
             foggerManualOverride = true; foggerManualTime = millis();
             requestFogger(value);
@@ -2448,9 +2460,12 @@ void checkCommands() {
           // Block automation stop if environment is unsafe
           if (value && (safetyTemp >= OVERRIDE_SAFE_TEMP_MAX || safetyTempMin <= OVERRIDE_SAFE_TEMP_MIN)) {
             Serial.printf("⛔ STOP AUTOMATION REJECTED: temp outside safety band [%.1f-%.1f°C]\n", OVERRIDE_SAFE_TEMP_MIN, OVERRIDE_SAFE_TEMP_MAX);
+            manualCommandPending = false;
           } else {
             localManualOverride = value;
           }
+        } else {
+          manualCommandPending = false; // Unknown command type
         }
         // Acknowledge
         if (id.length() > 0) {
