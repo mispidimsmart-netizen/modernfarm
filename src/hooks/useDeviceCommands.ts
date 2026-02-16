@@ -10,6 +10,7 @@ interface SendCommandParams {
   commandType: CommandType;
   commandValue: boolean;
   deviceName?: string;
+  shedId?: string;
 }
 
 /**
@@ -23,7 +24,7 @@ export function useSendDeviceCommand() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A' }: SendCommandParams) => {
+    mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
 
       const { error } = await supabase
@@ -35,6 +36,7 @@ export function useSendDeviceCommand() {
           command_value: commandValue,
           executed: false,
           farm_id: selectedFarmId,
+          shed_id: shedId,
         });
 
       if (error) throw error;
@@ -70,10 +72,16 @@ export function useSendDeviceCommand() {
       }
 
       if (Object.keys(desiredUpdate).length > 1) {
-        await supabase
+        let query = supabase
           .from('device_status')
           .update(desiredUpdate)
           .eq('user_id', user.id);
+        
+        if (shedId) {
+          query = query.eq('shed_id', shedId);
+        }
+
+        await query;
       }
     },
     onSuccess: (_, variables) => {
