@@ -49,7 +49,7 @@ async function applyHSIAutomation(
     // Build query for device_status - filter by shed if provided
     let deviceQuery = supabase
       .from('device_status')
-      .select('id, manual_override, shed_id')
+      .select('id, manual_override, desired_manual_override, shed_id')
       .eq('user_id', userId);
     
     if (shedId) {
@@ -58,7 +58,8 @@ async function applyHSIAutomation(
     
     const { data: deviceStatus } = await deviceQuery.maybeSingle();
     
-    if (deviceStatus?.manual_override) {
+    // Check BOTH manual_override (set by ESP32) AND desired_manual_override (set by app)
+    if (deviceStatus?.manual_override || deviceStatus?.desired_manual_override) {
       console.log(`Manual override active for shed ${shedId || 'default'}, skipping HSI automation`);
       return;
     }
@@ -1747,7 +1748,7 @@ async function getDeviceState(supabase: any, userId: string, shedId: string | nu
     // Get device status
     let statusQuery = supabase
       .from('device_status')
-      .select('fan_on, fan_speed, light_on, alarm_on, power_on, manual_override')
+      .select('fan_on, fan_speed, light_on, alarm_on, power_on, manual_override, desired_manual_override')
       .eq('user_id', userId);
 
     if (shedId) {
@@ -1777,11 +1778,12 @@ async function getDeviceState(supabase: any, userId: string, shedId: string | nu
       hsiStatus = hsi > 40 ? 'DANGER' : hsi >= 35 ? 'HIGH_STRESS' : hsi >= 30 ? 'MILD_STRESS' : 'NORMAL';
     }
 
-    // Determine mode
+    // Determine mode - check BOTH manual_override and desired_manual_override
     let mode: string = 'UNKNOWN';
+    const isManualOverride = statusData?.manual_override || statusData?.desired_manual_override;
     if (healthData?.failsafe_mode) {
       mode = 'FAIL_SAFE';
-    } else if (statusData?.manual_override) {
+    } else if (isManualOverride) {
       mode = 'MANUAL';
     } else {
       mode = 'AUTO';
@@ -3930,8 +3932,8 @@ async function getDeviceConfig(supabase: any, userId: string, shedId: string | n
         ? supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('shed_id', shedId).eq('status', 'active').maybeSingle()
         : supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('status', 'active').maybeSingle(),
       shedId
-        ? supabase.from('device_status').select('manual_override, mode').eq('user_id', userId).eq('shed_id', shedId).maybeSingle()
-        : supabase.from('device_status').select('manual_override, mode').eq('user_id', userId).maybeSingle(),
+        ? supabase.from('device_status').select('manual_override, desired_manual_override, mode').eq('user_id', userId).eq('shed_id', shedId).maybeSingle()
+        : supabase.from('device_status').select('manual_override, desired_manual_override, mode').eq('user_id', userId).maybeSingle(),
       supabase.from('lighting_schedule').select('*').eq('user_id', userId).maybeSingle(),
     ]);
 
@@ -3966,7 +3968,7 @@ async function getDeviceConfig(supabase: any, userId: string, shedId: string | n
     }
 
     // Determine mode
-    const mode = deviceStatus?.manual_override ? 'MANUAL' : (deviceStatus?.mode || 'AUTO');
+    const mode = (deviceStatus?.manual_override || deviceStatus?.desired_manual_override) ? 'MANUAL' : (deviceStatus?.mode || 'AUTO');
 
     // Current server time for ESP32 time sync
     const now = new Date();
