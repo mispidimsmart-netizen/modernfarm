@@ -410,14 +410,17 @@ Deno.serve(async (req) => {
       );
 
       // Update device status if not in manual override
+      // Check BOTH manual_override (set by ESP32) AND desired_manual_override (set by app)
       const { data: deviceStatus } = await supabase
         .from('device_status')
-        .select('manual_override')
+        .select('manual_override, desired_manual_override')
         .eq('user_id', user_id)
         .eq('shed_id', shed_id)
         .single();
 
-      if (!deviceStatus?.manual_override) {
+      const isManualOverride = deviceStatus?.manual_override || deviceStatus?.desired_manual_override;
+
+      if (!isManualOverride) {
         await supabase
           .from('device_status')
           .update({
