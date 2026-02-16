@@ -1593,45 +1593,62 @@ void runControlLogic() {
     broilerAirflowControl();
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // CHECK & EXPIRE MANUAL OVERRIDES (Fan, Light, Alarm)
+  // Each manual override expires after MANUAL_OVERRIDE_TIMEOUT (15-20min)
+  // During active override → automation SKIPS that device entirely
+  // ═══════════════════════════════════════════════════════════════
+  if (fanManualOverride) {
+    if (fanManualTime > 0 && (millis() - fanManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
+      fanManualOverride = false; fanManualTime = 0;
+      Serial.println("⏱️ Fan manual override EXPIRED — returning to auto");
+    }
+    // Don't touch fan while manual override active (except safety states below)
+  }
+
   // Priority 5: Main fan/alarm based on hysteresis + state
   // ⚠️ Fan speed is now driven by HYSTERESIS STAGE LEVEL, not raw state alone.
   // This ensures timing protection (60s min ON/OFF) prevents relay chattering.
   switch (currentState) {
     case STATE_EMERGENCY:
+      // EMERGENCY always overrides manual — life safety
       requestFan(true, "HIGH");
       requestAlarm(true);
       gsmQueueAlert("temperature", "🚨 EMERGENCY! Temp=" + String(temperature,1) + "°C HSI=" + String(currentHSI,1));
       break;
     case STATE_DANGER:
+      // DANGER always overrides manual — life safety
       requestFan(true, "HIGH");
       requestAlarm(hystAlarm.activeStageLevel > 0 || (ammonia > rules.ammoniaAlarm && nh3VentilationConfirmed));
       break;
     case STATE_WARNING: {
-      // Use hysteresis fan stage to determine speed (prevents chattering)
-      int fanStage = hystFan.activeStageLevel;
-      if (fanStage >= 3) requestFan(true, "HIGH");
-      else if (fanStage == 2) requestFan(true, "MEDIUM");
-      else if (fanStage == 1) requestFan(true, "LOW");
-      else requestFan(true, "LOW"); // WARNING state = at least LOW
+      // WARNING: fan override respected only if NOT in danger zone
+      if (!fanManualOverride) {
+        int fanStage = hystFan.activeStageLevel;
+        if (fanStage >= 3) requestFan(true, "HIGH");
+        else if (fanStage == 2) requestFan(true, "MEDIUM");
+        else if (fanStage == 1) requestFan(true, "LOW");
+        else requestFan(true, "LOW"); // WARNING state = at least LOW
+      }
       requestAlarm(false);
       break;
     }
     case STATE_NORMAL:
-      // Use hysteresis: only turn fan off if hysteresis agrees (timing protected)
-      if (!minVentActive && !foggerActive) {
-        if (hystFan.activeStageLevel > 0) {
-          // Hysteresis still active (within min-on-time or temp above off-threshold)
-          String speed = hystFan.activeStageLevel >= 3 ? "HIGH" : hystFan.activeStageLevel == 2 ? "MEDIUM" : "LOW";
-          requestFan(true, speed);
-        } else {
-          requestFan(false, "OFF");
+      // NORMAL: fully respect manual overrides
+      if (!fanManualOverride) {
+        if (!minVentActive && !foggerActive) {
+          if (hystFan.activeStageLevel > 0) {
+            String speed = hystFan.activeStageLevel >= 3 ? "HIGH" : hystFan.activeStageLevel == 2 ? "MEDIUM" : "LOW";
+            requestFan(true, speed);
+          } else {
+            requestFan(false, "OFF");
+          }
         }
       }
       requestAlarm(false);
       break;
     case STATE_SENSOR_FAIL:
-      // Should not reach here — SENSOR_FAIL auto-enters ESM above.
-      // Fallback safety: force cyclic survival ventilation inline.
+      // SENSOR_FAIL: safety overrides everything
       { unsigned long elapsed = millis() - stateEnteredAt;
         unsigned long fanCycle = ESM_FAN_ON_MS + ESM_FAN_OFF_MS;
         bool shouldFan = (elapsed % fanCycle) < ESM_FAN_ON_MS;
@@ -1645,8 +1662,16 @@ void runControlLogic() {
     default: break;
   }
 
-  // Lighting
-  controlLighting();
+  // Lighting (respect manual override)
+  if (lightSchedule.manualOverride) {
+    if (lightManualOverrideTime > 0 && (millis() - lightManualOverrideTime >= MANUAL_OVERRIDE_TIMEOUT)) {
+      lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+      Serial.println("⏱️ Light manual override EXPIRED — returning to auto");
+    }
+    // Skip auto lighting while manual override active
+  } else {
+    controlLighting();
+  }
 
   // Water monitoring
   waterFlowTick();
