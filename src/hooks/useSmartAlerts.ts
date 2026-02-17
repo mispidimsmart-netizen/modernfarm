@@ -26,6 +26,7 @@ export interface SmartAlert {
   resolvedAt?: Date;
   groupId?: string;
   priority: NotificationPriority;
+  childAlerts?: SmartAlert[];
 }
 
 // Anti-spam cooldown periods in milliseconds
@@ -237,7 +238,6 @@ export const ALERT_TEMPLATES: Record<string, {
 // Group related alerts together
 function groupAlerts(alerts: SmartAlert[]): SmartAlert[] {
   const grouped: Map<string, SmartAlert[]> = new Map();
-  const ungrouped: SmartAlert[] = [];
 
   // Group by type and time proximity (within 5 minutes)
   alerts.forEach(alert => {
@@ -251,17 +251,41 @@ function groupAlerts(alerts: SmartAlert[]): SmartAlert[] {
   const result: SmartAlert[] = [];
   grouped.forEach((group, key) => {
     if (group.length > 2) {
-      // Combine into single message
+      // Get unique issue types in this group
+      const uniqueTypes = [...new Set(group.map(a => a.type))];
+      const uniqueTitles = [...new Set(group.map(a => a.title))];
+      const uniqueTitlesBn = [...new Set(group.map(a => a.titleBn))];
+      
+      // Build clear summary showing what happened
+      const isSameIssue = uniqueTypes.length === 1;
+      
       const combinedAlert: SmartAlert = {
         ...group[0],
         id: `group_${key}`,
         groupId: key,
-        title: `Multiple issues detected (${group.length})`,
-        titleBn: `একাধিক সমস্যা শনাক্ত (${group.length}টি)`,
-        message: group.map(a => a.title).join(', '),
-        messageBn: group.map(a => a.titleBn).join(', '),
-        suggestion: 'Check all systems and respond to the most critical issues first',
-        suggestionBn: 'সব সিস্টেম চেক করুন এবং সবচেয়ে জরুরি সমস্যাগুলো আগে সমাধান করুন',
+        // If all same type, show what happened clearly
+        title: isSameIssue
+          ? `${group[0].title} (repeated ${group.length}×)`
+          : `${uniqueTitles.length} types of issues (${group.length} total)`,
+        titleBn: isSameIssue
+          ? `${group[0].titleBn} (${group.length} বার)`
+          : `${uniqueTitlesBn.length} ধরনের সমস্যা (মোট ${group.length}টি)`,
+        // Show the actual issue details
+        message: isSameIssue
+          ? group[0].message
+          : uniqueTitles.join(' • '),
+        messageBn: isSameIssue
+          ? group[0].messageBn
+          : uniqueTitlesBn.join(' • '),
+        // Keep the first alert's suggestion (most relevant)
+        suggestion: isSameIssue
+          ? group[0].suggestion
+          : 'Check the most critical issues first',
+        suggestionBn: isSameIssue
+          ? group[0].suggestionBn
+          : 'সবচেয়ে জরুরি সমস্যাগুলো আগে দেখুন',
+        // Store child alerts for detailed display
+        childAlerts: group,
       };
       result.push(combinedAlert);
     } else {
@@ -270,7 +294,6 @@ function groupAlerts(alerts: SmartAlert[]): SmartAlert[] {
   });
 
   return result.sort((a, b) => {
-    // Sort by level (danger first) then by time
     const levelOrder = { danger: 0, warning: 1, info: 2 };
     if (levelOrder[a.level] !== levelOrder[b.level]) {
       return levelOrder[a.level] - levelOrder[b.level];
