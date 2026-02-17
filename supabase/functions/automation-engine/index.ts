@@ -427,6 +427,10 @@ Deno.serve(async (req) => {
             fan_on: automationAction.fan,
             fan_speed: automationAction.fanSpeed,
             alarm_on: automationAction.alarm,
+            // Reset non-automated devices to OFF when automation takes control
+            heater_on: false,
+            fogger_on: false,
+            circulation_fan_on: false,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', user_id)

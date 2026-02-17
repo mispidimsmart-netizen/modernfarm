@@ -61,6 +61,17 @@ export function useSendDeviceCommand() {
         case 'manual_override':
         case 'stop_automation':
           desiredUpdate.desired_manual_override = commandValue;
+          // When deactivating manual override, clear ALL desired device states
+          // so automation can take full control immediately
+          if (!commandValue) {
+            desiredUpdate.desired_fan_on = null;
+            desiredUpdate.desired_light_on = null;
+            desiredUpdate.desired_alarm_on = null;
+            desiredUpdate.desired_heater_on = null;
+            desiredUpdate.desired_circulation_fan_on = null;
+            desiredUpdate.desired_fogger_on = null;
+            desiredUpdate.desired_fan_speed = null;
+          }
           break;
         case 'circulation_fan':
           desiredUpdate.desired_circulation_fan_on = commandValue;
