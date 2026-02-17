@@ -385,8 +385,8 @@ function evaluateSafety(input: EvaluationInput) {
 
   // === WORST-CASE SENSOR SELECTION ===
   // Use MAX temp for cooling/overheat decisions, MIN temp for heating decisions
-  const safetyTempMax = input.worst_case_max_temp ?? input.temperature;
-  const safetyTempMin = input.worst_case_min_temp ?? input.temperature;
+  const safetyTempMax = Number.isFinite(input.worst_case_max_temp) ? input.worst_case_max_temp! : (Number.isFinite(input.temperature) ? input.temperature : 25);
+  const safetyTempMin = Number.isFinite(input.worst_case_min_temp) ? input.worst_case_min_temp! : (Number.isFinite(input.temperature) ? input.temperature : 25);
 
   // === SENSOR STATE EVALUATION ===
   const sensorState: Record<string, string> = {
@@ -710,7 +710,7 @@ function evaluateSafety(input: EvaluationInput) {
     rapid_temp_rise_detected,
     force_ventilation,
     min_vent_duty_required,
-    current_temp_rate,
+    current_temp_rate: Number.isFinite(current_temp_rate) ? current_temp_rate : 0,
     emergency_priority,
     emergency_active,
     override_active: input.override_active,
