@@ -1,6 +1,20 @@
-// Push notification handler — imported by VitePWA's service worker
-// This file is kept for backward compatibility but the main SW is managed by VitePWA
-// Push events are handled by the VitePWA service worker via importScripts
+// Push notification handler & cache management — imported by VitePWA's service worker
+// Force clear ALL old caches on activation to ensure updates reach mobile
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          // Delete all non-workbox caches to force fresh content
+          if (!cacheName.startsWith('workbox-precache')) {
+            console.log('[SW] Clearing old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;

@@ -25,13 +25,15 @@ export const usePWAUpdate = () => {
 
   useEffect(() => {
     if (needRefresh) {
-      // Show a brief banner, then auto-reload after 3 seconds
       setShowUpdateBanner(true);
-      console.log('[PWA] New version detected — auto-reloading in 3s...');
+      console.log('[PWA] New version detected — clearing caches & reloading...');
       const timer = setTimeout(async () => {
+        // Clear ALL caches before reloading to force fresh content
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
         await updateServiceWorker(true);
         window.location.reload();
-      }, 3000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [needRefresh, updateServiceWorker]);
