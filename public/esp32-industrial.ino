@@ -2243,21 +2243,33 @@ void saveSmsSettings() {
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
 void connectWiFi() {
+  Serial.printf("📡 WiFi: Connecting to SSID=[%s] len=%d\n", activeWifiSSID.c_str(), activeWifiSSID.length());
+  
   if (activeWifiSSID.length() == 0 || activeWifiSSID == "YOUR_WIFI_SSID") {
+    Serial.println("❌ WiFi BLOCKED: SSID is empty or placeholder!");
+    Serial.printf("   Raw SSID bytes: ");
+    for (int i = 0; i < activeWifiSSID.length(); i++) Serial.printf("%02X ", (uint8_t)activeWifiSSID[i]);
+    Serial.println();
     failsafeMode = true; return;
   }
+  
+  WiFi.disconnect(true);  // Force disconnect any previous session
+  delay(100);
   WiFi.mode(WIFI_STA);
   WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
+  Serial.printf("📡 WiFi: Attempting connection (max 10s)...\n");
+  
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) {
     unsigned long w = millis(); while(millis()-w < 500) { esp_task_wdt_reset(); yield(); }
     attempts++;
+    if (attempts % 5 == 0) Serial.printf("   ...attempt %d/20 (status=%d)\n", attempts, WiFi.status());
   }
   wifiConnected = (WiFi.status() == WL_CONNECTED);
   if (wifiConnected) {
     Serial.printf("✓ WiFi Connected (IP: %s, RSSI: %d)\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
   } else {
-    Serial.println("✗ WiFi Failed - local automation active");
+    Serial.printf("✗ WiFi Failed (status=%d) - local automation active\n", WiFi.status());
     failsafeMode = true;
   }
 }
@@ -3063,13 +3075,14 @@ void setup() {
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
 
   // --- Credentials ---
-  if (USE_HARDCODED_TOKEN) {
-    if (isNVSProvisioned()) loadCredentialsFromNVS();
-    else provisionFromHardcoded();
-  } else {
-    if (isNVSProvisioned()) loadCredentialsFromNVS();
-    else { Serial.println("❌ No NVS credentials!"); while(true) { digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN)); unsigned long w=millis(); while(millis()-w<100) yield(); } }
-  }
+  // ALWAYS provision from hardcoded on boot to ensure latest values are used
+  // This prevents stale NVS credentials from blocking WiFi connection
+  provisionFromHardcoded();
+  Serial.printf("🔑 Credentials loaded:\n");
+  Serial.printf("   SSID: [%s] (len=%d)\n", activeWifiSSID.c_str(), activeWifiSSID.length());
+  Serial.printf("   Pass: [%s] (len=%d)\n", activeWifiPassword.length() > 0 ? "****" : "EMPTY", activeWifiPassword.length());
+  Serial.printf("   Token: [%s]\n", activeDeviceToken.substring(0, 8).c_str());
+  Serial.printf("   Farm: [%s] Shed: [%s]\n", activeFarmId.c_str(), activeShedId.c_str());
 
   // --- Restart Reason ---
   restartReason = detectRestartReason();
