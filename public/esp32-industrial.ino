@@ -1354,9 +1354,20 @@ void updateLightingWithFade() {
     fadeInProgress = true;
   }
 
-  int pwm = map(lightBrightness, 0, 100, 0, 255);
-  // For Layer: use PWM on LIGHT_RELAY_PIN or separate PWM channel
-  lightOn = (lightBrightness > 0);
+  // ═══════════════════════════════════════════════════════════════
+  // LAYER MODE: Mechanical relay — only ON/OFF (no PWM capability)
+  // Brightness > 0 = relay ON, brightness == 0 = relay OFF
+  // Active LOW: LOW = ON, HIGH = OFF
+  // ═══════════════════════════════════════════════════════════════
+  bool newLightOn = (lightBrightness > 0);
+  if (newLightOn != lightOn) {
+    lightOn = newLightOn;
+    if (!isBroiler()) {
+      // IN2 (GPIO 26) is Light relay in Layer mode
+      digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
+      Serial.println(lightOn ? "💡 Light relay ON (Layer)" : "🌑 Light relay OFF (Layer)");
+    }
+  }
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
