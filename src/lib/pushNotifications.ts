@@ -32,13 +32,13 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-    });
-    console.log('Service Worker registered:', registration);
+    // Use the VitePWA-managed service worker instead of registering a separate one
+    // This avoids conflicts between multiple service workers
+    const registration = await navigator.serviceWorker.ready;
+    console.log('Service Worker ready (VitePWA managed):', registration.scope);
     return registration;
   } catch (error) {
-    console.error('Service Worker registration failed:', error);
+    console.error('Service Worker not available:', error);
     return null;
   }
 }

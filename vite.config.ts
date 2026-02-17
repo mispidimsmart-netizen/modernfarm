@@ -125,6 +125,8 @@ export default defineConfig(({ mode }) => ({
         clientsClaim: true,
         // Clean old caches on new SW activation
         cleanupOutdatedCaches: true,
+        // Import push notification handlers into the generated SW
+        importScripts: ['/sw.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
