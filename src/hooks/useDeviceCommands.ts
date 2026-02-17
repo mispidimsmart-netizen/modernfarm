@@ -36,7 +36,6 @@ export function useSendDeviceCommand() {
           command_value: commandValue,
           executed: false,
           farm_id: selectedFarmId,
-          shed_id: shedId,
         });
 
       if (error) throw error;
