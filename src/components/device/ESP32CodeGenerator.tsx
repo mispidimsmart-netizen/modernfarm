@@ -229,40 +229,41 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
 `;
       firmwareCode = configHeader + firmwareCode;
 
-      // Helper to trigger a file download
-      const triggerDownload = (content: string, filename: string) => {
-        const blob = new Blob([content], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.style.display = 'none';
-        a.download = filename;
-        a.setAttribute('target', '_blank');
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 1000);
+      // Helper to trigger a file download (robust: uses click + revokeObjectURL after delay)
+      const triggerDownload = (content: string, filename: string): Promise<void> => {
+        return new Promise((resolve) => {
+          const blob = new Blob([content], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.style.display = 'none';
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            resolve();
+          }, 500);
+        });
       };
 
-      // Download the .ino file
+      // Download the .ino file first, then safety header sequentially
+      // Sequential downloads avoid pop-up blocker issues
       const inoFilename = firmwareMode === 'ota' 
         ? `farmeye-ota-${farmType}-${Date.now()}.ino`
         : `farmeye-${farmType}-${Date.now()}.ino`;
       
-      setTimeout(() => {
-        triggerDownload(firmwareCode, inoFilename);
-      }, 100);
+      await triggerDownload(firmwareCode, inoFilename);
 
-      // Also download the required safety engine header file
+      // Then download the required safety engine header file
       try {
         const headerResponse = await fetch('/esp32-safety-engine.h?t=' + Date.now());
         if (headerResponse.ok) {
           const headerCode = await headerResponse.text();
-          setTimeout(() => {
-            triggerDownload(headerCode, 'esp32-safety-engine.h');
-          }, 600);
+          // Wait a moment before second download to avoid browser blocking
+          await new Promise(r => setTimeout(r, 800));
+          await triggerDownload(headerCode, 'esp32-safety-engine.h');
         }
       } catch (headerErr) {
         console.warn('Could not download safety header:', headerErr);
