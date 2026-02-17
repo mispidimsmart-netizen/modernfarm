@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { supabase } from '@/integrations/supabase/client';
 
 // Validation schema
 const configSchema = z.object({
@@ -44,6 +45,61 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
   const [shedId, setShedId] = useState('');
   const [shedName, setShedName] = useState('');
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
+  const [farmId, setFarmId] = useState('');
+  const [autoLoaded, setAutoLoaded] = useState(false);
+
+  // Auto-fetch device token, farm ID, shed ID from database
+  useEffect(() => {
+    const fetchCredentials = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Fetch farm
+        const { data: farms } = await supabase
+          .from('farms')
+          .select('id, name')
+          .eq('owner_id', user.id)
+          .eq('is_active', true)
+          .limit(1);
+
+        const farm = farms?.[0];
+        if (farm) {
+          setFarmId(farm.id);
+
+          // Fetch shed
+          const { data: sheds } = await supabase
+            .from('sheds')
+            .select('id, name')
+            .eq('farm_id', farm.id)
+            .limit(1);
+
+          if (sheds?.[0]) {
+            setShedId(sheds[0].id);
+            setShedName(sheds[0].name || '');
+          }
+
+          // Fetch device token
+          const { data: tokens } = await supabase
+            .from('device_tokens')
+            .select('token')
+            .eq('farm_id', farm.id)
+            .eq('is_active', true)
+            .limit(1);
+
+          if (tokens?.[0]) {
+            setDeviceToken(tokens[0].token);
+          }
+
+          setAutoLoaded(true);
+        }
+      } catch (err) {
+        console.warn('Could not auto-load credentials:', err);
+      }
+    };
+
+    fetchCredentials();
+  }, []);
 
   const t = {
     title: language === 'bn' ? '🚀 ESP32 ফার্মওয়্যার জেনারেটর' : '🚀 ESP32 Firmware Generator',
@@ -171,10 +227,10 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
           `const char* SHED_NAME = "${shedName.trim() || 'Shed A'}";`
         );
 
-        // Replace Farm ID (optional)
+        // Replace Farm ID
         firmwareCode = firmwareCode.replace(
           'const char* FARM_ID = "YOUR_FARM_ID";',
-          `const char* FARM_ID = "${shedId.trim() ? shedId.trim().split('_')[0] : 'default_farm'}";`
+          `const char* FARM_ID = "${farmId.trim() || 'default_farm'}";  // Auto-configured`
         );
         
         // Keep USE_HARDCODED_TOKEN = true (default)
@@ -468,6 +524,16 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
                 maxLength={100}
               />
               {errors.deviceToken && <p className="text-xs text-destructive">{errors.deviceToken}</p>}
+              {autoLoaded && (
+              <div className="flex items-center gap-1.5 p-2 bg-accent/50 border border-primary/30 rounded-lg">
+                  <Database className="h-3 w-3 text-primary" />
+                  <p className="text-xs text-primary">
+                    {language === 'bn' 
+                      ? '✅ ডিভাইস টোকেন, Farm ID ও Shed ID স্বয়ংক্রিয়ভাবে লোড হয়েছে!'
+                      : '✅ Device Token, Farm ID & Shed ID auto-loaded from database!'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
