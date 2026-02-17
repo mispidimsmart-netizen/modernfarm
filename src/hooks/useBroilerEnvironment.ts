@@ -330,18 +330,18 @@ export function useBroilerEnvironment({
     const ammoniaValue = ammonia ?? 0;
     const result = evaluateBroilerEnvironment(temperature, humidity, ammoniaValue, batchAge.days);
 
-    // ===== FAN CONTROL =====
+    // ===== FAN CONTROL (Display only — ESP32 is the authority) =====
     const fanKey = `${result.temperature.shouldActivateFan}-${result.temperature.fanSpeed}`;
     if (fanKey !== lastFanAction.current) {
       if (result.temperature.shouldActivateFan) {
-        activateFan(result.temperature.fanSpeed, result);
+        console.log(`[Broiler Env] Fan ${result.temperature.fanSpeed} recommended - Age: ${batchAge.days}d, Temp: ${temperature}°C, NH3: ${ammonia}ppm`);
       } else if (lastFanAction.current && lastFanAction.current.startsWith('true')) {
-        deactivateFan();
+        console.log('[Broiler Env] Fan OFF recommended - Environment normalized');
       }
       lastFanAction.current = fanKey;
     }
 
-    // ===== HEATER CONTROL =====
+    // ===== HEATER CONTROL (Display only — ESP32 is the authority) =====
     if (result.temperature.shouldActivateHeater !== lastHeaterAction.current) {
       if (result.temperature.shouldActivateHeater) {
         showHeaterAlert(result);
@@ -357,50 +357,6 @@ export function useBroilerEnvironment({
     }
 
   }, [temperature, humidity, ammonia, enabled, user, activeBatch, batchAge.days]);
-
-  const activateFan = async (speed: string, result: BroilerEnvironmentResult) => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('device_status')
-        .update({
-          fan_on: true,
-          fan_speed: speed,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
-
-      toast({
-        title: language === 'bn' ? `🌀 ফ্যান ${speed}` : `🌀 Fan ${speed}`,
-        description: result.overallMessage[language],
-      });
-
-      console.log(`[Broiler Env] Fan ${speed} - Age: ${batchAge.days}d, Temp: ${temperature}°C, NH3: ${ammonia}ppm`);
-    } catch (error) {
-      console.error('[Broiler Env] Failed to activate fan:', error);
-    }
-  };
-
-  const deactivateFan = async () => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('device_status')
-        .update({
-          fan_on: false,
-          fan_speed: 'OFF',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
-
-      console.log('[Broiler Env] Fan OFF - Environment normalized');
-    } catch (error) {
-      console.error('[Broiler Env] Failed to deactivate fan:', error);
-    }
-  };
-
   const showHeaterAlert = (result: BroilerEnvironmentResult) => {
     toast({
       title: language === 'bn' ? '🔥 হিটার চালু করুন!' : '🔥 Turn on heater!',
