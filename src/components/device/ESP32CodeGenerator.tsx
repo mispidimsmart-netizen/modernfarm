@@ -35,8 +35,8 @@ interface ESP32CodeGeneratorProps {
 }
 
 export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps) {
-  const [ssid, setSsid] = useState('');
-  const [password, setPassword] = useState('');
+  const [ssid, setSsid] = useState(() => localStorage.getItem('farmeye_wifi_ssid') || '');
+  const [password, setPassword] = useState(() => localStorage.getItem('farmeye_wifi_pass') || '');
   const [deviceToken, setDeviceToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -100,6 +100,15 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
 
     fetchCredentials();
   }, []);
+
+  // Save WiFi credentials to localStorage for auto-fill
+  useEffect(() => {
+    if (ssid) localStorage.setItem('farmeye_wifi_ssid', ssid);
+  }, [ssid]);
+
+  useEffect(() => {
+    if (password) localStorage.setItem('farmeye_wifi_pass', password);
+  }, [password]);
 
   const t = {
     title: language === 'bn' ? '🚀 ESP32 ফার্মওয়্যার জেনারেটর' : '🚀 ESP32 Firmware Generator',
