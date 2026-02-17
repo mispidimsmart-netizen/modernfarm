@@ -101,26 +101,32 @@ export function IndustrialHeroStatus() {
     const temp = sensorData.temperature;
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
+    const anyDeviceActive = deviceStatus.fan || deviceStatus.heater || deviceStatus.fogger;
 
+    // Emergency: extreme values
     if (temp > 38 || ammonia > 25 || hsi > 85) {
       return STATUS_MAP.emergency;
     }
 
-    if (temp > 32 || hsi > 70) {
+    // Cooling: devices are actively cooling OR dangerous thresholds
+    if ((temp > 32 || hsi > 70) && anyDeviceActive) {
       return STATUS_MAP.cooling;
     }
 
-    if (isBroiler && batchStats) {
-      const targetRange = getBroilerTempRangeByDays(batchStats.ageDays);
-      if (temp < targetRange.minTemp - 2) {
+    // Adjusting: devices active for temperature adjustment
+    if (anyDeviceActive) {
+      if (isBroiler && batchStats) {
+        const targetRange = getBroilerTempRangeByDays(batchStats.ageDays);
+        if (temp < targetRange.minTemp || temp > targetRange.maxTemp) {
+          return STATUS_MAP.adjusting;
+        }
+      } else if (temp < 18 || temp > 32) {
         return STATUS_MAP.adjusting;
       }
-    } else if (temp < 18) {
-      return STATUS_MAP.adjusting;
     }
 
     return STATUS_MAP.normal;
-  }, [sensorData, hsiResult, isBroiler, batchStats]);
+  }, [sensorData, hsiResult, isBroiler, batchStats, deviceStatus]);
 
   // Build device status list with reasons
   const deviceItems = useMemo((): DeviceItem[] => {
