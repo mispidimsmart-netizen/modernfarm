@@ -128,6 +128,7 @@ export function useFanSpeedAutomation({
   const { data: farmSettings } = useFarmSettings();
   const { toast } = useToast();
   const lastFanSpeed = useRef<FanSpeed | null>(null);
+  const isInitialMount = useRef(true);
 
   // Get custom thresholds from settings
   const thresholds: FanSpeedThresholds = farmSettings ? {
@@ -145,7 +146,14 @@ export function useFanSpeedAutomation({
 
     const fanSpeedResult = calculateFanSpeed(temperature, thresholds);
 
-    // Only update if fan speed changed
+    // On initial mount, just record the current speed without triggering notifications
+    if (isInitialMount.current) {
+      lastFanSpeed.current = fanSpeedResult.speed;
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Only update if fan speed actually changed
     if (fanSpeedResult.speed !== lastFanSpeed.current) {
       updateFanSpeed(fanSpeedResult);
       lastFanSpeed.current = fanSpeedResult.speed;
