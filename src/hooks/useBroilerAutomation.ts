@@ -188,13 +188,14 @@ export function useBroilerAutomation({
 
     const tempResult = evaluateBroilerTemp(temperature, batchAge.weeks, batchAge.days);
 
-    // Handle fan automation
+    // Handle fan recommendation (display only — ESP32 is the authority)
     if (tempResult.shouldActivateFan && lastFanAction.current !== true) {
-      activateFan(tempResult);
+      const fanSpeed = tempResult.deviation > 3 ? 'HIGH' : 
+                       tempResult.deviation > 1.5 ? 'MEDIUM' : 'LOW';
+      console.log(`[Broiler Automation] Fan ${fanSpeed} recommended - Age: ${batchAge.weeks}w, Temp: ${temperature}°C`);
       lastFanAction.current = true;
     } else if (!tempResult.shouldActivateFan && lastFanAction.current !== false) {
-      // Turn off fan when temp is normal
-      deactivateFan();
+      console.log('[Broiler Automation] Fan OFF recommended - Temperature normal');
       lastFanAction.current = false;
     }
 
@@ -209,57 +210,6 @@ export function useBroilerAutomation({
       lastAlertLevel.current = null;
     }
   }, [temperature, enabled, user, activeBatch, batchAge.weeks]);
-
-  const activateFan = async (tempResult: BroilerTempResult) => {
-    if (!user) return;
-
-    try {
-      // Determine fan speed based on deviation
-      const fanSpeed = tempResult.deviation > 3 ? 'HIGH' : 
-                       tempResult.deviation > 1.5 ? 'MEDIUM' : 'LOW';
-
-      const updateData = {
-        fan_on: true,
-        fan_speed: fanSpeed,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from('device_status')
-        .update(updateData)
-        .eq('user_id', user.id);
-
-      if (!error) {
-        toast({
-          title: language === 'bn' ? `🌀 ফ্যান ${fanSpeed}` : `🌀 Fan ${fanSpeed}`,
-          description: tempResult.message[language],
-        });
-      }
-
-      console.log(`[Broiler Automation] Fan ${fanSpeed} - Age: ${batchAge.weeks}w, Temp: ${temperature}°C`);
-    } catch (error) {
-      console.error('[Broiler Automation] Failed to activate fan:', error);
-    }
-  };
-
-  const deactivateFan = async () => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('device_status')
-        .update({
-          fan_on: false,
-          fan_speed: 'OFF',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
-
-      console.log('[Broiler Automation] Fan OFF - Temperature normal');
-    } catch (error) {
-      console.error('[Broiler Automation] Failed to deactivate fan:', error);
-    }
-  };
 
   const createAlert = async (tempResult: BroilerTempResult) => {
     if (!user) return;

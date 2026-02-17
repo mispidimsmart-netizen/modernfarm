@@ -293,39 +293,13 @@ export function useAmmoniaTrendDetection(currentAmmonia: number | null) {
   const increaseVentilation = async (result: AmmoniaTrendResult) => {
     if (!user) return;
 
-    try {
-      // Turn on fan and set to HIGH speed
-      const { error } = await supabase
-        .from('device_status')
-        .update({
-          fan_on: true,
-          fan_speed: 'HIGH',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
+    // Display only — ESP32 handles actual fan control
+    console.log(`[Ammonia Trend] Ventilation increase recommended - Rising for ${result.risingHours} hours`);
 
-      if (!error) {
-        toast({
-          title: language === 'bn' ? '🌀 ভেন্টিলেশন বাড়ানো হয়েছে' : '🌀 Ventilation Increased',
-          description: result.message[language],
-        });
-
-        // Send push notification
-        await supabase.functions.invoke('send-push-notification', {
-          body: {
-            user_id: user.id,
-            title: language === 'bn' ? '🌀 ভেন্টিলেশন বাড়ানো হয়েছে' : '🌀 Ventilation Increased',
-            body: result.message[language],
-            severity: 'warning',
-            url: '/control',
-          },
-        });
-      }
-
-      console.log(`[Ammonia Trend] Ventilation increased - Rising for ${result.risingHours} hours`);
-    } catch (error) {
-      console.error('[Ammonia Trend] Failed to increase ventilation:', error);
-    }
+    toast({
+      title: language === 'bn' ? '🌀 ভেন্টিলেশন বাড়ানো দরকার' : '🌀 Ventilation Increase Needed',
+      description: result.message[language],
+    });
   };
 
   const createAmmoniaAlert = async (result: AmmoniaTrendResult) => {

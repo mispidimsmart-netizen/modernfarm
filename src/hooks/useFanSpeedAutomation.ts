@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
-import { useToast } from '@/hooks/use-toast';
 
 export type FanSpeed = 'OFF' | 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -124,9 +122,8 @@ export function useFanSpeedAutomation({
   shedId,
   enabled = true,
 }: UseFanSpeedAutomationProps) {
-  const { user, language } = useAuth();
+  const { user } = useAuth();
   const { data: farmSettings } = useFarmSettings();
-  const { toast } = useToast();
   const lastFanSpeed = useRef<FanSpeed | null>(null);
   const isInitialMount = useRef(true);
 
@@ -153,85 +150,13 @@ export function useFanSpeedAutomation({
       return;
     }
 
-    // Only update if fan speed actually changed
+    // Only log if fan speed changed — NO DB writes, ESP32 is the authority
     if (fanSpeedResult.speed !== lastFanSpeed.current) {
-      updateFanSpeed(fanSpeedResult);
       lastFanSpeed.current = fanSpeedResult.speed;
+      console.log(`[Fan Speed Automation] Calculated speed: ${fanSpeedResult.speed}, Temp: ${temperature}°C (display only)`);
     }
   }, [temperature, enabled, user, thresholds]);
 
-  const updateFanSpeed = async (fanSpeedResult: FanSpeedResult) => {
-    if (!user) return;
-
-    try {
-      const updateData = {
-        fan_on: fanSpeedResult.shouldActivate,
-        fan_speed: fanSpeedResult.speed,
-        updated_at: new Date().toISOString(),
-      };
-
-      // Update device status
-      const { error } = await supabase
-        .from('device_status')
-        .update(updateData)
-        .eq('user_id', user.id)
-        .eq('shed_id', shedId || '');
-
-      if (error && error.code !== 'PGRST116') {
-        // If no row matched with shed_id, try without it
-        await supabase
-          .from('device_status')
-          .update(updateData)
-          .eq('user_id', user.id);
-      }
-
-      // Show toast notification
-      if (fanSpeedResult.speed !== 'OFF') {
-        toast({
-          title: language === 'bn' ? `ফ্যান ${fanSpeedResult.speed}` : `Fan ${fanSpeedResult.speed}`,
-          description: fanSpeedResult.message[language],
-        });
-      }
-
-      // Send push notification for fan speed change
-      await sendFanSpeedPushNotification(fanSpeedResult);
-
-      console.log(`[Fan Speed Automation] Speed: ${fanSpeedResult.speed}, Temp: ${temperature}°C`);
-    } catch (error) {
-      console.error('[Fan Speed Automation] Failed to update fan speed:', error);
-    }
-  };
-
-  const sendFanSpeedPushNotification = async (fanSpeedResult: FanSpeedResult) => {
-    if (!user) return;
-
-    try {
-      const speedLabels = {
-        OFF: { bn: 'বন্ধ', en: 'OFF' },
-        LOW: { bn: 'নিম্ন', en: 'LOW' },
-        MEDIUM: { bn: 'মাঝারি', en: 'MEDIUM' },
-        HIGH: { bn: 'সর্বোচ্চ', en: 'HIGH' },
-      };
-
-      const title = language === 'bn' 
-        ? `🌀 ফ্যান: ${speedLabels[fanSpeedResult.speed].bn}`
-        : `🌀 Fan: ${speedLabels[fanSpeedResult.speed].en}`;
-
-      await supabase.functions.invoke('send-push-notification', {
-        body: {
-          user_id: user.id,
-          title,
-          body: fanSpeedResult.message[language],
-          severity: fanSpeedResult.speed === 'HIGH' ? 'danger' : 'warning',
-          url: '/control',
-        },
-      });
-
-      console.log(`[Fan Speed Automation] Push notification sent for speed: ${fanSpeedResult.speed}`);
-    } catch (error) {
-      console.error('[Fan Speed Automation] Failed to send push notification:', error);
-    }
-  };
 
   // Return current fan speed result for display
   if (temperature === null) {
