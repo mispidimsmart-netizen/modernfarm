@@ -117,6 +117,7 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
   const styles = LEVEL_STYLES[alert.level];
   const actionIndicator = ACTION_INDICATORS[alert.level];
   const ActionIcon = actionIndicator.icon;
+  const isGrouped = !!alert.childAlerts && alert.childAlerts.length > 0;
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -173,9 +174,50 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
         </div>
       </div>
 
+      {/* Grouped alert details — show what each issue was */}
+      {isGrouped && (
+        <div className="mt-3 space-y-1.5 rounded-lg bg-background/60 dark:bg-background/30 p-2.5 border border-border/50">
+          <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
+            {language === 'bn' ? '📋 বিস্তারিত:' : '📋 Details:'}
+          </p>
+          {/* Show unique issue types with counts */}
+          {(() => {
+            const typeCounts = new Map<string, { count: number; alert: SmartAlert }>();
+            alert.childAlerts!.forEach(child => {
+              const existing = typeCounts.get(child.type);
+              if (existing) {
+                existing.count++;
+              } else {
+                typeCounts.set(child.type, { count: 1, alert: child });
+              }
+            });
+            return Array.from(typeCounts.entries()).map(([type, { count, alert: childAlert }]) => {
+              const ChildIcon = alertIcons[type] || alertIcons.default;
+              const systemAction = getSystemAction(childAlert, language);
+              return (
+                <div key={type} className="flex items-start gap-2 text-xs">
+                  <ChildIcon size={12} className="mt-0.5 flex-shrink-0 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-foreground">
+                      {language === 'bn' ? childAlert.titleBn : childAlert.title}
+                      {count > 1 && (
+                        <span className="text-muted-foreground font-normal"> ({count}×)</span>
+                      )}
+                    </span>
+                    <span className="text-muted-foreground"> → {systemAction}</span>
+                  </div>
+                  <span className="flex-shrink-0 text-emerald-600 dark:text-emerald-400 text-[10px]">
+                    ✓ {language === 'bn' ? 'সামলানো হয়েছে' : 'Handled'}
+                  </span>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
+
       {/* Footer: Action indicator + Time */}
       <div className="mt-3 flex items-center justify-between">
-        {/* Action indicator tag */}
         <span className={cn(
           'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
           actionIndicator.color
@@ -184,14 +226,13 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
           {actionIndicator.label[language]}
         </span>
 
-        {/* Time context */}
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock size={12} />
           {timeStatus}
         </span>
       </div>
 
-      {/* Acknowledge button for active alerts */}
+      {/* Acknowledge button */}
       {!alert.acknowledged && (
         <button
           onClick={() => onAcknowledge(alert.id)}
