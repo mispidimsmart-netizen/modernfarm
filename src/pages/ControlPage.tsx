@@ -247,6 +247,30 @@ export function ControlPage() {
     } else {
       // Re-enabling automation — end override
       boundedOverride.endOverride();
+
+      // === CRITICAL: Clear all active timers and turn OFF manually started devices ===
+      // This ensures instant transition back to automation control
+      const timerDevices = Object.keys(activeTimers);
+      timerDevices.forEach((deviceKey) => {
+        const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+        sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
+        setDeviceStatus({ [deviceKey]: false });
+      });
+      setActiveTimers({});
+
+      // Also send explicit OFF for ALL devices to ensure clean state
+      // (in case some devices were turned on without timers)
+      const allDeviceKeys = DEVICES.map(d => d.key);
+      allDeviceKeys.forEach((deviceKey) => {
+        if (isDeviceActive(deviceKey)) {
+          const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+          // Only send OFF if device is currently on and not already handled by timer cleanup
+          if (!timerDevices.includes(deviceKey)) {
+            sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
+            setDeviceStatus({ [deviceKey]: false });
+          }
+        }
+      });
     }
 
     sendCommand.mutate({ commandType: 'stop_automation', commandValue: !enabled, shedId: selectedShedId || undefined });
@@ -256,7 +280,7 @@ export function ControlPage() {
         ? (language === 'bn' ? '🟢 অটোমেশন চালু' : '🟢 Automation Enabled')
         : (language === 'bn' ? '🔴 অটোমেশন বন্ধ' : '🔴 Automation Disabled'),
       description: enabled
-        ? (language === 'bn' ? 'সিস্টেম স্বয়ংক্রিয়ভাবে পাখির সুরক্ষা দিচ্ছে' : 'System is automatically protecting birds')
+        ? (language === 'bn' ? 'সব ডিভাইস এখন অটোমেশনের নিয়ন্ত্রণে' : 'All devices now under automation control')
         : (language === 'bn' ? 'সতর্কতা: আপনি ম্যানুয়াল কন্ট্রোলে আছেন' : 'Warning: You are in manual control'),
     });
   };
