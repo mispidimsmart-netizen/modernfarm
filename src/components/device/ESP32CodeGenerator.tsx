@@ -209,37 +209,38 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
       
       if (firmwareMode === 'hardcoded') {
         // Mode 1: Hardcoded credentials (for first-time setup)
+        // Use regex to handle variable whitespace alignment in firmware template
         firmwareCode = firmwareCode.replace(
-          'const char* WIFI_SSID = "YOUR_WIFI_SSID";',
-          `const char* WIFI_SSID = "${ssid.trim()}";`
+          /const\s+char\*\s+WIFI_SSID\s*=\s*"YOUR_WIFI_SSID"\s*;/,
+          `const char* WIFI_SSID     = "${ssid.trim()}";`
         );
         
         firmwareCode = firmwareCode.replace(
-          'const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";',
-          `const char* WIFI_PASSWORD = "${password}";`
+          /const\s+char\*\s+WIFI_PASSWORD\s*=\s*"YOUR_WIFI_PASSWORD"\s*;/,
+          `const char* WIFI_PASSWORD  = "${password}";`
         );
         
         firmwareCode = firmwareCode.replace(
-          'const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN";',
-          `const char* DEVICE_TOKEN = "${deviceToken.trim()}";  // Auto-configured`
+          /const\s+char\*\s+DEVICE_TOKEN\s*=\s*"YOUR_DEVICE_TOKEN"\s*;/,
+          `const char* DEVICE_TOKEN   = "${deviceToken.trim()}";  // Auto-configured`
         );
 
         // Replace Shed ID
         firmwareCode = firmwareCode.replace(
-          'const char* SHED_ID = "YOUR_SHED_ID";',
-          `const char* SHED_ID = "${shedId.trim() || 'default_shed'}";`
+          /const\s+char\*\s+SHED_ID\s*=\s*"YOUR_SHED_ID"\s*;/,
+          `const char* SHED_ID        = "${shedId.trim() || 'default_shed'}";`
         );
 
         // Replace Shed Name
         firmwareCode = firmwareCode.replace(
-          'const char* SHED_NAME = "Shed A";',
-          `const char* SHED_NAME = "${shedName.trim() || 'Shed A'}";`
+          /const\s+char\*\s+SHED_NAME\s*=\s*"[^"]*"\s*;/,
+          `const char* SHED_NAME      = "${shedName.trim() || 'Shed A'}";`
         );
 
         // Replace Farm ID
         firmwareCode = firmwareCode.replace(
-          'const char* FARM_ID = "YOUR_FARM_ID";',
-          `const char* FARM_ID = "${farmId.trim() || 'default_farm'}";  // Auto-configured`
+          /const\s+char\*\s+FARM_ID\s*=\s*"YOUR_FARM_ID"\s*;/,
+          `const char* FARM_ID        = "${farmId.trim() || 'default_farm'}";  // Auto-configured`
         );
         
         // Keep USE_HARDCODED_TOKEN = true (default)
