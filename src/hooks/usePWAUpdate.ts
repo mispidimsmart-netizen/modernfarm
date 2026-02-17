@@ -2,20 +2,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export const usePWAUpdate = () => {
-  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh],
     offlineReady: [offlineReady],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(swUrl, r) {
       console.log('SW registered:', swUrl);
-      // Check for updates every 5 minutes
+      // Check for updates every 2 minutes (more aggressive)
       if (r) {
         setInterval(() => {
           r.update();
-        }, 5 * 60 * 1000);
+        }, 2 * 60 * 1000);
       }
     },
     onRegisterError(error) {
@@ -25,24 +25,26 @@ export const usePWAUpdate = () => {
 
   useEffect(() => {
     if (needRefresh) {
-      setShowUpdatePrompt(true);
+      // Show a brief banner, then auto-reload after 3 seconds
+      setShowUpdateBanner(true);
+      console.log('[PWA] New version detected — auto-reloading in 3s...');
+      const timer = setTimeout(async () => {
+        await updateServiceWorker(true);
+        window.location.reload();
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [needRefresh]);
+  }, [needRefresh, updateServiceWorker]);
 
   const updateApp = useCallback(async () => {
     await updateServiceWorker(true);
-    setShowUpdatePrompt(false);
+    window.location.reload();
   }, [updateServiceWorker]);
 
-  const dismissUpdate = useCallback(() => {
-    setShowUpdatePrompt(false);
-    setNeedRefresh(false);
-  }, [setNeedRefresh]);
-
   return {
-    showUpdatePrompt,
+    showUpdatePrompt: showUpdateBanner,
     offlineReady,
     updateApp,
-    dismissUpdate,
+    dismissUpdate: updateApp, // dismiss also triggers update now
   };
 };
