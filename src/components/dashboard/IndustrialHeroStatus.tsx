@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   AlertTriangle, CheckCircle2, Thermometer, Snowflake, 
-  Wind, Wrench, Zap
+  Wind, Wrench, Zap, Fan, Flame, Droplets, Lightbulb, 
+  CircleDot, CircleOff
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
@@ -42,7 +43,7 @@ const STATUS_MAP: Record<StatusId, StatusConfig> = {
   cooling: {
     id: 'cooling',
     icon: Wind,
-    title: { bn: '🟠 ঠান্ডা/গরম ঠিক করা হচ্ছে', en: '🟠 Temperature Correcting' },
+    title: { bn: '🟠 তাপমাত্রা নিয়ন্ত্রণ চলছে', en: '🟠 Temperature Control Active' },
     gradient: 'from-orange-600 via-amber-500 to-orange-600',
     borderColor: 'border-orange-400/50',
     dotColor: 'bg-orange-400',
@@ -73,6 +74,13 @@ const STATUS_MAP: Record<StatusId, StatusConfig> = {
   },
 };
 
+interface DeviceItem {
+  icon: React.ElementType;
+  label: { bn: string; en: string };
+  isOn: boolean;
+  reason: { bn: string; en: string };
+}
+
 export function IndustrialHeroStatus() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
@@ -94,17 +102,14 @@ export function IndustrialHeroStatus() {
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
 
-    // Emergency
     if (temp > 38 || ammonia > 25 || hsi > 85) {
       return STATUS_MAP.emergency;
     }
 
-    // Cooling/Heating active
     if (temp > 32 || hsi > 70) {
       return STATUS_MAP.cooling;
     }
 
-    // Cold adjusting
     if (isBroiler && batchStats) {
       const targetRange = getBroilerTempRangeByDays(batchStats.ageDays);
       if (temp < targetRange.minTemp - 2) {
@@ -114,9 +119,60 @@ export function IndustrialHeroStatus() {
       return STATUS_MAP.adjusting;
     }
 
-    // Normal
     return STATUS_MAP.normal;
   }, [sensorData, hsiResult, isBroiler, batchStats]);
+
+  // Build device status list with reasons
+  const deviceItems = useMemo((): DeviceItem[] => {
+    const temp = sensorData.temperature;
+    const ammonia = sensorData.ammonia;
+    const hsi = hsiResult?.index || 0;
+
+    // Fan reason
+    let fanReason: { bn: string; en: string };
+    if (!deviceStatus.fan) {
+      fanReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
+    } else if (ammonia > 25) {
+      fanReason = { bn: `NH₃ ${ammonia.toFixed(0)} ppm — গ্যাস বের করা হচ্ছে`, en: `NH₃ ${ammonia.toFixed(0)} ppm — Exhausting gas` };
+    } else if (temp > 38) {
+      fanReason = { bn: `${temp.toFixed(1)}°C — ইমার্জেন্সি কুলিং`, en: `${temp.toFixed(1)}°C — Emergency cooling` };
+    } else if (temp > 32 || hsi > 70) {
+      fanReason = { bn: `${temp.toFixed(1)}°C — গরম কমানো হচ্ছে`, en: `${temp.toFixed(1)}°C — Reducing heat` };
+    } else {
+      fanReason = { bn: 'তাজা বাতাস দেওয়া হচ্ছে', en: 'Fresh air circulation' };
+    }
+
+    // Heater reason
+    let heaterReason: { bn: string; en: string };
+    if (!deviceStatus.heater) {
+      heaterReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
+    } else {
+      heaterReason = { bn: `${temp.toFixed(1)}°C — তাপমাত্রা বাড়ানো হচ্ছে`, en: `${temp.toFixed(1)}°C — Heating active` };
+    }
+
+    // Fogger reason
+    let foggerReason: { bn: string; en: string };
+    if (!deviceStatus.fogger) {
+      foggerReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
+    } else {
+      foggerReason = { bn: `${temp.toFixed(1)}°C H:${sensorData.humidity.toFixed(0)}% — কুলিং`, en: `${temp.toFixed(1)}°C H:${sensorData.humidity.toFixed(0)}% — Cooling` };
+    }
+
+    // Light reason
+    let lightReason: { bn: string; en: string };
+    if (!deviceStatus.light) {
+      lightReason = { bn: 'বন্ধ — শিডিউল অনুযায়ী', en: 'OFF — Per schedule' };
+    } else {
+      lightReason = { bn: 'চালু — শিডিউল অনুযায়ী', en: 'ON — Per schedule' };
+    }
+
+    return [
+      { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: !!deviceStatus.fan, reason: fanReason },
+      { icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: !!deviceStatus.heater, reason: heaterReason },
+      { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
+      { icon: Lightbulb, label: { bn: 'লাইট', en: 'Light' }, isOn: !!deviceStatus.light, reason: lightReason },
+    ];
+  }, [deviceStatus, sensorData, hsiResult]);
 
   const Icon = currentStatus.icon;
   const isEmergency = currentStatus.id === 'emergency';
@@ -133,33 +189,63 @@ export function IndustrialHeroStatus() {
         <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center py-8 px-6 text-center">
-        {/* Live indicator */}
-        <div className="absolute top-4 right-4">
-          <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
+      <div className="relative z-10 px-5 pt-5 pb-4">
+        {/* Top row: Status + Live */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <motion.div
+              animate={{
+                scale: isEmergency ? [1, 1.15, 1] : 1,
+              }}
+              transition={{
+                duration: 0.8,
+                repeat: isEmergency ? Infinity : 0,
+              }}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm"
+            >
+              <Icon className="h-7 w-7 text-white" />
+            </motion.div>
+            <h1 className="text-lg sm:text-xl font-bold text-white leading-tight">
+              {currentStatus.title[language]}
+            </h1>
+          </div>
+          <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white shrink-0">
             <span className={`h-2 w-2 rounded-full ${currentStatus.dotColor} animate-pulse`} />
             {language === 'bn' ? 'লাইভ' : 'LIVE'}
           </span>
         </div>
 
-        {/* Large icon */}
-        <motion.div
-          animate={{
-            scale: isEmergency ? [1, 1.15, 1] : 1,
-          }}
-          transition={{
-            duration: 0.8,
-            repeat: isEmergency ? Infinity : 0,
-          }}
-          className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/20 backdrop-blur-sm mb-4"
-        >
-          <Icon className="h-11 w-11 text-white" />
-        </motion.div>
-
-        {/* Main status text — THE LARGEST element */}
-        <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight mb-2">
-          {currentStatus.title[language]}
-        </h1>
+        {/* Device Status Grid — THE KEY INFORMATION */}
+        <div className="grid grid-cols-2 gap-2">
+          {deviceItems.map((device) => {
+            const DeviceIcon = device.icon;
+            return (
+              <div
+                key={device.label.en}
+                className={`rounded-xl p-2.5 ${
+                  device.isOn 
+                    ? 'bg-white/25 backdrop-blur-sm' 
+                    : 'bg-black/15 backdrop-blur-sm'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <DeviceIcon className={`h-4 w-4 ${device.isOn ? 'text-white' : 'text-white/50'}`} />
+                  <span className={`text-xs font-bold ${device.isOn ? 'text-white' : 'text-white/50'}`}>
+                    {device.label[language]}
+                  </span>
+                  {device.isOn ? (
+                    <CircleDot className="h-3 w-3 text-green-300 ml-auto" />
+                  ) : (
+                    <CircleOff className="h-3 w-3 text-white/30 ml-auto" />
+                  )}
+                </div>
+                <p className={`text-[10px] leading-tight ${device.isOn ? 'text-white/90' : 'text-white/40'}`}>
+                  {device.reason[language]}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </motion.div>
   );
