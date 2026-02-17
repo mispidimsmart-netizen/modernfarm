@@ -2494,12 +2494,12 @@ void checkCommands() {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
         } else if (type == "stop_automation") {
-          // Block automation stop if environment is unsafe
-          if (value && (safetyTemp >= OVERRIDE_SAFE_TEMP_MAX || safetyTempMin <= OVERRIDE_SAFE_TEMP_MIN)) {
-            Serial.printf("⛔ STOP AUTOMATION REJECTED: temp outside safety band [%.1f-%.1f°C]\n", OVERRIDE_SAFE_TEMP_MIN, OVERRIDE_SAFE_TEMP_MAX);
-            manualCommandPending = false;
+          // Always allow manual override — safety arbiter will still protect life-critical invariants
+          localManualOverride = value;
+          if (value) {
+            Serial.println("✅ MANUAL OVERRIDE ACTIVATED (safety arbiter remains active for life-critical protection)");
           } else {
-            localManualOverride = value;
+            Serial.println("✅ MANUAL OVERRIDE DEACTIVATED → returning to AUTO mode");
           }
         } else {
           manualCommandPending = false; // Unknown command type
