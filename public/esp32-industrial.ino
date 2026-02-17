@@ -1069,6 +1069,24 @@ float svlProcessReading(SVLChannel &ch, float raw) {
     return ch.lastStableValue;
   }
   
+  // ── SEED PHASE: First valid reading fills the entire buffer ──
+  // This prevents the 0-initialized buffer from rejecting real values as spikes.
+  // Until seeded, no spike rejection is performed.
+  if (ch.sampleCount == 0) {
+    for (int i = 0; i < SVL_MEDIAN_SIZE; i++) {
+      ch.medianBuffer[i] = raw;
+    }
+    ch.sampleCount = SVL_MEDIAN_SIZE;
+    ch.bufferIndex = 0;
+    ch.lastStableValue = raw;
+    ch.lastStableTime = now;
+    ch.lastValidTime = now;
+    ch.isValid = true;
+    ch.isOffline = false;
+    Serial.printf("✅ SVL: Buffer seeded with first valid reading: %.1f\n", raw);
+    return raw;
+  }
+  
   // Step 1: Store raw into median buffer FIRST
   ch.medianBuffer[ch.bufferIndex] = raw;
   ch.bufferIndex = (ch.bufferIndex + 1) % SVL_MEDIAN_SIZE;
@@ -1079,7 +1097,6 @@ float svlProcessReading(SVLChannel &ch, float raw) {
   
   // Step 3: Spike compare against MEDIAN (not previous raw)
   // If the new value deviates >20% from the median, reject it
-  // We check against the median WITHOUT the new value by using previous stable
   if (ch.sampleCount > 2) {
     float refMedian = ch.lastStableValue;  // Previous accepted median
     if (refMedian != 0) {
