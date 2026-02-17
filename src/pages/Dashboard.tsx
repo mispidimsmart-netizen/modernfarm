@@ -38,7 +38,7 @@ import { SensorHealthCard } from '@/components/dashboard/SensorHealthCard';
 import { InsideOutsideDeltaCard } from '@/components/dashboard/InsideOutsideDeltaCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
 import { PowerOutageCard } from '@/components/device/PowerOutageCard';
-import { BigFarmOverview } from '@/components/dashboard/BigFarmOverview';
+// BigFarmOverview removed from Details tab (duplicate of CoreMetricsRow)
 import { BroilerTempStatusCard } from '@/components/broiler/BroilerTempStatusCard';
 import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard';
 import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
@@ -53,7 +53,7 @@ import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 // Farmer-Friendly Assistant Components
 import { 
   ComfortIndicators, AdvisoryAssistant, QuickControlFAB,
-  HeroFarmBanner, SystemActivityCard, QuickSensorDisplay, TodayReadableSummary
+  SystemActivityCard, TodayReadableSummary
 } from '@/components/assistant';
 
 // Smart Alert Banner
@@ -159,8 +159,8 @@ export function Dashboard() {
         </div>
 
         {/* ============ 4. PANIC PREVENTION STRIP ============ */}
-        <div className="mb-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-2 text-center">
-          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+        <div className="mb-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-2 text-center">
+          <p className="text-xs font-medium text-primary">
             {language === 'bn' 
               ? '✅ খামার সম্পূর্ণ অটোমেটিক চলছে — কিছু করার প্রয়োজন নেই'
               : '✅ Farm is fully automatic — no action needed'}
@@ -234,150 +234,102 @@ export function Dashboard() {
             </TabsContent>
             
             {/* TAB: Details (Technical/Graphs) */}
-            <TabsContent value="details" className="mt-4 space-y-4">
-              {/* Big Farm Overview */}
-              <BigFarmOverview />
+            <TabsContent value="details" className="mt-4 space-y-6">
               
-              {/* Comfort Indicators */}
-              <ComfortIndicators />
-              
-              {/* Inside-Outside Delta */}
-              <InsideOutsideDeltaCard />
-              
-              {/* Full Hero Banner */}
-              <HeroFarmBanner />
-              
-              {/* Quick Status Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <HeatStressStatusCard 
-                  hsiResult={hsiResult}
-                  temperature={sensorData.temperature}
-                  humidity={sensorData.humidity}
-                />
-                <SystemModeCard />
-              </div>
-              
-              {/* Technical Sensor Cards */}
-              <div className="grid grid-cols-2 gap-3">
-                <SensorCard
-                  type="temperature"
-                  value={sensorData.temperature}
-                  unit={translations.units.celsius[language]}
-                  label={translations.sensors.temperature[language]}
-                  status={statusLevels.temperature}
-                />
-                <SensorCard
-                  type="humidity"
-                  value={sensorData.humidity}
-                  unit={translations.units.percent[language]}
-                  label={translations.sensors.humidity[language]}
-                  status={statusLevels.humidity}
-                />
-                <SensorCard
-                  type="ammonia"
-                  value={sensorData.ammonia}
-                  unit={translations.units.ppm[language]}
-                  label={translations.sensors.ammonia[language]}
-                  status={statusLevels.ammonia}
-                />
-                <SensorCard
-                  type="water"
-                  value={sensorData.waterUsage}
-                  unit={translations.units.litersPerHour[language]}
-                  label={translations.sensors.water[language]}
-                  status={statusLevels.water}
-                />
-              </div>
-              
-              {/* Quick Sensor Display */}
-              <QuickSensorDisplay />
-              
-              {/* Device Status */}
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { key: 'power', icon: '🔌', status: deviceStatus.power },
-                  { key: 'fan', icon: '🌀', status: deviceStatus.fan },
-                  { key: 'light', icon: '💡', status: deviceStatus.light },
-                  { key: 'alarm', icon: '🔔', status: deviceStatus.alarm },
-                ].map(({ key, icon, status }) => (
-                  <div
-                    key={key}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl p-3 border ${
-                      status 
-                        ? 'bg-primary/10 border-primary/30' 
-                        : 'bg-muted/30 border-border/50'
-                    }`}
-                  >
-                    <span className="text-2xl">{icon}</span>
-                    <span className={`text-[10px] font-semibold uppercase ${status ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {translations.sensors[key as keyof typeof translations.sensors][language]}
-                    </span>
+              {/* ── GROUP 1: পরিবেশ (Environment) ── */}
+              <section>
+                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  🌡️ {language === 'bn' ? 'পরিবেশ পরিস্থিতি' : 'Environment'}
+                </h3>
+                <div className="space-y-3">
+                  <ComfortIndicators />
+                  <InsideOutsideDeltaCard />
+                  <div className="grid grid-cols-2 gap-3">
+                    <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
+                    <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
+                    <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
+                    <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
                   </div>
-                ))}
-              </div>
-              
-              {/* Sensor Charts */}
-              <SensorCharts />
-              
-              {/* Broiler Specific */}
-              {isBroiler && (
-                <>
-                  <BroilerAgeAutoModeCard enabled={true} />
-                  <BroilerTempStatusCard tempResult={broilerEnvResult ? {
-                    currentTemp: broilerEnvResult.temperature.current,
-                    targetMin: broilerEnvResult.temperature.targetMin,
-                    targetMax: broilerEnvResult.temperature.targetMax,
-                    ageWeeks: broilerEnvResult.ageWeeks,
-                    ageDays: broilerEnvResult.ageDays,
-                    level: broilerEnvResult.temperature.level === 'emergency' ? 'critical' : broilerEnvResult.temperature.level,
-                    deviation: broilerEnvResult.temperature.deviation,
-                    shouldActivateFan: broilerEnvResult.temperature.shouldActivateFan,
-                    shouldActivateHeater: broilerEnvResult.temperature.shouldActivateHeater,
-                    shouldAlert: broilerEnvResult.temperature.shouldAlarm,
-                    message: broilerEnvResult.overallMessage,
-                  } : null} />
-                  <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
-                </>
-              )}
-              
-              {/* Layer Specific */}
-              {isLayer && (
-                <>
-                  <FanSpeedCard 
-                    temperature={sensorData.temperature}
-                    fanSpeed={fanSpeedResult?.speed || 'OFF'}
-                    message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')}
-                  />
-                  <HeatStressCard 
-                    hsiResult={hsiResult}
-                    temperature={sensorData.temperature}
-                    humidity={sensorData.humidity}
-                  />
-                </>
-              )}
-              
-              {/* Automation Status */}
-              <AutomationStatusCard />
-              
-              {/* Sensor Health */}
-              <SensorHealthCard />
-              
-              {isLayer && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
-              {isBroiler && broilerWaterResult && (
-                <WaterAnomalyCard result={{
-                  todayUsage: broilerWaterResult.currentUsage,
-                  last3DaysAvg: broilerWaterResult.avgLast6Hours,
-                  percentChange: broilerWaterResult.percentChange,
-                  isAnomaly: broilerWaterResult.isAnomaly,
-                  threshold: broilerWaterResult.threshold,
-                  message: broilerWaterResult.message,
-                }} />
-              )}
-              
-              <AmmoniaTrendCard result={ammoniaTrendResult} />
-              <CoolingEfficiencyCard result={coolingEfficiencyResult} />
-              {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
-              <PowerOutageCard />
+                  <SensorCharts />
+                </div>
+              </section>
+
+              {/* ── GROUP 2: অটোমেশন ও সেফটি ── */}
+              <section>
+                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  ⚙️ {language === 'bn' ? 'অটোমেশন ও সেফটি' : 'Automation & Safety'}
+                </h3>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                    <SystemModeCard />
+                  </div>
+                  <AutomationStatusCard />
+                  
+                  {/* Broiler Specific */}
+                  {isBroiler && (
+                    <>
+                      <BroilerAgeAutoModeCard enabled={true} />
+                      <BroilerTempStatusCard tempResult={broilerEnvResult ? {
+                        currentTemp: broilerEnvResult.temperature.current,
+                        targetMin: broilerEnvResult.temperature.targetMin,
+                        targetMax: broilerEnvResult.temperature.targetMax,
+                        ageWeeks: broilerEnvResult.ageWeeks,
+                        ageDays: broilerEnvResult.ageDays,
+                        level: broilerEnvResult.temperature.level === 'emergency' ? 'critical' : broilerEnvResult.temperature.level,
+                        deviation: broilerEnvResult.temperature.deviation,
+                        shouldActivateFan: broilerEnvResult.temperature.shouldActivateFan,
+                        shouldActivateHeater: broilerEnvResult.temperature.shouldActivateHeater,
+                        shouldAlert: broilerEnvResult.temperature.shouldAlarm,
+                        message: broilerEnvResult.overallMessage,
+                      } : null} />
+                      <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
+                    </>
+                  )}
+                  
+                  {/* Layer Specific */}
+                  {isLayer && (
+                    <>
+                      <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
+                      <HeatStressCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                    </>
+                  )}
+                </div>
+              </section>
+
+              {/* ── GROUP 3: সতর্কতা ও ট্রেন্ড ── */}
+              <section>
+                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  📈 {language === 'bn' ? 'ট্রেন্ড ও সতর্কতা' : 'Trends & Alerts'}
+                </h3>
+                <div className="space-y-3">
+                  <AmmoniaTrendCard result={ammoniaTrendResult} />
+                  <CoolingEfficiencyCard result={coolingEfficiencyResult} />
+                  {isLayer && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
+                  {isBroiler && broilerWaterResult && (
+                    <WaterAnomalyCard result={{
+                      todayUsage: broilerWaterResult.currentUsage,
+                      last3DaysAvg: broilerWaterResult.avgLast6Hours,
+                      percentChange: broilerWaterResult.percentChange,
+                      isAnomaly: broilerWaterResult.isAnomaly,
+                      threshold: broilerWaterResult.threshold,
+                      message: broilerWaterResult.message,
+                    }} />
+                  )}
+                  {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
+                </div>
+              </section>
+
+              {/* ── GROUP 4: ডিভাইস ও সিস্টেম ── */}
+              <section>
+                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                  🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
+                </h3>
+                <div className="space-y-3">
+                  <SensorHealthCard />
+                  <PowerOutageCard />
+                </div>
+              </section>
             </TabsContent>
           </Tabs>
         </div>
