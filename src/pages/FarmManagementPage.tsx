@@ -20,6 +20,10 @@ import { TodayStatusBanner } from '@/components/farm/TodayStatusBanner';
 import { FarmInputCards } from '@/components/farm/FarmInputCards';
 import { FarmStatsHeader } from '@/components/farm/FarmStatsHeader';
 import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
+import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
+import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
+import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
+import { DataExportButton } from '@/components/farm/DataExportButton';
 // Broiler components
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
@@ -105,6 +109,9 @@ export function FarmManagementPage() {
             {/* Input Tab - Quick Entry Cards */}
             <TabsContent value="input" className="mt-4">
               <div className="space-y-4">
+                {/* Entry Status & History */}
+                <RecentEntryHistory />
+
                 {/* Broiler Mode: Show Broiler Widget */}
                 {isBroiler && (
                   <BroilerDashboardWidget
@@ -128,12 +135,18 @@ export function FarmManagementPage() {
             {/* Report Tab - Today's Summary */}
             <TabsContent value="report" className="mt-4">
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">{t.todaySummary[language]}</h3>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">{t.todaySummary[language]}</h3>
+                  </div>
+                  <DataExportButton />
                 </div>
                 
                 {/* Layer Mode: Show Layer Summary */}
+                {/* Daily Expense Summary */}
+                <DailyExpenseSummary />
+
                 {isLayer && (
                   <>
                     <FarmSummaryCards />
@@ -229,6 +242,9 @@ export function FarmManagementPage() {
                     }
                   </h3>
                 </div>
+
+                {/* Mortality Trend Chart - Both modes */}
+                <MortalityTrendChart />
                 
                 {/* Layer Mode: Egg Correlation Analysis */}
                 {isLayer && (
