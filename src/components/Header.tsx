@@ -1,4 +1,5 @@
-import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Eye } from 'lucide-react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft } from 'lucide-react';
+import farmeyeLogo from '@/assets/farmeye-logo.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
@@ -42,8 +43,8 @@ export function Header() {
           )}
           
           {/* FarmEye Logo & Name */}
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary shrink-0 overflow-hidden">
-            <Eye className="h-4 w-4 text-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0 overflow-hidden">
+            <img src={farmeyeLogo} alt="FarmEye" className="h-9 w-9 object-contain" />
           </div>
           <span className="font-bold text-foreground text-base">FarmEye</span>
           
