@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Settings, TrendingUp, Wallet, ChevronRight } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -49,6 +49,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
+import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 
 // Farmer-Friendly Assistant Components
 import { 
@@ -167,16 +168,6 @@ export function Dashboard() {
           </p>
         </div>
 
-        {/* ============ 5. DETAILS BUTTON ============ */}
-        <Link
-          to="/alerts"
-          className="flex items-center justify-between rounded-xl border border-border bg-muted/30 px-4 py-3 mb-4 transition-colors hover:bg-muted/50"
-        >
-          <span className="text-sm font-semibold text-foreground">
-            {language === 'bn' ? '📊 বিস্তারিত দেখুন' : '📊 View Details'}
-          </span>
-          <ChevronRight className="h-5 w-5 text-muted-foreground" />
-        </Link>
 
         {/* ============ TABS (Home extras + Full Details) ============ */}
         <div className="mb-5">
@@ -198,6 +189,17 @@ export function Dashboard() {
             
             {/* TAB: Home */}
             <TabsContent value="home" className="mt-4 space-y-4">
+              {/* Device Online/Offline Status */}
+              <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+
+              {/* Key Sensor Readings */}
+              <div className="grid grid-cols-2 gap-3">
+                <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
+                <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
+                <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
+                <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
+              </div>
+
               {/* Advisory */}
               <AdvisoryAssistant />
               
@@ -209,28 +211,6 @@ export function Dashboard() {
               
               {/* System Activity */}
               <SystemActivityCard />
-              
-              {/* Quick Links */}
-              <div className="grid grid-cols-2 gap-3">
-                <Link
-                  to="/reports?tab=overview"
-                  className="flex flex-col items-center gap-2 rounded-2xl bg-primary/5 border border-primary/20 p-4 hover:bg-primary/10 transition-colors"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <TrendingUp size={24} />
-                  </div>
-                  <span className="text-sm font-medium">{language === 'bn' ? 'রিপোর্ট' : 'Reports'}</span>
-                </Link>
-                <Link
-                  to="/reports?tab=costs"
-                  className="flex flex-col items-center gap-2 rounded-2xl bg-secondary/50 border border-secondary p-4 hover:bg-secondary/70 transition-colors"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                    <Wallet size={24} />
-                  </div>
-                  <span className="text-sm font-medium">{language === 'bn' ? 'খরচ' : 'Costs'}</span>
-                </Link>
-              </div>
             </TabsContent>
             
             {/* TAB: Details (Technical/Graphs) */}
