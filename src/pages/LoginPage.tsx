@@ -522,7 +522,6 @@ export function LoginPage() {
                       className="flex h-13 w-full appearance-none rounded-xl border-2 border-border bg-muted/10 pl-12 pr-10 text-base text-foreground transition-all duration-200 focus:border-primary focus:bg-background focus:outline-none focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]">
                       <option value="layer">লেয়ার ফার্ম</option>
                       <option value="broiler">ব্রয়লার ফার্ম</option>
-                      <option value="mixed">মিক্সড ফার্ম</option>
                     </select>
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><ChevronDown className="h-5 w-5" /></div>
                   </div>
