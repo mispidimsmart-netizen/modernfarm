@@ -43,8 +43,8 @@ export function Header() {
           )}
           
           {/* FarmEye Logo & Name */}
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0 overflow-hidden">
-            <img src={farmeyeLogo} alt="FarmEye" className="h-9 w-9 object-contain" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0 overflow-hidden">
+            <img src={farmeyeLogo} alt="FarmEye" className="h-11 w-11 object-contain" />
           </div>
           <span className="font-bold text-foreground text-base">FarmEye</span>
           
