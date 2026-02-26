@@ -13,6 +13,7 @@ import farmeyeLogo from '@/assets/farmeye-logo.png';
 type LoginMethod = 'email' | 'phone';
 type FarmType = 'layer' | 'broiler' | 'mixed';
 type UserType = 'owner' | 'worker';
+type SignupMethod = 'phone' | 'email';
 
 // Password strength calculator
 function getPasswordStrength(pw: string): { level: 'weak' | 'medium' | 'strong'; label: string; color: string; percent: number } {
@@ -42,6 +43,8 @@ export function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
 
   // Login state
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
@@ -49,6 +52,7 @@ export function LoginPage() {
   const [loginPassword, setLoginPassword] = useState('');
 
   // Signup state
+  const [signupMethod, setSignupMethod] = useState<SignupMethod>('phone');
   const [signupName, setSignupName] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
@@ -61,16 +65,40 @@ export function LoginPage() {
 
   const passwordStrength = useMemo(() => getPasswordStrength(signupPassword), [signupPassword]);
 
-  // Validate phone: 11 digits, starts with 01
   const validatePhone = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
     return cleaned.length === 11 && cleaned.startsWith('01');
   };
 
+  // ─── Forgot Password Handler ───
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      toast({ title: 'ত্রুটি', description: 'ইমেইল ঠিকানা দিন', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'সফল!', description: 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে' });
+        setShowForgotPassword(false);
+        setForgotEmail('');
+      }
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'সংযোগ ত্রুটি', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     const isPhone = loginMethod === 'phone';
 
     if (isPhone && !validatePhone(identifier)) {
@@ -97,15 +125,22 @@ export function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validations
+    const isPhone = signupMethod === 'phone';
+
     if (!signupName.trim()) {
       toast({ title: 'ত্রুটি', description: 'আপনার নাম দিন', variant: 'destructive' });
       setIsLoading(false);
       return;
     }
 
-    if (!validatePhone(signupPhone)) {
+    if (isPhone && !validatePhone(signupPhone)) {
       toast({ title: 'ত্রুটি', description: 'সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (01 দিয়ে শুরু)', variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
+
+    if (!isPhone && !signupEmail.trim()) {
+      toast({ title: 'ত্রুটি', description: 'ইমেইল ঠিকানা দিন', variant: 'destructive' });
       setIsLoading(false);
       return;
     }
@@ -148,36 +183,46 @@ export function LoginPage() {
       }
 
       const farmNameValue = userType === 'owner' ? (signupFarmName.trim() || 'আমার ফার্ম') : 'Worker Account';
-      const { error } = await signUp(signupPhone, signupPassword, farmNameValue, true);
+      const signupIdentifier = isPhone ? signupPhone : signupEmail;
+      const { error } = await signUp(signupIdentifier, signupPassword, farmNameValue, isPhone);
 
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
-        // Auto-login after phone signup
-        const { error: signInError } = await signIn(signupPhone, signupPassword, true);
-        if (!signInError) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('profiles').update({
-              user_name: signupName.trim(),
-              email: signupEmail.trim() || null,
-              farm_type: userType === 'owner' ? (signupFarmType === 'mixed' ? 'layer' : signupFarmType) : null,
-              farm_name: farmNameValue,
-            }).eq('id', user.id);
+        if (isPhone) {
+          // Auto-login after phone signup
+          const { error: signInError } = await signIn(signupPhone, signupPassword, true);
+          if (!signInError) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await supabase.from('profiles').update({
+                user_name: signupName.trim(),
+                email: signupEmail.trim() || null,
+                farm_type: userType === 'owner' ? (signupFarmType === 'mixed' ? 'layer' : signupFarmType) : null,
+                farm_name: farmNameValue,
+              }).eq('id', user.id);
 
-            if (userType === 'worker' && validInvitation) {
-              await supabase.from('user_roles').insert({
-                user_id: user.id,
-                farm_owner_id: validInvitation.farm_owner_id,
-                role: 'worker',
-              });
-              await supabase.from('worker_invitations').update({
-                used_at: new Date().toISOString(),
-                used_by: user.id,
-              }).eq('id', validInvitation.id);
+              if (userType === 'worker' && validInvitation) {
+                await supabase.from('user_roles').insert({
+                  user_id: user.id,
+                  farm_owner_id: validInvitation.farm_owner_id,
+                  role: 'worker',
+                });
+                await supabase.from('worker_invitations').update({
+                  used_at: new Date().toISOString(),
+                  used_by: user.id,
+                }).eq('id', validInvitation.id);
+              }
             }
+            navigate('/');
           }
-          navigate('/');
+        } else {
+          // Email signup — need to verify email
+          toast({
+            title: 'সফল!',
+            description: 'অ্যাকাউন্ট তৈরি হয়েছে। অনুগ্রহ করে আপনার ইমেইল যাচাই করুন।',
+          });
+          setIsSignUp(false);
         }
       }
     } catch {
@@ -187,50 +232,33 @@ export function LoginPage() {
     }
   };
 
-  // ─── Shared Header ───
+  // ─── Compact Header (smaller on signup) ───
   const Header = () => (
-    <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/85 px-6 pb-10 pt-14 text-center">
+    <div className={`relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/85 px-6 text-center ${isSignUp ? 'pb-8 pt-10' : 'pb-10 pt-14'}`}>
       <div className="absolute inset-0 opacity-[0.04]" style={{
         backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
         backgroundSize: '32px 32px'
       }} />
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative z-10"
-      >
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-          className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/95 shadow-xl"
+          className={`mx-auto mb-3 flex items-center justify-center rounded-2xl bg-white/95 shadow-xl ${isSignUp ? 'h-14 w-14' : 'h-20 w-20'}`}
         >
-          <img src={farmeyeLogo} alt="FarmEye" className="h-12 w-12 object-contain" />
+          <img src={farmeyeLogo} alt="FarmEye" className={`object-contain ${isSignUp ? 'h-8 w-8' : 'h-12 w-12'}`} />
         </motion.div>
-        <motion.h1
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-3xl font-bold tracking-tight text-white"
-        >
+        <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
+          className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
           FarmEye
         </motion.h1>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="mt-1 text-base font-medium text-white/90"
-        >
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
+          className={`mt-0.5 font-medium text-white/90 ${isSignUp ? 'text-sm' : 'text-base'}`}>
           Smart Poultry Farm Automation
         </motion.p>
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="mt-2.5 text-xs text-white/70 tracking-wide"
-        >
-          {isSignUp 
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.5 }}
+          className="mt-2 text-xs text-white/70 tracking-wide">
+          {isSignUp
             ? 'নিরাপদ অটোমেশন • অফলাইন সুরক্ষা • ২৪/৭ মনিটরিং'
             : '২৪/৭ পরিবেশ নিয়ন্ত্রণ • অফলাইন সুরক্ষা • ইন্ডাস্ট্রিয়াল নিরাপত্তা'
           }
@@ -239,35 +267,21 @@ export function LoginPage() {
     </div>
   );
 
-  // ─── Shared Footer ───
   const Footer = () => (
     <>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
-        className="mt-6 text-center"
-      >
-        <button
-          type="button"
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline"
-        >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-6 text-center">
+        <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowForgotPassword(false); }}
+          className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline">
           {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
         </button>
       </motion.div>
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="mt-8 text-center text-xs text-muted-foreground/60"
-      >
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+        className="mt-8 text-center text-xs text-muted-foreground/60">
         © 2026 FarmEye Automation Platform
       </motion.p>
     </>
   );
 
-  // ─── Icon input wrapper ───
   const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
     <div className="relative">
       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</div>
@@ -275,13 +289,9 @@ export function LoginPage() {
     </div>
   );
 
-  // ─── Loading spinner ───
   const Spinner = () => (
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-      className="h-5 w-5 rounded-full border-2 border-primary-foreground border-t-transparent"
-    />
+    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      className="h-5 w-5 rounded-full border-2 border-primary-foreground border-t-transparent" />
   );
 
   // ═══════════════════════════════════════════
@@ -291,65 +301,99 @@ export function LoginPage() {
     return (
       <div className="relative flex min-h-screen flex-col bg-background">
         <Header />
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
+        <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-5 flex-1 rounded-t-3xl bg-background px-6 pb-8 pt-8 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]"
-        >
+          className="relative z-10 -mt-5 flex-1 rounded-t-3xl bg-background px-6 pb-8 pt-8 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]">
+
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
             <p className="mt-1 text-sm text-muted-foreground">আপনার ফার্ম নিরাপদভাবে পরিচালনা করতে লগইন করুন</p>
           </motion.div>
 
-          {/* Method Toggle */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mb-5 mt-5 flex rounded-xl bg-muted/60 p-1">
-            <button type="button" onClick={() => { setLoginMethod('phone'); setIdentifier(''); }}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${loginMethod === 'phone' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-              <Phone className="h-4 w-4" /> মোবাইল
-            </button>
-            <button type="button" onClick={() => { setLoginMethod('email'); setIdentifier(''); }}
-              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${loginMethod === 'email' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-              <Mail className="h-4 w-4" /> ইমেইল
-            </button>
-          </motion.div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <AnimatePresence mode="wait">
-              <motion.div key={loginMethod} initial={{ opacity: 0, x: loginMethod === 'phone' ? -16 : 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: loginMethod === 'phone' ? 16 : -16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">{loginMethod === 'phone' ? 'মোবাইল নম্বর' : 'ইমেইল'}</label>
-                <IconInput icon={loginMethod === 'phone' ? <Phone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}>
-                  <Input type={loginMethod === 'phone' ? 'tel' : 'email'} value={identifier} onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={loginMethod === 'phone' ? 'আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন' : 'example@email.com'}
-                    className={inputClass} required />
-                </IconInput>
+          {/* Forgot Password View */}
+          <AnimatePresence mode="wait">
+            {showForgotPassword ? (
+              <motion.div key="forgot" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="mt-5">
+                <h3 className="text-base font-semibold text-foreground mb-1">পাসওয়ার্ড রিসেট করুন</h3>
+                <p className="text-xs text-muted-foreground mb-4">আপনার রেজিস্টার্ড ইমেইল ঠিকানা দিন। আমরা একটি রিসেট লিংক পাঠাবো।</p>
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">ইমেইল</label>
+                    <IconInput icon={<Mail className="h-5 w-5" />}>
+                      <Input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="আপনার ইমেইল ঠিকানা লিখুন" className={inputClass} required />
+                    </IconInput>
+                  </div>
+                  <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25">
+                    {isLoading ? <Spinner /> : 'রিসেট লিংক পাঠান'}
+                  </Button>
+                  <button type="button" onClick={() => setShowForgotPassword(false)}
+                    className="w-full text-center text-sm font-medium text-primary hover:underline">
+                    ← লগইনে ফিরে যান
+                  </button>
+                </form>
               </motion.div>
-            </AnimatePresence>
+            ) : (
+              <motion.div key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                {/* Method Toggle */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mb-5 mt-5 flex rounded-xl bg-muted/60 p-1">
+                  <button type="button" onClick={() => { setLoginMethod('phone'); setIdentifier(''); }}
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${loginMethod === 'phone' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    <Phone className="h-4 w-4" /> মোবাইল
+                  </button>
+                  <button type="button" onClick={() => { setLoginMethod('email'); setIdentifier(''); }}
+                    className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${loginMethod === 'email' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    <Mail className="h-4 w-4" /> ইমেইল
+                  </button>
+                </motion.div>
 
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">পাসওয়ার্ড</label>
-              <IconInput icon={<Lock className="h-5 w-5" />}>
-                <Input type={showPassword ? 'text' : 'password'} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="আপনার নিরাপদ পাসওয়ার্ড লিখুন" className={`${inputClass} pr-12`} minLength={6} required />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </IconInput>
-            </div>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <AnimatePresence mode="wait">
+                    <motion.div key={loginMethod} initial={{ opacity: 0, x: loginMethod === 'phone' ? -16 : 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: loginMethod === 'phone' ? 16 : -16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">{loginMethod === 'phone' ? 'মোবাইল নম্বর' : 'ইমেইল'}</label>
+                      <IconInput icon={loginMethod === 'phone' ? <Phone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}>
+                        <Input type={loginMethod === 'phone' ? 'tel' : 'email'} value={identifier} onChange={(e) => setIdentifier(e.target.value)}
+                          placeholder={loginMethod === 'phone' ? 'আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন' : 'example@email.com'}
+                          className={inputClass} required />
+                      </IconInput>
+                    </motion.div>
+                  </AnimatePresence>
 
-            <div className="pt-1">
-              <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/35 active:scale-[0.98]">
-                {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
-              </Button>
-            </div>
-          </form>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-foreground">পাসওয়ার্ড</label>
+                      <button type="button" onClick={() => setShowForgotPassword(true)}
+                        className="text-xs font-medium text-primary hover:underline underline-offset-2">
+                        পাসওয়ার্ড ভুলে গেছেন?
+                      </button>
+                    </div>
+                    <IconInput icon={<Lock className="h-5 w-5" />}>
+                      <Input type={showPassword ? 'text' : 'password'} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="আপনার নিরাপদ পাসওয়ার্ড লিখুন" className={`${inputClass} pr-12`} minLength={6} required />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </IconInput>
+                  </div>
+
+                  <div className="pt-1">
+                    <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/35 active:scale-[0.98]">
+                      {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Trust Indicators */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-5 flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
-            <span>🔒 এনক্রিপ্টেড সংযোগ</span>
-            <span>🛡 অফলাইন সেফ মোড সমর্থিত</span>
-            <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
-          </motion.div>
+          {!showForgotPassword && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-5 flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+              <span>🔒 এনক্রিপ্টেড সংযোগ</span>
+              <span>🛡 অফলাইন সেফ মোড সমর্থিত</span>
+              <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
+            </motion.div>
+          )}
 
           <Footer />
         </motion.div>
@@ -363,16 +407,25 @@ export function LoginPage() {
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <Header />
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
+      <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 -mt-5 flex-1 rounded-t-3xl bg-background px-6 pb-8 pt-8 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]"
-      >
-        {/* Section Title */}
+        className="relative z-10 -mt-5 flex-1 rounded-t-3xl bg-background px-6 pb-8 pt-8 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]">
+
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-5 text-center">
           <h2 className="text-xl font-bold text-foreground">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
           <p className="mt-1 text-sm text-muted-foreground">আপনার ফার্ম যুক্ত করুন এবং স্মার্ট অটোমেশন শুরু করুন</p>
+        </motion.div>
+
+        {/* Signup Method Toggle */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }} className="mb-4 flex rounded-xl bg-muted/60 p-1">
+          <button type="button" onClick={() => setSignupMethod('phone')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${signupMethod === 'phone' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+            <Phone className="h-4 w-4" /> মোবাইল দিয়ে
+          </button>
+          <button type="button" onClick={() => setSignupMethod('email')}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${signupMethod === 'email' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+            <Mail className="h-4 w-4" /> ইমেইল দিয়ে
+          </button>
         </motion.div>
 
         {/* Account Type Toggle */}
@@ -388,7 +441,7 @@ export function LoginPage() {
         </motion.div>
 
         <form onSubmit={handleSignup} className="space-y-4">
-          {/* 1. মালিকের নাম */}
+          {/* 1. নাম */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">মালিকের নাম *</label>
             <IconInput icon={<User className="h-5 w-5" />}>
@@ -397,34 +450,52 @@ export function LoginPage() {
             </IconInput>
           </div>
 
-          {/* 2. মোবাইল নম্বর */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">মোবাইল নম্বর *</label>
-            <IconInput icon={<Phone className="h-5 w-5" />}>
-              <Input type="tel" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
-                placeholder="আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন" className={inputClass} required maxLength={11} />
-            </IconInput>
-          </div>
+          {/* 2. Primary identifier based on signup method */}
+          <AnimatePresence mode="wait">
+            {signupMethod === 'phone' ? (
+              <motion.div key="signup-phone" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">মোবাইল নম্বর *</label>
+                <IconInput icon={<Phone className="h-5 w-5" />}>
+                  <Input type="tel" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
+                    placeholder="আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন" className={inputClass} required maxLength={11} />
+                </IconInput>
+              </motion.div>
+            ) : (
+              <motion.div key="signup-email-primary" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">ইমেইল *</label>
+                <IconInput icon={<Mail className="h-5 w-5" />}>
+                  <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
+                    placeholder="আপনার ইমেইল ঠিকানা লিখুন" className={inputClass} required maxLength={255} />
+                </IconInput>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* 3. ইমেইল (ঐচ্ছিক) */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">ইমেইল (ঐচ্ছিক)</label>
-            <IconInput icon={<Mail className="h-5 w-5" />}>
-              <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
-                placeholder="আপনার ইমেইল ঠিকানা লিখুন (ঐচ্ছিক)" className={inputClass} maxLength={255} />
-            </IconInput>
-          </div>
+          {/* 3. Secondary contact (optional) */}
+          {signupMethod === 'phone' && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">ইমেইল (ঐচ্ছিক)</label>
+              <IconInput icon={<Mail className="h-5 w-5" />}>
+                <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
+                  placeholder="আপনার ইমেইল ঠিকানা লিখুন (ঐচ্ছিক)" className={inputClass} maxLength={255} />
+              </IconInput>
+            </div>
+          )}
+
+          {signupMethod === 'email' && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">মোবাইল নম্বর (ঐচ্ছিক)</label>
+              <IconInput icon={<Phone className="h-5 w-5" />}>
+                <Input type="tel" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
+                  placeholder="আপনার মোবাইল নম্বর (ঐচ্ছিক)" className={inputClass} maxLength={11} />
+              </IconInput>
+            </div>
+          )}
 
           {/* Owner-specific fields */}
           <AnimatePresence>
             {userType === 'owner' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 overflow-hidden"
-              >
-                {/* 4. ফার্মের নাম */}
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-4 overflow-hidden">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">ফার্মের নাম</label>
                   <IconInput icon={<Building2 className="h-5 w-5" />}>
@@ -432,41 +503,27 @@ export function LoginPage() {
                       placeholder="আপনার ফার্মের নাম লিখুন" className={inputClass} maxLength={100} />
                   </IconInput>
                 </div>
-
-                {/* 5. ফার্মের ধরন - Dropdown */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">ফার্মের ধরন</label>
                   <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      <Egg className="h-5 w-5" />
-                    </div>
-                    <select
-                      value={signupFarmType}
-                      onChange={(e) => setSignupFarmType(e.target.value as FarmType)}
-                      className="flex h-13 w-full appearance-none rounded-xl border-2 border-muted bg-muted/20 pl-12 pr-10 text-base text-foreground transition-all focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    >
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"><Egg className="h-5 w-5" /></div>
+                    <select value={signupFarmType} onChange={(e) => setSignupFarmType(e.target.value as FarmType)}
+                      className="flex h-13 w-full appearance-none rounded-xl border-2 border-muted bg-muted/20 pl-12 pr-10 text-base text-foreground transition-all focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                       <option value="layer">লেয়ার ফার্ম</option>
                       <option value="broiler">ব্রয়লার ফার্ম</option>
                       <option value="mixed">মিক্সড ফার্ম</option>
                     </select>
-                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                      <ChevronDown className="h-5 w-5" />
-                    </div>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><ChevronDown className="h-5 w-5" /></div>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Worker invitation code */}
+          {/* Worker invitation */}
           <AnimatePresence>
             {userType === 'worker' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-1.5 overflow-hidden"
-              >
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-1.5 overflow-hidden">
                 <label className="text-sm font-medium text-foreground">আমন্ত্রণ কোড *</label>
                 <IconInput icon={<Ticket className="h-5 w-5" />}>
                   <Input type="text" value={invitationCode} onChange={(e) => setInvitationCode(e.target.value.toUpperCase())}
@@ -477,7 +534,7 @@ export function LoginPage() {
             )}
           </AnimatePresence>
 
-          {/* 6. পাসওয়ার্ড */}
+          {/* Password */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">পাসওয়ার্ড *</label>
             <IconInput icon={<Lock className="h-5 w-5" />}>
@@ -487,28 +544,20 @@ export function LoginPage() {
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </IconInput>
-            {/* Strength indicator */}
             {signupPassword && (
               <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="space-y-1 pt-1">
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${passwordStrength.percent}%` }}
-                    transition={{ duration: 0.3 }}
-                    className={`h-full rounded-full ${passwordStrength.color}`}
-                  />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${passwordStrength.percent}%` }} transition={{ duration: 0.3 }}
+                    className={`h-full rounded-full ${passwordStrength.color}`} />
                 </div>
-                <p className={`text-xs font-medium ${
-                  passwordStrength.level === 'weak' ? 'text-destructive' :
-                  passwordStrength.level === 'medium' ? 'text-status-warning' : 'text-status-normal'
-                }`}>
+                <p className={`text-xs font-medium ${passwordStrength.level === 'weak' ? 'text-destructive' : passwordStrength.level === 'medium' ? 'text-status-warning' : 'text-status-normal'}`}>
                   পাসওয়ার্ড: {passwordStrength.label}
                 </p>
               </motion.div>
             )}
           </div>
 
-          {/* 7. পাসওয়ার্ড নিশ্চিত করুন */}
+          {/* Confirm Password */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">পাসওয়ার্ড নিশ্চিত করুন *</label>
             <IconInput icon={<Lock className="h-5 w-5" />}>
@@ -523,7 +572,13 @@ export function LoginPage() {
             )}
           </div>
 
-          {/* Submit */}
+          {/* Email signup notice */}
+          {signupMethod === 'email' && (
+            <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
+              📧 ইমেইল দিয়ে সাইনআপ করলে আপনাকে ইমেইল যাচাই করতে হবে। যাচাই করার পর লগইন করতে পারবেন।
+            </p>
+          )}
+
           <div className="pt-1">
             <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/35 active:scale-[0.98]">
               {isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}

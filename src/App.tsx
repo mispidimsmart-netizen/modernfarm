@@ -27,6 +27,7 @@ const AuditLogPage = lazy(() => import("./pages/AuditLogPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const FarmSetupWizardPage = lazy(() => import("./pages/FarmSetupWizardPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 
 // Optimized QueryClient with better caching
@@ -98,6 +99,10 @@ function AppRoutes() {
         <Route 
           path="/login" 
           element={user ? <Navigate to="/" replace /> : <LoginPage />} 
+        />
+        <Route 
+          path="/reset-password" 
+          element={<ResetPasswordPage />} 
         />
         <Route
           path="/"
