@@ -31,7 +31,7 @@ function getPasswordStrength(pw: string): { level: 'weak' | 'medium' | 'strong';
 }
 
 // Shared input style
-const inputClass = "h-13 rounded-xl border-2 border-muted bg-muted/20 pl-12 text-base transition-all focus:border-primary focus:bg-background";
+const inputClass = "h-13 rounded-xl border-2 border-border bg-muted/10 pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
 
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
@@ -62,6 +62,7 @@ export function LoginPage() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
   const [userType, setUserType] = useState<UserType>('owner');
   const [invitationCode, setInvitationCode] = useState('');
+  const [showOptionalEmail, setShowOptionalEmail] = useState(false);
 
   const passwordStrength = useMemo(() => getPasswordStrength(signupPassword), [signupPassword]);
 
@@ -376,8 +377,8 @@ export function LoginPage() {
                     </IconInput>
                   </div>
 
-                  <div className="pt-1">
-                    <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/35 active:scale-[0.98]">
+                  <div className="pt-2">
+                    <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
@@ -471,14 +472,24 @@ export function LoginPage() {
             )}
           </AnimatePresence>
 
-          {/* 3. Secondary contact (optional) */}
+          {/* 3. Secondary contact (optional - collapsible) */}
           {signupMethod === 'phone' && (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">ইমেইল (ঐচ্ছিক)</label>
-              <IconInput icon={<Mail className="h-5 w-5" />}>
-                <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
-                  placeholder="আপনার ইমেইল ঠিকানা লিখুন (ঐচ্ছিক)" className={inputClass} maxLength={255} />
-              </IconInput>
+              <button type="button" onClick={() => setShowOptionalEmail(!showOptionalEmail)}
+                className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline underline-offset-2">
+                <Mail className="h-3.5 w-3.5" />
+                {showOptionalEmail ? 'ইমেইল লুকান' : '+ ইমেইল যোগ করুন (ঐচ্ছিক)'}
+              </button>
+              <AnimatePresence>
+                {showOptionalEmail && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <IconInput icon={<Mail className="h-5 w-5" />}>
+                      <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
+                        placeholder="আপনার ইমেইল ঠিকানা লিখুন (ঐচ্ছিক)" className={inputClass} maxLength={255} />
+                    </IconInput>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
@@ -508,7 +519,7 @@ export function LoginPage() {
                   <div className="relative">
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"><Egg className="h-5 w-5" /></div>
                     <select value={signupFarmType} onChange={(e) => setSignupFarmType(e.target.value as FarmType)}
-                      className="flex h-13 w-full appearance-none rounded-xl border-2 border-muted bg-muted/20 pl-12 pr-10 text-base text-foreground transition-all focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                      className="flex h-13 w-full appearance-none rounded-xl border-2 border-border bg-muted/10 pl-12 pr-10 text-base text-foreground transition-all duration-200 focus:border-primary focus:bg-background focus:outline-none focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]">
                       <option value="layer">লেয়ার ফার্ম</option>
                       <option value="broiler">ব্রয়লার ফার্ম</option>
                       <option value="mixed">মিক্সড ফার্ম</option>
@@ -579,8 +590,8 @@ export function LoginPage() {
             </p>
           )}
 
-          <div className="pt-1">
-            <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/35 active:scale-[0.98]">
+          <div className="pt-2">
+            <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
               {isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}
             </Button>
           </div>
