@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Phone, User, Building2, Crown, HardHat, Ticket, Egg, Eye, EyeOff, ChevronDown } from 'lucide-react';
+import { Mail, Lock, Phone, User, Building2, Crown, HardHat, Ticket, Egg, Eye, EyeOff, ChevronDown, Bird, Drumstick } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { translations } from '@/lib/translations';
@@ -512,7 +512,7 @@ export function LoginPage() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground">ফার্মের ধরন</label>
                   <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"><Egg className="h-5 w-5" /></div>
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">{signupFarmType === 'layer' ? <Egg className="h-5 w-5" /> : <Drumstick className="h-5 w-5" />}</div>
                     <select value={signupFarmType} onChange={(e) => setSignupFarmType(e.target.value as FarmType)}
                       className="flex h-13 w-full appearance-none rounded-xl border-2 border-border bg-muted/10 pl-12 pr-10 text-base text-foreground transition-all duration-200 focus:border-primary focus:bg-background focus:outline-none focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]">
                       <option value="layer">লেয়ার ফার্ম</option>
