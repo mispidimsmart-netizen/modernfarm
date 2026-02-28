@@ -242,7 +242,7 @@ export function LoginPage() {
 
   // ─── Compact Header (smaller on signup) ───
   const Header = () => (
-    <div className={`relative overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-12 pt-10' : 'pb-14 pt-14'}`}>
+    <div className={`relative overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-16 pt-10' : 'pb-20 pt-14'}`}>
       {/* Decorative floating eye icons */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
