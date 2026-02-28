@@ -31,6 +31,13 @@ function getPasswordStrength(pw: string): { level: 'weak' | 'medium' | 'strong';
 }
 
 // Shared input style
+const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
+  <div className="relative">
+    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</div>
+    {children}
+  </div>
+);
+
 const inputClass = "h-13 rounded-xl border-2 border-border bg-muted/10 pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
 
 export function LoginPage() {
@@ -278,12 +285,6 @@ export function LoginPage() {
     </>
   );
 
-  const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
-    <div className="relative">
-      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</div>
-      {children}
-    </div>
-  );
 
   const Spinner = () => (
     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
