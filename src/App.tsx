@@ -11,23 +11,43 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { RoleProtectedRoute } from "./components/auth";
 
+// Retry wrapper for lazy imports (handles stale cache / failed fetches)
+function lazyRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+  retries = 2
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    factory().catch((err) => {
+      if (retries > 0) {
+        // Clear caches and retry
+        return new Promise<{ default: T }>((resolve) => {
+          setTimeout(() => resolve(lazyRetry(factory, retries - 1) as any), 500);
+        });
+      }
+      // Final fallback: reload page to get fresh assets
+      window.location.reload();
+      return factory(); // won't resolve but satisfies TS
+    })
+  );
+}
+
 // Lazy load pages for better initial load performance
-const LoginPage = lazy(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
-const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
-const ControlPage = lazy(() => import("./pages/ControlPage").then(m => ({ default: m.ControlPage })));
-const LightingPage = lazy(() => import("./pages/LightingPage").then(m => ({ default: m.LightingPage })));
-const AutomationPage = lazy(() => import("./pages/AutomationPage").then(m => ({ default: m.AutomationPage })));
-const AlertsPage = lazy(() => import("./pages/AlertsPage").then(m => ({ default: m.AlertsPage })));
-const ReportsPage = lazy(() => import("./pages/ReportsPage").then(m => ({ default: m.ReportsPage })));
-const SettingsPage = lazy(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
-const ApiDocsPage = lazy(() => import("./pages/ApiDocsPage").then(m => ({ default: m.ApiDocsPage })));
-const FarmManagementPage = lazy(() => import("./pages/FarmManagementPage").then(m => ({ default: m.FarmManagementPage })));
-const InstallationGuidePage = lazy(() => import("./pages/InstallationGuidePage"));
-const AuditLogPage = lazy(() => import("./pages/AuditLogPage"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const FarmSetupWizardPage = lazy(() => import("./pages/FarmSetupWizardPage"));
-const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const LoginPage = lazyRetry(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
+const Dashboard = lazyRetry(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const ControlPage = lazyRetry(() => import("./pages/ControlPage").then(m => ({ default: m.ControlPage })));
+const LightingPage = lazyRetry(() => import("./pages/LightingPage").then(m => ({ default: m.LightingPage })));
+const AutomationPage = lazyRetry(() => import("./pages/AutomationPage").then(m => ({ default: m.AutomationPage })));
+const AlertsPage = lazyRetry(() => import("./pages/AlertsPage").then(m => ({ default: m.AlertsPage })));
+const ReportsPage = lazyRetry(() => import("./pages/ReportsPage").then(m => ({ default: m.ReportsPage })));
+const SettingsPage = lazyRetry(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
+const ApiDocsPage = lazyRetry(() => import("./pages/ApiDocsPage").then(m => ({ default: m.ApiDocsPage })));
+const FarmManagementPage = lazyRetry(() => import("./pages/FarmManagementPage").then(m => ({ default: m.FarmManagementPage })));
+const InstallationGuidePage = lazyRetry(() => import("./pages/InstallationGuidePage"));
+const AuditLogPage = lazyRetry(() => import("./pages/AuditLogPage"));
+const AdminPage = lazyRetry(() => import("./pages/AdminPage"));
+const NotFound = lazyRetry(() => import("./pages/NotFound"));
+const FarmSetupWizardPage = lazyRetry(() => import("./pages/FarmSetupWizardPage"));
+const ResetPasswordPage = lazyRetry(() => import("./pages/ResetPasswordPage"));
 
 
 // Optimized QueryClient with better caching
