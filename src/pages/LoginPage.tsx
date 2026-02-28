@@ -254,7 +254,7 @@ export function LoginPage() {
           transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
           className={`mx-auto mb-3 flex items-center justify-center rounded-3xl bg-white shadow-xl ${isSignUp ? 'h-32 w-32' : 'h-44 w-44'}`}
         >
-          <img src={farmeyeLogo} alt="FarmEye" className={`object-contain ${isSignUp ? 'h-26 w-26' : 'h-36 w-36'}`} />
+          <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-26 w-26' : 'h-36 w-36'}`} />
         </motion.div>
         <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
           className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
