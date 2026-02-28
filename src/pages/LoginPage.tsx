@@ -242,7 +242,7 @@ export function LoginPage() {
 
   // ─── Compact Header (smaller on signup) ───
   const Header = () => (
-    <div className={`relative overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-16 pt-10' : 'pb-20 pt-14'}`}>
+    <div className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-14 pt-8' : 'pb-16 pt-10'}`}>
       {/* Decorative floating eye icons */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
@@ -268,9 +268,9 @@ export function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-            className={`mx-auto mb-3 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-28 w-28' : 'h-36 w-36'}`}
+          className={`mx-auto mb-2 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-20 w-20' : 'h-24 w-24'}`}
           >
-            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-22 w-22' : 'h-28 w-28'}`} />
+            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-16 w-16' : 'h-20 w-20'}`} />
           </motion.div>
           {/* Sparkle decoration */}
           <motion.div
@@ -301,14 +301,14 @@ export function LoginPage() {
 
   const Footer = () => (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-6 text-center">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-4 text-center">
         <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowForgotPassword(false); }}
           className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline">
           {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
         </button>
       </motion.div>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="mt-8 text-center text-xs text-muted-foreground/60">
+        className="mt-3 text-center text-xs text-muted-foreground/60">
         © 2026 FarmEye Automation Platform
       </motion.p>
     </>
@@ -325,11 +325,11 @@ export function LoginPage() {
   // ═══════════════════════════════════════════
   if (!isSignUp) {
     return (
-      <div className="relative flex min-h-screen flex-col bg-background">
+      <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-background">
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-6 flex-1 bg-background px-6 pb-8 pt-2">
+          className="relative z-10 -mt-6 flex-1 overflow-y-auto bg-background px-6 pb-4 pt-2">
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
@@ -413,7 +413,7 @@ export function LoginPage() {
 
           {/* Trust Indicators */}
           {!showForgotPassword && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-5 flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-3 flex flex-col items-center gap-1 text-xs text-muted-foreground">
               <span>🔒 এনক্রিপ্টেড সংযোগ</span>
               <span>🛡 অফলাইন সেফ মোড সমর্থিত</span>
               <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
