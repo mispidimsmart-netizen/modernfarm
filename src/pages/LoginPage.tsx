@@ -257,13 +257,8 @@ export function LoginPage() {
           className={`mt-0.5 font-medium text-white/90 ${isSignUp ? 'text-sm' : 'text-base'}`}>
           Smart Poultry Farm Automation
         </motion.p>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.5 }}
-          className="mt-2 text-xs text-white/70 tracking-wide">
-          {isSignUp
-            ? 'নিরাপদ অটোমেশন • অফলাইন সুরক্ষা • ২৪/৭ মনিটরিং'
-            : '২৪/৭ পরিবেশ নিয়ন্ত্রণ • অফলাইন সুরক্ষা • ইন্ডাস্ট্রিয়াল নিরাপত্তা'
-          }
-        </motion.p>
+
+
       </motion.div>
     </div>
   );
@@ -308,7 +303,6 @@ export function LoginPage() {
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
-            <p className="mt-1 text-sm text-muted-foreground">আপনার ফার্ম নিরাপদভাবে পরিচালনা করতে লগইন করুন</p>
           </motion.div>
 
           {/* Forgot Password View */}
