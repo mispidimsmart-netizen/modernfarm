@@ -245,9 +245,9 @@ export function LoginPage() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-          className={`mx-auto mb-3 flex items-center justify-center rounded-3xl bg-white shadow-xl ${isSignUp ? 'h-20 w-20' : 'h-28 w-28'}`}
+          className={`mx-auto mb-3 flex items-center justify-center rounded-3xl bg-white shadow-xl ${isSignUp ? 'h-28 w-28' : 'h-36 w-36'}`}
         >
-          <img src={farmeyeLogo} alt="FarmEye" className={`object-contain ${isSignUp ? 'h-14 w-14' : 'h-20 w-20'}`} />
+          <img src={farmeyeLogo} alt="FarmEye" className={`object-contain ${isSignUp ? 'h-22 w-22' : 'h-28 w-28'}`} />
         </motion.div>
         <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
           className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
