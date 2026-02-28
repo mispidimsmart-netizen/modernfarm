@@ -1,5 +1,5 @@
 import { Wifi, WifiOff, LogOut, Globe, ArrowLeft } from 'lucide-react';
-import farmeyeLogo from '@/assets/farmeye-logo.png';
+import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
