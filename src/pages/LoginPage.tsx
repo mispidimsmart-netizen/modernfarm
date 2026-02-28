@@ -287,7 +287,7 @@ export function LoginPage() {
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
           className={`mt-1 font-medium text-white/80 ${isSignUp ? 'text-xs' : 'text-sm'}`}>
-          Smart Layer Farm IoT
+          Smart Poultry Farm Automation
         </motion.p>
       </motion.div>
       {/* Curved bottom edge */}
