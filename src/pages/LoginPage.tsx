@@ -242,31 +242,60 @@ export function LoginPage() {
 
   // ─── Compact Header (smaller on signup) ───
   const Header = () => (
-    <div className={`relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/85 px-6 text-center ${isSignUp ? 'pb-8 pt-10' : 'pb-10 pt-14'}`}>
-      <div className="absolute inset-0 opacity-[0.04]" style={{
-        backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-        backgroundSize: '32px 32px'
-      }} />
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-          className={`mx-auto mb-3 flex items-center justify-center rounded-3xl bg-white shadow-xl ${isSignUp ? 'h-32 w-32' : 'h-44 w-44'}`}
-        >
-          <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-26 w-26' : 'h-36 w-36'}`} />
+    <div className={`relative overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-12 pt-10' : 'pb-14 pt-14'}`}>
+      {/* Decorative floating eye icons */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-8 left-6 text-white/10">
+          <Eye className="h-10 w-10" />
         </motion.div>
+        <motion.div animate={{ y: [0, 8, 0], rotate: [0, -5, 0] }} transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+          className="absolute top-12 right-8 text-white/10">
+          <Eye className="h-8 w-8" />
+        </motion.div>
+        <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+          className="absolute bottom-16 left-16 text-white/8">
+          <Bird className="h-7 w-7" />
+        </motion.div>
+        <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+          className="absolute bottom-20 right-14 text-white/8">
+          <Egg className="h-6 w-6" />
+        </motion.div>
+      </div>
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
+        <div className="relative mx-auto w-fit">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
+            className={`mx-auto mb-3 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-28 w-28' : 'h-36 w-36'}`}
+          >
+            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-22 w-22' : 'h-28 w-28'}`} />
+          </motion.div>
+          {/* Sparkle decoration */}
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.5, type: 'spring' }}
+            className={`absolute ${isSignUp ? '-top-2 -right-2' : '-top-3 -right-3'}`}>
+            <span className="text-2xl">✨</span>
+          </motion.div>
+        </div>
         <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
           className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
           FarmEye
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
-          className={`mt-0.5 font-medium text-white/90 ${isSignUp ? 'text-sm' : 'text-base'}`}>
-          Smart Poultry Farm Automation
+          className={`mt-1 font-medium text-white/80 ${isSignUp ? 'text-xs' : 'text-sm'}`}>
+          Smart Layer Farm IoT
         </motion.p>
-
-
       </motion.div>
+      {/* Curved bottom edge */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+          <path d="M0 60H1440V20C1440 20 1200 0 720 0C240 0 0 20 0 20V60Z" fill="hsl(var(--background))" />
+        </svg>
+      </div>
     </div>
   );
 
@@ -300,7 +329,7 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-5 flex-1 rounded-t-3xl bg-background px-6 pb-8 pt-8 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]">
+          className="relative z-10 -mt-2 flex-1 bg-background px-6 pb-8 pt-4">
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
@@ -405,7 +434,7 @@ export function LoginPage() {
       <Header />
       <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 -mt-5 flex-1 rounded-t-3xl bg-background px-6 pb-8 pt-8 shadow-[0_-4px_30px_-8px_rgba(0,0,0,0.1)]">
+        className="relative z-10 -mt-2 flex-1 bg-background px-6 pb-8 pt-4">
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-5 text-center">
           <h2 className="text-xl font-bold text-foreground">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
