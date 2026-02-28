@@ -292,8 +292,8 @@ export function LoginPage() {
       </motion.div>
       {/* Curved bottom edge */}
       <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-          <path d="M0 60H1440V20C1440 20 1200 0 720 0C240 0 0 20 0 20V60Z" fill="hsl(var(--background))" />
+        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
+          <path d="M0 80H1440V30Q1440 0 1380 0H60Q0 0 0 30V80Z" fill="hsl(var(--background))" />
         </svg>
       </div>
     </div>
