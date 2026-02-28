@@ -249,6 +249,10 @@ export function LoginPage() {
         >
           <img src={farmeyeLogo} alt="FarmEye" className={`object-contain ${isSignUp ? 'h-26 w-26' : 'h-36 w-36'}`} />
         </motion.div>
+        <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
+          className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
+          FarmEye
+        </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
           className={`mt-0.5 font-medium text-white/90 ${isSignUp ? 'text-sm' : 'text-base'}`}>
           Smart Poultry Farm Automation
