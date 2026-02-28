@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import farmeyeLogo from '@/assets/farmeye-logo.png';
+import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 
 type LoginMethod = 'email' | 'phone';
 type FarmType = 'layer' | 'broiler' | 'mixed';
