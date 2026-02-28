@@ -329,7 +329,7 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-2 flex-1 bg-background px-6 pb-8 pt-4">
+          className="relative z-10 -mt-6 flex-1 bg-background px-6 pb-8 pt-2">
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
