@@ -155,14 +155,6 @@ export function Dashboard() {
           <CoreMetricsRow />
         </div>
 
-        {/* ============ 4. PANIC PREVENTION STRIP ============ */}
-        <div className="mb-4 rounded-xl bg-primary/5 border border-primary/20 px-4 py-2 text-center">
-          <p className="text-xs font-medium text-primary">
-            {language === 'bn' 
-              ? '✅ খামার সম্পূর্ণ অটোমেটিক চলছে — কিছু করার প্রয়োজন নেই'
-              : '✅ Farm is fully automatic — no action needed'}
-          </p>
-        </div>
 
 
         {/* ============ TABS (Home extras + Full Details) ============ */}
@@ -210,6 +202,15 @@ export function Dashboard() {
 
               {/* Today Summary */}
               <TodayReadableSummary />
+
+              {/* Panic Prevention Strip */}
+              <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-2 text-center">
+                <p className="text-xs font-medium text-primary">
+                  {language === 'bn' 
+                    ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
+                    : '🤖 Automation system is monitoring your farm'}
+                </p>
+              </div>
             </TabsContent>
             
             {/* TAB: Details (Technical/Graphs) */}
