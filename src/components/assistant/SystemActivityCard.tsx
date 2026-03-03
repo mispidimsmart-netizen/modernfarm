@@ -136,15 +136,6 @@ export function SystemActivityCard() {
           })}
         </div>
         
-        {/* Trust building message */}
-        <div className="mt-3 rounded-lg bg-muted/30 px-3 py-2 text-center">
-          <p className="text-[11px] text-muted-foreground">
-            {language === 'bn' 
-              ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
-              : '🤖 Automation system is monitoring your farm'
-            }
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
