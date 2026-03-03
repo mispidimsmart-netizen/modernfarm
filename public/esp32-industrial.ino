@@ -33,16 +33,20 @@
  * ║    K: Power Recovery Purge (5 min post-outage ventilation)            ║
  * ║    L: GSM Alert Queue (async SMS, non-blocking)                       ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
- * ║  HARDWARE (Active LOW relays):                                        ║
+ * ║  HARDWARE (Active LOW relays — 8-Channel):                             ║
  * ║    GPIO 25 (IN1): Exhaust Fan                                         ║
- * ║    GPIO 26 (IN2): Light (Layer) / Circulation Fan (Broiler)           ║
- * ║    GPIO 33 (IN3): Alarm (Layer) / Heater (Broiler)                    ║
- * ║    GPIO 12 (IN4): Fogger Solenoid                                     ║
- * ║    GPIO 4:  DHT22 #1     GPIO 15: DHT22 #2                           ║
+ * ║    GPIO 26 (IN2): Ceiling Fan                                         ║
+ * ║    GPIO 27 (IN3): Light                                               ║
+ * ║    GPIO 14 (IN4): Heater                                              ║
+ * ║    GPIO 12 (IN5): Fogger Solenoid                                     ║
+ * ║    GPIO 13 (IN6): Alarm                                               ║
+ * ║    GPIO 15 (IN7): Roof Sprinkler                                      ║
+ * ║    GPIO 33 (IN8): Circulation Fan                                     ║
+ * ║    GPIO 4:  DHT22 #1     GPIO 16: DHT22 #2                           ║
  * ║    GPIO 34: MQ-137 NH3   GPIO 35: ZMPT101B Voltage                   ║
- * ║    GPIO 27: YF-S201 Water Flow                                        ║
- * ║    GPIO 16: GSM RX (SIM800L TX)                                       ║
- * ║    GPIO 17: GSM TX (SIM800L RX)                                       ║
+ * ║    GPIO 17: YF-S201 Water Flow                                        ║
+ * ║    GPIO 19: GSM RX (SIM800L TX)                                       ║
+ * ║    GPIO 23: GSM TX (SIM800L RX)                                       ║
  * ║    GPIO 5:  GSM RST (optional)                                        ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
@@ -78,33 +82,30 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "7.0.0";
+const char* FIRMWARE_VERSION = "8.0.0";
 
-// --- Pin Definitions ---
+// --- Pin Definitions (8-Channel Relay v2.0) ---
 #define DHT_PIN              4
-#define DHT2_PIN             15
+#define DHT2_PIN             16     // Moved from 15 to avoid relay conflict
 #define DHT_TYPE             DHT22
 #define MQ135_PIN            34
 #define POWER_SENSE_PIN      35
-#define WATER_FLOW_PIN       27
-#define FAN_RELAY_PIN        25
-#define LIGHT_RELAY_PIN      26
-#define ALARM_RELAY_PIN      33
-// ═══════════════════════════════════════════════════════════════
-// INV-6: Each logical device MUST have its own physical GPIO pin.
-// 4-Channel Relay Map: 25, 26, 33, 12
-// Heater shares IN3 with Alarm (mapped to GPIO 33)
-// ═══════════════════════════════════════════════════════════════
-#define HEATER_RELAY_PIN     33    // Shared with Alarm (IN3)
-#define FOGGER_RELAY_PIN     12    // IN4 (Remapped from 13 to fix hardware conflict)
+#define WATER_FLOW_PIN       17     // Moved from 27 to avoid relay conflict
+#define FAN_RELAY_PIN        25     // IN1: Exhaust Fan
+#define CEILING_FAN_RELAY_PIN 26    // IN2: Ceiling Fan (NEW)
+#define LIGHT_RELAY_PIN      27     // IN3: Light
+#define HEATER_RELAY_PIN     14     // IN4: Heater
+#define FOGGER_RELAY_PIN     12     // IN5: Fogger Solenoid
+#define ALARM_RELAY_PIN      13     // IN6: Alarm
+#define SPRINKLER_RELAY_PIN  15     // IN7: Roof Sprinkler (NEW)
+#define CIRCULATION_RELAY_PIN 33    // IN8: Circulation Fan
 #define STATUS_LED_PIN       2
-#define CIRCULATION_RELAY_PIN LIGHT_RELAY_PIN
 #define MANUAL_OVERRIDE_BTN  32
-#define MANUAL_FAN_BTN       14
+// Note: GPIO 14 now used by Heater relay, manual fan button removed
 
-// --- GSM Pins ---
-#define GSM_TX_PIN           17
-#define GSM_RX_PIN           16
+// --- GSM Pins (moved from 16/17 due to sensor remapping) ---
+#define GSM_TX_PIN           23
+#define GSM_RX_PIN           19
 #define GSM_RST_PIN          5
 #define GSM_BAUD             9600
 
@@ -240,6 +241,17 @@ const float BROILER_HSI_FAN_HIGH  = 78.0f;
 const float BROILER_HSI_EMERGENCY = 82.0f;
 const float BROILER_HSI_CRITICAL  = 86.0f;
 
+// --- Ceiling Fan Thresholds ---
+const float CEILING_FAN_ON_TEMP   = 25.0f;   // Ceiling fan ON when temp >= 25°C
+const float CEILING_FAN_OFF_TEMP  = 22.0f;   // Ceiling fan OFF when temp <= 22°C
+
+// --- Sprinkler (Roof) Thresholds — HSI-based ---
+const float SPRINKLER_HSI_ON      = 80.0f;   // Sprinkler ON when HSI >= 80
+const float SPRINKLER_HSI_OFF     = 75.0f;   // Sprinkler OFF when HSI <= 75
+#define SPRINKLER_CYCLE_ON_SEC    60         // 60s spray
+#define SPRINKLER_CYCLE_OFF_SEC   120        // 120s pause
+#define SPRINKLER_MAX_DAILY_MIN   60         // Max 60 min/day
+
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 2: DATA STRUCTURES                                           ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
@@ -323,7 +335,7 @@ const float HEATER_BROILER_CURVE[][2] = {
 
 // --- Relay Command (single authority) ---
 struct RelayState {
-  bool fan, light, alarm, heater, fogger, circulationFan;
+  bool fan, light, alarm, heater, fogger, circulationFan, ceilingFan, sprinkler;
   String fanSpeed;
 };
 
@@ -409,9 +421,9 @@ bool gasWarmupDone = false;
 unsigned long gasWarmupStart = 0;
 
 // --- Relay State (single authority) ---
-RelayState relayTarget = { false, false, false, false, false, false, "OFF" };
+RelayState relayTarget = { false, false, false, false, false, false, false, false, "OFF" };
 bool fanOn = false, lightOn = false, alarmOn = false, heaterOn = false;
-bool foggerOn = false, circulationFanOn = false;
+bool foggerOn = false, circulationFanOn = false, ceilingFanOn = false, sprinklerOn = false;
 String fanSpeed = "OFF";
 int lightBrightness = 0;
 
@@ -426,6 +438,8 @@ bool fanManualOverride = false;     unsigned long fanManualTime = 0;
 bool heaterManualOverride = false;  unsigned long heaterManualTime = 0;
 bool foggerManualOverride = false;  unsigned long foggerManualTime = 0;
 bool circulationFanManualOverride = false; unsigned long circulationFanManualTime = 0;
+bool ceilingFanManualOverride = false; unsigned long ceilingFanManualTime = 0;
+bool sprinklerManualOverride = false; unsigned long sprinklerManualTime = 0;
 unsigned long lightManualOverrideTime = 0;
 
 // --- Connection State ---
@@ -613,6 +627,8 @@ void requestAlarm(bool on);
 void requestHeater(bool on);
 void requestFogger(bool on);
 void requestCirculationFan(bool on);
+void requestCeilingFan(bool on);
+void requestSprinkler(bool on);
 void requestLight(int brightness);
 
 // Automation Engine
@@ -632,6 +648,10 @@ void updateHysteresisThresholds();
 // Rules
 void loadLayerRules();
 void loadBroilerRules();
+
+// Ceiling Fan & Sprinkler
+void ceilingFanControl();
+void sprinklerControl();
 
 // Emergency / Purge
 void checkEmergencyTriggers();
@@ -1241,6 +1261,8 @@ void requestAlarm(bool on)             { relayTarget.alarm = on; }
 void requestHeater(bool on)            { relayTarget.heater = on; }
 void requestFogger(bool on)            { relayTarget.fogger = on; }
 void requestCirculationFan(bool on)    { relayTarget.circulationFan = on; }
+void requestCeilingFan(bool on)        { relayTarget.ceilingFan = on; }
+void requestSprinkler(bool on)         { relayTarget.sprinkler = on; }
 void requestLight(int brightness)      { targetBrightness = constrain(brightness, 0, 100); }
 
 // Apply relay targets to hardware (called ONCE per loop iteration)
@@ -1268,7 +1290,9 @@ void relayManagerApply() {
   bool heaterChange = (relayTarget.heater != heaterOn);
   bool foggerChange = (relayTarget.fogger != foggerOn);
   bool circChange   = (relayTarget.circulationFan != circulationFanOn);
-  bool anyChange    = fanChange || alarmChange || heaterChange || foggerChange || circChange;
+  bool ceilingChange = (relayTarget.ceilingFan != ceilingFanOn);
+  bool sprinklerChange = (relayTarget.sprinkler != sprinklerOn);
+  bool anyChange    = fanChange || alarmChange || heaterChange || foggerChange || circChange || ceilingChange || sprinklerChange;
   
   // If protection active and no safety bypass AND not manual command, skip all relay changes
   // Manual commands from user must ALWAYS be honored — protection is only for automation oscillation
@@ -1305,19 +1329,31 @@ void relayManagerApply() {
     changed = true;
   }
 
-  // Fogger (shares pin with heater in some configs)
+  // Fogger
   if (foggerChange) {
     foggerOn = relayTarget.fogger;
     digitalWrite(FOGGER_RELAY_PIN, foggerOn ? LOW : HIGH);
     changed = true;
   }
 
-  // Circulation Fan (Layer: track only; Broiler: control pin)
+  // Circulation Fan (IN8)
   if (circChange) {
     circulationFanOn = relayTarget.circulationFan;
-    if (isBroiler()) {
-      digitalWrite(CIRCULATION_RELAY_PIN, circulationFanOn ? LOW : HIGH);
-    }
+    digitalWrite(CIRCULATION_RELAY_PIN, circulationFanOn ? LOW : HIGH);
+    changed = true;
+  }
+
+  // Ceiling Fan (IN2) — temperature-based
+  if (ceilingChange) {
+    ceilingFanOn = relayTarget.ceilingFan;
+    digitalWrite(CEILING_FAN_RELAY_PIN, ceilingFanOn ? LOW : HIGH);
+    changed = true;
+  }
+
+  // Sprinkler (IN7) — HSI-based
+  if (sprinklerChange) {
+    sprinklerOn = relayTarget.sprinkler;
+    digitalWrite(SPRINKLER_RELAY_PIN, sprinklerOn ? LOW : HIGH);
     changed = true;
   }
   
@@ -1330,7 +1366,9 @@ void relayManagerApply() {
     if (heaterChange) detail += "HTR:" + String(relayTarget.heater?"REQ_ON":"REQ_OFF") + "→" + String(heaterOn?"ON":"OFF") + " ";
     if (foggerChange) detail += "FOG:" + String(relayTarget.fogger?"REQ_ON":"REQ_OFF") + "→" + String(foggerOn?"ON":"OFF") + " ";
     if (alarmChange) detail += "ALM:" + String(relayTarget.alarm?"REQ_ON":"REQ_OFF") + "→" + String(alarmOn?"ON":"OFF") + " ";
-    if (circChange) detail += "CIRC:" + String(relayTarget.circulationFan?"REQ_ON":"REQ_OFF") + "→" + String(circulationFanOn?"ON":"OFF");
+    if (circChange) detail += "CIRC:" + String(relayTarget.circulationFan?"REQ_ON":"REQ_OFF") + "→" + String(circulationFanOn?"ON":"OFF") + " ";
+    if (ceilingChange) detail += "CEIL:" + String(relayTarget.ceilingFan?"REQ_ON":"REQ_OFF") + "→" + String(ceilingFanOn?"ON":"OFF") + " ";
+    if (sprinklerChange) detail += "SPRK:" + String(relayTarget.sprinkler?"REQ_ON":"REQ_OFF") + "→" + String(sprinklerOn?"ON":"OFF");
     recordForensicEntry("relay_change", detail);
   }
 
@@ -1362,11 +1400,9 @@ void updateLightingWithFade() {
   bool newLightOn = (lightBrightness > 0);
   if (newLightOn != lightOn) {
     lightOn = newLightOn;
-    if (!isBroiler()) {
-      // IN2 (GPIO 26) is Light relay in Layer mode
-      digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
-      Serial.println(lightOn ? "💡 Light relay ON (Layer)" : "🌑 Light relay OFF (Layer)");
-    }
+    // IN3 (GPIO 27) is Light relay in 8-channel config
+    digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
+    Serial.println(lightOn ? "💡 Light relay ON" : "🌑 Light relay OFF");
   }
 }
 
@@ -1612,8 +1648,12 @@ void runControlLogic() {
   // Priority 2: Heating
   advancedHeaterControl();
 
-  // Priority 3: Cooling (Fogger)
+  // Priority 3: Cooling (Fogger + Sprinkler)
   foggerControl();
+  sprinklerControl();
+
+  // Ceiling Fan (temperature-based)
+  ceilingFanControl();
 
   // Priority 4: Ventilation
   if (!foggerActive) {
@@ -2352,6 +2392,8 @@ void syncWithCloud() {
   doc["online_duration_seconds"] = onlineDurationSec;
   doc["offline_duration_seconds"] = offlineDurationSec;
   doc["circulation_fan_on"] = circulationFanOn;
+  doc["ceiling_fan_on"] = ceilingFanOn;
+  doc["sprinkler_on"] = sprinklerOn;
   doc["fogger_on"] = foggerOn;
   doc["min_vent_active"] = minVentActive;
   doc["fogger_active"] = foggerActive;
@@ -2359,6 +2401,7 @@ void syncWithCloud() {
   doc["cached_settings_version"] = cachedSettingsVersion;
   doc["system_state"] = stateNames[currentState];
   doc["dht2_available"] = dht2Available;
+  doc["relay_count"] = 8;
   if (dht2Available) { doc["temperature2"] = temperature2; doc["humidity2"] = humidity2; }
 
   String payload;
@@ -2521,6 +2564,12 @@ void checkCommands() {
         } else if (type == "circulation_fan") {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
+        } else if (type == "ceiling_fan") {
+          ceilingFanManualOverride = true; ceilingFanManualTime = millis();
+          requestCeilingFan(value);
+        } else if (type == "sprinkler") {
+          sprinklerManualOverride = true; sprinklerManualTime = millis();
+          requestSprinkler(value);
         } else if (type == "stop_automation") {
           // Always allow manual override — safety arbiter will still protect life-critical invariants
           localManualOverride = value;
@@ -3125,12 +3174,15 @@ void setup() {
   preferences.putInt("restarts", totalRestarts);
   preferences.end();
 
-  // --- Relay Init (ALL OFF - Active LOW: HIGH=OFF) ---
-  pinMode(FAN_RELAY_PIN, OUTPUT);    digitalWrite(FAN_RELAY_PIN, HIGH);
-  pinMode(LIGHT_RELAY_PIN, OUTPUT);  digitalWrite(LIGHT_RELAY_PIN, HIGH);
-  pinMode(ALARM_RELAY_PIN, OUTPUT);  digitalWrite(ALARM_RELAY_PIN, HIGH);
-  pinMode(HEATER_RELAY_PIN, OUTPUT); digitalWrite(HEATER_RELAY_PIN, HIGH);
-  pinMode(FOGGER_RELAY_PIN, OUTPUT); digitalWrite(FOGGER_RELAY_PIN, HIGH);  // INV-6: separate pin
+  // --- Relay Init (ALL OFF - Active LOW: HIGH=OFF) — 8 Channel ---
+  pinMode(FAN_RELAY_PIN, OUTPUT);          digitalWrite(FAN_RELAY_PIN, HIGH);      // IN1
+  pinMode(CEILING_FAN_RELAY_PIN, OUTPUT);  digitalWrite(CEILING_FAN_RELAY_PIN, HIGH); // IN2
+  pinMode(LIGHT_RELAY_PIN, OUTPUT);        digitalWrite(LIGHT_RELAY_PIN, HIGH);    // IN3
+  pinMode(HEATER_RELAY_PIN, OUTPUT);       digitalWrite(HEATER_RELAY_PIN, HIGH);   // IN4
+  pinMode(FOGGER_RELAY_PIN, OUTPUT);       digitalWrite(FOGGER_RELAY_PIN, HIGH);   // IN5
+  pinMode(ALARM_RELAY_PIN, OUTPUT);        digitalWrite(ALARM_RELAY_PIN, HIGH);    // IN6
+  pinMode(SPRINKLER_RELAY_PIN, OUTPUT);    digitalWrite(SPRINKLER_RELAY_PIN, HIGH); // IN7
+  pinMode(CIRCULATION_RELAY_PIN, OUTPUT);  digitalWrite(CIRCULATION_RELAY_PIN, HIGH); // IN8
   pinMode(STATUS_LED_PIN, OUTPUT);
 
   // ═══════════════════════════════════════════════════════════════
@@ -3138,21 +3190,22 @@ void setup() {
   // Verifies no two logical devices share the same physical GPIO.
   // If conflict detected → HALT (prevents lethal pin collision).
   // ═══════════════════════════════════════════════════════════════
-  // ═══ ALARM_RELAY_PIN (33) == HEATER_RELAY_PIN (33) intentionally ═══
-  // They share IN3: Alarm for Layer, Heater for Broiler. 
-  // Combined into single entry to avoid false GPIO conflict HALT.
   GpioAssignment gpioMap[] = {
-    {FAN_RELAY_PIN,    "ExhaustFan"},
-    {LIGHT_RELAY_PIN,  "Light/CircFan"},
-    {ALARM_RELAY_PIN,  "Alarm+Heater(IN3)"},  // Shared pin: Layer=Alarm, Broiler=Heater
-    {FOGGER_RELAY_PIN, "Fogger"},
-    {DHT_PIN,          "DHT22_1"},
-    {DHT2_PIN,         "DHT22_2"},
-    {MQ135_PIN,        "MQ137_NH3"},
-    {POWER_SENSE_PIN,  "ZMPT101B"},
-    {WATER_FLOW_PIN,   "YFS201"}
+    {FAN_RELAY_PIN,          "ExhaustFan"},       // IN1 GPIO 25
+    {CEILING_FAN_RELAY_PIN,  "CeilingFan"},       // IN2 GPIO 26
+    {LIGHT_RELAY_PIN,        "Light"},             // IN3 GPIO 27
+    {HEATER_RELAY_PIN,       "Heater"},            // IN4 GPIO 14
+    {FOGGER_RELAY_PIN,       "Fogger"},            // IN5 GPIO 12
+    {ALARM_RELAY_PIN,        "Alarm"},             // IN6 GPIO 13
+    {SPRINKLER_RELAY_PIN,    "Sprinkler"},         // IN7 GPIO 15
+    {CIRCULATION_RELAY_PIN,  "CirculationFan"},    // IN8 GPIO 33
+    {DHT_PIN,                "DHT22_1"},
+    {DHT2_PIN,               "DHT22_2"},
+    {MQ135_PIN,              "MQ137_NH3"},
+    {POWER_SENSE_PIN,        "ZMPT101B"},
+    {WATER_FLOW_PIN,         "YFS201"}
   };
-  if (!safetyEngine.validateGpioAssignments(gpioMap, 9)) {
+  if (!safetyEngine.validateGpioAssignments(gpioMap, 13)) {
     // FATAL: GPIO conflict detected — HALT with alarm
     Serial.println("🔴 FATAL: GPIO CONFLICT — SYSTEM HALTED");
     Serial.println("🔴 " + safetyEngine.gpioConflictDetail);
@@ -3166,14 +3219,14 @@ void setup() {
   // --- Safety Engine Init (must have GPIO pins for direct relay control) ---
   safetyEngine.begin(FAN_RELAY_PIN, HEATER_RELAY_PIN, ALARM_RELAY_PIN);
 
-  // --- Gradual Relay Test (non-blocking wait) ---
-  Serial.println("🔌 Relay test sequence...");
-  const int relayPins[] = {FAN_RELAY_PIN, LIGHT_RELAY_PIN, ALARM_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN};
-  for (int i = 0; i < 5; i++) {
+  // --- Gradual Relay Test (non-blocking wait) — 8 channels ---
+  Serial.println("🔌 Relay test sequence (8-ch)...");
+  const int relayPins[] = {FAN_RELAY_PIN, CEILING_FAN_RELAY_PIN, LIGHT_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN, ALARM_RELAY_PIN, SPRINKLER_RELAY_PIN, CIRCULATION_RELAY_PIN};
+  for (int i = 0; i < 8; i++) {
     digitalWrite(relayPins[i], LOW);   // ON
-    unsigned long w = millis(); while(millis()-w < 1000) { esp_task_wdt_reset(); yield(); }
+    unsigned long w = millis(); while(millis()-w < 800) { esp_task_wdt_reset(); yield(); }
     digitalWrite(relayPins[i], HIGH);  // OFF
-    w = millis(); while(millis()-w < 500) yield();
+    w = millis(); while(millis()-w < 400) yield();
   }
 
   // --- Input Pins ---
@@ -3322,6 +3375,8 @@ void callBackendSafetyEngine() {
   doc["heater_on"] = heaterOn;
   doc["fogger_on"] = foggerOn;
   doc["circulation_fan_on"] = circulationFanOn;
+  doc["ceiling_fan_on"] = ceilingFanOn;
+  doc["sprinkler_on"] = sprinklerOn;
   doc["fan_available"] = true;
   doc["heater_on_ms_15min"] = 0;
   doc["fan_on_ms_15min"] = 0;
@@ -3386,6 +3441,8 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["requested_fogger"] = relayTarget.fogger;
   doc["requested_alarm"] = relayTarget.alarm;
   doc["requested_circulation_fan"] = relayTarget.circulationFan;
+  doc["requested_ceiling_fan"] = relayTarget.ceilingFan;
+  doc["requested_sprinkler"] = relayTarget.sprinkler;
   
   // Actual relay state (what hardware reports)
   doc["actual_fan"] = fanOn;
@@ -3394,11 +3451,14 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["actual_fogger"] = foggerOn;
   doc["actual_alarm"] = alarmOn;
   doc["actual_circulation_fan"] = circulationFanOn;
+  doc["actual_ceiling_fan"] = ceilingFanOn;
+  doc["actual_sprinkler"] = sprinklerOn;
   
   // Relay mismatch detection
   bool mismatch = (relayTarget.fan != fanOn) || (relayTarget.heater != heaterOn) ||
                   (relayTarget.fogger != foggerOn) || (relayTarget.alarm != alarmOn) ||
-                  (relayTarget.circulationFan != circulationFanOn);
+                  (relayTarget.circulationFan != circulationFanOn) ||
+                  (relayTarget.ceilingFan != ceilingFanOn) || (relayTarget.sprinkler != sprinklerOn);
   doc["relay_mismatch"] = mismatch;
   if (mismatch) {
     String details = "";
