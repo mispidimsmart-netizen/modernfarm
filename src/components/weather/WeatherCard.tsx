@@ -143,11 +143,12 @@ export function WeatherCard() {
         <div className="flex items-center gap-2">
           <span className="text-2xl">{weather.weather_icon}</span>
           <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+              {language === 'bn' ? '🌤️ বাইরের আবহাওয়া' : '🌤️ Outside Weather'}
+            </p>
             <p className="text-sm font-medium text-muted-foreground">
               {settings?.location_name || (language === 'bn' ? 'আপনার এলাকা' : 'Your Area')}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {weather.weather_condition}
+              {' · '}{weather.weather_condition}
             </p>
           </div>
         </div>
