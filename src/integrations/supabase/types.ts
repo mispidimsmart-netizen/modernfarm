@@ -3426,11 +3426,13 @@ export type Database = {
       safety_timeline: {
         Row: {
           actual_alarm: boolean
+          actual_ceiling_fan: boolean
           actual_circulation_fan: boolean
           actual_fan: boolean
           actual_fan_speed: string | null
           actual_fogger: boolean
           actual_heater: boolean
+          actual_sprinkler: boolean
           ammonia: number | null
           event_detail: string | null
           event_type: string
@@ -3455,11 +3457,13 @@ export type Database = {
           recorded_at: string
           relay_mismatch: boolean
           requested_alarm: boolean
+          requested_ceiling_fan: boolean
           requested_circulation_fan: boolean
           requested_fan: boolean
           requested_fan_speed: string | null
           requested_fogger: boolean
           requested_heater: boolean
+          requested_sprinkler: boolean
           safety_override_active: boolean | null
           safety_override_reason: string | null
           shed_id: string | null
@@ -3479,11 +3483,13 @@ export type Database = {
         }
         Insert: {
           actual_alarm?: boolean
+          actual_ceiling_fan?: boolean
           actual_circulation_fan?: boolean
           actual_fan?: boolean
           actual_fan_speed?: string | null
           actual_fogger?: boolean
           actual_heater?: boolean
+          actual_sprinkler?: boolean
           ammonia?: number | null
           event_detail?: string | null
           event_type?: string
@@ -3508,11 +3514,13 @@ export type Database = {
           recorded_at?: string
           relay_mismatch?: boolean
           requested_alarm?: boolean
+          requested_ceiling_fan?: boolean
           requested_circulation_fan?: boolean
           requested_fan?: boolean
           requested_fan_speed?: string | null
           requested_fogger?: boolean
           requested_heater?: boolean
+          requested_sprinkler?: boolean
           safety_override_active?: boolean | null
           safety_override_reason?: string | null
           shed_id?: string | null
@@ -3532,11 +3540,13 @@ export type Database = {
         }
         Update: {
           actual_alarm?: boolean
+          actual_ceiling_fan?: boolean
           actual_circulation_fan?: boolean
           actual_fan?: boolean
           actual_fan_speed?: string | null
           actual_fogger?: boolean
           actual_heater?: boolean
+          actual_sprinkler?: boolean
           ammonia?: number | null
           event_detail?: string | null
           event_type?: string
@@ -3561,11 +3571,13 @@ export type Database = {
           recorded_at?: string
           relay_mismatch?: boolean
           requested_alarm?: boolean
+          requested_ceiling_fan?: boolean
           requested_circulation_fan?: boolean
           requested_fan?: boolean
           requested_fan_speed?: string | null
           requested_fogger?: boolean
           requested_heater?: boolean
+          requested_sprinkler?: boolean
           safety_override_active?: boolean | null
           safety_override_reason?: string | null
           shed_id?: string | null
