@@ -256,29 +256,45 @@ function HourlyForecastBar({ forecast, language }: { forecast: any; language: st
   const tempRange = maxTemp - minTemp || 1;
 
   return (
-    <div className="mt-3 pt-3 border-t border-white/20">
+    <div className="mt-3 pt-3 border-t border-white/10">
       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
         {language === 'bn' ? 'পরবর্তী ৬ ঘণ্টা' : 'Next 6 Hours'}
       </p>
-      <div className="flex items-end justify-between gap-1">
+      <div className="flex items-end gap-2 overflow-x-auto pb-1">
         {hours.map((h, i) => {
-          const barHeight = h.temp != null ? 16 + ((h.temp - minTemp) / tempRange) * 24 : 20;
+          const heightPercent = h.temp != null ? 30 + ((h.temp - minTemp) / tempRange) * 70 : 50;
+          const isHot = (h.temp ?? 0) >= 30;
+          const isRainy = h.rain > 50;
           return (
-            <div key={i} className="flex flex-col items-center gap-1 flex-1">
-              <span className="text-[9px] font-bold">
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              className="flex flex-col items-center flex-1 min-w-[48px]"
+            >
+              <span className="text-[11px] font-bold mb-1">
                 {h.temp != null ? `${Math.round(h.temp)}°` : '--'}
               </span>
               <div
-                className={`w-full rounded-sm ${h.rain > 50 ? 'bg-blue-400/60' : 'bg-orange-400/50'}`}
-                style={{ height: `${barHeight}px` }}
+                className={`w-full rounded-lg transition-all ${
+                  isRainy
+                    ? 'bg-gradient-to-t from-blue-500/70 to-blue-400/40'
+                    : isHot
+                    ? 'bg-gradient-to-t from-orange-500/70 to-amber-400/40'
+                    : 'bg-gradient-to-t from-emerald-500/60 to-teal-400/30'
+                }`}
+                style={{ height: `${heightPercent}%`, minHeight: '20px', maxHeight: '44px' }}
               />
-              {h.rain > 0 && (
-                <span className="text-[8px] text-blue-400">💧{h.rain}%</span>
-              )}
-              <span className="text-[9px] text-muted-foreground">
-                {h.time.getHours().toString().padStart(2, '0')}:00
-              </span>
-            </div>
+              <div className="mt-1.5 flex flex-col items-center">
+                {h.rain > 0 && (
+                  <span className="text-[9px] text-blue-400 font-medium">💧{h.rain}%</span>
+                )}
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {h.time.getHours().toString().padStart(2, '0')}:00
+                </span>
+              </div>
+            </motion.div>
           );
         })}
       </div>
