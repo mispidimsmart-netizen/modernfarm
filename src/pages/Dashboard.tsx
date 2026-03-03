@@ -155,6 +155,11 @@ export function Dashboard() {
           <CoreMetricsRow />
         </div>
 
+        {/* ============ CURRENT ACTION + ADVISORY ============ */}
+        <div className="mb-3 grid grid-cols-2 gap-3">
+          <CurrentActionPanel />
+          <AdvisoryAssistant />
+        </div>
 
 
         {/* ============ TABS (Home extras + Full Details) ============ */}
@@ -191,11 +196,6 @@ export function Dashboard() {
               {/* Weather */}
               <WeatherCard />
 
-              {/* Current Action + Advisory side by side */}
-              <div className="grid grid-cols-2 gap-3">
-                <CurrentActionPanel />
-                <AdvisoryAssistant />
-              </div>
               
               {/* System Activity */}
               <SystemActivityCard />
