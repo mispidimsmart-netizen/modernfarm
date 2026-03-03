@@ -205,11 +205,11 @@ export function Dashboard() {
                 <AdvisoryAssistant />
               </div>
               
-              {/* Today Summary */}
-              <TodayReadableSummary />
-              
               {/* System Activity */}
               <SystemActivityCard />
+
+              {/* Today Summary */}
+              <TodayReadableSummary />
             </TabsContent>
             
             {/* TAB: Details (Technical/Graphs) */}
