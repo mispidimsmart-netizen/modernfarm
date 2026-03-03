@@ -6,23 +6,23 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔥 HEAT STRESS INDEX (HSI) CALCULATION
-// Formula: HSI = Temperature + (Humidity × 0.1)
+// 🔥 HEAT STRESS INDEX (HSI) — THI FORMULA (aligned with firmware v8.0.0)
+// Formula: THI = 0.8 × Temp + (Humidity / 100) × (Temp − 14.4) + 46.4
 // 
-// | HSI    | Status      | Action         |
+// | THI    | Status      | Action         |
 // |--------|-------------|----------------|
-// | < 30   | Normal      | Fan OFF        |
-// | 30-35  | Mild Stress | Fan LOW        |
-// | 35-40  | High Stress | Fan HIGH       |
-// | > 40   | Danger      | Fan HIGH+Alert |
+// | < 75   | Normal      | Fan OFF        |
+// | 75-80  | Mild Stress | Fan LOW        |
+// | 80-85  | High Stress | Fan HIGH       |
+// | > 85   | Danger      | Fan HIGH+Alert |
 // ═══════════════════════════════════════════════════════════════════════════
 function calculateHSI(temperature: number, humidity: number): number {
-  return temperature + (humidity * 0.1);
+  return 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔥 HSI-BASED AUTOMATION (Cloud Side Rule Engine)
-// IF HSI > 35 → fan = HIGH, alert = ON
+// 🔥 HSI-BASED AUTOMATION (Cloud Side Rule Engine — THI aligned)
+// IF THI > 85 → fan = HIGH, alert = ON
 // Cloud থাকলে advanced decision
 // Cloud না থাকলেও ESP32 একই কাজ করবে (local rules)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -635,11 +635,11 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
       thresholds: farm_profile === 0 
         ? {
             temp_ideal_min: 18, temp_ideal_max: 27, temp_fan_high: 30, temp_alarm: 33,
-            ammonia_fan: 15, ammonia_alarm: 25, hsi_fan_low: 30, hsi_fan_high: 35, hsi_emergency: 40
+            ammonia_fan: 15, ammonia_alarm: 25, hsi_fan_low: 75, hsi_fan_high: 80, hsi_emergency: 85
           }
         : {
             temp_curve: 'age-based', temp_fan_deviation: 2, temp_heater_deviation: 2, temp_alarm_deviation: 4,
-            ammonia_fan: 20, ammonia_alarm: 30, hsi_fan_high: 38, hsi_emergency: 42, hsi_critical: 45
+            ammonia_fan: 20, ammonia_alarm: 30, hsi_fan_high: 78, hsi_emergency: 82, hsi_critical: 86
           },
       timestamp: new Date().toISOString()
     };
@@ -1090,16 +1090,16 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
     const alerts: Record<string, any>[] = [];
     const shedLabel = shedName || (shedId ? `Shed ${shedId.slice(0, 8)}` : 'Farm');
     
-    // 🔥 HSI-BASED AUTOMATION (Cloud Side)
-    // Calculate Heat Stress Index: HSI = Temperature + (Humidity × 0.1)
+    // 🔥 HSI-BASED AUTOMATION (Cloud Side — THI Formula aligned with firmware v8.0.0)
+    // Calculate THI: 0.8 × Temp + (Humidity / 100) × (Temp − 14.4) + 46.4
     const hsi = calculateHSI(body.temperature, body.humidity);
-    const hsiStatus = hsi > 40 ? 'DANGER' : hsi >= 35 ? 'HIGH' : hsi >= 30 ? 'MILD' : 'NORMAL';
+    const hsiStatus = hsi > 85 ? 'DANGER' : hsi >= 80 ? 'HIGH' : hsi >= 75 ? 'MILD' : 'NORMAL';
     
-    console.log(`🔥 [${shedLabel}] HSI = ${hsi.toFixed(1)} (Temp=${body.temperature}, Hum=${body.humidity}) → ${hsiStatus}`);
+    console.log(`🔥 [${shedLabel}] THI = ${hsi.toFixed(1)} (Temp=${body.temperature}, Hum=${body.humidity}) → ${hsiStatus}`);
     
-    // HSI-based alert thresholds (Layer Optimized)
-    // < 30: Normal, 30-35: Mild, 35-40: High Stress, > 40: Danger
-    if (hsi > 40) {
+    // THI-based alert thresholds (aligned with firmware)
+    // < 75: Normal, 75-80: Mild, 80-85: High Stress, > 85: Danger
+    if (hsi > 85) {
       const alertData: Record<string, any> = {
         user_id: userId,
         alert_type: 'temperature',
@@ -1113,13 +1113,13 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       // Auto-enable fan HIGH + alarm for THIS SHED
       await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
       
-    } else if (hsi >= 35) {
+    } else if (hsi >= 80) {
       const alertData: Record<string, any> = {
         user_id: userId,
         alert_type: 'temperature',
         severity: 'warning',
-        message: `⚠️ [${shedLabel}] High Heat Stress: HSI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
-        message_bn: `⚠️ [${shedLabel}] উচ্চ হিট স্ট্রেস: HSI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
+        message: `⚠️ [${shedLabel}] High Heat Stress: THI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
+        message_bn: `⚠️ [${shedLabel}] উচ্চ হিট স্ট্রেস: THI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
       };
       if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
@@ -1127,7 +1127,7 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       // Auto-enable fan HIGH for THIS SHED
       await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
       
-    } else if (hsi >= 30) {
+    } else if (hsi >= 75) {
       // Mild stress - fan LOW (no alert needed, just automation)
       await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
     } else {
@@ -1137,7 +1137,7 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
 
     // Legacy temperature-only alerts (for backward compatibility)
     if (settings) {
-      if (body.temperature > Number(settings.temperature_max) && hsi <= 40) {
+      if (body.temperature > Number(settings.temperature_max) && hsi <= 85) {
         // Only add if not already covered by HSI danger alert
         if (!alerts.some(a => a.severity === 'danger' && a.alert_type === 'temperature')) {
           const alertData: Record<string, any> = {
