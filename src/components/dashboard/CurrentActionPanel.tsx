@@ -115,9 +115,10 @@ export function CurrentActionPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
+      className="h-full"
     >
-      <Card className={`border ${currentAction.color} shadow-sm`}>
-        <CardContent className="pt-4 pb-4">
+      <Card className={`border ${currentAction.color} shadow-sm h-full`}>
+        <CardContent className="pt-4 pb-4 h-full flex flex-col justify-center">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             {language === 'bn' ? 'বর্তমান কাজ' : 'Current Action'}
           </p>
