@@ -56,6 +56,26 @@ serve(async (req) => {
 
     const { lat, lng, location_name } = await req.json();
 
+    // Reverse geocode if no location name provided
+    let resolvedLocationName = location_name || '';
+    if (!resolvedLocationName) {
+      try {
+        const geoUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=bn,en&zoom=10`;
+        const geoRes = await fetch(geoUrl, {
+          headers: { 'User-Agent': 'FarmEye/1.0' }
+        });
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          const addr = geoData.address || {};
+          resolvedLocationName = addr.city || addr.town || addr.village || addr.county || addr.state || geoData.display_name?.split(',')[0] || 'Unknown';
+          console.log('Reverse geocoded location:', resolvedLocationName);
+        }
+      } catch (geoErr) {
+        console.error('Reverse geocoding failed:', geoErr);
+        resolvedLocationName = 'Unknown';
+      }
+    }
+
     // Use Open-Meteo (free, no API key needed) for weather data
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&timezone=auto&forecast_days=3`;
 
@@ -137,7 +157,7 @@ serve(async (req) => {
         user_id: userId,
         location_lat: lat,
         location_lng: lng,
-        location_name: location_name || 'Unknown',
+        location_name: resolvedLocationName || 'Unknown',
         last_weather_fetch: new Date().toISOString(),
       }, { onConflict: 'user_id' });
 
