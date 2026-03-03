@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
 
-type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'stop_automation' | 'circulation_fan' | 'fogger';
+type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'stop_automation' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
 
 interface SendCommandParams {
   commandType: CommandType;
@@ -61,8 +61,6 @@ export function useSendDeviceCommand() {
         case 'manual_override':
         case 'stop_automation':
           desiredUpdate.desired_manual_override = commandValue;
-          // When deactivating manual override, clear ALL desired device states
-          // so automation can take full control immediately
           if (!commandValue) {
             desiredUpdate.desired_fan_on = null;
             desiredUpdate.desired_light_on = null;
@@ -70,6 +68,8 @@ export function useSendDeviceCommand() {
             desiredUpdate.desired_heater_on = null;
             desiredUpdate.desired_circulation_fan_on = null;
             desiredUpdate.desired_fogger_on = null;
+            desiredUpdate.desired_ceiling_fan_on = null;
+            desiredUpdate.desired_sprinkler_on = null;
             desiredUpdate.desired_fan_speed = null;
           }
           break;
@@ -78,6 +78,12 @@ export function useSendDeviceCommand() {
           break;
         case 'fogger':
           desiredUpdate.desired_fogger_on = commandValue;
+          break;
+        case 'ceiling_fan':
+          desiredUpdate.desired_ceiling_fan_on = commandValue;
+          break;
+        case 'sprinkler':
+          desiredUpdate.desired_sprinkler_on = commandValue;
           break;
       }
 
@@ -107,6 +113,8 @@ export function useSendDeviceCommand() {
         stop_automation: { en: 'Stop Automation', bn: 'অটোমেশন বন্ধ' },
         circulation_fan: { en: 'Circulation Fan', bn: 'সার্কুলেশন ফ্যান' },
         fogger: { en: 'Fogger', bn: 'ফগার' },
+        ceiling_fan: { en: 'Ceiling Fan', bn: 'সিলিং ফ্যান' },
+        sprinkler: { en: 'Roof Sprinkler', bn: 'ছাদ স্প্রিংকলার' },
       };
 
       const name = commandNames[variables.commandType];
