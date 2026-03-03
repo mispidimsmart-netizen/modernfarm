@@ -285,8 +285,8 @@ export function AdvisoryAssistant() {
 
   if (activeAdvisories.length === 0) {
     return (
-      <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/30">
-        <CardContent className="p-4 text-center">
+      <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/30 h-full">
+        <CardContent className="p-4 text-center h-full flex flex-col items-center justify-center">
           <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 mb-3">
             <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           </div>
