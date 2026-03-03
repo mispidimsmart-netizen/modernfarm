@@ -200,14 +200,14 @@ export function Dashboard() {
                 <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
               </div>
 
+              {/* Weather */}
+              <WeatherCard />
+
               {/* Advisory */}
               <AdvisoryAssistant />
               
               {/* Today Summary */}
               <TodayReadableSummary />
-              
-              {/* Weather */}
-              <WeatherCard />
               
               {/* System Activity */}
               <SystemActivityCard />
