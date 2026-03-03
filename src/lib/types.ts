@@ -14,6 +14,8 @@ export interface DeviceStatus {
   heater: boolean;
   circulation_fan: boolean;
   fogger: boolean;
+  ceilingFan: boolean;
+  sprinkler: boolean;
 }
 
 export interface AutomationRule {

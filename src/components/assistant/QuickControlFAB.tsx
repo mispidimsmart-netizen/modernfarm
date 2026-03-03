@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Fan, Flame, Lightbulb, X, Loader2 } from 'lucide-react';
+import { Zap, Fan, Flame, Lightbulb, X, Loader2, Droplets, ArrowUpFromDot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 interface QuickAction {
-  key: 'fan' | 'heater' | 'light';
+  key: 'fan' | 'heater' | 'light' | 'ceiling_fan' | 'sprinkler';
   icon: React.ElementType;
   label: { bn: string; en: string };
   activeColor: string;
@@ -24,6 +24,13 @@ const actions: QuickAction[] = [
     activeGlow: 'shadow-cyan-500/50',
   },
   {
+    key: 'ceiling_fan',
+    icon: Fan,
+    label: { bn: 'সিলিং', en: 'Ceiling' },
+    activeColor: 'bg-gradient-to-br from-violet-500 to-purple-600',
+    activeGlow: 'shadow-violet-500/50',
+  },
+  {
     key: 'heater',
     icon: Flame,
     label: { bn: 'হিটার', en: 'Heater' },
@@ -37,6 +44,13 @@ const actions: QuickAction[] = [
     activeColor: 'bg-gradient-to-br from-amber-500 to-yellow-600',
     activeGlow: 'shadow-amber-500/50',
   },
+  {
+    key: 'sprinkler',
+    icon: ArrowUpFromDot,
+    label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' },
+    activeColor: 'bg-gradient-to-br from-sky-500 to-blue-600',
+    activeGlow: 'shadow-sky-500/50',
+  },
 ];
 
 export function QuickControlFAB() {
@@ -46,13 +60,10 @@ export function QuickControlFAB() {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
-  const handleToggle = async (key: 'fan' | 'heater' | 'light') => {
+  const handleToggle = async (key: QuickAction['key']) => {
     setLoadingKey(key);
     
-    const currentState = key === 'fan' ? deviceStatus.fan 
-      : key === 'heater' ? deviceStatus.heater 
-      : deviceStatus.light;
-    
+    const currentState = getDeviceState(key);
     const newState = !currentState;
     
     try {
@@ -68,14 +79,18 @@ export function QuickControlFAB() {
     }
   };
 
-  const getDeviceState = (key: 'fan' | 'heater' | 'light') => {
+  const getDeviceState = (key: QuickAction['key']) => {
     switch (key) {
       case 'fan': return deviceStatus.fan;
       case 'heater': return deviceStatus.heater;
       case 'light': return deviceStatus.light;
+      case 'ceiling_fan': return deviceStatus.ceilingFan;
+      case 'sprinkler': return deviceStatus.sprinkler;
       default: return false;
     }
   };
+
+  const activeCount = [deviceStatus.fan, deviceStatus.heater, deviceStatus.light, deviceStatus.ceilingFan, deviceStatus.sprinkler].filter(Boolean).length;
 
   return (
     <div className="fixed bottom-24 right-4 z-50">
@@ -122,8 +137,8 @@ export function QuickControlFAB() {
                     {isActionLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Icon className={`h-5 w-5 ${isActive && action.key === 'fan' ? 'animate-spin' : ''}`} 
-                        style={isActive && action.key === 'fan' ? { animationDuration: '1s' } : undefined}
+                      <Icon className={`h-5 w-5 ${isActive && (action.key === 'fan' || action.key === 'ceiling_fan') ? 'animate-spin' : ''}`} 
+                        style={isActive && (action.key === 'fan' || action.key === 'ceiling_fan') ? { animationDuration: '1s' } : undefined}
                       />
                     )}
                   </Button>
@@ -151,11 +166,11 @@ export function QuickControlFAB() {
         )}
         
         {/* Pulse indicator when devices are active */}
-        {!isOpen && (deviceStatus.fan || deviceStatus.heater || deviceStatus.light) && (
+        {!isOpen && activeCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-4 w-4">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 items-center justify-center text-[8px] font-bold text-primary-foreground">
-              {[deviceStatus.fan, deviceStatus.heater, deviceStatus.light].filter(Boolean).length}
+              {activeCount}
             </span>
           </span>
         )}

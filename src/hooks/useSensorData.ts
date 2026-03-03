@@ -83,6 +83,8 @@ export function useDeviceControl(shedId?: string | null) {
     heater: deviceStatus.heater_on ?? false,
     circulation_fan: deviceStatus.circulation_fan_on ?? false,
     fogger: deviceStatus.fogger_on ?? false,
+    ceilingFan: deviceStatus.ceiling_fan_on ?? false,
+    sprinkler: deviceStatus.sprinkler_on ?? false,
   } : {
     power: true,
     fan: false,
@@ -91,6 +93,8 @@ export function useDeviceControl(shedId?: string | null) {
     heater: false,
     circulation_fan: false,
     fogger: false,
+    ceilingFan: false,
+    sprinkler: false,
   };
 
   const manualOverride = deviceStatus?.manual_override ?? false;

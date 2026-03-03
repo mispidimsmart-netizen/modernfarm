@@ -120,6 +120,8 @@ export function useRealtimeDeviceStatus() {
     heater: initialStatus.heater_on ?? false,
     circulation_fan: initialStatus.circulation_fan_on ?? false,
     fogger: initialStatus.fogger_on ?? false,
+    ceilingFan: initialStatus.ceiling_fan_on ?? false,
+    sprinkler: initialStatus.sprinkler_on ?? false,
   } : {
     power: true,
     fan: false,
@@ -128,6 +130,8 @@ export function useRealtimeDeviceStatus() {
     heater: false,
     circulation_fan: false,
     fogger: false,
+    ceilingFan: false,
+    sprinkler: false,
   };
 
   const manualOverride = initialStatus?.manual_override ?? false;
