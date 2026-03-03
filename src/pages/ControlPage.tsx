@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Fan, Lightbulb, Bell, Flame, Wind, Droplets,
-  ShieldAlert, Timer, CheckCircle2,
+  ShieldAlert, Timer, CheckCircle2, CloudDrizzle, CircleDot,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
@@ -50,6 +50,12 @@ const BROILER_DEVICES = [
     description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
   },
   {
+    key: 'ceiling_fan',
+    icon: CircleDot,
+    name: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+    description: { bn: 'ঘরের ভেতর বাতাস চলাচল', en: 'Indoor air circulation' },
+  },
+  {
     key: 'circulation_fan',
     icon: Wind,
     name: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
@@ -60,6 +66,12 @@ const BROILER_DEVICES = [
     icon: Droplets,
     name: { bn: 'ফগার', en: 'Fogger' },
     description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress' },
+  },
+  {
+    key: 'sprinkler',
+    icon: CloudDrizzle,
+    name: { bn: 'ছাদ স্প্রিংকলার', en: 'Roof Sprinkler' },
+    description: { bn: 'ছাদ ঠান্ডা রাখে (HSI ভিত্তিক)', en: 'Cools roof (HSI based)' },
   },
   {
     key: 'light',
@@ -78,10 +90,10 @@ const LAYER_DEVICES = [
     description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
   },
   {
-    key: 'circulation_fan',
-    icon: Wind,
-    name: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
-    description: { bn: 'বাতাস সমভাবে ছড়িয়ে দেয়', en: 'Distributes air evenly' },
+    key: 'ceiling_fan',
+    icon: CircleDot,
+    name: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+    description: { bn: 'ঘরের ভেতর বাতাস চলাচল (≥25°C)', en: 'Indoor air circulation (≥25°C)' },
   },
   {
     key: 'heater',
@@ -94,6 +106,12 @@ const LAYER_DEVICES = [
     icon: Droplets,
     name: { bn: 'ফগার', en: 'Fogger' },
     description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress' },
+  },
+  {
+    key: 'sprinkler',
+    icon: CloudDrizzle,
+    name: { bn: 'ছাদ স্প্রিংকলার', en: 'Roof Sprinkler' },
+    description: { bn: 'ছাদ ঠান্ডা রাখে (HSI ভিত্তিক)', en: 'Cools roof (HSI based)' },
   },
   {
     key: 'light',
@@ -139,7 +157,7 @@ export function ControlPage() {
         
         Object.entries(updated).forEach(([deviceKey, timer]) => {
           if (timer.endTime <= now) {
-            const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+            const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
             sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
             setDeviceStatus({ [deviceKey]: false });
             delete updated[deviceKey];
@@ -185,6 +203,8 @@ export function ControlPage() {
       case 'heater': return status.heater ?? false;
       case 'circulation_fan': return status.circulation_fan ?? false;
       case 'fogger': return status.fogger ?? false;
+      case 'ceiling_fan': return (status as any).ceiling_fan ?? false;
+      case 'sprinkler': return (status as any).sprinkler ?? false;
       default: return false;
     }
   }, [status]);
@@ -200,7 +220,7 @@ export function ControlPage() {
   };
 
   const handleStop = (deviceKey: string) => {
-    const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+    const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: false });
     setActiveTimers(prev => {
@@ -216,7 +236,7 @@ export function ControlPage() {
 
   const handleTimerConfirm = (durationMinutes: number) => {
     if (!pendingDevice) return;
-    const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+    const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
     setDeviceStatus({ [pendingDevice.device]: true });
     setActiveTimers(prev => ({
@@ -252,7 +272,7 @@ export function ControlPage() {
       // This ensures instant transition back to automation control
       const timerDevices = Object.keys(activeTimers);
       timerDevices.forEach((deviceKey) => {
-        const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+        const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
         sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
         setDeviceStatus({ [deviceKey]: false });
       });
@@ -263,7 +283,7 @@ export function ControlPage() {
       const allDeviceKeys = DEVICES.map(d => d.key);
       allDeviceKeys.forEach((deviceKey) => {
         if (isDeviceActive(deviceKey)) {
-          const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger';
+          const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
           // Only send OFF if device is currently on and not already handled by timer cleanup
           if (!timerDevices.includes(deviceKey)) {
             sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });

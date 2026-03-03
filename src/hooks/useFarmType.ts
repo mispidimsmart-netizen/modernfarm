@@ -56,6 +56,51 @@ export const BROILER_TEMP_CURVE_DAYS: {
   { minDays: 36, maxDays: 999, minTemp: 22, maxTemp: 23, label: 'Day 36+', labelBn: '৩৬+ দিন' },
 ];
 
+/**
+ * 8-Channel Relay GPIO Mapping (v2.0)
+ * Each device has its own dedicated relay channel — no pin sharing needed.
+ */
+export const RELAY_8CH_GPIO_MAP = {
+  IN1: { gpio: 25, device: 'exhaust_fan', label: 'Exhaust Fan', labelBn: 'এক্সহস্ট ফ্যান', mode: 'both' },
+  IN2: { gpio: 26, device: 'ceiling_fan', label: 'Ceiling Fan', labelBn: 'সিলিং ফ্যান', mode: 'both' },
+  IN3: { gpio: 27, device: 'light', label: 'Light', labelBn: 'লাইট', mode: 'both' },
+  IN4: { gpio: 14, device: 'heater', label: 'Heater', labelBn: 'হিটার', mode: 'broiler' },
+  IN5: { gpio: 12, device: 'fogger', label: 'Fogger', labelBn: 'ফগার', mode: 'both' },
+  IN6: { gpio: 13, device: 'alarm', label: 'Alarm', labelBn: 'অ্যালার্ম', mode: 'both' },
+  IN7: { gpio: 15, device: 'sprinkler', label: 'Roof Sprinkler', labelBn: 'ছাদ স্প্রিংকলার', mode: 'both' },
+  IN8: { gpio: 33, device: 'circulation_fan', label: 'Circulation Fan', labelBn: 'সার্কুলেশন ফ্যান', mode: 'broiler' },
+} as const;
+
+/**
+ * Sensor GPIO Mapping (v2.0 — adjusted for 8-channel relay)
+ */
+export const SENSOR_GPIO_MAP = {
+  DHT22_1: { gpio: 4, label: 'DHT22 Primary', labelBn: 'DHT22 প্রধান' },
+  DHT22_2: { gpio: 16, label: 'DHT22 Secondary', labelBn: 'DHT22 দ্বিতীয়' },
+  WATER_FLOW: { gpio: 17, label: 'Water Flow (YF-S201)', labelBn: 'পানির ফ্লো' },
+  MQ137: { gpio: 34, label: 'Ammonia (MQ-137)', labelBn: 'অ্যামোনিয়া' },
+  ZMPT101B: { gpio: 35, label: 'Voltage (ZMPT101B)', labelBn: 'ভোল্টেজ' },
+} as const;
+
+/**
+ * Sprinkler automation thresholds
+ */
+export const SPRINKLER_THRESHOLDS = {
+  HSI_ON: 80,          // HSI ≥80 → sprinkler ON
+  HSI_OFF: 75,         // HSI ≤75 → sprinkler OFF
+  CYCLE_ON_SEC: 300,   // 5 min ON
+  CYCLE_OFF_SEC: 600,  // 10 min OFF
+  MAX_DAILY_MIN: 120,  // Max 2 hours/day
+};
+
+/**
+ * Ceiling fan automation thresholds (Layer mode)
+ */
+export const CEILING_FAN_THRESHOLDS = {
+  TEMP_ON: 25,         // ≥25°C → ON
+  TEMP_OFF: 22,        // ≤22°C → OFF
+};
+
 // Legacy weekly format for backward compatibility
 export const BROILER_TEMP_CURVE: { ageWeeks: number; minTemp: number; maxTemp: number }[] = [
   { ageWeeks: 0, minTemp: 33, maxTemp: 34 },

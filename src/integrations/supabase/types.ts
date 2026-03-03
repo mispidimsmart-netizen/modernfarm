@@ -24,6 +24,9 @@ export type Database = {
           airflow_night_interval_minutes: number | null
           airflow_night_on_seconds: number | null
           automation_priority: string | null
+          ceiling_fan_enabled: boolean | null
+          ceiling_fan_off_temp: number | null
+          ceiling_fan_on_temp: number | null
           created_at: string
           curtain_advisory_enabled: boolean | null
           curtain_close_on_cold: boolean | null
@@ -48,6 +51,12 @@ export type Database = {
           min_vent_interval_minutes: number | null
           min_vent_temp_threshold: number | null
           shed_id: string | null
+          sprinkler_cycle_off_seconds: number | null
+          sprinkler_cycle_on_seconds: number | null
+          sprinkler_enabled: boolean | null
+          sprinkler_hsi_threshold: number | null
+          sprinkler_max_daily_minutes: number | null
+          sprinkler_stop_hsi: number | null
           updated_at: string
           user_id: string
           water_baseline_hours: number | null
@@ -64,6 +73,9 @@ export type Database = {
           airflow_night_interval_minutes?: number | null
           airflow_night_on_seconds?: number | null
           automation_priority?: string | null
+          ceiling_fan_enabled?: boolean | null
+          ceiling_fan_off_temp?: number | null
+          ceiling_fan_on_temp?: number | null
           created_at?: string
           curtain_advisory_enabled?: boolean | null
           curtain_close_on_cold?: boolean | null
@@ -88,6 +100,12 @@ export type Database = {
           min_vent_interval_minutes?: number | null
           min_vent_temp_threshold?: number | null
           shed_id?: string | null
+          sprinkler_cycle_off_seconds?: number | null
+          sprinkler_cycle_on_seconds?: number | null
+          sprinkler_enabled?: boolean | null
+          sprinkler_hsi_threshold?: number | null
+          sprinkler_max_daily_minutes?: number | null
+          sprinkler_stop_hsi?: number | null
           updated_at?: string
           user_id: string
           water_baseline_hours?: number | null
@@ -104,6 +122,9 @@ export type Database = {
           airflow_night_interval_minutes?: number | null
           airflow_night_on_seconds?: number | null
           automation_priority?: string | null
+          ceiling_fan_enabled?: boolean | null
+          ceiling_fan_off_temp?: number | null
+          ceiling_fan_on_temp?: number | null
           created_at?: string
           curtain_advisory_enabled?: boolean | null
           curtain_close_on_cold?: boolean | null
@@ -128,6 +149,12 @@ export type Database = {
           min_vent_interval_minutes?: number | null
           min_vent_temp_threshold?: number | null
           shed_id?: string | null
+          sprinkler_cycle_off_seconds?: number | null
+          sprinkler_cycle_on_seconds?: number | null
+          sprinkler_enabled?: boolean | null
+          sprinkler_hsi_threshold?: number | null
+          sprinkler_max_daily_minutes?: number | null
+          sprinkler_stop_hsi?: number | null
           updated_at?: string
           user_id?: string
           water_baseline_hours?: number | null
@@ -1051,6 +1078,7 @@ export type Database = {
           battery_percentage: number | null
           broiler_age_source: string | null
           cached_settings_version: number | null
+          ceiling_fan_total_runtime_seconds: number | null
           circulation_fan_last_cycle_at: string | null
           consecutive_high_ammonia: number | null
           cpu_temperature: number | null
@@ -1092,11 +1120,14 @@ export type Database = {
           power_event_type: string | null
           power_source: string | null
           power_voltage_rms: number | null
+          relay_count: number | null
           relay_toggle_violations: number | null
           restart_count: number | null
           restart_reason: string | null
           safe_mode_until: string | null
           shed_id: string | null
+          sprinkler_last_cycle_at: string | null
+          sprinkler_total_runtime_seconds: number | null
           stuck_relay_detected: boolean | null
           stuck_relay_device: string | null
           total_restarts: number | null
@@ -1117,6 +1148,7 @@ export type Database = {
           battery_percentage?: number | null
           broiler_age_source?: string | null
           cached_settings_version?: number | null
+          ceiling_fan_total_runtime_seconds?: number | null
           circulation_fan_last_cycle_at?: string | null
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
@@ -1158,11 +1190,14 @@ export type Database = {
           power_event_type?: string | null
           power_source?: string | null
           power_voltage_rms?: number | null
+          relay_count?: number | null
           relay_toggle_violations?: number | null
           restart_count?: number | null
           restart_reason?: string | null
           safe_mode_until?: string | null
           shed_id?: string | null
+          sprinkler_last_cycle_at?: string | null
+          sprinkler_total_runtime_seconds?: number | null
           stuck_relay_detected?: boolean | null
           stuck_relay_device?: string | null
           total_restarts?: number | null
@@ -1183,6 +1218,7 @@ export type Database = {
           battery_percentage?: number | null
           broiler_age_source?: string | null
           cached_settings_version?: number | null
+          ceiling_fan_total_runtime_seconds?: number | null
           circulation_fan_last_cycle_at?: string | null
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
@@ -1224,11 +1260,14 @@ export type Database = {
           power_event_type?: string | null
           power_source?: string | null
           power_voltage_rms?: number | null
+          relay_count?: number | null
           relay_toggle_violations?: number | null
           restart_count?: number | null
           restart_reason?: string | null
           safe_mode_until?: string | null
           shed_id?: string | null
+          sprinkler_last_cycle_at?: string | null
+          sprinkler_total_runtime_seconds?: number | null
           stuck_relay_detected?: boolean | null
           stuck_relay_device?: string | null
           total_restarts?: number | null
@@ -1278,9 +1317,11 @@ export type Database = {
         Row: {
           age_profile_days: number | null
           alarm_on: boolean
+          ceiling_fan_on: boolean
           circulation_fan_on: boolean | null
           curtain_position: string | null
           desired_alarm_on: boolean | null
+          desired_ceiling_fan_on: boolean | null
           desired_circulation_fan_on: boolean | null
           desired_fan_on: boolean | null
           desired_fan_speed: string | null
@@ -1288,6 +1329,7 @@ export type Database = {
           desired_heater_on: boolean | null
           desired_light_on: boolean | null
           desired_manual_override: boolean | null
+          desired_sprinkler_on: boolean | null
           device_id: string | null
           fan_on: boolean
           fan_speed: string
@@ -1306,6 +1348,7 @@ export type Database = {
           safety_override_at: string | null
           safety_override_reason: string | null
           shed_id: string | null
+          sprinkler_on: boolean
           state_mismatch: boolean | null
           target_air_quality: number | null
           target_humidity: number | null
@@ -1316,9 +1359,11 @@ export type Database = {
         Insert: {
           age_profile_days?: number | null
           alarm_on?: boolean
+          ceiling_fan_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
           desired_alarm_on?: boolean | null
+          desired_ceiling_fan_on?: boolean | null
           desired_circulation_fan_on?: boolean | null
           desired_fan_on?: boolean | null
           desired_fan_speed?: string | null
@@ -1326,6 +1371,7 @@ export type Database = {
           desired_heater_on?: boolean | null
           desired_light_on?: boolean | null
           desired_manual_override?: boolean | null
+          desired_sprinkler_on?: boolean | null
           device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
@@ -1344,6 +1390,7 @@ export type Database = {
           safety_override_at?: string | null
           safety_override_reason?: string | null
           shed_id?: string | null
+          sprinkler_on?: boolean
           state_mismatch?: boolean | null
           target_air_quality?: number | null
           target_humidity?: number | null
@@ -1354,9 +1401,11 @@ export type Database = {
         Update: {
           age_profile_days?: number | null
           alarm_on?: boolean
+          ceiling_fan_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
           desired_alarm_on?: boolean | null
+          desired_ceiling_fan_on?: boolean | null
           desired_circulation_fan_on?: boolean | null
           desired_fan_on?: boolean | null
           desired_fan_speed?: string | null
@@ -1364,6 +1413,7 @@ export type Database = {
           desired_heater_on?: boolean | null
           desired_light_on?: boolean | null
           desired_manual_override?: boolean | null
+          desired_sprinkler_on?: boolean | null
           device_id?: string | null
           fan_on?: boolean
           fan_speed?: string
@@ -1382,6 +1432,7 @@ export type Database = {
           safety_override_at?: string | null
           safety_override_reason?: string | null
           shed_id?: string | null
+          sprinkler_on?: boolean
           state_mismatch?: boolean | null
           target_air_quality?: number | null
           target_humidity?: number | null
@@ -3219,6 +3270,8 @@ export type Database = {
           sensor_issues: Json
           sensor_state: Json
           shed_id: string | null
+          sprinkler_block_reason: string | null
+          sprinkler_safety_blocked: boolean | null
           stuck_relay_detected: string | null
           survival_fan_on: boolean
           survival_heater_on: boolean
@@ -3278,6 +3331,8 @@ export type Database = {
           sensor_issues?: Json
           sensor_state?: Json
           shed_id?: string | null
+          sprinkler_block_reason?: string | null
+          sprinkler_safety_blocked?: boolean | null
           stuck_relay_detected?: string | null
           survival_fan_on?: boolean
           survival_heater_on?: boolean
@@ -3337,6 +3392,8 @@ export type Database = {
           sensor_issues?: Json
           sensor_state?: Json
           shed_id?: string | null
+          sprinkler_block_reason?: string | null
+          sprinkler_safety_blocked?: boolean | null
           stuck_relay_detected?: string | null
           survival_fan_on?: boolean
           survival_heater_on?: boolean
