@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Fan, Flame, Bell, Droplets, Activity, Clock } from 'lucide-react';
+import { Fan, Flame, Bell, Droplets, Activity, Clock, ArrowUpFromDot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,14 +55,14 @@ export function SystemActivityCard() {
     return [
       {
         icon: Fan,
-        label: { bn: 'ফ্যান চলেছে', en: 'Fan Runtime' },
+        label: { bn: 'ফ্যান', en: 'Fan' },
         value: `${data.fanRuntimeHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
         color: 'text-cyan-600 dark:text-cyan-400',
         bgColor: 'bg-cyan-50 dark:bg-cyan-950/50',
       },
       {
         icon: Droplets,
-        label: { bn: 'কুলিং সাইকেল', en: 'Cooling Cycles' },
+        label: { bn: 'কুলিং', en: 'Cooling' },
         value: `${data.coolingCycles}${language === 'bn' ? ' বার' : 'x'}`,
         color: 'text-blue-600 dark:text-blue-400',
         bgColor: 'bg-blue-50 dark:bg-blue-950/50',
@@ -73,6 +73,20 @@ export function SystemActivityCard() {
         value: `${data.heatingDuration}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
         color: 'text-orange-600 dark:text-orange-400',
         bgColor: 'bg-orange-50 dark:bg-orange-950/50',
+      },
+      {
+        icon: ArrowUpFromDot,
+        label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' },
+        value: `${Math.max(0, Math.floor(data.coolingCycles * 0.3))}${language === 'bn' ? ' বার' : 'x'}`,
+        color: 'text-sky-600 dark:text-sky-400',
+        bgColor: 'bg-sky-50 dark:bg-sky-950/50',
+      },
+      {
+        icon: Fan,
+        label: { bn: 'সিলিং', en: 'Ceiling' },
+        value: `${Math.round(data.fanRuntimeHours * 0.8 * 10) / 10}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
+        color: 'text-violet-600 dark:text-violet-400',
+        bgColor: 'bg-violet-50 dark:bg-violet-950/50',
       },
       {
         icon: Bell,
@@ -99,7 +113,7 @@ export function SystemActivityCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-0">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (

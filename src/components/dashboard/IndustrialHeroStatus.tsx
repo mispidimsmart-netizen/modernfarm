@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   AlertTriangle, CheckCircle2, Thermometer, Snowflake, 
   Wind, Wrench, Zap, Fan, Flame, Droplets, Lightbulb, 
-  CircleDot, CircleOff
+  CircleDot, CircleOff, ArrowUpFromDot
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
@@ -101,7 +101,7 @@ export function IndustrialHeroStatus() {
     const temp = sensorData.temperature;
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
-    const anyDeviceActive = deviceStatus.fan || deviceStatus.heater || deviceStatus.fogger;
+    const anyDeviceActive = deviceStatus.fan || deviceStatus.heater || deviceStatus.fogger || deviceStatus.ceilingFan || deviceStatus.sprinkler;
 
     // Emergency: extreme values
     if (temp > 38 || ammonia > 25 || hsi > 85) {
@@ -172,11 +172,29 @@ export function IndustrialHeroStatus() {
       lightReason = { bn: 'চালু — শিডিউল অনুযায়ী', en: 'ON — Per schedule' };
     }
 
+    // Ceiling Fan reason
+    let ceilingFanReason: { bn: string; en: string };
+    if (!deviceStatus.ceilingFan) {
+      ceilingFanReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
+    } else {
+      ceilingFanReason = { bn: `${temp.toFixed(1)}°C — বাতাস সঞ্চালন`, en: `${temp.toFixed(1)}°C — Air circulation` };
+    }
+
+    // Sprinkler reason
+    let sprinklerReason: { bn: string; en: string };
+    if (!deviceStatus.sprinkler) {
+      sprinklerReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
+    } else {
+      sprinklerReason = { bn: `HSI ${hsi.toFixed(0)} — ছাদ কুলিং`, en: `HSI ${hsi.toFixed(0)} — Roof cooling` };
+    }
+
     return [
       { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: !!deviceStatus.fan, reason: fanReason },
+      { icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' }, isOn: !!deviceStatus.ceilingFan, reason: ceilingFanReason },
       { icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: !!deviceStatus.heater, reason: heaterReason },
-      { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
       { icon: Lightbulb, label: { bn: 'লাইট', en: 'Light' }, isOn: !!deviceStatus.light, reason: lightReason },
+      { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
+      { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler, reason: sprinklerReason },
     ];
   }, [deviceStatus, sensorData, hsiResult]);
 
@@ -222,7 +240,7 @@ export function IndustrialHeroStatus() {
         </div>
 
         {/* Device Status Grid — THE KEY INFORMATION */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {deviceItems.map((device) => {
             const DeviceIcon = device.icon;
             return (

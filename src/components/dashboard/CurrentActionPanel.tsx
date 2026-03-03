@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Wind, Flame, Fan, Zap, ShieldCheck, Moon } from 'lucide-react';
+import { Wind, Flame, Fan, Zap, ShieldCheck, Moon, Droplets, ArrowUpFromDot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +25,16 @@ export function CurrentActionPanel() {
         text: { bn: 'প্রাণ বাঁচাতে সর্বোচ্চ বাতাস দেওয়া হচ্ছে', en: 'Maximum ventilation for bird safety' },
         color: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
         iconColor: 'text-red-600 dark:text-red-400',
+      };
+    }
+
+    // Sprinkler on (HSI-based emergency cooling)
+    if (deviceStatus.sprinkler) {
+      return {
+        icon: ArrowUpFromDot,
+        text: { bn: 'ছাদে পানি দিয়ে তাপ কমানো হচ্ছে', en: 'Roof sprinkler cooling active' },
+        color: 'bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800',
+        iconColor: 'text-sky-600 dark:text-sky-400',
       };
     }
 
@@ -55,6 +65,16 @@ export function CurrentActionPanel() {
         text: { bn: 'গরম কমানো হচ্ছে', en: 'Reducing heat' },
         color: 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800',
         iconColor: 'text-cyan-600 dark:text-cyan-400',
+      };
+    }
+
+    // Ceiling fan on
+    if (deviceStatus.ceilingFan) {
+      return {
+        icon: Fan,
+        text: { bn: 'সিলিং ফ্যানে বাতাস চলছে', en: 'Ceiling fan air circulation' },
+        color: 'bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800',
+        iconColor: 'text-violet-600 dark:text-violet-400',
       };
     }
 
