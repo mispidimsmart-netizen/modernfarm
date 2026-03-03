@@ -149,10 +149,6 @@ export function Dashboard() {
           <IndustrialHeroStatus />
         </div>
 
-        {/* ============ 2. CURRENT ACTION PANEL ============ */}
-        <div className="mb-3">
-          <CurrentActionPanel />
-        </div>
 
         {/* ============ 3. CORE METRICS ROW (3 items only) ============ */}
         <div className="mb-3">
@@ -203,8 +199,11 @@ export function Dashboard() {
               {/* Weather */}
               <WeatherCard />
 
-              {/* Advisory */}
-              <AdvisoryAssistant />
+              {/* Current Action + Advisory side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <CurrentActionPanel />
+                <AdvisoryAssistant />
+              </div>
               
               {/* Today Summary */}
               <TodayReadableSummary />
