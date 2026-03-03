@@ -181,24 +181,38 @@ export function Dashboard() {
             </TabsList>
             
             {/* TAB: Home */}
-            <TabsContent value="home" className="mt-4 space-y-4">
+            <TabsContent value="home" className="mt-3 space-y-3">
               {/* Device Online/Offline Status */}
               <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
 
-              {/* Key Sensor Readings */}
-              <div className="grid grid-cols-2 gap-3">
-                <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
-                <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
-                <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
-                <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
+              {/* ── 📡 সেন্সর ── */}
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
+                </p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
+                  <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
+                  <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
+                  <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
+                </div>
               </div>
 
-              {/* Weather */}
-              <WeatherCard />
+              {/* ── 🌤️ আবহাওয়া ── */}
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
+                </p>
+                <WeatherCard />
+              </div>
 
-              
-              {/* System Activity */}
-              <SystemActivityCard />
+              {/* ── ⚡ কার্যক্রম ── */}
+              <div>
+                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
+                </p>
+                <SystemActivityCard />
+              </div>
 
               {/* Today Summary */}
               <TodayReadableSummary />
