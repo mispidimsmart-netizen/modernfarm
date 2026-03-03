@@ -77,7 +77,7 @@ serve(async (req) => {
     }
 
     // Use Open-Meteo (free, no API key needed) for weather data
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability&timezone=auto&forecast_days=3`;
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability&timezone=auto&forecast_days=3`;
 
     console.log('Fetching weather from:', weatherUrl);
 

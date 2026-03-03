@@ -203,6 +203,9 @@ export function WeatherCard() {
         </div>
       </div>
 
+      {/* Hourly Forecast Bar */}
+      <HourlyForecastBar forecast={weather.forecast_json} language={language} />
+
       {/* Auto Mode Badge */}
       {autoModeEnabled && autoModeProfile && (
         <div className="mt-3 flex items-center justify-center gap-2">
@@ -222,5 +225,63 @@ export function WeatherCard() {
         </p>
       )}
     </motion.div>
+  );
+}
+
+// ── Hourly Forecast Mini Bar ──
+function HourlyForecastBar({ forecast, language }: { forecast: any; language: string }) {
+  if (!forecast?.hourly?.time) return null;
+
+  const now = new Date();
+  const currentHourIndex = forecast.hourly.time.findIndex((t: string) => {
+    const hour = new Date(t);
+    return hour >= now;
+  });
+
+  if (currentHourIndex < 0) return null;
+
+  const hours = [];
+  for (let i = currentHourIndex; i < Math.min(currentHourIndex + 6, forecast.hourly.time.length); i++) {
+    const time = new Date(forecast.hourly.time[i]);
+    const temp = forecast.hourly.temperature_2m?.[i];
+    const rain = forecast.hourly.precipitation_probability?.[i] ?? 0;
+    hours.push({ time, temp, rain });
+  }
+
+  if (hours.length === 0) return null;
+
+  const temps = hours.map(h => h.temp).filter((t): t is number => t != null);
+  const minTemp = temps.length ? Math.min(...temps) : 0;
+  const maxTemp = temps.length ? Math.max(...temps) : 1;
+  const tempRange = maxTemp - minTemp || 1;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/20">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+        {language === 'bn' ? 'পরবর্তী ৬ ঘণ্টা' : 'Next 6 Hours'}
+      </p>
+      <div className="flex items-end justify-between gap-1">
+        {hours.map((h, i) => {
+          const barHeight = h.temp != null ? 16 + ((h.temp - minTemp) / tempRange) * 24 : 20;
+          return (
+            <div key={i} className="flex flex-col items-center gap-1 flex-1">
+              <span className="text-[9px] font-bold">
+                {h.temp != null ? `${Math.round(h.temp)}°` : '--'}
+              </span>
+              <div
+                className={`w-full rounded-sm ${h.rain > 50 ? 'bg-blue-400/60' : 'bg-orange-400/50'}`}
+                style={{ height: `${barHeight}px` }}
+              />
+              {h.rain > 0 && (
+                <span className="text-[8px] text-blue-400">💧{h.rain}%</span>
+              )}
+              <span className="text-[9px] text-muted-foreground">
+                {h.time.getHours().toString().padStart(2, '0')}:00
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
