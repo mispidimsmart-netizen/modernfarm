@@ -5,6 +5,7 @@ import {
   Baby, TrendingUp, Factory, Flame, Wind, Check,
   Wand2, ChevronRight, Home, AlertTriangle, Sparkles, RefreshCw, Info
 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
