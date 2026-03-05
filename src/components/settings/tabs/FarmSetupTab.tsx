@@ -300,8 +300,10 @@ export function FarmSetupTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <Accordion type="multiple" className="space-y-3">
       {/* Farm Type Selection */}
+      <AccordionItem value="farm-type" className="border-none">
+        <Card>
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
