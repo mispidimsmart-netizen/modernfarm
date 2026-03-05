@@ -5,6 +5,7 @@ import {
   Baby, TrendingUp, Factory, Flame, Wind, Check,
   Wand2, ChevronRight, Home, AlertTriangle, Sparkles, RefreshCw, Info
 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
@@ -299,321 +300,314 @@ export function FarmSetupTab() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Farm Type Selection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Home className="h-5 w-5 text-primary" />
-            {language === 'bn' ? 'খামারের ধরণ' : 'Farm Type'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? selectedShed 
-                ? `"${selectedShed.name}" শেডের জন্য — প্রতিটি শেডে ভিন্ন ধরণ থাকতে পারে`
-                : 'শেড সিলেক্ট করে প্রতিটি শেডের ধরণ আলাদা করুন'
-              : selectedShed
-                ? `For "${selectedShed.name_en}" — each shed can have a different type`
-                : 'Select a shed to set its type individually'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            {FARM_TYPES.map((type) => {
-              const Icon = type.icon;
-              const isSelected = farmType === type.id;
-              return (
-                <motion.button
-                  key={type.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleFarmTypeChange(type.id)}
-                  className={`relative rounded-xl p-4 text-left transition-all ${
-                    isSelected
-                      ? `${type.bgColor} border-2 border-current ${type.color} shadow-md`
-                      : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
-                  }`}
-                >
-                  {isSelected && (
-                    <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                      <Check className="h-3.5 w-3.5" />
-                    </div>
-                  )}
-                  <Icon className={`h-8 w-8 mb-2 ${isSelected ? type.color : 'text-muted-foreground'}`} />
-                  <p className="font-semibold">{type.name[language]}</p>
-                  <p className="text-xs text-muted-foreground">{type.description[language]}</p>
-                </motion.button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bird Age Display (for broiler) */}
-      {farmType === 'broiler' && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Baby className="h-5 w-5 text-pink-500" />
-              {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
-              <Badge variant="secondary" className="ml-2 text-xs">
-                <Sparkles className="h-3 w-3 mr-1" />
-                {language === 'bn' ? 'অটো' : 'Auto'}
-              </Badge>
-            </CardTitle>
-            <CardDescription>
+    <div className="space-y-4">
+      <Accordion type="multiple" className="space-y-3">
+        {/* Farm Type Selection */}
+        <AccordionItem value="farm-type" className="border rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2 text-base font-semibold">
+              <Home className="h-5 w-5 text-primary" />
+              {language === 'bn' ? 'খামারের ধরণ' : 'Farm Type'}
+              <Badge variant="secondary" className="ml-1 text-xs">{farmType === 'layer' ? (language === 'bn' ? 'লেয়ার' : 'Layer') : (language === 'bn' ? 'ব্রয়লার' : 'Broiler')}</Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <p className="text-sm text-muted-foreground mb-3">
               {language === 'bn' 
-                ? activeBatch?.start_date 
-                  ? `ব্যাচ শুরুর তারিখ থেকে গণনা করা হয়েছে`
-                  : 'কোনো সক্রিয় ব্যাচ নেই - Farm Management এ ব্যাচ তৈরি করুন'
-                : activeBatch?.start_date
-                  ? `Calculated from batch start date`
-                  : 'No active batch - Create a batch in Farm Management'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="flex-1 text-center p-4 rounded-xl bg-muted/50">
-                <p className="text-4xl font-bold text-primary">{birdAge}</p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'bn' ? 'দিন বয়স' : 'days old'}
-                </p>
-              </div>
-              <div className="text-center p-4 rounded-xl bg-muted/50">
-                <p className="text-3xl font-bold text-orange-500">
-                  {birdAge <= 3 ? 33 : birdAge <= 7 ? 31 : birdAge <= 14 ? 29 : birdAge <= 21 ? 26 : birdAge <= 28 ? 24 : 22}°C
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'bn' ? 'টার্গেট তাপমাত্রা' : 'Target Temp'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Season Detection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Cloud className="h-5 w-5 text-primary" />
-                {language === 'bn' ? 'মৌসুম' : 'Season'}
-                {!isSeasonManual && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {language === 'bn' ? 'অটো' : 'Auto'}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {language === 'bn' 
-                  ? isSeasonManual 
-                    ? 'ম্যানুয়ালি নির্বাচিত' 
-                    : `Weather API থেকে স্বয়ংক্রিয়ভাবে সনাক্ত (${weatherData?.temperature ?? '--'}°C, ${weatherData?.humidity ?? '--'}%)`
-                  : isSeasonManual
-                    ? 'Manually selected'
-                    : `Auto-detected from Weather API (${weatherData?.temperature ?? '--'}°C, ${weatherData?.humidity ?? '--'}%)`}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="season-manual" className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
-              </Label>
-              <Switch
-                id="season-manual"
-                checked={isSeasonManual}
-                onCheckedChange={(checked) => {
-                  setIsSeasonManual(checked);
-                  if (!checked) setSeasonOverride(null);
-                }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-2">
-            {SEASONS.map((s) => {
-              const Icon = s.icon;
-              const isSelected = activeSeason === s.id;
-              const isAutoDetected = !isSeasonManual && autoDetectedSeason === s.id;
-              return (
-                <motion.button
-                  key={s.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    if (!isSeasonManual && isAutoDetected) return;
-                    handleSeasonChange(s.id);
-                  }}
-                  disabled={!isSeasonManual && isAutoDetected}
-                  className={`relative rounded-xl p-3 text-center transition-all ${
-                    isSelected
-                      ? `${s.bgColor} border-2 border-current ${s.color}`
-                      : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
-                  } ${!isSeasonManual && !isAutoDetected ? 'opacity-50' : ''}`}
-                >
-                  {isAutoDetected && !isSeasonManual && (
-                    <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                      <Sparkles className="h-3 w-3" />
-                    </div>
-                  )}
-                  <Icon className={`h-6 w-6 mx-auto mb-1 ${isSelected ? s.color : 'text-muted-foreground'}`} />
-                  <p className="text-sm font-medium">{s.name[language]}</p>
-                </motion.button>
-              );
-            })}
-          </div>
-          
-          {/* Reset to auto button */}
-          {isSeasonManual && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-3 w-full text-muted-foreground"
-              onClick={() => {
-                setIsSeasonManual(false);
-                setSeasonOverride(null);
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              {language === 'bn' ? 'অটো ডিটেক্টে ফিরে যান' : 'Reset to Auto-detect'}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Farm Size */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">
-            {language === 'bn' ? 'খামারের আকার' : 'Farm Size'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup value={farmSize} onValueChange={(v) => setFarmSize(v as FarmSize)}>
-            <div className="grid grid-cols-3 gap-2">
-              {FARM_SIZES.map((size) => (
-                <div key={size.id}>
-                  <RadioGroupItem value={size.id} id={size.id} className="sr-only" />
-                  <Label
-                    htmlFor={size.id}
-                    className={`flex flex-col items-center justify-center rounded-xl p-3 cursor-pointer transition-all ${
-                      farmSize === size.id
-                        ? 'bg-primary/10 border-2 border-primary text-primary'
+                ? selectedShed 
+                  ? `"${selectedShed.name}" শেডের জন্য — প্রতিটি শেডে ভিন্ন ধরণ থাকতে পারে`
+                  : 'শেড সিলেক্ট করে প্রতিটি শেডের ধরণ আলাদা করুন'
+                : selectedShed
+                  ? `For "${selectedShed.name_en}" — each shed can have a different type`
+                  : 'Select a shed to set its type individually'}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {FARM_TYPES.map((type) => {
+                const Icon = type.icon;
+                const isSelected = farmType === type.id;
+                return (
+                  <motion.button
+                    key={type.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleFarmTypeChange(type.id)}
+                    className={`relative rounded-xl p-4 text-left transition-all ${
+                      isSelected
+                        ? `${type.bgColor} border-2 border-current ${type.color} shadow-md`
                         : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
                     }`}
                   >
-                    <span className="font-semibold">{size.name[language]}</span>
-                    <span className="text-xs text-muted-foreground">{size.range[language]}</span>
-                  </Label>
-                </div>
-              ))}
+                    {isSelected && (
+                      <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                        <Check className="h-3.5 w-3.5" />
+                      </div>
+                    )}
+                    <Icon className={`h-8 w-8 mb-2 ${isSelected ? type.color : 'text-muted-foreground'}`} />
+                    <p className="font-semibold">{type.name[language]}</p>
+                    <p className="text-xs text-muted-foreground">{type.description[language]}</p>
+                  </motion.button>
+                );
+              })}
             </div>
-          </RadioGroup>
-        </CardContent>
-      </Card>
+          </AccordionContent>
+        </AccordionItem>
 
-      {/* Profile Selection - Auto-detected from bird age */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wand2 className="h-5 w-5 text-primary" />
-                {language === 'bn' ? 'পরিচালনা প্রোফাইল' : 'Management Profile'}
-                {!isProfileManual && (
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {language === 'bn' ? 'অটো' : 'Auto'}
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
+        {/* Bird Age Display (for broiler) */}
+        {farmType === 'broiler' && (
+          <AccordionItem value="bird-age" className="border rounded-lg overflow-hidden">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <Baby className="h-5 w-5 text-pink-500" />
+                {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {birdAge} {language === 'bn' ? 'দিন' : 'days'}
+                </Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <p className="text-sm text-muted-foreground mb-3">
+                {language === 'bn' 
+                  ? activeBatch?.start_date 
+                    ? `ব্যাচ শুরুর তারিখ থেকে গণনা করা হয়েছে`
+                    : 'কোনো সক্রিয় ব্যাচ নেই - Farm Management এ ব্যাচ তৈরি করুন'
+                  : activeBatch?.start_date
+                    ? `Calculated from batch start date`
+                    : 'No active batch - Create a batch in Farm Management'}
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 text-center p-4 rounded-xl bg-muted/50">
+                  <p className="text-4xl font-bold text-primary">{birdAge}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'দিন বয়স' : 'days old'}
+                  </p>
+                </div>
+                <div className="text-center p-4 rounded-xl bg-muted/50">
+                  <p className="text-3xl font-bold text-orange-500">
+                    {birdAge <= 3 ? 33 : birdAge <= 7 ? 31 : birdAge <= 14 ? 29 : birdAge <= 21 ? 26 : birdAge <= 28 ? 24 : 22}°C
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn' ? 'টার্গেট তাপমাত্রা' : 'Target Temp'}
+                  </p>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+        {/* Season Detection */}
+        <AccordionItem value="season" className="border rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2 text-base font-semibold">
+              <Cloud className="h-5 w-5 text-primary" />
+              {language === 'bn' ? 'মৌসুম' : 'Season'}
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {SEASONS.find(s => s.id === activeSeason)?.name[language]}
+                {!isSeasonManual && ' • Auto'}
+              </Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-muted-foreground">
+                {language === 'bn' 
+                  ? isSeasonManual 
+                    ? 'ম্যানুয়ালি নির্বাচিত' 
+                    : `Weather API থেকে স্বয়ংক্রিয় (${weatherData?.temperature ?? '--'}°C)`
+                  : isSeasonManual
+                    ? 'Manually selected'
+                    : `Auto from Weather API (${weatherData?.temperature ?? '--'}°C)`}
+              </p>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="season-manual" className="text-xs text-muted-foreground">
+                  {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
+                </Label>
+                <Switch
+                  id="season-manual"
+                  checked={isSeasonManual}
+                  onCheckedChange={(checked) => {
+                    setIsSeasonManual(checked);
+                    if (!checked) setSeasonOverride(null);
+                  }}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {SEASONS.map((s) => {
+                const Icon = s.icon;
+                const isSelected = activeSeason === s.id;
+                const isAutoDetected = !isSeasonManual && autoDetectedSeason === s.id;
+                return (
+                  <motion.button
+                    key={s.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      if (!isSeasonManual && isAutoDetected) return;
+                      handleSeasonChange(s.id);
+                    }}
+                    disabled={!isSeasonManual && isAutoDetected}
+                    className={`relative rounded-xl p-3 text-center transition-all ${
+                      isSelected
+                        ? `${s.bgColor} border-2 border-current ${s.color}`
+                        : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                    } ${!isSeasonManual && !isAutoDetected ? 'opacity-50' : ''}`}
+                  >
+                    {isAutoDetected && !isSeasonManual && (
+                      <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                        <Sparkles className="h-3 w-3" />
+                      </div>
+                    )}
+                    <Icon className={`h-6 w-6 mx-auto mb-1 ${isSelected ? s.color : 'text-muted-foreground'}`} />
+                    <p className="text-sm font-medium">{s.name[language]}</p>
+                  </motion.button>
+                );
+              })}
+            </div>
+            {isSeasonManual && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 w-full text-muted-foreground"
+                onClick={() => {
+                  setIsSeasonManual(false);
+                  setSeasonOverride(null);
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {language === 'bn' ? 'অটো ডিটেক্টে ফিরে যান' : 'Reset to Auto-detect'}
+              </Button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Farm Size */}
+        <AccordionItem value="farm-size" className="border rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2 text-base font-semibold">
+              {language === 'bn' ? 'খামারের আকার' : 'Farm Size'}
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {FARM_SIZES.find(s => s.id === farmSize)?.name[language]}
+              </Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <RadioGroup value={farmSize} onValueChange={(v) => setFarmSize(v as FarmSize)}>
+              <div className="grid grid-cols-3 gap-2">
+                {FARM_SIZES.map((size) => (
+                  <div key={size.id}>
+                    <RadioGroupItem value={size.id} id={size.id} className="sr-only" />
+                    <Label
+                      htmlFor={size.id}
+                      className={`flex flex-col items-center justify-center rounded-xl p-3 cursor-pointer transition-all ${
+                        farmSize === size.id
+                          ? 'bg-primary/10 border-2 border-primary text-primary'
+                          : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                      }`}
+                    >
+                      <span className="font-semibold">{size.name[language]}</span>
+                      <span className="text-xs text-muted-foreground">{size.range[language]}</span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </RadioGroup>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Profile Selection */}
+        <AccordionItem value="profile" className="border rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2 text-base font-semibold">
+              <Wand2 className="h-5 w-5 text-primary" />
+              {language === 'bn' ? 'পরিচালনা প্রোফাইল' : 'Management Profile'}
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {PROFILES.find(p => p.id === activeProfile)?.name[language]}
+                {!isProfileManual && ' • Auto'}
+              </Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-muted-foreground">
                 {language === 'bn' 
                   ? isProfileManual 
                     ? 'ম্যানুয়ালি নির্বাচিত' 
-                    : `পাখির বয়স (${birdAge} দিন) থেকে স্বয়ংক্রিয়ভাবে নির্ধারিত`
+                    : `পাখির বয়স (${birdAge} দিন) থেকে স্বয়ংক্রিয়`
                   : isProfileManual
                     ? 'Manually selected'
-                    : `Auto-detected from bird age (${birdAge} days)`}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="profile-manual" className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
-              </Label>
-              <Switch
-                id="profile-manual"
-                checked={isProfileManual}
-                onCheckedChange={(checked) => {
-                  setIsProfileManual(checked);
-                  if (!checked) setProfileOverride(null);
-                }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {PROFILES.map((p) => {
-              const Icon = p.icon;
-              const isSelected = activeProfile === p.id;
-              const isAutoDetected = !isProfileManual && autoDetectedProfile === p.id;
-              return (
-                <motion.button
-                  key={p.id}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => {
-                    if (!isProfileManual && isAutoDetected) return;
-                    handleProfileChange(p.id);
+                    : `Auto from bird age (${birdAge} days)`}
+              </p>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="profile-manual" className="text-xs text-muted-foreground">
+                  {language === 'bn' ? 'ম্যানুয়াল' : 'Manual'}
+                </Label>
+                <Switch
+                  id="profile-manual"
+                  checked={isProfileManual}
+                  onCheckedChange={(checked) => {
+                    setIsProfileManual(checked);
+                    if (!checked) setProfileOverride(null);
                   }}
-                  disabled={!isProfileManual && isAutoDetected}
-                  className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all ${
-                    isSelected
-                      ? `${p.bgColor} border-2 border-current ${p.color}`
-                      : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
-                  } ${!isProfileManual && !isAutoDetected ? 'opacity-50' : ''}`}
-                >
-                  {isAutoDetected && !isProfileManual && (
-                    <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                      <Sparkles className="h-3 w-3" />
-                    </div>
-                  )}
-                  <div className={`relative flex h-10 w-10 items-center justify-center rounded-lg ${p.bgColor}`}>
-                    <Icon className={`h-5 w-5 ${p.color}`} />
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              {PROFILES.map((p) => {
+                const Icon = p.icon;
+                const isSelected = activeProfile === p.id;
+                const isAutoDetected = !isProfileManual && autoDetectedProfile === p.id;
+                return (
+                  <motion.button
+                    key={p.id}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => {
+                      if (!isProfileManual && isAutoDetected) return;
+                      handleProfileChange(p.id);
+                    }}
+                    disabled={!isProfileManual && isAutoDetected}
+                    className={`w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all ${
+                      isSelected
+                        ? `${p.bgColor} border-2 border-current ${p.color}`
+                        : 'bg-muted/50 border-2 border-transparent hover:bg-muted'
+                    } ${!isProfileManual && !isAutoDetected ? 'opacity-50' : ''}`}
+                  >
                     {isAutoDetected && !isProfileManual && (
-                      <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <Sparkles className="h-2.5 w-2.5" />
+                      <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                        <Sparkles className="h-3 w-3" />
                       </div>
                     )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{p.name[language]}</p>
-                    <p className="text-xs text-muted-foreground">{p.description[language]}</p>
-                  </div>
-                  {isSelected && <Check className="h-5 w-5 text-primary" />}
-                </motion.button>
-              );
-            })}
-          </div>
-          
-          {/* Reset to auto button */}
-          {isProfileManual && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-3 w-full text-muted-foreground"
-              onClick={() => {
-                setIsProfileManual(false);
-                setProfileOverride(null);
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              {language === 'bn' ? 'অটো ডিটেক্টে ফিরে যান' : 'Reset to Auto-detect'}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+                    <div className={`relative flex h-10 w-10 items-center justify-center rounded-lg ${p.bgColor}`}>
+                      <Icon className={`h-5 w-5 ${p.color}`} />
+                      {isAutoDetected && !isProfileManual && (
+                        <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Sparkles className="h-2.5 w-2.5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{p.name[language]}</p>
+                      <p className="text-xs text-muted-foreground">{p.description[language]}</p>
+                    </div>
+                    {isSelected && <Check className="h-5 w-5 text-primary" />}
+                  </motion.button>
+                );
+              })}
+            </div>
+            {isProfileManual && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 w-full text-muted-foreground"
+                onClick={() => {
+                  setIsProfileManual(false);
+                  setProfileOverride(null);
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {language === 'bn' ? 'অটো ডিটেক্টে ফিরে যান' : 'Reset to Auto-detect'}
+              </Button>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Apply Button */}
       <Button 
