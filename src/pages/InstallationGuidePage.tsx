@@ -60,25 +60,34 @@ const partsList = [
     category: 'মূল কন্ট্রোলার',
     categoryEn: 'Main Controller',
     items: [
-      { name: 'ESP32 DevKit V1', nameEn: 'ESP32 DevKit V1', quantity: 1, price: '৳৫৫০-৭৫০', priceRange: [550, 750], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: true },
-      { name: 'USB কেবল (Micro USB)', nameEn: 'USB Cable', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'ESP32 DevKit V1 (30-pin)', nameEn: 'ESP32 DevKit V1 (30-pin)', quantity: 1, price: '৳৫৫০-৭৫০', priceRange: [550, 750], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: true },
+      { name: 'USB কেবল (Micro USB / Type-C)', nameEn: 'USB Cable (Micro USB / Type-C)', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
     ]
   },
   {
     category: 'সেন্সর',
     categoryEn: 'Sensors',
     items: [
-      { name: 'DHT22/AM2302 (তাপমাত্রা ও আর্দ্রতা)', nameEn: 'DHT22 Temperature & Humidity', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি, বিডিস্টল', essential: true },
-      { name: 'MQ-137 (অ্যামোনিয়া গ্যাস সেন্সর)', nameEn: 'MQ-137 Ammonia Gas Sensor', quantity: 1, price: '৳৪০০-৬০০', priceRange: [400, 600], shop: 'টেকশপ বিডি', essential: true },
-      { name: 'YF-S201 (ওয়াটার ফ্লো সেন্সর)', nameEn: 'Water Flow Sensor', quantity: 1, price: '৳২৫০-৩৫০', priceRange: [250, 350], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: 'DHT22/AM2302 #১ (তাপমাত্রা ও আর্দ্রতা) — GPIO 4', nameEn: 'DHT22 #1 Temp & Humidity — GPIO 4', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি, বিডিস্টল', essential: true },
+      { name: 'DHT22/AM2302 #২ (বড় শেডের জন্য) — GPIO 16', nameEn: 'DHT22 #2 (Large Shed) — GPIO 16', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: 'MQ-137 (অ্যামোনিয়া গ্যাস সেন্সর) — GPIO 34', nameEn: 'MQ-137 Ammonia Sensor — GPIO 34', quantity: 1, price: '৳৪০০-৬০০', priceRange: [400, 600], shop: 'টেকশপ বিডি', essential: true },
+      { name: 'YF-S201 (ওয়াটার ফ্লো সেন্সর) — GPIO 17', nameEn: 'YF-S201 Water Flow — GPIO 17', quantity: 1, price: '৳২৫০-৩৫০', priceRange: [250, 350], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: 'ZMPT101B (AC ভোল্টেজ সেন্সর) — GPIO 35', nameEn: 'ZMPT101B Voltage Sensor — GPIO 35', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'টেকশপ বিডি', essential: true },
     ]
   },
   {
-    category: 'রিলে ও কন্ট্রোল',
-    categoryEn: 'Relay & Control',
+    category: 'রিলে ও কন্ট্রোল (৮-চ্যানেল)',
+    categoryEn: 'Relay & Control (8-Channel)',
     items: [
-      { name: '8-চ্যানেল রিলে মডিউল (5V)', nameEn: '8-Channel Relay Module', quantity: 1, price: '৳৪৫০-৬৫০', priceRange: [450, 650], shop: 'টেকশপ বিডি', essential: true },
-      { name: 'MOSFET মডিউল (IRF520) - LED ডিমিং', nameEn: 'MOSFET Module for LED Dimming', quantity: 1, price: '৳৮০-১২০', priceRange: [80, 120], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: '8-চ্যানেল রিলে মডিউল (5V/12V, Optocoupler)', nameEn: '8-Channel Relay Module (5V/12V)', quantity: 1, price: '৳৪৫০-৬৫০', priceRange: [450, 650], shop: 'টেকশপ বিডি', essential: true },
+      { name: 'MOSFET মডিউল (IRF520) — LED ডিমিং (PWM)', nameEn: 'MOSFET Module IRF520 — LED Dimming', quantity: 1, price: '৳৮০-১২০', priceRange: [80, 120], shop: 'রোবটিক্স বিডি', essential: false },
+    ]
+  },
+  {
+    category: '🔔 অ্যালার্ম ও ইন্ডিকেটর',
+    categoryEn: 'Alarm & Indicator',
+    items: [
+      { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — GPIO 32', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — GPIO 32', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
     ]
   },
   {
@@ -86,18 +95,27 @@ const partsList = [
     categoryEn: 'Switching & Protection',
     items: [
       { name: 'MCB মেইন (সার্কিট ব্রেকার) — 2P 32A C', nameEn: 'MCB Main Circuit Breaker 2P 32A C', quantity: 1, price: '৳৩৫০-৫৫০', priceRange: [350, 550], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
-      { name: 'সাব MCB — 1P 6A (প্রতিটি রিলে লাইনের জন্য)', nameEn: 'Sub MCB 1P 6A', quantity: 4, price: '৳১২০-১৮০/পিস', priceRange: [480, 720], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+      { name: 'সাব MCB — 1P 6A (প্রতিটি রিলে লাইনের জন্য)', nameEn: 'Sub MCB 1P 6A (per relay line)', quantity: 8, price: '৳১২০-১৮০/পিস', priceRange: [960, 1440], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
       { name: 'ম্যাগনেটিক কন্ট্যাক্টর CJX2-1210 (220VAC কয়েল)', nameEn: 'Magnetic Contactor CJX2-1210 220VAC', quantity: 1, price: '৳৪০০-৬৫০', priceRange: [400, 650], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
     ]
   },
   {
-    category: 'ফগার সিস্টেম (কুলিং)',
-    categoryEn: 'Fogger System (Cooling)',
+    category: 'ফগার সিস্টেম (কুলিং) — রিলে IN5 / GPIO 12',
+    categoryEn: 'Fogger System (Cooling) — Relay IN5 / GPIO 12',
     items: [
-      { name: 'সোলেনয়েড ভালভ (AC 220V, 1/2", Normally Closed, Brass)', nameEn: 'Solenoid Valve AC 220V NC Brass', quantity: 1, price: '৳৫০০-৮০০', priceRange: [500, 800], shop: 'ইলেকট্রনিক্স দোকান, AliExpress', essential: true },
+      { name: 'সোলেনয়েড ভালভ (AC 220V, 1/2", NC, Brass) — ফগার', nameEn: 'Solenoid Valve AC 220V NC Brass — Fogger', quantity: 1, price: '৳৫০০-৮০০', priceRange: [500, 800], shop: 'ইলেকট্রনিক্স দোকান, AliExpress', essential: true },
       { name: 'অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প', nameEn: 'Automatic Water Pressure Booster Pump', quantity: 1, price: '৳২০০০-৪০০০', priceRange: [2000, 4000], shop: 'পাম্প দোকান, হার্ডওয়্যার দোকান', essential: true },
-      { name: 'ফগার নজল সেট (10-20 পিস)', nameEn: 'Fogger Nozzle Set', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
-      { name: 'পিই পাইপ (4mm, 20 মিটার)', nameEn: 'PE Pipe 4mm', quantity: 1, price: '৳২০০-৩০০', priceRange: [200, 300], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
+      { name: 'ফগার নজল সেট (10-20 পিস)', nameEn: 'Fogger Nozzle Set (10-20 pcs)', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
+      { name: 'পিই পাইপ (4mm, 20 মিটার)', nameEn: 'PE Pipe 4mm (20m)', quantity: 1, price: '৳২০০-৩০০', priceRange: [200, 300], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
+    ]
+  },
+  {
+    category: '🚿 রুফ স্প্রিংকলার সিস্টেম — রিলে IN7 / GPIO 15',
+    categoryEn: 'Roof Sprinkler System — Relay IN7 / GPIO 15',
+    items: [
+      { name: 'সোলেনয়েড ভালভ (AC 220V, 3/4", NC) — স্প্রিংকলার', nameEn: 'Solenoid Valve AC 220V 3/4" NC — Sprinkler', quantity: 1, price: '৳৬০০-১০০০', priceRange: [600, 1000], shop: 'ইলেকট্রনিক্স / প্লাম্বিং দোকান', essential: false },
+      { name: 'রুফ স্প্রিংকলার হেড (360°, ৪-৬ পিস)', nameEn: 'Roof Sprinkler Heads 360° (4-6 pcs)', quantity: 1, price: '৳৪০০-৬০০', priceRange: [400, 600], shop: 'কৃষি সরঞ্জাম / হার্ডওয়্যার দোকান', essential: false },
+      { name: 'PVC পাইপ (1/2", 20 মিটার) + ফিটিংস', nameEn: 'PVC Pipe 1/2" (20m) + Fittings', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'হার্ডওয়্যার দোকান', essential: false },
     ]
   },
   {
@@ -107,35 +125,46 @@ const partsList = [
       { name: '12V 3A DC অ্যাডাপ্টার (রিলে + ESP32)', nameEn: '12V 3A DC Power Adapter', quantity: 1, price: '৳২৫০-৪০০', priceRange: [250, 400], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
       { name: 'LM2596 DC-DC Buck Converter (12V → 5V, 3A)', nameEn: 'LM2596 Buck Converter 3A', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: true },
       { name: '12V DC পাওয়ার কানেক্টর (5.5mm x 2.1mm)', nameEn: '12V DC Power Connector 5.5mm', quantity: 1, price: '৳৩০-৬০', priceRange: [30, 60], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
-      { name: 'ব্যাটারি ব্যাকআপ মডিউল (TP4056 + 18650)', nameEn: 'Battery Backup Module', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'রোবটিক্স বিডি', essential: false },
-      { name: '18650 ব্যাটারি (3.7V 3000mAh)', nameEn: '18650 Battery', quantity: 2, price: '৳২৫০-৩৫০/পিস', priceRange: [500, 700], shop: 'টেকশপ বিডি', essential: false },
+      { name: 'ব্যাটারি ব্যাকআপ মডিউল (TP4056 + 18650)', nameEn: 'Battery Backup Module (TP4056 + 18650)', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: '18650 ব্যাটারি (3.7V 3000mAh)', nameEn: '18650 Battery 3.7V 3000mAh', quantity: 2, price: '৳২৫০-৩৫০/পিস', priceRange: [500, 700], shop: 'টেকশপ বিডি', essential: false },
+    ]
+  },
+  {
+    category: '⚡ রেজিস্টর ও ক্যাপাসিটর (অত্যাবশ্যক)',
+    categoryEn: 'Resistors & Capacitors (Critical)',
+    items: [
+      { name: '10K Ω পুল-আপ রেজিস্টর (DHT22 DATA ↔ VCC)', nameEn: '10K Ω Pull-up Resistor (for DHT22)', quantity: 2, price: '৳৫-১০/পিস', priceRange: [10, 20], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: '1000μF 25V ইলেকট্রোলাইটিক ক্যাপাসিটর (ESP32 স্ট্যাবিলিটি)', nameEn: '1000μF 25V Capacitor (ESP32 Stability)', quantity: 1, price: '৳১৫-৩০', priceRange: [15, 30], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
+      { name: '100μF 25V ইলেকট্রোলাইটিক ক্যাপাসিটর (MQ-137 ফিল্টার)', nameEn: '100μF 25V Capacitor (MQ-137 Filter)', quantity: 1, price: '৳১০-২০', priceRange: [10, 20], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
     ]
   },
   {
     category: 'তার ও সংযোগ',
     categoryEn: 'Wires & Connectors',
     items: [
-      { name: 'জাম্পার ওয়্যার সেট (M-M, M-F, F-F)', nameEn: 'Jumper Wire Set', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'টেকশপ বিডি', essential: true },
-      { name: 'ব্রেডবোর্ড (830 পয়েন্ট)', nameEn: 'Breadboard', quantity: 1, price: '৳১৫০-২০০', priceRange: [150, 200], shop: 'রোবটিক্স বিডি', essential: true },
-      { name: 'টার্মিনাল ব্লক (2-পিন)', nameEn: 'Terminal Block', quantity: 5, price: '৳৫০-১০০', priceRange: [50, 100], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: false },
+      { name: 'জাম্পার ওয়্যার সেট (M-M, M-F, F-F — ৪০ পিস প্রতি ধরনে)', nameEn: 'Jumper Wire Set (M-M, M-F, F-F)', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'টেকশপ বিডি', essential: true },
+      { name: 'ব্রেডবোর্ড (830 পয়েন্ট)', nameEn: 'Breadboard (830 point)', quantity: 1, price: '৳১৫০-২০০', priceRange: [150, 200], shop: 'রোবটিক্স বিডি', essential: true },
+      { name: 'টার্মিনাল ব্লক (2-পিন, AC সংযোগের জন্য)', nameEn: 'Terminal Block 2-pin (for AC)', quantity: 8, price: '৳১০-২০/পিস', priceRange: [80, 160], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'AC ওয়্যার 1.5mm² (লাল, কালো, সবুজ — ১০ মিটার)', nameEn: 'AC Wire 1.5mm² (10m)', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
     ]
   },
   {
-    category: 'GSM মডিউল (ঐচ্ছিক)',
-    categoryEn: 'GSM Module (Optional)',
+    category: 'GSM মডিউল (ঐচ্ছিক) — GPIO 23/19',
+    categoryEn: 'GSM Module (Optional) — GPIO 23/19',
     items: [
       { name: 'SIM800L GSM মডিউল', nameEn: 'SIM800L GSM Module', quantity: 1, price: '৳৪৫০-৬০০', priceRange: [450, 600], shop: 'রোবটিক্স বিডি', essential: false },
-      { name: 'GSM অ্যান্টেনা', nameEn: 'GSM Antenna', quantity: 1, price: '৳৫০-১০০', priceRange: [50, 100], shop: 'রোবটিক্স বিডি', essential: false },
-      { name: 'SIM কার্ড (যেকোনো অপারেটর)', nameEn: 'SIM Card', quantity: 1, price: '৳৫০-১০০', priceRange: [50, 100], shop: 'মোবাইল দোকান', essential: false },
+      { name: 'GSM অ্যান্টেনা (SMA কানেক্টর)', nameEn: 'GSM Antenna (SMA)', quantity: 1, price: '৳৫০-১০০', priceRange: [50, 100], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: 'SIM কার্ড (GP/Robi/Banglalink)', nameEn: 'SIM Card (any operator)', quantity: 1, price: '৳৫০-১০০', priceRange: [50, 100], shop: 'মোবাইল দোকান', essential: false },
     ]
   },
   {
-    category: 'এনক্লোজার ও অন্যান্য',
-    categoryEn: 'Enclosure & Others',
+    category: 'এনক্লোজার ও সুরক্ষা',
+    categoryEn: 'Enclosure & Protection',
     items: [
-      { name: 'প্লাস্টিক এনক্লোজার বক্স', nameEn: 'Plastic Enclosure Box', quantity: 1, price: '৳২০০-৪০০', priceRange: [200, 400], shop: 'হার্ডওয়্যার দোকান', essential: false },
-      { name: 'পুশ বাটন (ম্যানুয়াল ওভাররাইড)', nameEn: 'Push Button', quantity: 1, price: '৳২০-৫০', priceRange: [20, 50], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
-      { name: 'LED ইন্ডিকেটর (লাল, সবুজ, নীল)', nameEn: 'LED Indicators', quantity: 3, price: '৳৩০-৬০', priceRange: [30, 60], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
+      { name: 'প্লাস্টিক জংশন বক্স IP65 — কন্ট্রোলার বক্স (ESP32 + সেন্সর)', nameEn: 'IP65 Junction Box — Controller (ESP32)', quantity: 1, price: '৳২০০-৪০০', priceRange: [200, 400], shop: 'হার্ডওয়্যার দোকান', essential: true },
+      { name: 'প্লাস্টিক জংশন বক্স IP65 — পাওয়ার বক্স (রিলে + AC)', nameEn: 'IP65 Junction Box — Power (Relay + AC)', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'হার্ডওয়্যার দোকান', essential: true },
+      { name: 'কেবল গ্ল্যান্ড PG9/PG11 (বক্সে তার ঢোকানোর জন্য)', nameEn: 'Cable Gland PG9/PG11', quantity: 6, price: '৳১৫-২৫/পিস', priceRange: [90, 150], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+      { name: 'DIN রেইল (MCB ও কন্ট্যাক্টর মাউন্ট করতে)', nameEn: 'DIN Rail (for MCB mounting)', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রিক্যাল দোকান', essential: false },
     ]
   },
 ];
