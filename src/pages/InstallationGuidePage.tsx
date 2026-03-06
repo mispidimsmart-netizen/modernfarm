@@ -113,7 +113,7 @@ const partsList = [
     category: '🚿 রুফ স্প্রিংকলার সিস্টেম — রিলে IN7 / GPIO 15',
     categoryEn: 'Roof Sprinkler System — Relay IN7 / GPIO 15',
     items: [
-      { name: 'সোলেনয়েড ভালভ (AC 220V, 3/4", NC) — স্প্রিংকলার', nameEn: 'Solenoid Valve AC 220V 3/4" NC — Sprinkler', quantity: 1, price: '৳৬০০-১০০০', priceRange: [600, 1000], shop: 'ইলেকট্রনিক্স / প্লাম্বিং দোকান', essential: false },
+      { name: 'DC 12V সোলেনয়েড ভালভ (3/4", NC) — স্প্রিংকলার', nameEn: 'DC 12V Solenoid Valve 3/4" NC — Sprinkler', quantity: 1, price: '৳৩০০-৬০০', priceRange: [300, 600], shop: 'ইলেকট্রনিক্স / প্লাম্বিং দোকান', essential: false },
       { name: 'রুফ স্প্রিংকলার হেড (360°, ৪-৬ পিস)', nameEn: 'Roof Sprinkler Heads 360° (4-6 pcs)', quantity: 1, price: '৳৪০০-৬০০', priceRange: [400, 600], shop: 'কৃষি সরঞ্জাম / হার্ডওয়্যার দোকান', essential: false },
       { name: 'PVC পাইপ (1/2", 20 মিটার) + ফিটিংস', nameEn: 'PVC Pipe 1/2" (20m) + Fittings', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'হার্ডওয়্যার দোকান', essential: false },
     ]
