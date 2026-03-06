@@ -414,7 +414,7 @@ const detailedWiringGuide = [
       { sensorPin: 'IN2 (সিলিং ফ্যান)', esp32Pin: 'GPIO 26', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: রিলে IN2 → ESP32 এর GPIO 26 (🌀 সিলিং ফ্যান — ≥25°সে চালু, ≤22°সে বন্ধ)', warning: null },
       { sensorPin: 'IN3 (লাইট)', esp32Pin: 'GPIO 27', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: রিলে IN3 → ESP32 এর GPIO 27 (💡 লাইটিং)', warning: null },
       { sensorPin: 'IN4 (হিটার)', esp32Pin: 'GPIO 14', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 কমলা তার: রিলে IN4 → ESP32 এর GPIO 14 (🔥 হিটার — ব্রয়লার বয়স-ভিত্তিক)', warning: null },
-      { sensorPin: 'IN5 (ফগার)', esp32Pin: 'GPIO 12', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN5 → ESP32 এর GPIO 12 (💦 ফগার সোলেনয়েড ভালভ)', warning: null },
+      { sensorPin: 'IN5 (ফগার)', esp32Pin: 'GPIO 12', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 নীল তার: রিলে IN5 → ESP32 এর GPIO 12 (💦 ফগার DC 12V সোলেনয়েড ভালভ)', warning: null },
       { sensorPin: 'IN6 (অ্যালার্ম)', esp32Pin: 'GPIO 13', wireColor: 'বেগুনি', wireNameEn: 'PURPLE', instruction: '🟣 বেগুনি তার: রিলে IN6 → ESP32 এর GPIO 13 (🔔 অ্যালার্ম)', warning: null },
       { sensorPin: 'IN7 (রুফ স্প্রিংকলার)', esp32Pin: 'GPIO 15', wireColor: 'আসমানি', wireNameEn: 'LIGHT BLUE', instruction: '🔵 আসমানি তার: রিলে IN7 → ESP32 এর GPIO 15 (🚿 রুফ স্প্রিংকলার — HSI ≥80 চালু)', warning: null },
       { sensorPin: 'IN8 (সার্কুলেশন ফ্যান)', esp32Pin: 'GPIO 33', wireColor: 'ধূসর', wireNameEn: 'GRAY', instruction: '⚪ ধূসর তার: রিলে IN8 → ESP32 এর GPIO 33 (💨 সার্কুলেশন ফ্যান)', warning: null },
