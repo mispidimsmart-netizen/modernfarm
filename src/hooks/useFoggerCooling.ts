@@ -2,8 +2,8 @@
  * MODULE 3: Intelligent Fogger Cooling — SAFE SEQUENCE CONTROL
  * 
  * SAFETY PRINCIPLE:
- * The high-pressure pump must NEVER run against a closed solenoid valve.
- * This prevents pipe burst, pump burnout, and hardware damage.
+ * The high-pressure pump (if used) must NEVER run against a closed solenoid valve.
+ * DC 12V solenoid valve is controlled directly by relay — no contactor needed.
  * 
  * COOLING START SEQUENCE (staged activation):
  *   1. State → PREPARE
@@ -68,7 +68,7 @@ interface UseFoggerCoolingProps {
   temperature: number | null;
   humidity: number | null;
   enabled?: boolean;
-  /** Controls the fogger solenoid valve (Relay 4 / GPIO 13) */
+  /** Controls the fogger DC 12V solenoid valve (Relay IN5 / GPIO 12) */
   onFoggerChange?: (on: boolean) => void;
   /** Controls the fogger high-pressure pump (separate output) */
   onPumpChange?: (on: boolean) => void;
