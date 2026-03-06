@@ -453,8 +453,8 @@ const detailedWiringGuide = [
         },
         {
           relay: 'IN5', gpio: 'GPIO 12', shared: true,
-          sharedDevice: '💦 ফগার সোলেনয়েড ভালভ (AC 220V)',
-          sharedNote: 'নিরাপদ ক্রম: ভালভ খোলে → ২সে অপেক্ষা → পাম্প চালু → স্প্রে → পাম্প বন্ধ → ২সে অপেক্ষা → ভালভ বন্ধ।',
+          sharedDevice: '💦 ফগার DC সোলেনয়েড ভালভ (12V)',
+          sharedNote: 'DC 12V ভালভ — রিলে সরাসরি কন্ট্রোল করে। নিরাপদ ক্রম: ভালভ খোলে → ২সে অপেক্ষা → পাম্প চালু (থাকলে) → স্প্রে → পাম্প বন্ধ → ২সে অপেক্ষা → ভালভ বন্ধ।',
           layerDevice: null, broilerDevice: null, layerAutomation: null, broilerAutomation: null,
         },
         {
