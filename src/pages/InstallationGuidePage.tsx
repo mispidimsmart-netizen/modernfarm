@@ -103,8 +103,8 @@ const partsList = [
     category: 'ফগার সিস্টেম (কুলিং) — রিলে IN5 / GPIO 12',
     categoryEn: 'Fogger System (Cooling) — Relay IN5 / GPIO 12',
     items: [
-      { name: 'সোলেনয়েড ভালভ (AC 220V, 1/2", NC, Brass) — ফগার', nameEn: 'Solenoid Valve AC 220V NC Brass — Fogger', quantity: 1, price: '৳৫০০-৮০০', priceRange: [500, 800], shop: 'ইলেকট্রনিক্স দোকান, AliExpress', essential: true },
-      { name: 'অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প', nameEn: 'Automatic Water Pressure Booster Pump', quantity: 1, price: '৳২০০০-৪০০০', priceRange: [2000, 4000], shop: 'পাম্প দোকান, হার্ডওয়্যার দোকান', essential: true },
+      { name: 'DC 12V সোলেনয়েড ভালভ (1/2", NC, Brass) — ফগার', nameEn: 'DC 12V Solenoid Valve 1/2" NC Brass — Fogger', quantity: 1, price: '৳২৫০-৫০০', priceRange: [250, 500], shop: 'ইলেকট্রনিক্স দোকান, AliExpress', essential: true },
+      { name: 'অটোমেটিক ওয়াটার প্রেসার বুস্টার পাম্প (ঐচ্ছিক — ট্যাঙ্ক উঁচুতে থাকলে লাগবে না)', nameEn: 'Water Pressure Booster Pump (Optional — not needed if tank is elevated)', quantity: 1, price: '৳২০০০-৪০০০', priceRange: [2000, 4000], shop: 'পাম্প দোকান, হার্ডওয়্যার দোকান', essential: false },
       { name: 'ফগার নজল সেট (10-20 পিস)', nameEn: 'Fogger Nozzle Set (10-20 pcs)', quantity: 1, price: '৳৩০০-৫০০', priceRange: [300, 500], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
       { name: 'পিই পাইপ (4mm, 20 মিটার)', nameEn: 'PE Pipe 4mm (20m)', quantity: 1, price: '৳২০০-৩০০', priceRange: [200, 300], shop: 'কৃষি সরঞ্জাম দোকান', essential: true },
     ]
