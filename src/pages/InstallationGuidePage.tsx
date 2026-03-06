@@ -565,8 +565,8 @@ const detailedWiringGuide = [
   },
   {
     id: 'fogger',
-    name: '💦 ফগার কুলিং সিস্টেম (AC ভালভ + বুস্টার পাম্প)',
-    nameEn: 'Fogger Cooling System (AC Valve + Booster Pump)',
+    name: '💦 ফগার কুলিং সিস্টেম (DC 12V সোলেনয়েড ভালভ)',
+    nameEn: 'Fogger Cooling System (DC 12V Solenoid Valve)',
     icon: Droplets,
     color: 'text-teal-500',
     bgColor: 'bg-teal-500/10',
