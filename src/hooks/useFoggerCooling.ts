@@ -68,7 +68,7 @@ interface UseFoggerCoolingProps {
   temperature: number | null;
   humidity: number | null;
   enabled?: boolean;
-  /** Controls the fogger solenoid valve (Relay 4 / GPIO 13) */
+  /** Controls the fogger DC 12V solenoid valve (Relay IN5 / GPIO 12) */
   onFoggerChange?: (on: boolean) => void;
   /** Controls the fogger high-pressure pump (separate output) */
   onPumpChange?: (on: boolean) => void;

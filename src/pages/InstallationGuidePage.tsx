@@ -96,7 +96,7 @@ const partsList = [
     items: [
       { name: 'MCB মেইন (সার্কিট ব্রেকার) — 2P 32A C', nameEn: 'MCB Main Circuit Breaker 2P 32A C', quantity: 1, price: '৳৩৫০-৫৫০', priceRange: [350, 550], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
       { name: 'সাব MCB — 1P 6A (প্রতিটি রিলে লাইনের জন্য)', nameEn: 'Sub MCB 1P 6A (per relay line)', quantity: 8, price: '৳১২০-১৮০/পিস', priceRange: [960, 1440], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
-      { name: 'ম্যাগনেটিক কন্ট্যাক্টর CJX2-1210 (220VAC কয়েল)', nameEn: 'Magnetic Contactor CJX2-1210 220VAC', quantity: 1, price: '৳৪০০-৬৫০', priceRange: [400, 650], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+      { name: 'ম্যাগনেটিক কন্ট্যাক্টর CJX2-1210 (220VAC কয়েল) — ঐচ্ছিক', nameEn: 'Magnetic Contactor CJX2-1210 220VAC (Optional)', quantity: 1, price: '৳৪০০-৬৫০', priceRange: [400, 650], shop: 'ইলেকট্রিক্যাল দোকান', essential: false },
     ]
   },
   {
