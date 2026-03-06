@@ -190,7 +190,7 @@ const wiringConnections = [
   { component: 'Relay IN2', pin: 'Ceiling Fan', esp32Pin: 'GPIO 26', color: 'bg-blue-400', note: '🌀 সিলিং ফ্যান (≥25°সে চালু)' },
   { component: 'Relay IN3', pin: 'Light', esp32Pin: 'GPIO 27', color: 'bg-lime-500', note: '💡 লাইটিং' },
   { component: 'Relay IN4', pin: 'Heater', esp32Pin: 'GPIO 14', color: 'bg-orange-500', note: '🔥 হিটার (ব্রয়লার)' },
-  { component: 'Relay IN5', pin: 'Fogger', esp32Pin: 'GPIO 12', color: 'bg-teal-500', note: '💦 ফগার সোলেনয়েড ভালভ' },
+  { component: 'Relay IN5', pin: 'Fogger', esp32Pin: 'GPIO 12', color: 'bg-teal-500', note: '💦 ফগার DC সোলেনয়েড ভালভ (12V)' },
   { component: 'Relay IN6', pin: 'Alarm', esp32Pin: 'GPIO 13', color: 'bg-red-400', note: '🔔 অ্যালার্ম' },
   { component: 'Relay IN7', pin: 'Sprinkler', esp32Pin: 'GPIO 15', color: 'bg-sky-500', note: '🚿 রুফ স্প্রিংকলার (HSI ≥80)' },
   { component: 'Relay IN8', pin: 'Circulation Fan', esp32Pin: 'GPIO 33', color: 'bg-indigo-500', note: '💨 সার্কুলেশন ফ্যান' },
