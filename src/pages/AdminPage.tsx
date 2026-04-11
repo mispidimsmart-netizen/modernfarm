@@ -625,6 +625,10 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="audit" className="mt-4">
+            <ProductionAuditReport />
+          </TabsContent>
         </Tabs>
       </div>
 
