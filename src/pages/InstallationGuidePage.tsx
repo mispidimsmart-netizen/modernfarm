@@ -149,7 +149,7 @@ const partsList = [
     ]
   },
   {
-    category: 'GSM মডিউল (ঐচ্ছিক) — GPIO 23/19',
+    category: 'GSM মডিউল (ঐচ্ছিক) — GPIO 23 (TX) / 19 (RX)',
     categoryEn: 'GSM Module (Optional) — GPIO 23/19',
     items: [
       { name: 'SIM800L GSM মডিউল', nameEn: 'SIM800L GSM Module', quantity: 1, price: '৳৪৫০-৬০০', priceRange: [450, 600], shop: 'রোবটিক্স বিডি', essential: false },
