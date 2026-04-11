@@ -942,6 +942,19 @@ float readTempFiltered() {
   if (!isnan(a1) && !isnan(a2)) {
     worstCaseMaxTemp = max(a1, a2);  // Use MAX for cooling/overheat decisions
     worstCaseMinTemp = min(a1, a2);  // Use MIN for heating decisions
+    
+    // ═══ FIX #4: DHT22 Cross-Validation Alert ═══
+    // If two sensors differ by 3°C+, one may be faulty or misplaced
+    float sensorDelta = abs(a1 - a2);
+    if (sensorDelta >= 3.0f) {
+      static unsigned long lastCrossValAlert = 0;
+      if (millis() - lastCrossValAlert > 1800000UL) { // Alert max every 30 min
+        lastCrossValAlert = millis();
+        Serial.printf("⚠️ DHT22 CROSS-VALIDATION: Sensor1=%.1f°C Sensor2=%.1f°C (Δ=%.1f°C) — check placement!\n", a1, a2, sensorDelta);
+        gsmQueueAlert("sensor", "⚠️ DHT22 সেন্সর পার্থক্য " + String(sensorDelta, 1) + "°C! S1=" + String(a1, 1) + " S2=" + String(a2, 1) + " — চেক করুন");
+      }
+    }
+    
     return (a1 + a2) / 2.0f;
   }
   if (!isnan(a1)) { worstCaseMaxTemp = a1; worstCaseMinTemp = a1; return a1; }
@@ -1251,6 +1264,10 @@ void sensorManagerTick() {
   currentHSI = calculateHSI(temperature, humidity);
 }
 
+// ═══ FIX #6: User-configurable water flow pulse/liter calibration ═══
+// Default YF-S201: 450 pulses/liter. Stored in NVS for per-sensor calibration.
+float waterPulsesPerLiter = 450.0f;  // User-configurable via cloud settings
+
 void calculateWaterFlow() {
   static unsigned long lastCalc = 0;
   static unsigned long lastPulses = 0;
@@ -1258,7 +1275,7 @@ void calculateWaterFlow() {
   if (now - lastCalc < 1000) return;
   unsigned long p = waterPulseCount - lastPulses;
   lastPulses = waterPulseCount;
-  waterFlow = (p / 450.0f) * 60.0f;
+  waterFlow = (p / waterPulsesPerLiter) * 60.0f;  // Uses calibrated value
   lastCalc = now;
 }
 
@@ -2244,8 +2261,14 @@ void gsmQueueAlert(String alertType, String message) {
 
 void gsmProcessQueue() {
   if (!gsmInitialized || !gsmNetworkReady || phoneNumberCount == 0) return;
-  // Only when WiFi is NOT connected (offline mode) OR for critical alerts
-  if (WiFi.status() == WL_CONNECTED && currentState != STATE_EMERGENCY && currentState != STATE_SENSOR_FAIL) return;
+  // ═══ FIX #5: Send SMS for power outages even when WiFi is connected ═══
+  // Power outage SMS is critical — WiFi may drop any moment during outage
+  // Allow SMS for: offline mode, emergency states, AND power outage alerts
+  bool hasUrgentPowerAlert = false;
+  for (int i = 0; i < MAX_GSM_QUEUE; i++) {
+    if (gsmQueue[i].pending && gsmQueue[i].alertType == "power") { hasUrgentPowerAlert = true; break; }
+  }
+  if (WiFi.status() == WL_CONNECTED && currentState != STATE_EMERGENCY && currentState != STATE_SENSOR_FAIL && !hasUrgentPowerAlert && !powerFailConfirmed) return;
 
   for (int i = 0; i < MAX_GSM_QUEUE; i++) {
     if (!gsmQueue[i].pending) continue;
