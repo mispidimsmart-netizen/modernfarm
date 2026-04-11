@@ -2481,6 +2481,17 @@ void handleCloudResponse(String response) {
   if (doc.containsKey("broiler_age_days") && isBroiler()) {
     updateAgeFromServer(doc["broiler_age_days"]);
   }
+  // ═══ Water flow sensor calibration from cloud ═══
+  if (doc.containsKey("water_pulses_per_liter")) {
+    float newCal = doc["water_pulses_per_liter"].as<float>();
+    if (newCal >= 100.0f && newCal <= 2000.0f) {  // Sanity check
+      waterPulsesPerLiter = newCal;
+      preferences.begin("water_cal", false);
+      preferences.putFloat("ppl", waterPulsesPerLiter);
+      preferences.end();
+      Serial.printf("💧 Water calibration updated: %.1f pulses/liter\n", waterPulsesPerLiter);
+    }
+  }
   if (doc.containsKey("sms_settings")) {
     JsonObject sms = doc["sms_settings"];
     smsEnabled = sms["enabled"] | true;
