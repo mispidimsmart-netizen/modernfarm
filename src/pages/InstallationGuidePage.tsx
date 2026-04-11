@@ -87,7 +87,7 @@ const partsList = [
     category: '🔔 অ্যালার্ম ও ইন্ডিকেটর',
     categoryEn: 'Alarm & Indicator',
     items: [
-      { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — GPIO 32', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — GPIO 32', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — রিলে IN6 / GPIO 13', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — Relay IN6 / GPIO 13', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
     ]
   },
   {
@@ -196,7 +196,7 @@ const wiringConnections = [
   { component: 'Relay IN8', pin: 'Circulation Fan', esp32Pin: 'GPIO 33', color: 'bg-indigo-500', note: '💨 সার্কুলেশন ফ্যান' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: '🔔 পিজো বাজার (সরাসরি)' },
+  { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'Relay IN6 (GPIO 13)', color: 'bg-amber-500', note: '🔔 পিজো বাজার (রিলে দিয়ে কন্ট্রোল)' },
 ];
 
 // Detailed step-by-step wiring guide for each sensor
@@ -521,38 +521,46 @@ const detailedWiringGuide = [
         { name: 'কন্ট্যাক্টর CJX2-1210 (220VAC)', purpose: 'বুস্টার পাম্পের মতো হাই-কারেন্ট লোড নিয়ন্ত্রণ — রিলে শুধু কন্ট্যাক্টরের কয়েল সুইচ করে, কন্ট্যাক্টর আসল লোড বহন করে' },
       ],
       layerWiring: {
-        title: '🥚 লেয়ার ফার্ম ওয়্যারিং',
-        diagram: 'মেইন AC ──► MCB 2P 32A ──┬──► Sub MCB 6A ──► Relay CH1 NO ──► এক্সহস্ট ফ্যান\n                          ├──► Sub MCB 6A ──► Relay CH2 NO ──► লাইট (LED/CFL)\n                          ├──► Sub MCB 6A ──► Relay CH3 NO ──► বাজার (DC পাওয়ার সাপ্লাই দিয়ে)\n                          └──► Sub MCB 6A ──► Relay CH4 NO ──► Contactor Coil ──► বুস্টার পাম্প + ভালভ',
+        title: '🥚 লেয়ার ফার্ম ওয়্যারিং (৮-চ্যানেল)',
+        diagram: 'মেইন AC ──► MCB 2P 32A ──┬──► Sub MCB 6A ──► Relay IN1 NO ──► এক্সহস্ট ফ্যান\n                          ├──► Sub MCB 6A ──► Relay IN2 NO ──► সিলিং ফ্যান\n                          ├──► Sub MCB 6A ──► Relay IN3 NO ──► লাইট\n                          ├──► Sub MCB 6A ──► Relay IN4 NO ──► (খালি/ঐচ্ছিক)\n                          ├──► Sub MCB 6A ──► Relay IN5 NO ──► ফগার সোলেনয়েড (DC)\n                          ├──► Sub MCB 6A ──► Relay IN6 NO ──► অ্যালার্ম বাজার (DC)\n                          ├──► Sub MCB 6A ──► Relay IN7 NO ──► স্প্রিংকলার সোলেনয়েড (DC)\n                          └──► Sub MCB 6A ──► Relay IN8 NO ──► সার্কুলেশন ফ্যান',
         relays: [
-          { ch: 'CH1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'HSI/তাপমাত্রা/অ্যামোনিয়া ভিত্তিক' },
-          { ch: 'CH2 (GPIO 26)', device: '💡 লাইট (LED/CFL)', mcb: 'Sub MCB 6A', contactor: false, note: '১৬ ঘণ্টা শিডিউল, ডিম উৎপাদনের জন্য' },
-          { ch: 'CH3 (GPIO 33)', device: '🔔 বাজার/অ্যালার্ম', mcb: 'Sub MCB 6A', contactor: false, note: 'DC পাওয়ার সাপ্লাই দিয়ে চলে' },
-          { ch: 'CH4 (GPIO 12)', device: '💦 DC 12V সোলেনয়েড ভালভ', mcb: 'Sub MCB 6A', contactor: false, note: 'DC 12V ভালভ সরাসরি রিলে দিয়ে কন্ট্রোল — কন্ট্যাক্টর লাগবে না' },
+          { ch: 'IN1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'HSI/তাপমাত্রা/অ্যামোনিয়া ভিত্তিক' },
+          { ch: 'IN2 (GPIO 26)', device: '🌀 সিলিং ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: '≥25°সে তে চালু' },
+          { ch: 'IN3 (GPIO 27)', device: '💡 লাইট (LED/CFL)', mcb: 'Sub MCB 6A', contactor: false, note: '১৬ ঘণ্টা শিডিউল, ডিম উৎপাদনের জন্য' },
+          { ch: 'IN4 (GPIO 14)', device: '(ঐচ্ছিক)', mcb: 'Sub MCB 6A', contactor: false, note: 'লেয়ারে হিটার সাধারণত প্রয়োজন হয় না' },
+          { ch: 'IN5 (GPIO 12)', device: '💦 ফগার সোলেনয়েড', mcb: 'Sub MCB 6A', contactor: false, note: 'DC 12V সোলেনয়েড ভালভ' },
+          { ch: 'IN6 (GPIO 13)', device: '🔔 অ্যালার্ম বাজার', mcb: 'Sub MCB 6A', contactor: false, note: 'SFM-27 পিজো বাজার' },
+          { ch: 'IN7 (GPIO 15)', device: '🚿 স্প্রিংকলার', mcb: 'Sub MCB 6A', contactor: false, note: 'HSI ≥80 তে রুফ স্প্রিংকলার' },
+          { ch: 'IN8 (GPIO 33)', device: '💨 সার্কুলেশন ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বায়ু সঞ্চালন' },
         ],
         contactorWiring: [
-          { step: 1, instruction: 'রিলে IN5 NO → DC 12V সোলেনয়েড ভালভের + তার', color: 'red' },
-          { step: 2, instruction: '12V DC অ্যাডাপ্টারের + → রিলে IN5 COM', color: 'orange' },
-          { step: 3, instruction: 'DC 12V সোলেনয়েড ভালভের - তার → 12V অ্যাডাপ্টারের GND', color: 'black' },
+          { step: 1, instruction: 'AC লাইভ → রিলে COM (মাঝের পোর্ট)', color: 'red' },
+          { step: 2, instruction: 'রিলে NO → লোড (ফ্যান/লাইট)', color: 'orange' },
+          { step: 3, instruction: 'লোডের অন্য তার → AC Neutral', color: 'black' },
         ],
         totalContactor: 0,
-        contactorNote: 'লেয়ার ফার্মে DC 12V সোলেনয়েড ভালভ ব্যবহারে কন্ট্যাক্টর লাগে না। ভালভ সরাসরি রিলে দিয়ে কন্ট্রোল হয়। বুস্টার পাম্প দরকার হলে সেটির জন্য আলাদা কন্ট্যাক্টর লাগবে।',
+        contactorNote: 'লেয়ার ফার্মে DC সোলেনয়েড ভালভ ব্যবহারে কন্ট্যাক্টর লাগে না। বড় ফ্যান (>1HP) থাকলে সেটির জন্য আলাদা কন্ট্যাক্টর লাগবে।',
       },
       broilerWiring: {
-        title: '🐔 ব্রয়লার ফার্ম ওয়্যারিং',
-        diagram: 'মেইন AC ──► MCB 2P 32A ──┬──► Sub MCB 6A ──► Relay CH1 NO ──► এক্সহস্ট ফ্যান\n                          ├──► Sub MCB 6A ──► Relay CH2 NO ──► সার্কুলেশন ফ্যান\n                          ├──► Sub MCB 6A ──► Relay CH3 NO ──► হিটার\n                          └──► Sub MCB 6A ──► Relay CH4 NO ──► Contactor Coil ──► বুস্টার পাম্প + ভালভ',
+        title: '🐔 ব্রয়লার ফার্ম ওয়্যারিং (৮-চ্যানেল)',
+        diagram: 'মেইন AC ──► MCB 2P 32A ──┬──► Sub MCB 6A ──► Relay IN1 NO ──► এক্সহস্ট ফ্যান\n                          ├──► Sub MCB 6A ──► Relay IN2 NO ──► সিলিং ফ্যান\n                          ├──► Sub MCB 6A ──► Relay IN3 NO ──► লাইট\n                          ├──► Sub MCB 6A ──► Relay IN4 NO ──► হিটার (ব্রুডিং)\n                          ├──► Sub MCB 6A ──► Relay IN5 NO ──► ফগার সোলেনয়েড (DC)\n                          ├──► Sub MCB 6A ──► Relay IN6 NO ──► অ্যালার্ম বাজার (DC)\n                          ├──► Sub MCB 6A ──► Relay IN7 NO ──► স্প্রিংকলার সোলেনয়েড (DC)\n                          └──► Sub MCB 6A ──► Relay IN8 NO ──► সার্কুলেশন ফ্যান',
         relays: [
-          { ch: 'CH1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বড় ইন্ডাস্ট্রিয়াল ফ্যান হলে (>1HP) কন্ট্যাক্টর লাগবে' },
-          { ch: 'CH2 (GPIO 26)', device: '💨 সার্কুলেশন ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বয়স ১০+ দিন থেকে সক্রিয়' },
-          { ch: 'CH3 (GPIO 33)', device: '🔥 হিটার (ব্রুডিং)', mcb: 'Sub MCB 6A', contactor: false, note: 'হিটার >1000W হলে কন্ট্যাক্টর বিবেচনা করুন' },
-          { ch: 'CH4 (GPIO 12)', device: '💦 DC 12V সোলেনয়েড ভালভ', mcb: 'Sub MCB 6A', contactor: false, note: 'DC 12V ভালভ সরাসরি রিলে দিয়ে কন্ট্রোল — কন্ট্যাক্টর লাগবে না' },
+          { ch: 'IN1 (GPIO 25)', device: '🌀 এক্সহস্ট ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বড় ইন্ডাস্ট্রিয়াল ফ্যান হলে (>1HP) কন্ট্যাক্টর লাগবে' },
+          { ch: 'IN2 (GPIO 26)', device: '🌀 সিলিং ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: '≥25°সে তে চালু' },
+          { ch: 'IN3 (GPIO 27)', device: '💡 লাইট', mcb: 'Sub MCB 6A', contactor: false, note: 'লাইটিং কার্ভ অনুযায়ী' },
+          { ch: 'IN4 (GPIO 14)', device: '🔥 হিটার (ব্রুডিং)', mcb: 'Sub MCB 6A', contactor: false, note: 'হিটার >1000W হলে কন্ট্যাক্টর বিবেচনা করুন' },
+          { ch: 'IN5 (GPIO 12)', device: '💦 ফগার সোলেনয়েড', mcb: 'Sub MCB 6A', contactor: false, note: 'DC 12V সোলেনয়েড ভালভ' },
+          { ch: 'IN6 (GPIO 13)', device: '🔔 অ্যালার্ম বাজার', mcb: 'Sub MCB 6A', contactor: false, note: 'SFM-27 পিজো বাজার' },
+          { ch: 'IN7 (GPIO 15)', device: '🚿 স্প্রিংকলার', mcb: 'Sub MCB 6A', contactor: false, note: 'HSI ≥80 তে রুফ স্প্রিংকলার' },
+          { ch: 'IN8 (GPIO 33)', device: '💨 সার্কুলেশন ফ্যান', mcb: 'Sub MCB 6A', contactor: false, note: 'বয়স ১০+ দিন থেকে সক্রিয়' },
         ],
         contactorWiring: [
-          { step: 1, instruction: 'রিলে IN5 NO → DC 12V সোলেনয়েড ভালভের + তার', color: 'red' },
-          { step: 2, instruction: '12V DC অ্যাডাপ্টারের + → রিলে IN5 COM', color: 'orange' },
-          { step: 3, instruction: 'DC 12V সোলেনয়েড ভালভের - তার → 12V অ্যাডাপ্টারের GND', color: 'black' },
+          { step: 1, instruction: 'AC লাইভ → রিলে COM (মাঝের পোর্ট)', color: 'red' },
+          { step: 2, instruction: 'রিলে NO → লোড (ফ্যান/হিটার)', color: 'orange' },
+          { step: 3, instruction: 'লোডের অন্য তার → AC Neutral', color: 'black' },
         ],
         totalContactor: '0-2',
-        contactorNote: 'DC 12V সোলেনয়েড ভালভে কন্ট্যাক্টর লাগে না। বড় ইন্ডাস্ট্রিয়াল এক্সহস্ট ফ্যান (>1HP / >5A) বা হাই-ওয়াটেজ হিটার (>1000W) থাকলে সেগুলোর জন্য আলাদা কন্ট্যাক্টর লাগবে — সর্বোচ্চ ১-২টি।',
+        contactorNote: 'DC সোলেনয়েড ভালভে কন্ট্যাক্টর লাগে না। বড় ইন্ডাস্ট্রিয়াল এক্সহস্ট ফ্যান (>1HP / >5A) বা হাই-ওয়াটেজ হিটার (>1000W) থাকলে সেগুলোর জন্য আলাদা কন্ট্যাক্টর লাগবে — সর্বোচ্চ ১-২টি।',
       },
       safetyWarnings: [
         '⚡ MCB এবং কন্ট্যাক্টর ইনস্টল করার আগে মেইন সুইচ বন্ধ করুন!',
@@ -930,10 +938,10 @@ const setupSteps = [
     titleEn: 'Configure Code',
     icon: Wifi,
     tasks: [
-      'esp32-code.ino ফাইল খুলুন',
+      'esp32-industrial.ino ও esp32-safety-engine.h ফাইল খুলুন',
       'WiFi SSID ও পাসওয়ার্ড দিন',
       'Device Token দিন (অ্যাপ থেকে কপি করুন)',
-      'API URL ঠিক আছে কিনা চেক করুন',
+      'FARM_ID ও SHED_ID ঠিক আছে কিনা চেক করুন',
     ]
   },
   {
@@ -954,7 +962,7 @@ const setupSteps = [
     titleEn: 'Verify in App',
     icon: CheckCircle2,
     tasks: [
-      'Smart Layer Farm অ্যাপে লগইন করুন',
+      'FarmEye অ্যাপে লগইন করুন',
       'Dashboard এ সেন্সর ডেটা দেখুন',
       'Control পেজ থেকে ফ্যান/লাইট টেস্ট করুন',
       'Settings এ Device Health চেক করুন',
@@ -990,13 +998,14 @@ export default function InstallationGuidePage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const wifiConfigCode = `// WiFi কনফিগারেশন
+  const wifiConfigCode = `// WiFi কনফিগারেশন (esp32-industrial.ino v8.0.0)
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-// API কনফিগারেশন  
-const char* apiUrl = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api";
-const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে কপি করুন`;
+// ডিভাইস কনফিগারেশন  
+const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে কপি করুন
+const char* FARM_ID = "YOUR_FARM_ID";
+const char* SHED_ID = "YOUR_SHED_ID";`;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -1050,14 +1059,14 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Cpu className="h-4 w-4 text-primary" />
-              ৪টি সেন্সর + ৪-চ্যানেল রিলে
+              ৫টি সেন্সর + ৮-চ্যানেল রিলে (v8.0.0)
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
                 <Thermometer className="h-4 w-4 text-green-500" />
-                <span>DHT22 (তাপ/আর্দ্রতা)</span>
+                <span>DHT22 ×2 (তাপ/আর্দ্রতা)</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
                 <Wind className="h-4 w-4 text-yellow-500" />
@@ -1075,7 +1084,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
             <div className="mt-3 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
               <p className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-2">
                 <Fan className="h-3 w-3" />
-                ৪-চ্যানেল রিলে: এক্সহস্ট ফ্যান, সার্কুলেশন ফ্যান, হিটার, ফগার
+                ৮-চ্যানেল রিলে: এক্সহস্ট, সিলিং ফ্যান, লাইট, হিটার, ফগার, অ্যালার্ম, স্প্রিংকলার, সার্কুলেশন
               </p>
             </div>
           </CardContent>
@@ -1234,33 +1243,40 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                       <div className="bg-muted/30 rounded-lg p-4 overflow-x-auto">
                         <pre className="text-xs font-mono whitespace-pre text-foreground">
 {`┌─────────────────────────────────────────────────────────┐
-│                  ESP32 DevKit V1 (v5)                    │
+│              ESP32 DevKit V1 (v8.0.0 Industrial)         │
 │                                                          │
 │  সেন্সর ইনপুট:                                           │
 │  ─────────────                                           │
-│  DHT22 DATA ────────────────▶ GPIO 4  (তাপমাত্রা/আর্দ্রতা)│
-│  MQ-137 AO ─────────────────▶ GPIO 34 (অ্যামোনিয়া)      │
-│  YF-S201 Signal ────────────▶ GPIO 27 (ওয়াটার ফ্লো)     │
-│  ZMPT101B OUT ──────────────▶ GPIO 35 (পাওয়ার মনিটর)    │
+│  DHT22 #1 DATA ──────────────▶ GPIO 4  (তাপমাত্রা #১)    │
+│  DHT22 #2 DATA ──────────────▶ GPIO 16 (তাপমাত্রা #২)    │
+│  MQ-137 AO ──────────────────▶ GPIO 34 (অ্যামোনিয়া)      │
+│  YF-S201 Signal ─────────────▶ GPIO 17 (ওয়াটার ফ্লো)     │
+│  ZMPT101B OUT ───────────────▶ GPIO 35 (পাওয়ার মনিটর)    │
 │                                                          │
-│  ৪-চ্যানেল রিলে আউটপুট (HW-316):                         │
-│  ─────────────────────────────                           │
-│  GPIO 25 ───────────────────▶ IN1 (🌀 এক্সহস্ট ফ্যান)   │
-│  GPIO 26 ───────────────────▶ IN2 (💨 সার্কুলেশন ফ্যান) │
-│  GPIO 33 ───────────────────▶ IN3 (🔥 হিটার)            │
-│  GPIO 12 ───────────────────▶ IN4 (💦 ফগার)             │
+│  ৮-চ্যানেল রিলে আউটপুট:                                  │
+│  ────────────────────                                    │
+│  GPIO 25 ────────────────────▶ IN1: 🌀 এক্সহস্ট ফ্যান     │
+│  GPIO 26 ────────────────────▶ IN2: 🌀 সিলিং ফ্যান        │
+│  GPIO 27 ────────────────────▶ IN3: 💡 লাইট               │
+│  GPIO 14 ────────────────────▶ IN4: 🔥 হিটার              │
+│  GPIO 12 ────────────────────▶ IN5: 💦 ফগার               │
+│  GPIO 13 ────────────────────▶ IN6: 🔔 অ্যালার্ম           │
+│  GPIO 15 ────────────────────▶ IN7: 🚿 স্প্রিংকলার        │
+│  GPIO 33 ────────────────────▶ IN8: 💨 সার্কুলেশন ফ্যান    │
 │                                                          │
-│  অন্যান্য আউটপুট:                                        │
-│  ────────────────                                        │
-│  GPIO 32 ───────────────────▶ পিজো বাজার (অ্যালার্ম)    │
-│  GPIO 14 ───────────────────▶ PWM লাইট (MOSFET)         │
-│                                                          │
-│  পাওয়ার:                                                │
+│  অন্যান্য:                                                │
 │  ─────────                                               │
-│  3.3V ──────────────────────▶ DHT22 VCC (শুধু DHT22)    │
-│  5V (VIN) ──────────────────▶ অন্যান্য সেন্সর + রিলে VCC│
-│  GND ───────────────────────▶ সব GND একসাথে             │
-│  1000μF ক্যাপাসিটর (ESP32) ──▶ VIN ও GND এর মাঝে         │
+│  GPIO 2  ────────────────────▶ স্ট্যাটাস LED              │
+│  GPIO 32 ────────────────────▶ ম্যানুয়াল ওভাররাইড বাটন    │
+│  GPIO 23 ────────────────────▶ GSM TX (ঐচ্ছিক)            │
+│  GPIO 19 ────────────────────▶ GSM RX (ঐচ্ছিক)            │
+│                                                          │
+│  পাওয়ার:                                                 │
+│  ───────                                                 │
+│  VIN ◄──── 5V (LM2596 থেকে)                              │
+│  GND ◄──── কমন গ্রাউন্ড                                   │
+│  3.3V ───▶ DHT22 VCC                                     │
+│  5V (VIN)─▶ MQ-137, YF-S201, ZMPT101B, রিলে VCC         │
 └─────────────────────────────────────────────────────────┘`}
                         </pre>
                       </div>
@@ -2730,11 +2746,11 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                   ⚠️ গুরুত্বপূর্ণ তথ্য
                                 </p>
                                 <ul className="space-y-1 text-xs text-muted-foreground">
-                                  <li>• অ্যাপে ফার্ম টাইপ সিলেক্ট করলে ESP32 <strong>স্বয়ংক্রিয়ভাবে</strong> সঠিক সফটওয়্যার লজিক প্রয়োগ করে।</li>
-                                  <li>• তবে IN2 ও IN3 এর <strong>NO পোর্টে</strong> আপনার ফার্ম টাইপ অনুযায়ী সঠিক ডিভাইস ফিজিক্যালি কানেক্ট করতে হবে।</li>
-                                  <li>• <strong>লেয়ার ফার্ম:</strong> IN2 → লাইট, IN3 → বাজার কানেক্ট করুন।</li>
-                                  <li>• <strong>ব্রয়লার ফার্ম:</strong> IN2 → সার্কুলেশন ফ্যান, IN3 → হিটার কানেক্ট করুন।</li>
-                                  <li>• একই শেডে লেয়ার→ব্রয়লার পরিবর্তন করলে IN2 ও IN3 এর ডিভাইস পরিবর্তন করতে হবে।</li>
+                                   <li>• অ্যাপে ফার্ম টাইপ সিলেক্ট করলে ESP32 <strong>স্বয়ংক্রিয়ভাবে</strong> সঠিক সফটওয়্যার লজিক প্রয়োগ করে।</li>
+                                   <li>• ৮-চ্যানেল রিলের সব ডিভাইস <strong>NO পোর্টে</strong> ফিজিক্যালি কানেক্ট করুন।</li>
+                                   <li>• <strong>লেয়ার ফার্মে</strong> হিটার (IN4) সাধারণত অব্যবহৃত থাকে — সফটওয়্যার স্বয়ংক্রিয়ভাবে এড়িয়ে যায়।</li>
+                                   <li>• <strong>ব্রয়লার ফার্মে</strong> হিটার (IN4) ব্রুডিং তাপমাত্রায় ব্যবহৃত হয়।</li>
+                                   <li>• একই শেডে লেয়ার↔ব্রয়লার পরিবর্তন করলে শুধু অ্যাপ থেকে ফার্ম টাইপ বদলান — হার্ডওয়্যার একই থাকে।</li>
                                 </ul>
                               </div>
                             </div>
@@ -3012,20 +3028,20 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
-                onClick={() => window.open('/esp32-code.ino', '_blank')}
+                onClick={() => window.open('/esp32-industrial.ino', '_blank')}
               >
                 <Cpu className="h-4 w-4 mr-2" />
-                <span className="flex-1 text-left">মূল ESP32 কোড ডাউনলোড</span>
-                <Badge variant="secondary">Basic</Badge>
+                <span className="flex-1 text-left">ESP32 Industrial কোড ডাউনলোড (v8.0.0)</span>
+                <Badge variant="secondary">Production</Badge>
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
-                onClick={() => window.open('/esp32-failsafe.ino', '_blank')}
+                onClick={() => window.open('/esp32-safety-engine.h', '_blank')}
               >
                 <Zap className="h-4 w-4 mr-2" />
-                <span className="flex-1 text-left">ফেইলসেফ সাপোর্ট সহ কোড</span>
-                <Badge variant="secondary">Advanced</Badge>
+                <span className="flex-1 text-left">Safety Engine হেডার ফাইল</span>
+                <Badge variant="secondary">Required</Badge>
               </Button>
               <Button 
                 variant="outline" 
@@ -3034,7 +3050,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
               >
                 <Wifi className="h-4 w-4 mr-2" />
                 <span className="flex-1 text-left">GSM SMS সাপোর্ট সহ কোড</span>
-                <Badge variant="secondary">Pro</Badge>
+                <Badge variant="secondary">Optional</Badge>
               </Button>
             </div>
 
