@@ -32,6 +32,7 @@ import {
   Ban,
   BookOpen,
   Crown,
+  FileText,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -52,6 +53,7 @@ import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
 import { AppDocumentation } from '@/components/admin/AppDocumentation';
 import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
+import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 
 const t = {
   bn: {
@@ -88,6 +90,7 @@ const t = {
     tabAnalytics: 'অ্যানালিটিক্স',
     tabGuide: 'ইনস্টলেশন গাইড',
      tabDocs: 'অ্যাপ ডকুমেন্টেশন',
+    tabAudit: 'অডিট রিপোর্ট',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -132,6 +135,7 @@ const t = {
     tabAnalytics: 'Analytics',
     tabGuide: 'Installation Guide',
      tabDocs: 'App Documentation',
+    tabAudit: 'Audit Report',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -391,6 +395,10 @@ export default function AdminPage() {
               <Cpu className="w-4 h-4 mr-2" />
               {labels.tabGuide}
             </TabsTrigger>
+            <TabsTrigger value="audit" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <FileText className="w-4 h-4 mr-2" />
+              {labels.tabAudit}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="admins" className="mt-4">
@@ -616,6 +624,10 @@ export default function AdminPage() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="audit" className="mt-4">
+            <ProductionAuditReport />
           </TabsContent>
         </Tabs>
       </div>
