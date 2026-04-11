@@ -3028,20 +3028,20 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
-                onClick={() => window.open('/esp32-code.ino', '_blank')}
+                onClick={() => window.open('/esp32-industrial.ino', '_blank')}
               >
                 <Cpu className="h-4 w-4 mr-2" />
-                <span className="flex-1 text-left">মূল ESP32 কোড ডাউনলোড</span>
-                <Badge variant="secondary">Basic</Badge>
+                <span className="flex-1 text-left">ESP32 Industrial কোড ডাউনলোড (v8.0.0)</span>
+                <Badge variant="secondary">Production</Badge>
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
-                onClick={() => window.open('/esp32-failsafe.ino', '_blank')}
+                onClick={() => window.open('/esp32-safety-engine.h', '_blank')}
               >
                 <Zap className="h-4 w-4 mr-2" />
-                <span className="flex-1 text-left">ফেইলসেফ সাপোর্ট সহ কোড</span>
-                <Badge variant="secondary">Advanced</Badge>
+                <span className="flex-1 text-left">Safety Engine হেডার ফাইল</span>
+                <Badge variant="secondary">Required</Badge>
               </Button>
               <Button 
                 variant="outline" 
@@ -3050,7 +3050,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
               >
                 <Wifi className="h-4 w-4 mr-2" />
                 <span className="flex-1 text-left">GSM SMS সাপোর্ট সহ কোড</span>
-                <Badge variant="secondary">Pro</Badge>
+                <Badge variant="secondary">Optional</Badge>
               </Button>
             </div>
 
