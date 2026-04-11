@@ -4298,6 +4298,7 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      cleanup_old_audit_logs: { Args: never; Returns: undefined }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       has_min_role: {
