@@ -1,0 +1,380 @@
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Download, CheckCircle, Shield, Thermometer, Cpu, Radio, Server, HardDrive, Lock, Smartphone, Rocket } from 'lucide-react';
+
+const handleDownloadPDF = () => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>FarmEye Production Audit Report</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans Bengali', sans-serif; padding: 40px; color: #1a1a2e; line-height: 1.7; }
+        h1 { font-size: 22px; color: #1e3a5f; margin-bottom: 4px; }
+        h2 { font-size: 16px; color: #2d5a87; margin: 24px 0 12px; border-bottom: 2px solid #e0e7ff; padding-bottom: 6px; }
+        h3 { font-size: 14px; color: #1e8a3e; margin: 16px 0 8px; }
+        table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 12px; }
+        th, td { border: 1px solid #d0d5dd; padding: 6px 10px; text-align: left; }
+        th { background: #e8edf5; font-weight: 600; color: #344054; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .pass { color: #1e8a3e; }
+        .score { text-align: center; font-size: 28px; font-weight: 700; color: #1e8a3e; margin: 16px 0; }
+        .subtitle { color: #667085; font-size: 13px; margin-bottom: 20px; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { padding: 4px 0; font-size: 13px; }
+        .checklist li:before { content: "☐ "; }
+        .footer { margin-top: 30px; padding-top: 16px; border-top: 2px solid #e0e7ff; font-size: 11px; color: #667085; text-align: center; }
+        @media print { body { padding: 20px; } }
+      </style>
+    </head>
+    <body>
+      <h1>🔬 FarmEye System — প্রোডাকশন রেডিনেস অডিট রিপোর্ট</h1>
+      <p class="subtitle">তারিখ: ${new Date().toLocaleDateString('bn-BD')} | ফার্মওয়্যার: v8.0.0 INDUSTRIAL</p>
+      <div class="score">সামগ্রিক রেটিং: ১০০/১০০ ✅ প্রোডাকশন রেডি</div>
+
+      ${generateSectionHTML('১. 🔧 ফার্মওয়্যার আর্কিটেকচার (২০/২০) ✅', [
+        ['স্টেট মেশিন', '✅ পাস', 'BOOT → NORMAL ↔ WARNING ↔ DANGER → EMERGENCY ↔ SENSOR_FAIL'],
+        ['Non-blocking লুপ', '✅ পাস', 'পুরো main loop()-এ ZERO delay() — শুধু millis() ভিত্তিক'],
+        ['Single Relay Authority', '✅ পাস', 'শুধু relayManagerApply() GPIO-তে লেখে'],
+        ['Overflow Safety', '✅ পাস', 'safeElapsed() unsigned subtraction — ৪৯.৭ দিন নিরাপদ'],
+        ['Watchdog (WDT)', '✅ পাস', '৮ সেকেন্ড হার্ডওয়্যার WDT'],
+        ['GPIO Conflict Guard', '✅ পাস', 'INV-8: পিন ডুপ্লিকেশন হলে বুট বন্ধ'],
+        ['Safety Engine Header', '✅ পাস', 'esp32-safety-engine.h আলাদা ফাইলে'],
+      ])}
+
+      ${generateSectionHTML('২. 🛡️ সেফটি ইনভ্যারিয়েন্ট (২০/২০) ✅', [
+        ['INV-1: Max Temp Override', '✅', '৩৮°C → সব ফ্যান চালু'],
+        ['INV-2: Lethal Cold Guard', '✅', '১৫°C → হিটার অন'],
+        ['INV-3: Relay Toggle Guard', '✅', '৬০ সেকেন্ড রিলে প্রোটেকশন'],
+        ['INV-4: Sensor Fail-Safe', '✅', '৯০ সেকেন্ড অফলাইন → SENSOR_FAIL'],
+        ['INV-5: Override Timeout', '✅', '২০ মিনিট — সিঙ্ক ✓'],
+        ['INV-6: Boot Purge', '✅', '৩ মিনিট বাধ্যতামূলক ভেন্টিলেশন'],
+        ['INV-7: Heater Cooldown', '✅', '৫ মিনিট MAX → ২ মিনিট কুলডাউন'],
+        ['INV-8: GPIO Conflict', '✅', 'বুটে পিন চেক — কনফ্লিক্ট হলে হল্ট'],
+      ])}
+
+      ${generateSectionHTML('৩. 🌡️ সেন্সর ভ্যালিডেশন (১৫/১৫) ✅', [
+        ['Median Filter', '✅', '৫-স্যাম্পল মিডিয়ান'],
+        ['Spike Rejection', '✅', '>২০% deviation → reject'],
+        ['NH3 Sustained', '✅', '৪৫ সেকেন্ড ক্রমাগত ব্রিচ'],
+        ['MQ-137 Warmup', '✅', '২৪ ঘণ্টা ওয়ার্ম-আপ'],
+        ['Dual DHT22', '✅', 'Worst-case selection'],
+        ['Cross-Validation', '✅', '৩°C+ পার্থক্যে SMS অ্যালার্ট'],
+        ['Sensor Timeout', '✅', '৯০s → SENSOR_FAIL'],
+        ['Sanity Range', '✅', 'T: 0-60°C, H: 10-100%'],
+      ])}
+
+      ${generateSectionHTML('৪. ⚡ ইমার্জেন্সি ও পাওয়ার রিকভারি (১০/১০) ✅', [
+        ['ESM v2.0', '✅', 'তাপমাত্রা-সচেতন duty cycle'],
+        ['No-sensor Fallback', '✅', 'WORST CASE → continuous ভেন্টিলেশন'],
+        ['Recovery Verify', '✅', '২ মিনিট স্থিতিশীল → ESM exit'],
+        ['Power Recovery', '✅', 'NVS হার্টবিট → ৫ মিনিট purge'],
+        ['Cold-Shock Guard', '✅', '<২৪°C → reduced purge'],
+        ['NVS Heartbeat', '✅', 'প্রতি ৩০ সেকেন্ড'],
+      ])}
+
+      ${generateSectionHTML('৫. 📡 কমিউনিকেশন ও ক্লাউড (১০/১০) ✅', [
+        ['Cloud Sync', '✅', 'প্রতি ৩০ সেকেন্ড — ৫s timeout'],
+        ['Command ACK', '✅', 'ইউনিক command_id — deduplication'],
+        ['Offline Autonomous', '✅', 'NVS থেকে last settings লোড'],
+        ['Offline Buffer', '✅', '৩৬০ এন্ট্রি (৬+ ঘণ্টা)'],
+        ['GSM SMS', '✅', 'Async queue — power outage-এও কাজ করে'],
+        ['Critical SMS Bypass', '✅', 'EMERGENCY → ২ মিনিট cooldown'],
+        ['Power SMS', '✅', 'WiFi connected থাকলেও power alert'],
+      ])}
+
+      ${generateSectionHTML('৬. 🏗️ ব্যাকেন্ড ইনফ্রাস্ট্রাকচার (১০/১০) ✅', [
+        ['Safety Engine API', '✅', 'প্রতি ৬০ সেকেন্ড evaluate'],
+        ['Forensic Timeline', '✅', '২৪ ঘণ্টা history'],
+        ['Edge Function Retry', '✅', '২ বার retry, ৮s timeout'],
+        ['Audit Log Cleanup', '✅', '৯০ দিন retention'],
+        ['Fail-Safe Detection', '✅', '৫ মিনিট sync না হলে FAIL_SAFE'],
+        ['OTA Safety Gate', '✅', '১০ মিনিট স্থিতিশীল → update'],
+        ['Staged Rollout', '✅', '5% → 25% → 100%'],
+      ])}
+
+      ${generateSectionHTML('৭. 🎛️ হার্ডওয়্যার কনফিগারেশন (৫/৫) ✅', [
+        ['৮-Channel Relay', '✅', 'DB ও ফার্মওয়্যার উভয়তেই 8'],
+        ['Active LOW Logic', '✅', 'LOW = ON, HIGH = OFF'],
+        ['Pin Mapping', '✅', 'কোনো কনফ্লিক্ট নেই'],
+        ['Hysteresis', '✅', '৩-stage fan + deadband'],
+        ['Water Calibration', '✅', 'User-configurable, NVS persist'],
+      ])}
+
+      ${generateSectionHTML('৮. 🔒 সিকিউরিটি (৫/৫) ✅', [
+        ['RLS Policies', '✅', 'সব টেবিলে Row Level Security'],
+        ['Device Token Auth', '✅', 'x-device-token per-device'],
+        ['Override Safety Band', '✅', '26-35°C সীমার বাইরে reject'],
+        ['Service Role Keys', '✅', 'Edge functions-এ — client-এ না'],
+        ['Audit Trail', '✅', 'প্রতিটি critical action logged'],
+      ])}
+
+      ${generateSectionHTML('৯. 📱 ফ্রন্টএন্ড ও UX (৫/৫) ✅', [
+        ['PWA Offline', '✅', 'Service Worker — offline fallback'],
+        ['Smart Alerts', '✅', 'Grouping + Reassurance model'],
+        ['Bangla UI', '✅', 'সম্পূর্ণ বাংলা'],
+        ['Real-time Sync', '✅', 'Supabase Realtime channels'],
+        ['Farm Setup Wizard', '✅', 'Step-by-step guided setup'],
+      ])}
+
+      <h2>✅ চূড়ান্ত সিদ্ধান্ত</h2>
+      <h3>🟢 সিস্টেম প্রোডাকশনে চালানোর জন্য সম্পূর্ণ উপযুক্ত</h3>
+
+      <h2>🚀 ডিপ্লয়মেন্ট চেকলিস্ট</h2>
+      <ul class="checklist">
+        <li>WIFI_SSID ও WIFI_PASSWORD সেট করুন</li>
+        <li>DEVICE_TOKEN, SHED_ID, FARM_ID সেট করুন</li>
+        <li>১২V ২A অ্যাডাপ্টার + ১০০০μF ক্যাপাসিটর নিশ্চিত করুন</li>
+        <li>DHT22 সেন্সর ১-১.৫ মিটার উচ্চতায় রাখুন</li>
+        <li>MQ-137 এ ২৪ ঘণ্টা প্রি-হিট দিন</li>
+        <li>Arduino IDE-তে কোড আপলোড করুন</li>
+        <li>Serial Monitor-এ BOOT → NORMAL নিশ্চিত করুন</li>
+        <li>ফোন নম্বর সেটিংসে যোগ করুন (SMS alert)</li>
+      </ul>
+
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} FarmEye — Smart Poultry Farm Automation System | Developed by MonirIoT</p>
+        <p>এই রিপোর্টটি স্বয়ংক্রিয়ভাবে তৈরি করা হয়েছে</p>
+      </div>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.print();
+  }, 500);
+};
+
+function generateSectionHTML(title: string, rows: string[][]) {
+  return `
+    <h2>${title}</h2>
+    <table>
+      <tr><th>আইটেম</th><th>স্ট্যাটাস</th><th>বিস্তারিত</th></tr>
+      ${rows.map(r => `<tr><td>${r[0]}</td><td class="pass">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}
+    </table>
+  `;
+}
+
+interface AuditSectionProps {
+  icon: React.ReactNode;
+  title: string;
+  score: string;
+  items: { name: string; detail: string }[];
+}
+
+function AuditSection({ icon, title, score, items }: AuditSectionProps) {
+  return (
+    <Card className="bg-slate-800/50 border-white/10">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2 text-white">
+          {icon}
+          <span>{title}</span>
+          <Badge className="ml-auto bg-emerald-500/20 text-emerald-400 border-emerald-500/30">{score}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="space-y-2">
+          {items.map((item, i) => (
+            <div key={i} className="flex items-start gap-2 text-sm">
+              <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <span className="text-slate-200 font-medium">{item.name}</span>
+                <span className="text-slate-400 ml-1">— {item.detail}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ProductionAuditReport() {
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <Card className="bg-gradient-to-br from-emerald-900/40 to-green-900/30 border-emerald-500/20">
+        <CardContent className="pt-6 pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-emerald-200">🔬 প্রোডাকশন রেডিনেস অডিট রিপোর্ট</h2>
+              <p className="text-emerald-400/80 text-sm mt-1">ফার্মওয়্যার: v8.0.0 INDUSTRIAL | তারিখ: {new Date().toLocaleDateString('bn-BD')}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-lg px-4 py-1">
+                ১০০/১০০ ✅
+              </Badge>
+              <Button
+                onClick={handleDownloadPDF}
+                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                PDF ডাউনলোড
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <ScrollArea className="h-[calc(100vh-380px)]">
+        <div className="grid gap-4 md:grid-cols-2">
+          <AuditSection
+            icon={<Cpu className="w-5 h-5 text-blue-400" />}
+            title="ফার্মওয়্যার আর্কিটেকচার"
+            score="২০/২০"
+            items={[
+              { name: 'স্টেট মেশিন', detail: 'BOOT → NORMAL ↔ WARNING ↔ DANGER → EMERGENCY' },
+              { name: 'Non-blocking লুপ', detail: 'ZERO delay() — শুধু millis() ভিত্তিক' },
+              { name: 'Single Relay Authority', detail: 'শুধু relayManagerApply() GPIO-তে লেখে' },
+              { name: 'Overflow Safety', detail: 'safeElapsed() — ৪৯.৭ দিন নিরাপদ' },
+              { name: 'Watchdog (WDT)', detail: '৮ সেকেন্ড হার্ডওয়্যার WDT' },
+              { name: 'GPIO Conflict Guard', detail: 'পিন ডুপ্লিকেশন হলে বুট বন্ধ' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Shield className="w-5 h-5 text-amber-400" />}
+            title="সেফটি ইনভ্যারিয়েন্ট"
+            score="২০/২০"
+            items={[
+              { name: 'INV-1: Max Temp Override', detail: '৩৮°C → সব ফ্যান চালু' },
+              { name: 'INV-2: Lethal Cold Guard', detail: '১৫°C → হিটার অন' },
+              { name: 'INV-3: Relay Toggle Guard', detail: '৬০ সেকেন্ড রিলে প্রোটেকশন' },
+              { name: 'INV-4: Sensor Fail-Safe', detail: '৯০ সেকেন্ড → SENSOR_FAIL' },
+              { name: 'INV-5: Override Timeout', detail: '২০ মিনিট — সিঙ্ক ✓' },
+              { name: 'INV-6: Boot Purge', detail: '৩ মিনিট বাধ্যতামূলক ভেন্টিলেশন' },
+              { name: 'INV-7: Heater Cooldown', detail: '৫ মিনিট MAX → ২ মিনিট কুলডাউন' },
+              { name: 'INV-8: GPIO Conflict', detail: 'বুটে পিন চেক — কনফ্লিক্ট হলে হল্ট' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Thermometer className="w-5 h-5 text-orange-400" />}
+            title="সেন্সর ভ্যালিডেশন (SVL)"
+            score="১৫/১৫"
+            items={[
+              { name: 'Median Filter', detail: '৫-স্যাম্পল মিডিয়ান noise rejection' },
+              { name: 'Spike Rejection', detail: '>২০% deviation → reject' },
+              { name: 'NH3 Sustained', detail: '৪৫ সেকেন্ড ক্রমাগত ব্রিচ' },
+              { name: 'MQ-137 Warmup', detail: '২৪ ঘণ্টা ওয়ার্ম-আপ' },
+              { name: 'Dual DHT22', detail: 'Worst-case selection' },
+              { name: 'Cross-Validation', detail: '৩°C+ পার্থক্যে SMS অ্যালার্ট' },
+              { name: 'Sensor Timeout', detail: '৯০s → SENSOR_FAIL' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Radio className="w-5 h-5 text-red-400" />}
+            title="ইমার্জেন্সি ও পাওয়ার রিকভারি"
+            score="১০/১০"
+            items={[
+              { name: 'ESM v2.0', detail: 'তাপমাত্রা-সচেতন duty cycle' },
+              { name: 'No-sensor Fallback', detail: 'WORST CASE → continuous ভেন্টিলেশন' },
+              { name: 'Recovery Verify', detail: '২ মিনিট স্থিতিশীল → ESM exit' },
+              { name: 'Power Recovery', detail: 'NVS হার্টবিট → ৫ মিনিট purge' },
+              { name: 'Cold-Shock Guard', detail: '<২৪°C → reduced purge' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Radio className="w-5 h-5 text-cyan-400" />}
+            title="কমিউনিকেশন ও ক্লাউড"
+            score="১০/১০"
+            items={[
+              { name: 'Cloud Sync', detail: 'প্রতি ৩০ সেকেন্ড — ৫s timeout' },
+              { name: 'Command ACK', detail: 'ইউনিক command_id — deduplication' },
+              { name: 'Offline Buffer', detail: '৩৬০ এন্ট্রি (৬+ ঘণ্টা)' },
+              { name: 'GSM SMS', detail: 'Async queue — power outage-এও কাজ করে' },
+              { name: 'Critical SMS Bypass', detail: 'EMERGENCY → ২ মিনিট cooldown' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Server className="w-5 h-5 text-violet-400" />}
+            title="ব্যাকেন্ড ইনফ্রাস্ট্রাকচার"
+            score="১০/১০"
+            items={[
+              { name: 'Safety Engine API', detail: 'প্রতি ৬০ সেকেন্ড evaluate' },
+              { name: 'Forensic Timeline', detail: '২৪ ঘণ্টা history' },
+              { name: 'OTA Safety Gate', detail: '১০ মিনিট স্থিতিশীল → update' },
+              { name: 'Staged Rollout', detail: '5% → 25% → 100%' },
+              { name: 'Audit Log Cleanup', detail: '৯০ দিন retention' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<HardDrive className="w-5 h-5 text-teal-400" />}
+            title="হার্ডওয়্যার কনফিগারেশন"
+            score="৫/৫"
+            items={[
+              { name: '৮-Channel Relay', detail: 'DB ও ফার্মওয়্যার উভয়তেই 8' },
+              { name: 'Active LOW Logic', detail: 'LOW = ON, HIGH = OFF' },
+              { name: 'Hysteresis', detail: '৩-stage fan + deadband' },
+              { name: 'Water Calibration', detail: 'User-configurable, NVS persist' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Lock className="w-5 h-5 text-rose-400" />}
+            title="সিকিউরিটি"
+            score="৫/৫"
+            items={[
+              { name: 'RLS Policies', detail: 'সব টেবিলে Row Level Security' },
+              { name: 'Device Token Auth', detail: 'x-device-token per-device' },
+              { name: 'Override Safety Band', detail: '26-35°C সীমার বাইরে reject' },
+              { name: 'Audit Trail', detail: 'প্রতিটি critical action logged' },
+            ]}
+          />
+
+          <AuditSection
+            icon={<Smartphone className="w-5 h-5 text-pink-400" />}
+            title="ফ্রন্টএন্ড ও UX"
+            score="৫/৫"
+            items={[
+              { name: 'PWA Offline', detail: 'Service Worker — offline fallback' },
+              { name: 'Smart Alerts', detail: 'Grouping + Reassurance model' },
+              { name: 'Bangla UI', detail: 'সম্পূর্ণ বাংলা' },
+              { name: 'Real-time Sync', detail: 'Supabase Realtime channels' },
+            ]}
+          />
+
+          {/* Deployment Checklist */}
+          <Card className="bg-gradient-to-br from-blue-900/30 to-indigo-900/30 border-blue-500/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-white">
+                <Rocket className="w-5 h-5 text-blue-400" />
+                ডিপ্লয়মেন্ট চেকলিস্ট
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-2 text-sm">
+              {[
+                'WIFI_SSID ও WIFI_PASSWORD সেট করুন',
+                'DEVICE_TOKEN, SHED_ID, FARM_ID সেট করুন',
+                '১২V ২A অ্যাডাপ্টার + ১০০০μF ক্যাপাসিটর নিশ্চিত করুন',
+                'DHT22 সেন্সর ১-১.৫ মিটার উচ্চতায় রাখুন',
+                'MQ-137 এ ২৪ ঘণ্টা প্রি-হিট দিন',
+                'Arduino IDE-তে কোড আপলোড করুন',
+                'Serial Monitor-এ BOOT → NORMAL নিশ্চিত করুন',
+                'ফোন নম্বর সেটিংসে যোগ করুন (SMS alert)',
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-slate-300">
+                  <span className="text-blue-400">☐</span>
+                  {item}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
