@@ -87,7 +87,7 @@ const partsList = [
     category: '🔔 অ্যালার্ম ও ইন্ডিকেটর',
     categoryEn: 'Alarm & Indicator',
     items: [
-      { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — GPIO 32', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — GPIO 32', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — রিলে IN6 / GPIO 13', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — Relay IN6 / GPIO 13', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
     ]
   },
   {
@@ -196,7 +196,7 @@ const wiringConnections = [
   { component: 'Relay IN8', pin: 'Circulation Fan', esp32Pin: 'GPIO 33', color: 'bg-indigo-500', note: '💨 সার্কুলেশন ফ্যান' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'GPIO 32', color: 'bg-amber-500', note: '🔔 পিজো বাজার (সরাসরি)' },
+  { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'Relay IN6 (GPIO 13)', color: 'bg-amber-500', note: '🔔 পিজো বাজার (রিলে দিয়ে কন্ট্রোল)' },
 ];
 
 // Detailed step-by-step wiring guide for each sensor
@@ -930,10 +930,10 @@ const setupSteps = [
     titleEn: 'Configure Code',
     icon: Wifi,
     tasks: [
-      'esp32-code.ino ফাইল খুলুন',
+      'esp32-industrial.ino ও esp32-safety-engine.h ফাইল খুলুন',
       'WiFi SSID ও পাসওয়ার্ড দিন',
       'Device Token দিন (অ্যাপ থেকে কপি করুন)',
-      'API URL ঠিক আছে কিনা চেক করুন',
+      'FARM_ID ও SHED_ID ঠিক আছে কিনা চেক করুন',
     ]
   },
   {
@@ -954,7 +954,7 @@ const setupSteps = [
     titleEn: 'Verify in App',
     icon: CheckCircle2,
     tasks: [
-      'Smart Layer Farm অ্যাপে লগইন করুন',
+      'FarmEye অ্যাপে লগইন করুন',
       'Dashboard এ সেন্সর ডেটা দেখুন',
       'Control পেজ থেকে ফ্যান/লাইট টেস্ট করুন',
       'Settings এ Device Health চেক করুন',
@@ -1050,14 +1050,14 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Cpu className="h-4 w-4 text-primary" />
-              ৪টি সেন্সর + ৪-চ্যানেল রিলে
+              ৫টি সেন্সর + ৮-চ্যানেল রিলে (v8.0.0)
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
                 <Thermometer className="h-4 w-4 text-green-500" />
-                <span>DHT22 (তাপ/আর্দ্রতা)</span>
+                <span>DHT22 ×2 (তাপ/আর্দ্রতা)</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
                 <Wind className="h-4 w-4 text-yellow-500" />
@@ -1075,7 +1075,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
             <div className="mt-3 p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
               <p className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-2">
                 <Fan className="h-3 w-3" />
-                ৪-চ্যানেল রিলে: এক্সহস্ট ফ্যান, সার্কুলেশন ফ্যান, হিটার, ফগার
+                ৮-চ্যানেল রিলে: এক্সহস্ট, সিলিং ফ্যান, লাইট, হিটার, ফগার, অ্যালার্ম, স্প্রিংকলার, সার্কুলেশন
               </p>
             </div>
           </CardContent>
