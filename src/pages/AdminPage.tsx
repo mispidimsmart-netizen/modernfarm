@@ -636,6 +636,10 @@ export default function AdminPage() {
           <TabsContent value="audit" className="mt-4">
             <ProductionAuditReport />
           </TabsContent>
+
+          <TabsContent value="architecture" className="mt-4">
+            <TechnicalArchitectureReport />
+          </TabsContent>
         </Tabs>
       </div>
 
