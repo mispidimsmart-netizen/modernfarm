@@ -54,6 +54,7 @@ import { AppDocumentation } from '@/components/admin/AppDocumentation';
 import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
+import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 
 const t = {
   bn: {
