@@ -35,13 +35,6 @@ export interface AdminStats {
   activeBroilerBatches: number;
 }
 
-export interface AdminStats {
-  totalUsers: number;
-  totalSheds: number;
-  activeDevices: number;
-  alertsToday: number;
-}
-
 export function useSuperAdmin() {
   const { user } = useAuth();
 
