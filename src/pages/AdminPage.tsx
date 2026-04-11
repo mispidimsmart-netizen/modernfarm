@@ -52,6 +52,7 @@ import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
 import { AppDocumentation } from '@/components/admin/AppDocumentation';
 import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
+import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 
 const t = {
   bn: {
