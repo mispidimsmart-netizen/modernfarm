@@ -5,6 +5,36 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-token',
 };
 
+// ================ RETRY HELPER WITH TIMEOUT ================
+async function fetchWithRetry(
+  fn: () => Promise<{ data: any; error: any }>,
+  { retries = 2, timeoutMs = 8000, label = 'query' } = {}
+): Promise<{ data: any; error: any }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const result = await fn();
+      clearTimeout(timer);
+      if (!result.error) return result;
+      if (attempt < retries) {
+        console.warn(`⚠️ ${label} attempt ${attempt + 1} failed: ${result.error.message}, retrying...`);
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      } else {
+        return result;
+      }
+    } catch (err: any) {
+      if (attempt < retries) {
+        console.warn(`⚠️ ${label} attempt ${attempt + 1} threw: ${err.message}, retrying...`);
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      } else {
+        return { data: null, error: err };
+      }
+    }
+  }
+  return { data: null, error: new Error(`${label} failed after ${retries + 1} attempts`) };
+}
+
 // ================ HEAT STRESS INDEX (HSI) CALCULATION ================
 // THI Formula: THI = 0.8 × T + (RH/100) × (T - 14.4) + 46.4
 // Or Simple: HSI = Temperature + (Humidity × 0.1)
@@ -710,9 +740,11 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Automation engine error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Distinguish timeout from other errors
+    const status = errorMessage.includes('abort') || errorMessage.includes('timeout') ? 504 : 500;
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: errorMessage, retryable: status === 504 }),
+      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

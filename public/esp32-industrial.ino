@@ -192,7 +192,7 @@ const char* FIRMWARE_VERSION = "8.0.0";
 // --- Buffers ---
 #define GAS_AVG_SIZE         10
 #define SENSOR_ROLLING_SIZE  5
-#define OFFLINE_BUFFER_SIZE  50
+#define OFFLINE_BUFFER_SIZE  360  // 6+ hours @ 60s intervals
 #define WATER_HISTORY_SIZE   24
 #define MAX_GSM_QUEUE        8
 #define MAX_PHONE_NUMBERS    5
@@ -3141,11 +3141,37 @@ void offlineBufferStore() {
   };
   offlineBufHead = (offlineBufHead + 1) % OFFLINE_BUFFER_SIZE;
   if (offlineBufCount < OFFLINE_BUFFER_SIZE) offlineBufCount++;
+  
+  // NVS persistence: save buffer index every 10 entries to survive reboot
+  if (offlineBufCount % 10 == 0) {
+    preferences.begin("offline_buf", false);
+    preferences.putUInt("count", offlineBufCount);
+    preferences.putUInt("head", offlineBufHead);
+    preferences.end();
+  }
+}
+
+void offlineBufferRestore() {
+  // Restore buffer metadata from NVS after reboot
+  preferences.begin("offline_buf", true);
+  uint32_t savedCount = preferences.getUInt("count", 0);
+  uint32_t savedHead = preferences.getUInt("head", 0);
+  preferences.end();
+  if (savedCount > 0 && savedCount <= OFFLINE_BUFFER_SIZE) {
+    offlineBufCount = savedCount;
+    offlineBufHead = savedHead % OFFLINE_BUFFER_SIZE;
+    Serial.printf("[OFFLINE] Restored buffer: %u entries from NVS\n", savedCount);
+  }
 }
 
 void offlineBufferSync() {
-  // Simplified: clear buffer on cloud reconnect (data already in sync payload)
+  // Clear buffer on cloud reconnect (data already in sync payload)
   offlineBufCount = 0; offlineBufHead = 0;
+  // Clear NVS saved state
+  preferences.begin("offline_buf", false);
+  preferences.putUInt("count", 0);
+  preferences.putUInt("head", 0);
+  preferences.end();
 }
 
 // --- Water Analytics ---
