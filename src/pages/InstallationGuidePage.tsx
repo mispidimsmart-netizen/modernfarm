@@ -1774,7 +1774,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                     {/* Relay Module Section */}
                                     <div className="w-full max-w-sm">
                                       <div className="bg-teal-600 rounded-t-lg p-2 text-center">
-                                        <span className="text-white text-xs font-bold">রিলে IN4 (GPIO 12 দ্বারা নিয়ন্ত্রিত)</span>
+                                        <span className="text-white text-xs font-bold">রিলে IN5 (GPIO 12 দ্বারা নিয়ন্ত্রিত)</span>
                                       </div>
                                       
                                       {/* Relay Terminals */}
@@ -1872,7 +1872,7 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                       </div>
                                       <div className="flex items-center gap-1">
                                         <div className="w-6 h-2 bg-teal-500 rounded"></div>
-                                        <span className="text-xs">সায়ান = GPIO 12 → IN4</span>
+                                        <span className="text-xs">সায়ান = GPIO 12 → IN5</span>
                                       </div>
                                     </div>
                                   </div>
