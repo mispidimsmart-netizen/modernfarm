@@ -395,6 +395,10 @@ export default function AdminPage() {
               <Cpu className="w-4 h-4 mr-2" />
               {labels.tabGuide}
             </TabsTrigger>
+            <TabsTrigger value="audit" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <FileText className="w-4 h-4 mr-2" />
+              {labels.tabAudit}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="admins" className="mt-4">
