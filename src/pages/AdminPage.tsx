@@ -32,6 +32,7 @@ import {
   Ban,
   BookOpen,
   Crown,
+  FileText,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -89,6 +90,7 @@ const t = {
     tabAnalytics: 'অ্যানালিটিক্স',
     tabGuide: 'ইনস্টলেশন গাইড',
      tabDocs: 'অ্যাপ ডকুমেন্টেশন',
+    tabAudit: 'অডিট রিপোর্ট',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -133,6 +135,7 @@ const t = {
     tabAnalytics: 'Analytics',
     tabGuide: 'Installation Guide',
      tabDocs: 'App Documentation',
+    tabAudit: 'Audit Report',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
