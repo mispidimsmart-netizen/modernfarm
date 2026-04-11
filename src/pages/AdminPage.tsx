@@ -54,6 +54,7 @@ import { AppDocumentation } from '@/components/admin/AppDocumentation';
 import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
+import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 
 const t = {
   bn: {
@@ -91,6 +92,7 @@ const t = {
     tabGuide: 'ইনস্টলেশন গাইড',
      tabDocs: 'অ্যাপ ডকুমেন্টেশন',
     tabAudit: 'অডিট রিপোর্ট',
+    tabArchitecture: 'টেকনিক্যাল আর্কিটেকচার',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -136,6 +138,7 @@ const t = {
     tabGuide: 'Installation Guide',
      tabDocs: 'App Documentation',
     tabAudit: 'Audit Report',
+    tabArchitecture: 'Technical Architecture',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -399,6 +402,10 @@ export default function AdminPage() {
               <FileText className="w-4 h-4 mr-2" />
               {labels.tabAudit}
             </TabsTrigger>
+            <TabsTrigger value="architecture" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Cpu className="w-4 h-4 mr-2" />
+              {labels.tabArchitecture}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="admins" className="mt-4">
@@ -628,6 +635,10 @@ export default function AdminPage() {
 
           <TabsContent value="audit" className="mt-4">
             <ProductionAuditReport />
+          </TabsContent>
+
+          <TabsContent value="architecture" className="mt-4">
+            <TechnicalArchitectureReport />
           </TabsContent>
         </Tabs>
       </div>
