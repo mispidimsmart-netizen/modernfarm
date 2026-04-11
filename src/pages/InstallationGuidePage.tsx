@@ -998,13 +998,14 @@ export default function InstallationGuidePage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const wifiConfigCode = `// WiFi কনফিগারেশন
+  const wifiConfigCode = `// WiFi কনফিগারেশন (esp32-industrial.ino v8.0.0)
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-// API কনফিগারেশন  
-const char* apiUrl = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api";
-const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে কপি করুন`;
+// ডিভাইস কনফিগারেশন  
+const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে কপি করুন
+const char* FARM_ID = "YOUR_FARM_ID";
+const char* SHED_ID = "YOUR_SHED_ID";`;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -2745,11 +2746,11 @@ const char* deviceToken = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে �
                                   ⚠️ গুরুত্বপূর্ণ তথ্য
                                 </p>
                                 <ul className="space-y-1 text-xs text-muted-foreground">
-                                  <li>• অ্যাপে ফার্ম টাইপ সিলেক্ট করলে ESP32 <strong>স্বয়ংক্রিয়ভাবে</strong> সঠিক সফটওয়্যার লজিক প্রয়োগ করে।</li>
-                                  <li>• তবে IN2 ও IN3 এর <strong>NO পোর্টে</strong> আপনার ফার্ম টাইপ অনুযায়ী সঠিক ডিভাইস ফিজিক্যালি কানেক্ট করতে হবে।</li>
-                                  <li>• <strong>লেয়ার ফার্ম:</strong> IN2 → লাইট, IN3 → বাজার কানেক্ট করুন।</li>
-                                  <li>• <strong>ব্রয়লার ফার্ম:</strong> IN2 → সার্কুলেশন ফ্যান, IN3 → হিটার কানেক্ট করুন।</li>
-                                  <li>• একই শেডে লেয়ার→ব্রয়লার পরিবর্তন করলে IN2 ও IN3 এর ডিভাইস পরিবর্তন করতে হবে।</li>
+                                   <li>• অ্যাপে ফার্ম টাইপ সিলেক্ট করলে ESP32 <strong>স্বয়ংক্রিয়ভাবে</strong> সঠিক সফটওয়্যার লজিক প্রয়োগ করে।</li>
+                                   <li>• ৮-চ্যানেল রিলের সব ডিভাইস <strong>NO পোর্টে</strong> ফিজিক্যালি কানেক্ট করুন।</li>
+                                   <li>• <strong>লেয়ার ফার্মে</strong> হিটার (IN4) সাধারণত অব্যবহৃত থাকে — সফটওয়্যার স্বয়ংক্রিয়ভাবে এড়িয়ে যায়।</li>
+                                   <li>• <strong>ব্রয়লার ফার্মে</strong> হিটার (IN4) ব্রুডিং তাপমাত্রায় ব্যবহৃত হয়।</li>
+                                   <li>• একই শেডে লেয়ার↔ব্রয়লার পরিবর্তন করলে শুধু অ্যাপ থেকে ফার্ম টাইপ বদলান — হার্ডওয়্যার একই থাকে।</li>
                                 </ul>
                               </div>
                             </div>
