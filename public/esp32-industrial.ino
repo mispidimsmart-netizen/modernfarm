@@ -120,12 +120,13 @@ const char* FIRMWARE_VERSION = "8.0.0";
 #define WIFI_RECONNECT_INTERVAL  60000UL
 #define CLOUD_TIMEOUT            300000UL
 #define SAFE_MODE_DURATION       30000UL
-#define GAS_WARMUP_DURATION      300000UL
+#define GAS_WARMUP_DURATION      300000UL   // 5 min initial warmup (MQ-137 needs 24h for full accuracy)
+#define GAS_FULL_WARMUP_MS       86400000UL // 24 hours full MQ-137 stabilization
 #define SENSOR_TIMEOUT           90000UL    // 90 sec invalid → SENSOR_FAIL
 #define WATER_TIMEOUT            21600000UL
 #define OTA_CHECK_INTERVAL       3600000UL
 #define AGE_TICK_INTERVAL        86400000UL
-#define MANUAL_OVERRIDE_TIMEOUT  3600000UL
+#define MANUAL_OVERRIDE_TIMEOUT  1200000UL  // 20 minutes (matched with docs & app)
 #define OFFLINE_STORE_INTERVAL   60000UL
 #define STATUS_LOG_INTERVAL      60000UL
 #define GSM_QUEUE_INTERVAL       5000UL
