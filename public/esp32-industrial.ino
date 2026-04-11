@@ -2215,6 +2215,12 @@ void gsmInit() {
   }
   
   loadSmsSettings();
+  
+  // ═══ Load water flow calibration from NVS ═══
+  preferences.begin("water_cal", true);
+  waterPulsesPerLiter = preferences.getFloat("ppl", 450.0f);
+  preferences.end();
+  Serial.printf("💧 Water calibration: %.1f pulses/liter\n", waterPulsesPerLiter);
 }
 
 void gsmQueueAlert(String alertType, String message) {
