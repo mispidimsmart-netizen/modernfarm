@@ -1144,6 +1144,16 @@ float svlProcessReading(SVLChannel &ch, float raw) {
 
 void svlCheckAmmoniaThreshold(float v, float threshold) {
   unsigned long now = millis();
+  
+  // ═══ MQ-137 WARM-UP GUARD ═══
+  // MQ-137 needs ~24 hours for full stabilization. During warm-up period,
+  // NH3 readings fluctuate wildly and must NOT trigger automation actions.
+  // We allow readings to pass through SVL for logging, but block state escalation.
+  if (now - gasWarmupStart < GAS_FULL_WARMUP_MS) {
+    nh3ThresholdBreached = false; nh3ThresholdBreachStart = 0; nh3VentilationConfirmed = false;
+    return; // Skip NH3-based automation during 24h warm-up
+  }
+  
   if (v > threshold) {
     if (!nh3ThresholdBreached) { nh3ThresholdBreached = true; nh3ThresholdBreachStart = now; }
     else if ((now - nh3ThresholdBreachStart) >= SVL_NH3_SUSTAIN_MS && !nh3VentilationConfirmed) {
