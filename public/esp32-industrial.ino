@@ -1,6 +1,6 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  SMART FARM - INDUSTRIAL CONTROLLER v7.0                              ║
+ * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.0.0                            ║
  * ║  Single Authority State Machine Architecture                          ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
  * ║  DESIGN PRINCIPLES:                                                    ║
@@ -3224,7 +3224,7 @@ void updateStatusLED() {
 void setup() {
   Serial.begin(115200);
   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
-  Serial.println("║    Smart Farm - Industrial Controller v7.0                     ║");
+  Serial.printf("║    Smart Farm - Industrial Controller v%s                   ║\n", FIRMWARE_VERSION);
   Serial.println("║    State Machine Architecture | Single Authority Relays        ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
 
