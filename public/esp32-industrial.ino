@@ -1830,6 +1830,111 @@ void foggerControl() {
   }
 }
 
+// --- Module C2: Roof Sprinkler ---
+void sprinklerControl() {
+  static bool sprinklerCycleActive = false;
+  static bool sprinklerSprayPhase = false;
+  static unsigned long sprinklerPhaseStarted = 0;
+  static unsigned long sprinklerWindowStart = 0;
+  static unsigned long sprinklerDailyOnMs = 0;
+
+  unsigned long now = millis();
+
+  if (sprinklerWindowStart == 0 || intervalPassed(now, sprinklerWindowStart, 24UL * 60UL * 60UL * 1000UL)) {
+    sprinklerWindowStart = now;
+    sprinklerDailyOnMs = 0;
+  }
+
+  if (sprinklerManualOverride) {
+    if (sprinklerManualTime > 0 && safeElapsed(now, sprinklerManualTime) >= MANUAL_OVERRIDE_TIMEOUT) {
+      sprinklerManualOverride = false;
+      sprinklerManualTime = 0;
+      Serial.println("⏱️ Sprinkler manual override EXPIRED — returning to auto");
+    } else {
+      return;
+    }
+  }
+
+  if (sensorErrorMode || emergencySurvivalMode || currentState == STATE_SENSOR_FAIL) {
+    sprinklerCycleActive = false;
+    sprinklerSprayPhase = false;
+    requestSprinkler(false);
+    return;
+  }
+
+  float sprinklerHSI = dht2Available ? calculateHSI(worstCaseMaxTemp, humidity) : currentHSI;
+  const unsigned long sprinklerMaxDailyMs = (unsigned long)SPRINKLER_MAX_DAILY_MIN * 60000UL;
+
+  if (sprinklerDailyOnMs >= sprinklerMaxDailyMs) {
+    sprinklerCycleActive = false;
+    sprinklerSprayPhase = false;
+    requestSprinkler(false);
+    return;
+  }
+
+  if (!sprinklerCycleActive) {
+    if (sprinklerHSI >= SPRINKLER_HSI_ON) {
+      sprinklerCycleActive = true;
+      sprinklerSprayPhase = true;
+      sprinklerPhaseStarted = now;
+      requestSprinkler(true);
+    } else {
+      requestSprinkler(false);
+    }
+    return;
+  }
+
+  if (sprinklerSprayPhase) {
+    if (intervalPassed(now, sprinklerPhaseStarted, (unsigned long)SPRINKLER_CYCLE_ON_SEC * 1000UL)) {
+      sprinklerDailyOnMs += safeElapsed(now, sprinklerPhaseStarted);
+      sprinklerSprayPhase = false;
+      sprinklerPhaseStarted = now;
+      requestSprinkler(false);
+    }
+    return;
+  }
+
+  if (sprinklerHSI <= SPRINKLER_HSI_OFF) {
+    sprinklerCycleActive = false;
+    requestSprinkler(false);
+    return;
+  }
+
+  if (intervalPassed(now, sprinklerPhaseStarted, (unsigned long)SPRINKLER_CYCLE_OFF_SEC * 1000UL)) {
+    sprinklerSprayPhase = true;
+    sprinklerPhaseStarted = now;
+    requestSprinkler(true);
+  }
+}
+
+// --- Module C3: Ceiling Fan ---
+void ceilingFanControl() {
+  unsigned long now = millis();
+
+  if (ceilingFanManualOverride) {
+    if (ceilingFanManualTime > 0 && safeElapsed(now, ceilingFanManualTime) >= MANUAL_OVERRIDE_TIMEOUT) {
+      ceilingFanManualOverride = false;
+      ceilingFanManualTime = 0;
+      Serial.println("⏱️ Ceiling fan manual override EXPIRED — returning to auto");
+    } else {
+      return;
+    }
+  }
+
+  if (sensorErrorMode || emergencySurvivalMode || currentState == STATE_SENSOR_FAIL) {
+    requestCeilingFan(false);
+    return;
+  }
+
+  float ceilingTemp = dht2Available ? worstCaseMaxTemp : temperature;
+
+  if (ceilingTemp >= CEILING_FAN_ON_TEMP) {
+    requestCeilingFan(true);
+  } else if (ceilingTemp <= CEILING_FAN_OFF_TEMP) {
+    requestCeilingFan(false);
+  }
+}
+
 // --- Module A: Minimum Ventilation ---
 void checkMinimumVentilation() {
   if (!minVentSettings.enabled) return;
