@@ -3308,7 +3308,6 @@ void setup() {
 
   // --- Input Pins ---
   pinMode(MANUAL_OVERRIDE_BTN, INPUT_PULLUP);
-  pinMode(MANUAL_FAN_BTN, INPUT_PULLUP);
   pinMode(POWER_SENSE_PIN, INPUT);
   pinMode(WATER_FLOW_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
