@@ -42,7 +42,7 @@ const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.
   </div>
 );
 
-const inputClass = "h-13 rounded-xl border-2 border-border bg-muted/10 pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
+const inputClass = "h-11 sm:h-13 rounded-xl border-2 border-border bg-muted/10 pl-11 sm:pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
 
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
@@ -235,23 +235,23 @@ export function LoginPage() {
 
   // ─── Compact Header ───
   const Header = () => (
-    <div className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-14 pt-8' : 'pb-16 pt-10'}`}>
+    <div className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-10 pt-5 sm:pb-14 sm:pt-8' : 'pb-12 pt-6 sm:pb-16 sm:pt-10'}`}>
       <div className="absolute inset-0 overflow-hidden">
         <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute top-8 left-6 text-white/10">
-          <Eye className="h-10 w-10" />
+          <Eye className="h-8 w-8 sm:h-10 sm:w-10" />
         </motion.div>
         <motion.div animate={{ y: [0, 8, 0], rotate: [0, -5, 0] }} transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
           className="absolute top-12 right-8 text-white/10">
-          <Eye className="h-8 w-8" />
+          <Eye className="h-6 w-6 sm:h-8 sm:w-8" />
         </motion.div>
         <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
           className="absolute bottom-16 left-16 text-white/8">
-          <Bird className="h-7 w-7" />
+          <Bird className="h-6 w-6 sm:h-7 sm:w-7" />
         </motion.div>
         <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
           className="absolute bottom-20 right-14 text-white/8">
-          <Egg className="h-6 w-6" />
+          <Egg className="h-5 w-5 sm:h-6 sm:w-6" />
         </motion.div>
       </div>
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
@@ -260,24 +260,24 @@ export function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-            className={`mx-auto mb-2 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-20 w-20' : 'h-24 w-24'}`}
+            className={`mx-auto mb-1.5 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-16 w-16 sm:h-24 sm:w-24'}`}
           >
-            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-16 w-16' : 'h-20 w-20'}`} />
+            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-10 w-10 sm:h-16 sm:w-16' : 'h-12 w-12 sm:h-20 sm:w-20'}`} />
           </motion.div>
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.5, type: 'spring' }}
-            className={`absolute ${isSignUp ? '-top-2 -right-2' : '-top-3 -right-3'}`}>
-            <span className="text-2xl">✨</span>
+            className={`absolute ${isSignUp ? '-top-1 -right-1 sm:-top-2 sm:-right-2' : '-top-2 -right-2 sm:-top-3 sm:-right-3'}`}>
+            <span className="text-xl sm:text-2xl">✨</span>
           </motion.div>
         </div>
         <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
-          className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
+          className={`font-bold tracking-tight text-white ${isSignUp ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>
           FarmEye
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
-          className={`mt-1 font-medium text-white/80 ${isSignUp ? 'text-xs' : 'text-sm'}`}>
+          className={`mt-0.5 font-medium text-white/80 ${isSignUp ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'}`}>
           Smart Poultry Farm Automation
         </motion.p>
       </motion.div>
@@ -291,14 +291,14 @@ export function LoginPage() {
 
   const Footer = () => (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-4 text-center">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-3 sm:mt-4 text-center">
         <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowForgotPassword(false); }}
           className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline">
           {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
         </button>
       </motion.div>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="mt-3 text-center text-xs text-muted-foreground/60">
+        className="mt-2 sm:mt-3 text-center text-[10px] sm:text-xs text-muted-foreground/60 pb-2">
         © 2026 FarmEye Automation Platform
       </motion.p>
     </>
@@ -322,7 +322,7 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-6 flex-1 overflow-y-auto bg-background px-6 pb-4 pt-2">
+          className="relative z-10 -mt-6 flex-1 overflow-y-auto bg-background px-4 sm:px-6 pb-4 pt-2">
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
@@ -353,7 +353,7 @@ export function LoginPage() {
               </motion.div>
             ) : (
               <motion.div key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-                <form onSubmit={handleLogin} className="mt-5 space-y-4">
+                <form onSubmit={handleLogin} className="mt-3 sm:mt-5 space-y-3 sm:space-y-4">
                   {/* Unified identifier input */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-foreground">মোবাইল নম্বর / ইমেইল</label>
@@ -382,8 +382,8 @@ export function LoginPage() {
                     </IconInput>
                   </div>
 
-                  <div className="pt-2">
-                    <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
+                  <div className="pt-1 sm:pt-2">
+                    <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
@@ -394,7 +394,7 @@ export function LoginPage() {
 
           {/* Trust Indicators */}
           {!showForgotPassword && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-3 flex flex-col items-center gap-1 text-xs text-muted-foreground">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-2 sm:mt-3 flex flex-col items-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs text-muted-foreground">
               <span>🔒 এনক্রিপ্টেড সংযোগ</span>
               <span>🛡 অফলাইন সেফ মোড সমর্থিত</span>
               <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
@@ -411,19 +411,19 @@ export function LoginPage() {
   // SIGNUP VIEW
   // ═══════════════════════════════════════════
   return (
-    <div className="relative flex min-h-screen flex-col bg-background">
+    <div className="relative flex min-h-[100dvh] flex-col bg-background">
       <Header />
       <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 -mt-2 flex-1 bg-background px-6 pb-8 pt-4">
+        className="relative z-10 -mt-2 flex-1 bg-background px-4 sm:px-6 pb-6 sm:pb-8 pt-2 sm:pt-4">
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-5 text-center">
-          <h2 className="text-xl font-bold text-foreground">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
-          <p className="mt-1 text-sm text-muted-foreground">আপনার ফার্ম যুক্ত করুন এবং স্মার্ট অটোমেশন শুরু করুন</p>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-3 sm:mb-5 text-center">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
+          <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">আপনার ফার্ম যুক্ত করুন এবং স্মার্ট অটোমেশন শুরু করুন</p>
         </motion.div>
 
         {/* Account Type Toggle */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mb-5 flex rounded-xl bg-muted/60 p-1">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mb-3 sm:mb-5 flex rounded-xl bg-muted/60 p-1">
           <button type="button" onClick={() => setUserType('owner')}
             className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${userType === 'owner' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
             <Crown className="h-4 w-4" /> মালিক
@@ -434,7 +434,7 @@ export function LoginPage() {
           </button>
         </motion.div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
+        <form onSubmit={handleSignup} className="space-y-3 sm:space-y-4">
           {/* 1. নাম */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">{userType === 'owner' ? 'মালিকের নাম' : 'কর্মীর নাম'} *</label>
@@ -551,15 +551,15 @@ export function LoginPage() {
             )}
           </div>
 
-          <div className="pt-2">
-            <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
+          <div className="pt-1 sm:pt-2">
+            <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
               {isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}
             </Button>
           </div>
         </form>
 
         {/* Trust Indicators */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-5 flex flex-col items-center gap-1.5 text-xs text-muted-foreground">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-3 sm:mt-5 flex flex-col items-center gap-0.5 sm:gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
           <span>🔒 তথ্য এনক্রিপ্টেডভাবে সংরক্ষিত</span>
           <span>🛡 অফলাইন সুরক্ষা সমর্থিত</span>
           <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
