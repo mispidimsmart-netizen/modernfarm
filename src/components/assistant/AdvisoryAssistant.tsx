@@ -286,14 +286,14 @@ export function AdvisoryAssistant() {
   if (activeAdvisories.length === 0) {
     return (
       <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/30 h-full">
-        <CardContent className="p-4 text-center h-full flex flex-col items-center justify-center">
-          <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 mb-3">
-            <Sparkles className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+        <CardContent className="p-3 text-center h-full flex flex-col items-center justify-center">
+          <div className="flex h-10 w-10 mx-auto items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 mb-2">
+            <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
             {language === 'bn' ? '✨ সব ঠিক আছে!' : '✨ All Good!'}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-[10px] text-muted-foreground mt-1">
             {language === 'bn' ? 'এই মুহূর্তে কোনো পরামর্শ নেই' : 'No advisories at this time'}
           </p>
         </CardContent>
@@ -303,18 +303,18 @@ export function AdvisoryAssistant() {
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            <Lightbulb className="h-4 w-4 text-primary" />
+      <CardHeader className="pb-2 pt-3 px-3">
+        <CardTitle className="flex items-center gap-2 text-xs">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10">
+            <Lightbulb className="h-3.5 w-3.5 text-primary" />
           </div>
           {language === 'bn' ? 'পরামর্শ' : 'Advisory'}
-          <Badge variant="secondary" className="ml-auto text-xs">
+          <Badge variant="secondary" className="ml-auto text-[10px] h-5">
             {activeAdvisories.length}
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 pt-0 space-y-2">
+      <CardContent className="p-2 pt-0 space-y-1.5">
         <AnimatePresence>
           {activeAdvisories.slice(0, 4).map((advisory, index) => {
             const Icon = advisory.icon;
@@ -327,7 +327,7 @@ export function AdvisoryAssistant() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20, height: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`relative rounded-xl p-3 border ${getPriorityColor(advisory.priority)}`}
+                className={`relative rounded-xl p-2 border ${getPriorityColor(advisory.priority)}`}
               >
                 {/* Dismiss button */}
                 <button
@@ -337,18 +337,18 @@ export function AdvisoryAssistant() {
                   <X className="h-3 w-3 text-muted-foreground" />
                 </button>
 
-                <div className="flex items-start gap-3 pr-6">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${badge.color} text-white`}>
-                    <Icon className="h-5 w-5" />
+                <div className="flex items-start gap-2 pr-5">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${badge.color} text-white`}>
+                    <Icon className="h-4 w-4" />
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <p className="text-sm font-semibold">
+                      <p className="text-[11px] font-semibold">
                         {advisory.title[language]}
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
+                    <p className="text-[10px] text-muted-foreground line-clamp-2">
                       {advisory.message[language]}
                     </p>
                     
