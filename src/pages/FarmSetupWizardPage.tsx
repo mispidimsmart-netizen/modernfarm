@@ -154,34 +154,6 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
     });
   }, [user, selectedFarmId]);
 
-  // Firmware download collapsible section
-  const FirmwareSection = () => (
-    <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4">
-      <button
-        onClick={() => setShowFirmwareDownload(!showFirmwareDownload)}
-        className="w-full flex items-center justify-between text-left"
-      >
-        <div className="flex items-center gap-2">
-          <Download className="h-5 w-5 text-primary" />
-          <div>
-            <span className="text-sm font-semibold text-foreground">
-              {language === 'bn' ? '📥 ESP32 ফার্মওয়্যার ডাউনলোড' : '📥 Download ESP32 Firmware'}
-            </span>
-            <p className="text-xs text-muted-foreground">
-              {language === 'bn' ? 'ESP32 তে আপলোড করার জন্য ফার্মওয়্যার নিন' : 'Get firmware to upload to ESP32'}
-            </p>
-          </div>
-        </div>
-        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${showFirmwareDownload ? 'rotate-90' : ''}`} />
-      </button>
-      {showFirmwareDownload && (
-        <div className="mt-4 border-t border-border pt-4">
-          <ESP32CodeGenerator language={language} />
-        </div>
-      )}
-    </div>
-  );
-
   if (hasToken) {
     return (
       <div className="space-y-4">
@@ -196,9 +168,50 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
             <p className="font-mono text-sm font-bold text-foreground select-all">{existingToken}</p>
           </div>
         </div>
-        <FirmwareSection />
+
+        {/* Firmware download - always visible & prominent */}
+        <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Download className="h-5 w-5 text-primary" />
+            <span className="text-sm font-bold text-foreground">
+              {language === 'bn' ? '📥 ফার্মওয়্যার ডাউনলোড করুন (আবশ্যক)' : '📥 Download Firmware (Required)'}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            {language === 'bn' 
+              ? '⚠️ পরবর্তী ধাপে রিলে/সেন্সর পরীক্ষার জন্য ESP32-এ ফার্মওয়্যার আপলোড করা আবশ্যক'
+              : '⚠️ Firmware must be uploaded to ESP32 before relay/sensor tests in next steps'}
+          </p>
+          <button
+            onClick={() => setShowFirmwareDownload(!showFirmwareDownload)}
+            className="w-full flex items-center justify-between rounded-xl bg-primary/10 p-3 hover:bg-primary/15 transition-colors"
+          >
+            <span className="text-sm font-medium text-primary">
+              {showFirmwareDownload 
+                ? (language === 'bn' ? '🔽 ফার্মওয়্যার কোড লুকান' : '🔽 Hide firmware code')
+                : (language === 'bn' ? '▶️ ফার্মওয়্যার কোড দেখুন ও ডাউনলোড করুন' : '▶️ View & download firmware code')
+              }
+            </span>
+            <ChevronRight className={`h-4 w-4 text-primary transition-transform ${showFirmwareDownload ? 'rotate-90' : ''}`} />
+          </button>
+          {showFirmwareDownload && (
+            <div className="mt-3 border-t border-primary/20 pt-3">
+              <ESP32CodeGenerator language={language} />
+            </div>
+          )}
+        </div>
+
+        {/* Flashing guide tip */}
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            {language === 'bn' 
+              ? '💡 Arduino IDE-তে আপলোড: Upload Speed ১১৫২০০, Flash Freq ৪০MHz, "Erase All Flash" চালু রাখুন। ফ্ল্যাশিংয়ের সময় শুধু USB কেবল ব্যবহার করুন।'
+              : '💡 Arduino IDE upload: Speed 115200, Flash Freq 40MHz, "Erase All Flash" enabled. Use USB cable only during flashing.'}
+          </p>
+        </div>
+
         <Button onClick={onComplete} className="w-full h-12 text-base rounded-xl">
-          {language === 'bn' ? 'পরবর্তী ধাপ →' : 'Next Step →'}
+          {language === 'bn' ? 'ফার্মওয়্যার আপলোড হয়ে গেছে → পরবর্তী ধাপ' : 'Firmware uploaded → Next Step'}
         </Button>
       </div>
     );
@@ -239,7 +252,6 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
       <Button onClick={handleRegister} disabled={isRegistering} className="w-full h-12 text-base rounded-xl">
         {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 টোকেন রেজিস্টার করুন →' : '📱 Register Token →')}
       </Button>
-      <FirmwareSection />
     </div>
   );
 }
