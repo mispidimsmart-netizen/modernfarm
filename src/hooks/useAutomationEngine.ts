@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
+import { useAutomationMode } from './useAutomationMode';
 
 interface AutomationAction {
   fan: boolean;
@@ -131,6 +132,8 @@ export function useRunAutomation() {
 export function useCurrentShedAutomation() {
   const { user } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
 
   return useQuery({
     queryKey: ['automation-engine-run', user?.id, selectedShedId],
@@ -148,8 +151,8 @@ export function useCurrentShedAutomation() {
       if (error) throw error;
       return data;
     },
-    enabled: !!user && !!selectedShedId,
-    refetchInterval: 60000, // Run every minute
+    enabled: !!user && !!selectedShedId && !isManualMode,
+    refetchInterval: isManualMode ? false : 60000,
     staleTime: 30000,
   });
 }

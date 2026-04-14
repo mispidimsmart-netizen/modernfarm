@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Fan, Flame, Lightbulb, X, Loader2, Droplets, ArrowUpFromDot } from 'lucide-react';
+import { Zap, Fan, Flame, Lightbulb, X, Loader2, Droplets, ArrowUpFromDot, Bot, Hand } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -57,6 +58,8 @@ export function QuickControlFAB() {
   const { language } = useAuth();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { mutateAsync: sendCommand, isPending } = useSendDeviceCommand();
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
   const [isOpen, setIsOpen] = useState(false);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
@@ -172,6 +175,21 @@ export function QuickControlFAB() {
             <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 items-center justify-center text-[8px] font-bold text-primary-foreground">
               {activeCount}
             </span>
+          </span>
+        )}
+        
+        {/* Mode indicator badge */}
+        {!isOpen && (
+          <span className={`absolute -bottom-1 -left-1 flex items-center justify-center h-5 w-5 rounded-full text-[8px] font-bold ${
+            isManualMode 
+              ? 'bg-amber-500 text-white' 
+              : 'bg-emerald-600 text-white'
+          }`}>
+            {isManualMode ? (
+              <Hand className="h-3 w-3" />
+            ) : (
+              <Bot className="h-3 w-3" />
+            )}
           </span>
         )}
       </motion.button>
