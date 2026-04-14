@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Loader2, Wifi, WifiOff, QrCode, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Loader2, Wifi, WifiOff, QrCode, RotateCcw, Download } from 'lucide-react';
 import { HardwareValidation } from '@/components/setup/HardwareValidation';
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useFarmSetupStatus, useUpdateSetupStep, SETUP_STEPS } from '@/hooks/useFarmSetup';
@@ -106,6 +107,7 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
   const { selectedFarmId } = useFarmContext();
   const [token, setToken] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showFirmwareDownload, setShowFirmwareDownload] = useState(false);
   const { toast } = useToast();
 
   const handleRegister = async () => {
@@ -136,6 +138,34 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
     });
   }, [user, selectedFarmId]);
 
+  // Firmware download collapsible section
+  const FirmwareSection = () => (
+    <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4">
+      <button
+        onClick={() => setShowFirmwareDownload(!showFirmwareDownload)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Download className="h-5 w-5 text-primary" />
+          <div>
+            <span className="text-sm font-semibold text-foreground">
+              {language === 'bn' ? '📥 ESP32 ফার্মওয়্যার ডাউনলোড' : '📥 Download ESP32 Firmware'}
+            </span>
+            <p className="text-xs text-muted-foreground">
+              {language === 'bn' ? 'ESP32 তে আপলোড করার জন্য ফার্মওয়্যার নিন' : 'Get firmware to upload to ESP32'}
+            </p>
+          </div>
+        </div>
+        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${showFirmwareDownload ? 'rotate-90' : ''}`} />
+      </button>
+      {showFirmwareDownload && (
+        <div className="mt-4 border-t border-border pt-4">
+          <ESP32CodeGenerator language={language} />
+        </div>
+      )}
+    </div>
+  );
+
   if (hasToken) {
     return (
       <div className="space-y-4">
@@ -146,6 +176,7 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
           </h3>
           <Wifi className="mx-auto mt-2 h-8 w-8 text-primary" />
         </div>
+        <FirmwareSection />
         <Button onClick={onComplete} className="w-full h-12 text-base rounded-xl">
           {language === 'bn' ? 'পরবর্তী ধাপ →' : 'Next Step →'}
         </Button>
@@ -170,6 +201,7 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
       <Button onClick={handleRegister} disabled={!token.trim() || isRegistering} className="w-full h-12 text-base rounded-xl">
         {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 সংযোগ করুন →' : '📱 Register →')}
       </Button>
+      <FirmwareSection />
     </div>
   );
 }
