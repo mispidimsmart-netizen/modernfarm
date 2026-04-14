@@ -32,6 +32,7 @@ import {
   ReportsDataTab, 
   DeviceSystemTab 
 } from '@/components/settings/tabs';
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
