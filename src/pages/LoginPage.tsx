@@ -291,14 +291,14 @@ export function LoginPage() {
 
   const Footer = () => (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-4 text-center">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-3 sm:mt-4 text-center">
         <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowForgotPassword(false); }}
           className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline">
           {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
         </button>
       </motion.div>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="mt-3 text-center text-xs text-muted-foreground/60">
+        className="mt-2 sm:mt-3 text-center text-[10px] sm:text-xs text-muted-foreground/60 pb-2">
         © 2026 FarmEye Automation Platform
       </motion.p>
     </>
@@ -322,7 +322,7 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-6 flex-1 overflow-y-auto bg-background px-6 pb-4 pt-2">
+          className="relative z-10 -mt-6 flex-1 overflow-y-auto bg-background px-4 sm:px-6 pb-4 pt-2">
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
             <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
@@ -353,7 +353,7 @@ export function LoginPage() {
               </motion.div>
             ) : (
               <motion.div key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-                <form onSubmit={handleLogin} className="mt-5 space-y-4">
+                <form onSubmit={handleLogin} className="mt-3 sm:mt-5 space-y-3 sm:space-y-4">
                   {/* Unified identifier input */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-foreground">মোবাইল নম্বর / ইমেইল</label>
@@ -382,8 +382,8 @@ export function LoginPage() {
                     </IconInput>
                   </div>
 
-                  <div className="pt-2">
-                    <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
+                  <div className="pt-1 sm:pt-2">
+                    <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
@@ -394,7 +394,7 @@ export function LoginPage() {
 
           {/* Trust Indicators */}
           {!showForgotPassword && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-3 flex flex-col items-center gap-1 text-xs text-muted-foreground">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-2 sm:mt-3 flex flex-col items-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs text-muted-foreground">
               <span>🔒 এনক্রিপ্টেড সংযোগ</span>
               <span>🛡 অফলাইন সেফ মোড সমর্থিত</span>
               <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
