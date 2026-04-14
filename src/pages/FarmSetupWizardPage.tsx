@@ -154,34 +154,6 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
     });
   }, [user, selectedFarmId]);
 
-  // Firmware download collapsible section
-  const FirmwareSection = () => (
-    <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4">
-      <button
-        onClick={() => setShowFirmwareDownload(!showFirmwareDownload)}
-        className="w-full flex items-center justify-between text-left"
-      >
-        <div className="flex items-center gap-2">
-          <Download className="h-5 w-5 text-primary" />
-          <div>
-            <span className="text-sm font-semibold text-foreground">
-              {language === 'bn' ? '📥 ESP32 ফার্মওয়্যার ডাউনলোড' : '📥 Download ESP32 Firmware'}
-            </span>
-            <p className="text-xs text-muted-foreground">
-              {language === 'bn' ? 'ESP32 তে আপলোড করার জন্য ফার্মওয়্যার নিন' : 'Get firmware to upload to ESP32'}
-            </p>
-          </div>
-        </div>
-        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${showFirmwareDownload ? 'rotate-90' : ''}`} />
-      </button>
-      {showFirmwareDownload && (
-        <div className="mt-4 border-t border-border pt-4">
-          <ESP32CodeGenerator language={language} />
-        </div>
-      )}
-    </div>
-  );
-
   if (hasToken) {
     return (
       <div className="space-y-4">
@@ -196,9 +168,50 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
             <p className="font-mono text-sm font-bold text-foreground select-all">{existingToken}</p>
           </div>
         </div>
-        <FirmwareSection />
+
+        {/* Firmware download - always visible & prominent */}
+        <div className="rounded-2xl border-2 border-primary/40 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Download className="h-5 w-5 text-primary" />
+            <span className="text-sm font-bold text-foreground">
+              {language === 'bn' ? '📥 ফার্মওয়্যার ডাউনলোড করুন (আবশ্যক)' : '📥 Download Firmware (Required)'}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            {language === 'bn' 
+              ? '⚠️ পরবর্তী ধাপে রিলে/সেন্সর পরীক্ষার জন্য ESP32-এ ফার্মওয়্যার আপলোড করা আবশ্যক'
+              : '⚠️ Firmware must be uploaded to ESP32 before relay/sensor tests in next steps'}
+          </p>
+          <button
+            onClick={() => setShowFirmwareDownload(!showFirmwareDownload)}
+            className="w-full flex items-center justify-between rounded-xl bg-primary/10 p-3 hover:bg-primary/15 transition-colors"
+          >
+            <span className="text-sm font-medium text-primary">
+              {showFirmwareDownload 
+                ? (language === 'bn' ? '🔽 ফার্মওয়্যার কোড লুকান' : '🔽 Hide firmware code')
+                : (language === 'bn' ? '▶️ ফার্মওয়্যার কোড দেখুন ও ডাউনলোড করুন' : '▶️ View & download firmware code')
+              }
+            </span>
+            <ChevronRight className={`h-4 w-4 text-primary transition-transform ${showFirmwareDownload ? 'rotate-90' : ''}`} />
+          </button>
+          {showFirmwareDownload && (
+            <div className="mt-3 border-t border-primary/20 pt-3">
+              <ESP32CodeGenerator language={language} />
+            </div>
+          )}
+        </div>
+
+        {/* Flashing guide tip */}
+        <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            {language === 'bn' 
+              ? '💡 Arduino IDE-তে আপলোড: Upload Speed ১১৫২০০, Flash Freq ৪০MHz, "Erase All Flash" চালু রাখুন। ফ্ল্যাশিংয়ের সময় শুধু USB কেবল ব্যবহার করুন।'
+              : '💡 Arduino IDE upload: Speed 115200, Flash Freq 40MHz, "Erase All Flash" enabled. Use USB cable only during flashing.'}
+          </p>
+        </div>
+
         <Button onClick={onComplete} className="w-full h-12 text-base rounded-xl">
-          {language === 'bn' ? 'পরবর্তী ধাপ →' : 'Next Step →'}
+          {language === 'bn' ? 'ফার্মওয়্যার আপলোড হয়ে গেছে → পরবর্তী ধাপ' : 'Firmware uploaded → Next Step'}
         </Button>
       </div>
     );
@@ -239,14 +252,15 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
       <Button onClick={handleRegister} disabled={isRegistering} className="w-full h-12 text-base rounded-xl">
         {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 টোকেন রেজিস্টার করুন →' : '📱 Register Token →')}
       </Button>
-      <FirmwareSection />
     </div>
   );
 }
 
 function StepTestRelays({ onComplete }: { onComplete: () => void }) {
   const { language } = useAuth();
+  const navigate = useNavigate();
   const sendCommand = useSendDeviceCommand();
+  const { isConnected } = useRealtimeSensorData();
   const [tested, setTested] = useState<Record<string, boolean>>({});
   const relays = [
     { key: 'fan', icon: '🌀', en: 'Exhaust Fan (IN1 - GPIO 25)', bn: 'এক্সহস্ট ফ্যান (IN1 - GPIO 25)' },
@@ -269,8 +283,60 @@ function StepTestRelays({ onComplete }: { onComplete: () => void }) {
 
   const allTested = relays.every(r => tested[r.key]);
 
+  // ESP32 not connected - show blocker
+  if (!isConnected) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl bg-destructive/5 border-2 border-destructive/30 p-6 text-center">
+          <WifiOff className="mx-auto h-12 w-12 text-destructive mb-3" />
+          <h3 className="text-lg font-bold text-foreground">
+            {language === 'bn' ? 'ESP32 সংযুক্ত নয়!' : 'ESP32 Not Connected!'}
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {language === 'bn' 
+              ? 'রিলে পরীক্ষা করতে হলে আগে ESP32-এ ফার্মওয়্যার আপলোড করে চালু করুন'
+              : 'Upload firmware to ESP32 and power it on before testing relays'}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-2">
+          <p className="text-sm font-semibold text-foreground">
+            {language === 'bn' ? '📋 চেকলিস্ট:' : '📋 Checklist:'}
+          </p>
+          <div className="space-y-1.5 text-xs text-muted-foreground">
+            <p>1️⃣ {language === 'bn' ? 'আগের ধাপ থেকে ফার্মওয়্যার ডাউনলোড করুন' : 'Download firmware from previous step'}</p>
+            <p>2️⃣ {language === 'bn' ? 'Arduino IDE-তে ESP32 বোর্ড সিলেক্ট করুন' : 'Select ESP32 board in Arduino IDE'}</p>
+            <p>3️⃣ {language === 'bn' ? 'Upload Speed ১১৫২০০, Flash Freq ৪০MHz সেট করুন' : 'Set Upload Speed 115200, Flash Freq 40MHz'}</p>
+            <p>4️⃣ {language === 'bn' ? 'USB দিয়ে কোড আপলোড করুন (অন্য কিছু কানেক্ট রাখবেন না)' : 'Upload via USB (disconnect everything else)'}</p>
+            <p>5️⃣ {language === 'bn' ? 'ওয়্যারিং সম্পন্ন করে পাওয়ার দিন' : 'Complete wiring and power on'}</p>
+            <p>6️⃣ {language === 'bn' ? 'WiFi সংযোগ হলে এই পেজ অটো-আপডেট হবে' : 'This page auto-updates when WiFi connects'}</p>
+          </div>
+        </div>
+
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/settings/installation-guide')}
+          className="w-full h-10 rounded-xl text-sm"
+        >
+          📖 {language === 'bn' ? 'বিস্তারিত ইনস্টলেশন গাইড দেখুন' : 'View detailed Installation Guide'}
+        </Button>
+
+        <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {language === 'bn' ? 'ESP32 সংযোগের অপেক্ষায়...' : 'Waiting for ESP32 connection...'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      <div className="rounded-xl bg-primary/5 border border-primary/20 p-2.5 flex items-center gap-2">
+        <Wifi className="h-4 w-4 text-primary" />
+        <span className="text-xs font-medium text-primary">
+          {language === 'bn' ? '✅ ESP32 অনলাইন — রিলে পরীক্ষা শুরু করুন' : '✅ ESP32 online — start testing relays'}
+        </span>
+      </div>
       <p className="text-sm text-muted-foreground text-center">
         {language === 'bn' ? 'প্রতিটি রিলে ২ সেকেন্ডের জন্য চালু হবে — ক্লিক শব্দ শুনুন' : 'Each relay will turn ON for 2 seconds — listen for click sound'}
       </p>
