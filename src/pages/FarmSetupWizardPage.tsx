@@ -105,23 +105,35 @@ function StepAddShed({ onComplete }: { onComplete: () => void }) {
 function StepRegisterController({ onComplete }: { onComplete: () => void }) {
   const { user, language } = useAuth();
   const { selectedFarmId } = useFarmContext();
-  const [token, setToken] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [showFirmwareDownload, setShowFirmwareDownload] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState('');
   const { toast } = useToast();
 
+  // Auto-generate a unique token
+  const generateToken = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const segment = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return `FARM-${segment(4)}-${segment(4)}-${segment(4)}`;
+  };
+
+  // Generate token on mount
+  useEffect(() => {
+    setGeneratedToken(generateToken());
+  }, []);
+
   const handleRegister = async () => {
-    if (!token.trim() || !user || !selectedFarmId) return;
+    if (!generatedToken || !user || !selectedFarmId) return;
     setIsRegistering(true);
     try {
       const { error } = await supabase.from('device_tokens').insert({
         user_id: user.id,
-        token: token.trim(),
+        token: generatedToken,
         device_name: 'ESP32 Controller',
         farm_id: selectedFarmId,
       });
       if (error) throw error;
-      toast({ title: language === 'bn' ? '✅ কন্ট্রোলার সংযুক্ত!' : '✅ Controller registered!' });
+      toast({ title: language === 'bn' ? '✅ কন্ট্রোলার রেজিস্টার হয়েছে!' : '✅ Controller registered!' });
       onComplete();
     } catch (err: any) {
       toast({ title: language === 'bn' ? 'ত্রুটি' : 'Error', description: err.message, variant: 'destructive' });
@@ -131,10 +143,14 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
 
   // Check if already has tokens
   const [hasToken, setHasToken] = useState(false);
+  const [existingToken, setExistingToken] = useState('');
   useEffect(() => {
     if (!user || !selectedFarmId) return;
-    supabase.from('device_tokens').select('id').eq('user_id', user.id).eq('farm_id', selectedFarmId).limit(1).then(({ data }) => {
-      if (data && data.length > 0) setHasToken(true);
+    supabase.from('device_tokens').select('id, token').eq('user_id', user.id).eq('farm_id', selectedFarmId).limit(1).then(({ data }) => {
+      if (data && data.length > 0) {
+        setHasToken(true);
+        setExistingToken(data[0].token);
+      }
     });
   }, [user, selectedFarmId]);
 
@@ -175,6 +191,10 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
             {language === 'bn' ? 'কন্ট্রোলার সংযুক্ত!' : 'Controller connected!'}
           </h3>
           <Wifi className="mx-auto mt-2 h-8 w-8 text-primary" />
+          <div className="mt-3 rounded-xl bg-background/80 p-3">
+            <p className="text-xs text-muted-foreground mb-1">{language === 'bn' ? 'ডিভাইস টোকেন' : 'Device Token'}</p>
+            <p className="font-mono text-sm font-bold text-foreground select-all">{existingToken}</p>
+          </div>
         </div>
         <FirmwareSection />
         <Button onClick={onComplete} className="w-full h-12 text-base rounded-xl">
@@ -187,19 +207,37 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-muted/50 border border-border p-6 text-center">
-        <QrCode className="mx-auto h-16 w-16 text-muted-foreground" />
-        <p className="mt-3 text-sm text-muted-foreground">
+        <span className="text-5xl">🔑</span>
+        <h3 className="mt-3 text-lg font-bold text-foreground">
+          {language === 'bn' ? 'অটো-জেনারেটেড ডিভাইস টোকেন' : 'Auto-Generated Device Token'}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           {language === 'bn' 
-            ? 'ESP32 কন্ট্রোলারের QR কোড স্ক্যান করুন বা ম্যানুয়ালি টোকেন দিন'
-            : 'Scan QR code on ESP32 controller or enter token manually'}
+            ? 'এই টোকেন আপনার ESP32 কন্ট্রোলারের জন্য তৈরি হয়েছে'
+            : 'This token is generated for your ESP32 controller'}
         </p>
       </div>
-      <div>
-        <Label>{language === 'bn' ? 'ডিভাইস টোকেন' : 'Device Token'}</Label>
-        <Input value={token} onChange={e => setToken(e.target.value)} placeholder="FARM-XXXX-XXXX" className="mt-1 font-mono" />
+      
+      {/* Show generated token */}
+      <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 text-center">
+        <p className="text-xs text-muted-foreground mb-2">{language === 'bn' ? 'আপনার ডিভাইস টোকেন' : 'Your Device Token'}</p>
+        <p className="font-mono text-xl font-bold text-primary select-all tracking-wider">{generatedToken}</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {language === 'bn' 
+            ? '⚡ ফার্মওয়্যার ডাউনলোডের সময় এটি অটো-এম্বেড হবে'
+            : '⚡ This will be auto-embedded when downloading firmware'}
+        </p>
+        <button 
+          onClick={() => setGeneratedToken(generateToken())}
+          className="mt-2 text-xs text-primary hover:underline flex items-center gap-1 mx-auto"
+        >
+          <RotateCcw className="h-3 w-3" />
+          {language === 'bn' ? 'নতুন টোকেন তৈরি করুন' : 'Generate new token'}
+        </button>
       </div>
-      <Button onClick={handleRegister} disabled={!token.trim() || isRegistering} className="w-full h-12 text-base rounded-xl">
-        {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 সংযোগ করুন →' : '📱 Register →')}
+
+      <Button onClick={handleRegister} disabled={isRegistering} className="w-full h-12 text-base rounded-xl">
+        {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 টোকেন রেজিস্টার করুন →' : '📱 Register Token →')}
       </Button>
       <FirmwareSection />
     </div>
