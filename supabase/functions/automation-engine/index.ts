@@ -697,6 +697,26 @@ Deno.serve(async (req) => {
 
       console.log(`[Run All] Starting full automation cycle for user ${user_id}`);
 
+      // Check automation mode first
+      const { data: runAllSettings } = await supabase
+        .from('farm_settings')
+        .select('automation_mode')
+        .eq('user_id', user_id)
+        .single();
+
+      if (runAllSettings?.automation_mode === 'MANUAL') {
+        console.log(`⏸️ [Run All] Skipping — MANUAL mode active for user ${user_id}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: 'MANUAL_MODE',
+            timestamp: new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Step 1: Check for stale devices
       const staleDevices = await detectAndMarkStaleDevices(supabase, user_id);
       
