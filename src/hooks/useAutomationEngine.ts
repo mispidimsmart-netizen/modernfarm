@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
+import { useAutomationMode } from './useAutomationMode';
 
 interface AutomationAction {
   fan: boolean;
