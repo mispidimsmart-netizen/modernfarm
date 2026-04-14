@@ -41,10 +41,10 @@ export function useSetAutomationMode() {
 
       // Audit log
       logAction({
-        actionType: 'automation_mode_change',
-        actionCategory: 'automation',
-        targetEntity: 'farm_settings',
-        newValue: { automation_mode: mode },
+        action_type: 'automation_mode_change',
+        action_category: 'automation',
+        target_entity: 'farm_settings',
+        new_value: { automation_mode: mode },
         severity: mode === 'MANUAL' ? 'warning' : 'info',
       });
     },
