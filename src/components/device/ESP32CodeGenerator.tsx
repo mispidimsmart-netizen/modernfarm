@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info, Database } from 'lucide-react';
+import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info, Database, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,9 +32,17 @@ type FirmwareMode = 'hardcoded' | 'ota';
 
 interface ESP32CodeGeneratorProps {
   language?: 'bn' | 'en';
+  showFarmSelector?: boolean;
 }
 
-export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps) {
+interface FarmOption {
+  id: string;
+  name: string;
+  name_en: string;
+  owner_id: string;
+}
+
+export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
   const [ssid, setSsid] = useState(() => localStorage.getItem('farmeye_wifi_ssid') || '');
   const [password, setPassword] = useState(() => localStorage.getItem('farmeye_wifi_pass') || '');
   const [deviceToken, setDeviceToken] = useState('');
@@ -47,23 +55,57 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
   const [farmId, setFarmId] = useState('');
   const [autoLoaded, setAutoLoaded] = useState(false);
+  const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
+  const [selectedFarmId, setSelectedFarmId] = useState('');
 
-  // Auto-fetch device token, farm ID, shed ID from database
+  // Fetch all farms for admin selector
   useEffect(() => {
-    const fetchCredentials = async () => {
+    if (!showFarmSelector) return;
+    const fetchAllFarms = async () => {
+      try {
+        const { data: farms } = await supabase
+          .from('farms')
+          .select('id, name, name_en, owner_id')
+          .eq('is_active', true)
+          .order('name');
+        if (farms) {
+          setAllFarms(farms);
+        }
+      } catch (err) {
+        console.warn('Could not fetch farms:', err);
+      }
+    };
+    fetchAllFarms();
+  }, [showFarmSelector]);
+
+  // Load credentials for selected farm (admin) or own farm (regular user)
+  useEffect(() => {
+    const fetchCredentials = async (targetFarmId?: string) => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Fetch farm
-        const { data: farms } = await supabase
-          .from('farms')
-          .select('id, name')
-          .eq('owner_id', user.id)
-          .eq('is_active', true)
-          .limit(1);
+        let farm: { id: string; name: string } | null = null;
 
-        const farm = farms?.[0];
+        if (targetFarmId) {
+          // Admin selected a specific farm
+          const { data: farms } = await supabase
+            .from('farms')
+            .select('id, name')
+            .eq('id', targetFarmId)
+            .limit(1);
+          farm = farms?.[0] || null;
+        } else if (!showFarmSelector) {
+          // Regular user: fetch own farm
+          const { data: farms } = await supabase
+            .from('farms')
+            .select('id, name')
+            .eq('owner_id', user.id)
+            .eq('is_active', true)
+            .limit(1);
+          farm = farms?.[0] || null;
+        }
+
         if (farm) {
           setFarmId(farm.id);
 
@@ -77,6 +119,9 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
           if (sheds?.[0]) {
             setShedId(sheds[0].id);
             setShedName(sheds[0].name || '');
+          } else {
+            setShedId('');
+            setShedName('');
           }
 
           // Fetch device token
@@ -89,6 +134,8 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
 
           if (tokens?.[0]) {
             setDeviceToken(tokens[0].token);
+          } else {
+            setDeviceToken('');
           }
 
           setAutoLoaded(true);
@@ -98,8 +145,12 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
       }
     };
 
-    fetchCredentials();
-  }, []);
+    if (showFarmSelector && selectedFarmId) {
+      fetchCredentials(selectedFarmId);
+    } else if (!showFarmSelector) {
+      fetchCredentials();
+    }
+  }, [showFarmSelector, selectedFarmId]);
 
   // Save WiFi credentials to localStorage for auto-fill
   useEffect(() => {
@@ -380,6 +431,50 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Admin Farm Selector */}
+        {showFarmSelector && (
+          <div className="space-y-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <div className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              <Home className="h-4 w-4" />
+              {language === 'bn' ? '🏠 খামার সিলেক্ট করুন' : '🏠 Select Farm'}
+            </div>
+            <Select
+              value={selectedFarmId}
+              onValueChange={(value) => {
+                setSelectedFarmId(value);
+                setAutoLoaded(false);
+                setDeviceToken('');
+                setShedId('');
+                setShedName('');
+                setFarmId('');
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={language === 'bn' ? 'একটি খামার বেছে নিন...' : 'Choose a farm...'} />
+              </SelectTrigger>
+              <SelectContent>
+                {allFarms.map((farm) => (
+                  <SelectItem key={farm.id} value={farm.id}>
+                    {language === 'bn' ? farm.name : farm.name_en} 
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {allFarms.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'কোনো খামার পাওয়া যায়নি' : 'No farms found'}
+              </p>
+            )}
+            {selectedFarmId && !deviceToken && autoLoaded && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                ⚠️ {language === 'bn' 
+                  ? 'এই খামারে কোনো ডিভাইস টোকেন নেই। প্রথমে Setup Wizard সম্পন্ন করতে হবে।' 
+                  : 'No device token found for this farm. Setup Wizard must be completed first.'}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Step 1: Firmware Mode */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">

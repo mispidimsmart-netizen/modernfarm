@@ -309,7 +309,7 @@ export function SettingsPage() {
               {isAdmin && (
                 <TabsContent value="firmware">
                   <div className="space-y-4">
-                    <ESP32CodeGenerator language={language} />
+                    <ESP32CodeGenerator language={language} showFarmSelector={true} />
                   </div>
                 </TabsContent>
               )}
