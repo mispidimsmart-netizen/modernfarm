@@ -90,7 +90,7 @@ export function PowerOutageCard() {
   return (
     <Card className={hasOngoingOutage ? 'border-red-500/50 bg-red-500/5' : ''}>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-lg">
+        <CardTitle className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-2">
             {hasOngoingOutage ? (
               <ZapOff className="h-5 w-5 text-red-500 animate-pulse" />
@@ -133,7 +133,7 @@ export function PowerOutageCard() {
                 <div className="flex items-center gap-3">
                   <AlertTriangle className={`h-8 w-8 ${isCritical ? 'text-red-500' : 'text-orange-500'}`} />
                   <div>
-                    <p className="font-bold text-lg">
+                    <p className="font-bold text-sm">
                       {t.powerOff[language]}
                     </p>
                     <p className="text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ export function PowerOutageCard() {
                 
                 <div className="text-right">
                   <Clock className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                  <p className="font-mono text-2xl font-bold">
+                  <p className="font-mono text-lg font-bold">
                     {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, '0')}
                   </p>
                 </div>
@@ -199,7 +199,7 @@ export function PowerOutageCard() {
                 <History className="h-4 w-4" />
                 <span className="text-xs">{t.last24h[language]}</span>
               </div>
-              <p className="text-2xl font-bold">
+              <p className="text-lg font-bold">
                 {stats.last24hOutages}
               </p>
               <p className="text-xs text-muted-foreground">{t.outages[language]}</p>
@@ -210,7 +210,7 @@ export function PowerOutageCard() {
                 <TrendingDown className="h-4 w-4" />
                 <span className="text-xs">{t.avgDuration[language]}</span>
               </div>
-              <p className="text-2xl font-bold">
+              <p className="text-lg font-bold">
                 {stats.avgOutageDuration > 0 
                   ? formatDuration(Math.round(stats.avgOutageDuration), language)
                   : '-'
