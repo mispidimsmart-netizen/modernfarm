@@ -90,6 +90,8 @@ export function IndustrialHeroStatus() {
   const { selectedShedId } = useSelectedShed();
   const { data: activeBatch } = useActiveBatch();
   const batchStats = useBatchStats(activeBatch?.id);
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
 
   const hsiResult = useHeatStressAutomation({
     temperature: sensorData.temperature,
@@ -104,17 +106,29 @@ export function IndustrialHeroStatus() {
     const hsi = hsiResult?.index || 0;
     const anyDeviceActive = deviceStatus.fan || deviceStatus.heater || deviceStatus.fogger || deviceStatus.ceilingFan || deviceStatus.sprinkler;
 
-    // Emergency: extreme values
+    // Emergency: extreme values (same in both modes — safety is always active)
     if (temp > 38 || ammonia > 25 || hsi > 85) {
       return STATUS_MAP.emergency;
     }
 
-    // Cooling: devices are actively cooling OR dangerous thresholds
+    // Manual mode: show manual control status
+    if (isManualMode) {
+      if (anyDeviceActive) {
+        return {
+          ...STATUS_MAP.adjusting,
+          title: { bn: '✋ আপনি নিয়ন্ত্রণ করছেন', en: '✋ You Are In Control' },
+        };
+      }
+      return {
+        ...STATUS_MAP.normal,
+        title: { bn: '✋ ম্যানুয়াল মোড — সব বন্ধ', en: '✋ Manual Mode — All Off' },
+      };
+    }
+
+    // Auto mode logic (existing)
     if ((temp > 32 || hsi > 70) && anyDeviceActive) {
       return STATUS_MAP.cooling;
     }
-
-    // Adjusting: devices active for temperature adjustment
     if (anyDeviceActive) {
       if (isBroiler && batchStats) {
         const targetRange = getBroilerTempRangeByDays(batchStats.ageDays);
@@ -125,9 +139,8 @@ export function IndustrialHeroStatus() {
         return STATUS_MAP.adjusting;
       }
     }
-
     return STATUS_MAP.normal;
-  }, [sensorData, hsiResult, isBroiler, batchStats, deviceStatus]);
+  }, [sensorData, hsiResult, isBroiler, batchStats, deviceStatus, isManualMode]);
 
   // Build device status list with reasons
   const deviceItems = useMemo((): DeviceItem[] => {
@@ -135,9 +148,14 @@ export function IndustrialHeroStatus() {
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
 
+    const manualOnLabel = { bn: 'আপনি চালু করেছেন', en: 'You turned ON' };
+    const manualOffLabel = { bn: 'আপনি বন্ধ রেখেছেন', en: 'You kept OFF' };
+
     // Fan reason
     let fanReason: { bn: string; en: string };
-    if (!deviceStatus.fan) {
+    if (isManualMode) {
+      fanReason = deviceStatus.fan ? manualOnLabel : manualOffLabel;
+    } else if (!deviceStatus.fan) {
       fanReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
     } else if (ammonia > 25) {
       fanReason = { bn: `NH₃ ${ammonia.toFixed(0)} ppm — গ্যাস বের করা হচ্ছে`, en: `NH₃ ${ammonia.toFixed(0)} ppm — Exhausting gas` };
@@ -151,7 +169,9 @@ export function IndustrialHeroStatus() {
 
     // Heater reason
     let heaterReason: { bn: string; en: string };
-    if (!deviceStatus.heater) {
+    if (isManualMode) {
+      heaterReason = deviceStatus.heater ? manualOnLabel : manualOffLabel;
+    } else if (!deviceStatus.heater) {
       heaterReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
     } else {
       heaterReason = { bn: `${temp.toFixed(1)}°C — তাপমাত্রা বাড়ানো হচ্ছে`, en: `${temp.toFixed(1)}°C — Heating active` };
@@ -159,7 +179,9 @@ export function IndustrialHeroStatus() {
 
     // Fogger reason
     let foggerReason: { bn: string; en: string };
-    if (!deviceStatus.fogger) {
+    if (isManualMode) {
+      foggerReason = deviceStatus.fogger ? manualOnLabel : manualOffLabel;
+    } else if (!deviceStatus.fogger) {
       foggerReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
     } else {
       foggerReason = { bn: `${temp.toFixed(1)}°C H:${sensorData.humidity.toFixed(0)}% — কুলিং`, en: `${temp.toFixed(1)}°C H:${sensorData.humidity.toFixed(0)}% — Cooling` };
@@ -167,7 +189,9 @@ export function IndustrialHeroStatus() {
 
     // Light reason
     let lightReason: { bn: string; en: string };
-    if (!deviceStatus.light) {
+    if (isManualMode) {
+      lightReason = deviceStatus.light ? manualOnLabel : manualOffLabel;
+    } else if (!deviceStatus.light) {
       lightReason = { bn: 'বন্ধ — শিডিউল অনুযায়ী', en: 'OFF — Per schedule' };
     } else {
       lightReason = { bn: 'চালু — শিডিউল অনুযায়ী', en: 'ON — Per schedule' };
@@ -175,7 +199,9 @@ export function IndustrialHeroStatus() {
 
     // Ceiling Fan reason
     let ceilingFanReason: { bn: string; en: string };
-    if (!deviceStatus.ceilingFan) {
+    if (isManualMode) {
+      ceilingFanReason = deviceStatus.ceilingFan ? manualOnLabel : manualOffLabel;
+    } else if (!deviceStatus.ceilingFan) {
       ceilingFanReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
     } else {
       ceilingFanReason = { bn: `${temp.toFixed(1)}°C — বাতাস সঞ্চালন`, en: `${temp.toFixed(1)}°C — Air circulation` };
@@ -183,7 +209,9 @@ export function IndustrialHeroStatus() {
 
     // Sprinkler reason
     let sprinklerReason: { bn: string; en: string };
-    if (!deviceStatus.sprinkler) {
+    if (isManualMode) {
+      sprinklerReason = deviceStatus.sprinkler ? manualOnLabel : manualOffLabel;
+    } else if (!deviceStatus.sprinkler) {
       sprinklerReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
     } else {
       sprinklerReason = { bn: `HSI ${hsi.toFixed(0)} — ছাদ কুলিং`, en: `HSI ${hsi.toFixed(0)} — Roof cooling` };
@@ -197,7 +225,7 @@ export function IndustrialHeroStatus() {
       { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
       { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler, reason: sprinklerReason },
     ];
-  }, [deviceStatus, sensorData, hsiResult]);
+  }, [deviceStatus, sensorData, hsiResult, isManualMode]);
 
   const Icon = currentStatus.icon;
   const isEmergency = currentStatus.id === 'emergency';
