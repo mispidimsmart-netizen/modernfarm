@@ -44,7 +44,7 @@
  * ║    GPIO 33 (IN8): Circulation Fan                                     ║
  * ║    GPIO 4:  DHT22 #1     GPIO 16: DHT22 #2                           ║
  * ║    GPIO 34: MQ-137 NH3   GPIO 35: ZMPT101B Voltage                   ║
- * ║    GPIO 17: YF-S201 Water Flow                                        ║
+ * ║    GPIO 18: YF-S201 Water Flow                                        ║
  * ║    GPIO 19: GSM RX (SIM800L TX)                                       ║
  * ║    GPIO 23: GSM TX (SIM800L RX)                                       ║
  * ║    GPIO 5:  GSM RST (optional)                                        ║
@@ -90,7 +90,7 @@ const char* FIRMWARE_VERSION = "8.0.0";
 #define DHT_TYPE             DHT22
 #define MQ135_PIN            34
 #define POWER_SENSE_PIN      35
-#define WATER_FLOW_PIN       17     // Moved from 27 to avoid relay conflict
+#define WATER_FLOW_PIN       18     // Moved to GPIO 18 (GPIO 17 unavailable on some boards)
 #define FAN_RELAY_PIN        25     // IN1: Exhaust Fan
 #define CEILING_FAN_RELAY_PIN 26    // IN2: Ceiling Fan (NEW)
 #define LIGHT_RELAY_PIN      27     // IN3: Light

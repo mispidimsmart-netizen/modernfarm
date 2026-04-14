@@ -77,7 +77,7 @@ export const RELAY_8CH_GPIO_MAP = {
 export const SENSOR_GPIO_MAP = {
   DHT22_1: { gpio: 4, label: 'DHT22 Primary', labelBn: 'DHT22 প্রধান' },
   DHT22_2: { gpio: 16, label: 'DHT22 Secondary', labelBn: 'DHT22 দ্বিতীয়' },
-  WATER_FLOW: { gpio: 17, label: 'Water Flow (YF-S201)', labelBn: 'পানির ফ্লো' },
+  WATER_FLOW: { gpio: 18, label: 'Water Flow (YF-S201)', labelBn: 'পানির ফ্লো' },
   MQ137: { gpio: 34, label: 'Ammonia (MQ-137)', labelBn: 'অ্যামোনিয়া' },
   ZMPT101B: { gpio: 35, label: 'Voltage (ZMPT101B)', labelBn: 'ভোল্টেজ' },
 } as const;
