@@ -252,7 +252,7 @@ export function DeviceSystemTab() {
         titleBn="ডিভাইস ম্যানেজমেন্ট"
         icon={Cpu}
         color="bg-blue-500/10 text-blue-500"
-        defaultOpen={true}
+        defaultOpen={false}
         language={language}
       >
         <div className="space-y-4">
