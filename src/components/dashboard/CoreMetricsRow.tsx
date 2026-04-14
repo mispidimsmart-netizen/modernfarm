@@ -3,11 +3,14 @@ import { motion } from 'framer-motion';
 import { Thermometer, Wind, Fan } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 
 export function CoreMetricsRow() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
 
   // Temperature status
   const tempStatus = useMemo(() => {
@@ -18,8 +21,27 @@ export function CoreMetricsRow() {
     return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
   }, [sensorData.temperature]);
 
-  // Ventilation stage with human-readable explanation
+  // Ventilation stage
   const ventStage = useMemo(() => {
+    // Manual mode: just show ON/OFF
+    if (isManualMode) {
+      if (!deviceStatus.fan) {
+        return { 
+          stage: 0,
+          label: { bn: 'বন্ধ', en: 'OFF' }, 
+          desc: { bn: 'আপনি বন্ধ রেখেছেন', en: 'You kept it off' },
+          color: 'text-muted-foreground', bg: 'bg-muted/50', border: 'border-border' 
+        };
+      }
+      return { 
+        stage: 1,
+        label: { bn: 'চালু', en: 'ON' }, 
+        desc: { bn: 'আপনি চালু করেছেন', en: 'You turned it on' },
+        color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/50', border: 'border-amber-200 dark:border-amber-800' 
+      };
+    }
+
+    // Auto mode logic
     if (!deviceStatus.fan) {
       return { 
         stage: 0,
@@ -50,7 +72,7 @@ export function CoreMetricsRow() {
       desc: { bn: 'স্বাভাবিক বাতাস', en: 'Normal airflow' },
       color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' 
     };
-  }, [deviceStatus.fan, sensorData.temperature, sensorData.ammonia]);
+  }, [deviceStatus.fan, sensorData.temperature, sensorData.ammonia, isManualMode]);
 
   // Gas status
   const gasStatus = useMemo(() => {

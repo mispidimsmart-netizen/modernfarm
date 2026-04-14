@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Wind, Flame, Fan, Zap, ShieldCheck, Moon, Droplets, ArrowUpFromDot } from 'lucide-react';
+import { Wind, Flame, Fan, Zap, ShieldCheck, Moon, Droplets, ArrowUpFromDot, Hand } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ActionInfo {
@@ -16,9 +17,40 @@ export function CurrentActionPanel() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
 
   const currentAction = useMemo((): ActionInfo => {
-    // Emergency / high heat
+    // Manual mode: show user-centric messages
+    if (isManualMode) {
+      const activeDevices: string[] = [];
+      if (deviceStatus.fan) activeDevices.push(language === 'bn' ? 'ফ্যান' : 'Fan');
+      if (deviceStatus.heater) activeDevices.push(language === 'bn' ? 'হিটার' : 'Heater');
+      if (deviceStatus.fogger) activeDevices.push(language === 'bn' ? 'ফগার' : 'Fogger');
+      if (deviceStatus.ceilingFan) activeDevices.push(language === 'bn' ? 'সিলিং ফ্যান' : 'Ceiling Fan');
+      if (deviceStatus.light) activeDevices.push(language === 'bn' ? 'লাইট' : 'Light');
+      if (deviceStatus.sprinkler) activeDevices.push(language === 'bn' ? 'স্প্রিংকলার' : 'Sprinkler');
+
+      if (activeDevices.length > 0) {
+        return {
+          icon: Hand,
+          text: { 
+            bn: `আপনি চালু রেখেছেন: ${activeDevices.join(', ')}`, 
+            en: `You turned on: ${activeDevices.join(', ')}` 
+          },
+          color: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+          iconColor: 'text-amber-600 dark:text-amber-400',
+        };
+      }
+      return {
+        icon: Hand,
+        text: { bn: '✋ সব ডিভাইস বন্ধ — আপনি নিয়ন্ত্রণ করছেন', en: '✋ All devices off — You are in control' },
+        color: 'bg-muted border-border',
+        iconColor: 'text-muted-foreground',
+      };
+    }
+
+    // Auto mode logic (existing)
     if (sensorData.temperature > 38 || sensorData.ammonia > 25) {
       return {
         icon: Wind,
@@ -27,8 +59,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-red-600 dark:text-red-400',
       };
     }
-
-    // Sprinkler on (HSI-based emergency cooling)
     if (deviceStatus.sprinkler) {
       return {
         icon: ArrowUpFromDot,
@@ -37,8 +67,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-sky-600 dark:text-sky-400',
       };
     }
-
-    // Heater on
     if (deviceStatus.heater) {
       return {
         icon: Flame,
@@ -47,8 +75,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-orange-600 dark:text-orange-400',
       };
     }
-
-    // Fan on with ammonia
     if (deviceStatus.fan && sensorData.ammonia > 15) {
       return {
         icon: Wind,
@@ -57,8 +83,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-purple-600 dark:text-purple-400',
       };
     }
-
-    // Fan on with high temp
     if (deviceStatus.fan && sensorData.temperature > 32) {
       return {
         icon: Wind,
@@ -67,8 +91,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-cyan-600 dark:text-cyan-400',
       };
     }
-
-    // Ceiling fan on
     if (deviceStatus.ceilingFan) {
       return {
         icon: Fan,
@@ -77,8 +99,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-violet-600 dark:text-violet-400',
       };
     }
-
-    // Fan on (general ventilation)
     if (deviceStatus.fan) {
       return {
         icon: Fan,
@@ -87,8 +107,6 @@ export function CurrentActionPanel() {
         iconColor: 'text-teal-600 dark:text-teal-400',
       };
     }
-
-    // Night
     const hour = new Date().getHours();
     if (hour >= 22 || hour < 5) {
       return {
@@ -98,15 +116,13 @@ export function CurrentActionPanel() {
         iconColor: 'text-indigo-600 dark:text-indigo-400',
       };
     }
-
-    // All good
     return {
       icon: ShieldCheck,
       text: { bn: 'সবকিছু স্বাভাবিক — কোন কাজ চলছে না', en: 'All normal — No action needed' },
       color: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     };
-  }, [sensorData, deviceStatus]);
+  }, [sensorData, deviceStatus, isManualMode, language]);
 
   const Icon = currentAction.icon;
 
