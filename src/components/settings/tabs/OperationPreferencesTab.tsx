@@ -454,6 +454,7 @@ export function OperationPreferencesTab() {
 
       {/* Haptic Feedback Settings */}
       <HapticSettingsCard />
+      </div>
     </div>
   );
 }
