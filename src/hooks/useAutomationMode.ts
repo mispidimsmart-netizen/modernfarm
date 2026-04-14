@@ -33,9 +33,21 @@ export function useSetAutomationMode() {
   return useMutation({
     mutationFn: async (mode: AutomationMode) => {
       if (!user) throw new Error('Not authenticated');
+
+      const updatePayload: Record<string, unknown> = {
+        automation_mode: mode,
+      };
+
+      // Track when manual mode was activated (for reminder banners)
+      if (mode === 'MANUAL') {
+        updatePayload.manual_mode_since = new Date().toISOString();
+      } else {
+        updatePayload.manual_mode_since = null;
+      }
+
       const { error } = await supabase
         .from('farm_settings')
-        .update({ automation_mode: mode } as any)
+        .update(updatePayload as any)
         .eq('user_id', user.id);
       if (error) throw error;
 

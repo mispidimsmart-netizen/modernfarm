@@ -379,6 +379,24 @@ Deno.serve(async (req) => {
         );
       }
 
+      // ========================================
+      // DUAL MODE CHECK: Skip automation if MANUAL mode
+      // Safety invariants (INV-1 to INV-8) remain on ESP32 hardware
+      // ========================================
+      if (settings.automation_mode === 'MANUAL') {
+        console.log(`⏸️ [MANUAL MODE] Skipping automation for user ${user_id} — manual mode active`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: 'MANUAL_MODE',
+            message: 'Automation skipped — manual mode active. Safety invariants remain on hardware.',
+            timestamp: new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Get latest sensor data for the shed
       let sensorQuery = supabase
         .from('sensor_logs')
@@ -678,6 +696,26 @@ Deno.serve(async (req) => {
       }
 
       console.log(`[Run All] Starting full automation cycle for user ${user_id}`);
+
+      // Check automation mode first
+      const { data: runAllSettings } = await supabase
+        .from('farm_settings')
+        .select('automation_mode')
+        .eq('user_id', user_id)
+        .single();
+
+      if (runAllSettings?.automation_mode === 'MANUAL') {
+        console.log(`⏸️ [Run All] Skipping — MANUAL mode active for user ${user_id}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: 'MANUAL_MODE',
+            timestamp: new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       // Step 1: Check for stale devices
       const staleDevices = await detectAndMarkStaleDevices(supabase, user_id);

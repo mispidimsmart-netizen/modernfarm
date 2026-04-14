@@ -1,0 +1,1 @@
+ALTER TABLE public.farm_settings ADD COLUMN IF NOT EXISTS manual_mode_since timestamptz DEFAULT NULL;

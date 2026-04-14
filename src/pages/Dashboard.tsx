@@ -64,6 +64,7 @@ import { AlertSummaryBanner } from '@/components/alerts';
 // Emergency Protection
 import { EmergencyProtectionBanner } from '@/components/emergency/EmergencyProtectionBanner';
 import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
+import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected } = useRealtimeSensorData();
@@ -140,6 +141,7 @@ export function Dashboard() {
 
         {/* ============ SETUP REMINDER ============ */}
         <SetupReminderBanner />
+        <ManualModeWarningBanner />
 
         {/* ============ EMERGENCY PROTECTION BANNER ============ */}
         <EmergencyProtectionBanner />
