@@ -3,6 +3,7 @@ import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
@@ -10,15 +11,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: deviceStatus } = useDeviceStatus();
+  const { data: deviceHealth } = useAllDeviceHealth();
   const { data: userRole } = useUserRole();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isConnected = true; // Would come from realtime connection status
+  const isConnected = (deviceHealth || []).some((d) => {
+    if (!d.is_online || !d.last_seen_at) return false;
+    return Date.now() - new Date(d.last_seen_at).getTime() < ONLINE_THRESHOLD_MS;
+  });
   const isHomePage = location.pathname === '/' || location.pathname === '/dashboard';
 
   const handleBack = () => {

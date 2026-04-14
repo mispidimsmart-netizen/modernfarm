@@ -12,6 +12,7 @@ import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useFlockInfo } from '@/hooks/useFarmManagement';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
 type FarmHealthState = 'good' | 'hot' | 'cold' | 'danger';
 
@@ -31,7 +32,13 @@ export function HeroFarmBanner() {
   const { data: settings } = useFarmSettings();
   const { isLayer, isBroiler, type } = useFarmType();
   const { selectedShedId } = useSelectedShed();
+  const { data: deviceHealth } = useAllDeviceHealth();
   
+  const isAnyDeviceOnline = (deviceHealth || []).some((d) => {
+    if (!d.is_online || !d.last_seen_at) return false;
+    return Date.now() - new Date(d.last_seen_at).getTime() < 2 * 60 * 1000;
+  });
+
   // Broiler data
   const { data: activeBatch } = useActiveBatch();
   const batchStats = useBatchStats(activeBatch?.id);
@@ -219,9 +226,11 @@ export function HeroFarmBanner() {
               }
             </span>
           </div>
-          <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-            <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-            {language === 'bn' ? 'লাইভ' : 'LIVE'}
+          <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
+            <span className={`h-2 w-2 rounded-full ${isAnyDeviceOnline ? 'bg-white animate-pulse' : 'bg-red-300'}`} />
+            {isAnyDeviceOnline
+              ? (language === 'bn' ? 'লাইভ' : 'LIVE')
+              : (language === 'bn' ? 'অফলাইন' : 'OFFLINE')}
           </span>
         </div>
 
