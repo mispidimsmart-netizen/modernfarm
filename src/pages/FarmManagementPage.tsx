@@ -46,7 +46,6 @@ export function FarmManagementPage() {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
     input: { bn: '✏️ এন্ট্রি', en: '✏️ Entry' },
     report: { bn: '📊 সারাংশ', en: '📊 Summary' },
-    schedule: { bn: '📅 শিডিউল', en: '📅 Schedule' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
     todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
     eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
@@ -77,9 +76,9 @@ export function FarmManagementPage() {
           {/* Stats Header */}
           <FarmStatsHeader onFlockClick={() => setActiveSheet('flock')} />
 
-          {/* Tabbed Interface */}
+          {/* Tabbed Interface - 3 tabs */}
           <Tabs defaultValue="input" className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-11 rounded-2xl bg-muted/50 p-1">
+            <TabsList className="w-full grid grid-cols-3 h-11 rounded-2xl bg-muted/50 p-1">
               <TabsTrigger 
                 value="input" 
                 className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
@@ -91,12 +90,6 @@ export function FarmManagementPage() {
                 className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
               >
                 {t.report[language]}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="schedule" 
-                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
-              >
-                {t.schedule[language]}
               </TabsTrigger>
               <TabsTrigger 
                 value="analysis" 
@@ -125,6 +118,27 @@ export function FarmManagementPage() {
                 {isLayer && (
                   <FarmInputCards onCardClick={handleQuickAction} />
                 )}
+
+                {/* Schedule Quick Access */}
+                <Card 
+                  onClick={() => setActiveSheet('schedule')}
+                  className="cursor-pointer transition-all active:scale-[0.98] hover:shadow-md bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-purple-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{language === 'bn' ? '📅 শিডিউল দেখুন ও যোগ করুন' : '📅 View & Add Schedules'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn' ? 'খাবার, পরিষ্কার, টিকা' : 'Feed, Cleaning, Vaccination'}
+                        </p>
+                      </div>
+                      <ChevronRight size={18} className="text-muted-foreground" />
+                    </div>
+                  </CardContent>
+                </Card>
                 
                 <p className="text-xs text-center text-muted-foreground">
                   {t.quickTip[language]}
@@ -143,15 +157,15 @@ export function FarmManagementPage() {
                   <DataExportButton />
                 </div>
                 
-                {/* Layer Mode: Show Layer Summary */}
                 {/* Daily Expense Summary */}
                 <DailyExpenseSummary />
 
+                {/* Layer Mode: Show Layer Summary */}
                 {isLayer && (
                   <>
                     <FarmSummaryCards />
                     
-                    {/* Production Rate Card - Layer Only */}
+                    {/* Production Rate Card */}
                     <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -180,53 +194,6 @@ export function FarmManagementPage() {
                     </Card>
                   </>
                 )}
-                
-                {/* Broiler Mode: Show Broiler Summary */}
-                {isBroiler && (
-                  <BroilerDashboardWidget
-                    onBatchClick={() => setActiveSheet('batch')}
-                    onWeightClick={() => setActiveSheet('weight')}
-                    onFeedClick={() => setActiveSheet('broiler-feed')}
-                  />
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Schedule Tab */}
-            <TabsContent value="schedule" className="mt-4">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">
-                    {language === 'bn' ? 'শিডিউল ম্যানেজমেন্ট' : 'Schedule Management'}
-                  </h3>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {language === 'bn' 
-                    ? '📅 খাবার, পরিষ্কার ও টিকার সময়সূচী সেট করুন এবং নোটিফিকেশন পান' 
-                    : '📅 Set feed, cleaning & vaccination schedules with notifications'}
-                </p>
-                
-                {/* Schedule Management Card */}
-                <Card 
-                  onClick={() => setActiveSheet('schedule')}
-                  className="cursor-pointer transition-all active:scale-[0.98] hover:shadow-md bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                        <Calendar className="h-6 w-6 text-purple-500" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{language === 'bn' ? 'শিডিউল দেখুন ও যোগ করুন' : 'View & Add Schedules'}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {language === 'bn' ? 'খাবার, পরিষ্কার, টিকা, কাস্টম' : 'Feed, Cleaning, Vaccination, Custom'}
-                        </p>
-                      </div>
-                      <ChevronRight size={20} className="text-muted-foreground" />
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             </TabsContent>
 
@@ -258,20 +225,13 @@ export function FarmManagementPage() {
                   </>
                 )}
                 
-                {/* Broiler Mode: FCR & Weight Analysis */}
+                {/* Broiler Mode: FCR & Weight hint */}
                 {isBroiler && (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'bn' 
-                        ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ দেখুন' 
-                        : '🔍 View FCR, weight gain & feed cost analysis'}
-                    </p>
-                    <BroilerDashboardWidget
-                      onBatchClick={() => setActiveSheet('batch')}
-                      onWeightClick={() => setActiveSheet('weight')}
-                      onFeedClick={() => setActiveSheet('broiler-feed')}
-                    />
-                  </>
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' 
+                      ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ মৃত্যুহার চার্টের সাথে দেখুন' 
+                      : '🔍 View FCR, weight gain & feed cost analysis alongside mortality trends'}
+                  </p>
                 )}
               </div>
             </TabsContent>
