@@ -1,13 +1,17 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Thermometer, Droplets, Wind } from 'lucide-react';
+import { Thermometer, Droplets, Wind, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
+import { useSensorValidation } from '@/hooks/useSensorValidation';
 import { Card, CardContent } from '@/components/ui/card';
 
 export function LiveEnvironmentPanel() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
+  const { issues } = useSensorValidation(sensorData);
+
+  const issueMap = useMemo(() => new Map(issues.map((i) => [i.sensor, i])), [issues]);
 
   const tempInterpretation = useMemo(() => {
     const t = sensorData.temperature;
@@ -34,21 +38,24 @@ export function LiveEnvironmentPanel() {
   const items = [
     {
       icon: Thermometer,
-      label: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
+      label: { bn: 'তাপমাত্রা', en: 'Temperature' },
       value: `${sensorData.temperature.toFixed(1)}°C`,
       interpretation: tempInterpretation,
+      sensor: 'temperature' as const,
     },
     {
       icon: Wind,
       label: { bn: 'গ্যাস', en: 'Gas' },
       value: `${sensorData.ammonia.toFixed(0)} ppm`,
       interpretation: gasInterpretation,
+      sensor: 'ammonia' as const,
     },
     {
       icon: Droplets,
       label: { bn: 'আর্দ্রতা', en: 'Humidity' },
       value: `${sensorData.humidity.toFixed(0)}%`,
       interpretation: humidityInterpretation,
+      sensor: 'humidity' as const,
     },
   ];
 
@@ -57,11 +64,12 @@ export function LiveEnvironmentPanel() {
       <Card>
         <CardContent className="pt-4 pb-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            {language === 'bn' ? 'লাইভ পরিবেশ' : 'Live Environment'}
+            {language === 'bn' ? 'লাইভ পরিবেশ ও সেন্সর' : 'Live Environment & Sensors'}
           </p>
           <div className="space-y-3">
             {items.map((item, i) => {
               const Icon = item.icon;
+              const hasIssue = issueMap.has(item.sensor);
               return (
                 <div key={i} className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -69,9 +77,16 @@ export function LiveEnvironmentPanel() {
                     <span className="text-sm text-foreground">{item.label[language]}:</span>
                     <span className="text-sm font-semibold">{item.value}</span>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full bg-muted/50 ${item.interpretation.color}`}>
-                    ({item.interpretation[language]})
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full bg-muted/50 ${item.interpretation.color}`}>
+                      {item.interpretation[language]}
+                    </span>
+                    {hasIssue ? (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    )}
+                  </div>
                 </div>
               );
             })}

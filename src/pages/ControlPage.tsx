@@ -327,19 +327,10 @@ export function ControlPage() {
         {/* ===== 2. WHY FAN IS RUNNING ===== */}
         <WhyFanRunning />
 
-        {/* ===== 3. LIVE ENVIRONMENT PANEL ===== */}
+        {/* ===== 3. LIVE ENVIRONMENT + SENSOR HEALTH (merged) ===== */}
         <LiveEnvironmentPanel />
 
-        {/* ===== 4. AUTOMATION DECISION LOG ===== */}
-        <AutomationDecisionLog />
-
-        {/* ===== 5. LIVE TELEMETRY ===== */}
-        <DeviceLiveTelemetry />
-
-        {/* ===== 6. SENSOR HEALTH ===== */}
-        <FarmerSensorHealth />
-
-        {/* ===== 6. MANUAL CONTROL PROTECTION ===== */}
+        {/* ===== 4. MANUAL CONTROL PROTECTION ===== */}
         <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 text-center">
             {language === 'bn' 
@@ -445,26 +436,17 @@ export function ControlPage() {
           </div>
         </div>
 
-        {/* ===== 7. FARM SAFETY FOOTER ===== */}
-        <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 text-center">
+        {/* ===== 5. AUTOMATION DECISION LOG ===== */}
+        <AutomationDecisionLog />
+
+        {/* ===== 6. SAFETY FOOTER (merged) ===== */}
+        <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 text-center space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
-            {language === 'bn' 
-              ? '🛡️ নেট না থাকলেও খামার চলবে'
-              : '🛡️ Farm will run even without internet'}
+            🛡️ {language === 'bn' 
+              ? 'নেট না থাকলেও খামার চলবে • সমস্ত ম্যানুয়াল অ্যাকশন স্বয়ংক্রিয়ভাবে মেয়াদ শেষ হয়'
+              : 'Farm runs without internet • All manual actions expire automatically'}
           </p>
         </div>
-
-        {/* Auto-expire feedback */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-2">
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm">
-              {language === 'bn' 
-                ? 'সমস্ত ম্যানুয়াল অ্যাকশন স্বয়ংক্রিয়ভাবে মেয়াদ শেষ হয়'
-                : 'All manual actions expire automatically'}
-            </span>
-          </div>
-        </motion.div>
       </main>
 
       {/* Timer Dialog */}
