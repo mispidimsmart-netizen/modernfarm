@@ -2573,6 +2573,35 @@ void handleCloudResponse(String response) {
   DynamicJsonDocument doc(2048);
   if (deserializeJson(doc, response) != DeserializationError::Ok) return;
   
+  // ═══════════════════════════════════════════════════════════════
+  // AUTHORITATIVE MODE SYNC FROM CLOUD
+  // The cloud's automation_mode (from farm_settings) is the single
+  // source of truth for MANUAL vs AUTO mode. ESP32 MUST respect it.
+  // ═══════════════════════════════════════════════════════════════
+  if (doc.containsKey("automation_mode")) {
+    String cloudMode = doc["automation_mode"] | "AUTO";
+    bool shouldBeManual = (cloudMode == "MANUAL");
+    if (shouldBeManual != localManualOverride) {
+      bool wasManual = localManualOverride;
+      localManualOverride = shouldBeManual;
+      if (localManualOverride) {
+        Serial.println("☁️ [SYNC] Cloud automation_mode=MANUAL → local MANUAL enforced");
+      } else {
+        Serial.println("☁️ [SYNC] Cloud automation_mode=AUTO → local AUTO restored");
+        if (wasManual) {
+          fanManualOverride = false; fanManualTime = 0;
+          heaterManualOverride = false; heaterManualTime = 0;
+          foggerManualOverride = false; foggerManualTime = 0;
+          circulationFanManualOverride = false; circulationFanManualTime = 0;
+          ceilingFanManualOverride = false; ceilingFanManualTime = 0;
+          sprinklerManualOverride = false; sprinklerManualTime = 0;
+          lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+          fadeInProgress = false;
+        }
+      }
+    }
+  }
+
   if (doc.containsKey("current_hour")) {
     currentHour = doc["current_hour"]; currentMinute = doc["current_minute"] | 0;
     lastTimeSync = millis(); timeValid = true;
@@ -2588,6 +2617,8 @@ void handleCloudResponse(String response) {
     lightSchedule.fadeOutMinutes = ls["fade_out_minutes"] | 30;
     lightSchedule.minBrightness = ls["min_brightness"] | 0;
     lightSchedule.maxBrightness = ls["max_brightness"] | 100;
+    // NOTE: Do NOT reset lightSchedule.manualOverride here
+    // Manual override state is managed by commands only
   }
   if (doc.containsKey("broiler_age_days") && isBroiler()) {
     updateAgeFromServer(doc["broiler_age_days"]);
@@ -2630,6 +2661,8 @@ void fetchConfig() {
     String resp = http.getString();
     DynamicJsonDocument doc(2048);
     if (deserializeJson(doc, resp) == DeserializationError::Ok) {
+      // Mode from /config is a secondary source — /sync automation_mode is primary
+      // Only apply if /sync hasn't already set the mode this cycle
       if (doc.containsKey("mode")) {
         String cloudMode = doc["mode"] | "AUTO";
         bool shouldBeManual = (cloudMode == "MANUAL");
@@ -2637,9 +2670,9 @@ void fetchConfig() {
           bool wasManual = localManualOverride;
           localManualOverride = shouldBeManual;
           if (localManualOverride) {
-            Serial.println("☁️ Cloud config enforced MANUAL mode");
+            Serial.println("☁️ [CONFIG] Cloud mode=MANUAL → local MANUAL enforced");
           } else {
-            Serial.println("☁️ Cloud config restored AUTO mode");
+            Serial.println("☁️ [CONFIG] Cloud mode=AUTO → local AUTO restored");
             if (wasManual) {
               fanManualOverride = false; fanManualTime = 0;
               heaterManualOverride = false; heaterManualTime = 0;

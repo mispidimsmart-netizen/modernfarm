@@ -4036,8 +4036,12 @@ async function getDeviceConfig(supabase: any, userId: string, shedId: string | n
       };
     }
 
-    // Determine mode
-    const mode = (deviceStatus?.manual_override || deviceStatus?.desired_manual_override) ? 'MANUAL' : (deviceStatus?.mode || 'AUTO');
+    // Determine mode — farm_settings.automation_mode is the AUTHORITATIVE source
+    // device_status.manual_override/desired_manual_override are secondary signals
+    const cloudAutomationMode = settings?.automation_mode ?? 'AUTO';
+    const mode = cloudAutomationMode === 'MANUAL' ? 'MANUAL' 
+      : (deviceStatus?.manual_override || deviceStatus?.desired_manual_override) ? 'MANUAL' 
+      : (deviceStatus?.mode || 'AUTO');
 
     // Current server time for ESP32 time sync
     const now = new Date();
