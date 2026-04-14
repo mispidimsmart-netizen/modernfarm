@@ -275,6 +275,7 @@ export function OperationPreferencesTab() {
       </div>
 
       {/* Current Mode Summary */}
+      <div className={isManualMode ? 'opacity-40 pointer-events-none select-none' : ''}>
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
