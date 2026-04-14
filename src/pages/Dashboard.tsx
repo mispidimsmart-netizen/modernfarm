@@ -226,12 +226,21 @@ export function Dashboard() {
               {/* ── 🔌 পাওয়ার আউটেজ ── */}
               <PowerOutageCard />
 
-              {/* Panic Prevention Strip */}
-              <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-2 text-center">
-                <p className="text-xs font-medium text-primary">
-                  {language === 'bn' 
-                    ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
-                    : '🤖 Automation system is monitoring your farm'}
+              {/* Mode Status Strip */}
+              <div className={`rounded-xl border px-4 py-2 text-center ${
+                isManualMode
+                  ? 'bg-amber-500/10 border-amber-500/20'
+                  : 'bg-primary/5 border-primary/20'
+              }`}>
+                <p className={`text-xs font-medium ${isManualMode ? 'text-amber-700 dark:text-amber-400' : 'text-primary'}`}>
+                  {isManualMode
+                    ? (language === 'bn' 
+                        ? '✋ ম্যানুয়াল মোড — আপনি ডিভাইস নিয়ন্ত্রণ করছেন (সেফটি সক্রিয়)'
+                        : '✋ Manual Mode — You control devices (Safety active)')
+                    : (language === 'bn' 
+                        ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
+                        : '🤖 Automation system is monitoring your farm')
+                  }
                 </p>
               </div>
             </TabsContent>
