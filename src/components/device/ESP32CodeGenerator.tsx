@@ -431,6 +431,50 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Admin Farm Selector */}
+        {showFarmSelector && (
+          <div className="space-y-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <div className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              <Home className="h-4 w-4" />
+              {language === 'bn' ? '🏠 খামার সিলেক্ট করুন' : '🏠 Select Farm'}
+            </div>
+            <Select
+              value={selectedFarmId}
+              onValueChange={(value) => {
+                setSelectedFarmId(value);
+                setAutoLoaded(false);
+                setDeviceToken('');
+                setShedId('');
+                setShedName('');
+                setFarmId('');
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={language === 'bn' ? 'একটি খামার বেছে নিন...' : 'Choose a farm...'} />
+              </SelectTrigger>
+              <SelectContent>
+                {allFarms.map((farm) => (
+                  <SelectItem key={farm.id} value={farm.id}>
+                    {language === 'bn' ? farm.name : farm.name_en} 
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {allFarms.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'কোনো খামার পাওয়া যায়নি' : 'No farms found'}
+              </p>
+            )}
+            {selectedFarmId && !deviceToken && autoLoaded && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                ⚠️ {language === 'bn' 
+                  ? 'এই খামারে কোনো ডিভাইস টোকেন নেই। প্রথমে Setup Wizard সম্পন্ন করতে হবে।' 
+                  : 'No device token found for this farm. Setup Wizard must be completed first.'}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Step 1: Firmware Mode */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
