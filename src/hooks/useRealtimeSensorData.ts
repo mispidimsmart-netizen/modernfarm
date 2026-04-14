@@ -102,7 +102,7 @@ export function useRealtimeDeviceStatus() {
         },
         () => {
           // Invalidate the query to refetch
-          queryClient.invalidateQueries({ queryKey: ['device-status'] });
+          queryClient.invalidateQueries({ queryKey: ['device_status'] });
         }
       )
       .subscribe();
