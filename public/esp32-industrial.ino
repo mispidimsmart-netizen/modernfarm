@@ -2661,6 +2661,8 @@ void fetchConfig() {
     String resp = http.getString();
     DynamicJsonDocument doc(2048);
     if (deserializeJson(doc, resp) == DeserializationError::Ok) {
+      // Mode from /config is a secondary source — /sync automation_mode is primary
+      // Only apply if /sync hasn't already set the mode this cycle
       if (doc.containsKey("mode")) {
         String cloudMode = doc["mode"] | "AUTO";
         bool shouldBeManual = (cloudMode == "MANUAL");
@@ -2668,9 +2670,9 @@ void fetchConfig() {
           bool wasManual = localManualOverride;
           localManualOverride = shouldBeManual;
           if (localManualOverride) {
-            Serial.println("☁️ Cloud config enforced MANUAL mode");
+            Serial.println("☁️ [CONFIG] Cloud mode=MANUAL → local MANUAL enforced");
           } else {
-            Serial.println("☁️ Cloud config restored AUTO mode");
+            Serial.println("☁️ [CONFIG] Cloud mode=AUTO → local AUTO restored");
             if (wasManual) {
               fanManualOverride = false; fanManualTime = 0;
               heaterManualOverride = false; heaterManualTime = 0;
