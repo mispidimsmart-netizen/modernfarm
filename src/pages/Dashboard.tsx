@@ -26,7 +26,7 @@ import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
 import { WeatherCard } from '@/components/weather/WeatherCard';
 import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
-import { HeatStressCard } from '@/components/dashboard/HeatStressCard';
+
 import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
 import { SystemModeCard } from '@/components/dashboard/SystemModeCard';
 import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
