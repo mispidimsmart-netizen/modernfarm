@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
 type FarmState = 'normal' | 'adjusting' | 'cooling' | 'emergency' | 'sensor_fail' | 'purge';
 
