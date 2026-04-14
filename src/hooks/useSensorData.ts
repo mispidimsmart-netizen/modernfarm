@@ -75,16 +75,25 @@ export function useDeviceControl(shedId?: string | null) {
   const { data: deviceStatus, isLoading } = useDeviceStatus(shedId);
   const updateMutation = useUpdateDeviceStatus(shedId);
 
+  const isManualMode = deviceStatus?.desired_manual_override || deviceStatus?.manual_override || false;
+
+  const resolveState = (actual: boolean, desired: boolean | null | undefined) => {
+    if (isManualMode && desired !== null && desired !== undefined) {
+      return desired;
+    }
+    return actual;
+  };
+
   const status: DeviceStatus = deviceStatus ? {
     power: deviceStatus.power_on,
-    fan: deviceStatus.fan_on,
-    light: deviceStatus.light_on,
-    alarm: deviceStatus.alarm_on,
-    heater: deviceStatus.heater_on ?? false,
-    circulation_fan: deviceStatus.circulation_fan_on ?? false,
-    fogger: deviceStatus.fogger_on ?? false,
-    ceilingFan: deviceStatus.ceiling_fan_on ?? false,
-    sprinkler: deviceStatus.sprinkler_on ?? false,
+    fan: resolveState(deviceStatus.fan_on, deviceStatus.desired_fan_on),
+    light: resolveState(deviceStatus.light_on, deviceStatus.desired_light_on),
+    alarm: resolveState(deviceStatus.alarm_on, deviceStatus.desired_alarm_on),
+    heater: resolveState(deviceStatus.heater_on ?? false, deviceStatus.desired_heater_on),
+    circulation_fan: resolveState(deviceStatus.circulation_fan_on ?? false, deviceStatus.desired_circulation_fan_on),
+    fogger: resolveState(deviceStatus.fogger_on ?? false, deviceStatus.desired_fogger_on),
+    ceilingFan: resolveState(deviceStatus.ceiling_fan_on ?? false, deviceStatus.desired_ceiling_fan_on),
+    sprinkler: resolveState(deviceStatus.sprinkler_on ?? false, deviceStatus.desired_sprinkler_on),
   } : {
     power: true,
     fan: false,
@@ -97,7 +106,7 @@ export function useDeviceControl(shedId?: string | null) {
     sprinkler: false,
   };
 
-  const manualOverride = deviceStatus?.manual_override ?? false;
+  const manualOverride = isManualMode;
 
   const setDeviceStatus = useCallback((newStatus: Partial<DeviceStatus> & Record<string, any>) => {
     const updateData: Record<string, boolean> = {};

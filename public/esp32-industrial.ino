@@ -2630,6 +2630,29 @@ void fetchConfig() {
     String resp = http.getString();
     DynamicJsonDocument doc(2048);
     if (deserializeJson(doc, resp) == DeserializationError::Ok) {
+      if (doc.containsKey("mode")) {
+        String cloudMode = doc["mode"] | "AUTO";
+        bool shouldBeManual = (cloudMode == "MANUAL");
+        if (shouldBeManual != localManualOverride) {
+          bool wasManual = localManualOverride;
+          localManualOverride = shouldBeManual;
+          if (localManualOverride) {
+            Serial.println("☁️ Cloud config enforced MANUAL mode");
+          } else {
+            Serial.println("☁️ Cloud config restored AUTO mode");
+            if (wasManual) {
+              fanManualOverride = false; fanManualTime = 0;
+              heaterManualOverride = false; heaterManualTime = 0;
+              foggerManualOverride = false; foggerManualTime = 0;
+              circulationFanManualOverride = false; circulationFanManualTime = 0;
+              ceilingFanManualOverride = false; ceilingFanManualTime = 0;
+              sprinklerManualOverride = false; sprinklerManualTime = 0;
+              lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+              fadeInProgress = false;
+            }
+          }
+        }
+      }
       if (doc.containsKey("farm_type")) {
         String ft = doc["farm_type"] | "LAYER";
         int newType = (ft == "BROILER") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
@@ -2704,8 +2727,19 @@ void checkCommands() {
             requestHeater(value);
           }
         } else if (type == "light") {
-          lightSchedule.manualOverride = true; lightManualOverrideTime = millis();
-          requestLight(value ? 100 : 0);
+          lightSchedule.manualOverride = true;
+          lightManualOverrideTime = millis();
+          fadeInProgress = false;
+          targetBrightness = value ? 100 : 0;
+          fadeStartBrightness = targetBrightness;
+          lightBrightness = targetBrightness;
+          bool nextLightOn = value;
+          if (nextLightOn != lightOn) {
+            lightOn = nextLightOn;
+            digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
+            Serial.println(lightOn ? "💡 Light relay ON (manual immediate)" : "🌑 Light relay OFF (manual immediate)");
+          }
+          manualCommandPending = false;
         } else if (type == "alarm") {
           requestAlarm(value);
         } else if (type == "fogger") {
@@ -2729,9 +2763,18 @@ void checkCommands() {
         } else if (type == "stop_automation") {
           // Always allow manual override — safety arbiter will still protect life-critical invariants
           localManualOverride = value;
+          manualCommandPending = false;
           if (value) {
             Serial.println("✅ MANUAL OVERRIDE ACTIVATED (safety arbiter remains active for life-critical protection)");
           } else {
+            fanManualOverride = false; fanManualTime = 0;
+            heaterManualOverride = false; heaterManualTime = 0;
+            foggerManualOverride = false; foggerManualTime = 0;
+            circulationFanManualOverride = false; circulationFanManualTime = 0;
+            ceilingFanManualOverride = false; ceilingFanManualTime = 0;
+            sprinklerManualOverride = false; sprinklerManualTime = 0;
+            lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+            fadeInProgress = false;
             Serial.println("✅ MANUAL OVERRIDE DEACTIVATED → returning to AUTO mode");
           }
         } else {
