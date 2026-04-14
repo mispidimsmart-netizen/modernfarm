@@ -306,11 +306,13 @@ export function SettingsPage() {
                 <ReportsDataTab />
               </TabsContent>
 
-              <TabsContent value="firmware">
-                <div className="space-y-4">
-                  <ESP32CodeGenerator language={language} />
-                </div>
-              </TabsContent>
+              {isAdmin && (
+                <TabsContent value="firmware">
+                  <div className="space-y-4">
+                    <ESP32CodeGenerator language={language} />
+                  </div>
+                </TabsContent>
+              )}
 
               {isAdmin && (
                 <TabsContent value="device">
