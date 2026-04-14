@@ -226,9 +226,11 @@ export function HeroFarmBanner() {
               }
             </span>
           </div>
-          <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-            <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-            {language === 'bn' ? 'লাইভ' : 'LIVE'}
+          <span className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
+            <span className={`h-2 w-2 rounded-full ${isAnyDeviceOnline ? 'bg-white animate-pulse' : 'bg-red-300'}`} />
+            {isAnyDeviceOnline
+              ? (language === 'bn' ? 'লাইভ' : 'LIVE')
+              : (language === 'bn' ? 'অফলাইন' : 'OFFLINE')}
           </span>
         </div>
 
