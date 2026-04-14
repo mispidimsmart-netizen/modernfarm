@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Hand, ShieldCheck, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { Bot, Hand, ShieldCheck, AlertTriangle, ArrowLeftRight, Loader2, Timer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode, useSetAutomationMode, AutomationMode } from '@/hooks/useAutomationMode';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +19,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
+const SYNC_PERIOD_SECONDS = 30;
+
 export function AutomationModeCard() {
   const { language } = useAuth();
   const { data: currentMode, isLoading } = useAutomationMode();
@@ -25,27 +28,59 @@ export function AutomationModeCard() {
   const { toast } = useToast();
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingMode, setPendingMode] = useState<AutomationMode | null>(null);
+  const [syncCountdown, setSyncCountdown] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const isManual = currentMode === 'MANUAL';
 
+  // Sync period countdown
+  useEffect(() => {
+    if (!isSyncing || syncCountdown <= 0) {
+      if (isSyncing && syncCountdown <= 0) {
+        setIsSyncing(false);
+        toast({
+          title: language === 'bn' ? '✅ সিঙ্ক সম্পন্ন' : '✅ Sync Complete',
+          description: language === 'bn'
+            ? 'অটোমেশন ইঞ্জিন এখন সম্পূর্ণ নিয়ন্ত্রণে'
+            : 'Automation engine now has full control',
+        });
+      }
+      return;
+    }
+    const timer = setTimeout(() => setSyncCountdown(s => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [isSyncing, syncCountdown, toast, language]);
+
   const handleToggle = (checked: boolean) => {
+    if (isSyncing) return;
     const newMode: AutomationMode = checked ? 'MANUAL' : 'AUTO';
     setPendingMode(newMode);
     setShowConfirm(true);
   };
 
-  const confirmModeChange = async () => {
+  const confirmModeChange = useCallback(async () => {
     if (!pendingMode) return;
     try {
       await setMode.mutateAsync(pendingMode);
-      toast({
-        title: pendingMode === 'MANUAL'
-          ? (language === 'bn' ? '✋ ম্যানুয়াল মোড সক্রিয়' : '✋ Manual Mode Active')
-          : (language === 'bn' ? '🤖 অটো মোড সক্রিয়' : '🤖 Auto Mode Active'),
-        description: pendingMode === 'MANUAL'
-          ? (language === 'bn' ? 'সেফটি ইনভ্যারিয়েন্ট সক্রিয় থাকবে' : 'Safety invariants remain active')
-          : (language === 'bn' ? 'অটোমেশন ইঞ্জিন পুনরায় নিয়ন্ত্রণ নিয়েছে' : 'Automation engine resumed control'),
-      });
+
+      // If switching to AUTO → start sync period
+      if (pendingMode === 'AUTO') {
+        setIsSyncing(true);
+        setSyncCountdown(SYNC_PERIOD_SECONDS);
+        toast({
+          title: language === 'bn' ? '🔄 সিঙ্ক পিরিয়ড শুরু' : '🔄 Sync Period Started',
+          description: language === 'bn'
+            ? `${SYNC_PERIOD_SECONDS} সেকেন্ড ধীরে ধীরে অটোমেশন পুনরায় শুরু হচ্ছে`
+            : `${SYNC_PERIOD_SECONDS}s gradual automation resumption`,
+        });
+      } else {
+        toast({
+          title: language === 'bn' ? '✋ ম্যানুয়াল মোড সক্রিয়' : '✋ Manual Mode Active',
+          description: language === 'bn'
+            ? 'সেফটি ইনভ্যারিয়েন্ট সক্রিয় থাকবে'
+            : 'Safety invariants remain active',
+        });
+      }
     } catch {
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
@@ -55,7 +90,7 @@ export function AutomationModeCard() {
     }
     setShowConfirm(false);
     setPendingMode(null);
-  };
+  }, [pendingMode, setMode, toast, language]);
 
   if (isLoading) {
     return (
@@ -74,20 +109,29 @@ export function AutomationModeCard() {
         animate={{ opacity: 1, y: 0 }}
       >
         <Card className={`border-2 overflow-hidden ${
-          isManual
-            ? 'border-amber-500/50 bg-gradient-to-br from-amber-500/5 to-amber-600/10'
-            : 'border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10'
+          isSyncing
+            ? 'border-blue-500/50 bg-gradient-to-br from-blue-500/5 to-blue-600/10'
+            : isManual
+              ? 'border-amber-500/50 bg-gradient-to-br from-amber-500/5 to-amber-600/10'
+              : 'border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10'
         }`}>
           <CardContent className="py-5">
             {/* Header Row */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                  isManual
-                    ? 'bg-amber-500/20 text-amber-600'
-                    : 'bg-primary/15 text-primary'
+                  isSyncing
+                    ? 'bg-blue-500/20 text-blue-600'
+                    : isManual
+                      ? 'bg-amber-500/20 text-amber-600'
+                      : 'bg-primary/15 text-primary'
                 }`}>
-                  {isManual ? <Hand className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+                  {isSyncing
+                    ? <Loader2 className="h-6 w-6 animate-spin" />
+                    : isManual
+                      ? <Hand className="h-6 w-6" />
+                      : <Bot className="h-6 w-6" />
+                  }
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -95,20 +139,26 @@ export function AutomationModeCard() {
                       {language === 'bn' ? 'অটোমেশন মোড' : 'Automation Mode'}
                     </h3>
                     <Badge variant={isManual ? 'secondary' : 'default'} className={`text-xs ${
-                      isManual
-                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30'
-                        : 'bg-primary/20 text-primary border-primary/30'
+                      isSyncing
+                        ? 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30'
+                        : isManual
+                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                          : 'bg-primary/20 text-primary border-primary/30'
                     }`}>
-                      {isManual
-                        ? (language === 'bn' ? 'ম্যানুয়াল' : 'MANUAL')
-                        : (language === 'bn' ? 'অটো' : 'AUTO')
+                      {isSyncing
+                        ? (language === 'bn' ? 'সিঙ্ক হচ্ছে...' : 'SYNCING...')
+                        : isManual
+                          ? (language === 'bn' ? 'ম্যানুয়াল' : 'MANUAL')
+                          : (language === 'bn' ? 'অটো' : 'AUTO')
                       }
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {isManual
-                      ? (language === 'bn' ? 'আপনি ডিভাইস নিয়ন্ত্রণ করছেন' : 'You control devices')
-                      : (language === 'bn' ? 'সিস্টেম স্বয়ংক্রিয়ভাবে চলছে' : 'System runs automatically')
+                    {isSyncing
+                      ? (language === 'bn' ? 'অটোমেশন ধীরে ধীরে চালু হচ্ছে...' : 'Automation gradually resuming...')
+                      : isManual
+                        ? (language === 'bn' ? 'আপনি ডিভাইস নিয়ন্ত্রণ করছেন' : 'You control devices')
+                        : (language === 'bn' ? 'সিস্টেম স্বয়ংক্রিয়ভাবে চলছে' : 'System runs automatically')
                     }
                   </p>
                 </div>
@@ -118,7 +168,7 @@ export function AutomationModeCard() {
                 <Switch
                   checked={isManual}
                   onCheckedChange={handleToggle}
-                  disabled={setMode.isPending}
+                  disabled={setMode.isPending || isSyncing}
                   className={isManual ? 'data-[state=checked]:bg-amber-500' : ''}
                 />
                 <span className="text-[10px] text-muted-foreground">
@@ -130,48 +180,82 @@ export function AutomationModeCard() {
               </div>
             </div>
 
-            {/* Mode Description */}
-            <AnimatePresence mode="wait">
+            {/* Sync Period Progress */}
+            {isSyncing && (
               <motion.div
-                key={isManual ? 'manual' : 'auto'}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-2"
+                className="mb-3"
               >
-                {isManual ? (
-                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 space-y-2">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                      <p className="text-xs text-amber-700 dark:text-amber-400">
-                        {language === 'bn'
-                          ? 'ম্যানুয়াল মোডে অটোমেশন ইঞ্জিন বন্ধ। আপনি নিজে ফ্যান, লাইট, ফগার ইত্যাদি চালু/বন্ধ করবেন।'
-                          : 'Automation engine is off. You manually control fans, lights, foggers, etc.'}
-                      </p>
+                <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-blue-600" />
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+                        {language === 'bn' ? 'সিঙ্ক পিরিয়ড' : 'Sync Period'}
+                      </span>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <ShieldCheck className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                      <p className="text-xs text-green-700 dark:text-green-400">
-                        {language === 'bn'
-                          ? '🛡️ জীবন-রক্ষাকারী সেফটি সিস্টেম (INV-1 থেকে INV-8) সবসময় সক্রিয় থাকবে।'
-                          : '🛡️ Life-saving safety system (INV-1 to INV-8) always stays active.'}
-                      </p>
-                    </div>
+                    <span className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                      {syncCountdown}s
+                    </span>
                   </div>
-                ) : (
-                  <div className="rounded-xl bg-primary/5 border border-primary/15 p-3">
-                    <div className="flex items-start gap-2">
-                      <Bot className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <p className="text-xs text-muted-foreground">
-                        {language === 'bn'
-                          ? 'সেন্সর ডেটার উপর ভিত্তি করে সিস্টেম স্বয়ংক্রিয়ভাবে ফ্যান, হিটার, ফগার ও লাইট নিয়ন্ত্রণ করে।'
-                          : 'System automatically controls fans, heaters, foggers & lights based on sensor data.'}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  <Progress
+                    value={((SYNC_PERIOD_SECONDS - syncCountdown) / SYNC_PERIOD_SECONDS) * 100}
+                    className="h-1.5"
+                  />
+                  <p className="text-[11px] text-blue-600/80 dark:text-blue-400/80">
+                    {language === 'bn'
+                      ? 'সেন্সর ডেটা পড়ে সিস্টেম ধীরে ধীরে নিয়ন্ত্রণ নিচ্ছে...'
+                      : 'System reading sensors and gradually taking control...'}
+                  </p>
+                </div>
               </motion.div>
-            </AnimatePresence>
+            )}
+
+            {/* Mode Description */}
+            {!isSyncing && (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={isManual ? 'manual' : 'auto'}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2"
+                >
+                  {isManual ? (
+                    <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          {language === 'bn'
+                            ? 'ম্যানুয়াল মোডে অটোমেশন ইঞ্জিন বন্ধ। আপনি নিজে ফ্যান, লাইট, ফগার ইত্যাদি চালু/বন্ধ করবেন।'
+                            : 'Automation engine is off. You manually control fans, lights, foggers, etc.'}
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <ShieldCheck className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                        <p className="text-xs text-green-700 dark:text-green-400">
+                          {language === 'bn'
+                            ? '🛡️ জীবন-রক্ষাকারী সেফটি সিস্টেম (INV-1 থেকে INV-8) সবসময় সক্রিয় থাকবে।'
+                            : '🛡️ Life-saving safety system (INV-1 to INV-8) always stays active.'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-primary/5 border border-primary/15 p-3">
+                      <div className="flex items-start gap-2">
+                        <Bot className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn'
+                            ? 'সেন্সর ডেটার উপর ভিত্তি করে সিস্টেম স্বয়ংক্রিয়ভাবে ফ্যান, হিটার, ফগার ও লাইট নিয়ন্ত্রণ করে।'
+                            : 'System automatically controls fans, heaters, foggers & lights based on sensor data.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -202,11 +286,18 @@ export function AutomationModeCard() {
                   </p>
                 </>
               ) : (
-                <p>
-                  {language === 'bn'
-                    ? '🤖 অটোমেশন ইঞ্জিন পুনরায় নিয়ন্ত্রণ নেবে। সেন্সর ডেটা অনুযায়ী ডিভাইসগুলো স্বয়ংক্রিয়ভাবে চলবে।'
-                    : '🤖 Automation engine will resume control. Devices will run automatically based on sensor data.'}
-                </p>
+                <>
+                  <p>
+                    {language === 'bn'
+                      ? '🤖 অটোমেশন ইঞ্জিন পুনরায় নিয়ন্ত্রণ নেবে। সেন্সর ডেটা অনুযায়ী ডিভাইসগুলো স্বয়ংক্রিয়ভাবে চলবে।'
+                      : '🤖 Automation engine will resume control. Devices will run automatically based on sensor data.'}
+                  </p>
+                  <p className="text-blue-600 dark:text-blue-400 text-sm font-medium">
+                    {language === 'bn'
+                      ? `⏱️ ${SYNC_PERIOD_SECONDS} সেকেন্ড সিঙ্ক পিরিয়ড — সিস্টেম ধীরে ধীরে নিয়ন্ত্রণ নেবে`
+                      : `⏱️ ${SYNC_PERIOD_SECONDS}s sync period — system will gradually take control`}
+                  </p>
+                </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
