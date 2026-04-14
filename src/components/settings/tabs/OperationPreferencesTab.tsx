@@ -251,10 +251,15 @@ export function OperationPreferencesTab() {
     }
   }, [controls, language]);
 
+  const isManualMode = automationMode === 'MANUAL';
+
   return (
     <div className="space-y-6">
+      {/* ====== Dual Mode Switch (TOP) ====== */}
+      <AutomationModeCard />
+
       {/* Header with Mode Badge */}
-      <div className="text-center">
+      <div className={`text-center ${isManualMode ? 'opacity-50' : ''}`}>
         <div className="flex items-center justify-center gap-2 mb-2">
           <Zap className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold">
@@ -262,9 +267,10 @@ export function OperationPreferencesTab() {
           </h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          {language === 'bn' 
-            ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' 
-            : 'Auto by default, manually adjust if needed'}
+          {isManualMode
+            ? (language === 'bn' ? '⚠️ ম্যানুয়াল মোডে এই সেটিংস নিষ্ক্রিয়' : '⚠️ These settings are inactive in Manual mode')
+            : (language === 'bn' ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' : 'Auto by default, manually adjust if needed')
+          }
         </p>
       </div>
 
