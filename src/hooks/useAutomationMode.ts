@@ -58,10 +58,24 @@ export function useSetAutomationMode() {
       // even when user sets MANUAL mode from the app.
       // ═══════════════════════════════════════════════════════════
       const isManual = mode === 'MANUAL';
+      
+      // Update desired_manual_override on ALL device_status rows for this user
       await supabase
         .from('device_status')
         .update({ desired_manual_override: isManual } as any)
         .eq('user_id', user.id);
+
+      // Send stop_automation command to ESP32 so it immediately
+      // activates/deactivates localManualOverride
+      const commandId = `mode_${mode}_${Date.now()}`;
+      await supabase
+        .from('device_commands')
+        .insert({
+          user_id: user.id,
+          command_type: 'stop_automation',
+          command_value: isManual,
+          device_name: 'ESP32_LAYER_001',
+        } as any);
 
       // Audit log
       logAction({
