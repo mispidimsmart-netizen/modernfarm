@@ -409,8 +409,9 @@ const detailedWiringGuide = [
     bgColor: 'bg-purple-500/10',
     pins: [
       // --- পাওয়ার হেডার (৩ পিন): JD-VCC, VCC, GND ---
-      { sensorPin: 'JD-VCC (রিলে কয়েল পাওয়ার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে পাওয়ার হেডারের JD-VCC → ESP32 এর VIN (5V) — এটি রিলে কয়েলগুলোকে চালু করে', warning: '⚡ পাওয়ার হেডারে ৩টি পিন থাকে: JD-VCC, VCC, GND। JD-VCC ও VCC এর মাঝে জাম্পার ক্যাপ লাগানো আছে কিনা চেক করুন!' },
-      { sensorPin: 'GND (পাওয়ার হেডার)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে পাওয়ার হেডারের GND → ESP32 এর GND', warning: null },
+      { sensorPin: 'JD-VCC (রিলে কয়েল পাওয়ার)', esp32Pin: '12V অ্যাডাপ্টার (+)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে পাওয়ার হেডারের JD-VCC → 12V DC অ্যাডাপ্টারের (+) পজিটিভ — রিলে কয়েলগুলো আলাদা 12V তে চলবে', warning: '⚡ JD-VCC ও VCC এর মাঝের জাম্পার ক্যাপ অবশ্যই খুলে ফেলুন! VCC পিন ফাঁকা রাখুন।' },
+      { sensorPin: 'VCC (পাওয়ার হেডার)', esp32Pin: '❌ ফাঁকা রাখুন', wireColor: '—', wireNameEn: 'NONE', instruction: '🚫 পাওয়ার হেডারের VCC পিনে কিছু লাগাবেন না — জাম্পার খোলা থাকবে', warning: 'জাম্পার খোলা = অপটিক্যাল আইসোলেশন সক্রিয়। এটি ESP32 কে রিলে নয়েজ থেকে রক্ষা করে।' },
+      { sensorPin: 'GND (পাওয়ার হেডার)', esp32Pin: 'GND (কমন)', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে পাওয়ার হেডারের GND → ESP32 এর GND এবং 12V অ্যাডাপ্টারের (−) নেগেটিভ — কমন গ্রাউন্ড', warning: '⚠️ ESP32 ও 12V অ্যাডাপ্টারের GND একসাথে যুক্ত করা বাধ্যতামূলক (কমন গ্রাউন্ড)!' },
       // --- কন্ট্রোল হেডার (১০ পিন): IN1-IN8, VCC, GND ---
       { sensorPin: 'VCC (কন্ট্রোল হেডার)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 কন্ট্রোল হেডারের VCC → ESP32 এর 3.3V — Optocoupler লজিক পাওয়ার (IN1-IN8 এর পাশে)', warning: '📌 কন্ট্রোল সাইডে ১০টি পিন: IN1-IN8 + VCC + GND। এই VCC হলো সিগন্যাল লেভেল পাওয়ার।' },
       { sensorPin: 'GND (কন্ট্রোল হেডার)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কন্ট্রোল হেডারের GND → ESP32 এর GND (IN1-IN8 এর পাশের GND)', warning: null },
@@ -423,8 +424,8 @@ const detailedWiringGuide = [
       { sensorPin: 'IN7 (রুফ স্প্রিংকলার)', esp32Pin: 'GPIO 15', wireColor: 'আসমানি', wireNameEn: 'LIGHT BLUE', instruction: '🔵 আসমানি তার: রিলে IN7 → ESP32 এর GPIO 15 (🚿 রুফ স্প্রিংকলার — HSI ≥80 চালু)', warning: null },
       { sensorPin: 'IN8 (সার্কুলেশন ফ্যান)', esp32Pin: 'GPIO 33', wireColor: 'ধূসর', wireNameEn: 'GRAY', instruction: '⚪ ধূসর তার: রিলে IN8 → ESP32 এর GPIO 33 (💨 সার্কুলেশন ফ্যান)', warning: null },
     ],
-    extraNote: '⚙️ ৮-চ্যানেল রিলে মডিউলে দুইটি পিন হেডার থাকে:\n• পাওয়ার হেডার (৩ পিন): JD-VCC, VCC, GND — রিলে কয়েলের পাওয়ার সাপ্লাই\n• কন্ট্রোল হেডার (১০ পিন): IN1-IN8, VCC, GND — ESP32 থেকে সিগন্যাল ইনপুট\nActive LOW লজিক (ESP32 থেকে LOW = রিলে ON)। বুট করার সময় ফ্লিকারিং রোধে কোডে বিশেষ প্রোটোকল ব্যবহার করা হয়েছে।',
-    resistorNote: '📍 পাওয়ার হেডারে JD-VCC ও VCC এর মাঝে জাম্পার ক্যাপ লাগিয়ে রাখুন (একই 5V পাওয়ার সোর্স ব্যবহার)। আলাদা পাওয়ার চাইলে জাম্পার খুলে JD-VCC তে আলাদা 5V দিন।',
+    extraNote: '⚙️ ৮-চ্যানেল রিলে মডিউলে দুইটি পিন হেডার থাকে:\n• পাওয়ার হেডার (৩ পিন): JD-VCC → 12V, VCC → ফাঁকা, GND → কমন গ্রাউন্ড\n• কন্ট্রোল হেডার (১০ পিন): IN1-IN8 → ESP32 GPIO, VCC → 3.3V, GND → ESP32 GND\nজাম্পার খোলা রাখলে অপটিক্যাল আইসোলেশন সক্রিয় থাকে — ESP32 সুরক্ষিত থাকে। Active LOW লজিক (LOW = রিলে ON)।',
+    resistorNote: '📍 জাম্পার ক্যাপ খুলে রাখুন! JD-VCC তে আলাদা 12V DC দিন, পাওয়ার হেডারের VCC ফাঁকা রাখুন। ESP32 ও 12V অ্যাডাপ্টারের GND অবশ্যই একসাথে যুক্ত করুন (কমন গ্রাউন্ড)।',
     tips: ['🌀 IN1: এক্সহস্ট ফ্যান — তাপমাত্রা, HSI, অ্যামোনিয়া ভিত্তিক', '🌀 IN2: সিলিং ফ্যান — তাপমাত্রা ≥25°সে চালু, ≤22°সে বন্ধ', '💡 IN3: লাইটিং — ১৬ ঘণ্টা শিডিউল (লেয়ার)', '🔥 IN4: হিটার — বয়স-ভিত্তিক কার্ভ, 34°সে তে Force OFF', '💦 IN5: ফগার — 32°সে+ এবং 85% আর্দ্রতার নিচে', '🔔 IN6: অ্যালার্ম — NH₃ > 25ppm বা HSI বিপদ', '🚿 IN7: রুফ স্প্রিংকলার — HSI ≥80 চালু, ≤75 বন্ধ (60সে স্প্রে/120সে বিরতি)', '💨 IN8: সার্কুলেশন ফ্যান — বয়স ১০+ দিন থেকে সক্রিয়', 'হাই পাওয়ার ডিভাইস (১০০০W+) এর জন্য SSR বা কন্ট্যাক্টর ব্যবহার করুন'],
     hasFarmTypeMapping: true,
     farmTypeMapping: {
