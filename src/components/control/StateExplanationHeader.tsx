@@ -114,9 +114,11 @@ export function StateExplanationHeader() {
       <div className="relative z-10 flex flex-col items-center justify-center py-6 px-5 text-center">
         {/* Live badge */}
         <div className="absolute top-3 right-3">
-          <span className="flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-            {language === 'bn' ? 'লাইভ' : 'LIVE'}
+          <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${isAnyDeviceOnline ? 'bg-white animate-pulse' : 'bg-red-300'}`} />
+            {isAnyDeviceOnline
+              ? (language === 'bn' ? 'লাইভ' : 'LIVE')
+              : (language === 'bn' ? 'অফলাইন' : 'OFFLINE')}
           </span>
         </div>
 
