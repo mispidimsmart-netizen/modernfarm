@@ -1,5 +1,15 @@
 import { Wifi, WifiOff } from 'lucide-react';
 
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
+/** Check if device is truly online based on last_seen_at freshness */
+function isDeviceReallyOnline(device: any): boolean {
+  if (!device.is_online) return false;
+  if (!device.last_seen_at) return false;
+  const diffMs = Date.now() - new Date(device.last_seen_at).getTime();
+  return diffMs < ONLINE_THRESHOLD_MS;
+}
+
 interface DeviceConnectionStatusProps {
   deviceHealth: any[] | undefined;
   language: string;
@@ -7,7 +17,7 @@ interface DeviceConnectionStatusProps {
 
 export function DeviceConnectionStatus({ deviceHealth, language }: DeviceConnectionStatusProps) {
   const devices = deviceHealth || [];
-  const onlineCount = devices.filter((d: any) => d.is_online).length;
+  const onlineCount = devices.filter((d: any) => isDeviceReallyOnline(d)).length;
   const totalCount = devices.length;
   const allOnline = totalCount > 0 && onlineCount === totalCount;
   const anyOffline = totalCount > 0 && onlineCount < totalCount;
