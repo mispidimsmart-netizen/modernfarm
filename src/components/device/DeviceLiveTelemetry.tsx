@@ -165,7 +165,7 @@ function DeviceTelemetryRow({ device, deviceName, language }: {
           variant="outline"
           className={`text-[10px] ${freshnessStyles[freshness].text}`}
         >
-          {device.is_online 
+          {isDeviceReallyOnline(device) 
             ? (language === 'bn' ? '🟢 অনলাইন' : '🟢 Online') 
             : (language === 'bn' ? '🔴 অফলাইন' : '🔴 Offline')}
         </Badge>
