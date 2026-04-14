@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, LineChart, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Bird } from 'lucide-react';
+import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { useFarmType } from '@/hooks/useFarmType';
