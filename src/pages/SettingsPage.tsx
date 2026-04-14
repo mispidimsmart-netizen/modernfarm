@@ -299,13 +299,6 @@ export function SettingsPage() {
                 <ReportsDataTab />
               </TabsContent>
 
-              {isAdmin && (
-                <TabsContent value="firmware">
-                  <div className="space-y-4">
-                    <ESP32CodeGenerator language={language} showFarmSelector={true} />
-                  </div>
-                </TabsContent>
-              )}
 
               {isAdmin && (
                 <TabsContent value="device">
