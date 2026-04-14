@@ -99,7 +99,7 @@ export function useDeviceControl(shedId?: string | null) {
 
   const manualOverride = deviceStatus?.manual_override ?? false;
 
-  const setDeviceStatus = useCallback((newStatus: Partial<DeviceStatus>) => {
+  const setDeviceStatus = useCallback((newStatus: Partial<DeviceStatus> & Record<string, any>) => {
     const updateData: Record<string, boolean> = {};
     if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
     if (newStatus.fan !== undefined) updateData.fan_on = newStatus.fan;
@@ -108,6 +108,9 @@ export function useDeviceControl(shedId?: string | null) {
     if (newStatus.heater !== undefined) updateData.heater_on = newStatus.heater;
     if (newStatus.circulation_fan !== undefined) updateData.circulation_fan_on = newStatus.circulation_fan;
     if (newStatus.fogger !== undefined) updateData.fogger_on = newStatus.fogger;
+    if (newStatus.ceilingFan !== undefined) updateData.ceiling_fan_on = newStatus.ceilingFan;
+    if (newStatus.ceiling_fan !== undefined) updateData.ceiling_fan_on = newStatus.ceiling_fan;
+    if (newStatus.sprinkler !== undefined) updateData.sprinkler_on = newStatus.sprinkler;
     
     updateMutation.mutate(updateData);
   }, [updateMutation]);
