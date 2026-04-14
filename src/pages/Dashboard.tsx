@@ -262,11 +262,13 @@ export function Dashboard() {
               {/* ── GROUP 2: অটোমেশন ও সেফটি ── */}
               <section>
                 <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                  ⚙️ {language === 'bn' ? 'অটোমেশন ও সেফটি' : 'Automation & Safety'}
+                  {isManualMode ? '✋' : '⚙️'} {language === 'bn' 
+                    ? (isManualMode ? 'সিস্টেম স্ট্যাটাস' : 'অটোমেশন ও সেফটি') 
+                    : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                    {!isManualMode && <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />}
                     <SystemModeCard />
                   </div>
                   <AutomationStatusCard />
