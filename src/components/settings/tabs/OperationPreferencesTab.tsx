@@ -6,6 +6,7 @@ import {
   RotateCcw, Minus, Plus, Lock
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useWeatherCache } from '@/hooks/useWeather';
 import { useAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
@@ -15,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
+import { AutomationModeCard } from '@/components/settings/AutomationModeCard';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -98,6 +100,7 @@ const CONTROL_SETTINGS: ControlSetting[] = [
 
 export function OperationPreferencesTab() {
   const { language } = useAuth();
+  const { data: automationMode } = useAutomationMode();
   const { sensorData } = useRealtimeSensorData();
   const { data: weatherData } = useWeatherCache();
   const { isBroiler, isLayer } = useFarmType();
