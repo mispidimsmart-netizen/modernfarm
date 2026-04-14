@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Fan, Flame, Lightbulb, X, Loader2, Droplets, ArrowUpFromDot } from 'lucide-react';
+import { Zap, Fan, Flame, Lightbulb, X, Loader2, Droplets, ArrowUpFromDot, Bot, Hand } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
