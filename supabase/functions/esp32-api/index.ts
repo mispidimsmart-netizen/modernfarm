@@ -3309,6 +3309,10 @@ async function handleFailsafeSync(
       .eq('user_id', userId)
       .single();
 
+    // 4a. Check if cloud says MANUAL mode — force ESP32 to re-enter if needed
+    const cloudAutomationMode = farmSettings?.automation_mode ?? 'AUTO';
+    const isCloudManual = cloudAutomationMode === 'MANUAL';
+
     // 🐔 4b. Get shed's farm_type (per-shed support)
     let shedFarmType = 'layer';
     if (device.shed_id) {
@@ -3424,6 +3428,11 @@ async function handleFailsafeSync(
       settings_version: settingsVersion,
       needs_settings_update: needsSettingsUpdate,
       
+      // ⚡ Authoritative automation mode from farm_settings
+      // ESP32 MUST respect this — if cloud says MANUAL, ESP32 must stay in MANUAL
+      automation_mode: cloudAutomationMode,
+      force_manual_override: isCloudManual,
+      
       // 🐔 Farm type and broiler age for ESP32 auto-config (per-shed)
       farm_type: shedFarmType,
       broiler_age_days: broilerAgeDays,
@@ -3438,7 +3447,7 @@ async function handleFailsafeSync(
         circulation_fan_on: currentStatus.desired_circulation_fan_on ?? false,
         ceiling_fan_on: currentStatus.desired_ceiling_fan_on ?? false,
         sprinkler_on: currentStatus.desired_sprinkler_on ?? false,
-        manual_override: currentStatus.desired_manual_override ?? false,
+        manual_override: currentStatus.desired_manual_override ?? isCloudManual,
         fan_speed: currentStatus.desired_fan_speed ?? 'OFF',
       } : null,
       

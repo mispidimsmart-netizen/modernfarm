@@ -112,16 +112,27 @@ export function useRealtimeDeviceStatus() {
     };
   }, [user?.id, queryClient]);
 
+  // In MANUAL mode, show desired_* states (what user commanded) when explicitly set
+  // In AUTO mode, show actual states from ESP32
+  const isManualMode = initialStatus?.desired_manual_override || initialStatus?.manual_override;
+
+  const resolveState = (actual: boolean, desired: boolean | null | undefined): boolean => {
+    if (isManualMode && desired !== null && desired !== undefined) {
+      return desired;
+    }
+    return actual;
+  };
+
   const status: DeviceStatus = initialStatus ? {
     power: initialStatus.power_on,
-    fan: initialStatus.fan_on,
-    light: initialStatus.light_on,
-    alarm: initialStatus.alarm_on,
-    heater: initialStatus.heater_on ?? false,
-    circulation_fan: initialStatus.circulation_fan_on ?? false,
-    fogger: initialStatus.fogger_on ?? false,
-    ceilingFan: initialStatus.ceiling_fan_on ?? false,
-    sprinkler: initialStatus.sprinkler_on ?? false,
+    fan: resolveState(initialStatus.fan_on, initialStatus.desired_fan_on),
+    light: resolveState(initialStatus.light_on, initialStatus.desired_light_on),
+    alarm: resolveState(initialStatus.alarm_on, initialStatus.desired_alarm_on),
+    heater: resolveState(initialStatus.heater_on ?? false, initialStatus.desired_heater_on),
+    circulation_fan: resolveState(initialStatus.circulation_fan_on ?? false, initialStatus.desired_circulation_fan_on),
+    fogger: resolveState(initialStatus.fogger_on ?? false, initialStatus.desired_fogger_on),
+    ceilingFan: resolveState(initialStatus.ceiling_fan_on ?? false, initialStatus.desired_ceiling_fan_on),
+    sprinkler: resolveState(initialStatus.sprinkler_on ?? false, initialStatus.desired_sprinkler_on),
   } : {
     power: true,
     fan: false,
@@ -134,7 +145,7 @@ export function useRealtimeDeviceStatus() {
     sprinkler: false,
   };
 
-  const manualOverride = initialStatus?.manual_override ?? false;
+  const manualOverride = initialStatus?.manual_override || initialStatus?.desired_manual_override || false;
 
   return { status, manualOverride, isLoading };
 }
