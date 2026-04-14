@@ -53,10 +53,14 @@ export function HardwareValidation({ onComplete, onSkip }: HardwareValidationPro
   const tempBeforeRef = useRef<number | null>(null);
 
   const [relayTests, setRelayTests] = useState<RelayTest[]>([
-    { key: 'fan', icon: Fan, name: { bn: 'এক্সহস্ট ফ্যান (রিলে ১)', en: 'Exhaust Fan (Relay 1)' }, relay: 'D5', status: 'pending' },
-    { key: 'light', icon: Lightbulb, name: { bn: 'লাইট / সার্কুলেশন (রিলে ২)', en: 'Light / Circulation (Relay 2)' }, relay: 'D6', status: 'pending' },
-    { key: 'alarm', icon: Bell, name: { bn: 'অ্যালার্ম / হিটার (রিলে ৩)', en: 'Alarm / Heater (Relay 3)' }, relay: 'D7', status: 'pending' },
-    { key: 'fogger', icon: Droplets, name: { bn: 'ফগার (রিলে ৪)', en: 'Fogger (Relay 4)' }, relay: 'D8', status: 'pending' },
+    { key: 'fan', icon: Fan, name: { bn: 'এক্সহস্ট ফ্যান (IN1 - GPIO 25)', en: 'Exhaust Fan (IN1 - GPIO 25)' }, relay: 'IN1', status: 'pending' },
+    { key: 'ceiling_fan', icon: Fan, name: { bn: 'সিলিং ফ্যান (IN2 - GPIO 26)', en: 'Ceiling Fan (IN2 - GPIO 26)' }, relay: 'IN2', status: 'pending' },
+    { key: 'light', icon: Lightbulb, name: { bn: 'লাইট (IN3 - GPIO 27)', en: 'Light (IN3 - GPIO 27)' }, relay: 'IN3', status: 'pending' },
+    { key: 'heater', icon: Flame, name: { bn: 'হিটার (IN4 - GPIO 14)', en: 'Heater (IN4 - GPIO 14)' }, relay: 'IN4', status: 'pending' },
+    { key: 'fogger', icon: Droplets, name: { bn: 'ফগার (IN5 - GPIO 12)', en: 'Fogger (IN5 - GPIO 12)' }, relay: 'IN5', status: 'pending' },
+    { key: 'alarm', icon: Bell, name: { bn: 'বাজার/অ্যালার্ম (IN6 - GPIO 13)', en: 'Buzzer/Alarm (IN6 - GPIO 13)' }, relay: 'IN6', status: 'pending' },
+    { key: 'sprinkler', icon: Droplets, name: { bn: 'স্প্রিংকলার (IN7 - GPIO 15)', en: 'Sprinkler (IN7 - GPIO 15)' }, relay: 'IN7', status: 'pending' },
+    { key: 'circulation_fan', icon: Wind, name: { bn: 'সার্কুলেশন ফ্যান (IN8 - GPIO 33)', en: 'Circulation Fan (IN8 - GPIO 33)' }, relay: 'IN8', status: 'pending' },
   ]);
 
   const [sensorChecks, setSensorChecks] = useState<SensorCheck[]>([
@@ -190,10 +194,11 @@ export function HardwareValidation({ onComplete, onSkip }: HardwareValidationPro
 
     // Phase 1: Test relays sequentially (0-50%)
     let relaysPassed = 0;
-    for (let i = 0; i < 4; i++) {
+    const relayCount = relayTests.length; // 8 relays
+    for (let i = 0; i < relayCount; i++) {
       const passed = await testSingleRelay(relayTests[i].key, i);
       if (passed) relaysPassed++;
-      setOverallProgress(((i + 1) / 4) * 50);
+      setOverallProgress(((i + 1) / relayCount) * 50);
     }
 
     // Phase 2: Sensor validation (50-75%)
@@ -212,7 +217,7 @@ export function HardwareValidation({ onComplete, onSkip }: HardwareValidationPro
     setOverallProgress(100);
 
     const sensorsPassed = [sensorResults.tempValid, sensorResults.humValid, sensorResults.nh3Valid].filter(Boolean).length;
-    const overallPassed = relaysPassed >= 3 && sensorsPassed >= 2; // At least 3/4 relays and 2/3 core sensors
+    const overallPassed = relaysPassed >= 6 && sensorsPassed >= 2; // At least 6/8 relays and 2/3 core sensors
 
     const results: ValidationResults = {
       relays: relayTests.reduce((acc, r) => ({
