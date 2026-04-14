@@ -177,6 +177,21 @@ export function QuickControlFAB() {
             </span>
           </span>
         )}
+        
+        {/* Mode indicator badge */}
+        {!isOpen && (
+          <span className={`absolute -bottom-1 -left-1 flex items-center justify-center h-5 w-5 rounded-full text-[8px] font-bold ${
+            isManualMode 
+              ? 'bg-amber-500 text-white' 
+              : 'bg-emerald-600 text-white'
+          }`}>
+            {isManualMode ? (
+              <Hand className="h-3 w-3" />
+            ) : (
+              <Bot className="h-3 w-3" />
+            )}
+          </span>
+        )}
       </motion.button>
     </div>
   );
