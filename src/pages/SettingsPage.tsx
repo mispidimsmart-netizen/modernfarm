@@ -262,27 +262,35 @@ export function SettingsPage() {
           {/* Main Settings Tabs */}
           {canEditSettings && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-3'} mb-4`}>
-                <TabsTrigger value="farm-setup" className="text-xs sm:text-sm">
-                  <Home className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                  <span className="hidden sm:inline">{t.farmSetup[language]}</span>
-                  <span className="sm:hidden">{language === 'bn' ? 'খামার' : 'Farm'}</span>
+              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl`}>
+                <TabsTrigger 
+                  value="farm-setup" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Home className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? '🏠 খামার' : '🏠 Farm'}</span>
                 </TabsTrigger>
-                <TabsTrigger value="operation" className="text-xs sm:text-sm">
-                  <Settings className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                  <span className="hidden sm:inline">{t.operation[language]}</span>
-                  <span className="sm:hidden">{language === 'bn' ? 'চালনা' : 'Ops'}</span>
+                <TabsTrigger 
+                  value="operation" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? '⚙️ পরিচালনা' : '⚙️ Ops'}</span>
                 </TabsTrigger>
-                <TabsTrigger value="reports" className="text-xs sm:text-sm">
-                  <BarChart3 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                  <span className="hidden sm:inline">{t.reports[language]}</span>
-                  <span className="sm:hidden">{language === 'bn' ? 'ডেটা' : 'Data'}</span>
+                <TabsTrigger 
+                  value="reports" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <BarChart3 className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? '📊 রিপোর্ট' : '📊 Reports'}</span>
                 </TabsTrigger>
                 {isAdmin && (
-                  <TabsTrigger value="device" className="text-xs sm:text-sm">
-                    <Cpu className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                    <span className="hidden sm:inline">{t.device[language]}</span>
-                    <span className="sm:hidden">{language === 'bn' ? 'যন্ত্র' : 'Device'}</span>
+                  <TabsTrigger 
+                    value="device" 
+                    className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  >
+                    <Cpu className="h-4 w-4 shrink-0" />
+                    <span>{language === 'bn' ? '🔧 ডিভাইস' : '🔧 Device'}</span>
                   </TabsTrigger>
                 )}
               </TabsList>
