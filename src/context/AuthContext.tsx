@@ -4,14 +4,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Language } from '@/lib/translations';
 import { useToast } from '@/hooks/use-toast';
 
+interface SignUpMetadata {
+  farmName?: string;
+  farmType?: string;
+  userName?: string;
+  realEmail?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
   language: Language;
   setLanguage: (lang: Language) => void;
-  signUp: (identifier: string, password: string, farmName?: string, isPhone?: boolean) => Promise<{ error: Error | null }>;
-  signIn: (identifier: string, password: string, isPhone?: boolean) => Promise<{ error: Error | null }>;
+  signUp: (phone: string, password: string, metadata?: SignUpMetadata) => Promise<{ error: Error | null }>;
+  signIn: (identifier: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -76,23 +83,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return `${normalized}@phone.layerfarm.app`;
   };
 
-  const signUp = async (identifier: string, password: string, farmName?: string, isPhone?: boolean) => {
+  // Always phone-primary signup with synthetic email
+  const signUp = async (phone: string, password: string, metadata?: SignUpMetadata) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      // For phone auth, use synthetic email approach since SMS provider is not configured
-      const email = isPhone ? phoneToEmail(identifier) : identifier;
-      const formattedPhone = isPhone ? formatPhoneNumber(identifier) : null;
+      const email = phoneToEmail(phone);
+      const formattedPhone = formatPhoneNumber(phone);
       
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: redirectUrl,
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
-            farm_name: farmName || 'আমার লেয়ার ফার্ম',
+            farm_name: metadata?.farmName || 'আমার লেয়ার ফার্ম',
             phone: formattedPhone,
-            auth_method: isPhone ? 'phone' : 'email',
+            farm_type: metadata?.farmType || null,
+            user_name: metadata?.userName || null,
+            real_email: metadata?.realEmail || null,
+            auth_method: 'phone',
           }
         }
       });
@@ -100,8 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         if (error.message.includes('User already registered') || error.message.includes('already been registered')) {
           return { error: new Error(language === 'bn' 
-            ? (isPhone ? 'এই নম্বর দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে' : 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে') 
-            : (isPhone ? 'An account with this phone already exists' : 'An account with this email already exists')) 
+            ? 'এই নম্বর দিয়ে আগেই অ্যাকাউন্ট তৈরি করা হয়েছে'
+            : 'An account with this phone already exists') 
           };
         }
         return { error };
@@ -110,8 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' 
-          ? 'অ্যাকাউন্ট তৈরি হয়েছে। এখন লগইন করুন।' 
-          : 'Account created. You can now login.',
+          ? 'অ্যাকাউন্ট তৈরি হয়েছে।' 
+          : 'Account created.',
       });
 
       return { error: null };
@@ -120,10 +128,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (identifier: string, password: string, isPhone?: boolean) => {
+  // Unified login: auto-detect phone vs email
+  const signIn = async (identifier: string, password: string) => {
     try {
-      // For phone auth, try synthetic email first; if it fails and this user actually
-      // registered with email, resolve phone->email via backend and retry.
+      // Auto-detect phone vs email
+      const cleaned = identifier.replace(/\D/g, '');
+      const isPhone = cleaned.length >= 6 && /^0?1\d+$/.test(cleaned);
+
       const primaryEmail = isPhone ? phoneToEmail(identifier) : identifier;
 
       const attempt = async (email: string) => {
@@ -132,11 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let { error } = await attempt(primaryEmail);
 
-      if (isPhone && error?.message?.includes('Invalid login credentials')) {
-        // Resolve phone to email for accounts created via email but with phone saved in profile.
-        const { data } = await supabase.functions.invoke('lookup-login-identifier', {
-          body: { phone: identifier },
-        });
+      // If login failed, try resolving via backend
+      if (error?.message?.includes('Invalid login credentials')) {
+        const body = isPhone ? { phone: identifier } : { email: identifier };
+        const { data } = await supabase.functions.invoke('lookup-login-identifier', { body });
 
         const resolvedEmail = (data as { email?: string | null } | null)?.email ?? null;
         if (resolvedEmail && resolvedEmail !== primaryEmail) {
@@ -147,8 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
           return { error: new Error(language === 'bn' 
-            ? (isPhone ? 'ভুল মোবাইল নম্বর বা পাসওয়ার্ড' : 'ভুল ইমেইল বা পাসওয়ার্ড') 
-            : (isPhone ? 'Invalid phone or password' : 'Invalid email or password')) 
+            ? 'ভুল মোবাইল নম্বর/ইমেইল বা পাসওয়ার্ড'
+            : 'Invalid phone/email or password') 
           };
         }
         if (error.message.includes('Email not confirmed')) {

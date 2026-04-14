@@ -126,7 +126,7 @@ export function LoginPage() {
     }
 
     try {
-      const { error } = await signIn(trimmed, loginPassword, isPhone);
+      const { error } = await signIn(trimmed, loginPassword);
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
@@ -194,23 +194,22 @@ export function LoginPage() {
       }
 
       const farmNameValue = userType === 'owner' ? (signupFarmName.trim() || 'আমার ফার্ম') : 'Worker Account';
-      // Always use phone as primary signup identifier
-      const { error } = await signUp(signupPhone, signupPassword, farmNameValue, true);
+      const { error } = await signUp(signupPhone, signupPassword, {
+        farmName: farmNameValue,
+        farmType: userType === 'owner' ? signupFarmType : undefined,
+        userName: signupName.trim(),
+        realEmail: signupEmail.trim() || undefined,
+      });
 
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
-        // Auto-login after phone signup
-        const { error: signInError } = await signIn(signupPhone, signupPassword, true);
+        // Auto-login after signup
+        const { error: signInError } = await signIn(signupPhone, signupPassword);
         if (!signInError) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            await supabase.from('profiles').update({
-              user_name: signupName.trim(),
-              email: signupEmail.trim() || null,
-              farm_type: userType === 'owner' ? signupFarmType : null,
-              farm_name: farmNameValue,
-            }).eq('id', user.id);
+            // Profile already created by trigger with metadata, update worker role if needed
 
             if (userType === 'worker' && validInvitation) {
               await supabase.from('user_roles').insert({
