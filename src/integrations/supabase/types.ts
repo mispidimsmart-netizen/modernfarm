@@ -1878,6 +1878,7 @@ export type Database = {
       farm_settings: {
         Row: {
           ammonia_max: number
+          automation_mode: string
           created_at: string
           fan_high_temp_min: number
           fan_low_temp_max: number
@@ -1901,6 +1902,7 @@ export type Database = {
         }
         Insert: {
           ammonia_max?: number
+          automation_mode?: string
           created_at?: string
           fan_high_temp_min?: number
           fan_low_temp_max?: number
@@ -1924,6 +1926,7 @@ export type Database = {
         }
         Update: {
           ammonia_max?: number
+          automation_mode?: string
           created_at?: string
           fan_high_temp_min?: number
           fan_low_temp_max?: number

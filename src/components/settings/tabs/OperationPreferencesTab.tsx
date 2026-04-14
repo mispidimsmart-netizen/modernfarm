@@ -6,6 +6,7 @@ import {
   RotateCcw, Minus, Plus, Lock
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useWeatherCache } from '@/hooks/useWeather';
 import { useAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
@@ -15,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
+import { AutomationModeCard } from '@/components/settings/AutomationModeCard';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -98,6 +100,7 @@ const CONTROL_SETTINGS: ControlSetting[] = [
 
 export function OperationPreferencesTab() {
   const { language } = useAuth();
+  const { data: automationMode } = useAutomationMode();
   const { sensorData } = useRealtimeSensorData();
   const { data: weatherData } = useWeatherCache();
   const { isBroiler, isLayer } = useFarmType();
@@ -248,10 +251,15 @@ export function OperationPreferencesTab() {
     }
   }, [controls, language]);
 
+  const isManualMode = automationMode === 'MANUAL';
+
   return (
     <div className="space-y-6">
+      {/* ====== Dual Mode Switch (TOP) ====== */}
+      <AutomationModeCard />
+
       {/* Header with Mode Badge */}
-      <div className="text-center">
+      <div className={`text-center ${isManualMode ? 'opacity-50' : ''}`}>
         <div className="flex items-center justify-center gap-2 mb-2">
           <Zap className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold">
@@ -259,13 +267,15 @@ export function OperationPreferencesTab() {
           </h3>
         </div>
         <p className="text-sm text-muted-foreground">
-          {language === 'bn' 
-            ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' 
-            : 'Auto by default, manually adjust if needed'}
+          {isManualMode
+            ? (language === 'bn' ? '⚠️ ম্যানুয়াল মোডে এই সেটিংস নিষ্ক্রিয়' : '⚠️ These settings are inactive in Manual mode')
+            : (language === 'bn' ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' : 'Auto by default, manually adjust if needed')
+          }
         </p>
       </div>
 
       {/* Current Mode Summary */}
+      <div className={isManualMode ? 'opacity-40 pointer-events-none select-none' : ''}>
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -444,6 +454,7 @@ export function OperationPreferencesTab() {
 
       {/* Haptic Feedback Settings */}
       <HapticSettingsCard />
+      </div>
     </div>
   );
 }

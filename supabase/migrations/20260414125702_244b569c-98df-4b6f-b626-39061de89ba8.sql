@@ -1,0 +1,1 @@
+ALTER TABLE public.farm_settings ADD COLUMN IF NOT EXISTS automation_mode TEXT NOT NULL DEFAULT 'AUTO';

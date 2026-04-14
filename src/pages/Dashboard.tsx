@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
@@ -69,6 +70,8 @@ export function Dashboard() {
   const statusLevels = useRealtimeStatusLevels(sensorData);
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   const { data: farmSettings } = useFarmSettings();
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
   const { data: deviceHealth } = useAllDeviceHealth();
   const { selectedShedId } = useSelectedShed();
   const { isLayer, isBroiler } = useFarmType();
@@ -223,12 +226,21 @@ export function Dashboard() {
               {/* ── 🔌 পাওয়ার আউটেজ ── */}
               <PowerOutageCard />
 
-              {/* Panic Prevention Strip */}
-              <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-2 text-center">
-                <p className="text-xs font-medium text-primary">
-                  {language === 'bn' 
-                    ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
-                    : '🤖 Automation system is monitoring your farm'}
+              {/* Mode Status Strip */}
+              <div className={`rounded-xl border px-4 py-2 text-center ${
+                isManualMode
+                  ? 'bg-amber-500/10 border-amber-500/20'
+                  : 'bg-primary/5 border-primary/20'
+              }`}>
+                <p className={`text-xs font-medium ${isManualMode ? 'text-amber-700 dark:text-amber-400' : 'text-primary'}`}>
+                  {isManualMode
+                    ? (language === 'bn' 
+                        ? '✋ ম্যানুয়াল মোড — আপনি ডিভাইস নিয়ন্ত্রণ করছেন (সেফটি সক্রিয়)'
+                        : '✋ Manual Mode — You control devices (Safety active)')
+                    : (language === 'bn' 
+                        ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
+                        : '🤖 Automation system is monitoring your farm')
+                  }
                 </p>
               </div>
             </TabsContent>
@@ -250,19 +262,21 @@ export function Dashboard() {
               {/* ── GROUP 2: অটোমেশন ও সেফটি ── */}
               <section>
                 <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                  ⚙️ {language === 'bn' ? 'অটোমেশন ও সেফটি' : 'Automation & Safety'}
+                  {isManualMode ? '✋' : '⚙️'} {language === 'bn' 
+                    ? (isManualMode ? 'সিস্টেম স্ট্যাটাস' : 'অটোমেশন ও সেফটি') 
+                    : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                    {!isManualMode && <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />}
                     <SystemModeCard />
                   </div>
-                  <AutomationStatusCard />
+                  {!isManualMode && <AutomationStatusCard />}
                   
-                  {/* Broiler Specific */}
+                  {/* Broiler Specific - show in both modes (temp info is useful) */}
                   {isBroiler && (
                     <>
-                      <BroilerAgeAutoModeCard enabled={true} />
+                      {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
                       <BroilerTempStatusCard tempResult={broilerEnvResult ? {
                         currentTemp: broilerEnvResult.temperature.current,
                         targetMin: broilerEnvResult.temperature.targetMin,
@@ -281,7 +295,7 @@ export function Dashboard() {
                   )}
                   
                   {/* Layer Specific */}
-                  {isLayer && (
+                  {isLayer && !isManualMode && (
                     <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                   )}
                 </div>
