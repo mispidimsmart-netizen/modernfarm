@@ -1894,6 +1894,7 @@ export type Database = {
           humidity_max: number
           humidity_min: number
           id: string
+          manual_mode_since: string | null
           temperature_max: number
           temperature_min: number
           updated_at: string
@@ -1918,6 +1919,7 @@ export type Database = {
           humidity_max?: number
           humidity_min?: number
           id?: string
+          manual_mode_since?: string | null
           temperature_max?: number
           temperature_min?: number
           updated_at?: string
@@ -1942,6 +1944,7 @@ export type Database = {
           humidity_max?: number
           humidity_min?: number
           id?: string
+          manual_mode_since?: string | null
           temperature_max?: number
           temperature_min?: number
           updated_at?: string
