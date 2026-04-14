@@ -163,6 +163,8 @@ export default function AdminPage() {
     stats,
     loadingStats,
     userDetails,
+    refetchStats,
+    refetchUserDetails,
   } = useSuperAdmin();
 
   const [searchQuery, setSearchQuery] = useState('');
