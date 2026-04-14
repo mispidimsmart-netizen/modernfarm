@@ -116,6 +116,8 @@ export function useDeviceStatus(shedId?: string | null) {
       return data as DeviceStatus;
     },
     enabled: !!user,
+    staleTime: 2000,
+    refetchInterval: 5000,
   });
 }
 

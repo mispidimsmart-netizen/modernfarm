@@ -3137,6 +3137,11 @@ interface FailsafeSyncPayload {
   light_on?: boolean;
   light_brightness?: number;
   alarm_on?: boolean;
+  heater_on?: boolean;
+  fogger_on?: boolean;
+  circulation_fan_on?: boolean;
+  ceiling_fan_on?: boolean;
+  sprinkler_on?: boolean;
   
   // Failsafe status
   failsafe_mode?: boolean;
@@ -3193,10 +3198,19 @@ async function handleFailsafeSync(
     };
     // These are actual states reported by the device
     if (body.fan_on !== undefined) deviceStatusUpdate.fan_on = body.fan_on;
-    if (body.light_on !== undefined) deviceStatusUpdate.light_on = body.light_on;
+    if (body.light_on !== undefined) {
+      deviceStatusUpdate.light_on = body.light_on;
+    } else if (typeof body.light_brightness === 'number') {
+      deviceStatusUpdate.light_on = body.light_brightness > 0;
+    }
     if (body.alarm_on !== undefined) deviceStatusUpdate.alarm_on = body.alarm_on;
     if (body.power_on !== undefined) deviceStatusUpdate.power_on = body.power_on;
     if (body.fan_speed !== undefined) deviceStatusUpdate.fan_speed = body.fan_speed;
+    if (body.heater_on !== undefined) deviceStatusUpdate.heater_on = body.heater_on;
+    if (body.fogger_on !== undefined) deviceStatusUpdate.fogger_on = body.fogger_on;
+    if (body.circulation_fan_on !== undefined) deviceStatusUpdate.circulation_fan_on = body.circulation_fan_on;
+    if (body.ceiling_fan_on !== undefined) deviceStatusUpdate.ceiling_fan_on = body.ceiling_fan_on;
+    if (body.sprinkler_on !== undefined) deviceStatusUpdate.sprinkler_on = body.sprinkler_on;
     // Safety override from device
     if (typeof (body as any).safety_override === 'boolean') {
       deviceStatusUpdate.safety_override = (body as any).safety_override;
@@ -3204,6 +3218,46 @@ async function handleFailsafeSync(
       if ((body as any).safety_override) {
         deviceStatusUpdate.safety_override_at = now;
       }
+    }
+
+    const { data: desiredStatus } = await supabase
+      .from('device_status')
+      .select([
+        'desired_fan_on',
+        'desired_light_on',
+        'desired_alarm_on',
+        'desired_heater_on',
+        'desired_fogger_on',
+        'desired_circulation_fan_on',
+        'desired_ceiling_fan_on',
+        'desired_sprinkler_on',
+      ].join(', '))
+      .eq('user_id', userId)
+      .eq('shed_id', device.shed_id)
+      .maybeSingle();
+
+    if (desiredStatus) {
+      const actualStates = {
+        fan: deviceStatusUpdate.fan_on ?? false,
+        light: deviceStatusUpdate.light_on ?? false,
+        alarm: deviceStatusUpdate.alarm_on ?? false,
+        heater: deviceStatusUpdate.heater_on ?? false,
+        fogger: deviceStatusUpdate.fogger_on ?? false,
+        circulationFan: deviceStatusUpdate.circulation_fan_on ?? false,
+        ceilingFan: deviceStatusUpdate.ceiling_fan_on ?? false,
+        sprinkler: deviceStatusUpdate.sprinkler_on ?? false,
+      };
+
+      deviceStatusUpdate.state_mismatch = [
+        [desiredStatus.desired_fan_on, actualStates.fan],
+        [desiredStatus.desired_light_on, actualStates.light],
+        [desiredStatus.desired_alarm_on, actualStates.alarm],
+        [desiredStatus.desired_heater_on, actualStates.heater],
+        [desiredStatus.desired_fogger_on, actualStates.fogger],
+        [desiredStatus.desired_circulation_fan_on, actualStates.circulationFan],
+        [desiredStatus.desired_ceiling_fan_on, actualStates.ceilingFan],
+        [desiredStatus.desired_sprinkler_on, actualStates.sprinkler],
+      ].some(([desired, actual]) => desired !== null && desired !== actual);
     }
 
     await supabase
@@ -3382,6 +3436,8 @@ async function handleFailsafeSync(
         heater_on: currentStatus.desired_heater_on ?? false,
         fogger_on: currentStatus.desired_fogger_on ?? false,
         circulation_fan_on: currentStatus.desired_circulation_fan_on ?? false,
+        ceiling_fan_on: currentStatus.desired_ceiling_fan_on ?? false,
+        sprinkler_on: currentStatus.desired_sprinkler_on ?? false,
         manual_override: currentStatus.desired_manual_override ?? false,
         fan_speed: currentStatus.desired_fan_speed ?? 'OFF',
       } : null,
@@ -3397,6 +3453,8 @@ async function handleFailsafeSync(
         heater_on: currentStatus.heater_on ?? false,
         fogger_on: currentStatus.fogger_on ?? false,
         circulation_fan_on: currentStatus.circulation_fan_on ?? false,
+        ceiling_fan_on: currentStatus.ceiling_fan_on ?? false,
+        sprinkler_on: currentStatus.sprinkler_on ?? false,
       } : null,
       
       // Safety override status
@@ -3414,6 +3472,8 @@ async function handleFailsafeSync(
         heater_on: currentStatus.heater_on ?? false,
         fogger_on: currentStatus.fogger_on ?? false,
         circulation_fan_on: currentStatus.circulation_fan_on ?? false,
+        ceiling_fan_on: currentStatus.ceiling_fan_on ?? false,
+        sprinkler_on: currentStatus.sprinkler_on ?? false,
       } : null,
       
       // Manual override status
