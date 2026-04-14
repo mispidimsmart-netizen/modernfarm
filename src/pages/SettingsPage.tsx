@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +32,7 @@ import {
   ReportsDataTab, 
   DeviceSystemTab 
 } from '@/components/settings/tabs';
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
 export function SettingsPage() {
   const { language, user } = useAuth();
@@ -95,6 +96,7 @@ export function SettingsPage() {
     farmSetup: { bn: 'খামার সেটআপ', en: 'Farm Setup' },
     operation: { bn: 'পরিচালনা', en: 'Operation' },
     reports: { bn: 'রিপোর্ট', en: 'Reports' },
+    firmware: { bn: 'ফার্মওয়্যার', en: 'Firmware' },
     device: { bn: 'ডিভাইস', en: 'Device' },
   };
 
@@ -260,7 +262,7 @@ export function SettingsPage() {
           {/* Main Settings Tabs */}
           {canEditSettings && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} mb-4`}>
+              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'} mb-4`}>
                 <TabsTrigger value="farm-setup" className="text-xs sm:text-sm">
                   <Home className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
                   <span className="hidden sm:inline">{t.farmSetup[language]}</span>
@@ -275,6 +277,11 @@ export function SettingsPage() {
                   <BarChart3 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
                   <span className="hidden sm:inline">{t.reports[language]}</span>
                   <span className="sm:hidden">{language === 'bn' ? 'ডেটা' : 'Data'}</span>
+                </TabsTrigger>
+                <TabsTrigger value="firmware" className="text-xs sm:text-sm">
+                  <Download className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="hidden sm:inline">{t.firmware[language]}</span>
+                  <span className="sm:hidden">{language === 'bn' ? 'কোড' : 'FW'}</span>
                 </TabsTrigger>
                 {isAdmin && (
                   <TabsTrigger value="device" className="text-xs sm:text-sm">
@@ -295,6 +302,12 @@ export function SettingsPage() {
 
               <TabsContent value="reports">
                 <ReportsDataTab />
+              </TabsContent>
+
+              <TabsContent value="firmware">
+                <div className="space-y-4">
+                  <ESP32CodeGenerator language={language} />
+                </div>
               </TabsContent>
 
               {isAdmin && (
