@@ -258,7 +258,9 @@ function StepRegisterController({ onComplete }: { onComplete: () => void }) {
 
 function StepTestRelays({ onComplete }: { onComplete: () => void }) {
   const { language } = useAuth();
+  const navigate = useNavigate();
   const sendCommand = useSendDeviceCommand();
+  const { isConnected } = useRealtimeSensorData();
   const [tested, setTested] = useState<Record<string, boolean>>({});
   const relays = [
     { key: 'fan', icon: '🌀', en: 'Exhaust Fan (IN1 - GPIO 25)', bn: 'এক্সহস্ট ফ্যান (IN1 - GPIO 25)' },
@@ -281,8 +283,60 @@ function StepTestRelays({ onComplete }: { onComplete: () => void }) {
 
   const allTested = relays.every(r => tested[r.key]);
 
+  // ESP32 not connected - show blocker
+  if (!isConnected) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl bg-destructive/5 border-2 border-destructive/30 p-6 text-center">
+          <WifiOff className="mx-auto h-12 w-12 text-destructive mb-3" />
+          <h3 className="text-lg font-bold text-foreground">
+            {language === 'bn' ? 'ESP32 সংযুক্ত নয়!' : 'ESP32 Not Connected!'}
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {language === 'bn' 
+              ? 'রিলে পরীক্ষা করতে হলে আগে ESP32-এ ফার্মওয়্যার আপলোড করে চালু করুন'
+              : 'Upload firmware to ESP32 and power it on before testing relays'}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-2">
+          <p className="text-sm font-semibold text-foreground">
+            {language === 'bn' ? '📋 চেকলিস্ট:' : '📋 Checklist:'}
+          </p>
+          <div className="space-y-1.5 text-xs text-muted-foreground">
+            <p>1️⃣ {language === 'bn' ? 'আগের ধাপ থেকে ফার্মওয়্যার ডাউনলোড করুন' : 'Download firmware from previous step'}</p>
+            <p>2️⃣ {language === 'bn' ? 'Arduino IDE-তে ESP32 বোর্ড সিলেক্ট করুন' : 'Select ESP32 board in Arduino IDE'}</p>
+            <p>3️⃣ {language === 'bn' ? 'Upload Speed ১১৫২০০, Flash Freq ৪০MHz সেট করুন' : 'Set Upload Speed 115200, Flash Freq 40MHz'}</p>
+            <p>4️⃣ {language === 'bn' ? 'USB দিয়ে কোড আপলোড করুন (অন্য কিছু কানেক্ট রাখবেন না)' : 'Upload via USB (disconnect everything else)'}</p>
+            <p>5️⃣ {language === 'bn' ? 'ওয়্যারিং সম্পন্ন করে পাওয়ার দিন' : 'Complete wiring and power on'}</p>
+            <p>6️⃣ {language === 'bn' ? 'WiFi সংযোগ হলে এই পেজ অটো-আপডেট হবে' : 'This page auto-updates when WiFi connects'}</p>
+          </div>
+        </div>
+
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/settings/installation-guide')}
+          className="w-full h-10 rounded-xl text-sm"
+        >
+          📖 {language === 'bn' ? 'বিস্তারিত ইনস্টলেশন গাইড দেখুন' : 'View detailed Installation Guide'}
+        </Button>
+
+        <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {language === 'bn' ? 'ESP32 সংযোগের অপেক্ষায়...' : 'Waiting for ESP32 connection...'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      <div className="rounded-xl bg-primary/5 border border-primary/20 p-2.5 flex items-center gap-2">
+        <Wifi className="h-4 w-4 text-primary" />
+        <span className="text-xs font-medium text-primary">
+          {language === 'bn' ? '✅ ESP32 অনলাইন — রিলে পরীক্ষা শুরু করুন' : '✅ ESP32 online — start testing relays'}
+        </span>
+      </div>
       <p className="text-sm text-muted-foreground text-center">
         {language === 'bn' ? 'প্রতিটি রিলে ২ সেকেন্ডের জন্য চালু হবে — ক্লিক শব্দ শুনুন' : 'Each relay will turn ON for 2 seconds — listen for click sound'}
       </p>
