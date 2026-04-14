@@ -51,6 +51,18 @@ export function useSetAutomationMode() {
         .eq('user_id', user.id);
       if (error) throw error;
 
+      // ═══════════════════════════════════════════════════════════
+      // CRITICAL SYNC: Also update device_status.desired_manual_override
+      // so ESP32 knows about the mode change on next config poll.
+      // Without this, ESP32 continues running local automation
+      // even when user sets MANUAL mode from the app.
+      // ═══════════════════════════════════════════════════════════
+      const isManual = mode === 'MANUAL';
+      await supabase
+        .from('device_status')
+        .update({ desired_manual_override: isManual } as any)
+        .eq('user_id', user.id);
+
       // Audit log
       logAction({
         action_type: 'automation_mode_change',
