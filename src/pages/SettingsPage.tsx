@@ -96,6 +96,7 @@ export function SettingsPage() {
     farmSetup: { bn: 'খামার সেটআপ', en: 'Farm Setup' },
     operation: { bn: 'পরিচালনা', en: 'Operation' },
     reports: { bn: 'রিপোর্ট', en: 'Reports' },
+    firmware: { bn: 'ফার্মওয়্যার', en: 'Firmware' },
     device: { bn: 'ডিভাইস', en: 'Device' },
   };
 
