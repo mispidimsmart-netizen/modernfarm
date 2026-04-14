@@ -206,8 +206,8 @@ export function ControlPage() {
       case 'heater': return status.heater ?? false;
       case 'circulation_fan': return status.circulation_fan ?? false;
       case 'fogger': return status.fogger ?? false;
-      case 'ceiling_fan': return (status as any).ceiling_fan ?? false;
-      case 'sprinkler': return (status as any).sprinkler ?? false;
+      case 'ceiling_fan': return status.ceilingFan ?? false;
+      case 'sprinkler': return status.sprinkler ?? false;
       default: return false;
     }
   }, [status]);
