@@ -18,75 +18,81 @@ export function SystemActivityCard() {
   const { language, user } = useAuth();
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch today's device activity from sensor_readings or simulated
   const { data: activityData } = useQuery({
     queryKey: ['system-activity', user?.id, today],
     queryFn: async () => {
-      // Get alerts count for today
-      const { data: alerts } = await supabase
-        .from('alerts')
-        .select('id')
-        .gte('created_at', `${today}T00:00:00`)
-        .lte('created_at', `${today}T23:59:59`);
+      // Fetch real data from device_health and alerts in parallel
+      const [healthRes, alertsRes] = await Promise.all([
+        supabase
+          .from('device_health')
+          .select('motor_total_runtime_seconds, heater_total_runtime_seconds, ceiling_fan_total_runtime_seconds, sprinkler_total_runtime_seconds, fogger_last_cycle_at, sprinkler_last_cycle_at')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('alerts')
+          .select('id')
+          .gte('created_at', `${today}T00:00:00`)
+          .lte('created_at', `${today}T23:59:59`),
+      ]);
 
-      // For now, we'll calculate approximate runtime based on typical usage
-      // In a real system, this would come from device_health or sensor_readings
-      const currentHour = new Date().getHours();
-      
-      // Simulate runtime calculations based on time of day
-      const fanRuntimeHours = Math.max(0, currentHour - 6) * 0.6; // ~60% of daytime
-      const heatingDuration = currentHour < 8 ? currentHour * 0.3 : 2.4; // Morning heating
-      const coolingCycles = Math.floor((currentHour - 10) / 2); // Cooling cycles after 10am
-      
+      const health = healthRes.data;
+
+      const fanSeconds = health?.motor_total_runtime_seconds ?? 0;
+      const heaterSeconds = health?.heater_total_runtime_seconds ?? 0;
+      const ceilingSeconds = health?.ceiling_fan_total_runtime_seconds ?? 0;
+      const sprinklerSeconds = health?.sprinkler_total_runtime_seconds ?? 0;
+
       return {
-        fanRuntimeHours: Math.round(fanRuntimeHours * 10) / 10,
-        heatingDuration: Math.round(heatingDuration * 10) / 10,
-        coolingCycles: Math.max(0, coolingCycles),
-        alertsCount: alerts?.length || 0,
+        fanRuntimeHours: Math.round((fanSeconds / 3600) * 10) / 10,
+        heatingHours: Math.round((heaterSeconds / 3600) * 10) / 10,
+        ceilingHours: Math.round((ceilingSeconds / 3600) * 10) / 10,
+        sprinklerMinutes: Math.round(sprinklerSeconds / 60),
+        alertsCount: alertsRes.data?.length || 0,
       };
     },
     enabled: !!user,
-    refetchInterval: 300000, // Refresh every 5 minutes
+    refetchInterval: 300000,
   });
 
   const stats = useMemo((): ActivityStat[] => {
-    const data = activityData || { fanRuntimeHours: 0, heatingDuration: 0, coolingCycles: 0, alertsCount: 0 };
-    
+    const data = activityData || { fanRuntimeHours: 0, heatingHours: 0, ceilingHours: 0, sprinklerMinutes: 0, alertsCount: 0 };
+
     return [
       {
         icon: Fan,
-        label: { bn: 'ফ্যান', en: 'Fan' },
+        label: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
         value: `${data.fanRuntimeHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
         color: 'text-cyan-600 dark:text-cyan-400',
         bgColor: 'bg-cyan-50 dark:bg-cyan-950/50',
       },
       {
-        icon: Droplets,
-        label: { bn: 'কুলিং', en: 'Cooling' },
-        value: `${data.coolingCycles}${language === 'bn' ? ' বার' : 'x'}`,
-        color: 'text-blue-600 dark:text-blue-400',
-        bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+        icon: Fan,
+        label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+        value: `${data.ceilingHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
+        color: 'text-violet-600 dark:text-violet-400',
+        bgColor: 'bg-violet-50 dark:bg-violet-950/50',
       },
       {
         icon: Flame,
-        label: { bn: 'হিটিং', en: 'Heating' },
-        value: `${data.heatingDuration}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
+        label: { bn: 'হিটার', en: 'Heater' },
+        value: `${data.heatingHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
         color: 'text-orange-600 dark:text-orange-400',
         bgColor: 'bg-orange-50 dark:bg-orange-950/50',
       },
       {
         icon: ArrowUpFromDot,
         label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' },
-        value: `${Math.max(0, Math.floor(data.coolingCycles * 0.3))}${language === 'bn' ? ' বার' : 'x'}`,
+        value: `${data.sprinklerMinutes}${language === 'bn' ? ' মিনিট' : 'm'}`,
         color: 'text-sky-600 dark:text-sky-400',
         bgColor: 'bg-sky-50 dark:bg-sky-950/50',
       },
       {
-        icon: Fan,
-        label: { bn: 'সিলিং', en: 'Ceiling' },
-        value: `${Math.round(data.fanRuntimeHours * 0.8 * 10) / 10}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
-        color: 'text-violet-600 dark:text-violet-400',
-        bgColor: 'bg-violet-50 dark:bg-violet-950/50',
+        icon: Droplets,
+        label: { bn: 'ফগার', en: 'Fogger' },
+        value: '--',
+        color: 'text-blue-600 dark:text-blue-400',
+        bgColor: 'bg-blue-50 dark:bg-blue-950/50',
       },
       {
         icon: Bell,
@@ -108,7 +114,7 @@ export function SystemActivityCard() {
           {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
           <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground font-normal">
             <Clock className="h-3 w-3" />
-            {language === 'bn' ? 'অটোমেশন লগ' : 'Automation Log'}
+            {language === 'bn' ? 'ডিভাইস লগ' : 'Device Log'}
           </span>
         </CardTitle>
       </CardHeader>
@@ -135,7 +141,6 @@ export function SystemActivityCard() {
             );
           })}
         </div>
-        
       </CardContent>
     </Card>
   );
