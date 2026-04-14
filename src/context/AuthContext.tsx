@@ -131,8 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Unified login: auto-detect phone vs email
   const signIn = async (identifier: string, password: string) => {
     try {
-      // For phone auth, try synthetic email first; if it fails and this user actually
-      // registered with email, resolve phone->email via backend and retry.
+      // Auto-detect phone vs email
+      const cleaned = identifier.replace(/\D/g, '');
+      const isPhone = cleaned.length >= 6 && /^0?1\d+$/.test(cleaned);
+
       const primaryEmail = isPhone ? phoneToEmail(identifier) : identifier;
 
       const attempt = async (email: string) => {
@@ -141,11 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let { error } = await attempt(primaryEmail);
 
-      if (isPhone && error?.message?.includes('Invalid login credentials')) {
-        // Resolve phone to email for accounts created via email but with phone saved in profile.
-        const { data } = await supabase.functions.invoke('lookup-login-identifier', {
-          body: { phone: identifier },
-        });
+      // If login failed, try resolving via backend
+      if (error?.message?.includes('Invalid login credentials')) {
+        const body = isPhone ? { phone: identifier } : { email: identifier };
+        const { data } = await supabase.functions.invoke('lookup-login-identifier', { body });
 
         const resolvedEmail = (data as { email?: string | null } | null)?.email ?? null;
         if (resolvedEmail && resolvedEmail !== primaryEmail) {
@@ -156,8 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
           return { error: new Error(language === 'bn' 
-            ? (isPhone ? 'ভুল মোবাইল নম্বর বা পাসওয়ার্ড' : 'ভুল ইমেইল বা পাসওয়ার্ড') 
-            : (isPhone ? 'Invalid phone or password' : 'Invalid email or password')) 
+            ? 'ভুল মোবাইল নম্বর/ইমেইল বা পাসওয়ার্ড'
+            : 'Invalid phone/email or password') 
           };
         }
         if (error.message.includes('Email not confirmed')) {
