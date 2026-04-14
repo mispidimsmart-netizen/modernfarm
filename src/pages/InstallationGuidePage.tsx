@@ -562,12 +562,148 @@ const detailedWiringGuide = [
         totalContactor: '0-2',
         contactorNote: 'DC সোলেনয়েড ভালভে কন্ট্যাক্টর লাগে না। বড় ইন্ডাস্ট্রিয়াল এক্সহস্ট ফ্যান (>1HP / >5A) বা হাই-ওয়াটেজ হিটার (>1000W) থাকলে সেগুলোর জন্য আলাদা কন্ট্যাক্টর লাগবে — সর্বোচ্চ ১-২টি।',
       },
+      contactorDetailGuide: {
+        title: '🧲 ম্যাগনেটিক কন্ট্যাক্টর — বিস্তারিত ইনস্টলেশন গাইড',
+        whatIs: {
+          title: '🤔 কন্ট্যাক্টর কী এবং কেন লাগে?',
+          points: [
+            'কন্ট্যাক্টর হলো একটি ভারী-ক্ষমতার সুইচ যা ছোট কারেন্ট দিয়ে (রিলে থেকে) বড় লোড (ফ্যান/হিটার/পাম্প) চালু-বন্ধ করে।',
+            'রিলে সরাসরি ১০ অ্যাম্পিয়ারের বেশি কারেন্ট সামলাতে পারে না — এতে রিলে পুড়ে যেতে পারে।',
+            'কন্ট্যাক্টর মাঝখানে বসিয়ে রিলে শুধু কন্ট্যাক্টরের কয়েল (কম কারেন্ট) সুইচ করে, আর কন্ট্যাক্টর আসল ভারী লোড বহন করে।',
+          ],
+        },
+        whenNeeded: {
+          title: '📋 কখন কন্ট্যাক্টর লাগবে?',
+          needed: [
+            { device: 'ইন্ডাস্ট্রিয়াল এক্সহস্ট ফ্যান', condition: '১ HP (৭৫০W) বা তার বেশি', reason: 'স্টার্টিং কারেন্ট ১৫-২৫A হয়, রিলে ১০A সামলায়' },
+            { device: '১০+ সিলিং ফ্যান একসাথে', condition: 'মোট লোড ৫A-এর বেশি', reason: 'অনেক ফ্যান একসাথে চালু হলে কারেন্ট বেশি হয়' },
+            { device: 'ব্রুডিং হিটার', condition: '১০০০W বা তার বেশি', reason: 'হিটার হাই কারেন্ট টানে, রিলে পোড়ার ঝুঁকি' },
+            { device: 'এসি বুস্টার পাম্প', condition: '০.৫ HP বা তার বেশি', reason: 'মোটর স্টার্টিং কারেন্ট ৩-৫ গুণ বেশি হয়' },
+          ],
+          notNeeded: [
+            'DC 12V সোলেনয়েড ভালভ (ফগার/স্প্রিংকলার) — কারেন্ট মাত্র ০.৫-১A',
+            'LED/CFL লাইট — কারেন্ট ১-২A',
+            'পিজো বাজার — কারেন্ট ০.১A',
+            'DC 12V ডায়াফ্রাম পাম্প — সরাসরি রিলে দিয়ে চলে',
+            '১-৩টি সিলিং ফ্যান — মোট কারেন্ট কম',
+          ],
+        },
+        partsIdentification: {
+          title: '🔍 কন্ট্যাক্টরের অংশ চেনা (CJX2-1210 মডেল)',
+          parts: [
+            { name: 'A1 টার্মিনাল', location: 'উপরের বাম/ডানে', purpose: 'কয়েল পজিটিভ (+) — এখানে রিলে থেকে AC Live আসবে', color: '🔴' },
+            { name: 'A2 টার্মিনাল', location: 'A1 এর পাশে', purpose: 'কয়েল নেগেটিভ (−) — এখানে সরাসরি AC Neutral যাবে', color: '⚫' },
+            { name: 'L1 (1) টার্মিনাল', location: 'উপরের সারি', purpose: 'পাওয়ার ইনপুট — মেইন AC Live এখানে আসবে', color: '🔴' },
+            { name: 'T1 (2) টার্মিনাল', location: 'নিচের সারি', purpose: 'পাওয়ার আউটপুট — এখান থেকে লোডে (ফ্যান/হিটার) যাবে', color: '🟠' },
+            { name: 'L2, L3 (3,5)', location: 'উপরের সারি', purpose: 'অতিরিক্ত ফেজ (3-ফেজ মোটরের জন্য) — সিঙ্গেল ফেজে ব্যবহার হয় না', color: '⬜' },
+            { name: 'T2, T3 (4,6)', location: 'নিচের সারি', purpose: 'অতিরিক্ত আউটপুট — সিঙ্গেল ফেজে ব্যবহার হয় না', color: '⬜' },
+          ],
+        },
+        wiringSteps: {
+          title: '🔧 ধাপে ধাপে কন্ট্যাক্টর কানেকশন (সিঙ্গেল ফেজ)',
+          warning: '⚡ গুরুত্বপূর্ণ: সব কাজ শুরুর আগে মেইন সুইচ/MCB বন্ধ করুন! ভোল্টেজ টেস্টার দিয়ে নিশ্চিত হোন কারেন্ট নেই।',
+          steps: [
+            {
+              step: 1,
+              title: '🧲 কন্ট্যাক্টরের কয়েল কানেকশন (রিলে → কন্ট্যাক্টর)',
+              description: 'রিলে শুধু কন্ট্যাক্টরের কয়েলকে ON/OFF করবে।',
+              wires: [
+                { from: 'Sub MCB আউটপুট (AC Live)', to: 'রিলে COM (মাঝের পোর্ট)', wire: '🔴 লাল তার', note: 'MCB থেকে আসা লাইভ তার রিলে-এর COM পোর্টে ঢোকান' },
+                { from: 'রিলে NO পোর্ট', to: 'কন্ট্যাক্টর A1', wire: '🟠 কমলা তার', note: 'রিলে ON হলে এই তার দিয়ে কয়েলে কারেন্ট যায়' },
+                { from: 'AC Neutral', to: 'কন্ট্যাক্টর A2', wire: '⚫ কালো তার', note: 'সরাসরি নিউট্রাল লাইন থেকে A2 তে যোগ করুন' },
+              ],
+              result: '✅ রিলে ON → কয়েলে কারেন্ট → কন্ট্যাক্টর "ক্লিক" শব্দে চালু হবে',
+            },
+            {
+              step: 2,
+              title: '⚡ কন্ট্যাক্টরের পাওয়ার কানেকশন (কন্ট্যাক্টর → লোড)',
+              description: 'কন্ট্যাক্টর চালু হলে আসল পাওয়ার লোডে পৌঁছাবে।',
+              wires: [
+                { from: 'মেইন MCB আউটপুট (AC Live)', to: 'কন্ট্যাক্টর L1 (1)', wire: '🔴 মোটা লাল তার (≥2.5mm²)', note: 'হাই কারেন্ট বহন করবে — মোটা তার ব্যবহার করুন' },
+                { from: 'কন্ট্যাক্টর T1 (2)', to: 'ফ্যান/হিটার/পাম্পের Live তার', wire: '🟠 মোটা কমলা তার', note: 'কন্ট্যাক্টর ON হলে এখান দিয়ে পাওয়ার লোডে যায়' },
+                { from: 'ফ্যান/হিটার/পাম্পের Neutral তার', to: 'AC Neutral বাস', wire: '⚫ মোটা কালো তার', note: 'লোডের রিটার্ন পাথ — সরাসরি নিউট্রালে' },
+              ],
+              result: '✅ কন্ট্যাক্টর ON → L1 থেকে T1 দিয়ে পাওয়ার → ফ্যান/হিটার চালু',
+            },
+            {
+              step: 3,
+              title: '🛡️ সুরক্ষা কানেকশন (MCB ও আর্থিং)',
+              description: 'শর্ট-সার্কিট এবং বৈদ্যুতিক শক থেকে রক্ষা।',
+              wires: [
+                { from: 'ফ্যান/হিটারের বডি', to: 'আর্থ বাস', wire: '🟢 সবুজ/হলুদ তার', note: 'অবশ্যই আর্থ কানেকশন দিন — নিরাপত্তার জন্য বাধ্যতামূলক' },
+                { from: 'Sub MCB', to: 'রিলে COM', wire: '', note: 'প্রতিটি রিলে লাইনে আলাদা Sub MCB রাখুন' },
+              ],
+              result: '✅ শর্ট-সার্কিট হলে MCB ট্রিপ করবে, শক হলে আর্থ ট্রিপ করবে',
+            },
+          ],
+        },
+        fullDiagram: {
+          title: '📐 সম্পূর্ণ ওয়্যারিং ডায়াগ্রাম (কন্ট্যাক্টরসহ)',
+          diagram: `মেইন AC 220V
+    │
+    ▼
+┌─────────────┐
+│ MCB 2P 32A  │ ← মেইন ব্রেকার
+└──┬──────┬───┘
+   │      │
+   │   ┌──▼──────────┐
+   │   │ Sub MCB 6A  │ ← রিলে লাইনের সুরক্ষা
+   │   └──┬──────────┘
+   │      │
+   │   ┌──▼──────────────────┐
+   │   │ রিলে (IN1/IN4)     │
+   │   │ COM ← AC Live       │
+   │   │ NO  → কন্ট্যাক্টর  │
+   │   └──┬──────────────────┘
+   │      │ (কম কারেন্ট)
+   │   ┌──▼──────────────────┐
+   │   │ কন্ট্যাক্টর        │
+   │   │ A1 ← রিলে NO       │
+   │   │ A2 ← Neutral        │
+   │   │                     │
+   │   │ L1 ← MCB Live ──────┤← মোটা তার (≥2.5mm²)
+   │   │ T1 → ফ্যান/হিটার   │
+   │   └──┬──────────────────┘
+   │      │ (হাই কারেন্ট)
+   │   ┌──▼──────────┐
+   │   │ 🌀 ফ্যান    │
+   │   │ বা 🔥 হিটার │
+   │   └──┬──────────┘
+   │      │
+   ▼      ▼
+  Neutral বাস`,
+        },
+        commonMistakes: {
+          title: '❌ সাধারণ ভুল ও সমাধান',
+          mistakes: [
+            { mistake: 'রিলে দিয়ে সরাসরি বড় ফ্যান চালানো', problem: 'রিলে পুড়ে যাবে, আগুন লাগতে পারে', solution: 'কন্ট্যাক্টর ব্যবহার করুন — রিলে শুধু কয়েল সুইচ করবে' },
+            { mistake: 'A1-A2 তে DC দেওয়া (220VAC কয়েলে)', problem: 'কন্ট্যাক্টর কাজ করবে না', solution: 'CJX2-1210 এর কয়েল 220VAC — অবশ্যই AC দিন' },
+            { mistake: 'চিকন তার দিয়ে L1-T1 লাইন দেওয়া', problem: 'তার গরম হবে, আগুনের ঝুঁকি', solution: 'L1-T1 লাইনে ≥2.5mm² (14 AWG) মোটা তার ব্যবহার করুন' },
+            { mistake: 'আর্থ কানেকশন না দেওয়া', problem: 'বৈদ্যুতিক শকের ঝুঁকি', solution: 'ফ্যান/হিটারের বডিতে অবশ্যই আর্থ তার লাগান' },
+            { mistake: 'কন্ট্যাক্টর DIN রেইলে না লাগানো', problem: 'ধুলো-পানিতে ক্ষতি হয়', solution: 'DIN রেইলে মাউন্ট করুন, IP65 বক্সের ভিতরে রাখুন' },
+            { mistake: 'MCB ছাড়া সরাসরি কানেকশন', problem: 'শর্ট-সার্কিটে আগুন লাগবে', solution: 'প্রতিটি লাইনে Sub MCB রাখুন' },
+          ],
+        },
+        testingSteps: {
+          title: '🧪 কানেকশন টেস্ট করার ধাপ',
+          steps: [
+            { step: 1, action: 'মাল্টিমিটার দিয়ে A1-A2 এর মধ্যে রেজিস্ট্যান্স চেক করুন — ১০০-৫০০ ওহম আসা উচিত (কয়েল ঠিক আছে)' },
+            { step: 2, action: 'L1-T1 এর মধ্যে কন্টিনিউটি চেক করুন — কন্ট্যাক্টর OFF থাকলে OL (ওপেন) দেখাবে' },
+            { step: 3, action: 'MCB ON করুন — কোনো স্পার্ক বা গন্ধ নেই তো দেখুন' },
+            { step: 4, action: 'অ্যাপ থেকে রিলে ON করুন — কন্ট্যাক্টর "ক্লিক" শব্দ করে চালু হবে' },
+            { step: 5, action: 'L1-T1 এ ভোল্টেজ চেক করুন — কন্ট্যাক্টর ON থাকলে ~220V আসবে' },
+            { step: 6, action: 'রিলে OFF করুন — কন্ট্যাক্টর বন্ধ হবে, ফ্যান/হিটারও বন্ধ হবে' },
+          ],
+        },
+      },
       safetyWarnings: [
         '⚡ MCB এবং কন্ট্যাক্টর ইনস্টল করার আগে মেইন সুইচ বন্ধ করুন!',
         '👷 AC 220V ওয়্যারিং অবশ্যই অভিজ্ঞ ইলেকট্রিশিয়ান দিয়ে করান!',
         '🔧 MCB ও কন্ট্যাক্টর DIN রেইলে মাউন্ট করুন — খামার পরিবেশে নিরাপদ',
         '🧪 সব সংযোগ শেষে মাল্টিমিটার দিয়ে ভোল্টেজ ও কন্টিনিউটি চেক করুন',
         '🔌 প্রতিটি সাব MCB-র রেটিং ডিভাইসের কারেন্টের চেয়ে সামান্য বেশি হতে হবে',
+        '🔥 L1-T1 পাওয়ার লাইনে অবশ্যই ≥2.5mm² মোটা তার ব্যবহার করুন',
+        '🟢 ফ্যান/হিটারের বডিতে অবশ্যই আর্থ কানেকশন দিন',
       ],
     },
   },
@@ -2653,6 +2789,145 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                                     </div>
                                   </div>
                                 </div>
+
+                                {/* Detailed Contactor Installation Guide */}
+                                {info.contactorDetailGuide && (() => {
+                                  const guide = info.contactorDetailGuide;
+                                  return (
+                                    <div className="space-y-4">
+                                      {/* Section Title */}
+                                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border-2 border-primary/30">
+                                        <Zap className="h-5 w-5 text-primary" />
+                                        <p className="font-bold text-sm">{guide.title}</p>
+                                      </div>
+
+                                      {/* What is Contactor */}
+                                      <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                                        <p className="text-xs font-bold mb-2">{guide.whatIs.title}</p>
+                                        <ul className="space-y-1.5">
+                                          {guide.whatIs.points.map((p: string, i: number) => (
+                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                              <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                                              <span>{p}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+
+                                      {/* When Needed */}
+                                      <div className="p-3 rounded-lg border border-border space-y-3">
+                                        <p className="text-xs font-bold">{guide.whenNeeded.title}</p>
+                                        <div>
+                                          <p className="text-xs font-semibold text-destructive mb-1.5">✅ কন্ট্যাক্টর লাগবে:</p>
+                                          <div className="space-y-1.5">
+                                            {guide.whenNeeded.needed.map((item: any, i: number) => (
+                                              <div key={i} className="p-2 rounded bg-destructive/5 border border-destructive/20 text-xs">
+                                                <span className="font-semibold">{item.device}</span>
+                                                <span className="text-muted-foreground"> — {item.condition}</span>
+                                                <p className="text-muted-foreground mt-0.5">💡 {item.reason}</p>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-semibold text-primary mb-1.5">❌ কন্ট্যাক্টর লাগবে না:</p>
+                                          <ul className="space-y-1">
+                                            {guide.whenNeeded.notNeeded.map((item: string, i: number) => (
+                                              <li key={i} className="text-xs text-muted-foreground">• {item}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      </div>
+
+                                      {/* Parts Identification */}
+                                      <div className="p-3 rounded-lg bg-accent/10 border border-accent/30 space-y-2">
+                                        <p className="text-xs font-bold">{guide.partsIdentification.title}</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                          {guide.partsIdentification.parts.map((part: any, i: number) => (
+                                            <div key={i} className="p-2 rounded bg-background border border-border text-xs">
+                                              <div className="flex items-center gap-1.5">
+                                                <span>{part.color}</span>
+                                                <span className="font-bold font-mono">{part.name}</span>
+                                              </div>
+                                              <p className="text-muted-foreground mt-0.5">📍 {part.location}</p>
+                                              <p className="text-muted-foreground">→ {part.purpose}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Step by Step Wiring */}
+                                      <div className="space-y-3">
+                                        <p className="text-xs font-bold">{guide.wiringSteps.title}</p>
+                                        <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs font-semibold text-destructive">
+                                          {guide.wiringSteps.warning}
+                                        </div>
+                                        {guide.wiringSteps.steps.map((step: any, sIdx: number) => (
+                                          <div key={sIdx} className="rounded-lg border-2 border-border overflow-hidden">
+                                            <div className="p-2.5 bg-primary/10 flex items-center gap-2">
+                                              <Badge className="text-xs">{step.step}</Badge>
+                                              <span className="text-xs font-bold">{step.title}</span>
+                                            </div>
+                                            <div className="p-3 space-y-2">
+                                              <p className="text-xs text-muted-foreground">{step.description}</p>
+                                              <div className="space-y-2">
+                                                {step.wires.map((w: any, wIdx: number) => (
+                                                  <div key={wIdx} className="p-2 rounded bg-muted/50 border border-border text-xs">
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                      <span className="font-mono text-primary">{w.from}</span>
+                                                      <span>→</span>
+                                                      <span className="font-mono text-primary">{w.to}</span>
+                                                      {w.wire && <Badge variant="outline" className="text-[10px]">{w.wire}</Badge>}
+                                                    </div>
+                                                    <p className="text-muted-foreground mt-1">{w.note}</p>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              <div className="p-2 rounded bg-primary/5 text-xs font-semibold text-primary">
+                                                {step.result}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Full Wiring Diagram */}
+                                      <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                                        <p className="text-xs font-bold mb-2">{guide.fullDiagram.title}</p>
+                                        <div className="p-3 rounded bg-background overflow-x-auto">
+                                          <pre className="text-[10px] sm:text-xs font-mono whitespace-pre leading-relaxed text-foreground">{guide.fullDiagram.diagram}</pre>
+                                        </div>
+                                      </div>
+
+                                      {/* Common Mistakes */}
+                                      <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 space-y-2">
+                                        <p className="text-xs font-bold text-destructive">{guide.commonMistakes.title}</p>
+                                        <div className="space-y-2">
+                                          {guide.commonMistakes.mistakes.map((m: any, mIdx: number) => (
+                                            <div key={mIdx} className="p-2 rounded bg-background border border-border text-xs">
+                                              <p className="font-semibold text-destructive">❌ {m.mistake}</p>
+                                              <p className="text-muted-foreground">⚠️ সমস্যা: {m.problem}</p>
+                                              <p className="text-primary">✅ সমাধান: {m.solution}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Testing Steps */}
+                                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                                        <p className="text-xs font-bold">{guide.testingSteps.title}</p>
+                                        <div className="space-y-1.5">
+                                          {guide.testingSteps.steps.map((s: any, sIdx: number) => (
+                                            <div key={sIdx} className="flex items-start gap-2 text-xs">
+                                              <Badge variant="outline" className="text-[10px] shrink-0 mt-0.5">{s.step}</Badge>
+                                              <span className="text-muted-foreground">{s.action}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
 
                                 {/* Safety Warnings */}
                                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
