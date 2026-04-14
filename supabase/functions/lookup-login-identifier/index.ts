@@ -1,6 +1,6 @@
 // Lovable Cloud backend function: resolve login identifier
-// Purpose: allow "phone + password" login for accounts created with email,
-// by resolving a phone number to the user's email stored in public.profiles.
+// Purpose: allow login with phone OR real email for accounts using synthetic email auth.
+// Resolves phone/email to the synthetic email used for Supabase auth.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.6";
@@ -13,8 +13,9 @@ const corsHeaders: Record<string, string> = {
 };
 
 const BodySchema = z.object({
-  phone: z.string().trim().min(6).max(20),
-});
+  phone: z.string().trim().min(6).max(255).optional(),
+  email: z.string().trim().email().optional(),
+}).refine(d => d.phone || d.email, { message: "phone or email required" });
 
 function phoneVariants(input: string): string[] {
   const digits = input.replace(/\D/g, "");
@@ -23,7 +24,6 @@ function phoneVariants(input: string): string[] {
   const set = new Set<string>();
   set.add(digits);
 
-  // Common BD patterns (0XXXXXXXXXX, 880XXXXXXXXXX)
   if (digits.startsWith("0")) {
     set.add(digits.substring(1));
     set.add("880" + digits.substring(1));
@@ -45,6 +45,20 @@ function phoneVariants(input: string): string[] {
   return Array.from(set);
 }
 
+// Convert phone to synthetic email (must match frontend phoneToEmail logic)
+function phoneToSyntheticEmail(phone: string): string {
+  let normalized = phone.replace(/\D/g, "");
+  if (normalized.startsWith("880")) normalized = normalized.substring(3);
+  if (normalized.startsWith("0")) normalized = normalized.substring(1);
+  return `${normalized}@phone.layerfarm.app`;
+}
+
+const jsonResponse = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -52,53 +66,55 @@ serve(async (req) => {
 
   try {
     const json = await req.json().catch(() => ({}));
-    const { phone } = BodySchema.parse(json);
+    const parsed = BodySchema.safeParse(json);
+    if (!parsed.success) return jsonResponse({ email: null });
+
+    const { phone, email } = parsed.data;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ email: null }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ email: null });
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false },
     });
 
-    const variants = phoneVariants(phone);
-    if (variants.length === 0) {
-      return new Response(JSON.stringify({ email: null }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Case 1: Phone lookup → return synthetic email
+    if (phone) {
+      const variants = phoneVariants(phone);
+      if (variants.length === 0) return jsonResponse({ email: null });
+
+      const { data } = await admin
+        .from("profiles")
+        .select("phone")
+        .in("phone", variants)
+        .limit(1)
+        .maybeSingle();
+
+      if (data?.phone) {
+        return jsonResponse({ email: phoneToSyntheticEmail(data.phone) });
+      }
+      return jsonResponse({ email: null });
     }
 
-    const { data, error } = await admin
-      .from("profiles")
-      .select("email")
-      .in("phone", variants)
-      .not("email", "is", null)
-      .limit(1)
-      .maybeSingle();
+    // Case 2: Real email lookup → find the user's phone → return synthetic email
+    if (email) {
+      const { data } = await admin
+        .from("profiles")
+        .select("phone")
+        .eq("email", email)
+        .limit(1)
+        .maybeSingle();
 
-    // Avoid leaking details; always respond 200 with nullable email.
-    if (error) {
-      return new Response(JSON.stringify({ email: null }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (data?.phone) {
+        return jsonResponse({ email: phoneToSyntheticEmail(data.phone) });
+      }
+      // Fallback: maybe account was created with this real email directly
+      return jsonResponse({ email: email });
     }
 
-    return new Response(JSON.stringify({ email: data?.email ?? null }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ email: null });
   } catch (_e) {
-    return new Response(JSON.stringify({ email: null }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ email: null });
   }
 });
