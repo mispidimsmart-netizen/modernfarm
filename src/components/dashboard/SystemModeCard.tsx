@@ -95,15 +95,21 @@ export function SystemModeCard() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={`rounded-2xl p-4 shadow-card border ${
-        isFailSafe 
-          ? 'bg-amber-500/10 border-amber-500/30' 
-          : 'bg-card border-border/50'
+        isManualMode
+          ? 'bg-amber-500/10 border-amber-500/30'
+          : isFailSafe 
+            ? 'bg-amber-500/10 border-amber-500/30' 
+            : 'bg-card border-border/50'
       }`}
     >
       {/* Mode Indicator */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
-          {isFailSafe ? (
+          {isManualMode ? (
+            <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-amber-500/20">
+              <Hand className="h-5 w-5 text-amber-600" />
+            </div>
+          ) : isFailSafe ? (
             <motion.div
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ repeat: Infinity, duration: 2 }}
@@ -113,17 +119,19 @@ export function SystemModeCard() {
             </motion.div>
           ) : (
             <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
+              <Bot className="h-5 w-5 text-primary" />
             </div>
           )}
           <div>
             <p className="text-xs text-muted-foreground">
               {language === 'bn' ? 'সিস্টেম মোড' : 'System Mode'}
             </p>
-            <p className={`font-bold text-sm ${isFailSafe ? 'text-amber-600' : 'text-primary'}`}>
-              {isFailSafe 
-                ? (language === 'bn' ? 'ফেইল-সেফ' : 'FAIL-SAFE')
-                : (language === 'bn' ? 'অটো (ক্লাউড)' : 'AUTO (Cloud)')
+            <p className={`font-bold text-sm ${isManualMode ? 'text-amber-600' : isFailSafe ? 'text-amber-600' : 'text-primary'}`}>
+              {isManualMode
+                ? (language === 'bn' ? '✋ ম্যানুয়াল' : '✋ MANUAL')
+                : isFailSafe 
+                  ? (language === 'bn' ? 'ফেইল-সেফ' : 'FAIL-SAFE')
+                  : (language === 'bn' ? '🤖 অটো (ক্লাউড)' : '🤖 AUTO (Cloud)')
               }
             </p>
           </div>
