@@ -235,23 +235,23 @@ export function LoginPage() {
 
   // ─── Compact Header ───
   const Header = () => (
-    <div className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-14 pt-8' : 'pb-16 pt-10'}`}>
+    <div className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-10 pt-5 sm:pb-14 sm:pt-8' : 'pb-12 pt-6 sm:pb-16 sm:pt-10'}`}>
       <div className="absolute inset-0 overflow-hidden">
         <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute top-8 left-6 text-white/10">
-          <Eye className="h-10 w-10" />
+          <Eye className="h-8 w-8 sm:h-10 sm:w-10" />
         </motion.div>
         <motion.div animate={{ y: [0, 8, 0], rotate: [0, -5, 0] }} transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
           className="absolute top-12 right-8 text-white/10">
-          <Eye className="h-8 w-8" />
+          <Eye className="h-6 w-6 sm:h-8 sm:w-8" />
         </motion.div>
         <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
           className="absolute bottom-16 left-16 text-white/8">
-          <Bird className="h-7 w-7" />
+          <Bird className="h-6 w-6 sm:h-7 sm:w-7" />
         </motion.div>
         <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
           className="absolute bottom-20 right-14 text-white/8">
-          <Egg className="h-6 w-6" />
+          <Egg className="h-5 w-5 sm:h-6 sm:w-6" />
         </motion.div>
       </div>
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
@@ -260,24 +260,24 @@ export function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-            className={`mx-auto mb-2 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-20 w-20' : 'h-24 w-24'}`}
+            className={`mx-auto mb-1.5 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-16 w-16 sm:h-24 sm:w-24'}`}
           >
-            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-16 w-16' : 'h-20 w-20'}`} />
+            <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-10 w-10 sm:h-16 sm:w-16' : 'h-12 w-12 sm:h-20 sm:w-20'}`} />
           </motion.div>
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.5, type: 'spring' }}
-            className={`absolute ${isSignUp ? '-top-2 -right-2' : '-top-3 -right-3'}`}>
-            <span className="text-2xl">✨</span>
+            className={`absolute ${isSignUp ? '-top-1 -right-1 sm:-top-2 sm:-right-2' : '-top-2 -right-2 sm:-top-3 sm:-right-3'}`}>
+            <span className="text-xl sm:text-2xl">✨</span>
           </motion.div>
         </div>
         <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
-          className={`font-bold tracking-tight text-white ${isSignUp ? 'text-2xl' : 'text-3xl'}`}>
+          className={`font-bold tracking-tight text-white ${isSignUp ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>
           FarmEye
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
-          className={`mt-1 font-medium text-white/80 ${isSignUp ? 'text-xs' : 'text-sm'}`}>
+          className={`mt-0.5 font-medium text-white/80 ${isSignUp ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'}`}>
           Smart Poultry Farm Automation
         </motion.p>
       </motion.div>
