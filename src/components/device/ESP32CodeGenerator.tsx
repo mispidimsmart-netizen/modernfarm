@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info, Database } from 'lucide-react';
+import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info, Database, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
