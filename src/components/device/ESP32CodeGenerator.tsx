@@ -473,9 +473,9 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
                 {allFarms.map((farm) => (
                   <SelectItem key={farm.id} value={farm.id}>
                     <div className="flex flex-col">
-                      <span>{language === 'bn' ? farm.name : farm.name_en}</span>
-                      {farm.owner_email && (
-                        <span className="text-xs text-muted-foreground">{farm.owner_email}</span>
+                      <span>{farm.name}</span>
+                      {farm.owner_phone && (
+                        <span className="text-xs text-muted-foreground">{farm.owner_phone}</span>
                       )}
                     </div>
                   </SelectItem>
