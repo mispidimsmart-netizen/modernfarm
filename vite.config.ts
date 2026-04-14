@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "robots.txt", "pwa-192x192.png", "pwa-512x512.png"],
+      includeAssets: ["favicon.png", "robots.txt", "pwa-192x192.png", "pwa-512x512.png", "pwa-maskable-192.png", "pwa-maskable-512.png"],
       manifest: {
         name: "FarmEye - খামার থাকবে সবসময় নজরে",
         short_name: "FarmEye",
@@ -54,11 +54,11 @@ export default defineConfig(({ mode }) => ({
         theme_color: "#1F7A63",
         background_color: "#f0f7f5",
         display: "standalone",
-        display_override: ["standalone", "minimal-ui"],
+        display_override: ["standalone"],
         orientation: "portrait-primary",
         scope: "/",
         start_url: "/",
-        id: "/",
+        id: "farmeye-app",
         categories: ["productivity", "utilities", "business"],
         lang: "bn",
         dir: "ltr",
@@ -77,7 +77,13 @@ export default defineConfig(({ mode }) => ({
             purpose: "any",
           },
           {
-            src: "/pwa-512x512.png",
+            src: "/pwa-maskable-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable",
+          },
+          {
+            src: "/pwa-maskable-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
