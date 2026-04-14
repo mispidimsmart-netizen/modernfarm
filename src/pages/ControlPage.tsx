@@ -274,6 +274,7 @@ export function ControlPage() {
 
   const handleAutomationToggle = (enabled: boolean, reason?: string) => {
     if (!enabled) {
+      // Switching to MANUAL mode
       const currentTemp = sensorData.temperature;
       const isOutOfRange = !boundedOverride.isWithinBioLimits(currentTemp);
       boundedOverride.startOverride(
@@ -281,6 +282,7 @@ export function ControlPage() {
         isOutOfRange,
       );
     } else {
+      // Switching to AUTO mode — clear all timers and send device OFF commands
       boundedOverride.endOverride();
       const timerDevices = Object.keys(activeTimers);
       timerDevices.forEach((deviceKey) => {
@@ -289,20 +291,19 @@ export function ControlPage() {
         setDeviceStatus({ [deviceKey]: false });
       });
       setActiveTimers({});
-      const allDeviceKeys = DEVICES.map(d => d.key);
-      allDeviceKeys.forEach((deviceKey) => {
-        if (isDeviceActive(deviceKey)) {
-          const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-          if (!timerDevices.includes(deviceKey)) {
-            sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
-            setDeviceStatus({ [deviceKey]: false });
-          }
-        }
-      });
     }
 
-    sendCommand.mutate({ commandType: 'stop_automation', commandValue: !enabled, shedId: selectedShedId || undefined });
-    setManualOverride(!enabled);
+    // ═══════════════════════════════════════════════════════════
+    // USE useSetAutomationMode to update ALL sources of truth:
+    // 1. farm_settings.automation_mode (authoritative)
+    // 2. device_status.desired_manual_override + mode
+    // 3. device_commands (stop_automation command to ESP32)
+    // 4. device_health.mode
+    // This prevents the cloud from contradicting the ESP32's mode.
+    // ═══════════════════════════════════════════════════════════
+    const newMode = enabled ? 'AUTO' : 'MANUAL';
+    setAutomationMode.mutate(newMode);
+
     toast({
       title: enabled 
         ? (language === 'bn' ? '🟢 অটোমেশন চালু' : '🟢 Automation Enabled')
