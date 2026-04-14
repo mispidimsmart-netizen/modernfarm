@@ -185,6 +185,9 @@ export function Dashboard() {
               {/* Device Online/Offline Status */}
               <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
 
+              {/* ── 🐔 আরাম সূচক ── */}
+              <ComfortIndicators />
+
               {/* ── 📡 সেন্সর ── */}
               <div>
                 <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -217,6 +220,9 @@ export function Dashboard() {
               {/* Today Summary */}
               <TodayReadableSummary />
 
+              {/* ── 🔌 পাওয়ার আউটেজ ── */}
+              <PowerOutageCard />
+
               {/* Panic Prevention Strip */}
               <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-2 text-center">
                 <p className="text-xs font-medium text-primary">
@@ -236,14 +242,7 @@ export function Dashboard() {
                   🌡️ {language === 'bn' ? 'পরিবেশ পরিস্থিতি' : 'Environment'}
                 </h3>
                 <div className="space-y-3">
-                  <ComfortIndicators />
                   <InsideOutsideDeltaCard />
-                  <div className="grid grid-cols-2 gap-3">
-                    <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
-                    <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
-                    <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
-                    <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
-                  </div>
                   <SensorCharts />
                 </div>
               </section>
@@ -283,10 +282,7 @@ export function Dashboard() {
                   
                   {/* Layer Specific */}
                   {isLayer && (
-                    <>
-                      <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
-                      <HeatStressCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
-                    </>
+                    <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                   )}
                 </div>
               </section>
