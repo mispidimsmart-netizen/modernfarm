@@ -125,7 +125,7 @@ export function useSuperAdmin() {
     enabled: isSuperAdmin === true,
   });
 
-  const { data: stats, isLoading: loadingStats } = useQuery({
+  const { data: stats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
       // Get total users
@@ -183,7 +183,7 @@ export function useSuperAdmin() {
     enabled: isSuperAdmin === true,
   });
 
-  const { data: userDetails, isLoading: loadingUserDetails } = useQuery({
+  const { data: userDetails, isLoading: loadingUserDetails, refetch: refetchUserDetails } = useQuery({
     queryKey: ['admin-user-details'],
     queryFn: async () => {
       // Get latest sensor readings per user
@@ -224,7 +224,9 @@ export function useSuperAdmin() {
     refetchUsers,
     stats,
     loadingStats,
+    refetchStats,
     userDetails,
     loadingUserDetails,
+    refetchUserDetails,
   };
 }
