@@ -420,7 +420,7 @@ export function ControlPage() {
 
             {/* Direct Device Controls */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {DEVICES.map((device) => {
+              {DEVICES.map((device, index) => {
                 const active = isDeviceActive(device.key);
                 const Icon = device.icon;
                 return (
@@ -428,35 +428,44 @@ export function ControlPage() {
                     key={device.key}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
                   >
-                    <Card className={`border-2 transition-all ${
+                    <Card className={`border-2 transition-all duration-300 ${
                       active
-                        ? 'border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-amber-600/5'
-                        : 'border-border/50'
+                        ? 'border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-md shadow-emerald-500/10'
+                        : 'border-border/50 hover:border-border'
                     }`}>
-                      <CardContent className="py-4">
+                      <CardContent className="py-4 px-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                            <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 ${
                               active
-                                ? 'bg-amber-500/20 text-amber-600'
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
                                 : 'bg-muted text-muted-foreground'
                             }`}>
                               <Icon className={`h-5 w-5 ${active ? 'animate-pulse' : ''}`} />
+                              {active && (
+                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                                </span>
+                              )}
                             </div>
                             <div>
-                              <p className="text-sm font-semibold">{device.name[language]}</p>
-                              <p className="text-xs text-muted-foreground">{device.description[language]}</p>
+                              <p className="text-sm font-bold">{device.name[language]}</p>
+                              <p className="text-[11px] text-muted-foreground leading-tight">{device.description[language]}</p>
                             </div>
                           </div>
-                          <div className="flex flex-col items-center gap-1">
+                          <div className="flex flex-col items-center gap-1.5">
                             <Switch
                               checked={active}
                               onCheckedChange={(val) => handleManualToggle(device.key, val)}
                               disabled={isViewer || sendCommand.isPending}
-                              className={active ? 'data-[state=checked]:bg-amber-500' : ''}
+                              className={`scale-110 ${active ? 'data-[state=checked]:bg-emerald-500' : ''}`}
                             />
-                            <span className={`text-[10px] font-medium ${active ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                            <span className={`text-[10px] font-bold tracking-wider ${
+                              active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                            }`}>
                               {active ? 'ON' : 'OFF'}
                             </span>
                           </div>
