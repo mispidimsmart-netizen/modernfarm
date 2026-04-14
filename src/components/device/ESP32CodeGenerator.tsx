@@ -40,6 +40,7 @@ interface FarmOption {
   name: string;
   name_en: string;
   owner_id: string;
+  owner_email?: string;
 }
 
 export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
