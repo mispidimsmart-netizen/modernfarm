@@ -40,6 +40,7 @@ interface FarmOption {
   name: string;
   name_en: string;
   owner_id: string;
+  owner_email?: string;
 }
 
 export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
@@ -68,8 +69,16 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           .select('id, name, name_en, owner_id')
           .eq('is_active', true)
           .order('name');
-        if (farms) {
-          setAllFarms(farms);
+        if (farms && farms.length > 0) {
+          // Fetch owner emails from profiles
+          const ownerIds = [...new Set(farms.map(f => f.owner_id))];
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .in('id', ownerIds);
+          
+          const emailMap = new Map(profiles?.map(p => [p.id, p.email]) || []);
+          setAllFarms(farms.map(f => ({ ...f, owner_email: emailMap.get(f.owner_id) || '' })));
         }
       } catch (err) {
         console.warn('Could not fetch farms:', err);
@@ -455,7 +464,12 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
               <SelectContent>
                 {allFarms.map((farm) => (
                   <SelectItem key={farm.id} value={farm.id}>
-                    {language === 'bn' ? farm.name : farm.name_en} 
+                    <div className="flex flex-col">
+                      <span>{language === 'bn' ? farm.name : farm.name_en}</span>
+                      {farm.owner_email && (
+                        <span className="text-xs text-muted-foreground">{farm.owner_email}</span>
+                      )}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
