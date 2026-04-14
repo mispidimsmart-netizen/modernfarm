@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { Cloud, CloudOff, Clock, Cpu, RefreshCw, Shield, ShieldAlert } from 'lucide-react';
+import { Cloud, CloudOff, Clock, Cpu, Hand, Bot, Shield, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAllDeviceHealth, DeviceHealth } from '@/hooks/useDeviceHealth';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 
 // Calculate time ago from a date string
 function getTimeAgo(dateStr: string | null, language: 'bn' | 'en'): string {
@@ -49,6 +50,9 @@ export function SystemModeCard() {
   const { language } = useAuth();
   const { data: deviceHealth, isLoading } = useAllDeviceHealth();
   const { selectedShedId } = useSelectedShed();
+  const { data: automationMode } = useAutomationMode();
+  
+  const isManualMode = automationMode === 'MANUAL';
   
   // Each shed = independent fail-safe unit
   const primaryDevice = getPrimaryDeviceForShed(deviceHealth, selectedShedId);
