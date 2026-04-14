@@ -279,13 +279,6 @@ export function SettingsPage() {
                   <span className="sm:hidden">{language === 'bn' ? 'ডেটা' : 'Data'}</span>
                 </TabsTrigger>
                 {isAdmin && (
-                  <TabsTrigger value="firmware" className="text-xs sm:text-sm">
-                    <Download className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
-                    <span className="hidden sm:inline">{t.firmware[language]}</span>
-                    <span className="sm:hidden">{language === 'bn' ? 'কোড' : 'FW'}</span>
-                  </TabsTrigger>
-                )}
-                {isAdmin && (
                   <TabsTrigger value="device" className="text-xs sm:text-sm">
                     <Cpu className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
                     <span className="hidden sm:inline">{t.device[language]}</span>
@@ -306,13 +299,6 @@ export function SettingsPage() {
                 <ReportsDataTab />
               </TabsContent>
 
-              {isAdmin && (
-                <TabsContent value="firmware">
-                  <div className="space-y-4">
-                    <ESP32CodeGenerator language={language} showFarmSelector={true} />
-                  </div>
-                </TabsContent>
-              )}
 
               {isAdmin && (
                 <TabsContent value="device">

@@ -384,7 +384,7 @@ export function DeviceSystemTab() {
         language={language}
       >
         <div className="space-y-4">
-          <ESP32CodeGenerator language={language} />
+          <ESP32CodeGenerator language={language} showFarmSelector={true} />
 
           <Separator />
 
