@@ -10,10 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 
-type LoginMethod = 'email' | 'phone';
-type FarmType = 'layer' | 'broiler' | 'mixed';
+type FarmType = 'layer' | 'broiler';
 type UserType = 'owner' | 'worker';
-type SignupMethod = 'phone' | 'email';
 
 // Password strength calculator
 function getPasswordStrength(pw: string): { level: 'weak' | 'medium' | 'strong'; label: string; color: string; percent: number } {
@@ -28,6 +26,12 @@ function getPasswordStrength(pw: string): { level: 'weak' | 'medium' | 'strong';
   if (score <= 2) return { level: 'weak', label: 'দুর্বল', color: 'bg-destructive', percent: 33 };
   if (score <= 3) return { level: 'medium', label: 'মাঝারি', color: 'bg-status-warning', percent: 66 };
   return { level: 'strong', label: 'শক্তিশালী', color: 'bg-status-normal', percent: 100 };
+}
+
+// Detect if input looks like a phone number
+function isPhoneInput(value: string): boolean {
+  const cleaned = value.replace(/\D/g, '');
+  return cleaned.length >= 6 && /^0?1\d+$/.test(cleaned);
 }
 
 // Shared input style
@@ -53,13 +57,11 @@ export function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
 
-  // Login state
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('phone');
+  // Login state — unified identifier (phone or email)
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
   // Signup state
-  const [signupMethod, setSignupMethod] = useState<SignupMethod>('phone');
   const [signupName, setSignupName] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
@@ -104,19 +106,27 @@ export function LoginPage() {
     }
   };
 
+  // ─── Unified Login Handler ───
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const isPhone = loginMethod === 'phone';
+    const trimmed = identifier.trim();
+    const isPhone = isPhoneInput(trimmed);
 
-    if (isPhone && !validatePhone(identifier)) {
+    if (isPhone && !validatePhone(trimmed)) {
       toast({ title: 'ত্রুটি', description: 'সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (01 দিয়ে শুরু)', variant: 'destructive' });
       setIsLoading(false);
       return;
     }
 
+    if (!isPhone && !trimmed.includes('@')) {
+      toast({ title: 'ত্রুটি', description: 'সঠিক মোবাইল নম্বর বা ইমেইল দিন', variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await signIn(identifier, loginPassword, isPhone);
+      const { error } = await signIn(trimmed, loginPassword, isPhone);
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
@@ -129,11 +139,10 @@ export function LoginPage() {
     }
   };
 
+  // ─── Signup Handler (always phone-primary) ───
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    const isPhone = signupMethod === 'phone';
 
     if (!signupName.trim()) {
       toast({ title: 'ত্রুটি', description: 'আপনার নাম দিন', variant: 'destructive' });
@@ -141,14 +150,8 @@ export function LoginPage() {
       return;
     }
 
-    if (isPhone && !validatePhone(signupPhone)) {
+    if (!validatePhone(signupPhone)) {
       toast({ title: 'ত্রুটি', description: 'সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (01 দিয়ে শুরু)', variant: 'destructive' });
-      setIsLoading(false);
-      return;
-    }
-
-    if (!isPhone && !signupEmail.trim()) {
-      toast({ title: 'ত্রুটি', description: 'ইমেইল ঠিকানা দিন', variant: 'destructive' });
       setIsLoading(false);
       return;
     }
@@ -191,46 +194,37 @@ export function LoginPage() {
       }
 
       const farmNameValue = userType === 'owner' ? (signupFarmName.trim() || 'আমার ফার্ম') : 'Worker Account';
-      const signupIdentifier = isPhone ? signupPhone : signupEmail;
-      const { error } = await signUp(signupIdentifier, signupPassword, farmNameValue, isPhone);
+      // Always use phone as primary signup identifier
+      const { error } = await signUp(signupPhone, signupPassword, farmNameValue, true);
 
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
-        if (isPhone) {
-          // Auto-login after phone signup
-          const { error: signInError } = await signIn(signupPhone, signupPassword, true);
-          if (!signInError) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              await supabase.from('profiles').update({
-                user_name: signupName.trim(),
-                email: signupEmail.trim() || null,
-                farm_type: userType === 'owner' ? (signupFarmType === 'mixed' ? 'layer' : signupFarmType) : null,
-                farm_name: farmNameValue,
-              }).eq('id', user.id);
+        // Auto-login after phone signup
+        const { error: signInError } = await signIn(signupPhone, signupPassword, true);
+        if (!signInError) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('profiles').update({
+              user_name: signupName.trim(),
+              email: signupEmail.trim() || null,
+              farm_type: userType === 'owner' ? signupFarmType : null,
+              farm_name: farmNameValue,
+            }).eq('id', user.id);
 
-              if (userType === 'worker' && validInvitation) {
-                await supabase.from('user_roles').insert({
-                  user_id: user.id,
-                  farm_owner_id: validInvitation.farm_owner_id,
-                  role: 'worker',
-                });
-                await supabase.from('worker_invitations').update({
-                  used_at: new Date().toISOString(),
-                  used_by: user.id,
-                }).eq('id', validInvitation.id);
-              }
+            if (userType === 'worker' && validInvitation) {
+              await supabase.from('user_roles').insert({
+                user_id: user.id,
+                farm_owner_id: validInvitation.farm_owner_id,
+                role: 'worker',
+              });
+              await supabase.from('worker_invitations').update({
+                used_at: new Date().toISOString(),
+                used_by: user.id,
+              }).eq('id', validInvitation.id);
             }
-            navigate('/');
           }
-        } else {
-          // Email signup — need to verify email
-          toast({
-            title: 'সফল!',
-            description: 'অ্যাকাউন্ট তৈরি হয়েছে। অনুগ্রহ করে আপনার ইমেইল যাচাই করুন।',
-          });
-          setIsSignUp(false);
+          navigate('/');
         }
       }
     } catch {
@@ -240,10 +234,9 @@ export function LoginPage() {
     }
   };
 
-  // ─── Compact Header (smaller on signup) ───
+  // ─── Compact Header ───
   const Header = () => (
     <div className={`relative shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center ${isSignUp ? 'pb-14 pt-8' : 'pb-16 pt-10'}`}>
-      {/* Decorative floating eye icons */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute top-8 left-6 text-white/10">
@@ -268,11 +261,10 @@ export function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-          className={`mx-auto mb-2 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-20 w-20' : 'h-24 w-24'}`}
+            className={`mx-auto mb-2 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-20 w-20' : 'h-24 w-24'}`}
           >
             <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-16 w-16' : 'h-20 w-20'}`} />
           </motion.div>
-          {/* Sparkle decoration */}
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -290,7 +282,6 @@ export function LoginPage() {
           Smart Poultry Farm Automation
         </motion.p>
       </motion.div>
-      {/* Curved bottom edge */}
       <div className="absolute bottom-0 left-0 right-0">
         <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
           <path d="M0 80H1440V30Q1440 0 1380 0H60Q0 0 0 30V80Z" fill="hsl(var(--background))" />
@@ -314,11 +305,14 @@ export function LoginPage() {
     </>
   );
 
-
   const Spinner = () => (
     <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
       className="h-5 w-5 rounded-full border-2 border-primary-foreground border-t-transparent" />
   );
+
+  // Detect login input type for icon
+  const loginIsPhone = isPhoneInput(identifier);
+  const loginIcon = identifier.trim() === '' ? <Phone className="h-5 w-5" /> : (loginIsPhone ? <Phone className="h-5 w-5" /> : <Mail className="h-5 w-5" />);
 
   // ═══════════════════════════════════════════
   // LOGIN VIEW
@@ -360,29 +354,17 @@ export function LoginPage() {
               </motion.div>
             ) : (
               <motion.div key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-                {/* Method Toggle */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mb-5 mt-5 flex rounded-xl bg-muted/60 p-1">
-                  <button type="button" onClick={() => { setLoginMethod('phone'); setIdentifier(''); }}
-                    className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${loginMethod === 'phone' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                    <Phone className="h-4 w-4" /> মোবাইল
-                  </button>
-                  <button type="button" onClick={() => { setLoginMethod('email'); setIdentifier(''); }}
-                    className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${loginMethod === 'email' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                    <Mail className="h-4 w-4" /> ইমেইল
-                  </button>
-                </motion.div>
-
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <AnimatePresence mode="wait">
-                    <motion.div key={loginMethod} initial={{ opacity: 0, x: loginMethod === 'phone' ? -16 : 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: loginMethod === 'phone' ? 16 : -16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
-                      <label className="text-sm font-medium text-foreground">{loginMethod === 'phone' ? 'মোবাইল নম্বর' : 'ইমেইল'}</label>
-                      <IconInput icon={loginMethod === 'phone' ? <Phone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}>
-                        <Input type={loginMethod === 'phone' ? 'tel' : 'email'} value={identifier} onChange={(e) => setIdentifier(e.target.value)}
-                          placeholder={loginMethod === 'phone' ? 'আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন' : 'example@email.com'}
-                          className={inputClass} required />
-                      </IconInput>
-                    </motion.div>
-                  </AnimatePresence>
+                <form onSubmit={handleLogin} className="mt-5 space-y-4">
+                  {/* Unified identifier input */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">মোবাইল নম্বর / ইমেইল</label>
+                    <IconInput icon={loginIcon}>
+                      <Input type="text" value={identifier} onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder="মোবাইল নম্বর বা ইমেইল লিখুন"
+                        className={inputClass} required />
+                    </IconInput>
+                    <p className="text-[11px] text-muted-foreground">রেজিস্টার্ড মোবাইল নম্বর অথবা ইমেইল দিয়ে লগইন করুন</p>
+                  </div>
 
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -441,18 +423,6 @@ export function LoginPage() {
           <p className="mt-1 text-sm text-muted-foreground">আপনার ফার্ম যুক্ত করুন এবং স্মার্ট অটোমেশন শুরু করুন</p>
         </motion.div>
 
-        {/* Signup Method Toggle */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.42 }} className="mb-4 flex rounded-xl bg-muted/60 p-1">
-          <button type="button" onClick={() => setSignupMethod('phone')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${signupMethod === 'phone' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-            <Phone className="h-4 w-4" /> মোবাইল দিয়ে
-          </button>
-          <button type="button" onClick={() => setSignupMethod('email')}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${signupMethod === 'email' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-            <Mail className="h-4 w-4" /> ইমেইল দিয়ে
-          </button>
-        </motion.div>
-
         {/* Account Type Toggle */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="mb-5 flex rounded-xl bg-muted/60 p-1">
           <button type="button" onClick={() => setUserType('owner')}
@@ -468,64 +438,41 @@ export function LoginPage() {
         <form onSubmit={handleSignup} className="space-y-4">
           {/* 1. নাম */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">মালিকের নাম *</label>
+            <label className="text-sm font-medium text-foreground">{userType === 'owner' ? 'মালিকের নাম' : 'কর্মীর নাম'} *</label>
             <IconInput icon={<User className="h-5 w-5" />}>
               <Input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)}
                 placeholder="আপনার পূর্ণ নাম লিখুন" className={inputClass} required maxLength={100} />
             </IconInput>
           </div>
 
-          {/* 2. Primary identifier based on signup method */}
-          <AnimatePresence mode="wait">
-            {signupMethod === 'phone' ? (
-              <motion.div key="signup-phone" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">মোবাইল নম্বর *</label>
-                <IconInput icon={<Phone className="h-5 w-5" />}>
-                  <Input type="tel" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
-                    placeholder="আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন" className={inputClass} required maxLength={11} />
-                </IconInput>
-              </motion.div>
-            ) : (
-              <motion.div key="signup-email-primary" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">ইমেইল *</label>
-                <IconInput icon={<Mail className="h-5 w-5" />}>
-                  <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
-                    placeholder="আপনার ইমেইল ঠিকানা লিখুন" className={inputClass} required maxLength={255} />
-                </IconInput>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* 2. Mobile (required) */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">মোবাইল নম্বর *</label>
+            <IconInput icon={<Phone className="h-5 w-5" />}>
+              <Input type="tel" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
+                placeholder="আপনার ১১ সংখ্যার মোবাইল নম্বর লিখুন" className={inputClass} required maxLength={11} />
+            </IconInput>
+          </div>
 
-          {/* 3. Secondary contact (optional - collapsible) */}
-          {signupMethod === 'phone' && (
-            <div className="space-y-1.5">
-              <button type="button" onClick={() => setShowOptionalEmail(!showOptionalEmail)}
-                className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline underline-offset-2">
-                <Mail className="h-3.5 w-3.5" />
-                {showOptionalEmail ? 'ইমেইল লুকান' : '+ ইমেইল যোগ করুন (ঐচ্ছিক)'}
-              </button>
-              <AnimatePresence>
-                {showOptionalEmail && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <IconInput icon={<Mail className="h-5 w-5" />}>
-                      <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
-                        placeholder="আপনার ইমেইল ঠিকানা লিখুন (ঐচ্ছিক)" className={inputClass} maxLength={255} />
-                    </IconInput>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {signupMethod === 'email' && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">মোবাইল নম্বর (ঐচ্ছিক)</label>
-              <IconInput icon={<Phone className="h-5 w-5" />}>
-                <Input type="tel" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)}
-                  placeholder="আপনার মোবাইল নম্বর (ঐচ্ছিক)" className={inputClass} maxLength={11} />
-              </IconInput>
-            </div>
-          )}
+          {/* 3. Email (optional, collapsible) */}
+          <div className="space-y-1.5">
+            <button type="button" onClick={() => setShowOptionalEmail(!showOptionalEmail)}
+              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline underline-offset-2">
+              <Mail className="h-3.5 w-3.5" />
+              {showOptionalEmail ? 'ইমেইল লুকান' : '+ ইমেইল যোগ করুন (ঐচ্ছিক)'}
+            </button>
+            <AnimatePresence>
+              {showOptionalEmail && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                  <IconInput icon={<Mail className="h-5 w-5" />}>
+                    <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
+                      placeholder="আপনার ইমেইল ঠিকানা লিখুন (ঐচ্ছিক)" className={inputClass} maxLength={255} />
+                  </IconInput>
+                  <p className="mt-1 text-[11px] text-muted-foreground">ইমেইল যোগ করলে পাসওয়ার্ড রিসেট ও ইমেইল দিয়ে লগইন করতে পারবেন</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Owner-specific fields */}
           <AnimatePresence>
@@ -604,13 +551,6 @@ export function LoginPage() {
               <p className="text-xs font-medium text-destructive">পাসওয়ার্ড মিলছে না</p>
             )}
           </div>
-
-          {/* Email signup notice */}
-          {signupMethod === 'email' && (
-            <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-3">
-              📧 ইমেইল দিয়ে সাইনআপ করলে আপনাকে ইমেইল যাচাই করতে হবে। যাচাই করার পর লগইন করতে পারবেন।
-            </p>
-          )}
 
           <div className="pt-2">
             <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
