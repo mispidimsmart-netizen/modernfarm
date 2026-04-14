@@ -409,8 +409,9 @@ const detailedWiringGuide = [
     bgColor: 'bg-purple-500/10',
     pins: [
       // --- পাওয়ার হেডার (৩ পিন): JD-VCC, VCC, GND ---
-      { sensorPin: 'JD-VCC (রিলে কয়েল পাওয়ার)', esp32Pin: '5V (VIN)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে পাওয়ার হেডারের JD-VCC → ESP32 এর VIN (5V) — এটি রিলে কয়েলগুলোকে চালু করে', warning: '⚡ পাওয়ার হেডারে ৩টি পিন থাকে: JD-VCC, VCC, GND। JD-VCC ও VCC এর মাঝে জাম্পার ক্যাপ লাগানো আছে কিনা চেক করুন!' },
-      { sensorPin: 'GND (পাওয়ার হেডার)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে পাওয়ার হেডারের GND → ESP32 এর GND', warning: null },
+      { sensorPin: 'JD-VCC (রিলে কয়েল পাওয়ার)', esp32Pin: '12V অ্যাডাপ্টার (+)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: রিলে পাওয়ার হেডারের JD-VCC → 12V DC অ্যাডাপ্টারের (+) পজিটিভ — রিলে কয়েলগুলো আলাদা 12V তে চলবে', warning: '⚡ JD-VCC ও VCC এর মাঝের জাম্পার ক্যাপ অবশ্যই খুলে ফেলুন! VCC পিন ফাঁকা রাখুন।' },
+      { sensorPin: 'VCC (পাওয়ার হেডার)', esp32Pin: '❌ ফাঁকা রাখুন', wireColor: '—', wireNameEn: 'NONE', instruction: '🚫 পাওয়ার হেডারের VCC পিনে কিছু লাগাবেন না — জাম্পার খোলা থাকবে', warning: 'জাম্পার খোলা = অপটিক্যাল আইসোলেশন সক্রিয়। এটি ESP32 কে রিলে নয়েজ থেকে রক্ষা করে।' },
+      { sensorPin: 'GND (পাওয়ার হেডার)', esp32Pin: 'GND (কমন)', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: রিলে পাওয়ার হেডারের GND → ESP32 এর GND এবং 12V অ্যাডাপ্টারের (−) নেগেটিভ — কমন গ্রাউন্ড', warning: '⚠️ ESP32 ও 12V অ্যাডাপ্টারের GND একসাথে যুক্ত করা বাধ্যতামূলক (কমন গ্রাউন্ড)!' },
       // --- কন্ট্রোল হেডার (১০ পিন): IN1-IN8, VCC, GND ---
       { sensorPin: 'VCC (কন্ট্রোল হেডার)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 কন্ট্রোল হেডারের VCC → ESP32 এর 3.3V — Optocoupler লজিক পাওয়ার (IN1-IN8 এর পাশে)', warning: '📌 কন্ট্রোল সাইডে ১০টি পিন: IN1-IN8 + VCC + GND। এই VCC হলো সিগন্যাল লেভেল পাওয়ার।' },
       { sensorPin: 'GND (কন্ট্রোল হেডার)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কন্ট্রোল হেডারের GND → ESP32 এর GND (IN1-IN8 এর পাশের GND)', warning: null },
