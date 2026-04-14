@@ -542,7 +542,8 @@ export function LoginPage() {
                   <label className="text-sm font-medium text-foreground">ফার্মের ধরন</label>
                   <IconInput icon={signupFarmType === 'layer' ? <Egg className="h-5 w-5" /> : <Drumstick className="h-5 w-5" />}>
                     <select value={signupFarmType} onChange={(e) => setSignupFarmType(e.target.value as FarmType)}
-                      className={`${inputClass} w-full appearance-none pr-10`}>
+                      style={{ minHeight: '3.25rem', height: '3.25rem' }}
+                      className={`${inputClass} flex w-full appearance-none pr-10`}>
                       <option value="layer">লেয়ার ফার্ম</option>
                       <option value="broiler">ব্রয়লার ফার্ম</option>
                     </select>
