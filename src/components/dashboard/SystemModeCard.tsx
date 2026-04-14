@@ -59,7 +59,12 @@ export function SystemModeCard() {
   const isFailSafe = primaryDevice?.failsafe_mode ?? false;
   const lastCloudSync = primaryDevice?.last_cloud_sync_at;
   const lastSeenAt = primaryDevice?.last_seen_at;
-  const isOnline = primaryDevice?.is_online ?? false;
+  const isOnline = (() => {
+    if (!primaryDevice?.is_online) return false;
+    if (!primaryDevice?.last_seen_at) return false;
+    const diffMs = Date.now() - new Date(primaryDevice.last_seen_at).getTime();
+    return diffMs < 2 * 60 * 1000; // 2 minutes
+  })();
   
   // Calculate if cloud connection is stale (> 5 minutes)
   const isCloudStale = (() => {
