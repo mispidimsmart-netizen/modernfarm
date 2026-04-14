@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Fan, Lightbulb, Bell, Flame, Wind, Droplets,
-  ShieldAlert, Timer, CheckCircle2, CloudDrizzle, CircleDot,
+  ShieldAlert, Timer,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
@@ -31,8 +31,6 @@ import { StateExplanationHeader } from '@/components/control/StateExplanationHea
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
 import { LiveEnvironmentPanel } from '@/components/control/LiveEnvironmentPanel';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
-import { FarmerSensorHealth } from '@/components/control/FarmerSensorHealth';
-import { DeviceLiveTelemetry } from '@/components/device/DeviceLiveTelemetry';
 
 // Broiler-specific devices (heater is more important)
 const BROILER_DEVICES = [
