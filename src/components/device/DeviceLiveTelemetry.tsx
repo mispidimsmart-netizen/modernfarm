@@ -15,6 +15,15 @@ import { bn, enUS } from 'date-fns/locale';
 
 type FreshnessLevel = 'green' | 'yellow' | 'red';
 
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
+function isDeviceReallyOnline(device: DeviceHealth): boolean {
+  if (!device.is_online) return false;
+  if (!device.last_seen_at) return false;
+  const diffMs = Date.now() - new Date(device.last_seen_at).getTime();
+  return diffMs < ONLINE_THRESHOLD_MS;
+}
+
 function getLastSeenFreshness(lastSeenAt: string | null): FreshnessLevel {
   if (!lastSeenAt) return 'red';
   const diffMs = Date.now() - new Date(lastSeenAt).getTime();
