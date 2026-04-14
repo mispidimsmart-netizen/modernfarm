@@ -135,14 +135,14 @@ export function CurrentActionPanel() {
     >
       <Card className={`border ${currentAction.color} shadow-sm h-full`}>
         <CardContent className="pt-4 pb-4 h-full flex flex-col justify-center">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
             {language === 'bn' ? 'বর্তমান কাজ' : 'Current Action'}
           </p>
-          <div className="flex items-center gap-3">
-            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-black/20 shadow-sm ${currentAction.iconColor}`}>
-              <Icon className="h-6 w-6" />
+          <div className="flex items-center gap-2">
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-black/20 shadow-sm ${currentAction.iconColor}`}>
+              <Icon className="h-5 w-5" />
             </div>
-            <p className={`text-base font-semibold ${currentAction.iconColor}`}>
+            <p className={`text-xs font-semibold leading-tight ${currentAction.iconColor}`}>
               {currentAction.text[language]}
             </p>
           </div>
