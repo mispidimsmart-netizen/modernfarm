@@ -15,7 +15,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useSelectedShed } from '@/hooks/useSheds';
-import { useAutomationMode } from '@/hooks/useAutomationMode';
+import { useAutomationMode, useSetAutomationMode } from '@/hooks/useAutomationMode';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
