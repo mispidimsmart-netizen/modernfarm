@@ -2790,6 +2790,145 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                                   </div>
                                 </div>
 
+                                {/* Detailed Contactor Installation Guide */}
+                                {info.contactorDetailGuide && (() => {
+                                  const guide = info.contactorDetailGuide;
+                                  return (
+                                    <div className="space-y-4">
+                                      {/* Section Title */}
+                                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border-2 border-primary/30">
+                                        <Zap className="h-5 w-5 text-primary" />
+                                        <p className="font-bold text-sm">{guide.title}</p>
+                                      </div>
+
+                                      {/* What is Contactor */}
+                                      <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                                        <p className="text-xs font-bold mb-2">{guide.whatIs.title}</p>
+                                        <ul className="space-y-1.5">
+                                          {guide.whatIs.points.map((p: string, i: number) => (
+                                            <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                              <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                                              <span>{p}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+
+                                      {/* When Needed */}
+                                      <div className="p-3 rounded-lg border border-border space-y-3">
+                                        <p className="text-xs font-bold">{guide.whenNeeded.title}</p>
+                                        <div>
+                                          <p className="text-xs font-semibold text-destructive mb-1.5">✅ কন্ট্যাক্টর লাগবে:</p>
+                                          <div className="space-y-1.5">
+                                            {guide.whenNeeded.needed.map((item: any, i: number) => (
+                                              <div key={i} className="p-2 rounded bg-destructive/5 border border-destructive/20 text-xs">
+                                                <span className="font-semibold">{item.device}</span>
+                                                <span className="text-muted-foreground"> — {item.condition}</span>
+                                                <p className="text-muted-foreground mt-0.5">💡 {item.reason}</p>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-semibold text-primary mb-1.5">❌ কন্ট্যাক্টর লাগবে না:</p>
+                                          <ul className="space-y-1">
+                                            {guide.whenNeeded.notNeeded.map((item: string, i: number) => (
+                                              <li key={i} className="text-xs text-muted-foreground">• {item}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      </div>
+
+                                      {/* Parts Identification */}
+                                      <div className="p-3 rounded-lg bg-accent/10 border border-accent/30 space-y-2">
+                                        <p className="text-xs font-bold">{guide.partsIdentification.title}</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                          {guide.partsIdentification.parts.map((part: any, i: number) => (
+                                            <div key={i} className="p-2 rounded bg-background border border-border text-xs">
+                                              <div className="flex items-center gap-1.5">
+                                                <span>{part.color}</span>
+                                                <span className="font-bold font-mono">{part.name}</span>
+                                              </div>
+                                              <p className="text-muted-foreground mt-0.5">📍 {part.location}</p>
+                                              <p className="text-muted-foreground">→ {part.purpose}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Step by Step Wiring */}
+                                      <div className="space-y-3">
+                                        <p className="text-xs font-bold">{guide.wiringSteps.title}</p>
+                                        <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs font-semibold text-destructive">
+                                          {guide.wiringSteps.warning}
+                                        </div>
+                                        {guide.wiringSteps.steps.map((step: any, sIdx: number) => (
+                                          <div key={sIdx} className="rounded-lg border-2 border-border overflow-hidden">
+                                            <div className="p-2.5 bg-primary/10 flex items-center gap-2">
+                                              <Badge className="text-xs">{step.step}</Badge>
+                                              <span className="text-xs font-bold">{step.title}</span>
+                                            </div>
+                                            <div className="p-3 space-y-2">
+                                              <p className="text-xs text-muted-foreground">{step.description}</p>
+                                              <div className="space-y-2">
+                                                {step.wires.map((w: any, wIdx: number) => (
+                                                  <div key={wIdx} className="p-2 rounded bg-muted/50 border border-border text-xs">
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                      <span className="font-mono text-primary">{w.from}</span>
+                                                      <span>→</span>
+                                                      <span className="font-mono text-primary">{w.to}</span>
+                                                      {w.wire && <Badge variant="outline" className="text-[10px]">{w.wire}</Badge>}
+                                                    </div>
+                                                    <p className="text-muted-foreground mt-1">{w.note}</p>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              <div className="p-2 rounded bg-primary/5 text-xs font-semibold text-primary">
+                                                {step.result}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Full Wiring Diagram */}
+                                      <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                                        <p className="text-xs font-bold mb-2">{guide.fullDiagram.title}</p>
+                                        <div className="p-3 rounded bg-background overflow-x-auto">
+                                          <pre className="text-[10px] sm:text-xs font-mono whitespace-pre leading-relaxed text-foreground">{guide.fullDiagram.diagram}</pre>
+                                        </div>
+                                      </div>
+
+                                      {/* Common Mistakes */}
+                                      <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20 space-y-2">
+                                        <p className="text-xs font-bold text-destructive">{guide.commonMistakes.title}</p>
+                                        <div className="space-y-2">
+                                          {guide.commonMistakes.mistakes.map((m: any, mIdx: number) => (
+                                            <div key={mIdx} className="p-2 rounded bg-background border border-border text-xs">
+                                              <p className="font-semibold text-destructive">❌ {m.mistake}</p>
+                                              <p className="text-muted-foreground">⚠️ সমস্যা: {m.problem}</p>
+                                              <p className="text-primary">✅ সমাধান: {m.solution}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Testing Steps */}
+                                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                                        <p className="text-xs font-bold">{guide.testingSteps.title}</p>
+                                        <div className="space-y-1.5">
+                                          {guide.testingSteps.steps.map((s: any, sIdx: number) => (
+                                            <div key={sIdx} className="flex items-start gap-2 text-xs">
+                                              <Badge variant="outline" className="text-[10px] shrink-0 mt-0.5">{s.step}</Badge>
+                                              <span className="text-muted-foreground">{s.action}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
                                 {/* Safety Warnings */}
                                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                                   <p className="text-xs font-bold mb-2 text-destructive">⚠️ নিরাপত্তা সতর্কতা:</p>
