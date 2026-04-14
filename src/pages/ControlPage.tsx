@@ -135,6 +135,7 @@ export function ControlPage() {
   const { sensorData } = useRealtimeSensorData();
   const { isBroiler } = useFarmType();
   const { data: automationMode } = useAutomationMode();
+  const setAutomationMode = useSetAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
   
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
