@@ -32,9 +32,17 @@ type FirmwareMode = 'hardcoded' | 'ota';
 
 interface ESP32CodeGeneratorProps {
   language?: 'bn' | 'en';
+  showFarmSelector?: boolean;
 }
 
-export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps) {
+interface FarmOption {
+  id: string;
+  name: string;
+  name_en: string;
+  owner_id: string;
+}
+
+export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
   const [ssid, setSsid] = useState(() => localStorage.getItem('farmeye_wifi_ssid') || '');
   const [password, setPassword] = useState(() => localStorage.getItem('farmeye_wifi_pass') || '');
   const [deviceToken, setDeviceToken] = useState('');
@@ -47,23 +55,57 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
   const [farmId, setFarmId] = useState('');
   const [autoLoaded, setAutoLoaded] = useState(false);
+  const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
+  const [selectedFarmId, setSelectedFarmId] = useState('');
 
-  // Auto-fetch device token, farm ID, shed ID from database
+  // Fetch all farms for admin selector
   useEffect(() => {
-    const fetchCredentials = async () => {
+    if (!showFarmSelector) return;
+    const fetchAllFarms = async () => {
+      try {
+        const { data: farms } = await supabase
+          .from('farms')
+          .select('id, name, name_en, owner_id')
+          .eq('is_active', true)
+          .order('name');
+        if (farms) {
+          setAllFarms(farms);
+        }
+      } catch (err) {
+        console.warn('Could not fetch farms:', err);
+      }
+    };
+    fetchAllFarms();
+  }, [showFarmSelector]);
+
+  // Load credentials for selected farm (admin) or own farm (regular user)
+  useEffect(() => {
+    const fetchCredentials = async (targetFarmId?: string) => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Fetch farm
-        const { data: farms } = await supabase
-          .from('farms')
-          .select('id, name')
-          .eq('owner_id', user.id)
-          .eq('is_active', true)
-          .limit(1);
+        let farm: { id: string; name: string } | null = null;
 
-        const farm = farms?.[0];
+        if (targetFarmId) {
+          // Admin selected a specific farm
+          const { data: farms } = await supabase
+            .from('farms')
+            .select('id, name')
+            .eq('id', targetFarmId)
+            .limit(1);
+          farm = farms?.[0] || null;
+        } else if (!showFarmSelector) {
+          // Regular user: fetch own farm
+          const { data: farms } = await supabase
+            .from('farms')
+            .select('id, name')
+            .eq('owner_id', user.id)
+            .eq('is_active', true)
+            .limit(1);
+          farm = farms?.[0] || null;
+        }
+
         if (farm) {
           setFarmId(farm.id);
 
@@ -77,6 +119,9 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
           if (sheds?.[0]) {
             setShedId(sheds[0].id);
             setShedName(sheds[0].name || '');
+          } else {
+            setShedId('');
+            setShedName('');
           }
 
           // Fetch device token
@@ -89,6 +134,8 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
 
           if (tokens?.[0]) {
             setDeviceToken(tokens[0].token);
+          } else {
+            setDeviceToken('');
           }
 
           setAutoLoaded(true);
@@ -98,8 +145,12 @@ export function ESP32CodeGenerator({ language = 'bn' }: ESP32CodeGeneratorProps)
       }
     };
 
-    fetchCredentials();
-  }, []);
+    if (showFarmSelector && selectedFarmId) {
+      fetchCredentials(selectedFarmId);
+    } else if (!showFarmSelector) {
+      fetchCredentials();
+    }
+  }, [showFarmSelector, selectedFarmId]);
 
   // Save WiFi credentials to localStorage for auto-fill
   useEffect(() => {
