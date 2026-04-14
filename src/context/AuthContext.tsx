@@ -4,14 +4,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Language } from '@/lib/translations';
 import { useToast } from '@/hooks/use-toast';
 
+interface SignUpMetadata {
+  farmName?: string;
+  farmType?: string;
+  userName?: string;
+  realEmail?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
   language: Language;
   setLanguage: (lang: Language) => void;
-  signUp: (identifier: string, password: string, farmName?: string, isPhone?: boolean) => Promise<{ error: Error | null }>;
-  signIn: (identifier: string, password: string, isPhone?: boolean) => Promise<{ error: Error | null }>;
+  signUp: (phone: string, password: string, metadata?: SignUpMetadata) => Promise<{ error: Error | null }>;
+  signIn: (identifier: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
