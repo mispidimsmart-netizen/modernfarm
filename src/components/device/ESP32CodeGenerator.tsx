@@ -40,7 +40,7 @@ interface FarmOption {
   name: string;
   name_en: string;
   owner_id: string;
-  owner_email?: string;
+  owner_phone?: string;
 }
 
 export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
@@ -74,14 +74,19 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           const ownerIds = [...new Set(farms.map(f => f.owner_id))];
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, email')
+            .select('id, phone, farm_name')
             .in('id', ownerIds);
           
           const profileIds = new Set(profiles?.map(p => p.id) || []);
-          const emailMap = new Map(profiles?.map(p => [p.id, p.email]) || []);
+          const phoneMap = new Map(profiles?.map(p => [p.id, p.phone]) || []);
+          const farmNameMap = new Map(profiles?.map(p => [p.id, p.farm_name]) || []);
           // Filter: only show farms whose owner has a valid profile
           const validFarms = farms.filter(f => profileIds.has(f.owner_id));
-          setAllFarms(validFarms.map(f => ({ ...f, owner_email: emailMap.get(f.owner_id) || '' })));
+          setAllFarms(validFarms.map(f => ({ 
+            ...f, 
+            name: farmNameMap.get(f.owner_id) || f.name,
+            owner_phone: phoneMap.get(f.owner_id) || '' 
+          })));
         }
       } catch (err) {
         console.warn('Could not fetch farms:', err);
@@ -468,9 +473,9 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
                 {allFarms.map((farm) => (
                   <SelectItem key={farm.id} value={farm.id}>
                     <div className="flex flex-col">
-                      <span>{language === 'bn' ? farm.name : farm.name_en}</span>
-                      {farm.owner_email && (
-                        <span className="text-xs text-muted-foreground">{farm.owner_email}</span>
+                      <span>{farm.name}</span>
+                      {farm.owner_phone && (
+                        <span className="text-xs text-muted-foreground">{farm.owner_phone}</span>
                       )}
                     </div>
                   </SelectItem>
