@@ -69,7 +69,7 @@ const partsList = [
     categoryEn: 'Sensors',
     items: [
       { name: 'DHT22/AM2302 #১ (তাপমাত্রা ও আর্দ্রতা) — GPIO 4', nameEn: 'DHT22 #1 Temp & Humidity — GPIO 4', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি, বিডিস্টল', essential: true },
-      { name: 'DHT22/AM2302 #২ (বড় শেডের জন্য) — GPIO 16', nameEn: 'DHT22 #2 (Large Shed) — GPIO 16', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি', essential: false },
+      { name: 'DHT22/AM2302 #২ (বড় শেডের জন্য) — GPIO 16 (RX2)', nameEn: 'DHT22 #2 (Large Shed) — GPIO 16 (RX2)', quantity: 1, price: '৳৩৫০-৪৫০', priceRange: [350, 450], shop: 'রোবটিক্স বিডি', essential: false },
       { name: 'MQ-137 (অ্যামোনিয়া গ্যাস সেন্সর) — GPIO 34', nameEn: 'MQ-137 Ammonia Sensor — GPIO 34', quantity: 1, price: '৳৪০০-৬০০', priceRange: [400, 600], shop: 'টেকশপ বিডি', essential: true },
       { name: 'YF-S201 (ওয়াটার ফ্লো সেন্সর) — GPIO 18', nameEn: 'YF-S201 Water Flow — GPIO 18', quantity: 1, price: '৳২৫০-৩৫০', priceRange: [250, 350], shop: 'রোবটিক্স বিডি', essential: false },
       { name: 'ZMPT101B (AC ভোল্টেজ সেন্সর) — GPIO 35', nameEn: 'ZMPT101B Voltage Sensor — GPIO 35', quantity: 1, price: '৳১৫০-২৫০', priceRange: [150, 250], shop: 'টেকশপ বিডি', essential: true },
@@ -174,7 +174,7 @@ const wiringConnections = [
   { component: 'DHT22 #1', pin: 'DATA', esp32Pin: 'GPIO 4', color: 'bg-green-500', note: '10K রেজিস্টর VCC ও DATA এর মধ্যে' },
   { component: 'DHT22 #1', pin: 'VCC', esp32Pin: '3.3V', color: 'bg-red-500', note: '' },
   { component: 'DHT22 #1', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
-  { component: 'DHT22 #2', pin: 'DATA', esp32Pin: 'GPIO 16', color: 'bg-green-400', note: '10K রেজিস্টর (বড় শেডের জন্য)' },
+  { component: 'DHT22 #2', pin: 'DATA', esp32Pin: 'GPIO 16 (RX2)', color: 'bg-green-400', note: '10K রেজিস্টর (বড় শেডের জন্য)' },
   { component: 'DHT22 #2', pin: 'VCC', esp32Pin: '3.3V', color: 'bg-red-500', note: '' },
   { component: 'DHT22 #2', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
   { component: 'MQ-137', pin: 'AO', esp32Pin: 'GPIO 34', color: 'bg-yellow-500', note: 'এনালগ আউটপুট (২৪ঘণ্টা প্রিহিট)' },
@@ -322,11 +322,11 @@ const detailedWiringGuide = [
     bgColor: 'bg-teal-500/10',
     pins: [
       { sensorPin: 'পিন ১: VCC (+)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: DHT22 #২ এর VCC → ESP32 এর 3.3V (প্রথম সেন্সরের সাথে শেয়ার করতে পারেন)', warning: null },
-      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 16', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 16 (আলাদা পিন!)', warning: null },
+      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 16 (RX2)', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 16 / RX2 (আলাদা পিন!)', warning: null },
       { sensorPin: 'পিন ৪: GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: DHT22 #২ এর GND → ESP32 এর GND (প্রথমটির সাথে শেয়ার করা যায়)', warning: null },
     ],
     extraNote: 'বড় শেডে দুই প্রান্তে দুটি সেন্সর লাগালে গড় তাপমাত্রা পাওয়া যায়।',
-    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 16) ↔ VCC (3.3V)',
+    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 16 / RX2) ↔ VCC (3.3V)',
     tips: ['শেডের এক প্রান্তে প্রথম এবং অপর প্রান্তে দ্বিতীয় সেন্সর লাগান'],
   },
   {
@@ -1022,7 +1022,7 @@ const detailedWiringGuide = [
     pins: [
       { sensorPin: 'VCC (4.2V পাওয়ার)', esp32Pin: 'পৃথক 4.2V 2A সাপ্লাই', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: SIM800L এর VCC → পৃথক 4.2V 2A পাওয়ার সাপ্লাই (ESP32 থেকে নয়!)', warning: '⚠️ ESP32 এর 3.3V বা VIN থেকে পাওয়ার দিবেন না! পৃথক পাওয়ার সোর্স লাগবে।' },
       { sensorPin: 'GND (গ্রাউন্ড)', esp32Pin: 'GND (কমন)', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: SIM800L এর GND → ESP32 এর GND ও পাওয়ার সাপ্লাই GND (তিনটা একসাথে)', warning: null },
-      { sensorPin: 'TXD (ট্রান্সমিট)', esp32Pin: 'GPIO 19 (RX)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: SIM800L এর TXD → ESP32 এর GPIO 19 — ক্রস কানেকশন!', warning: '⚠️ GPIO 16 ব্যবহার করবেন না — সেটি DHT22 #2 এর জন্য সংরক্ষিত!' },
+      { sensorPin: 'TXD (ট্রান্সমিট)', esp32Pin: 'GPIO 19 (RX)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: SIM800L এর TXD → ESP32 এর GPIO 19 — ক্রস কানেকশন!', warning: '⚠️ GPIO 16 (RX2) ব্যবহার করবেন না — সেটি DHT22 #2 এর জন্য সংরক্ষিত!' },
       { sensorPin: 'RXD (রিসিভ)', esp32Pin: 'GPIO 23 (TX)', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: SIM800L এর RXD → ESP32 এর GPIO 23 — ক্রস কানেকশন!', warning: '⚠️ GPIO 18 ব্যবহার করবেন না — সেটি Water Flow সেন্সরের জন্য সংরক্ষিত!' },
     ],
     extraNote: '⚠️ এই মডিউলের জন্য পৃথক 3.7V-4.2V 2A পাওয়ার সোর্স লাগবে (18650 ব্যাটারি + TP4056 চার্জার)। ESP32 থেকে পাওয়ার দিলে কাজ করবে না এবং ESP32 ক্ষতিগ্রস্ত হতে পারে!\n\n📌 GPIO ম্যাপিং আপডেট: SIM800L এখন GPIO 23 (TX) ও GPIO 19 (RX) ব্যবহার করে — GPIO 16/17 আর ব্যবহৃত হয় না কারণ সেগুলো যথাক্রমে DHT22 #2 এর জন্য সংরক্ষিত। Water Flow সেন্সর GPIO 18-তে স্থানান্তরিত।',
