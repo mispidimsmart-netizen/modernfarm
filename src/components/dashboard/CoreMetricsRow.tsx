@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Thermometer, Wind, Fan } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 
 export function CoreMetricsRow() {
   const { language } = useAuth();

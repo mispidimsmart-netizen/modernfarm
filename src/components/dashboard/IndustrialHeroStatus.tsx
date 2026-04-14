@@ -11,6 +11,7 @@ import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFarmType, getBroilerTempRangeByDays } from '@/hooks/useFarmType';
 import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 
 type StatusId = 'normal' | 'adjusting' | 'cooling' | 'emergency' | 'sensor_fail' | 'purge';
 

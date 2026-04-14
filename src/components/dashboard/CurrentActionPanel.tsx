@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Wind, Flame, Fan, Zap, ShieldCheck, Moon, Droplets, ArrowUpFromDot } from 'lucide-react';
+import { Wind, Flame, Fan, Zap, ShieldCheck, Moon, Droplets, ArrowUpFromDot, Hand } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ActionInfo {
