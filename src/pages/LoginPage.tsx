@@ -42,7 +42,7 @@ const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.
   </div>
 );
 
-const inputClass = "h-13 rounded-xl border-2 border-border bg-muted/10 pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
+const inputClass = "h-11 sm:h-13 rounded-xl border-2 border-border bg-muted/10 pl-11 sm:pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
 
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
