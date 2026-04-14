@@ -12,6 +12,7 @@ import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useFlockInfo } from '@/hooks/useFarmManagement';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
 type FarmHealthState = 'good' | 'hot' | 'cold' | 'danger';
 
