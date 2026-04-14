@@ -194,10 +194,11 @@ export function HardwareValidation({ onComplete, onSkip }: HardwareValidationPro
 
     // Phase 1: Test relays sequentially (0-50%)
     let relaysPassed = 0;
-    for (let i = 0; i < 4; i++) {
+    const relayCount = relayTests.length; // 8 relays
+    for (let i = 0; i < relayCount; i++) {
       const passed = await testSingleRelay(relayTests[i].key, i);
       if (passed) relaysPassed++;
-      setOverallProgress(((i + 1) / 4) * 50);
+      setOverallProgress(((i + 1) / relayCount) * 50);
     }
 
     // Phase 2: Sensor validation (50-75%)
@@ -216,7 +217,7 @@ export function HardwareValidation({ onComplete, onSkip }: HardwareValidationPro
     setOverallProgress(100);
 
     const sensorsPassed = [sensorResults.tempValid, sensorResults.humValid, sensorResults.nh3Valid].filter(Boolean).length;
-    const overallPassed = relaysPassed >= 3 && sensorsPassed >= 2; // At least 3/4 relays and 2/3 core sensors
+    const overallPassed = relaysPassed >= 6 && sensorsPassed >= 2; // At least 6/8 relays and 2/3 core sensors
 
     const results: ValidationResults = {
       relays: relayTests.reduce((acc, r) => ({
