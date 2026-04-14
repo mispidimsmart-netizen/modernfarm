@@ -271,12 +271,12 @@ export function Dashboard() {
                     {!isManualMode && <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />}
                     <SystemModeCard />
                   </div>
-                  <AutomationStatusCard />
+                  {!isManualMode && <AutomationStatusCard />}
                   
-                  {/* Broiler Specific */}
+                  {/* Broiler Specific - show in both modes (temp info is useful) */}
                   {isBroiler && (
                     <>
-                      <BroilerAgeAutoModeCard enabled={true} />
+                      {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
                       <BroilerTempStatusCard tempResult={broilerEnvResult ? {
                         currentTemp: broilerEnvResult.temperature.current,
                         targetMin: broilerEnvResult.temperature.targetMin,
@@ -295,7 +295,7 @@ export function Dashboard() {
                   )}
                   
                   {/* Layer Specific */}
-                  {isLayer && (
+                  {isLayer && !isManualMode && (
                     <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                   )}
                 </div>
