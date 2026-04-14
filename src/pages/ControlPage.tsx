@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Fan, Lightbulb, Bell, Flame, Wind, Droplets,
-  ShieldAlert, Timer,
+  ShieldAlert, Timer, CloudDrizzle, CircleDot,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
