@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Loader2, Wifi, WifiOff, QrCode, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Loader2, Wifi, WifiOff, QrCode, RotateCcw, Download } from 'lucide-react';
 import { HardwareValidation } from '@/components/setup/HardwareValidation';
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useFarmSetupStatus, useUpdateSetupStep, SETUP_STEPS } from '@/hooks/useFarmSetup';
