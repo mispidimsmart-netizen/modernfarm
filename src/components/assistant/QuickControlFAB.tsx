@@ -58,6 +58,8 @@ export function QuickControlFAB() {
   const { language } = useAuth();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { mutateAsync: sendCommand, isPending } = useSendDeviceCommand();
+  const { data: automationMode } = useAutomationMode();
+  const isManualMode = automationMode === 'MANUAL';
   const [isOpen, setIsOpen] = useState(false);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
