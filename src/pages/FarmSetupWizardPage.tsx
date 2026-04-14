@@ -249,10 +249,14 @@ function StepTestRelays({ onComplete }: { onComplete: () => void }) {
   const sendCommand = useSendDeviceCommand();
   const [tested, setTested] = useState<Record<string, boolean>>({});
   const relays = [
-    { key: 'fan', icon: '🌀', en: 'Exhaust Fan (Relay 1)', bn: 'এক্সহস্ট ফ্যান (রিলে ১)' },
-    { key: 'light', icon: '💡', en: 'Light / Circ Fan (Relay 2)', bn: 'লাইট / সার্কুলেশন ফ্যান (রিলে ২)' },
-    { key: 'alarm', icon: '🔔', en: 'Alarm / Heater (Relay 3)', bn: 'অ্যালার্ম / হিটার (রিলে ৩)' },
-    { key: 'fogger', icon: '💧', en: 'Fogger (Relay 4)', bn: 'ফগার (রিলে ৪)' },
+    { key: 'fan', icon: '🌀', en: 'Exhaust Fan (IN1 - GPIO 25)', bn: 'এক্সহস্ট ফ্যান (IN1 - GPIO 25)' },
+    { key: 'ceiling_fan', icon: '🔄', en: 'Ceiling Fan (IN2 - GPIO 26)', bn: 'সিলিং ফ্যান (IN2 - GPIO 26)' },
+    { key: 'light', icon: '💡', en: 'Light (IN3 - GPIO 27)', bn: 'লাইট (IN3 - GPIO 27)' },
+    { key: 'heater', icon: '🔥', en: 'Heater (IN4 - GPIO 14)', bn: 'হিটার (IN4 - GPIO 14)' },
+    { key: 'fogger', icon: '💧', en: 'Fogger (IN5 - GPIO 12)', bn: 'ফগার (IN5 - GPIO 12)' },
+    { key: 'alarm', icon: '🔔', en: 'Buzzer/Alarm (IN6 - GPIO 13)', bn: 'বাজার/অ্যালার্ম (IN6 - GPIO 13)' },
+    { key: 'sprinkler', icon: '🚿', en: 'Sprinkler (IN7 - GPIO 15)', bn: 'স্প্রিংকলার (IN7 - GPIO 15)' },
+    { key: 'circulation_fan', icon: '🌬️', en: 'Circulation Fan (IN8 - GPIO 33)', bn: 'সার্কুলেশন ফ্যান (IN8 - GPIO 33)' },
   ];
 
   const testRelay = async (key: string) => {
@@ -421,38 +425,42 @@ function StepSimulationTest({ onComplete }: { onComplete: () => void }) {
 
   const addLog = (msg: string) => setLog(prev => [...prev, msg]);
 
+  const devices = [
+    { key: 'fan', icon: '🌀', bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
+    { key: 'ceiling_fan', icon: '🔄', bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+    { key: 'light', icon: '💡', bn: 'লাইট', en: 'Light' },
+    { key: 'heater', icon: '🔥', bn: 'হিটার', en: 'Heater' },
+    { key: 'fogger', icon: '💧', bn: 'ফগার', en: 'Fogger' },
+    { key: 'alarm', icon: '🔔', bn: 'বাজার', en: 'Buzzer' },
+    { key: 'sprinkler', icon: '🚿', bn: 'স্প্রিংকলার', en: 'Sprinkler' },
+    { key: 'circulation_fan', icon: '🌬️', bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
+  ];
+
   const runSimulation = useCallback(async () => {
     setPhase('running');
     setProgress(0);
     setLog([]);
 
     try {
-      // Phase 1: Fan test (0-25%)
-      addLog(language === 'bn' ? '🌀 ফ্যান চালু করা হচ্ছে...' : '🌀 Starting fan...');
-      await sendCommand.mutateAsync({ commandType: 'fan', commandValue: true });
-      for (let i = 0; i <= 25; i += 5) { await new Promise(r => setTimeout(r, 600)); setProgress(i); }
-      await sendCommand.mutateAsync({ commandType: 'fan', commandValue: false });
-      addLog(language === 'bn' ? '✅ ফ্যান পরীক্ষা সফল' : '✅ Fan test passed');
+      for (let i = 0; i < devices.length; i++) {
+        const device = devices[i];
+        const label = language === 'bn' ? device.bn : device.en;
+        addLog(`${device.icon} ${label} ${language === 'bn' ? 'চালু হচ্ছে...' : 'starting...'}`);
+        await sendCommand.mutateAsync({ commandType: device.key as any, commandValue: true });
+        
+        const segmentSize = 100 / devices.length;
+        const startPct = i * segmentSize;
+        for (let p = 0; p <= segmentSize; p += segmentSize / 3) {
+          await new Promise(r => setTimeout(r, 500));
+          setProgress(Math.min(startPct + p, 100));
+        }
+        
+        await sendCommand.mutateAsync({ commandType: device.key as any, commandValue: false });
+        addLog(`✅ ${label} ${language === 'bn' ? 'পরীক্ষা সফল' : 'test passed'}`);
+      }
 
-      // Phase 2: Light test (25-50%)
-      addLog(language === 'bn' ? '💡 লাইট চালু করা হচ্ছে...' : '💡 Starting light...');
-      await sendCommand.mutateAsync({ commandType: 'light', commandValue: true });
-      for (let i = 25; i <= 50; i += 5) { await new Promise(r => setTimeout(r, 600)); setProgress(i); }
-      await sendCommand.mutateAsync({ commandType: 'light', commandValue: false });
-      addLog(language === 'bn' ? '✅ লাইট পরীক্ষা সফল' : '✅ Light test passed');
-
-      // Phase 3: Alarm test (50-75%)
-      addLog(language === 'bn' ? '🔔 অ্যালার্ম পরীক্ষা...' : '🔔 Testing alarm...');
-      await sendCommand.mutateAsync({ commandType: 'alarm', commandValue: true });
-      for (let i = 50; i <= 75; i += 5) { await new Promise(r => setTimeout(r, 600)); setProgress(i); }
-      await sendCommand.mutateAsync({ commandType: 'alarm', commandValue: false });
-      addLog(language === 'bn' ? '✅ অ্যালার্ম পরীক্ষা সফল' : '✅ Alarm test passed');
-
-      // Phase 4: Full cycle (75-100%)
-      addLog(language === 'bn' ? '🔄 সম্পূর্ণ সিমুলেশন চলছে...' : '🔄 Running full simulation...');
-      for (let i = 75; i <= 100; i += 5) { await new Promise(r => setTimeout(r, 600)); setProgress(i); }
-      addLog(language === 'bn' ? '🎉 সিমুলেশন সম্পন্ন!' : '🎉 Simulation complete!');
-
+      addLog(language === 'bn' ? '🎉 সিমুলেশন সম্পন্ন! ৮টি ডিভাইস পরীক্ষিত।' : '🎉 Simulation complete! 8 devices tested.');
+      setProgress(100);
       setPhase('done');
     } catch (err) {
       addLog(language === 'bn' ? '❌ সিমুলেশন ব্যর্থ' : '❌ Simulation failed');
@@ -467,8 +475,8 @@ function StepSimulationTest({ onComplete }: { onComplete: () => void }) {
           <span className="text-5xl">🧪</span>
           <p className="mt-3 text-sm text-muted-foreground">
             {language === 'bn' 
-              ? '২ মিনিটের সিমুলেশন টেস্ট — প্রতিটি ডিভাইস পর্যায়ক্রমে চালু/বন্ধ হবে'
-              : '2-minute simulation — each device will turn ON/OFF sequentially'}
+              ? '৮-চ্যানেল সিমুলেশন টেস্ট — প্রতিটি ডিভাইস পর্যায়ক্রমে চালু/বন্ধ হবে'
+              : '8-channel simulation — each device will turn ON/OFF sequentially'}
           </p>
           <Button onClick={runSimulation} className="mt-4 h-12 text-base rounded-xl">
             {language === 'bn' ? '▶️ সিমুলেশন শুরু করুন' : '▶️ Start Simulation'}
@@ -479,7 +487,7 @@ function StepSimulationTest({ onComplete }: { onComplete: () => void }) {
       {(phase === 'running' || phase === 'done' || phase === 'failed') && (
         <>
           <Progress value={progress} className="h-3 rounded-full" />
-          <div className="rounded-xl bg-muted/30 border border-border p-3 max-h-40 overflow-y-auto">
+          <div className="rounded-xl bg-muted/30 border border-border p-3 max-h-48 overflow-y-auto">
             {log.map((entry, i) => (
               <p key={i} className="text-xs font-mono text-muted-foreground">{entry}</p>
             ))}
