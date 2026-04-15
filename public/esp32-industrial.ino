@@ -138,9 +138,9 @@ const char* FIRMWARE_VERSION = "8.0.0";
 #define OTA_STABLE_TEMP_MIN      18.0f     // Must be above this
 #define OTA_STABLE_TEMP_MAX      36.0f     // Must be below this
 
-// --- Manual Override Safety Band ---
-#define OVERRIDE_SAFE_TEMP_MIN   26.0f     // Cannot let temp drop below (birds die)
-#define OVERRIDE_SAFE_TEMP_MAX   35.0f     // Cannot let temp rise above (birds die)
+// --- Legacy Manual Override Safety Band (disabled in full manual mode) ---
+#define OVERRIDE_SAFE_TEMP_MIN   26.0f
+#define OVERRIDE_SAFE_TEMP_MAX   35.0f
 
 // --- Sensor Sanity ---
 #define TEMP_SANITY_MIN      0.0f
@@ -2713,36 +2713,15 @@ void checkCommands() {
         bool value = cmd["command_value"] | false;
         String id = cmd["id"] | "";
         
-        // ═══════════════════════════════════════════════════════════
-        // MANUAL OVERRIDE SAFETY BAND ENFORCEMENT
-        // Manual heater ON rejected if temp >= OVERRIDE_SAFE_TEMP_MAX
-        // Manual fan OFF rejected if temp >= OVERRIDE_SAFE_TEMP_MAX
-        // This prevents human error from killing birds.
-        // ═══════════════════════════════════════════════════════════
-        float safetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
-        float safetyTempMin = dht2Available ? worstCaseMinTemp : temperature;
-        
         // ═══ All manual commands set bypass flag ═══
         manualCommandPending = true;
         
         if (type == "exhaust_fan" || type == "fan") {
-          // Block fan OFF if temp is in danger zone
-          if (!value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
-            Serial.printf("⛔ MANUAL FAN OFF REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
-            manualCommandPending = false;
-          } else {
-            fanManualOverride = true; fanManualTime = millis();
-            requestFan(value, value ? "HIGH" : "OFF");
-          }
+          fanManualOverride = true; fanManualTime = millis();
+          requestFan(value, value ? "HIGH" : "OFF");
         } else if (type == "heater") {
-          // Block heater ON if temp is already at/above safety max
-          if (value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
-            Serial.printf("⛔ MANUAL HEATER ON REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
-            manualCommandPending = false;
-          } else {
-            heaterManualOverride = true; heaterManualTime = millis();
-            requestHeater(value);
-          }
+          heaterManualOverride = true; heaterManualTime = millis();
+          requestHeater(value);
         } else if (type == "light") {
           lightSchedule.manualOverride = true;
           lightManualOverrideTime = millis();
@@ -2760,14 +2739,8 @@ void checkCommands() {
         } else if (type == "alarm") {
           requestAlarm(value);
         } else if (type == "fogger") {
-          // Block fogger OFF if temp is in danger zone
-          if (!value && safetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
-            Serial.printf("⛔ MANUAL FOGGER OFF REJECTED: temp %.1f°C >= %.1f°C safety max\n", safetyTemp, OVERRIDE_SAFE_TEMP_MAX);
-            manualCommandPending = false;
-          } else {
-            foggerManualOverride = true; foggerManualTime = millis();
-            requestFogger(value);
-          }
+          foggerManualOverride = true; foggerManualTime = millis();
+          requestFogger(value);
         } else if (type == "circulation_fan") {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
@@ -2778,11 +2751,11 @@ void checkCommands() {
           sprinklerManualOverride = true; sprinklerManualTime = millis();
           requestSprinkler(value);
         } else if (type == "stop_automation") {
-          // Always allow manual override — safety arbiter will still protect life-critical invariants
+          // Full manual mode: disable automation + safety arbiter entirely until AUTO resumes
           localManualOverride = value;
           manualCommandPending = false;
           if (value) {
-            Serial.println("✅ MANUAL OVERRIDE ACTIVATED (safety arbiter remains active for life-critical protection)");
+            Serial.println("✅ MANUAL OVERRIDE ACTIVATED (full manual control enabled)");
           } else {
             fanManualOverride = false; fanManualTime = 0;
             heaterManualOverride = false; heaterManualTime = 0;
@@ -3817,13 +3790,14 @@ void loop() {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // SAFETY ARBITER: Runs every 500ms INDEPENDENTLY of automation.
-  // Directly writes to GPIO pins. Cannot be blocked by any mode,
-  // override, OTA, or timer. This is the FIRST and LAST thing
-  // that runs each loop iteration.
+  // SAFETY ARBITER: Runs every 500ms in AUTO mode only.
+  // In full MANUAL mode, arbiter is intentionally skipped so
+  // relays stay exactly as the operator commands.
   // ═══════════════════════════════════════════════════════════════
-  safetyEngine.arbiterTick(temperature, humidity, ammonia, 
-    !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+  if (!localManualOverride) {
+    safetyEngine.arbiterTick(temperature, humidity, ammonia, 
+      !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+  }
 
   // --- Sensor Manager (read all sensors, filter, validate) ---
   if (intervalPassed(now, lastSensorRead, SENSOR_READ_INTERVAL)) {
@@ -3841,9 +3815,11 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (catch any unsafe relay states) ---
-  safetyEngine.arbiterTick(temperature, humidity, ammonia,
-    !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+  // --- Safety Arbiter AGAIN after all processing (AUTO mode only) ---
+  if (!localManualOverride) {
+    safetyEngine.arbiterTick(temperature, humidity, ammonia,
+      !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
+  }
 
   // --- Relay Manager (single hardware write point) ---
   relayManagerApply();
@@ -3923,14 +3899,18 @@ void loop() {
   if (btnPressed && !btnWasPressed) { btnPressStart = now; btnWasPressed = true; }
   if (!btnPressed && btnWasPressed) { btnWasPressed = false; }
   if (btnPressed && btnWasPressed && safeElapsed(now, btnPressStart) >= 3000) {
-    // Block manual override toggle if environment is unsafe
-    float safetyTemp = dht2Available ? worstCaseMaxTemp : temperature;
-    if (!localManualOverride || (safetyTemp < OVERRIDE_SAFE_TEMP_MAX && safetyTemp > OVERRIDE_SAFE_TEMP_MIN)) {
-      localManualOverride = !localManualOverride;
-      Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
-    } else {
-      Serial.printf("⛔ Manual Override toggle BLOCKED: temp %.1f°C outside safety band\n", safetyTemp);
+    localManualOverride = !localManualOverride;
+    if (!localManualOverride) {
+      fanManualOverride = false; fanManualTime = 0;
+      heaterManualOverride = false; heaterManualTime = 0;
+      foggerManualOverride = false; foggerManualTime = 0;
+      circulationFanManualOverride = false; circulationFanManualTime = 0;
+      ceilingFanManualOverride = false; ceilingFanManualTime = 0;
+      sprinklerManualOverride = false; sprinklerManualTime = 0;
+      lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+      fadeInProgress = false;
     }
+    Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
     btnWasPressed = false;
   }
 
