@@ -1576,21 +1576,31 @@ void loadBroilerRules() {
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
 void automationEngineTick() {
-  // ═══════════════════════════════════════════════════════════════
-  // INV-4: Manual override CANNOT skip safety evaluation.
-  // Safety arbiter runs independently (in loop()), but automation
-  // engine must still evaluate safety bands during manual override.
-  // Only NORMAL automation logic is skipped, not safety checks.
-  // ═══════════════════════════════════════════════════════════════
   if (stabilizingMode) return;
-  
-  // If safety arbiter is forcing actions, apply them regardless of override
+
+  // ═══════════════════════════════════════════════════════════════
+  // MANUAL MODE = সম্পূর্ণ ম্যানুয়াল
+  // When localManualOverride is active, ALL automation and ALL
+  // safety overrides (INV-1 to INV-8) are DISABLED.
+  // User has full control — no automatic relay changes at all.
+  // ═══════════════════════════════════════════════════════════════
+  if (localManualOverride) {
+    // Only expire manual overrides, do NOT run any automation or safety
+    if (fanManualOverride && fanManualTime > 0 && (millis() - fanManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
+      fanManualOverride = false; fanManualTime = 0;
+      Serial.println("⏱️ Fan manual override EXPIRED");
+    }
+    if (heaterManualOverride && heaterManualTime > 0 && (millis() - heaterManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
+      heaterManualOverride = false; heaterManualTime = 0;
+      Serial.println("⏱️ Heater manual override EXPIRED");
+    }
+    return;  // সম্পূর্ণ ম্যানুয়াল — কোনো অটোমেশন বা সেফটি ওভাররাইড নেই
+  }
+
+  // AUTO mode: safety arbiter runs normally
   if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
   if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
   if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
-  
-  // Manual override skips AUTOMATION only, not safety
-  if (localManualOverride && !safetyEngine.lastResult.safetyActive) return;
 
   // Emergency Survival overrides everything
   if (emergencySurvivalMode) {
@@ -1639,30 +1649,6 @@ void automationEngineTick() {
   evaluateHysteresisChannel(hystFogger, fanSafetyTemp, false);
   evaluateHysteresisChannel(hystAlarm, fanSafetyTemp, false);
 
-  // ═══════════════════════════════════════════════════════════════
-  // MANUAL OVERRIDE SAFETY BAND ENFORCEMENT (continuous check):
-  // Even if manual override is active, force safety actions if
-  // temperature leaves the bio-safe band [26°C - 35°C].
-  // ═══════════════════════════════════════════════════════════════
-  if (localManualOverride || fanManualOverride || heaterManualOverride) {
-    if (fanSafetyTemp >= OVERRIDE_SAFE_TEMP_MAX) {
-      // Override band breached high: force fan ON, heater OFF
-      requestFan(true, "HIGH");
-      requestHeater(false);
-      heaterManualOverride = false;
-      Serial.printf("⛔ OVERRIDE SAFETY: Temp %.1f°C >= %.1f°C max — forcing fan ON, heater OFF\n",
-        fanSafetyTemp, OVERRIDE_SAFE_TEMP_MAX);
-    }
-    if (heaterSafetyTemp <= OVERRIDE_SAFE_TEMP_MIN && isBroiler()) {
-      // Override band breached low: force heater ON (broiler chicks)
-      if (safetyEngine.isHeaterAllowed() && !safetyEngine.isHeaterLocked()) {
-        requestHeater(true);
-        Serial.printf("⛔ OVERRIDE SAFETY: Temp %.1f°C <= %.1f°C min — forcing heater ON\n",
-          heaterSafetyTemp, OVERRIDE_SAFE_TEMP_MIN);
-      }
-    }
-  }
-
   // Run control logic based on state
   runControlLogic();
 
@@ -1707,13 +1693,11 @@ void runControlLogic() {
   // This ensures timing protection (60s min ON/OFF) prevents relay chattering.
   switch (currentState) {
     case STATE_EMERGENCY:
-      // EMERGENCY always overrides manual — life safety
       requestFan(true, "HIGH");
       requestAlarm(true);
       gsmQueueAlert("temperature", "🚨 EMERGENCY! Temp=" + String(temperature,1) + "°C HSI=" + String(currentHSI,1));
       break;
     case STATE_DANGER:
-      // DANGER always overrides manual — life safety
       requestFan(true, "HIGH");
       requestAlarm(hystAlarm.activeStageLevel > 0 || (ammonia > rules.ammoniaAlarm && nh3VentilationConfirmed));
       break;
