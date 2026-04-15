@@ -34,15 +34,21 @@ async function applyHSIAutomation(
   shedId?: string | null
 ): Promise<void> {
   try {
-    // Check if HSI automation is enabled and not in manual override
+    // Check if HSI automation is enabled, automation_mode is AUTO, and not in manual override
     const { data: settings } = await supabase
       .from('farm_settings')
-      .select('hsi_automation_enabled')
+      .select('hsi_automation_enabled, automation_mode')
       .eq('user_id', userId)
       .single();
     
     if (!settings?.hsi_automation_enabled) {
       console.log('HSI automation disabled, skipping');
+      return;
+    }
+
+    // ★ CHECK automation_mode — skip if MANUAL
+    if (settings.automation_mode === 'MANUAL') {
+      console.log(`⏸️ [HSI] MANUAL mode active for user ${userId}, skipping HSI automation`);
       return;
     }
     
