@@ -186,6 +186,45 @@ export function useUpdateBatch() {
   });
 }
 
+// Delete batch (cascades to weights, feed, mortality, sales via FK or manual cleanup)
+export function useDeleteBatch() {
+  const queryClient = useQueryClient();
+  const { language } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete child records first (no cascade in schema)
+      await supabase.from('broiler_weights').delete().eq('batch_id', id);
+      await supabase.from('broiler_feed').delete().eq('batch_id', id);
+      await supabase.from('broiler_mortality').delete().eq('batch_id', id);
+      await supabase.from('broiler_sales').delete().eq('batch_id', id);
+
+      const { error } = await supabase
+        .from('broiler_batches')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      toast({
+        title: language === 'bn' ? 'মুছে ফেলা হয়েছে' : 'Deleted',
+        description: language === 'bn' ? 'ব্যাচ মুছে ফেলা হয়েছে' : 'Batch deleted',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 // Fetch weights for a batch
 export function useBatchWeights(batchId: string | undefined) {
   return useQuery({
