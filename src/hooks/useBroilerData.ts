@@ -209,16 +209,20 @@ export function useBatchWeights(batchId: string | undefined) {
 export function useAddWeight() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId, farms } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (weight: Partial<BroilerWeight>) => {
       if (!user) throw new Error('Not authenticated');
+      const farmId = selectedFarmId || farms[0]?.id;
+      if (!farmId) throw new Error('No farm available.');
 
       const { data, error } = await supabase
         .from('broiler_weights')
         .insert({
           user_id: user.id,
+          farm_id: farmId,
           batch_id: weight.batch_id!,
           record_date: weight.record_date || new Date().toISOString().split('T')[0],
           sample_count: weight.sample_count || 10,
