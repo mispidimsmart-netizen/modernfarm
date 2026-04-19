@@ -278,16 +278,20 @@ export function useBatchFeed(batchId: string | undefined) {
 export function useAddFeed() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId, farms } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (feed: Partial<BroilerFeed>) => {
       if (!user) throw new Error('Not authenticated');
+      const farmId = selectedFarmId || farms[0]?.id;
+      if (!farmId) throw new Error('No farm available.');
 
       const { data, error } = await supabase
         .from('broiler_feed')
         .insert({
           user_id: user.id,
+          farm_id: farmId,
           batch_id: feed.batch_id!,
           feed_date: feed.feed_date || new Date().toISOString().split('T')[0],
           feed_type: feed.feed_type || 'starter',
