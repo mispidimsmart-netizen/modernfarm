@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
 import { calculateFCR, evaluateFCR, getBroilerTargetWeight } from './useFarmType';
 
@@ -99,16 +100,20 @@ export function useBroilerBatches() {
 export function useCreateBatch() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId, farms } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (batch: Partial<BroilerBatch>) => {
       if (!user) throw new Error('Not authenticated');
+      const farmId = selectedFarmId || farms[0]?.id;
+      if (!farmId) throw new Error('No farm available. Please create a farm first.');
 
       const { data, error } = await supabase
         .from('broiler_batches')
         .insert({
           user_id: user.id,
+          farm_id: farmId,
           batch_name: batch.batch_name || 'Batch 1',
           batch_name_bn: batch.batch_name_bn || 'ব্যাচ ১',
           shed_id: batch.shed_id || null,
@@ -204,16 +209,20 @@ export function useBatchWeights(batchId: string | undefined) {
 export function useAddWeight() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId, farms } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (weight: Partial<BroilerWeight>) => {
       if (!user) throw new Error('Not authenticated');
+      const farmId = selectedFarmId || farms[0]?.id;
+      if (!farmId) throw new Error('No farm available.');
 
       const { data, error } = await supabase
         .from('broiler_weights')
         .insert({
           user_id: user.id,
+          farm_id: farmId,
           batch_id: weight.batch_id!,
           record_date: weight.record_date || new Date().toISOString().split('T')[0],
           sample_count: weight.sample_count || 10,
@@ -269,16 +278,20 @@ export function useBatchFeed(batchId: string | undefined) {
 export function useAddFeed() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId, farms } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (feed: Partial<BroilerFeed>) => {
       if (!user) throw new Error('Not authenticated');
+      const farmId = selectedFarmId || farms[0]?.id;
+      if (!farmId) throw new Error('No farm available.');
 
       const { data, error } = await supabase
         .from('broiler_feed')
         .insert({
           user_id: user.id,
+          farm_id: farmId,
           batch_id: feed.batch_id!,
           feed_date: feed.feed_date || new Date().toISOString().split('T')[0],
           feed_type: feed.feed_type || 'starter',
