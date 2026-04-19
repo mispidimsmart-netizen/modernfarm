@@ -100,16 +100,20 @@ export function useBroilerBatches() {
 export function useCreateBatch() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId, farms } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (batch: Partial<BroilerBatch>) => {
       if (!user) throw new Error('Not authenticated');
+      const farmId = selectedFarmId || farms[0]?.id;
+      if (!farmId) throw new Error('No farm available. Please create a farm first.');
 
       const { data, error } = await supabase
         .from('broiler_batches')
         .insert({
           user_id: user.id,
+          farm_id: farmId,
           batch_name: batch.batch_name || 'Batch 1',
           batch_name_bn: batch.batch_name_bn || 'ব্যাচ ১',
           shed_id: batch.shed_id || null,
