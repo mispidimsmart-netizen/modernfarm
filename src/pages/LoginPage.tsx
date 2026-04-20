@@ -574,6 +574,7 @@ export function LoginPage() {
 
         <Footer />
       </motion.div>
+      </div>
     </div>
   );
 }
