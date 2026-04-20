@@ -408,6 +408,7 @@ export function LoginPage() {
             <Footer />
           </div>
         </motion.div>
+        </div>
       </div>
     );
   }
@@ -416,7 +417,8 @@ export function LoginPage() {
   // SIGNUP VIEW
   // ═══════════════════════════════════════════
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-background">
+    <div className="relative min-h-[100dvh] bg-gradient-to-br from-primary/5 via-background to-secondary/5 sm:flex sm:items-center sm:justify-center sm:p-6">
+      <div className="relative flex min-h-[100dvh] flex-col bg-background sm:min-h-0 sm:max-h-[95vh] sm:w-full sm:max-w-md sm:overflow-y-auto sm:rounded-3xl sm:shadow-2xl sm:shadow-primary/20 sm:border sm:border-border/50">
       <Header />
       <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
