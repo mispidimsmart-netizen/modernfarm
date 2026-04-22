@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
 
 const EXPORT_OPTIONS = [
   { value: 'all', labelBn: 'সব ডেটা', labelEn: 'All Data' },
@@ -137,6 +138,9 @@ export function ReportsDataTab() {
             : 'Reports help track farm performance'}
         </p>
       </div>
+
+      {/* NEW: Sensor ↔ Device ↔ Impact correlation + full Excel export */}
+      <SensorDeviceImpactReport />
 
       {/* Notification Settings */}
       <Card>
