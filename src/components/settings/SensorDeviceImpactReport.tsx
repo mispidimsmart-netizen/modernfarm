@@ -1,12 +1,20 @@
 import { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar,
+} from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Activity, FileSpreadsheet, Loader2, Thermometer, Droplet, Wind, Power } from 'lucide-react';
+import {
+  Activity, FileSpreadsheet, Loader2, Thermometer, Droplet, Wind, Power,
+  LineChart as LineChartIcon, BarChart3,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,25 +22,28 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 
 type Hours = 6 | 12 | 24 | 72 | 168;
+type SensorKey = 'temperature' | 'humidity' | 'ammonia' | 'water_usage';
+type DeviceKey = 'fan' | 'heater' | 'fogger' | 'sprinkler' | 'ceiling_fan' | 'light' | 'alarm';
 
-interface CorrelatedRow {
-  time: string;
-  temperature: number;
-  humidity: number;
-  ammonia: number;
-  water_usage: number;
-  fan: string;
-  heater: string;
-  fogger: string;
-  sprinkler: string;
-  ceiling_fan: string;
-  light: string;
-  alarm: string;
-  hsi: number;
-  status: string;
-  status_bn: string;
-  reason_bn: string;
-}
+const SENSOR_META: Record<SensorKey, { bn: string; en: string; color: string; unit: string }> = {
+  temperature: { bn: 'তাপমাত্রা', en: 'Temperature', color: 'hsl(var(--sensor-temperature, 14 90% 55%))', unit: '°C' },
+  humidity:    { bn: 'আর্দ্রতা',   en: 'Humidity',    color: 'hsl(var(--sensor-humidity, 200 80% 55%))',     unit: '%' },
+  ammonia:     { bn: 'অ্যামোনিয়া', en: 'Ammonia',     color: 'hsl(var(--sensor-ammonia, 280 70% 60%))',      unit: 'ppm' },
+  water_usage: { bn: 'পানি',       en: 'Water',       color: 'hsl(var(--sensor-water, 190 80% 50%))',        unit: 'L' },
+};
+
+const DEVICE_META: Record<DeviceKey, { bn: string; en: string; color: string }> = {
+  fan:          { bn: 'ফ্যান',       en: 'Fan',         color: 'hsl(200 80% 55%)' },
+  heater:       { bn: 'হিটার',       en: 'Heater',      color: 'hsl(14 90% 55%)' },
+  fogger:       { bn: 'ফগার',        en: 'Fogger',      color: 'hsl(190 75% 50%)' },
+  sprinkler:    { bn: 'স্প্রিংকলার', en: 'Sprinkler',   color: 'hsl(160 70% 45%)' },
+  ceiling_fan:  { bn: 'সিলিং ফ্যান',  en: 'Ceiling Fan', color: 'hsl(220 70% 60%)' },
+  light:        { bn: 'লাইট',         en: 'Light',       color: 'hsl(45 95% 55%)' },
+  alarm:        { bn: 'অ্যালার্ম',     en: 'Alarm',       color: 'hsl(0 80% 55%)' },
+};
+
+const ALL_SENSORS: SensorKey[] = ['temperature', 'humidity', 'ammonia', 'water_usage'];
+const ALL_DEVICES: DeviceKey[] = ['fan', 'heater', 'fogger', 'sprinkler', 'ceiling_fan', 'light', 'alarm'];
 
 function statusFromSensors(t: number, h: number, nh3: number, hsi: number) {
   if (nh3 > 25 || t > 35 || hsi > 85) return { en: 'CRITICAL', bn: 'জরুরি', reason: 'উচ্চ তাপ/অ্যামোনিয়া/HSI' };
@@ -48,8 +59,21 @@ export function SensorDeviceImpactReport() {
   const { toast } = useToast();
   const [hours, setHours] = useState<Hours>(24);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedSensors, setSelectedSensors] = useState<Set<SensorKey>>(new Set(ALL_SENSORS));
+  const [selectedDevices, setSelectedDevices] = useState<Set<DeviceKey>>(new Set(ALL_DEVICES));
 
   const since = useMemo(() => new Date(Date.now() - hours * 3600000).toISOString(), [hours]);
+
+  const toggleSensor = (k: SensorKey) => {
+    const next = new Set(selectedSensors);
+    next.has(k) ? next.delete(k) : next.add(k);
+    setSelectedSensors(next);
+  };
+  const toggleDevice = (k: DeviceKey) => {
+    const next = new Set(selectedDevices);
+    next.has(k) ? next.delete(k) : next.add(k);
+    setSelectedDevices(next);
+  };
 
   // Sensor readings
   const { data: sensors = [], isLoading: loadingSensors } = useQuery({
@@ -91,22 +115,8 @@ export function SensorDeviceImpactReport() {
     enabled: !!user,
   });
 
-  // Current device snapshot for "is it running now" mapping
-  const { data: deviceStatus } = useQuery({
-    queryKey: ['impact-device-status', user?.id, selectedFarmId],
-    queryFn: async () => {
-      if (!user) return null;
-      let q = supabase.from('device_status').select('*').eq('user_id', user.id);
-      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
-      const { data, error } = await q.order('updated_at', { ascending: false }).limit(1).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  // Build correlated rows: for each sensor reading, find devices "ON" at that time
-  const correlated = useMemo<CorrelatedRow[]>(() => {
+  // Build correlated rows
+  const correlated = useMemo(() => {
     return sensors.map((s) => {
       const t = Number(s.temperature) || 0;
       const h = Number(s.humidity) || 0;
@@ -114,16 +124,13 @@ export function SensorDeviceImpactReport() {
       const water = Number(s.water_usage) || 0;
       const sensorTime = new Date(s.recorded_at).getTime();
 
-      // Find most recent ON command for each device before this sensor moment
       const deviceState: Record<string, boolean> = {};
-      const order = ['fan', 'heater', 'fogger', 'sprinkler', 'ceiling_fan', 'light', 'alarm'];
-      order.forEach((d) => (deviceState[d] = false));
+      ALL_DEVICES.forEach((d) => (deviceState[d] = false));
 
       for (const log of deviceLogs) {
         const ts = new Date(log.sent_at || log.created_at).getTime();
         if (ts > sensorTime) continue;
-        if (order.includes(log.command_type) && deviceState[log.command_type] === false) {
-          // Use latest known state (logs sorted DESC, so first match wins)
+        if (ALL_DEVICES.includes(log.command_type as DeviceKey) && deviceState[log.command_type] === false) {
           deviceState[log.command_type] = !!log.command_value;
         }
       }
@@ -133,11 +140,15 @@ export function SensorDeviceImpactReport() {
       const onOff = (b: boolean) => (b ? (language === 'bn' ? 'চালু' : 'ON') : (language === 'bn' ? 'বন্ধ' : 'OFF'));
 
       return {
+        ts: sensorTime,
         time: new Date(s.recorded_at).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US'),
+        timeShort: new Date(s.recorded_at).toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' }),
         temperature: t,
         humidity: h,
         ammonia: nh3,
         water_usage: water,
+        hsi,
+        deviceState,
         fan: onOff(deviceState.fan),
         heater: onOff(deviceState.heater),
         fogger: onOff(deviceState.fogger),
@@ -145,7 +156,6 @@ export function SensorDeviceImpactReport() {
         ceiling_fan: onOff(deviceState.ceiling_fan),
         light: onOff(deviceState.light),
         alarm: onOff(deviceState.alarm),
-        hsi,
         status: st.en,
         status_bn: st.bn,
         reason_bn: st.reason,
@@ -153,7 +163,10 @@ export function SensorDeviceImpactReport() {
     });
   }, [sensors, deviceLogs, language]);
 
-  // Device runtime totals (rough estimate from command log)
+  // Chart data: chronological order (oldest first)
+  const chartData = useMemo(() => [...correlated].reverse(), [correlated]);
+
+  // Device runtime totals from log
   const runtime = useMemo(() => {
     const totals: Record<string, number> = {};
     const lastOn: Record<string, number> = {};
@@ -170,22 +183,24 @@ export function SensorDeviceImpactReport() {
         delete lastOn[k];
       }
     }
-    // Devices still ON until now
     Object.keys(lastOn).forEach((k) => {
       totals[k] = (totals[k] || 0) + (Date.now() - lastOn[k]);
     });
-    return Object.entries(totals).map(([device, ms]) => ({
-      device,
-      minutes: Math.round(ms / 60000),
-    }));
-  }, [deviceLogs]);
+    return ALL_DEVICES
+      .filter((d) => selectedDevices.has(d))
+      .map((d) => ({
+        device: d,
+        label: language === 'bn' ? DEVICE_META[d].bn : DEVICE_META[d].en,
+        minutes: Math.round((totals[d] || 0) / 60000),
+        color: DEVICE_META[d].color,
+      }));
+  }, [deviceLogs, selectedDevices, language]);
 
   const handleExportExcel = async () => {
     setIsExporting(true);
     try {
       if (!user) throw new Error('Not authenticated');
 
-      // Fetch farm data in parallel
       const farmFilter = (q: any) => (selectedFarmId ? q.eq('farm_id', selectedFarmId) : q);
 
       const [eggsRes, feedRes, mortalityRes, expensesRes, incomeRes, batchesRes, weightsRes, broilerFeedRes, alertsRes, summaryRes] =
@@ -204,39 +219,38 @@ export function SensorDeviceImpactReport() {
 
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Sensor ↔ Device ↔ Impact (main correlation)
+      // Sheet 1: Sensor ↔ Device ↔ Impact (only selected sensors + devices)
+      const sensorLabel = (k: SensorKey) =>
+        `${language === 'bn' ? SENSOR_META[k].bn : SENSOR_META[k].en} (${SENSOR_META[k].unit})`;
+      const deviceLabel = (k: DeviceKey) => (language === 'bn' ? DEVICE_META[k].bn : DEVICE_META[k].en);
+
       const corrSheet = XLSX.utils.json_to_sheet(
-        correlated.map((r) => ({
-          'সময়': r.time,
-          'তাপমাত্রা (°C)': r.temperature,
-          'আর্দ্রতা (%)': r.humidity,
-          'অ্যামোনিয়া (ppm)': r.ammonia,
-          'পানি (L)': r.water_usage,
-          'HSI': r.hsi,
-          'ফ্যান': r.fan,
-          'হিটার': r.heater,
-          'ফগার': r.fogger,
-          'স্প্রিংকলার': r.sprinkler,
-          'সিলিং ফ্যান': r.ceiling_fan,
-          'লাইট': r.light,
-          'অ্যালার্ম': r.alarm,
-          'অবস্থা': r.status_bn,
-          'প্রভাব / কারণ': r.reason_bn,
-        }))
+        correlated.map((r) => {
+          const row: Record<string, any> = { [language === 'bn' ? 'সময়' : 'Time']: r.time };
+          ALL_SENSORS.forEach((k) => {
+            if (selectedSensors.has(k)) row[sensorLabel(k)] = r[k];
+          });
+          row['HSI'] = r.hsi;
+          ALL_DEVICES.forEach((k) => {
+            if (selectedDevices.has(k)) row[deviceLabel(k)] = r[k];
+          });
+          row[language === 'bn' ? 'অবস্থা' : 'Status'] = r.status_bn;
+          row[language === 'bn' ? 'প্রভাব / কারণ' : 'Impact / Reason'] = r.reason_bn;
+          return row;
+        })
       );
       XLSX.utils.book_append_sheet(wb, corrSheet, 'Sensor-Device-Impact');
 
-      // Sheet 2: Device runtime totals
+      // Sheet 2: Device runtime totals (only selected)
       const runtimeSheet = XLSX.utils.json_to_sheet(
         runtime.map((r) => ({
-          'ডিভাইস': r.device,
-          'মোট রানটাইম (মিনিট)': r.minutes,
-          'মোট রানটাইম (ঘণ্টা)': (r.minutes / 60).toFixed(2),
+          [language === 'bn' ? 'ডিভাইস' : 'Device']: r.label,
+          [language === 'bn' ? 'মোট রানটাইম (মিনিট)' : 'Total runtime (min)']: r.minutes,
+          [language === 'bn' ? 'মোট রানটাইম (ঘণ্টা)' : 'Total runtime (hr)']: (r.minutes / 60).toFixed(2),
         }))
       );
       XLSX.utils.book_append_sheet(wb, runtimeSheet, 'Device Runtime');
 
-      // Helper to add sheet from query result
       const addSheet = (name: string, rows: any[]) => {
         if (!rows || rows.length === 0) {
           XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['কোনো ডেটা নেই']]), name);
@@ -258,11 +272,13 @@ export function SensorDeviceImpactReport() {
 
       const farmName = currentFarm?.name_en || 'Farm';
       const ts = new Date().toISOString().split('T')[0];
-      XLSX.writeFile(wb, `${farmName}_full_report_${ts}.xlsx`);
+      XLSX.writeFile(wb, `${farmName}_filtered_report_${ts}.xlsx`);
 
       toast({
         title: language === 'bn' ? '✅ Excel ডাউনলোড সফল' : '✅ Excel downloaded',
-        description: language === 'bn' ? 'সব শীট সহ রিপোর্ট তৈরি হয়েছে' : 'Multi-sheet report generated',
+        description: language === 'bn'
+          ? `${selectedSensors.size} সেন্সর ও ${selectedDevices.size} ডিভাইস সহ`
+          : `With ${selectedSensors.size} sensors and ${selectedDevices.size} devices`,
       });
     } catch (e: any) {
       console.error(e);
@@ -275,6 +291,8 @@ export function SensorDeviceImpactReport() {
       setIsExporting(false);
     }
   };
+
+  const visibleSensors = ALL_SENSORS.filter((s) => selectedSensors.has(s));
 
   return (
     <div className="space-y-4">
@@ -291,6 +309,7 @@ export function SensorDeviceImpactReport() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Time range + export */}
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1 min-w-[160px]">
               <Label className="text-xs">{language === 'bn' ? 'সময়সীমা' : 'Time range'}</Label>
@@ -307,22 +326,195 @@ export function SensorDeviceImpactReport() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleExportExcel} disabled={isExporting} className="gap-2 h-10">
+            <Button
+              onClick={handleExportExcel}
+              disabled={isExporting || (selectedSensors.size === 0 && selectedDevices.size === 0)}
+              className="gap-2 h-10"
+            >
               {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              {language === 'bn' ? 'Excel এ এক্সপোর্ট (সব ডেটা)' : 'Export Excel (all data)'}
+              {language === 'bn' ? 'নির্বাচিত ডেটা Excel এ এক্সপোর্ট' : 'Export selected to Excel'}
             </Button>
           </div>
 
-          {/* Quick device runtime summary */}
+          {/* Filters */}
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border p-3 bg-muted/30">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs font-semibold">
+                  {language === 'bn' ? '🌡️ সেন্সর নির্বাচন' : '🌡️ Sensors'}
+                </Label>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="text-[10px] underline text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedSensors(new Set(ALL_SENSORS))}
+                  >
+                    {language === 'bn' ? 'সব' : 'All'}
+                  </button>
+                  <span className="text-muted-foreground">·</span>
+                  <button
+                    type="button"
+                    className="text-[10px] underline text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedSensors(new Set())}
+                  >
+                    {language === 'bn' ? 'কোনোটি না' : 'None'}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_SENSORS.map((k) => (
+                  <label key={k} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={selectedSensors.has(k)}
+                      onCheckedChange={() => toggleSensor(k)}
+                    />
+                    <span
+                      className="inline-block w-2 h-2 rounded-full"
+                      style={{ background: SENSOR_META[k].color }}
+                    />
+                    {language === 'bn' ? SENSOR_META[k].bn : SENSOR_META[k].en}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-3 bg-muted/30">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs font-semibold">
+                  {language === 'bn' ? '⚡ ডিভাইস নির্বাচন' : '⚡ Devices'}
+                </Label>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="text-[10px] underline text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedDevices(new Set(ALL_DEVICES))}
+                  >
+                    {language === 'bn' ? 'সব' : 'All'}
+                  </button>
+                  <span className="text-muted-foreground">·</span>
+                  <button
+                    type="button"
+                    className="text-[10px] underline text-muted-foreground hover:text-foreground"
+                    onClick={() => setSelectedDevices(new Set())}
+                  >
+                    {language === 'bn' ? 'কোনোটি না' : 'None'}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_DEVICES.map((k) => (
+                  <label key={k} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={selectedDevices.has(k)}
+                      onCheckedChange={() => toggleDevice(k)}
+                    />
+                    <span
+                      className="inline-block w-2 h-2 rounded-full"
+                      style={{ background: DEVICE_META[k].color }}
+                    />
+                    {language === 'bn' ? DEVICE_META[k].bn : DEVICE_META[k].en}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Sensor line chart */}
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <LineChartIcon className="h-4 w-4 text-primary" />
+              <Label className="text-xs font-semibold">
+                {language === 'bn' ? 'সেন্সর ট্রেন্ড (সময়ের সাথে)' : 'Sensor trend over time'}
+              </Label>
+            </div>
+            <div className="h-56">
+              {visibleSensors.length === 0 || chartData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                  {language === 'bn' ? 'কমপক্ষে একটি সেন্সর নির্বাচন করুন' : 'Select at least one sensor'}
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="timeShort" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {visibleSensors.map((k) => (
+                      <Line
+                        key={k}
+                        type="monotone"
+                        dataKey={k}
+                        name={`${language === 'bn' ? SENSOR_META[k].bn : SENSOR_META[k].en} (${SENSOR_META[k].unit})`}
+                        stroke={SENSOR_META[k].color}
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Device runtime bar chart */}
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <Label className="text-xs font-semibold">
+                {language === 'bn' ? 'ডিভাইস রানটাইম (মিনিট)' : 'Device runtime (minutes)'}
+              </Label>
+            </div>
+            <div className="h-56">
+              {runtime.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                  {language === 'bn' ? 'কমপক্ষে একটি ডিভাইস নির্বাচন করুন' : 'Select at least one device'}
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={runtime} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                      formatter={(v: any) => [`${v} ${language === 'bn' ? 'মিনিট' : 'min'}`, '']}
+                    />
+                    <Bar dataKey="minutes" radius={[6, 6, 0, 0]}>
+                      {runtime.map((r, i) => (
+                        <rect key={i} fill={r.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Quick runtime tiles */}
           {runtime.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {runtime.map((r) => (
                 <div key={r.device} className="rounded-lg bg-muted/50 p-3 flex items-center gap-2">
-                  <Power className="h-4 w-4 text-primary" />
+                  <Power className="h-4 w-4" style={{ color: r.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground capitalize truncate">{r.device.replace('_', ' ')}</p>
+                    <p className="text-xs text-muted-foreground capitalize truncate">{r.label}</p>
                     <p className="text-sm font-semibold">
-                      {r.minutes < 60 ? `${r.minutes} ${language === 'bn' ? 'মিনিট' : 'min'}` : `${(r.minutes / 60).toFixed(1)} ${language === 'bn' ? 'ঘণ্টা' : 'hr'}`}
+                      {r.minutes < 60
+                        ? `${r.minutes} ${language === 'bn' ? 'মিনিট' : 'min'}`
+                        : `${(r.minutes / 60).toFixed(1)} ${language === 'bn' ? 'ঘণ্টা' : 'hr'}`}
                     </p>
                   </div>
                 </div>
@@ -337,15 +529,15 @@ export function SensorDeviceImpactReport() {
                 <TableHeader className="sticky top-0 bg-muted">
                   <TableRow>
                     <TableHead className="text-xs">{language === 'bn' ? 'সময়' : 'Time'}</TableHead>
-                    <TableHead className="text-xs">
-                      <Thermometer className="h-3 w-3 inline" /> °C
-                    </TableHead>
-                    <TableHead className="text-xs">
-                      <Droplet className="h-3 w-3 inline" /> %
-                    </TableHead>
-                    <TableHead className="text-xs">
-                      <Wind className="h-3 w-3 inline" /> NH₃
-                    </TableHead>
+                    {selectedSensors.has('temperature') && (
+                      <TableHead className="text-xs"><Thermometer className="h-3 w-3 inline" /> °C</TableHead>
+                    )}
+                    {selectedSensors.has('humidity') && (
+                      <TableHead className="text-xs"><Droplet className="h-3 w-3 inline" /> %</TableHead>
+                    )}
+                    {selectedSensors.has('ammonia') && (
+                      <TableHead className="text-xs"><Wind className="h-3 w-3 inline" /> NH₃</TableHead>
+                    )}
                     <TableHead className="text-xs">{language === 'bn' ? 'সক্রিয় ডিভাইস' : 'Active devices'}</TableHead>
                     <TableHead className="text-xs">{language === 'bn' ? 'প্রভাব' : 'Impact'}</TableHead>
                   </TableRow>
@@ -365,23 +557,23 @@ export function SensorDeviceImpactReport() {
                     </TableRow>
                   ) : (
                     correlated.slice(0, 100).map((r, i) => {
-                      const active = [
-                        r.fan === 'ON' || r.fan === 'চালু' ? 'Fan' : null,
-                        r.heater === 'ON' || r.heater === 'চালু' ? 'Heater' : null,
-                        r.fogger === 'ON' || r.fogger === 'চালু' ? 'Fogger' : null,
-                        r.sprinkler === 'ON' || r.sprinkler === 'চালু' ? 'Sprinkler' : null,
-                        r.ceiling_fan === 'ON' || r.ceiling_fan === 'চালু' ? 'Ceiling' : null,
-                        r.light === 'ON' || r.light === 'চালু' ? 'Light' : null,
-                        r.alarm === 'ON' || r.alarm === 'চালু' ? 'Alarm' : null,
-                      ].filter(Boolean);
+                      const active = ALL_DEVICES
+                        .filter((d) => selectedDevices.has(d) && r.deviceState[d])
+                        .map((d) => (language === 'bn' ? DEVICE_META[d].bn : DEVICE_META[d].en));
                       const variant: any =
                         r.status === 'CRITICAL' ? 'destructive' : r.status === 'WARNING' ? 'default' : 'secondary';
                       return (
                         <TableRow key={i}>
                           <TableCell className="text-xs whitespace-nowrap">{r.time}</TableCell>
-                          <TableCell className="text-xs">{r.temperature.toFixed(1)}</TableCell>
-                          <TableCell className="text-xs">{r.humidity.toFixed(0)}</TableCell>
-                          <TableCell className="text-xs">{r.ammonia.toFixed(1)}</TableCell>
+                          {selectedSensors.has('temperature') && (
+                            <TableCell className="text-xs">{r.temperature.toFixed(1)}</TableCell>
+                          )}
+                          {selectedSensors.has('humidity') && (
+                            <TableCell className="text-xs">{r.humidity.toFixed(0)}</TableCell>
+                          )}
+                          {selectedSensors.has('ammonia') && (
+                            <TableCell className="text-xs">{r.ammonia.toFixed(1)}</TableCell>
+                          )}
                           <TableCell className="text-xs">
                             {active.length === 0 ? (
                               <span className="text-muted-foreground">—</span>
@@ -411,8 +603,8 @@ export function SensorDeviceImpactReport() {
           </div>
           <p className="text-[11px] text-muted-foreground">
             {language === 'bn'
-              ? '💡 টেবিলে সর্বশেষ ১০০ এন্ট্রি দেখাচ্ছে। Excel এ সম্পূর্ণ ডেটা সব শীটসহ পাবেন (সেন্সর, ডিভাইস রানটাইম, ডিম, খাদ্য, মৃত্যু, খরচ, বিক্রি, ব্যাচ, ওজন, অ্যালার্ট)।'
-              : '💡 Showing latest 100 entries. Excel export contains full data across all sheets (sensors, runtime, eggs, feed, mortality, expenses, sales, batches, weights, alerts).'}
+              ? '💡 শুধু নির্বাচিত সেন্সর ও ডিভাইস চার্ট, টেবিল ও Excel এ অন্তর্ভুক্ত হবে। ফার্ম মেনুর সব ডেটা (ডিম, খাদ্য, খরচ, মৃত্যু, ইত্যাদি) আলাদা শীটে থাকে।'
+              : '💡 Only selected sensors & devices appear in charts, table, and Excel. Farm menu data (eggs, feed, expenses, mortality, etc.) is included in separate sheets.'}
           </p>
         </CardContent>
       </Card>
