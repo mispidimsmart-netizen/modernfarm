@@ -139,6 +139,9 @@ export function ReportsDataTab() {
         </p>
       </div>
 
+      {/* NEW: Sensor ↔ Device ↔ Impact correlation + full Excel export */}
+      <SensorDeviceImpactReport />
+
       {/* Notification Settings */}
       <Card>
         <CardHeader className="pb-3">
