@@ -29,6 +29,7 @@ import {
   SafetyLockedDevices,
   DEFAULT_SAFETY_PROTECTIONS,
   RealtimeLatencyBadge,
+  RealtimeLatencyTester,
   type DeviceMode 
 } from '@/components/control';
 
@@ -380,6 +381,9 @@ export function ControlPage() {
           <StateExplanationHeader />
           <RealtimeLatencyBadge />
         </div>
+
+        {/* Latency tester (manual mode only) */}
+        {isManualMode && <RealtimeLatencyTester />}
 
         {/* ===== 2. WHY FAN IS RUNNING (only in AUTO mode) ===== */}
         {!isManualMode && <WhyFanRunning />}
