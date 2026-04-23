@@ -28,6 +28,7 @@ import {
   SafeDeviceCard, 
   SafetyLockedDevices,
   DEFAULT_SAFETY_PROTECTIONS,
+  RealtimeLatencyBadge,
   type DeviceMode 
 } from '@/components/control';
 
@@ -375,7 +376,10 @@ export function ControlPage() {
         </div>
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
-        <StateExplanationHeader />
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <StateExplanationHeader />
+          <RealtimeLatencyBadge />
+        </div>
 
         {/* ===== 2. WHY FAN IS RUNNING (only in AUTO mode) ===== */}
         {!isManualMode && <WhyFanRunning />}

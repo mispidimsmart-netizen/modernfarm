@@ -115,7 +115,7 @@ const char* FIRMWARE_VERSION = "8.0.0";
 // --- Timing (all millis-based, no delay) ---
 #define SENSOR_READ_INTERVAL     5000UL
 #define CLOUD_SYNC_INTERVAL      30000UL
-#define COMMAND_CHECK_INTERVAL   5000UL
+#define COMMAND_CHECK_INTERVAL   1000UL   // ⚡ Reduced 5s→1s for near-realtime manual control (works with Supabase Realtime publication on device_commands)
 #define CONFIG_FETCH_INTERVAL    60000UL
 #define WIFI_RECONNECT_INTERVAL  60000UL
 #define CLOUD_TIMEOUT            300000UL
