@@ -28,6 +28,7 @@ import {
   SafeDeviceCard, 
   SafetyLockedDevices,
   DEFAULT_SAFETY_PROTECTIONS,
+  RealtimeLatencyBadge,
   type DeviceMode 
 } from '@/components/control';
 
