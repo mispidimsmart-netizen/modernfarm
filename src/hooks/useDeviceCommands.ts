@@ -15,8 +15,9 @@ interface SendCommandParams {
 
 /**
  * Hook for sending instant device commands to ESP32
- * Commands are stored in device_commands table and ESP32 polls every 5 seconds
- * This provides near-real-time control (max 5 second delay)
+ * Commands are stored in device_commands table (Realtime-enabled).
+ * ESP32 polls every 1 second + Supabase Realtime broadcasts changes via WebSocket.
+ * Effective latency: ~500ms – 1.5s (down from 5s).
  */
 export function useSendDeviceCommand() {
   const { user, language } = useAuth();
