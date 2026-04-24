@@ -100,17 +100,43 @@ export function SensorDeviceImpactReport() {
     queryKey: ['impact-device-logs', user?.id, selectedFarmId, hours],
     queryFn: async () => {
       if (!user) return [];
-      let q = supabase
+
+      // Source 1: device_command_log (newer logging table, may be empty on older farms)
+      let q1 = supabase
         .from('device_command_log')
         .select('command_type, command_value, sent_at, acked_at, created_at, status')
         .eq('user_id', user.id)
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(1000);
-      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data || [];
+      if (selectedFarmId) q1 = q1.eq('farm_id', selectedFarmId);
+
+      // Source 2: device_commands (primary command queue used by ESP32)
+      let q2 = supabase
+        .from('device_commands')
+        .select('command_type, command_value, executed_at, created_at, executed')
+        .eq('user_id', user.id)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1000);
+      if (selectedFarmId) q2 = q2.eq('farm_id', selectedFarmId);
+
+      const [r1, r2] = await Promise.all([q1, q2]);
+      if (r1.error) throw r1.error;
+      if (r2.error) throw r2.error;
+
+      const merged = [
+        ...(r1.data || []),
+        ...(r2.data || []).map((d: any) => ({
+          command_type: d.command_type,
+          command_value: d.command_value,
+          sent_at: d.executed_at || d.created_at,
+          acked_at: d.executed_at,
+          created_at: d.created_at,
+          status: d.executed ? 'acked' : 'pending',
+        })),
+      ];
+      return merged;
     },
     enabled: !!user,
   });
