@@ -1,7 +1,7 @@
 import { Bird, Lightbulb, Check, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAgeLightingSuggestion } from '@/hooks/useAgeLightingSuggestion';
-import { useFlockInfo } from '@/hooks/useFarmManagement';
+import { useBirdAge } from '@/hooks/useBirdAge';
 import { useUpdateLightingSchedule } from '@/hooks/useLightingCurve';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 
 export function AgeLightingSuggestionCard() {
   const { language } = useAuth();
-  const { data: flockInfo } = useFlockInfo();
+  const { ageWeeks, hasValue } = useBirdAge();
   const suggestion = useAgeLightingSuggestion();
   const updateSchedule = useUpdateLightingSchedule();
 
@@ -26,7 +26,7 @@ export function AgeLightingSuggestionCard() {
     deviation: { bn: 'বর্তমান থেকে পার্থক্য', en: 'Deviation from current' },
   };
 
-  if (!suggestion || !flockInfo) {
+  if (!suggestion || !hasValue) {
     return (
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
@@ -72,7 +72,7 @@ export function AgeLightingSuggestionCard() {
         <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary">
-              {flockInfo.age_weeks}
+              {ageWeeks}
             </div>
             <div className="text-xs text-muted-foreground">
               {t.weeks[language]}

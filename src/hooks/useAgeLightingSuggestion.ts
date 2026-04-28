@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useFlockInfo } from '@/hooks/useFarmManagement';
 import { useLightingSchedule } from '@/hooks/useLightingCurve';
+import { useBirdAge } from '@/hooks/useBirdAge';
 
 /**
  * Age-based lighting recommendations for layer chickens
@@ -100,16 +100,14 @@ const AGE_RECOMMENDATIONS: AgeRecommendation[] = [
 ];
 
 export function useAgeLightingSuggestion(): LightingSuggestion | null {
-  const { data: flockInfo, isLoading: flockLoading } = useFlockInfo();
+  const { ageWeeks, isLoading: ageLoading, hasValue } = useBirdAge();
   const { data: schedule, isLoading: scheduleLoading } = useLightingSchedule();
 
   return useMemo(() => {
-    if (flockLoading || scheduleLoading || !flockInfo) {
+    if (ageLoading || scheduleLoading || !hasValue || ageWeeks === null) {
       return null;
     }
 
-    const ageWeeks = flockInfo.age_weeks;
-    
     // Find matching recommendation
     const recommendation = AGE_RECOMMENDATIONS.find(
       r => ageWeeks >= r.minAge && ageWeeks < r.maxAge
@@ -166,5 +164,5 @@ export function useAgeLightingSuggestion(): LightingSuggestion | null {
       isOptimal,
       deviation,
     };
-  }, [flockInfo, schedule, flockLoading, scheduleLoading]);
+  }, [ageWeeks, hasValue, schedule, ageLoading, scheduleLoading]);
 }
