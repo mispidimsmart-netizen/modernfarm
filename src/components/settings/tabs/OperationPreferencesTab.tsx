@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useWeatherCache } from '@/hooks/useWeather';
-import { useAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
+import { useAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,9 +105,11 @@ export function OperationPreferencesTab() {
   const { data: weatherData } = useWeatherCache();
   const { isBroiler, isLayer } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
+  const { data: advSettings } = useAdvancedAutomationSettings();
+  const updateAdvSettings = useUpdateAdvancedAutomationSettings();
   const { toast } = useToast();
 
-  // State for each control - default to 'auto'
+  // State for each control - default to 'auto', hydrated from DB
   const [controls, setControls] = useState<Record<string, ControlLevel>>({
     ventilation: 'auto',
     heating: 'auto',
@@ -115,6 +117,19 @@ export function OperationPreferencesTab() {
     comfort: 'auto',
     protection: 'auto',
   });
+
+  // Hydrate from DB
+  useEffect(() => {
+    if (!advSettings) return;
+    const s: any = advSettings;
+    setControls({
+      ventilation: (s.ventilation_preference as ControlLevel) || 'auto',
+      heating: (s.heating_preference as ControlLevel) || 'auto',
+      cooling: (s.cooling_preference as ControlLevel) || 'auto',
+      comfort: (s.comfort_preference as ControlLevel) || 'auto',
+      protection: (s.protection_preference as ControlLevel) || 'auto',
+    });
+  }, [advSettings]);
 
   // Calculate batch age in days
   const batchAgeDays = useMemo(() => {
