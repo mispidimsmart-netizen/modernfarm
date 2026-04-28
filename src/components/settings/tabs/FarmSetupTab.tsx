@@ -351,47 +351,21 @@ export function FarmSetupTab() {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Bird Age Display (for broiler) */}
-        {farmType === 'broiler' && (
-          <AccordionItem value="bird-age" className="border rounded-lg overflow-hidden">
-            <AccordionTrigger className="px-4 py-3 hover:no-underline">
-              <div className="flex items-center gap-2 text-base font-semibold">
-                <Baby className="h-5 w-5 text-pink-500" />
-                {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {birdAge} {language === 'bn' ? 'দিন' : 'days'}
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-4 pb-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                {language === 'bn' 
-                  ? activeBatch?.start_date 
-                    ? `ব্যাচ শুরুর তারিখ থেকে গণনা করা হয়েছে`
-                    : 'কোনো সক্রিয় ব্যাচ নেই - Farm Management এ ব্যাচ তৈরি করুন'
-                  : activeBatch?.start_date
-                    ? `Calculated from batch start date`
-                    : 'No active batch - Create a batch in Farm Management'}
-              </p>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 text-center p-4 rounded-xl bg-muted/50">
-                  <p className="text-4xl font-bold text-primary">{birdAge}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' ? 'দিন বয়স' : 'days old'}
-                  </p>
-                </div>
-                <div className="text-center p-4 rounded-xl bg-muted/50">
-                  <p className="text-3xl font-bold text-orange-500">
-                    {birdAge <= 3 ? 33 : birdAge <= 7 ? 31 : birdAge <= 14 ? 29 : birdAge <= 21 ? 26 : birdAge <= 28 ? 24 : 22}°C
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'bn' ? 'টার্গেট তাপমাত্রা' : 'Target Temp'}
-                  </p>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        )}
+        {/* 🐔 Unified Bird Age — single source of truth (broiler & layer) */}
+        <AccordionItem value="bird-age" className="border rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-2 text-base font-semibold">
+              <Baby className="h-5 w-5 text-pink-500" />
+              {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {birdAge} {language === 'bn' ? 'দিন' : 'days'}
+              </Badge>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <BirdAgeCard />
+          </AccordionContent>
+        </AccordionItem>
 
         {/* Season Detection */}
         <AccordionItem value="season" className="border rounded-lg overflow-hidden">
