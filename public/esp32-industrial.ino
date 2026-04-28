@@ -44,6 +44,7 @@
  * ║    GPIO 33 (IN8): Circulation Fan                                     ║
  * ║    GPIO 4:  DHT22 #1     GPIO 16: DHT22 #2                           ║
  * ║    GPIO 34: MQ-137 NH3   GPIO 35: ZMPT101B Voltage                   ║
+ * ║    GPIO 36: LDR (optional, ambient light sensor)                       ║
  * ║    GPIO 18: YF-S201 Water Flow                                        ║
  * ║    GPIO 19: GSM RX (SIM800L TX)                                       ║
  * ║    GPIO 23: GSM TX (SIM800L RX)                                       ║
