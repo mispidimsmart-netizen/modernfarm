@@ -13,6 +13,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianG
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
 import { DailyLightSummaryCard } from '@/components/dashboard/DailyLightSummaryCard';
+import { LightTrendChart } from '@/components/dashboard/LightTrendChart';
 export function ReportsPage() {
   const { language } = useAuth();
   const [searchParams] = useSearchParams();
@@ -106,6 +107,9 @@ export function ReportsPage() {
 
               {/* Daily Light Summary (only if LDR installed) */}
               <DailyLightSummaryCard />
+
+              {/* 24h Light Trend Chart (only if LDR installed) */}
+              <LightTrendChart />
 
               {/* Temperature Chart */}
               <div className="rounded-2xl bg-card p-4 shadow-card">
