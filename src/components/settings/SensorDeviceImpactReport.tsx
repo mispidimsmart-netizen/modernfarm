@@ -275,18 +275,19 @@ export function SensorDeviceImpactReport() {
   // Build hourly summary for analysis
   const hourlySummary = useMemo(() => {
     if (sensors.length === 0) return [];
-    const buckets: Record<string, { temps: number[]; hums: number[]; nh3s: number[]; waters: number[]; devices: Record<string, number> }> = {};
+    const buckets: Record<string, { temps: number[]; hums: number[]; nh3s: number[]; waters: number[]; luxes: number[]; devices: Record<string, number> }> = {};
 
     for (const r of correlated) {
       const d = new Date(r.ts);
       const hourKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
       if (!buckets[hourKey]) {
-        buckets[hourKey] = { temps: [], hums: [], nh3s: [], waters: [], devices: {} };
+        buckets[hourKey] = { temps: [], hums: [], nh3s: [], waters: [], luxes: [], devices: {} };
       }
       buckets[hourKey].temps.push(r.temperature);
       buckets[hourKey].hums.push(r.humidity);
       buckets[hourKey].nh3s.push(r.ammonia);
       buckets[hourKey].waters.push(r.water_usage);
+      buckets[hourKey].luxes.push(r.light_lux);
 
       ALL_DEVICES.forEach((dev) => {
         if (r.deviceState[dev]) {
@@ -310,6 +311,8 @@ export function SensorDeviceImpactReport() {
           avgHumidity: avg(b.hums),
           avgAmmonia: avg(b.nh3s),
           totalWater: Number(b.waters.reduce((s, v) => s + v, 0).toFixed(1)),
+          avgLux: avg(b.luxes),
+          maxLux: max(b.luxes),
           hsi: Number((avg(b.temps) + 0.36 * avg(b.hums)).toFixed(1)),
           activeDevices: b.devices,
         };
