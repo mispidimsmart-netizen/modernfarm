@@ -161,15 +161,16 @@ const handleDownloadPDF = () => {
     <tr><td>Cross-Validation Alert</td><td>DHT22 delta ≥ 3°C</td><td>10 minutes</td></tr>
     <tr><td>Manual Mode Activated</td><td>User switches to manual</td><td>Immediate</td></tr></table>
 
-    <h2>10. Cloud Backend (Edge Functions)</h2>
+    <h2>10. Cloud Backend (18 Edge Functions)</h2>
     <table><tr><th>Function</th><th>Purpose</th><th>Trigger</th></tr>
     <tr><td>esp32-api</td><td>Device telemetry ingestion & command delivery</td><td>HTTP (ESP32 polls)</td></tr>
     <tr><td>automation-engine</td><td>HSI calculation, fan speed decisions</td><td>HTTP (periodic)</td></tr>
-    <tr><td>safety-engine</td><td>Safety invariant validation on server-side</td><td>HTTP (every 60s)</td></tr>
+    <tr><td>safety-engine</td><td>Server-side safety invariant validation</td><td>HTTP (every 60s)</td></tr>
     <tr><td>emergency-webhook</td><td>External webhook for critical alerts</td><td>Database trigger</td></tr>
     <tr><td>fetch-weather</td><td>External weather data for predictive cooling</td><td>Scheduled</td></tr>
     <tr><td>daily-farm-report</td><td>Auto-generated daily summary</td><td>Scheduled (pg_cron)</td></tr>
     <tr><td>send-push-notification</td><td>Web Push / FCM notifications</td><td>Event-driven</td></tr>
+    <tr><td>push-public-key</td><td>VAPID public key distribution</td><td>HTTP</td></tr>
     <tr><td>ota-firmware</td><td>Firmware update management</td><td>Admin-triggered</td></tr>
     <tr><td>health-score</td><td>Farm health scoring algorithm</td><td>On-demand</td></tr>
     <tr><td>heat-risk</td><td>Predictive heat stress analysis</td><td>Periodic</td></tr>
@@ -177,7 +178,26 @@ const handleDownloadPDF = () => {
     <tr><td>export-data</td><td>CSV/Excel data export</td><td>User-triggered</td></tr>
     <tr><td>notification-escalation</td><td>Alert priority escalation</td><td>Event-driven</td></tr>
     <tr><td>schedule-notifier</td><td>Schedule-based automation</td><td>Cron</td></tr>
-    <tr><td>lookup-login-identifier</td><td>Phone/email login lookup</td><td>Auth flow</td></tr></table>
+    <tr><td>lookup-login-identifier</td><td>Phone/email login lookup</td><td>Auth flow</td></tr>
+    <tr><td>mode-profile</td><td>Automation mode profile resolution</td><td>HTTP</td></tr>
+    <tr><td>admin-delete-user</td><td>Super-admin user removal</td><td>Admin-triggered</td></tr></table>
+
+    <h2>10.1 Multi-Tenant & Team Management (NEW)</h2>
+    <table><tr><th>Component</th><th>Purpose</th><th>Details</th></tr>
+    <tr><td>farms.owner_id</td><td>Farm owner identity</td><td>Original creator</td></tr>
+    <tr><td>farm_members</td><td>Multi-user farm access</td><td>role: owner / member / labor</td></tr>
+    <tr><td>user_can_access_farm()</td><td>RLS gate function</td><td>SECURITY DEFINER</td></tr>
+    <tr><td>Labor Invite Code</td><td>Auto-membership on signup</td><td>Owner ID → 6-char code → join</td></tr>
+    <tr><td>UserRoleManager UI</td><td>Settings → Team Management tab</td><td>Code generation + member list</td></tr></table>
+
+    <h2>10.2 Settings Persistence (NEW)</h2>
+    <table><tr><th>Setting</th><th>Table</th><th>Columns</th></tr>
+    <tr><td>Farm Setup</td><td>farm_settings</td><td>farm_size, season_override, profile_override</td></tr>
+    <tr><td>HSI Thresholds</td><td>farm_settings</td><td>hsi_mild/moderate/severe/emergency</td></tr>
+    <tr><td>Fan Speed Bands</td><td>farm_settings</td><td>fan_low/medium/high_temp_min/max</td></tr>
+    <tr><td>Calibration Offsets</td><td>device_calibration</td><td>temp/humidity/ammonia offset columns</td></tr>
+    <tr><td>Op Preferences</td><td>advanced_automation_settings</td><td>5 channel preferences (low/auto/high)</td></tr>
+    <tr><td>Live Modifier</td><td>useAdvancedAutomation hook</td><td>applyPreferences() — soft threshold nudge</td></tr></table>
 
     <h2>11. OTA Firmware Management</h2>
     <table><tr><th>Feature</th><th>Details</th></tr>
