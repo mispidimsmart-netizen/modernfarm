@@ -3,7 +3,21 @@ import { usePWAUpdate } from '@/hooks/usePWAUpdate';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function PWAUpdateBanner() {
+// Detect Lovable preview / iframe contexts where PWA must be disabled.
+const isInIframe = (() => {
+  try {
+    return typeof window !== 'undefined' && window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
+const isPreviewHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.includes('id-preview--') ||
+    window.location.hostname.includes('lovableproject.com'));
+const PWA_DISABLED = isInIframe || isPreviewHost;
+
+function PWAUpdateBannerInner() {
   const { showUpdatePrompt } = usePWAUpdate();
 
   if (!showUpdatePrompt) return null;
@@ -52,4 +66,9 @@ export function PWAUpdateBanner() {
       </motion.div>
     </AnimatePresence>
   );
+}
+
+export function PWAUpdateBanner() {
+  if (PWA_DISABLED) return null;
+  return <PWAUpdateBannerInner />;
 }
