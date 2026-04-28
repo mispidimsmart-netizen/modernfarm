@@ -3624,6 +3624,7 @@ void callBackendSafetyEngine() {
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
+  if (ldrAvailable) doc["light_lux"] = lightLux;
   doc["temperature_sensor2"] = dht2Available ? temperature2 : (float)NAN;
   doc["worst_case_max_temp"] = worstCaseMaxTemp;
   doc["worst_case_min_temp"] = worstCaseMinTemp;
@@ -3734,6 +3735,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
   doc["hsi_value"] = currentHSI;
+  if (ldrAvailable) doc["light_lux"] = lightLux;
   
   // Environment response deltas
   doc["temp_delta_1min"] = getTempDelta1min();
