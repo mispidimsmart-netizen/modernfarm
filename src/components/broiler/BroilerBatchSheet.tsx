@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -351,11 +352,11 @@ export function BroilerBatchSheet({ open, onOpenChange }: BroilerBatchSheetProps
                         {language === 'bn' ? '🐔 পাখির বয়সের উৎস' : '🐔 Bird age source'}
                       </span>
                     </Label>
-                    <Input
-                      type="date"
+                    <SmartDatePicker
                       value={form.start_date}
-                      max={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                      onChange={(iso) => setForm({ ...form, start_date: iso })}
+                      showAgePreview
+                      maxDaysAgo={90}
                     />
                     <p className="text-[11px] leading-relaxed text-muted-foreground">
                       {language === 'bn'

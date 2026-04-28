@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useBirdAge, useUpdateBirdAge } from '@/hooks/useBirdAge';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { cn } from '@/lib/utils';
 
 /**
@@ -157,12 +158,11 @@ export function BirdAgeCard() {
           </Label>
 
           {isBroiler ? (
-            <Input
-              type="date"
+            <SmartDatePicker
               value={draftDate}
-              max={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setDraftDate(e.target.value)}
-              className="h-10"
+              onChange={setDraftDate}
+              showAgePreview
+              maxDaysAgo={90}
             />
           ) : (
             <Input
