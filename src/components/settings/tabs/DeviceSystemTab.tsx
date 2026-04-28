@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { 
-  Cpu, Wifi, RefreshCw, Upload, Settings2, Thermometer,
+  Cpu, Wifi, RefreshCw, Settings2, Thermometer,
   Droplets, Wind, AlertTriangle, Clock, FileCode, Trash2,
   Copy, Plus, Home, Signal, HardDrive, Bug, ChevronDown,
   Shield, Zap, RotateCcw, Activity
@@ -39,7 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
-import { OTAManagementCard } from '@/components/device/OTAManagementCard';
+// OTAManagementCard removed — OTA management is now Admin-only (Admin → Firmware tab)
 
 interface SectionProps {
   title: string;
@@ -495,16 +495,9 @@ export function DeviceSystemTab() {
         </div>
       </CollapsibleSection>
 
-      {/* OTA Firmware Management */}
-      <CollapsibleSection
-        title="OTA Firmware"
-        titleBn="OTA ফার্মওয়্যার"
-        icon={Upload}
-        color="bg-green-500/10 text-green-500"
-        language={language}
-      >
-        <OTAManagementCard />
-      </CollapsibleSection>
+      {/* OTA Firmware management moved to Admin → Firmware tab.
+          Farm owners can see their device's current firmware version above. */}
+
 
       {/* ESP32 Code Generator */}
       <CollapsibleSection
