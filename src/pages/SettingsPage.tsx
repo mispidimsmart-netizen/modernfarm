@@ -328,6 +328,7 @@ export function SettingsPage() {
               )}
             </Tabs>
           )}
+          </div>
 
           {/* Notifications Section - Collapsible */}
           <Collapsible open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
