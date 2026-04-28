@@ -40,15 +40,22 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
   
   const [formData, setFormData] = useState({
     total_birds: 0,
-    breed: 'layer',
+    breed: 'isa_brown',
     purchase_date: '',
   });
 
   useEffect(() => {
     if (flockInfo) {
+      // Backward-compat: map removed legacy values to closest current option
+      const legacyMap: Record<string, string> = {
+        layer: 'isa_brown',
+        hy_line: 'hy_line_brown',
+        novogen: 'novogen_brown',
+      };
+      const rawBreed = flockInfo.breed || 'isa_brown';
       setFormData({
         total_birds: flockInfo.total_birds,
-        breed: flockInfo.breed || 'layer',
+        breed: legacyMap[rawBreed] || rawBreed,
         purchase_date: flockInfo.purchase_date || '',
       });
     }
