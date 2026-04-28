@@ -48,10 +48,10 @@ const handleDownloadPDF = () => {
     <tr><td>MCU</td><td>ESP32 DevKit V1</td><td>Arduino C++, 240MHz dual-core</td></tr>
     <tr><td>Sensors</td><td>DHT22 x2, MQ-137, YF-S201, ZMPT101B</td><td>Temp/Humidity, NH3, Water Flow, Voltage</td></tr>
     <tr><td>Communication</td><td>WiFi + GSM (SIM800L)</td><td>HTTP + SMS fallback</td></tr>
-    <tr><td>Backend DB</td><td>PostgreSQL</td><td>Row-Level Security (RLS), 19+ tables</td></tr>
-    <tr><td>Backend Functions</td><td>Deno Edge Functions</td><td>15+ functions deployed</td></tr>
+    <tr><td>Backend DB</td><td>PostgreSQL</td><td>Row-Level Security (RLS), 67 tables</td></tr>
+    <tr><td>Backend Functions</td><td>Deno Edge Functions</td><td>18 functions deployed</td></tr>
     <tr><td>Frontend</td><td>React 18 + TypeScript 5</td><td>Vite 5 build system</td></tr>
-    <tr><td>UI Library</td><td>shadcn/ui + Tailwind CSS v3</td><td>Responsive, dark mode</td></tr>
+    <tr><td>UI Library</td><td>shadcn/ui + Tailwind CSS v3</td><td>Bengali (Nikosh), dark theme</td></tr>
     <tr><td>Mobile</td><td>PWA + Capacitor 8</td><td>iOS/Android native wrapper</td></tr></table>
 
     <h2>3. Hardware Layer — GPIO Pin Mapping</h2>
