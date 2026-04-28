@@ -328,7 +328,7 @@ export function TechnicalArchitectureReport() {
                 ['MCU', 'ESP32 DevKit V1', 'Arduino C++, 240MHz'],
                 ['Sensors', 'DHT22×2, MQ-137, YF-S201', 'Temp, NH3, Water, Voltage'],
                 ['Communication', 'WiFi + GSM SIM800L', 'HTTP + SMS fallback'],
-                ['Backend', 'PostgreSQL + Deno Edge', '15+ functions, 19 tables, RLS'],
+                ['Backend', 'PostgreSQL + Deno Edge', '18 functions, 67 tables, RLS'],
                 ['Frontend', 'React 18 + TypeScript 5', 'Vite 5, shadcn/ui'],
                 ['Mobile', 'PWA + Capacitor 8', 'iOS/Android wrapper'],
               ]}
