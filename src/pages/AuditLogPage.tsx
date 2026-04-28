@@ -6,6 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -145,17 +146,19 @@ export function AuditLogPage() {
 
             {/* Date range */}
             <div className="flex gap-2">
-              <Input
-                type="date"
-                className="h-9 flex-1"
-                value={filters.dateFrom || ''}
-                onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value || undefined }))}
+              <SmartDatePicker
+                value={filters.dateFrom || null}
+                onChange={(iso) => setFilters(f => ({ ...f, dateFrom: iso || undefined }))}
+                placeholder={isBn ? 'শুরু তারিখ' : 'From'}
+                className="flex-1"
+                disableFuture
               />
-              <Input
-                type="date"
-                className="h-9 flex-1"
-                value={filters.dateTo || ''}
-                onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value || undefined }))}
+              <SmartDatePicker
+                value={filters.dateTo || null}
+                onChange={(iso) => setFilters(f => ({ ...f, dateTo: iso || undefined }))}
+                placeholder={isBn ? 'শেষ তারিখ' : 'To'}
+                className="flex-1"
+                disableFuture
               />
             </div>
           </CardContent>

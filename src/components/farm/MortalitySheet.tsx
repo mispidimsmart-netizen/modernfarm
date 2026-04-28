@@ -7,6 +7,7 @@ import { useMortalityRecords, useAddMortalityRecord, useFlockInfo } from '@/hook
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -105,10 +106,10 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>{t.date[language]}</Label>
-                <Input
-                  type="date"
-                  value={formData.record_date}
-                  onChange={(e) => setFormData(p => ({ ...p, record_date: e.target.value }))}
+                <SmartDatePicker
+                  value={formData.record_date || null}
+                  onChange={(iso) => setFormData(p => ({ ...p, record_date: iso }))}
+                  disableFuture
                 />
               </div>
               <div className="space-y-2">

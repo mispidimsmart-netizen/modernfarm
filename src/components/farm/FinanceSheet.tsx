@@ -7,6 +7,7 @@ import { useExpenses, useIncome, useAddExpense, useAddIncome } from '@/hooks/use
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -231,10 +232,10 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
               </div>
               <div className="space-y-2">
                 <Label>{t.date[language]}</Label>
-                <Input
-                  type="date"
-                  value={expenseForm.expense_date}
-                  onChange={(e) => setExpenseForm(p => ({ ...p, expense_date: e.target.value }))}
+                <SmartDatePicker
+                  value={expenseForm.expense_date || null}
+                  onChange={(iso) => setExpenseForm(p => ({ ...p, expense_date: iso }))}
+                  disableFuture
                 />
               </div>
             </div>
@@ -316,10 +317,10 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
               </div>
               <div className="space-y-2">
                 <Label>{t.date[language]}</Label>
-                <Input
-                  type="date"
-                  value={incomeForm.income_date}
-                  onChange={(e) => setIncomeForm(p => ({ ...p, income_date: e.target.value }))}
+                <SmartDatePicker
+                  value={incomeForm.income_date || null}
+                  onChange={(iso) => setIncomeForm(p => ({ ...p, income_date: iso }))}
+                  disableFuture
                 />
               </div>
             </div>
