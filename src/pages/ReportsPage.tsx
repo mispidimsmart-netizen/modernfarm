@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
+import { DailyLightSummaryCard } from '@/components/dashboard/DailyLightSummaryCard';
 export function ReportsPage() {
   const { language } = useAuth();
   const [searchParams] = useSearchParams();
@@ -102,6 +103,9 @@ export function ReportsPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Daily Light Summary (only if LDR installed) */}
+              <DailyLightSummaryCard />
 
               {/* Temperature Chart */}
               <div className="rounded-2xl bg-card p-4 shadow-card">
