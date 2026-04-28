@@ -162,10 +162,10 @@ export function FeedManagementSheet({ open, onOpenChange }: FeedManagementSheetP
 
             <div className="space-y-2">
               <Label>{t.date[language]}</Label>
-              <Input
-                type="date"
-                value={stockForm.purchase_date}
-                onChange={(e) => setStockForm(p => ({ ...p, purchase_date: e.target.value }))}
+              <SmartDatePicker
+                value={stockForm.purchase_date || null}
+                onChange={(iso) => setStockForm(p => ({ ...p, purchase_date: iso }))}
+                disableFuture
               />
             </div>
 
