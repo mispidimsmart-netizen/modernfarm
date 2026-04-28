@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useFlockInfo } from '@/hooks/useFarmManagement';
 import { useLightingSchedule } from '@/hooks/useLightingCurve';
+import { useBirdAge } from '@/hooks/useBirdAge';
 
 /**
  * Age-based lighting recommendations for layer chickens
