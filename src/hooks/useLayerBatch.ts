@@ -485,7 +485,9 @@ export function useEditCompletedLayerBatch() {
             : 'Batch info & summary recalculated',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Conflict has its own UI in the dialog — don't toast
+      if (error?.code === 'BATCH_CONFLICT') return;
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
         description: error.message,
