@@ -33,7 +33,7 @@ function groupByPriority(alerts: SmartAlert[]) {
 
 export function AlertsPage() {
   const { language } = useAuth();
-  const { activeAlerts, resolvedAlerts, alertCounts, isQuietHours } = useSmartAlerts();
+  const { activeAlerts, resolvedAlerts, isQuietHours } = useSmartAlerts();
   const acknowledgeAlert = useAcknowledgeAlert();
 
   // Locally dismissed synthetic / grouped alerts (no DB row to acknowledge)
