@@ -283,13 +283,54 @@ export function EditCompletedBatchDialog({
           </div>
         </div>
 
+        {conflict && (
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              <div className="font-semibold text-destructive">
+                {t.conflictTitle[language]}
+              </div>
+              <div className="text-xs text-foreground/80">
+                {t.conflictMsg[language]}
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                {language === 'bn' ? 'সার্ভার আপডেট:' : 'Server update:'}{' '}
+                {new Date(conflict.serverUpdatedAt).toLocaleString(
+                  language === 'bn' ? 'bn-BD' : 'en-US'
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleReload}
+                  className="h-8"
+                >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  {t.reload[language]}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleOverwrite}
+                  disabled={editBatch.isPending}
+                  className="h-8"
+                >
+                  <AlertCircle className="mr-1.5 h-3.5 w-3.5" />
+                  {t.overwrite[language]}
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t.cancel[language]}
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!canSave || editBatch.isPending}
+            disabled={!canSave || editBatch.isPending || !!conflict}
             className="gap-1.5"
           >
             {editBatch.isPending ? (
