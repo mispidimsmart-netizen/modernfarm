@@ -2031,12 +2031,29 @@ function calculateCurrentBrightness(schedule: any): { brightness: number; phase:
 }
 
 async function getDeviceCommands(supabase: any, userId: string, deviceName: string | null) {
-  // Get pending (unexecuted) commands for this device
+  // Safety: only return commands fresher than 5 minutes.
+  // Stale commands (e.g. from offline period) are dangerous: a "fan_off"
+  // issued at noon must NOT execute at 3 AM when the bird needs warmth.
+  const COMMAND_FRESHNESS_SECONDS = 5 * 60;
+  const freshCutoff = new Date(Date.now() - COMMAND_FRESHNESS_SECONDS * 1000).toISOString();
+
+  // Auto-expire stale pending commands so they don't keep being polled
+  let staleQuery = supabase
+    .from('device_commands')
+    .update({ executed: true, executed_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('executed', false)
+    .lt('created_at', freshCutoff);
+  if (deviceName) staleQuery = staleQuery.eq('device_name', deviceName);
+  await staleQuery;
+
+  // Get pending (unexecuted) commands for this device — only fresh ones
   let query = supabase
     .from('device_commands')
     .select('id, command_type, command_value, created_at')
     .eq('user_id', userId)
     .eq('executed', false)
+    .gte('created_at', freshCutoff)
     .order('created_at', { ascending: true });
 
   if (deviceName) {
