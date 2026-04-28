@@ -266,6 +266,7 @@ const App = () => {
               <Sonner />
               <OfflineIndicator />
               <PWAUpdateBanner />
+              <GlobalBatchEditQueue />
               <BrowserRouter>
                 <AppWithRoutes />
               </BrowserRouter>
