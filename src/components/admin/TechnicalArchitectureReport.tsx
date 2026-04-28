@@ -592,14 +592,16 @@ export function TechnicalArchitectureReport() {
           <ArchSection icon={<Lock className="w-5 h-5 text-rose-400" />} title="১৩. Security & Database">
             <div className="space-y-2">
               {[
-                'RLS Policies — সব টেবিলে Row Level Security',
+                'Farm-based RLS — user_can_access_farm() সব টেবিলে',
                 'Device Token Auth — x-device-token per-device isolation',
                 'Override Safety Band — 26-35°C সীমার বাইরে reject',
                 'Service Role Keys — Edge functions-এ, client-এ না',
-                'Audit Trail — প্রতিটি critical action logged',
-                'RBAC — Viewer / Farmer / Admin roles',
+                'Audit Trail — farm_audit_logs টেবিলে সব action logged',
+                'RBAC — Owner / Member / Labor / Super Admin',
                 'Audit Cleanup — 90-day auto-cleanup via pg_cron',
-                '19+ Tables — Full schema with foreign keys',
+                '67 Tables — Full schema with foreign keys & RLS',
+                'farm_members (NEW) — multi-user farm access',
+                'Labor Invite Code (NEW) — auto membership on signup',
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-rose-400 mt-0.5 flex-shrink-0" />
