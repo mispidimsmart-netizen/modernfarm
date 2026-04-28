@@ -1510,6 +1510,7 @@ export type Database = {
       }
       egg_production: {
         Row: {
+          batch_id: string | null
           broken: number
           created_at: string
           farm_id: string | null
@@ -1524,6 +1525,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch_id?: string | null
           broken?: number
           created_at?: string
           farm_id?: string | null
@@ -1538,6 +1540,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch_id?: string | null
           broken?: number
           created_at?: string
           farm_id?: string | null
@@ -2079,6 +2082,7 @@ export type Database = {
       }
       feed_consumption: {
         Row: {
+          batch_id: string | null
           consumption_date: string
           created_at: string
           farm_id: string | null
@@ -2089,6 +2093,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch_id?: string | null
           consumption_date?: string
           created_at?: string
           farm_id?: string | null
@@ -2099,6 +2104,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch_id?: string | null
           consumption_date?: string
           created_at?: string
           farm_id?: string | null
@@ -2370,6 +2376,7 @@ export type Database = {
       flock_info: {
         Row: {
           age_weeks: number
+          batch_id: string | null
           breed: string | null
           created_at: string
           farm_id: string | null
@@ -2382,6 +2389,7 @@ export type Database = {
         }
         Insert: {
           age_weeks?: number
+          batch_id?: string | null
           breed?: string | null
           created_at?: string
           farm_id?: string | null
@@ -2394,6 +2402,7 @@ export type Database = {
         }
         Update: {
           age_weeks?: number
+          batch_id?: string | null
           breed?: string | null
           created_at?: string
           farm_id?: string | null
@@ -2467,6 +2476,132 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      layer_batch_summary: {
+        Row: {
+          batch_id: string
+          created_at: string
+          duration_days: number | null
+          farm_id: string | null
+          fcr: number | null
+          id: string
+          mortality_percent: number | null
+          net_profit: number | null
+          notes: string | null
+          peak_age_weeks: number | null
+          peak_production_percent: number | null
+          total_eggs: number | null
+          total_expenses: number | null
+          total_feed_cost: number | null
+          total_feed_kg: number | null
+          total_mortality: number | null
+          total_revenue: number | null
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          duration_days?: number | null
+          farm_id?: string | null
+          fcr?: number | null
+          id?: string
+          mortality_percent?: number | null
+          net_profit?: number | null
+          notes?: string | null
+          peak_age_weeks?: number | null
+          peak_production_percent?: number | null
+          total_eggs?: number | null
+          total_expenses?: number | null
+          total_feed_cost?: number | null
+          total_feed_kg?: number | null
+          total_mortality?: number | null
+          total_revenue?: number | null
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          duration_days?: number | null
+          farm_id?: string | null
+          fcr?: number | null
+          id?: string
+          mortality_percent?: number | null
+          net_profit?: number | null
+          notes?: string | null
+          peak_age_weeks?: number | null
+          peak_production_percent?: number | null
+          total_eggs?: number | null
+          total_expenses?: number | null
+          total_feed_cost?: number | null
+          total_feed_kg?: number | null
+          total_mortality?: number | null
+          total_revenue?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      layer_batches: {
+        Row: {
+          actual_end_date: string | null
+          age_at_start_weeks: number | null
+          batch_name: string
+          batch_name_bn: string | null
+          breed: string | null
+          chick_cost_per_bird: number | null
+          created_at: string
+          current_bird_count: number
+          expected_end_date: string | null
+          farm_id: string | null
+          id: string
+          initial_bird_count: number
+          notes: string | null
+          shed_id: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_end_date?: string | null
+          age_at_start_weeks?: number | null
+          batch_name?: string
+          batch_name_bn?: string | null
+          breed?: string | null
+          chick_cost_per_bird?: number | null
+          created_at?: string
+          current_bird_count?: number
+          expected_end_date?: string | null
+          farm_id?: string | null
+          id?: string
+          initial_bird_count?: number
+          notes?: string | null
+          shed_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_end_date?: string | null
+          age_at_start_weeks?: number | null
+          batch_name?: string
+          batch_name_bn?: string | null
+          breed?: string | null
+          chick_cost_per_bird?: number | null
+          created_at?: string
+          current_bird_count?: number
+          expected_end_date?: string | null
+          farm_id?: string | null
+          id?: string
+          initial_bird_count?: number
+          notes?: string | null
+          shed_id?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       lighting_schedule: {
         Row: {
