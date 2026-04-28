@@ -392,6 +392,8 @@ float temperature = 25.0f, humidity = 60.0f, ammonia = 0.0f;
 float temperature2 = NAN, humidity2 = NAN;
 float waterFlow = 0.0f, currentHSI = 0.0f;
 float powerVoltageRMS = 230.0f;
+float lightLux = -1.0f;          // -1 = LDR not detected/disabled
+bool ldrAvailable = false;       // auto-detected at boot
 bool powerOn = true, dht2Available = false;
 bool sensorErrorMode = false;
 unsigned long lastValidSensor = 0;
@@ -980,6 +982,37 @@ float readGasFiltered() {
   float total = 0;
   for (int i = 0; i < 10; i++) { total += analogRead(MQ135_PIN); esp_task_wdt_reset(); delayMicroseconds(500); }
   return total / 10.0f;
+}
+
+// --- LDR (Optional Ambient Light Sensor on GPIO 36) ---
+// Wiring: 3.3V → LDR → GPIO 36 → 10kΩ → GND
+// Higher light = lower LDR resistance = higher ADC voltage
+// Approximate lux conversion (LDR is non-linear, this is rough estimate)
+float readLightLux() {
+  if (!ldrAvailable) return -1.0f;
+  long total = 0;
+  for (int i = 0; i < 8; i++) { total += analogRead(LDR_PIN); delayMicroseconds(200); }
+  float adc = total / 8.0f;                    // 0-4095
+  float voltage = (adc / 4095.0f) * 3.3f;      // 0-3.3V
+  // Rough lux estimation (calibrate per LDR model):
+  // Dark (~0.1V) = ~1 lux, Indoor (~1.5V) = ~100 lux, Bright (~3V) = ~1000+ lux
+  float lux = pow(10.0f, voltage * 1.2f) - 1.0f;
+  if (lux < 0) lux = 0;
+  if (lux > 10000) lux = 10000;
+  return lux;
+}
+
+// Auto-detect LDR at boot (read several times, check for variation)
+bool detectLDR() {
+  pinMode(LDR_PIN, INPUT);
+  int reading1 = analogRead(LDR_PIN);
+  delay(50);
+  int reading2 = analogRead(LDR_PIN);
+  // If both readings are 0 or both are 4095, sensor likely not connected (floating or shorted)
+  if ((reading1 < 10 && reading2 < 10) || (reading1 > 4080 && reading2 > 4080)) {
+    return false;
+  }
+  return true;
 }
 
 bool isAmmoniaSpikeDetected(float v) {
