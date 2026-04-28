@@ -112,20 +112,20 @@ export function DeviceSystemTab() {
   const [humidityOffset, setHumidityOffset] = useState(0);
   const [ammoniaOffset, setAmmoniaOffset] = useState(0);
 
-  // Fetch device tokens
+  // Fetch device tokens — scope by farm so workers see owner's devices via RLS
   const { data: deviceTokens } = useQuery({
-    queryKey: ['device_tokens', user?.id],
+    queryKey: ['device_tokens', selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('device_tokens')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!selectedFarmId,
   });
 
   // Fetch alerts for event logs
