@@ -318,8 +318,15 @@ struct LightSchedule {
   bool enabled, manualOverride;
   int startHour, startMinute, endHour, endMinute;
   int fadeInMinutes, fadeOutMinutes, minBrightness, maxBrightness;
+  // LDR-based control:
+  // ldrMode: 0=schedule_only, 1=hybrid (schedule AND dark), 2=sensor_only (dark only)
+  bool ldrEnabled;
+  int ldrMode;
+  float ldrThresholdLux;   // turn ON below this
+  float ldrHysteresisLux;  // turn OFF above (threshold + hysteresis)
+  bool ldrLightActive;     // current LDR-driven state (for hysteresis)
 };
-LightSchedule lightSchedule = { true, false, 5, 0, 21, 0, 30, 30, 0, 100 };
+LightSchedule lightSchedule = { true, false, 5, 0, 21, 0, 30, 30, 0, 100, false, 1, 50.0f, 20.0f, false };
 
 // --- Broiler Temp Curve ---
 struct BroilerCurveEntry { int minDays, maxDays; float minTemp, maxTemp; };
@@ -2639,6 +2646,14 @@ void handleCloudResponse(String response) {
     lightSchedule.fadeOutMinutes = ls["fade_out_minutes"] | 30;
     lightSchedule.minBrightness = ls["min_brightness"] | 0;
     lightSchedule.maxBrightness = ls["max_brightness"] | 100;
+    // LDR settings
+    lightSchedule.ldrEnabled = ls["ldr_enabled"] | false;
+    lightSchedule.ldrThresholdLux = ls["ldr_threshold_lux"] | 50.0f;
+    lightSchedule.ldrHysteresisLux = ls["ldr_hysteresis_lux"] | 20.0f;
+    const char* mode = ls["ldr_mode"] | "hybrid";
+    if (strcmp(mode, "schedule_only") == 0) lightSchedule.ldrMode = 0;
+    else if (strcmp(mode, "sensor_only") == 0) lightSchedule.ldrMode = 2;
+    else lightSchedule.ldrMode = 1; // hybrid
     // NOTE: Do NOT reset lightSchedule.manualOverride here
     // Manual override state is managed by commands only
   }
