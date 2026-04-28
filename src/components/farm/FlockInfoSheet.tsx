@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
 import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
 
