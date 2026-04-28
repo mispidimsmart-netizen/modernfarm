@@ -51,7 +51,7 @@ export function AuditLogPage() {
   const [filters, setFilters] = useState<AuditLogFilters>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: logs, isLoading, refetch } = useAuditLogs(filters);
+  const { data: logs, isLoading, refetch, isFetching } = useAuditLogs(filters);
 
   const stats = useMemo(() => {
     if (!logs) return { total: 0, critical: 0, warning: 0, today: 0 };
@@ -74,8 +74,15 @@ export function AuditLogPage() {
           <h1 className="text-xl font-bold text-foreground">
             {isBn ? '📋 অডিট লগ' : '📋 Audit Log'}
           </h1>
-          <Button variant="ghost" size="icon" onClick={() => refetch()}>
-            <RefreshCw size={18} />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2"
+          >
+            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+            {isBn ? 'রিফ্রেশ' : 'Refresh'}
           </Button>
         </div>
 
