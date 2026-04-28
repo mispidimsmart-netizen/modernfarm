@@ -181,22 +181,26 @@ export function LayerBatchCard() {
 
   return (
     <>
-      <Card className="border-primary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between text-base">
+      <Card className="border-2 border-primary/30 shadow-sm scroll-mt-4">
+        <CardHeader className="pb-2 pt-3">
+          <CardTitle className="flex items-center justify-between text-base sm:text-lg">
             <span className="flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" />
               {t.title[language]}
             </span>
-            {activeBatch && (
-              <Badge className="bg-primary/15 text-primary hover:bg-primary/20">
+            {activeBatch ? (
+              <Badge className="bg-primary/15 text-primary hover:bg-primary/20 text-[11px]">
                 {t.active[language]}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[11px] text-muted-foreground">
+                {language === 'bn' ? 'নিষ্ক্রিয়' : 'Inactive'}
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 pb-3">
           <AnimatePresence mode="wait">
             {activeBatch ? (
               <motion.div
@@ -207,10 +211,10 @@ export function LayerBatchCard() {
                 className="space-y-3"
               >
                 <div className="rounded-lg bg-primary/5 p-3">
-                  <div className="text-sm font-semibold text-foreground">
+                  <div className="text-base font-semibold text-foreground">
                     {activeBatch.batch_name_bn || activeBatch.batch_name}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="mt-0.5 text-xs text-muted-foreground">
                     {activeBatch.breed}
                   </div>
                 </div>
@@ -240,10 +244,10 @@ export function LayerBatchCard() {
 
                 <Button
                   variant="outline"
-                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
+                  className="w-full h-12 text-base font-semibold border-destructive/30 text-destructive hover:bg-destructive/10"
                   onClick={() => setOpenClose(true)}
                 >
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  <CheckCircle2 className="mr-2 h-5 w-5" />
                   {t.endBatch[language]}
                 </Button>
               </motion.div>
@@ -253,13 +257,17 @@ export function LayerBatchCard() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-3 py-4 text-center"
+                className="space-y-3 py-2 text-center"
               >
-                <div className="text-sm text-muted-foreground">
+                <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
                   {t.noBatch[language]}
                 </div>
-                <Button onClick={() => setOpenNew(true)} className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button
+                  onClick={() => setOpenNew(true)}
+                  className="w-full h-14 text-base font-semibold shadow-md"
+                  size="lg"
+                >
+                  <Plus className="mr-2 h-5 w-5" />
                   {t.startNew[language]}
                 </Button>
               </motion.div>
@@ -270,7 +278,7 @@ export function LayerBatchCard() {
           {completed.length > 0 && (
             <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-full justify-between">
+                <Button variant="ghost" className="w-full h-11 justify-between text-sm">
                   <span className="flex items-center gap-2">
                     <History className="h-4 w-4" />
                     {t.history[language]} ({completed.length})
@@ -373,11 +381,11 @@ export function LayerBatchCard() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpenNew(false)}>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setOpenNew(false)}>
               {t.cancel[language]}
             </Button>
-            <Button onClick={handleCreate} disabled={createBatch.isPending}>
+            <Button className="h-12 w-full sm:w-auto text-base font-semibold" onClick={handleCreate} disabled={createBatch.isPending}>
               {t.save[language]}
             </Button>
           </DialogFooter>
@@ -411,16 +419,17 @@ export function LayerBatchCard() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpenClose(false)}>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setOpenClose(false)}>
               {t.cancel[language]}
             </Button>
             <Button
               variant="destructive"
+              className="h-12 w-full sm:w-auto text-base font-semibold"
               onClick={handleClose}
               disabled={closeBatch.isPending}
             >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
+              <CheckCircle2 className="mr-2 h-5 w-5" />
               {t.endBatch[language]}
             </Button>
           </DialogFooter>
