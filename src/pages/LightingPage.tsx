@@ -15,6 +15,7 @@ import { LightingCurveCard } from '@/components/lighting/LightingCurveCard';
 import { LightingCurveSettings } from '@/components/lighting/LightingCurveSettings';
 import { AgeLightingSuggestionCard } from '@/components/lighting/AgeLightingSuggestionCard';
 import { LDRSettingsCard } from '@/components/lighting/LDRSettingsCard';
+import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 
 export function LightingPage() {
@@ -315,6 +316,11 @@ export function LightingPage() {
           {/* Smart Lighting Curve Settings */}
           <div className="mb-6">
             <LightingCurveSettings />
+          </div>
+
+          {/* LDR Hardware Status — large, farmer-friendly */}
+          <div className="mb-4">
+            <LDRStatusBanner />
           </div>
 
           {/* LDR Sensor Settings */}
