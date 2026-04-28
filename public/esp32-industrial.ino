@@ -2040,6 +2040,31 @@ void controlLighting() {
       brightness = map(toEnd, 0, lightSchedule.fadeOutMinutes, lightSchedule.minBrightness, lightSchedule.maxBrightness);
     } else { brightness = lightSchedule.maxBrightness; }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // LDR-based control (only if enabled AND sensor is physically present)
+  // Hysteresis: ON when lux < threshold, OFF when lux > threshold + hysteresis
+  // Modes: 0=schedule_only (LDR ignored), 1=hybrid (schedule AND dark), 2=sensor_only (dark only)
+  // ═══════════════════════════════════════════════════════════════
+  if (lightSchedule.ldrEnabled && ldrAvailable && lightLux >= 0.0f && lightSchedule.ldrMode != 0) {
+    float onLux = lightSchedule.ldrThresholdLux;
+    float offLux = lightSchedule.ldrThresholdLux + lightSchedule.ldrHysteresisLux;
+    if (lightSchedule.ldrLightActive) {
+      if (lightLux > offLux) lightSchedule.ldrLightActive = false;
+    } else {
+      if (lightLux < onLux) lightSchedule.ldrLightActive = true;
+    }
+    bool isDark = lightSchedule.ldrLightActive;
+
+    if (lightSchedule.ldrMode == 2) {
+      // Sensor-only: dark drives the light, schedule ignored
+      brightness = isDark ? lightSchedule.maxBrightness : 0;
+    } else {
+      // Hybrid: only ON when within schedule AND dark
+      if (!isDark) brightness = 0;
+    }
+  }
+
   requestLight(brightness);
 }
 
