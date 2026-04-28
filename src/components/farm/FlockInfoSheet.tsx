@@ -132,21 +132,15 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
 
             <div className="space-y-2">
               <Label>{t.breed[language]}</Label>
-              <Select 
-                value={formData.breed} 
-                onValueChange={(v) => setFormData(p => ({ ...p, breed: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BREEDS.map(breed => (
-                    <SelectItem key={breed.value} value={breed.value}>
-                      {breed[language]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BreedCombobox
+                options={BREEDS.map((b) => ({
+                  value: b.value,
+                  label: b[language],
+                  keywords: b.keywords,
+                }))}
+                value={formData.breed}
+                onChange={(v) => setFormData((p) => ({ ...p, breed: v }))}
+              />
             </div>
 
             <div className="space-y-2">
