@@ -2470,12 +2470,20 @@ export type Database = {
       }
       lighting_schedule: {
         Row: {
+          broiler_age_auto: boolean
+          broiler_dark_end: string
+          broiler_dark_start: string
           end_time: string
+          fade_circuits: number
           fade_in_minutes: number
           fade_out_minutes: number
+          fade_step_gap_minutes: number
           farm_id: string | null
+          flock_type: string
           gradual_enabled: boolean
           id: string
+          layer_dark_hours: number
+          ldr_daylight_off_lux: number
           ldr_enabled: boolean
           ldr_hysteresis_lux: number
           ldr_mode: string
@@ -2489,12 +2497,20 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          broiler_age_auto?: boolean
+          broiler_dark_end?: string
+          broiler_dark_start?: string
           end_time?: string
+          fade_circuits?: number
           fade_in_minutes?: number
           fade_out_minutes?: number
+          fade_step_gap_minutes?: number
           farm_id?: string | null
+          flock_type?: string
           gradual_enabled?: boolean
           id?: string
+          layer_dark_hours?: number
+          ldr_daylight_off_lux?: number
           ldr_enabled?: boolean
           ldr_hysteresis_lux?: number
           ldr_mode?: string
@@ -2508,12 +2524,20 @@ export type Database = {
           user_id: string
         }
         Update: {
+          broiler_age_auto?: boolean
+          broiler_dark_end?: string
+          broiler_dark_start?: string
           end_time?: string
+          fade_circuits?: number
           fade_in_minutes?: number
           fade_out_minutes?: number
+          fade_step_gap_minutes?: number
           farm_id?: string | null
+          flock_type?: string
           gradual_enabled?: boolean
           id?: string
+          layer_dark_hours?: number
+          ldr_daylight_off_lux?: number
           ldr_enabled?: boolean
           ldr_hysteresis_lux?: number
           ldr_mode?: string

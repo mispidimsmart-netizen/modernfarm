@@ -23,6 +23,7 @@ export function LDRSettingsCard() {
   const [threshold, setThreshold] = useState(50);
   const [hysteresis, setHysteresis] = useState(20);
   const [mode, setMode] = useState<LDRMode>('hybrid');
+  const [daylightOffLux, setDaylightOffLux] = useState(300);
   const [hasChanges, setHasChanges] = useState(false);
   const [currentLux, setCurrentLux] = useState<number | null>(null);
   const [ldrDetected, setLdrDetected] = useState<boolean | null>(null);
@@ -34,6 +35,7 @@ export function LDRSettingsCard() {
     setThreshold(Number((schedule as any).ldr_threshold_lux ?? 50));
     setHysteresis(Number((schedule as any).ldr_hysteresis_lux ?? 20));
     setMode(((schedule as any).ldr_mode ?? 'hybrid') as LDRMode);
+    setDaylightOffLux(Number((schedule as any).ldr_daylight_off_lux ?? 300));
     setHasChanges(false);
   }, [schedule]);
 
@@ -84,6 +86,7 @@ export function LDRSettingsCard() {
       ldr_threshold_lux: threshold,
       ldr_hysteresis_lux: hysteresis,
       ldr_mode: mode,
+      ldr_daylight_off_lux: daylightOffLux,
     } as any, {
       onSuccess: () => {
         setHasChanges(false);
@@ -245,6 +248,30 @@ export function LDRSettingsCard() {
               {language === 'bn'
                 ? `${threshold + hysteresis} lux-এর বেশি হলেই লাইট বন্ধ হবে (flapping রোধ)`
                 : `Lights OFF only above ${threshold + hysteresis} lux (prevents flapping)`}
+            </p>
+          </div>
+
+          {/* Daylight OFF threshold (power saving) */}
+          <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Sun size={16} className="text-emerald-600" />
+                {language === 'bn' ? '☀️ দিনের আলোয় বাতি বন্ধ' : '☀️ Daylight Auto-OFF'}
+              </label>
+              <Badge variant="outline">{daylightOffLux} lux</Badge>
+            </div>
+            <Slider
+              value={[daylightOffLux]}
+              onValueChange={(v) => { setDaylightOffLux(v[0]); setHasChanges(true); }}
+              min={150}
+              max={1000}
+              step={50}
+              className="py-2"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {language === 'bn'
+                ? `প্রাকৃতিক আলো ${daylightOffLux} lux-এর বেশি হলে কৃত্রিম বাতি বন্ধ থাকবে (বিদ্যুৎ সাশ্রয়)`
+                : `When ambient ≥ ${daylightOffLux} lux, artificial lights stay OFF (saves power)`}
             </p>
           </div>
 
