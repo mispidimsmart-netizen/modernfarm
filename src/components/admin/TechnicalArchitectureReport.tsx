@@ -620,11 +620,13 @@ export function TechnicalArchitectureReport() {
                 '১২V ২A অ্যাডাপ্টার + ১০০০μF ক্যাপাসিটর',
                 'DHT22 সেন্সর ১-১.৫ মিটার উচ্চতায়',
                 'MQ-137 এ ২৪ ঘণ্টা প্রি-হিট',
-                'Arduino IDE-তে কোড আপলোড',
+                'Arduino IDE-তে কোড আপলোড (ESP32-WROOM-32 only)',
                 'Serial Monitor-এ BOOT → NORMAL নিশ্চিত',
                 'ফোন নম্বর সেটিংসে যোগ করুন',
                 'UPS/IPS ESP32 ও রাউটারে সংযুক্ত',
                 'ম্যানুয়াল বাইপাস সুইচ Exhaust Fan-এ ইনস্টল',
+                'Calibration Offsets রান করুন (DeviceSystemTab)',
+                'Labor অ্যাকাউন্ট দরকার হলে Team Management থেকে কোড জেনারেট',
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-blue-400 text-xs">☐</span>
