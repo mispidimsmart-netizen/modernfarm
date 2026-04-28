@@ -372,14 +372,14 @@ export function useSmartAlerts() {
       const target = broilerTempTarget.targetTemp;
       const tolerance = 2; // 2°C tolerance
 
-      // Check if too cold for broiler age
+      // Check if too cold for broiler age — use stable synthetic id so React keys don't churn
       if (temp < target - tolerance) {
         const coldTemplate = ALERT_TEMPLATES['broiler_cold'];
         const coldMsg = coldTemplate.getMessage({ temp, target, age: broilerAgeDays });
         const coldSuggestion = coldTemplate.getSuggestion();
-        
+
         processed.push({
-          id: `broiler_cold_${Date.now()}`,
+          id: `synthetic_broiler_cold`,
           type: 'broiler_cold',
           level: coldTemplate.level as AlertLevel,
           title: coldTemplate.title.en,
@@ -399,9 +399,9 @@ export function useSmartAlerts() {
         const hotTemplate = ALERT_TEMPLATES['broiler_hot'];
         const hotMsg = hotTemplate.getMessage({ temp, target, age: broilerAgeDays });
         const hotSuggestion = hotTemplate.getSuggestion();
-        
+
         processed.push({
-          id: `broiler_hot_${Date.now()}`,
+          id: `synthetic_broiler_hot`,
           type: 'broiler_hot',
           level: hotTemplate.level as AlertLevel,
           title: hotTemplate.title.en,
