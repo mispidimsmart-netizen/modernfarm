@@ -419,16 +419,17 @@ export function LayerBatchCard() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpenClose(false)}>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setOpenClose(false)}>
               {t.cancel[language]}
             </Button>
             <Button
               variant="destructive"
+              className="h-12 w-full sm:w-auto text-base font-semibold"
               onClick={handleClose}
               disabled={closeBatch.isPending}
             >
-              <CheckCircle2 className="mr-2 h-4 w-4" />
+              <CheckCircle2 className="mr-2 h-5 w-5" />
               {t.endBatch[language]}
             </Button>
           </DialogFooter>
