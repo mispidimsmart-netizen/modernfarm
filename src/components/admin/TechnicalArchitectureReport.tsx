@@ -30,8 +30,8 @@ const handleDownloadPDF = () => {
       @media print { body { padding: 15px; } }
     </style></head><body>
     <h1>🏗️ FarmEye Automation Platform — Technical Architecture</h1>
-    <p class="subtitle">Version 8.0.0 | Industrial Grade | Production-Ready | Score: 100/100</p>
-    <p class="subtitle">Prepared for: Hardware Engineers & System Integrators | Date: ${new Date().toLocaleDateString('bn-BD')}</p>
+    <p class="subtitle">Version 8.2.0 | Industrial Grade | Production-Ready | Score: 100/100</p>
+    <p class="subtitle">18 Edge Functions | 67 DB Tables | Multi-Tenant | Date: ${new Date().toLocaleDateString('bn-BD')}</p>
 
     <h2>1. System Overview — 6-Layer Architecture</h2>
     <table><tr><th>Layer</th><th>Component</th><th>Role</th></tr>
@@ -48,10 +48,10 @@ const handleDownloadPDF = () => {
     <tr><td>MCU</td><td>ESP32 DevKit V1</td><td>Arduino C++, 240MHz dual-core</td></tr>
     <tr><td>Sensors</td><td>DHT22 x2, MQ-137, YF-S201, ZMPT101B</td><td>Temp/Humidity, NH3, Water Flow, Voltage</td></tr>
     <tr><td>Communication</td><td>WiFi + GSM (SIM800L)</td><td>HTTP + SMS fallback</td></tr>
-    <tr><td>Backend DB</td><td>PostgreSQL</td><td>Row-Level Security (RLS), 19+ tables</td></tr>
-    <tr><td>Backend Functions</td><td>Deno Edge Functions</td><td>15+ functions deployed</td></tr>
+    <tr><td>Backend DB</td><td>PostgreSQL</td><td>Row-Level Security (RLS), 67 tables</td></tr>
+    <tr><td>Backend Functions</td><td>Deno Edge Functions</td><td>18 functions deployed</td></tr>
     <tr><td>Frontend</td><td>React 18 + TypeScript 5</td><td>Vite 5 build system</td></tr>
-    <tr><td>UI Library</td><td>shadcn/ui + Tailwind CSS v3</td><td>Responsive, dark mode</td></tr>
+    <tr><td>UI Library</td><td>shadcn/ui + Tailwind CSS v3</td><td>Bengali (Nikosh), dark theme</td></tr>
     <tr><td>Mobile</td><td>PWA + Capacitor 8</td><td>iOS/Android native wrapper</td></tr></table>
 
     <h2>3. Hardware Layer — GPIO Pin Mapping</h2>
@@ -161,15 +161,16 @@ const handleDownloadPDF = () => {
     <tr><td>Cross-Validation Alert</td><td>DHT22 delta ≥ 3°C</td><td>10 minutes</td></tr>
     <tr><td>Manual Mode Activated</td><td>User switches to manual</td><td>Immediate</td></tr></table>
 
-    <h2>10. Cloud Backend (Edge Functions)</h2>
+    <h2>10. Cloud Backend (18 Edge Functions)</h2>
     <table><tr><th>Function</th><th>Purpose</th><th>Trigger</th></tr>
     <tr><td>esp32-api</td><td>Device telemetry ingestion & command delivery</td><td>HTTP (ESP32 polls)</td></tr>
     <tr><td>automation-engine</td><td>HSI calculation, fan speed decisions</td><td>HTTP (periodic)</td></tr>
-    <tr><td>safety-engine</td><td>Safety invariant validation on server-side</td><td>HTTP (every 60s)</td></tr>
+    <tr><td>safety-engine</td><td>Server-side safety invariant validation</td><td>HTTP (every 60s)</td></tr>
     <tr><td>emergency-webhook</td><td>External webhook for critical alerts</td><td>Database trigger</td></tr>
     <tr><td>fetch-weather</td><td>External weather data for predictive cooling</td><td>Scheduled</td></tr>
     <tr><td>daily-farm-report</td><td>Auto-generated daily summary</td><td>Scheduled (pg_cron)</td></tr>
     <tr><td>send-push-notification</td><td>Web Push / FCM notifications</td><td>Event-driven</td></tr>
+    <tr><td>push-public-key</td><td>VAPID public key distribution</td><td>HTTP</td></tr>
     <tr><td>ota-firmware</td><td>Firmware update management</td><td>Admin-triggered</td></tr>
     <tr><td>health-score</td><td>Farm health scoring algorithm</td><td>On-demand</td></tr>
     <tr><td>heat-risk</td><td>Predictive heat stress analysis</td><td>Periodic</td></tr>
@@ -177,7 +178,26 @@ const handleDownloadPDF = () => {
     <tr><td>export-data</td><td>CSV/Excel data export</td><td>User-triggered</td></tr>
     <tr><td>notification-escalation</td><td>Alert priority escalation</td><td>Event-driven</td></tr>
     <tr><td>schedule-notifier</td><td>Schedule-based automation</td><td>Cron</td></tr>
-    <tr><td>lookup-login-identifier</td><td>Phone/email login lookup</td><td>Auth flow</td></tr></table>
+    <tr><td>lookup-login-identifier</td><td>Phone/email login lookup</td><td>Auth flow</td></tr>
+    <tr><td>mode-profile</td><td>Automation mode profile resolution</td><td>HTTP</td></tr>
+    <tr><td>admin-delete-user</td><td>Super-admin user removal</td><td>Admin-triggered</td></tr></table>
+
+    <h2>10.1 Multi-Tenant & Team Management (NEW)</h2>
+    <table><tr><th>Component</th><th>Purpose</th><th>Details</th></tr>
+    <tr><td>farms.owner_id</td><td>Farm owner identity</td><td>Original creator</td></tr>
+    <tr><td>farm_members</td><td>Multi-user farm access</td><td>role: owner / member / labor</td></tr>
+    <tr><td>user_can_access_farm()</td><td>RLS gate function</td><td>SECURITY DEFINER</td></tr>
+    <tr><td>Labor Invite Code</td><td>Auto-membership on signup</td><td>Owner ID → 6-char code → join</td></tr>
+    <tr><td>UserRoleManager UI</td><td>Settings → Team Management tab</td><td>Code generation + member list</td></tr></table>
+
+    <h2>10.2 Settings Persistence (NEW)</h2>
+    <table><tr><th>Setting</th><th>Table</th><th>Columns</th></tr>
+    <tr><td>Farm Setup</td><td>farm_settings</td><td>farm_size, season_override, profile_override</td></tr>
+    <tr><td>HSI Thresholds</td><td>farm_settings</td><td>hsi_mild/moderate/severe/emergency</td></tr>
+    <tr><td>Fan Speed Bands</td><td>farm_settings</td><td>fan_low/medium/high_temp_min/max</td></tr>
+    <tr><td>Calibration Offsets</td><td>device_calibration</td><td>temp/humidity/ammonia offset columns</td></tr>
+    <tr><td>Op Preferences</td><td>advanced_automation_settings</td><td>5 channel preferences (low/auto/high)</td></tr>
+    <tr><td>Live Modifier</td><td>useAdvancedAutomation hook</td><td>applyPreferences() — soft threshold nudge</td></tr></table>
 
     <h2>11. OTA Firmware Management</h2>
     <table><tr><th>Feature</th><th>Details</th></tr>
@@ -272,7 +292,7 @@ export function TechnicalArchitectureReport() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-blue-200">🏗️ Technical Architecture & System Documentation</h2>
-              <p className="text-blue-400/80 text-sm mt-1">Version 8.0.0 | Industrial Grade | 14 Sections | Score: 100/100</p>
+              <p className="text-blue-400/80 text-sm mt-1">Version 8.2.0 | Industrial Grade | 18 Edge Functions | 67 Tables | Score: 100/100</p>
             </div>
             <Button onClick={handleDownloadPDF} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700">
               <Download className="w-4 h-4 mr-2" />
@@ -308,7 +328,7 @@ export function TechnicalArchitectureReport() {
                 ['MCU', 'ESP32 DevKit V1', 'Arduino C++, 240MHz'],
                 ['Sensors', 'DHT22×2, MQ-137, YF-S201', 'Temp, NH3, Water, Voltage'],
                 ['Communication', 'WiFi + GSM SIM800L', 'HTTP + SMS fallback'],
-                ['Backend', 'PostgreSQL + Deno Edge', '15+ functions, 19 tables, RLS'],
+                ['Backend', 'PostgreSQL + Deno Edge', '18 functions, 67 tables, RLS'],
                 ['Frontend', 'React 18 + TypeScript 5', 'Vite 5, shadcn/ui'],
                 ['Mobile', 'PWA + Capacitor 8', 'iOS/Android wrapper'],
               ]}
@@ -482,7 +502,7 @@ export function TechnicalArchitectureReport() {
           </ArchSection>
 
           {/* 10. Edge Functions */}
-          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (15+)">
+          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (18)">
             <DataTable
               headers={['Function', 'Purpose', 'Trigger']}
               rows={[
@@ -493,6 +513,7 @@ export function TechnicalArchitectureReport() {
                 ['fetch-weather', 'Predictive cooling', 'Scheduled'],
                 ['daily-farm-report', 'Daily summary', 'pg_cron'],
                 ['send-push-notification', 'Web Push/FCM', 'Event'],
+                ['push-public-key', 'VAPID key distribute', 'HTTP'],
                 ['ota-firmware', 'Firmware updates', 'Admin'],
                 ['health-score', 'Farm health score', 'On-demand'],
                 ['heat-risk', 'Heat stress analysis', 'Periodic'],
@@ -501,6 +522,37 @@ export function TechnicalArchitectureReport() {
                 ['notification-escalation', 'Alert escalation', 'Event'],
                 ['schedule-notifier', 'Schedule automation', 'Cron'],
                 ['lookup-login-identifier', 'Login lookup', 'Auth'],
+                ['mode-profile', 'Automation profile', 'HTTP'],
+                ['admin-delete-user', 'Super-admin removal', 'Admin'],
+              ]}
+            />
+          </ArchSection>
+
+          {/* 10.1 Multi-Tenant Team (NEW) */}
+          <ArchSection icon={<Lock className="w-5 h-5 text-purple-400" />} title="১০.১ Multi-Tenant Team (NEW)">
+            <DataTable
+              headers={['Component', 'Purpose', 'Details']}
+              rows={[
+                ['farms.owner_id', 'Farm owner', 'Original creator'],
+                ['farm_members', 'Multi-user access', 'role: owner/member/labor'],
+                ['user_can_access_farm()', 'RLS gate', 'SECURITY DEFINER'],
+                ['Labor Invite Code', 'Auto-membership', 'Owner ID → 6-char code'],
+                ['UserRoleManager UI', 'Settings → Team tab', 'Code gen + member list'],
+              ]}
+            />
+          </ArchSection>
+
+          {/* 10.2 Settings Persistence (NEW) */}
+          <ArchSection icon={<Settings className="w-5 h-5 text-indigo-400" />} title="১০.২ Settings Persistence (NEW)">
+            <DataTable
+              headers={['Setting', 'Table', 'Columns']}
+              rows={[
+                ['Farm Setup', 'farm_settings', 'farm_size, season, profile'],
+                ['HSI Thresholds', 'farm_settings', 'hsi_mild/moderate/severe/emerg'],
+                ['Fan Bands', 'farm_settings', 'fan_low/medium/high_temp'],
+                ['Calibration', 'device_calibration', 'temp/humidity/NH3 offset'],
+                ['Op Preferences', 'advanced_automation_settings', '5 channels low/auto/high'],
+                ['Live Modifier', 'useAdvancedAutomation', 'applyPreferences() soft nudge'],
               ]}
             />
           </ArchSection>
@@ -540,14 +592,16 @@ export function TechnicalArchitectureReport() {
           <ArchSection icon={<Lock className="w-5 h-5 text-rose-400" />} title="১৩. Security & Database">
             <div className="space-y-2">
               {[
-                'RLS Policies — সব টেবিলে Row Level Security',
+                'Farm-based RLS — user_can_access_farm() সব টেবিলে',
                 'Device Token Auth — x-device-token per-device isolation',
                 'Override Safety Band — 26-35°C সীমার বাইরে reject',
                 'Service Role Keys — Edge functions-এ, client-এ না',
-                'Audit Trail — প্রতিটি critical action logged',
-                'RBAC — Viewer / Farmer / Admin roles',
+                'Audit Trail — farm_audit_logs টেবিলে সব action logged',
+                'RBAC — Owner / Member / Labor / Super Admin',
                 'Audit Cleanup — 90-day auto-cleanup via pg_cron',
-                '19+ Tables — Full schema with foreign keys',
+                '67 Tables — Full schema with foreign keys & RLS',
+                'farm_members (NEW) — multi-user farm access',
+                'Labor Invite Code (NEW) — auto membership on signup',
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-rose-400 mt-0.5 flex-shrink-0" />
@@ -566,11 +620,13 @@ export function TechnicalArchitectureReport() {
                 '১২V ২A অ্যাডাপ্টার + ১০০০μF ক্যাপাসিটর',
                 'DHT22 সেন্সর ১-১.৫ মিটার উচ্চতায়',
                 'MQ-137 এ ২৪ ঘণ্টা প্রি-হিট',
-                'Arduino IDE-তে কোড আপলোড',
+                'Arduino IDE-তে কোড আপলোড (ESP32-WROOM-32 only)',
                 'Serial Monitor-এ BOOT → NORMAL নিশ্চিত',
                 'ফোন নম্বর সেটিংসে যোগ করুন',
                 'UPS/IPS ESP32 ও রাউটারে সংযুক্ত',
                 'ম্যানুয়াল বাইপাস সুইচ Exhaust Fan-এ ইনস্টল',
+                'Calibration Offsets রান করুন (DeviceSystemTab)',
+                'Labor অ্যাকাউন্ট দরকার হলে Team Management থেকে কোড জেনারেট',
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-blue-400 text-xs">☐</span>
