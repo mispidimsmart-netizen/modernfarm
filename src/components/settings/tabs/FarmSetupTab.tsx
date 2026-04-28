@@ -9,6 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile, useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
 import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -217,6 +218,37 @@ export function FarmSetupTab() {
       setIsProfileManual(true);
     }
   }, [farmSettings]);
+
+  // Sync setup wizard: mark automation profile step complete
+  const markAutomationProfileSelected = async () => {
+    try {
+      const farmId = (farmSettings as any)?.farm_id;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!farmId || !user) return;
+      const { data: existing } = await supabase
+        .from('farm_setup_status')
+        .select('id, step_automation_profile_selected')
+        .eq('farm_id', farmId)
+        .maybeSingle();
+      if (existing?.step_automation_profile_selected) return;
+      if (existing?.id) {
+        await supabase
+          .from('farm_setup_status')
+          .update({ step_automation_profile_selected: true })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('farm_setup_status')
+          .insert({
+            farm_id: farmId,
+            user_id: user.id,
+            step_automation_profile_selected: true,
+          });
+      }
+    } catch (e) {
+      console.warn('[FarmSetupTab] markAutomationProfileSelected failed', e);
+    }
+  };
   
   // Pending change tracking for confirmation dialog
   const [pendingChange, setPendingChange] = useState<{
@@ -295,6 +327,7 @@ export function FarmSetupTab() {
         setIsProfileManual(true);
         setProfileOverride(newProfile);
         await updateFarmSettings.mutateAsync({ profile_override: newProfile } as any);
+        await markAutomationProfileSelected();
       } else if (pendingChange.type === 'apply') {
         if (selectedShedId) {
           await updateShed.mutateAsync({ id: selectedShedId, farm_type: farmType } as any);
@@ -306,6 +339,9 @@ export function FarmSetupTab() {
           season_override: isSeasonManual ? seasonOverride : null,
           profile_override: isProfileManual ? profileOverride : null,
         } as any);
+        if (isProfileManual && profileOverride) {
+          await markAutomationProfileSelected();
+        }
       }
       
       toast({
