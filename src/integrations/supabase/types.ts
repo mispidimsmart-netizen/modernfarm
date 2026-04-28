@@ -181,7 +181,7 @@ export type Database = {
           {
             foreignKeyName: "advanced_automation_settings_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
@@ -1991,7 +1991,7 @@ export type Database = {
           {
             foreignKeyName: "farm_settings_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
