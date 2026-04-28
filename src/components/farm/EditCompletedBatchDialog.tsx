@@ -46,6 +46,10 @@ export function EditCompletedBatchDialog({
     notes: '',
   });
 
+  // Snapshot the batch's updated_at when dialog opens — used for conflict detection
+  const [snapshotUpdatedAt, setSnapshotUpdatedAt] = useState<string>(batch.updated_at);
+  const [conflict, setConflict] = useState<{ serverUpdatedAt: string } | null>(null);
+
   useEffect(() => {
     if (open) {
       setForm({
@@ -56,6 +60,8 @@ export function EditCompletedBatchDialog({
         chick_cost_per_bird: batch.chick_cost_per_bird,
         notes: '',
       });
+      setSnapshotUpdatedAt(batch.updated_at);
+      setConflict(null);
     }
   }, [open, batch]);
 
@@ -86,13 +92,23 @@ export function EditCompletedBatchDialog({
       bn: 'চূড়ান্ত পাখির সংখ্যা প্রাথমিকের চেয়ে বেশি হতে পারে না',
       en: 'Final birds cannot exceed initial',
     },
+    conflictTitle: {
+      bn: '⚠️ ব্যাচের তথ্য পরিবর্তিত হয়েছে',
+      en: '⚠️ Batch data has changed',
+    },
+    conflictMsg: {
+      bn: 'আপনি ডায়ালগ খোলার পর অন্য কেউ এই ব্যাচ আপডেট করেছে। আপনার পরিবর্তন সংরক্ষণ করলে তাদের পরিবর্তন মুছে যাবে।',
+      en: 'Someone else updated this batch after you opened the dialog. Saving will overwrite their changes.',
+    },
+    overwrite: { bn: 'যাইহোক ওভাররাইট করুন', en: 'Overwrite anyway' },
+    reload: { bn: 'নতুন তথ্য লোড করুন', en: 'Reload latest' },
   };
 
   const dateInvalid = new Date(form.actual_end_date) < new Date(form.start_date);
   const birdsInvalid = form.current_bird_count > form.initial_bird_count;
   const canSave = !dateInvalid && !birdsInvalid && form.initial_bird_count > 0;
 
-  const handleSave = () => {
+  const submit = (force: boolean) => {
     editBatch.mutate(
       {
         batchId: batch.id,
@@ -102,10 +118,39 @@ export function EditCompletedBatchDialog({
         current_bird_count: form.current_bird_count,
         chick_cost_per_bird: form.chick_cost_per_bird,
         notes: form.notes,
+        expectedUpdatedAt: snapshotUpdatedAt,
+        force,
       },
-      { onSuccess: () => onOpenChange(false) }
+      {
+        onSuccess: () => {
+          setConflict(null);
+          onOpenChange(false);
+        },
+        onError: (err: any) => {
+          if (err?.code === 'BATCH_CONFLICT') {
+            setConflict({ serverUpdatedAt: err.serverUpdatedAt });
+          }
+        },
+      }
     );
   };
+
+  const handleSave = () => submit(false);
+  const handleOverwrite = () => submit(true);
+  const handleReload = () => {
+    // Re-snapshot from latest prop (parent will refetch via query invalidation)
+    setForm({
+      start_date: batch.start_date,
+      actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
+      initial_bird_count: batch.initial_bird_count,
+      current_bird_count: batch.current_bird_count,
+      chick_cost_per_bird: batch.chick_cost_per_bird,
+      notes: '',
+    });
+    setSnapshotUpdatedAt(batch.updated_at);
+    setConflict(null);
+  };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
