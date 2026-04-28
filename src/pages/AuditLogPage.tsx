@@ -76,17 +76,33 @@ export function AuditLogPage() {
           <h1 className="text-xl font-bold text-foreground">
             {isBn ? '📋 অডিট লগ' : '📋 Audit Log'}
           </h1>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="gap-2"
-          >
-            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-            {isBn ? 'রিফ্রেশ' : 'Refresh'}
-          </Button>
         </div>
+
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="general" className="gap-1.5">
+              <Filter size={14} />
+              {isBn ? 'সাধারণ' : 'General'}
+            </TabsTrigger>
+            <TabsTrigger value="commands" className="gap-1.5">
+              <ListChecks size={14} />
+              {isBn ? 'ডিভাইস কমান্ড' : 'Device Commands'}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="mt-4 space-y-4">
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="gap-2"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+                {isBn ? 'রিফ্রেশ' : 'Refresh'}
+              </Button>
+            </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-2">
