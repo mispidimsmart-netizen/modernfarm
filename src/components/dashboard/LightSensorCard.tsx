@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { SunDim, Plug, ChevronRight, WifiOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { SunDim, Plug, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
