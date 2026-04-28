@@ -3,14 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { computeBatchSummary, type LayerBatch } from '@/hooks/useLayerBatch';
 
 /**
  * Offline queue specifically for completed layer batch edits.
  * Stores pending edits in localStorage and replays them when connectivity returns.
  *
- * NOTE: When syncing, we always pass `force: true` semantics for the recompute
- * (the user already explicitly chose to save while offline). The summary
- * recompute is re-run server-side at sync time using current child rows.
+ * On sync we reuse the SAME `computeBatchSummary` used by the online edit path
+ * so all derived fields (peak_production_percent, peak_age_weeks, FCR,
+ * total_feed_cost, total_expenses, net_profit, etc.) match exactly.
  */
 
 const QUEUE_KEY = 'farmeye_batch_edit_queue_v1';
@@ -70,7 +71,7 @@ async function applyQueuedEdit(
 ): Promise<void> {
   const { batchId, payload } = item;
 
-  // 1. Update batch
+  // 1. Update batch row
   const { data: updated, error: uErr } = await supabase
     .from('layer_batches' as any)
     .update({
@@ -84,64 +85,23 @@ async function applyQueuedEdit(
     .select()
     .single();
   if (uErr) throw uErr;
-  const batch: any = updated;
+  const batch = updated as unknown as LayerBatch;
 
-  // 2. Recompute summary inline (mirrors useEditCompletedLayerBatch logic, lightweight)
-  const start = payload.start_date;
-  const end = payload.actual_end_date;
-
-  const [eggsRes, mortRes, feedRes] = await Promise.all([
-    supabase
-      .from('egg_production')
-      .select('total_eggs,production_date')
-      .eq('user_id', userId)
-      .gte('production_date', start)
-      .lte('production_date', end),
-    supabase
-      .from('daily_summary')
-      .select('mortality_count')
-      .eq('user_id', userId)
-      .gte('summary_date', start)
-      .lte('summary_date', end),
-    supabase
-      .from('feed_consumption')
-      .select('quantity_kg')
-      .eq('user_id', userId)
-      .gte('consumption_date', start)
-      .lte('consumption_date', end),
-  ]);
-
-  const total_eggs = (eggsRes.data || []).reduce((s, r: any) => s + (r.total_eggs || 0), 0);
-  const total_mortality = (mortRes.data || []).reduce(
-    (s, r: any) => s + (r.mortality_count || 0),
-    0
-  );
-  const total_feed_kg = (feedRes.data || []).reduce(
-    (s, r: any) => s + Number(r.quantity_kg || 0),
-    0
+  // 2. Recompute summary with the SAME canonical logic used online
+  const summary = await computeBatchSummary(
+    userId,
+    batch,
+    payload.start_date,
+    payload.actual_end_date
   );
 
-  const initial = payload.initial_bird_count || 1;
-  const mortality_percent = +((total_mortality / initial) * 100).toFixed(2);
-  const fcr = total_eggs > 0 ? +(total_feed_kg / (total_eggs * 0.06)).toFixed(2) : 0;
-  const duration_days = Math.max(
-    1,
-    Math.ceil(
-      (new Date(end).getTime() - new Date(start).getTime()) / 86_400_000
-    )
-  );
-
+  // 3. Upsert summary
   await supabase.from('layer_batch_summary' as any).delete().eq('batch_id', batchId);
   const { error: sErr } = await supabase.from('layer_batch_summary' as any).insert({
     batch_id: batchId,
     user_id: userId,
-    farm_id: batch?.farm_id ?? null,
-    total_eggs,
-    total_mortality,
-    mortality_percent,
-    total_feed_kg,
-    fcr,
-    duration_days,
+    farm_id: batch.farm_id,
+    ...summary,
     notes: payload.notes || null,
   } as any);
   if (sErr) throw sErr;
