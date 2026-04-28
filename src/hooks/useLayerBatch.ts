@@ -502,10 +502,20 @@ export function useEditCompletedLayerBatch() {
 
       return { batchId, summary };
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-trend'] });
+      if (result?.queued) {
+        toast({
+          title: language === 'bn' ? 'অফলাইন — সারিতে যোগ হয়েছে' : 'Offline — queued',
+          description:
+            language === 'bn'
+              ? 'ইন্টারনেট ফিরলে স্বয়ংক্রিয়ভাবে সিঙ্ক হবে'
+              : 'Will auto-sync when connectivity returns',
+        });
+        return;
+      }
       toast({
         title: language === 'bn' ? 'আপডেট সফল' : 'Updated',
         description:
