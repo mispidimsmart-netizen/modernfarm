@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { 
-  Cpu, Wifi, RefreshCw, Upload, Settings2, Thermometer,
+  Cpu, Wifi, RefreshCw, Settings2, Thermometer,
   Droplets, Wind, AlertTriangle, Clock, FileCode, Trash2,
   Copy, Plus, Home, Signal, HardDrive, Bug, ChevronDown,
   Shield, Zap, RotateCcw, Activity
