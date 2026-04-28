@@ -53,6 +53,7 @@ import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
+import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 
 // Farmer-Friendly Assistant Components
 import { 
