@@ -101,7 +101,9 @@ const char* FIRMWARE_VERSION = "8.0.0";
 #define CIRCULATION_RELAY_PIN 33    // IN8: Circulation Fan
 #define STATUS_LED_PIN       2
 #define MANUAL_OVERRIDE_BTN  32
+#define LDR_PIN              36     // VP — ADC1_CH0, input-only, optional ambient light sensor
 // Note: GPIO 14 now used by Heater relay, manual fan button removed
+// LDR (Light Dependent Resistor) on GPIO 36 is OPTIONAL — auto-detected at boot
 
 // --- GSM Pins (moved from 16/17 due to sensor remapping) ---
 #define GSM_TX_PIN           23
