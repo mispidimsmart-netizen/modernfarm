@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Save, AlertCircle, RefreshCw } from 'lucide-react';
+import { Pencil, Save, AlertCircle, RefreshCw, WifiOff, CloudUpload } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
   useEditCompletedLayerBatch,
   useLayerBatchSummary,
   type LayerBatch,
 } from '@/hooks/useLayerBatch';
+import { useBatchEditQueue } from '@/hooks/useBatchEditQueue';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ export function EditCompletedBatchDialog({
   const { language } = useAuth();
   const editBatch = useEditCompletedLayerBatch();
   const { data: summary } = useLayerBatchSummary(batch.id);
+  const { isOnline, pendingCount, isSyncing, sync } = useBatchEditQueue();
 
   const [form, setForm] = useState({
     start_date: batch.start_date,
