@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
 import { Bird, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFlockInfo, useUpdateFlockInfo } from '@/hooks/useFarmManagement';
@@ -10,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartDatePicker } from '@/components/ui/smart-date-picker';
+import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
 
 interface FlockInfoSheetProps {
   open: boolean;
