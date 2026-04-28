@@ -436,22 +436,11 @@ export function BroilerBatchSheet({ open, onOpenChange }: BroilerBatchSheetProps
                   </div>
                   <div className="space-y-2">
                     <Label>{t.breed[language]}</Label>
-                    <Select value={form.breed} onValueChange={(v) => setForm({ ...form, breed: v })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cobb 500">Cobb 500 (কব ৫০০)</SelectItem>
-                        <SelectItem value="Ross 308">Ross 308 (রস ৩০৮)</SelectItem>
-                        <SelectItem value="Hubbard Classic">Hubbard Classic (হাবার্ড ক্লাসিক)</SelectItem>
-                        <SelectItem value="Arbor Acres Plus">Arbor Acres Plus (আরবর একর্স প্লাস)</SelectItem>
-                        <SelectItem value="Indian River">Indian River (ইন্ডিয়ান রিভার)</SelectItem>
-                        <SelectItem value="Sonali">Sonali (সোনালী)</SelectItem>
-                        <SelectItem value="Cobb 700">Cobb 700 (কব ৭০০)</SelectItem>
-                        <SelectItem value="Local">দেশি (Local)</SelectItem>
-                        <SelectItem value="Other">অন্যান্য (Other)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <BreedCombobox
+                      options={BROILER_BREEDS}
+                      value={form.breed}
+                      onChange={(v) => setForm({ ...form, breed: v })}
+                    />
                   </div>
                 </div>
 
