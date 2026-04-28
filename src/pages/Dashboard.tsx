@@ -1,6 +1,3 @@
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
@@ -25,7 +22,7 @@ import { ShedSelector } from '@/components/shed/ShedSelector';
 import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
 
 import { WeatherCard } from '@/components/weather/WeatherCard';
-import { WeatherSettingsSheet } from '@/components/weather/WeatherSettingsSheet';
+
 import { SensorCharts } from '@/components/dashboard/SensorCharts';
 
 import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
@@ -243,8 +240,7 @@ export function Dashboard() {
               {/* Today Summary */}
               <TodayReadableSummary />
 
-              {/* ── 🔌 পাওয়ার আউটেজ ── */}
-              <PowerOutageCard />
+              {/* PowerOutageCard moved to Details tab to avoid duplication */}
 
               {/* Mode Status Strip */}
               <div className={`rounded-xl border px-4 py-2 text-center ${
