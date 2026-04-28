@@ -131,7 +131,9 @@ export default defineConfig(({ mode }) => ({
         // Do NOT precache index.html — always fetch fresh from network so
         // installed PWAs pick up new builds immediately on next navigation.
         globIgnores: ["**/index.html"],
-        navigateFallback: '/index.html',
+        // Do not let Workbox precache index.html as SPA fallback; navigation
+        // is handled by the NetworkFirst runtime rule below for fresh updates.
+        navigateFallback: undefined,
         navigateFallbackDenylist: [/^\/api/, /^\/~oauth/],
         // Force immediate activation of new SW
         skipWaiting: true,
