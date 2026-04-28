@@ -107,10 +107,11 @@ export function DeviceSystemTab() {
     }
   }, [debugMode]);
 
-  // Calibration offsets
-  const [tempOffset, setTempOffset] = useState(0);
-  const [humidityOffset, setHumidityOffset] = useState(0);
-  const [ammoniaOffset, setAmmoniaOffset] = useState(0);
+  // Calibration offsets — persisted to localStorage so they survive reload.
+  // Note: ESP32 reads these via firmware config; UI is a local override hint until OTA config push is wired.
+  const [tempOffset, setTempOffset] = useState(() => Number(localStorage.getItem('cal_temp_offset') || 0));
+  const [humidityOffset, setHumidityOffset] = useState(() => Number(localStorage.getItem('cal_humidity_offset') || 0));
+  const [ammoniaOffset, setAmmoniaOffset] = useState(() => Number(localStorage.getItem('cal_ammonia_offset') || 0));
 
   // Fetch device tokens — scope by farm so workers see owner's devices via RLS
   const { data: deviceTokens } = useQuery({
