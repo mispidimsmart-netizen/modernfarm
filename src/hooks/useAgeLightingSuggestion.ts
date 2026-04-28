@@ -101,7 +101,7 @@ const AGE_RECOMMENDATIONS: AgeRecommendation[] = [
 
 export function useAgeLightingSuggestion(): LightingSuggestion | null {
   const { ageWeeks, isLoading: ageLoading, hasValue } = useBirdAge();
-  const { isLoading: scheduleLoading } = useLightingSchedule();
+  const { data: schedule, isLoading: scheduleLoading } = useLightingSchedule();
 
   return useMemo(() => {
     if (ageLoading || scheduleLoading || !hasValue || ageWeeks === null) {
