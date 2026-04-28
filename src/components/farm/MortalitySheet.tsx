@@ -106,10 +106,10 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>{t.date[language]}</Label>
-                <Input
-                  type="date"
-                  value={formData.record_date}
-                  onChange={(e) => setFormData(p => ({ ...p, record_date: e.target.value }))}
+                <SmartDatePicker
+                  value={formData.record_date || null}
+                  onChange={(iso) => setFormData(p => ({ ...p, record_date: iso }))}
+                  disableFuture
                 />
               </div>
               <div className="space-y-2">
