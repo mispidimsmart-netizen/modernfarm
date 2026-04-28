@@ -260,8 +260,9 @@ export function SettingsPage() {
             </Card>
           )}
 
-          {/* Main Settings Tabs */}
-          {canEditSettings && (
+          {/* Main Settings Tabs — visible to all; non-editors get a read-only overlay */}
+          <div className={!canEditSettings ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={!canEditSettings}>
+          {(canEditSettings || !permissionsLoading) && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'} mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl`}>
                 <TabsTrigger 
