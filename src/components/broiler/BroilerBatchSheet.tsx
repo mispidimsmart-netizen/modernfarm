@@ -345,12 +345,23 @@ export function BroilerBatchSheet({ open, onOpenChange }: BroilerBatchSheetProps
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>{t.startDate[language]}</Label>
+                    <Label className="flex items-center gap-1.5">
+                      {t.startDate[language]}
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-normal text-primary">
+                        {language === 'bn' ? '🐔 পাখির বয়সের উৎস' : '🐔 Bird age source'}
+                      </span>
+                    </Label>
                     <Input
                       type="date"
                       value={form.start_date}
+                      max={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setForm({ ...form, start_date: e.target.value })}
                     />
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      {language === 'bn'
+                        ? 'এই তারিখ থেকে পাখির বয়স স্বয়ংক্রিয়ভাবে গণনা হয়। পরে Settings → Lighting/Farm Setup এর "পাখির বয়স" কার্ড থেকেও সংশোধন করা যাবে।'
+                        : 'Bird age is auto-calculated from this date. You can also adjust it later from the "Bird Age" card in Settings → Lighting/Farm Setup.'}
+                    </p>
                   </div>
                 </div>
 
