@@ -123,10 +123,13 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        // Do NOT precache index.html — always fetch fresh from network so
+        // installed PWAs pick up new builds immediately on next navigation.
+        globIgnores: ["**/index.html"],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/~oauth/],
-        // Force immediate activation
+        // Force immediate activation of new SW
         skipWaiting: true,
         clientsClaim: true,
         // Clean old caches on new SW activation
@@ -134,6 +137,21 @@ export default defineConfig(({ mode }) => ({
         // Import push notification handlers into the generated SW
         importScripts: ['/sw.js'],
         runtimeCaching: [
+          {
+            // Always fetch the HTML shell from network first so updates
+            // appear immediately. Falls back to cache only when offline.
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' || url.pathname.endsWith('/index.html'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-shell',
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 4,
+                maxAgeSeconds: 60 * 60 * 24, // 1 day fallback
+              },
+            },
+          },
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
             handler: "NetworkFirst",
