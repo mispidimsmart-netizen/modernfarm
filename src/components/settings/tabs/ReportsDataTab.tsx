@@ -229,69 +229,6 @@ export function ReportsDataTab() {
         </CardContent>
       </Card>
 
-      {/* Export Data Section */}
-      <Card className="border-primary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Download className="h-5 w-5 text-primary" />
-            {language === 'bn' ? 'ডেটা এক্সপোর্ট' : 'Data Export'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? 'আপনার খামারের ডেটা CSV ফাইলে ডাউনলোড করুন' 
-              : 'Download your farm data as CSV file'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Export Type Selector */}
-          <div className="space-y-2">
-            <Label>{language === 'bn' ? 'ডেটার ধরণ' : 'Data Type'}</Label>
-            <Select value={exportType} onValueChange={setExportType}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {language === 'bn' ? option.labelBn : option.labelEn}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Export Button */}
-          <Button 
-            className="w-full h-12 gap-2"
-            onClick={handleExportData}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                {language === 'bn' ? 'এক্সপোর্ট হচ্ছে...' : 'Exporting...'}
-              </>
-            ) : exportSuccess ? (
-              <>
-                <CheckCircle2 className="h-5 w-5" />
-                {language === 'bn' ? 'সফল!' : 'Success!'}
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5" />
-                {language === 'bn' ? 'CSV ডাউনলোড করুন' : 'Download CSV'}
-              </>
-            )}
-          </Button>
-
-          <p className="text-xs text-muted-foreground text-center">
-            {language === 'bn' 
-              ? '💡 এক্সপোর্ট করা ফাইল Excel এ সরাসরি খুলতে পারবেন'
-              : '💡 Exported file can be opened directly in Excel'}
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Quick Actions */}
       <Card>
         <CardHeader className="pb-3">
