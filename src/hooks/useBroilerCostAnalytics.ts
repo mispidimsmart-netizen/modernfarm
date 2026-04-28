@@ -67,6 +67,22 @@ export interface BroilerCostAnalytics {
     mortality: number;
     weight: number;
   }[];
+
+  // Weight history (all samples) — for weight gain graph
+  weightHistory: {
+    date: string;
+    ageDays: number;
+    weight: number;       // grams (actual)
+    targetWeight: number; // grams (Cobb 500 target at that age)
+  }[];
+
+  // FCR trend over batch lifetime (calculated at each weight sample point)
+  fcrTrend: {
+    date: string;
+    ageDays: number;
+    fcr: number;
+    target: number; // industry target FCR at that age
+  }[];
 }
 
 // Default market rates
