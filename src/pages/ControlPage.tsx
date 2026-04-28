@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useBoundedOverride } from '@/hooks/useBoundedOverride';
-import { useUserRole } from '@/hooks/useUserRole';
+// useUserRole removed — permissions hook already provides role info
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useFarmType } from '@/hooks/useFarmType';
