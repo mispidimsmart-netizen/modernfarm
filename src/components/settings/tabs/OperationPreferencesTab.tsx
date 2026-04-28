@@ -189,10 +189,10 @@ export function OperationPreferencesTab() {
     });
 
     toast({
-      title: language === 'bn' ? 'সেটিং পরিবর্তিত' : 'Setting changed',
-      description: language === 'bn' 
-        ? 'পরিবর্তন সংরক্ষিত হয়েছে' 
-        : 'Change has been saved',
+      title: language === 'bn' ? 'প্রিভিউ পরিবর্তিত' : 'Preview changed',
+      description: language === 'bn'
+        ? 'এই সেটিংস শুধু এই সেশনে প্রিভিউ — বাস্তব অটোমেশন উপরের মোড সুইচ থেকে নিয়ন্ত্রিত'
+        : 'Preview only for this session — real automation is controlled by the mode switch above',
     });
   };
 

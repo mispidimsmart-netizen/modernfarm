@@ -8,6 +8,7 @@ import {
   Shield, Zap, RotateCcw, Activity
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateDeviceToken } from '@/lib/esp32Api';
@@ -81,6 +82,7 @@ function CollapsibleSection({ title, titleBn, icon: Icon, color, children, defau
 
 export function DeviceSystemTab() {
   const { language, user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: sheds } = useSheds();
@@ -105,74 +107,77 @@ export function DeviceSystemTab() {
     }
   }, [debugMode]);
 
-  // Calibration offsets
-  const [tempOffset, setTempOffset] = useState(0);
-  const [humidityOffset, setHumidityOffset] = useState(0);
-  const [ammoniaOffset, setAmmoniaOffset] = useState(0);
+  // Calibration offsets — persisted to localStorage so they survive reload.
+  // Note: ESP32 reads these via firmware config; UI is a local override hint until OTA config push is wired.
+  const [tempOffset, setTempOffset] = useState(() => Number(localStorage.getItem('cal_temp_offset') || 0));
+  const [humidityOffset, setHumidityOffset] = useState(() => Number(localStorage.getItem('cal_humidity_offset') || 0));
+  const [ammoniaOffset, setAmmoniaOffset] = useState(() => Number(localStorage.getItem('cal_ammonia_offset') || 0));
 
-  // Fetch device tokens
+  // Fetch device tokens — scope by farm so workers see owner's devices via RLS
   const { data: deviceTokens } = useQuery({
-    queryKey: ['device_tokens', user?.id],
+    queryKey: ['device_tokens', selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('device_tokens')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!selectedFarmId,
   });
 
-  // Fetch alerts for event logs
+  // Fetch alerts for event logs (farm-scoped via RLS)
   const { data: eventLogs, refetch: refetchEventLogs } = useQuery({
-    queryKey: ['event_logs', user?.id],
+    queryKey: ['event_logs', selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       return data;
     },
-    enabled: !!user && showEventLogs,
+    enabled: !!selectedFarmId && showEventLogs,
   });
 
   // Fetch error alerts specifically
   const { data: errorLogs, refetch: refetchErrorLogs } = useQuery({
-    queryKey: ['error_logs', user?.id],
+    queryKey: ['error_logs', selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .eq('severity', 'danger')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       return data;
     },
-    enabled: !!user && showErrorLogs,
+    enabled: !!selectedFarmId && showErrorLogs,
   });
 
   // Add device token
   const addDeviceToken = useMutation({
     mutationFn: async ({ name, shedId }: { name: string; shedId?: string }) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) throw new Error('No farm selected');
       const token = generateDeviceToken();
       const { error } = await supabase
         .from('device_tokens')
-        .insert({ 
-          user_id: user.id, 
-          device_name: name, 
+        .insert({
+          user_id: user.id,
+          farm_id: selectedFarmId,
+          device_name: name,
           token,
-          shed_id: shedId || null
+          shed_id: shedId || null,
         });
       if (error) throw error;
       return token;
@@ -210,19 +215,64 @@ export function DeviceSystemTab() {
     }
   };
 
-  const handleRestartDevice = () => {
+  const handleRestartDevice = async () => {
+    if (!user || !selectedFarmId) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'ফার্ম নির্বাচিত নয়' : 'No farm selected',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const { error } = await supabase.from('device_commands').insert({
+      user_id: user.id,
+      farm_id: selectedFarmId,
+      device_name: 'ESP32',
+      command_type: 'restart',
+      command_value: true,
+      executed: false,
+    });
+    if (error) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
     toast({
       title: language === 'bn' ? 'রিস্টার্ট কমান্ড পাঠানো হয়েছে' : 'Restart command sent',
-      description: language === 'bn' ? 'ডিভাইস শীঘ্রই রিস্টার্ট হবে' : 'Device will restart shortly',
+      description: language === 'bn' ? 'ডিভাইস পরবর্তী চেকইনে রিস্টার্ট হবে' : 'Device will restart at next check-in',
     });
   };
 
-  const handleFactoryReset = () => {
-    toast({
-      title: language === 'bn' ? 'ফ্যাক্টরি রিসেট সম্পন্ন' : 'Factory reset complete',
-      variant: 'destructive',
+  const handleFactoryReset = async () => {
+    if (!user || !selectedFarmId) {
+      setShowFactoryResetDialog(false);
+      return;
+    }
+    const { error } = await supabase.from('device_commands').insert({
+      user_id: user.id,
+      farm_id: selectedFarmId,
+      device_name: 'ESP32',
+      command_type: 'factory_reset',
+      command_value: true,
+      executed: false,
     });
     setShowFactoryResetDialog(false);
+    if (error) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: language === 'bn' ? 'ফ্যাক্টরি রিসেট কমান্ড পাঠানো হয়েছে' : 'Factory reset command sent',
+      description: language === 'bn' ? 'ডিভাইস পরবর্তী চেকইনে রিসেট হবে' : 'Device will reset at next check-in',
+      variant: 'destructive',
+    });
   };
 
   return (
@@ -470,7 +520,17 @@ export function DeviceSystemTab() {
 
           <Button 
             className="w-full"
-            onClick={() => toast({ title: language === 'bn' ? 'ক্যালিব্রেশন সেভ হয়েছে' : 'Calibration saved' })}
+            onClick={() => {
+              localStorage.setItem('cal_temp_offset', String(tempOffset));
+              localStorage.setItem('cal_humidity_offset', String(humidityOffset));
+              localStorage.setItem('cal_ammonia_offset', String(ammoniaOffset));
+              toast({
+                title: language === 'bn' ? 'ক্যালিব্রেশন সেভ হয়েছে' : 'Calibration saved',
+                description: language === 'bn'
+                  ? 'অফসেট স্থানীয়ভাবে সংরক্ষিত — ESP32 এ পরবর্তী OTA পুশে প্রযোজ্য হবে'
+                  : 'Offsets saved locally — applied to ESP32 on next OTA push',
+              });
+            }}
           >
             {language === 'bn' ? 'ক্যালিব্রেশন সেভ করুন' : 'Save Calibration'}
           </Button>

@@ -253,15 +253,16 @@ export function SettingsPage() {
               <CardContent className="p-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   🔒 {language === 'bn' 
-                    ? 'সেটিংস পরিবর্তন করতে অ্যাডমিন বা মালিকের অনুমতি প্রয়োজন' 
-                    : 'Admin or owner permission required to change settings'}
+                    ? 'আপনি শুধুমাত্র দেখতে পারবেন — পরিবর্তন করতে অ্যাডমিন বা মালিকের অনুমতি প্রয়োজন' 
+                    : 'View only — admin or owner permission required to make changes'}
                 </p>
               </CardContent>
             </Card>
           )}
 
-          {/* Main Settings Tabs */}
-          {canEditSettings && (
+          {/* Main Settings Tabs — visible to all; non-editors get a read-only overlay */}
+          <div className={!canEditSettings ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={!canEditSettings}>
+          {(canEditSettings || !permissionsLoading) && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'} mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl`}>
                 <TabsTrigger 
@@ -327,6 +328,7 @@ export function SettingsPage() {
               )}
             </Tabs>
           )}
+          </div>
 
           {/* Notifications Section - Collapsible */}
           <Collapsible open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
