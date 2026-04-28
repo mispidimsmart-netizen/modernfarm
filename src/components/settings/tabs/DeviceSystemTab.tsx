@@ -145,6 +145,49 @@ export function DeviceSystemTab() {
     }
   }, [calibration]);
 
+  // Save calibration offsets to DB (upsert)
+  const saveCalibration = useMutation({
+    mutationFn: async () => {
+      if (!user || !selectedFarmId) throw new Error('No farm selected');
+      const payload: any = {
+        user_id: user.id,
+        farm_id: selectedFarmId,
+        temperature_offset_celsius: tempOffset,
+        humidity_offset_percent: humidityOffset,
+        ammonia_offset_ppm: ammoniaOffset,
+        updated_at: new Date().toISOString(),
+      };
+      if ((calibration as any)?.id) {
+        const { error } = await supabase
+          .from('device_calibration')
+          .update(payload)
+          .eq('id', (calibration as any).id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('device_calibration')
+          .insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device_calibration'] });
+      toast({
+        title: language === 'bn' ? 'ক্যালিব্রেশন সেভ হয়েছে' : 'Calibration saved',
+        description: language === 'bn'
+          ? 'অফসেট DB-তে সংরক্ষিত — ESP32 পরবর্তী সিঙ্কে গ্রহণ করবে'
+          : 'Offsets saved to DB — ESP32 will fetch on next sync',
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: language === 'bn' ? 'সেভ ব্যর্থ' : 'Save failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Fetch device tokens — scope by farm so workers see owner's devices via RLS
   const { data: deviceTokens } = useQuery({
     queryKey: ['device_tokens', selectedFarmId],
