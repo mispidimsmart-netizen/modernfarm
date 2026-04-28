@@ -552,19 +552,19 @@ export function DeviceSystemTab() {
 
           <Button 
             className="w-full"
+            disabled={saveCalibration.isPending}
             onClick={() => {
+              // Local cache (instant feedback on reload)
               localStorage.setItem('cal_temp_offset', String(tempOffset));
               localStorage.setItem('cal_humidity_offset', String(humidityOffset));
               localStorage.setItem('cal_ammonia_offset', String(ammoniaOffset));
-              toast({
-                title: language === 'bn' ? 'ক্যালিব্রেশন সেভ হয়েছে' : 'Calibration saved',
-                description: language === 'bn'
-                  ? 'অফসেট স্থানীয়ভাবে সংরক্ষিত — ESP32 এ পরবর্তী OTA পুশে প্রযোজ্য হবে'
-                  : 'Offsets saved locally — applied to ESP32 on next OTA push',
-              });
+              // DB persist (server-side, ESP32 reads via sync)
+              saveCalibration.mutate();
             }}
           >
-            {language === 'bn' ? 'ক্যালিব্রেশন সেভ করুন' : 'Save Calibration'}
+            {saveCalibration.isPending
+              ? (language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+              : (language === 'bn' ? 'ক্যালিব্রেশন সেভ করুন' : 'Save Calibration')}
           </Button>
         </div>
       </CollapsibleSection>
