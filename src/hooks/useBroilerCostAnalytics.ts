@@ -78,29 +78,33 @@ const DEFAULT_RATES = {
 
 export function useBroilerCostAnalytics() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
 
   // Fetch active batch with all related data
   const { data: batchData, isLoading: batchLoading } = useQuery({
-    queryKey: ['broiler-batch-analytics', user?.id],
+    queryKey: ['broiler-batch-analytics', user?.id, selectedFarmId],
     queryFn: async () => {
-      // Get active batch
-      const { data: batch, error: batchError } = await supabase
+      if (!user) return null;
+      // Get active batch — scoped to user + selected farm
+      let batchQ = supabase
         .from('broiler_batches')
         .select('*')
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
+        .limit(1);
+      if (selectedFarmId) batchQ = batchQ.eq('farm_id', selectedFarmId);
+      const { data: batch, error: batchError } = await batchQ.single();
+
       if (batchError && batchError.code !== 'PGRST116') throw batchError;
       if (!batch) return null;
-      
+
       // Calculate age in days
       const startDate = new Date(batch.start_date);
       const today = new Date();
       const ageDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      // Fetch related data in parallel
+
+      // Fetch related data in parallel (all scoped by batch_id which is itself farm-scoped)
       const [feedResult, mortalityResult, weightsResult, salesResult] = await Promise.all([
         supabase
           .from('broiler_feed')
@@ -122,7 +126,7 @@ export function useBroilerCostAnalytics() {
           .select('*')
           .eq('batch_id', batch.id),
       ]);
-      
+
       return {
         batch: {
           ...batch,
@@ -137,18 +141,22 @@ export function useBroilerCostAnalytics() {
     enabled: !!user,
   });
 
-  // Fetch expenses for electricity/water
+  // Fetch expenses for electricity/water — scoped by user + farm
   const { data: expenses } = useQuery({
-    queryKey: ['broiler-expenses', user?.id],
+    queryKey: ['broiler-expenses', user?.id, selectedFarmId],
     queryFn: async () => {
+      if (!user) return [];
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const { data, error } = await supabase
+
+      let q = supabase
         .from('expenses')
         .select('*')
+        .eq('user_id', user.id)
         .gte('expense_date', thirtyDaysAgo.toISOString().split('T')[0]);
-      
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      const { data, error } = await q;
+
       if (error) throw error;
       return data;
     },
