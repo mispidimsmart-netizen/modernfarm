@@ -317,6 +317,11 @@ export function LightingPage() {
             <LightingCurveSettings />
           </div>
 
+          {/* LDR Hardware Status — large, farmer-friendly */}
+          <div className="mb-4">
+            <LDRStatusBanner />
+          </div>
+
           {/* LDR Sensor Settings */}
           <div className="mb-6">
             <LDRSettingsCard />
