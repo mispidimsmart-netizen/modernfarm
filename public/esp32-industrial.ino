@@ -44,6 +44,7 @@
  * ║    GPIO 33 (IN8): Circulation Fan                                     ║
  * ║    GPIO 4:  DHT22 #1     GPIO 16: DHT22 #2                           ║
  * ║    GPIO 34: MQ-137 NH3   GPIO 35: ZMPT101B Voltage                   ║
+ * ║    GPIO 36: LDR (optional, ambient light sensor)                       ║
  * ║    GPIO 18: YF-S201 Water Flow                                        ║
  * ║    GPIO 19: GSM RX (SIM800L TX)                                       ║
  * ║    GPIO 23: GSM TX (SIM800L RX)                                       ║
@@ -101,7 +102,9 @@ const char* FIRMWARE_VERSION = "8.0.0";
 #define CIRCULATION_RELAY_PIN 33    // IN8: Circulation Fan
 #define STATUS_LED_PIN       2
 #define MANUAL_OVERRIDE_BTN  32
+#define LDR_PIN              36     // VP — ADC1_CH0, input-only, optional ambient light sensor
 // Note: GPIO 14 now used by Heater relay, manual fan button removed
+// LDR (Light Dependent Resistor) on GPIO 36 is OPTIONAL — auto-detected at boot
 
 // --- GSM Pins (moved from 16/17 due to sensor remapping) ---
 #define GSM_TX_PIN           23
@@ -389,6 +392,8 @@ float temperature = 25.0f, humidity = 60.0f, ammonia = 0.0f;
 float temperature2 = NAN, humidity2 = NAN;
 float waterFlow = 0.0f, currentHSI = 0.0f;
 float powerVoltageRMS = 230.0f;
+float lightLux = -1.0f;          // -1 = LDR not detected/disabled
+bool ldrAvailable = false;       // auto-detected at boot
 bool powerOn = true, dht2Available = false;
 bool sensorErrorMode = false;
 unsigned long lastValidSensor = 0;
@@ -979,6 +984,37 @@ float readGasFiltered() {
   return total / 10.0f;
 }
 
+// --- LDR (Optional Ambient Light Sensor on GPIO 36) ---
+// Wiring: 3.3V → LDR → GPIO 36 → 10kΩ → GND
+// Higher light = lower LDR resistance = higher ADC voltage
+// Approximate lux conversion (LDR is non-linear, this is rough estimate)
+float readLightLux() {
+  if (!ldrAvailable) return -1.0f;
+  long total = 0;
+  for (int i = 0; i < 8; i++) { total += analogRead(LDR_PIN); delayMicroseconds(200); }
+  float adc = total / 8.0f;                    // 0-4095
+  float voltage = (adc / 4095.0f) * 3.3f;      // 0-3.3V
+  // Rough lux estimation (calibrate per LDR model):
+  // Dark (~0.1V) = ~1 lux, Indoor (~1.5V) = ~100 lux, Bright (~3V) = ~1000+ lux
+  float lux = pow(10.0f, voltage * 1.2f) - 1.0f;
+  if (lux < 0) lux = 0;
+  if (lux > 10000) lux = 10000;
+  return lux;
+}
+
+// Auto-detect LDR at boot (read several times, check for variation)
+bool detectLDR() {
+  pinMode(LDR_PIN, INPUT);
+  int reading1 = analogRead(LDR_PIN);
+  delay(50);
+  int reading2 = analogRead(LDR_PIN);
+  // If both readings are 0 or both are 4095, sensor likely not connected (floating or shorted)
+  if ((reading1 < 10 && reading2 < 10) || (reading1 > 4080 && reading2 > 4080)) {
+    return false;
+  }
+  return true;
+}
+
 bool isAmmoniaSpikeDetected(float v) {
   unsigned long now = millis();
   if (lastAmmoniaTime == 0) { lastValidAmmonia = v; lastAmmoniaTime = now; return false; }
@@ -1262,6 +1298,7 @@ void sensorManagerTick() {
 
   calculateWaterFlow();
   currentHSI = calculateHSI(temperature, humidity);
+  if (ldrAvailable) lightLux = readLightLux();
 }
 
 // ═══ FIX #6: User-configurable water flow pulse/liter calibration ═══
@@ -2486,6 +2523,7 @@ void syncWithCloud() {
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
+  if (ldrAvailable) doc["light_lux"] = lightLux;
   doc["power_on"] = powerOn;
   doc["fan_on"] = fanOn;
   doc["fan_speed"] = fanSpeed;
@@ -3451,6 +3489,11 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
   lastWaterPulse = millis();
 
+  // --- LDR Auto-Detection (optional sensor on GPIO 36) ---
+  ldrAvailable = detectLDR();
+  Serial.printf("💡 LDR Sensor: %s\n", ldrAvailable ? "DETECTED on GPIO 36" : "Not connected (optional)");
+
+
   // --- Stabilizing Mode ---
   stabilizingMode = true;
   stabilizingEndTime = millis() + SAFE_MODE_DURATION;
@@ -3582,6 +3625,7 @@ void callBackendSafetyEngine() {
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
+  if (ldrAvailable) doc["light_lux"] = lightLux;
   doc["temperature_sensor2"] = dht2Available ? temperature2 : (float)NAN;
   doc["worst_case_max_temp"] = worstCaseMaxTemp;
   doc["worst_case_min_temp"] = worstCaseMinTemp;
@@ -3692,6 +3736,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
   doc["hsi_value"] = currentHSI;
+  if (ldrAvailable) doc["light_lux"] = lightLux;
   
   // Environment response deltas
   doc["temp_delta_1min"] = getTempDelta1min();

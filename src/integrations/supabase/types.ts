@@ -2476,6 +2476,10 @@ export type Database = {
           farm_id: string | null
           gradual_enabled: boolean
           id: string
+          ldr_enabled: boolean
+          ldr_hysteresis_lux: number
+          ldr_mode: string
+          ldr_threshold_lux: number
           manual_override: boolean
           max_brightness: number
           min_brightness: number
@@ -2491,6 +2495,10 @@ export type Database = {
           farm_id?: string | null
           gradual_enabled?: boolean
           id?: string
+          ldr_enabled?: boolean
+          ldr_hysteresis_lux?: number
+          ldr_mode?: string
+          ldr_threshold_lux?: number
           manual_override?: boolean
           max_brightness?: number
           min_brightness?: number
@@ -2506,6 +2514,10 @@ export type Database = {
           farm_id?: string | null
           gradual_enabled?: boolean
           id?: string
+          ldr_enabled?: boolean
+          ldr_hysteresis_lux?: number
+          ldr_mode?: string
+          ldr_threshold_lux?: number
           manual_override?: boolean
           max_brightness?: number
           min_brightness?: number
@@ -3864,6 +3876,7 @@ export type Database = {
           hsi: number | null
           humidity: number
           id: string
+          light_lux: number | null
           recorded_at: string
           shed_id: string | null
           temperature: number
@@ -3877,6 +3890,7 @@ export type Database = {
           hsi?: number | null
           humidity: number
           id?: string
+          light_lux?: number | null
           recorded_at?: string
           shed_id?: string | null
           temperature: number
@@ -3890,6 +3904,7 @@ export type Database = {
           hsi?: number | null
           humidity?: number
           id?: string
+          light_lux?: number | null
           recorded_at?: string
           shed_id?: string | null
           temperature?: number

@@ -131,6 +131,7 @@ interface SensorPayload {
   ammonia: number;
   water_usage?: number;
   water_flow?: number;
+  light_lux?: number;
   power_status?: string;
   timestamp?: string;
 }
@@ -1032,7 +1033,12 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       ammonia: body.ammonia,
       water_usage: waterUsage,
     };
-    
+
+    // Optional ambient light from LDR (only if device has it connected)
+    if (typeof body.light_lux === 'number' && body.light_lux >= 0) {
+      sensorInsertData.light_lux = body.light_lux;
+    }
+
     if (shedId) {
       sensorInsertData.shed_id = shedId;
     }

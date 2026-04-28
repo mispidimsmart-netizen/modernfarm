@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { LightingCurveCard } from '@/components/lighting/LightingCurveCard';
 import { LightingCurveSettings } from '@/components/lighting/LightingCurveSettings';
 import { AgeLightingSuggestionCard } from '@/components/lighting/AgeLightingSuggestionCard';
+import { LDRSettingsCard } from '@/components/lighting/LDRSettingsCard';
+import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 
 export function LightingPage() {
   const { language } = useAuth();
@@ -313,6 +315,16 @@ export function LightingPage() {
           {/* Smart Lighting Curve Settings */}
           <div className="mb-6">
             <LightingCurveSettings />
+          </div>
+
+          {/* LDR Sensor Settings */}
+          <div className="mb-6">
+            <LDRSettingsCard />
+          </div>
+
+          {/* LDR Installation Guide */}
+          <div className="mb-6">
+            <LDRInstallationGuide />
           </div>
 
           {/* Info Card */}
