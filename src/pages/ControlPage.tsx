@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useBoundedOverride } from '@/hooks/useBoundedOverride';
-import { useUserRole } from '@/hooks/useUserRole';
+// useUserRole removed — permissions hook already provides role info
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -133,7 +133,7 @@ export function ControlPage() {
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
-  const { data: userRole } = useUserRole();
+  // userRole removed (was unused) — permissions hook covers role-based gating
   const { data: permissions } = useUserPermissions();
   const { sensorData } = useRealtimeSensorData();
   const { isBroiler } = useFarmType();
@@ -160,33 +160,42 @@ export function ControlPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      setActiveTimers(prev => {
-        const updated = { ...prev };
-        let hasChanges = false;
-        
-        Object.entries(updated).forEach(([deviceKey, timer]) => {
-          if (timer.endTime <= now) {
-            const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-            sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
-            setDeviceStatus({ [deviceKey]: false });
-            delete updated[deviceKey];
-            hasChanges = true;
-            
-            toast({
-              title: language === 'bn' ? '⏰ টাইমার শেষ' : '⏰ Timer Expired',
-              description: language === 'bn' 
-                ? `ডিভাইস বন্ধ হয়ে অটো মোডে ফিরে গেছে` 
-                : `Device turned off, back to AUTO mode`,
-            });
-          }
+      // Find expired timers without mutating state inside setter
+      const expired = Object.entries(activeTimers)
+        .filter(([, timer]) => timer.endTime <= now)
+        .map(([deviceKey]) => deviceKey);
+
+      if (expired.length === 0) return;
+
+      // Side effects: turn devices off + notify
+      expired.forEach((deviceKey) => {
+        const cmdType = deviceKey as
+          | 'fan' | 'light' | 'alarm' | 'heater'
+          | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
+        sendCommand.mutate({
+          commandType: cmdType,
+          commandValue: false,
+          shedId: selectedShedId || undefined,
         });
-        
-        return hasChanges ? updated : prev;
+        setDeviceStatus({ [deviceKey]: false });
+        toast({
+          title: language === 'bn' ? '⏰ টাইমার শেষ' : '⏰ Timer Expired',
+          description: language === 'bn'
+            ? 'ডিভাইস বন্ধ হয়ে অটো মোডে ফিরে গেছে'
+            : 'Device turned off, back to AUTO mode',
+        });
+      });
+
+      // Pure state update
+      setActiveTimers((prev) => {
+        const updated = { ...prev };
+        expired.forEach((k) => delete updated[k]);
+        return updated;
       });
     }, 1000);
-    
+
     return () => clearInterval(interval);
-  }, [language, sendCommand, setDeviceStatus, toast]);
+  }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
 
   const getRemainingTime = useCallback((device: string) => {
     const timer = activeTimers[device];
