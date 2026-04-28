@@ -188,27 +188,31 @@ export function OperationPreferencesTab() {
     }
   };
 
+  // Persist a single control to DB
+  const persistControl = (controlId: string, value: ControlLevel) => {
+    const colMap: Record<string, string> = {
+      ventilation: 'ventilation_preference',
+      heating: 'heating_preference',
+      cooling: 'cooling_preference',
+      comfort: 'comfort_preference',
+      protection: 'protection_preference',
+    };
+    const col = colMap[controlId];
+    if (!col) return;
+    updateAdvSettings.mutate({ [col]: value } as any);
+  };
+
   // Handle control change
   const handleControlChange = (controlId: string, direction: 'decrease' | 'increase') => {
-    setControls(prev => {
-      const current = prev[controlId];
-      let newValue: ControlLevel;
-      
-      if (direction === 'decrease') {
-        newValue = current === 'high' ? 'auto' : current === 'auto' ? 'low' : 'low';
-      } else {
-        newValue = current === 'low' ? 'auto' : current === 'auto' ? 'high' : 'high';
-      }
-      
-      return { ...prev, [controlId]: newValue };
-    });
-
-    toast({
-      title: language === 'bn' ? 'প্রিভিউ পরিবর্তিত' : 'Preview changed',
-      description: language === 'bn'
-        ? 'এই সেটিংস শুধু এই সেশনে প্রিভিউ — বাস্তব অটোমেশন উপরের মোড সুইচ থেকে নিয়ন্ত্রিত'
-        : 'Preview only for this session — real automation is controlled by the mode switch above',
-    });
+    const current = controls[controlId];
+    let newValue: ControlLevel;
+    if (direction === 'decrease') {
+      newValue = current === 'high' ? 'auto' : 'low';
+    } else {
+      newValue = current === 'low' ? 'auto' : 'high';
+    }
+    setControls(prev => ({ ...prev, [controlId]: newValue }));
+    persistControl(controlId, newValue);
   };
 
   // Reset all to auto
@@ -221,6 +225,14 @@ export function OperationPreferencesTab() {
       protection: 'auto',
     });
 
+    updateAdvSettings.mutate({
+      ventilation_preference: 'auto',
+      heating_preference: 'auto',
+      cooling_preference: 'auto',
+      comfort_preference: 'auto',
+      protection_preference: 'auto',
+    } as any);
+
     toast({
       title: language === 'bn' ? '🔄 রিসেট সম্পন্ন' : '🔄 Reset Complete',
       description: language === 'bn' 
@@ -232,6 +244,7 @@ export function OperationPreferencesTab() {
   // Reset single control to auto
   const handleResetSingle = (controlId: string) => {
     setControls(prev => ({ ...prev, [controlId]: 'auto' }));
+    persistControl(controlId, 'auto');
   };
 
   // Get level color
