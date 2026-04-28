@@ -480,6 +480,7 @@ export function useUpdateFlockInfo() {
         .upsert({
           ...data,
           user_id: user.id,
+          farm_id: selectedFarmId,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
       
