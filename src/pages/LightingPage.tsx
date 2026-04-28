@@ -317,6 +317,16 @@ export function LightingPage() {
             <LightingCurveSettings />
           </div>
 
+          {/* LDR Sensor Settings */}
+          <div className="mb-6">
+            <LDRSettingsCard />
+          </div>
+
+          {/* LDR Installation Guide */}
+          <div className="mb-6">
+            <LDRInstallationGuide />
+          </div>
+
           {/* Info Card */}
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <h4 className="mb-2 font-medium text-primary">
