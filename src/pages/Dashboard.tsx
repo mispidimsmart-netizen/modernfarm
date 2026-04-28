@@ -53,6 +53,7 @@ import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
+import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 
 // Farmer-Friendly Assistant Components
 import { 
@@ -165,6 +166,11 @@ export function Dashboard() {
         {/* ============ 💡 LIGHT STATUS (single compact panel) ============ */}
         <div className="mb-3">
           <LightStatusPanel />
+        </div>
+
+        {/* ============ 📜 LIGHT ACTION HISTORY (last 24h) ============ */}
+        <div className="mb-3">
+          <LightActionHistory />
         </div>
 
         {/* ============ LIGHT SENSOR (only if LDR installed) ============ */}
