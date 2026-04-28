@@ -29,7 +29,7 @@ export function ReportsPage() {
     }
   }, [tabFromUrl]);
 
-  // Generate chart data from sensor readings or mock data
+  // Generate chart data from REAL sensor readings only — no mock data
   const chartData = useMemo(() => {
     if (sensorReadings && sensorReadings.length > 0) {
       return sensorReadings.map(r => ({
@@ -42,26 +42,15 @@ export function ReportsPage() {
         ammonia: Number(r.ammonia),
       }));
     }
-    
-    // Mock data for demo
-    const data = [];
-    const now = new Date();
-    for (let i = 23; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 3600000);
-      data.push({
-        time: time.getHours().toString().padStart(2, '0') + ':00',
-        temperature: 25 + Math.random() * 8,
-        humidity: 55 + Math.random() * 20,
-        ammonia: 8 + Math.random() * 12,
-      });
-    }
-    return data;
+    return [];
   }, [sensorReadings, language]);
 
-  // Calculate daily averages from chart data
-  const dailyAvgTemp = chartData.reduce((acc, d) => acc + d.temperature, 0) / chartData.length;
-  const dailyAvgHumidity = chartData.reduce((acc, d) => acc + d.humidity, 0) / chartData.length;
-  const totalWater = Math.round(sensorData.waterUsage * 24);
+  const hasData = chartData.length > 0;
+
+  // Calculate daily averages from real chart data only
+  const dailyAvgTemp = hasData ? chartData.reduce((acc, d) => acc + d.temperature, 0) / chartData.length : 0;
+  const dailyAvgHumidity = hasData ? chartData.reduce((acc, d) => acc + d.humidity, 0) / chartData.length : 0;
+  const totalWater = Math.round((sensorData.waterUsage || 0) * 24);
 
   return (
     <div className="min-h-screen bg-background">
