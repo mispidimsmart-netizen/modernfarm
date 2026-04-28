@@ -113,7 +113,7 @@ export function SensorDeviceImpactReport() {
       if (!user) return [];
       let q = supabase
         .from('sensor_readings')
-        .select('recorded_at, temperature, humidity, ammonia, water_usage')
+        .select('recorded_at, temperature, humidity, ammonia, water_usage, light_lux')
         .eq('user_id', user.id)
         .gte('recorded_at', since)
         .order('recorded_at', { ascending: true })
@@ -195,6 +195,7 @@ export function SensorDeviceImpactReport() {
       const h = Number(s.humidity) || 0;
       const nh3 = Number(s.ammonia) || 0;
       const water = Number(s.water_usage) || 0;
+      const lux = s.light_lux !== null && s.light_lux !== undefined ? Number(s.light_lux) : 0;
       const sensorTime = new Date(s.recorded_at).getTime();
 
       const deviceState: Record<string, boolean> = {};
@@ -214,6 +215,7 @@ export function SensorDeviceImpactReport() {
         humidity: h,
         ammonia: nh3,
         water_usage: water,
+        light_lux: lux,
         hsi,
         deviceState,
         fan: onOff(deviceState.fan),
