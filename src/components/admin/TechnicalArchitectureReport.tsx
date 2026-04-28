@@ -30,8 +30,8 @@ const handleDownloadPDF = () => {
       @media print { body { padding: 15px; } }
     </style></head><body>
     <h1>🏗️ FarmEye Automation Platform — Technical Architecture</h1>
-    <p class="subtitle">Version 8.0.0 | Industrial Grade | Production-Ready | Score: 100/100</p>
-    <p class="subtitle">Prepared for: Hardware Engineers & System Integrators | Date: ${new Date().toLocaleDateString('bn-BD')}</p>
+    <p class="subtitle">Version 8.2.0 | Industrial Grade | Production-Ready | Score: 100/100</p>
+    <p class="subtitle">18 Edge Functions | 67 DB Tables | Multi-Tenant | Date: ${new Date().toLocaleDateString('bn-BD')}</p>
 
     <h2>1. System Overview — 6-Layer Architecture</h2>
     <table><tr><th>Layer</th><th>Component</th><th>Role</th></tr>
