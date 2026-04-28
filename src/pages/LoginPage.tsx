@@ -212,15 +212,22 @@ export function LoginPage() {
             // Profile already created by trigger with metadata, update worker role if needed
 
             if (userType === 'worker' && validInvitation) {
-              await supabase.from('user_roles').insert({
-                user_id: user.id,
-                farm_owner_id: validInvitation.farm_owner_id,
-                role: 'worker',
+              // Atomic redemption: creates user_role + farm_members + marks invite used
+              const { error: redeemError } = await supabase.rpc('redeem_invitation', {
+                _code: invitationCode.toUpperCase().trim(),
               });
-              await supabase.from('worker_invitations').update({
-                used_at: new Date().toISOString(),
-                used_by: user.id,
-              }).eq('id', validInvitation.id);
+              if (redeemError) {
+                toast({
+                  title: 'ত্রুটি',
+                  description: 'আমন্ত্রণ গ্রহণে সমস্যা: ' + redeemError.message,
+                  variant: 'destructive',
+                });
+              } else {
+                // Remove the auto-created farm so worker only sees owner's farm
+                await supabase.rpc('cleanup_worker_farm', {
+                  _farm_owner_id: validInvitation.farm_owner_id,
+                });
+              }
             }
           }
           navigate('/');
