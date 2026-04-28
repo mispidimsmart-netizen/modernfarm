@@ -2692,6 +2692,23 @@ void handleCloudResponse(String response) {
     if (strcmp(mode, "schedule_only") == 0) lightSchedule.ldrMode = 0;
     else if (strcmp(mode, "sensor_only") == 0) lightSchedule.ldrMode = 2;
     else lightSchedule.ldrMode = 1; // hybrid
+    // Smart Lighting v2 — flock-aware schedule + power-save
+    lightSchedule.ldrDaylightOffLux = ls["ldr_daylight_off_lux"] | 300.0f;
+    lightSchedule.fadeCircuits      = constrain((int)(ls["fade_circuits"] | 2), 1, 3);
+    lightSchedule.fadeStepGapMinutes= constrain((int)(ls["fade_step_gap_minutes"] | 5), 1, 30);
+    const char* flock = ls["flock_type"] | "layer";
+    lightSchedule.flockTypeBroiler  = (strcmp(flock, "broiler") == 0);
+    lightSchedule.layerDarkHours    = constrain((int)(ls["layer_dark_hours"] | 9), 4, 16);
+    lightSchedule.broilerAgeAuto    = ls["broiler_age_auto"] | true;
+    // Times come as "HH:MM:SS" strings — parse to minutes-of-day
+    auto parseHHMM = [](const char* s, int fallback) -> int {
+      if (!s) return fallback;
+      int h = 0, m = 0;
+      if (sscanf(s, "%d:%d", &h, &m) >= 1) return (h * 60 + m) % 1440;
+      return fallback;
+    };
+    lightSchedule.broilerDarkStartMin = parseHHMM(ls["broiler_dark_start"] | (const char*)nullptr, 23 * 60);
+    lightSchedule.broilerDarkEndMin   = parseHHMM(ls["broiler_dark_end"]   | (const char*)nullptr, 5 * 60);
     // NOTE: Do NOT reset lightSchedule.manualOverride here
     // Manual override state is managed by commands only
   }
