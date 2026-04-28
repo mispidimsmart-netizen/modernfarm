@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useWeatherCache } from '@/hooks/useWeather';
-import { useAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
+import { useRawAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,7 +105,7 @@ export function OperationPreferencesTab() {
   const { data: weatherData } = useWeatherCache();
   const { isBroiler, isLayer } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
-  const { data: advSettings } = useAdvancedAutomationSettings();
+  const { data: advSettings } = useRawAdvancedAutomationSettings();
   const updateAdvSettings = useUpdateAdvancedAutomationSettings();
   const { toast } = useToast();
 
