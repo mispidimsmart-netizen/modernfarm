@@ -9,6 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+
+const BROILER_BREEDS: BreedOption[] = [
+  { value: 'Cobb 500', label: 'Cobb 500 (কব ৫০০)', keywords: 'কব cobb 500' },
+  { value: 'Cobb 700', label: 'Cobb 700 (কব ৭০০)', keywords: 'কব cobb 700' },
+  { value: 'Ross 308', label: 'Ross 308 (রস ৩০৮)', keywords: 'রস ross 308' },
+  { value: 'Hubbard Classic', label: 'Hubbard Classic (হাবার্ড ক্লাসিক)', keywords: 'হাবার্ড hubbard classic' },
+  { value: 'Arbor Acres Plus', label: 'Arbor Acres Plus (আরবর একর্স প্লাস)', keywords: 'আরবর arbor acres' },
+  { value: 'Indian River', label: 'Indian River (ইন্ডিয়ান রিভার)', keywords: 'ইন্ডিয়ান indian river' },
+  { value: 'Sonali', label: 'Sonali (সোনালী)', keywords: 'সোনালী sonali bd' },
+  { value: 'Local', label: 'দেশি (Local)', keywords: 'দেশি local desi' },
+  { value: 'Other', label: 'অন্যান্য (Other)', keywords: 'অন্যান্য other' },
+];
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
