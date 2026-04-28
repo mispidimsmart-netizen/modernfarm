@@ -322,11 +322,24 @@ struct LightSchedule {
   // ldrMode: 0=schedule_only, 1=hybrid (schedule AND dark), 2=sensor_only (dark only)
   bool ldrEnabled;
   int ldrMode;
-  float ldrThresholdLux;   // turn ON below this
-  float ldrHysteresisLux;  // turn OFF above (threshold + hysteresis)
-  bool ldrLightActive;     // current LDR-driven state (for hysteresis)
+  float ldrThresholdLux;       // turn ON below this
+  float ldrHysteresisLux;      // turn OFF above (threshold + hysteresis)
+  bool ldrLightActive;         // current LDR-driven state (for hysteresis)
+  // Smart Lighting v2 (synced from cloud lighting_schedule):
+  float ldrDaylightOffLux;     // power-save: force OFF when ambient >= this (hybrid mode)
+  int   fadeCircuits;          // 1, 2, or 3 — number of staged light circuits
+  int   fadeStepGapMinutes;    // minutes between successive circuits during fade
+  bool  flockTypeBroiler;      // true=broiler, false=layer (mirrors cloud flock_type)
+  int   layerDarkHours;        // layer mode: hours of full dark per day
+  int   broilerDarkStartMin;   // broiler night-rest window start (minute-of-day)
+  int   broilerDarkEndMin;     // broiler night-rest window end (minute-of-day)
+  bool  broilerAgeAuto;        // true: brood phase 1-7d = 23h light
 };
-LightSchedule lightSchedule = { true, false, 5, 0, 21, 0, 30, 30, 0, 100, false, 1, 50.0f, 20.0f, false };
+LightSchedule lightSchedule = {
+  true, false, 5, 0, 21, 0, 30, 30, 0, 100,
+  false, 1, 50.0f, 20.0f, false,
+  300.0f, 2, 5, false, 9, 23*60, 5*60, true
+};
 
 // --- Broiler Temp Curve ---
 struct BroilerCurveEntry { int minDays, maxDays; float minTemp, maxTemp; };
