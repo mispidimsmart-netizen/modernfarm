@@ -405,12 +405,14 @@ export function useUpdateFlockInfo() {
       if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
 
       // Age plausibility validation (age_weeks → convert to days for validation)
+      // NOTE: flock_info is used by LAYER farms. Layer biological cycle = 0–100 weeks (0–700 days).
+      // Broiler (0–60 days) validation lives in broiler_batches flow, not here.
       if (data.age_weeks !== undefined) {
         const newAgeDays = data.age_weeks * 7;
+        const LAYER_MAX_WEEKS = 100; // generous upper bound for layer lifespan
         
-        // Range validation: 0–60 days = 0–8.5 weeks
-        if (newAgeDays < 0 || newAgeDays > 60) {
-          // Log rejection
+        // Range validation for layers: 0–100 weeks
+        if (data.age_weeks < 0 || data.age_weeks > LAYER_MAX_WEEKS) {
           await (supabase.from('farm_audit_logs') as any).insert({
             user_id: user.id,
             action_type: 'age_override_event',
@@ -420,10 +422,10 @@ export function useUpdateFlockInfo() {
             metadata: { 
               submitted_age_weeks: data.age_weeks,
               submitted_age_days: newAgeDays,
-              rejection_reason: 'outside_biological_range_0_60_days',
+              rejection_reason: `outside_layer_range_0_${LAYER_MAX_WEEKS}_weeks`,
             },
           });
-          throw new Error(`Age ${data.age_weeks} weeks (${newAgeDays} days) is outside biological range (0-60 days)`);
+          throw new Error(`বয়স ${data.age_weeks} সপ্তাহ গ্রহণযোগ্য সীমার বাইরে (০–${LAYER_MAX_WEEKS} সপ্তাহ)`);
         }
 
         // Jump validation: fetch current flock info
@@ -434,15 +436,15 @@ export function useUpdateFlockInfo() {
           .maybeSingle();
 
         if (currentFlock) {
-          const currentAgeDays = (currentFlock.age_weeks || 0) * 7;
-          const ageDeltaDays = Math.abs(newAgeDays - currentAgeDays);
+          const currentAgeWeeks = currentFlock.age_weeks || 0;
+          const ageDeltaWeeks = Math.abs(data.age_weeks - currentAgeWeeks);
           const lastUpdate = currentFlock.updated_at ? new Date(currentFlock.updated_at) : null;
           const hoursSinceUpdate = lastUpdate 
             ? (Date.now() - lastUpdate.getTime()) / (60 * 60 * 1000) 
             : Infinity;
 
-          if (ageDeltaDays > 2 && hoursSinceUpdate < 24) {
-            // Log rejection
+          // For layers: max ±4 weeks change within 24 hours (allows reasonable corrections)
+          if (ageDeltaWeeks > 4 && hoursSinceUpdate < 24) {
             await (supabase.from('farm_audit_logs') as any).insert({
               user_id: user.id,
               action_type: 'age_override_event',
@@ -452,12 +454,12 @@ export function useUpdateFlockInfo() {
               metadata: { 
                 submitted_age_weeks: data.age_weeks,
                 current_age_weeks: currentFlock.age_weeks,
-                delta_days: ageDeltaDays,
+                delta_weeks: ageDeltaWeeks,
                 hours_since_last_update: Math.round(hoursSinceUpdate),
-                rejection_reason: 'jump_exceeds_2_days_in_24h',
+                rejection_reason: 'jump_exceeds_4_weeks_in_24h',
               },
             });
-            throw new Error(`Age jump too large: ${ageDeltaDays} days change within ${Math.round(hoursSinceUpdate)} hours. Max 2 days per 24 hours.`);
+            throw new Error(`বয়স পরিবর্তন অনেক বেশি: ${ageDeltaWeeks} সপ্তাহ পরিবর্তন ${Math.round(hoursSinceUpdate)} ঘন্টায়। সর্বোচ্চ ৪ সপ্তাহ/২৪ ঘন্টা।`);
           }
         }
 
