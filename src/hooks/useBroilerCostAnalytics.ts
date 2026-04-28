@@ -67,6 +67,22 @@ export interface BroilerCostAnalytics {
     mortality: number;
     weight: number;
   }[];
+
+  // Weight history (all samples) — for weight gain graph
+  weightHistory: {
+    date: string;
+    ageDays: number;
+    weight: number;       // grams (actual)
+    targetWeight: number; // grams (Cobb 500 target at that age)
+  }[];
+
+  // FCR trend over batch lifetime (calculated at each weight sample point)
+  fcrTrend: {
+    date: string;
+    ageDays: number;
+    fcr: number;
+    target: number; // industry target FCR at that age
+  }[];
 }
 
 // Default market rates
@@ -326,6 +342,52 @@ function calculateBroilerAnalytics(
   // Daily Trends (last 7 days)
   const dailyTrends = calculateDailyTrends(feed, mortality, weights);
 
+  // Weight history (all weight samples, ascending)
+  const weightHistory = sortedWeightsAsc.map((w: any) => {
+    const sampleAgeDays = Math.max(
+      1,
+      Math.floor(
+        (new Date(w.record_date).getTime() - new Date(batch.start_date).getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1
+    );
+    return {
+      date: w.record_date,
+      ageDays: sampleAgeDays,
+      weight: w.average_weight_grams || 0,
+      targetWeight: Math.round(getBroilerTargetWeight(sampleAgeDays)),
+    };
+  });
+
+  // FCR trend — recompute cumulative FCR at each weight sample point
+  const fcrTrend = sortedWeightsAsc.map((w: any) => {
+    const sampleDate = w.record_date;
+    const sampleAgeDays = Math.max(
+      1,
+      Math.floor(
+        (new Date(sampleDate).getTime() - new Date(batch.start_date).getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1
+    );
+    const cumulativeFeedKg = feed
+      .filter((f: any) => f.feed_date <= sampleDate)
+      .reduce((s: number, f: any) => s + Number(f.quantity_kg || 0), 0);
+    const cumulativeMortality = mortality
+      .filter((m: any) => m.record_date <= sampleDate)
+      .reduce((s: number, m: any) => s + (m.count || 0), 0);
+    const aliveBirds = batch.initial_bird_count - cumulativeMortality;
+    const sampleWeightKg = ((w.average_weight_grams || 0) * aliveBirds) / 1000;
+    const initialKg = (batch.initial_bird_count * 42) / 1000;
+    const gainKg = Math.max(0.001, sampleWeightKg - initialKg);
+    const sampleFcr = calculateFCR(cumulativeFeedKg, gainKg);
+    return {
+      date: sampleDate,
+      ageDays: sampleAgeDays,
+      fcr: Math.round(sampleFcr * 100) / 100,
+      target: getTargetFCR(sampleAgeDays),
+    };
+  });
+
   return {
     activeBatch,
     feedAnalytics,
@@ -333,8 +395,22 @@ function calculateBroilerAnalytics(
     costPerKg,
     batchTotals,
     dailyTrends,
+    weightHistory,
+    fcrTrend,
   };
 }
+
+// Industry target FCR for Cobb 500 broilers by age (cumulative)
+function getTargetFCR(ageDays: number): number {
+  if (ageDays <= 7) return 0.85;
+  if (ageDays <= 14) return 1.10;
+  if (ageDays <= 21) return 1.35;
+  if (ageDays <= 28) return 1.55;
+  if (ageDays <= 35) return 1.70;
+  if (ageDays <= 42) return 1.85;
+  return 2.00;
+}
+
 
 function calculateDailyTrends(
   feed: any[],
@@ -411,5 +487,7 @@ function getEmptyAnalytics(): BroilerCostAnalytics {
       profitMargin: 0,
     },
     dailyTrends: [],
+    weightHistory: [],
+    fcrTrend: [],
   };
 }

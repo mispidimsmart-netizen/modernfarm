@@ -358,7 +358,168 @@ export function BroilerCostDashboard() {
         </motion.div>
       )}
 
-      {/* Tips */}
+      {/* Weight Gain Chart (actual vs target) */}
+      {analytics.weightHistory.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.75 }}
+          className="rounded-xl bg-card p-4 shadow-card"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Scale size={18} className="text-green-500" />
+            <h3 className="font-semibold">
+              {language === 'bn' ? 'ওজন বৃদ্ধির গ্রাফ' : 'Weight Gain Trend'}
+            </h3>
+          </div>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analytics.weightHistory}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="ageDays"
+                  tick={{ fontSize: 10 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickLine={false}
+                  label={{ value: language === 'bn' ? 'বয়স (দিন)' : 'Age (days)', position: 'insideBottom', offset: -2, fontSize: 10 }}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickLine={false}
+                  label={{ value: 'g', angle: -90, position: 'insideLeft', fontSize: 10 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value: number, name: string) => {
+                    const labels: Record<string, string> = {
+                      weight: language === 'bn' ? 'প্রকৃত ওজন' : 'Actual',
+                      targetWeight: language === 'bn' ? 'টার্গেট' : 'Target',
+                    };
+                    return [`${value} g`, labels[name] || name];
+                  }}
+                  labelFormatter={(v) => `${language === 'bn' ? 'বয়স' : 'Day'}: ${v}`}
+                />
+                <Legend
+                  formatter={(value) => {
+                    const labels: Record<string, string> = {
+                      weight: language === 'bn' ? 'প্রকৃত' : 'Actual',
+                      targetWeight: language === 'bn' ? 'টার্গেট' : 'Target',
+                    };
+                    return labels[value] || value;
+                  }}
+                  wrapperStyle={{ fontSize: '10px' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="weight"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="targetWeight"
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
+
+      {/* FCR Trend Chart (cumulative FCR vs industry target) */}
+      {analytics.fcrTrend.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="rounded-xl bg-card p-4 shadow-card"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={18} className="text-blue-500" />
+            <h3 className="font-semibold">
+              {language === 'bn' ? 'FCR ট্রেন্ড চার্ট' : 'FCR Trend Chart'}
+            </h3>
+          </div>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analytics.fcrTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="ageDays"
+                  tick={{ fontSize: 10 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickLine={false}
+                  label={{ value: language === 'bn' ? 'বয়স (দিন)' : 'Age (days)', position: 'insideBottom', offset: -2, fontSize: 10 }}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  stroke="hsl(var(--muted-foreground))"
+                  tickLine={false}
+                  domain={[0, 'auto']}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value: number, name: string) => {
+                    const labels: Record<string, string> = {
+                      fcr: language === 'bn' ? 'প্রকৃত FCR' : 'Actual FCR',
+                      target: language === 'bn' ? 'টার্গেট FCR' : 'Target FCR',
+                    };
+                    return [value, labels[name] || name];
+                  }}
+                  labelFormatter={(v) => `${language === 'bn' ? 'বয়স' : 'Day'}: ${v}`}
+                />
+                <Legend
+                  formatter={(value) => {
+                    const labels: Record<string, string> = {
+                      fcr: language === 'bn' ? 'প্রকৃত' : 'Actual',
+                      target: language === 'bn' ? 'টার্গেট' : 'Target',
+                    };
+                    return labels[value] || value;
+                  }}
+                  wrapperStyle={{ fontSize: '10px' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="fcr"
+                  stroke="hsl(217 91% 60%)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="target"
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            {language === 'bn'
+              ? 'প্রকৃত লাইন টার্গেটের নিচে থাকলে ভালো (কম খাদ্যে বেশি ওজন)।'
+              : 'Lower than target line is better (less feed for more weight).'}
+          </p>
+        </motion.div>
+      )}
+
+
       <div className="rounded-xl bg-primary/5 p-4 text-sm">
         <p className="font-medium text-primary mb-2">
           💡 {language === 'bn' ? 'ব্রয়লার খরচ কমানোর টিপস' : 'Broiler Cost Saving Tips'}
