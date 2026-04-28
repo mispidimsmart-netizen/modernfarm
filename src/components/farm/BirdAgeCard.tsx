@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bird, Calendar, Save, Info, Lightbulb } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bird, Calendar, Save, Info, Lightbulb, Loader2 } from 'lucide-react';
+import { useIsFetching } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
