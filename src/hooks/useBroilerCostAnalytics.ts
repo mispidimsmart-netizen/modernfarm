@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { calculateFCR, evaluateFCR, getBroilerTargetWeight } from './useFarmType';
 
 export interface BroilerCostAnalytics {
@@ -77,29 +78,33 @@ const DEFAULT_RATES = {
 
 export function useBroilerCostAnalytics() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
 
   // Fetch active batch with all related data
   const { data: batchData, isLoading: batchLoading } = useQuery({
-    queryKey: ['broiler-batch-analytics', user?.id],
+    queryKey: ['broiler-batch-analytics', user?.id, selectedFarmId],
     queryFn: async () => {
-      // Get active batch
-      const { data: batch, error: batchError } = await supabase
+      if (!user) return null;
+      // Get active batch — scoped to user + selected farm
+      let batchQ = supabase
         .from('broiler_batches')
         .select('*')
+        .eq('user_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
+        .limit(1);
+      if (selectedFarmId) batchQ = batchQ.eq('farm_id', selectedFarmId);
+      const { data: batch, error: batchError } = await batchQ.single();
+
       if (batchError && batchError.code !== 'PGRST116') throw batchError;
       if (!batch) return null;
-      
+
       // Calculate age in days
       const startDate = new Date(batch.start_date);
       const today = new Date();
       const ageDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      // Fetch related data in parallel
+
+      // Fetch related data in parallel (all scoped by batch_id which is itself farm-scoped)
       const [feedResult, mortalityResult, weightsResult, salesResult] = await Promise.all([
         supabase
           .from('broiler_feed')
@@ -121,7 +126,7 @@ export function useBroilerCostAnalytics() {
           .select('*')
           .eq('batch_id', batch.id),
       ]);
-      
+
       return {
         batch: {
           ...batch,
@@ -136,18 +141,22 @@ export function useBroilerCostAnalytics() {
     enabled: !!user,
   });
 
-  // Fetch expenses for electricity/water
+  // Fetch expenses for electricity/water — scoped by user + farm
   const { data: expenses } = useQuery({
-    queryKey: ['broiler-expenses', user?.id],
+    queryKey: ['broiler-expenses', user?.id, selectedFarmId],
     queryFn: async () => {
+      if (!user) return [];
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const { data, error } = await supabase
+
+      let q = supabase
         .from('expenses')
         .select('*')
+        .eq('user_id', user.id)
         .gte('expense_date', thirtyDaysAgo.toISOString().split('T')[0]);
-      
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      const { data, error } = await q;
+
       if (error) throw error;
       return data;
     },
@@ -217,14 +226,40 @@ function calculateBroilerAnalytics(
   const latestWeight = weights.length > 0 ? weights[0].average_weight_grams : 0;
   const targetWeight = getBroilerTargetWeight(batch.ageDays);
   const weightGap = latestWeight - targetWeight;
-  
+
   // Calculate FCR: Total Feed (kg) / Total Weight Gain (kg)
-  const totalWeightKg = (currentBirds * latestWeight) / 1000;
+  // Account for dead birds — they consumed feed too. Estimate their average
+  // weight at time of death using the closest weight sample on/before that date,
+  // falling back to half of the latest sample (rough mid-life estimate).
+  const sortedWeightsAsc = [...weights].sort((a: any, b: any) =>
+    a.record_date.localeCompare(b.record_date)
+  );
+  function weightAtDate(dateIso: string): number {
+    let chosen = 0;
+    for (const w of sortedWeightsAsc as any[]) {
+      if (w.record_date <= dateIso) chosen = w.average_weight_grams || 0;
+      else break;
+    }
+    if (chosen > 0) return chosen;
+    // Fallback: half of latest known sample, otherwise 42g chick weight
+    return latestWeight > 0 ? latestWeight / 2 : 42;
+  }
+  const deadBirdsWeightKg =
+    mortality.reduce(
+      (s: number, m: any) =>
+        s + ((m.count || 0) * weightAtDate(m.record_date)) / 1000,
+      0
+    ) || 0;
+
+  const liveWeightKg = (currentBirds * latestWeight) / 1000;
+  const totalWeightKg = liveWeightKg; // for cost/kg of saleable meat (live birds only)
   const initialWeightKg = (batch.initial_bird_count * 42) / 1000; // 42g chick weight
-  const weightGainKg = totalWeightKg - initialWeightKg;
+  // Effective weight gain across the whole flock (alive + dead at death weight)
+  const weightGainKg = Math.max(0, liveWeightKg + deadBirdsWeightKg - initialWeightKg);
   const fcr = calculateFCR(totalFeedKg, weightGainKg);
   const ageWeeks = Math.ceil(batch.ageDays / 7);
-  const fcrRating: 'excellent' | 'good' | 'average' | 'poor' | 'none' = fcr > 0 ? evaluateFCR(fcr, ageWeeks) : 'none';
+  const fcrRating: 'excellent' | 'good' | 'average' | 'poor' | 'none' =
+    fcr > 0 ? evaluateFCR(fcr, ageWeeks) : 'none';
 
   const weightAnalytics = {
     currentWeight: latestWeight as number,

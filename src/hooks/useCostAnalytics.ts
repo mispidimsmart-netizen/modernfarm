@@ -199,10 +199,16 @@ function calculateCostPerEgg(
   const totalEggs = eggProduction?.reduce((sum, e) => sum + e.total_eggs, 0) ?? 0;
   const totalFeedKg = feedConsumption?.reduce((sum, f) => sum + Number(f.quantity_kg), 0) ?? 0;
   
-  // Get average feed price from inventory
-  const avgFeedPrice = feedInventory && feedInventory.length > 0
-    ? feedInventory.reduce((sum, f) => sum + Number(f.unit_price), 0) / feedInventory.length
-    : 45; // Default BDT per kg
+  // Quantity-weighted average feed price (matches useLayerBatch canonical logic)
+  let avgFeedPrice = 45; // Default BDT per kg
+  if (feedInventory && feedInventory.length > 0) {
+    const totalKg = feedInventory.reduce((s, f) => s + Number(f.quantity_kg || 0), 0);
+    const totalCost = feedInventory.reduce(
+      (s, f) => s + Number(f.unit_price || 0) * Number(f.quantity_kg || 0),
+      0
+    );
+    if (totalKg > 0) avgFeedPrice = totalCost / totalKg;
+  }
   
   const totalFeedCost = totalFeedKg * avgFeedPrice;
   

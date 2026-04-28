@@ -185,8 +185,9 @@ export function useUpdateLayerBatch() {
   });
 }
 
-// Shared recompute logic — returns summary fields for a batch given its dates & bird count
-async function computeBatchSummary(
+// Shared recompute logic — returns summary fields for a batch given its dates & bird count.
+// Exported so the offline queue (useBatchEditQueue) can use the SAME logic on sync.
+export async function computeBatchSummary(
   userId: string,
   batch: LayerBatch,
   startDate: string,
@@ -199,23 +200,67 @@ async function computeBatchSummary(
     Math.floor((end.getTime() - start.getTime()) / 86400000)
   );
 
-  // Eggs
-  const { data: eggs } = await supabase
+  // Eggs (filter by farm too if known)
+  let eggsQ = supabase
     .from('egg_production')
     .select('production_date,total_eggs')
     .eq('user_id', userId)
     .gte('production_date', startDate)
     .lte('production_date', endDate);
+  if (batch.farm_id) eggsQ = eggsQ.eq('farm_id', batch.farm_id);
+  const { data: eggs } = await eggsQ;
 
   const totalEggs = (eggs || []).reduce((s, e: any) => s + (e.total_eggs || 0), 0);
 
+  // Real mortality from daily_summary (preferred) — fall back to initial-current diff.
+  let mortalityQ = supabase
+    .from('daily_summary')
+    .select('summary_date,mortality_count')
+    .eq('user_id', userId)
+    .gte('summary_date', startDate)
+    .lte('summary_date', endDate);
+  if (batch.farm_id) mortalityQ = mortalityQ.eq('farm_id', batch.farm_id);
+  const { data: mortRows } = await mortalityQ;
+
+  const recordedMortality = (mortRows || []).reduce(
+    (s, r: any) => s + (r.mortality_count || 0),
+    0
+  );
+  const diffMortality = Math.max(
+    0,
+    batch.initial_bird_count - batch.current_bird_count
+  );
+  // Use the higher of recorded vs derived to avoid undercount when records are missing.
+  const mortality = Math.max(recordedMortality, diffMortality);
+  const mortalityPct =
+    batch.initial_bird_count > 0 ? (mortality / batch.initial_bird_count) * 100 : 0;
+
+  // Build cumulative-mortality-by-date index for accurate live-bird count when computing peak %
+  const sortedMort = [...(mortRows || [])].sort((a: any, b: any) =>
+    a.summary_date.localeCompare(b.summary_date)
+  );
+  function liveBirdsOn(dateIso: string): number {
+    let cum = 0;
+    for (const r of sortedMort as any[]) {
+      if (r.summary_date <= dateIso) cum += r.mortality_count || 0;
+      else break;
+    }
+    // Cap so we never exceed initial flock.
+    const live = batch.initial_bird_count - cum;
+    return live > 0 ? live : Math.max(batch.current_bird_count, 1);
+  }
+
+  // Peak production using LIVE birds on each date (not final current_bird_count)
   let peakPercent = 0;
   let peakAgeWeeks: number | null = null;
-  if (batch.current_bird_count > 0 && eggs) {
+  if (eggs) {
     for (const e of eggs as any[]) {
-      const pct = (e.total_eggs / batch.current_bird_count) * 100;
-      if (pct > peakPercent) {
-        peakPercent = pct;
+      const live = liveBirdsOn(e.production_date);
+      const pct = (e.total_eggs / live) * 100;
+      // Cap at 100% to ignore obvious data-entry errors.
+      const safePct = Math.min(pct, 100);
+      if (safePct > peakPercent) {
+        peakPercent = safePct;
         const dDays = Math.floor(
           (new Date(e.production_date).getTime() - start.getTime()) / 86400000
         );
@@ -225,19 +270,24 @@ async function computeBatchSummary(
   }
 
   // Feed
-  const { data: feed } = await supabase
+  let feedQ = supabase
     .from('feed_consumption')
     .select('quantity_kg,consumption_date')
     .eq('user_id', userId)
     .gte('consumption_date', startDate)
     .lte('consumption_date', endDate);
+  if (batch.farm_id) feedQ = feedQ.eq('farm_id', batch.farm_id);
+  const { data: feed } = await feedQ;
 
   const totalFeedKg = (feed || []).reduce((s, f: any) => s + Number(f.quantity_kg || 0), 0);
 
-  const { data: inv } = await supabase
+  // Quantity-weighted feed price (canonical)
+  let invQ = supabase
     .from('feed_inventory')
     .select('unit_price,quantity_kg')
     .eq('user_id', userId);
+  if (batch.farm_id) invQ = invQ.eq('farm_id', batch.farm_id);
+  const { data: inv } = await invQ;
   const totalInvKg = (inv || []).reduce((s, i: any) => s + Number(i.quantity_kg || 0), 0);
   const totalInvCost = (inv || []).reduce(
     (s, i: any) => s + Number(i.unit_price || 0) * Number(i.quantity_kg || 0),
@@ -250,16 +300,15 @@ async function computeBatchSummary(
   const eggMassKg = (totalEggs * 60) / 1000;
   const fcr = eggMassKg > 0 ? totalFeedKg / eggMassKg : 0;
 
-  const mortality = Math.max(0, batch.initial_bird_count - batch.current_bird_count);
-  const mortalityPct =
-    batch.initial_bird_count > 0 ? (mortality / batch.initial_bird_count) * 100 : 0;
-
-  const { data: exp } = await supabase
+  // Expenses
+  let expQ = supabase
     .from('expenses')
     .select('amount,expense_date')
     .eq('user_id', userId)
     .gte('expense_date', startDate)
     .lte('expense_date', endDate);
+  if (batch.farm_id) expQ = expQ.eq('farm_id', batch.farm_id);
+  const { data: exp } = await expQ;
 
   const totalExpenses = (exp || []).reduce((s, e: any) => s + Number(e.amount || 0), 0);
   const totalRevenue = 0;
@@ -267,7 +316,7 @@ async function computeBatchSummary(
     totalRevenue -
     totalExpenses -
     totalFeedCost -
-    batch.initial_bird_count * batch.chick_cost_per_bird;
+    batch.initial_bird_count * (batch.chick_cost_per_bird || 0);
 
   return {
     total_eggs: totalEggs,
