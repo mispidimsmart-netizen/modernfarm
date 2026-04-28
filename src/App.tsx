@@ -10,6 +10,7 @@ import { FarmProvider } from "./context/FarmContext";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { RoleProtectedRoute } from "./components/auth";
+import { useBatchEditQueue } from "./hooks/useBatchEditQueue";
 
 // Retry wrapper for lazy imports (handles stale cache / failed fetches)
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -103,6 +104,13 @@ const ProtectedRoute = memo(function ProtectedRoute({ children }: { children: Re
   
   return <>{children}</>;
 });
+
+// Mounts globally so queued batch edits sync as soon as the user returns online,
+// regardless of whether the edit dialog is currently open.
+function GlobalBatchEditQueue() {
+  useBatchEditQueue();
+  return null;
+}
 
 // App routes component
 function AppRoutes() {
@@ -258,6 +266,7 @@ const App = () => {
               <Sonner />
               <OfflineIndicator />
               <PWAUpdateBanner />
+              <GlobalBatchEditQueue />
               <BrowserRouter>
                 <AppWithRoutes />
               </BrowserRouter>

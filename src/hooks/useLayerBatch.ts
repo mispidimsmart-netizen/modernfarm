@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
+import { enqueueBatchEdit } from '@/hooks/useBatchEditQueue';
 
 export interface LayerBatch {
   id: string;
@@ -402,6 +403,34 @@ export function useEditCompletedLayerBatch() {
     }) => {
       if (!user) throw new Error('Not authenticated');
 
+      // OFFLINE PATH: queue the edit and resolve optimistically.
+      // The queue auto-syncs when connectivity returns.
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (new Date(actual_end_date) < new Date(start_date)) {
+          throw new Error(
+            language === 'bn'
+              ? 'শেষের তারিখ শুরুর তারিখের আগে হতে পারে না'
+              : 'End date cannot be before start date'
+          );
+        }
+        if (current_bird_count > initial_bird_count) {
+          throw new Error(
+            language === 'bn'
+              ? 'চূড়ান্ত পাখি প্রাথমিকের চেয়ে বেশি হতে পারে না'
+              : 'Final bird count cannot exceed initial'
+          );
+        }
+        enqueueBatchEdit(batchId, {
+          start_date,
+          actual_end_date,
+          initial_bird_count,
+          current_bird_count,
+          chick_cost_per_bird,
+          notes,
+        });
+        return { batchId, queued: true } as any;
+      }
+
       // Validation
       if (new Date(actual_end_date) < new Date(start_date)) {
         throw new Error(
@@ -473,10 +502,20 @@ export function useEditCompletedLayerBatch() {
 
       return { batchId, summary };
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-trend'] });
+      if (result?.queued) {
+        toast({
+          title: language === 'bn' ? 'অফলাইন — সারিতে যোগ হয়েছে' : 'Offline — queued',
+          description:
+            language === 'bn'
+              ? 'ইন্টারনেট ফিরলে স্বয়ংক্রিয়ভাবে সিঙ্ক হবে'
+              : 'Will auto-sync when connectivity returns',
+        });
+        return;
+      }
       toast({
         title: language === 'bn' ? 'আপডেট সফল' : 'Updated',
         description:
