@@ -83,7 +83,7 @@ export function useUpdateBirdAge() {
           ? new Date(Date.now() - input.ageWeeks * 7 * 86_400_000).toISOString().split('T')[0]
           : undefined);
       if (!startDate) throw new Error('startDate or ageWeeks is required');
-      return updateBatch.mutateAsync({ id: activeBatch.id, updates: { start_date: startDate } });
+      return updateBatch.mutateAsync({ id: activeBatch.id, start_date: startDate });
     }
 
     // Layer: persist age_weeks on flock_info
