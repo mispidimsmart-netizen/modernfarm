@@ -65,12 +65,36 @@ export function useBirdAge(): UnifiedBirdAge {
  * Routes to the correct table based on farm type.
  */
 export function useUpdateBirdAge() {
+  const queryClient = useQueryClient();
   const { isBroiler } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
   const updateFlock = useUpdateFlockInfo();
   const updateBatch = useUpdateBatch();
 
   const isPending = updateFlock.isPending || updateBatch.isPending;
+
+  /**
+   * Force every age-dependent feature to recompute against the new value.
+   * - Sources: flock_info, broiler-batch-active, broiler-batches
+   * - Derived: lighting suggestion, lighting curve, automation status,
+   *   broiler temp curve, FCR, daily summary
+   *
+   * useAgeLightingSuggestion / useAutomationStatus are pure useMemo wrappers
+   * over the source queries above, so invalidating the sources is enough —
+   * but we also nudge the lighting schedule + daily summary caches that may
+   * have age-derived recommendations baked in.
+   */
+  const invalidateAgeDependents = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] }),
+      queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] }),
+      queryClient.invalidateQueries({ queryKey: ['broiler-batches'] }),
+      queryClient.invalidateQueries({ queryKey: ['lighting-schedule'] }),
+      queryClient.invalidateQueries({ queryKey: ['lighting-curve'] }),
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] }),
+      queryClient.invalidateQueries({ queryKey: ['farm-settings'] }),
+    ]);
+  };
 
   const mutate = async (input: { ageWeeks?: number; startDate?: string }) => {
     if (isBroiler) {
@@ -84,7 +108,9 @@ export function useUpdateBirdAge() {
           ? new Date(Date.now() - input.ageWeeks * 7 * 86_400_000).toISOString().split('T')[0]
           : undefined);
       if (!startDate) throw new Error('startDate or ageWeeks is required');
-      return updateBatch.mutateAsync({ id: activeBatch.id, start_date: startDate });
+      const result = await updateBatch.mutateAsync({ id: activeBatch.id, start_date: startDate });
+      await invalidateAgeDependents();
+      return result;
     }
 
     // Layer: persist age_weeks on flock_info
@@ -94,7 +120,9 @@ export function useUpdateBirdAge() {
         ? Math.floor((Date.now() - new Date(input.startDate).getTime()) / (7 * 86_400_000))
         : undefined);
     if (ageWeeks === undefined) throw new Error('ageWeeks or startDate is required');
-    return updateFlock.mutateAsync({ age_weeks: ageWeeks });
+    const result = await updateFlock.mutateAsync({ age_weeks: ageWeeks });
+    await invalidateAgeDependents();
+    return result;
   };
 
   return { mutate, isPending };
