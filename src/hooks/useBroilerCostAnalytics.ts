@@ -342,6 +342,52 @@ function calculateBroilerAnalytics(
   // Daily Trends (last 7 days)
   const dailyTrends = calculateDailyTrends(feed, mortality, weights);
 
+  // Weight history (all weight samples, ascending)
+  const weightHistory = sortedWeightsAsc.map((w: any) => {
+    const sampleAgeDays = Math.max(
+      1,
+      Math.floor(
+        (new Date(w.record_date).getTime() - new Date(batch.start_date).getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1
+    );
+    return {
+      date: w.record_date,
+      ageDays: sampleAgeDays,
+      weight: w.average_weight_grams || 0,
+      targetWeight: Math.round(getBroilerTargetWeight(sampleAgeDays)),
+    };
+  });
+
+  // FCR trend — recompute cumulative FCR at each weight sample point
+  const fcrTrend = sortedWeightsAsc.map((w: any) => {
+    const sampleDate = w.record_date;
+    const sampleAgeDays = Math.max(
+      1,
+      Math.floor(
+        (new Date(sampleDate).getTime() - new Date(batch.start_date).getTime()) /
+          (1000 * 60 * 60 * 24)
+      ) + 1
+    );
+    const cumulativeFeedKg = feed
+      .filter((f: any) => f.feed_date <= sampleDate)
+      .reduce((s: number, f: any) => s + Number(f.quantity_kg || 0), 0);
+    const cumulativeMortality = mortality
+      .filter((m: any) => m.record_date <= sampleDate)
+      .reduce((s: number, m: any) => s + (m.count || 0), 0);
+    const aliveBirds = batch.initial_bird_count - cumulativeMortality;
+    const sampleWeightKg = ((w.average_weight_grams || 0) * aliveBirds) / 1000;
+    const initialKg = (batch.initial_bird_count * 42) / 1000;
+    const gainKg = Math.max(0.001, sampleWeightKg - initialKg);
+    const sampleFcr = calculateFCR(cumulativeFeedKg, gainKg);
+    return {
+      date: sampleDate,
+      ageDays: sampleAgeDays,
+      fcr: Math.round(sampleFcr * 100) / 100,
+      target: getTargetFCR(sampleAgeDays),
+    };
+  });
+
   return {
     activeBatch,
     feedAnalytics,
