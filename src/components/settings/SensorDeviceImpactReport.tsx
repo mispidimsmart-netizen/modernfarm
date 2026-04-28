@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 
 type Hours = 6 | 12 | 24 | 72 | 168;
-type SensorKey = 'temperature' | 'humidity' | 'ammonia' | 'water_usage';
+type SensorKey = 'temperature' | 'humidity' | 'ammonia' | 'water_usage' | 'light_lux';
 type DeviceKey = 'fan' | 'heater' | 'fogger' | 'sprinkler' | 'ceiling_fan' | 'light' | 'alarm';
 
 const SENSOR_META: Record<SensorKey, { bn: string; en: string; color: string; unit: string }> = {
@@ -30,6 +30,7 @@ const SENSOR_META: Record<SensorKey, { bn: string; en: string; color: string; un
   humidity:    { bn: 'আর্দ্রতা',   en: 'Humidity',    color: 'hsl(var(--sensor-humidity, 200 80% 55%))',     unit: '%' },
   ammonia:     { bn: 'অ্যামোনিয়া', en: 'Ammonia',     color: 'hsl(var(--sensor-ammonia, 280 70% 60%))',      unit: 'ppm' },
   water_usage: { bn: 'পানি',       en: 'Water',       color: 'hsl(var(--sensor-water, 190 80% 50%))',        unit: 'L' },
+  light_lux:   { bn: 'আলো (LDR)',  en: 'Light (LDR)', color: 'hsl(45 95% 55%)',                              unit: 'lux' },
 };
 
 const DEVICE_META: Record<DeviceKey, { bn: string; en: string; color: string }> = {
@@ -42,7 +43,7 @@ const DEVICE_META: Record<DeviceKey, { bn: string; en: string; color: string }> 
   alarm:        { bn: 'অ্যালার্ম',     en: 'Alarm',       color: 'hsl(0 80% 55%)' },
 };
 
-const ALL_SENSORS: SensorKey[] = ['temperature', 'humidity', 'ammonia', 'water_usage'];
+const ALL_SENSORS: SensorKey[] = ['temperature', 'humidity', 'ammonia', 'water_usage', 'light_lux'];
 const ALL_DEVICES: DeviceKey[] = ['fan', 'heater', 'fogger', 'sprinkler', 'ceiling_fan', 'light', 'alarm'];
 
 function statusFromSensors(t: number, h: number, nh3: number, hsi: number) {
@@ -112,7 +113,7 @@ export function SensorDeviceImpactReport() {
       if (!user) return [];
       let q = supabase
         .from('sensor_readings')
-        .select('recorded_at, temperature, humidity, ammonia, water_usage')
+        .select('recorded_at, temperature, humidity, ammonia, water_usage, light_lux')
         .eq('user_id', user.id)
         .gte('recorded_at', since)
         .order('recorded_at', { ascending: true })
@@ -194,6 +195,7 @@ export function SensorDeviceImpactReport() {
       const h = Number(s.humidity) || 0;
       const nh3 = Number(s.ammonia) || 0;
       const water = Number(s.water_usage) || 0;
+      const lux = s.light_lux !== null && s.light_lux !== undefined ? Number(s.light_lux) : 0;
       const sensorTime = new Date(s.recorded_at).getTime();
 
       const deviceState: Record<string, boolean> = {};
@@ -213,6 +215,7 @@ export function SensorDeviceImpactReport() {
         humidity: h,
         ammonia: nh3,
         water_usage: water,
+        light_lux: lux,
         hsi,
         deviceState,
         fan: onOff(deviceState.fan),
@@ -272,18 +275,19 @@ export function SensorDeviceImpactReport() {
   // Build hourly summary for analysis
   const hourlySummary = useMemo(() => {
     if (sensors.length === 0) return [];
-    const buckets: Record<string, { temps: number[]; hums: number[]; nh3s: number[]; waters: number[]; devices: Record<string, number> }> = {};
+    const buckets: Record<string, { temps: number[]; hums: number[]; nh3s: number[]; waters: number[]; luxes: number[]; devices: Record<string, number> }> = {};
 
     for (const r of correlated) {
       const d = new Date(r.ts);
       const hourKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
       if (!buckets[hourKey]) {
-        buckets[hourKey] = { temps: [], hums: [], nh3s: [], waters: [], devices: {} };
+        buckets[hourKey] = { temps: [], hums: [], nh3s: [], waters: [], luxes: [], devices: {} };
       }
       buckets[hourKey].temps.push(r.temperature);
       buckets[hourKey].hums.push(r.humidity);
       buckets[hourKey].nh3s.push(r.ammonia);
       buckets[hourKey].waters.push(r.water_usage);
+      buckets[hourKey].luxes.push(r.light_lux);
 
       ALL_DEVICES.forEach((dev) => {
         if (r.deviceState[dev]) {
@@ -307,6 +311,8 @@ export function SensorDeviceImpactReport() {
           avgHumidity: avg(b.hums),
           avgAmmonia: avg(b.nh3s),
           totalWater: Number(b.waters.reduce((s, v) => s + v, 0).toFixed(1)),
+          avgLux: avg(b.luxes),
+          maxLux: max(b.luxes),
           hsi: Number((avg(b.temps) + 0.36 * avg(b.hums)).toFixed(1)),
           activeDevices: b.devices,
         };
@@ -371,6 +377,8 @@ export function SensorDeviceImpactReport() {
             [bn ? 'গড় আর্দ্রতা (%)' : 'Avg Humidity (%)']: h.avgHumidity,
             [bn ? 'গড় অ্যামোনিয়া (ppm)' : 'Avg Ammonia (ppm)']: h.avgAmmonia,
             [bn ? 'মোট পানি (L)' : 'Total Water (L)']: h.totalWater,
+            [bn ? 'গড় আলো (lux)' : 'Avg Light (lux)']: h.avgLux,
+            [bn ? 'সর্বোচ্চ আলো (lux)' : 'Max Light (lux)']: h.maxLux,
             'HSI': h.hsi,
           };
           ALL_DEVICES.forEach((d) => {
@@ -423,6 +431,7 @@ export function SensorDeviceImpactReport() {
           calc('humidity', bn ? 'আর্দ্রতা' : 'Humidity', '%'),
           calc('ammonia', bn ? 'অ্যামোনিয়া' : 'Ammonia', 'ppm'),
           calc('water_usage', bn ? 'পানি ব্যবহার' : 'Water Usage', 'L'),
+          calc('light_lux', bn ? 'আলো (LDR)' : 'Light (LDR)', 'lux'),
         ];
       };
 
@@ -735,6 +744,9 @@ export function SensorDeviceImpactReport() {
                     {selectedSensors.has('ammonia') && (
                       <TableHead className="text-xs"><Wind className="h-3 w-3 inline" /> NH₃</TableHead>
                     )}
+                    {selectedSensors.has('light_lux') && (
+                      <TableHead className="text-xs">💡 lux</TableHead>
+                    )}
                     <TableHead className="text-xs">{bn ? 'সক্রিয় ডিভাইস' : 'Active devices'}</TableHead>
                     <TableHead className="text-xs">{bn ? 'প্রভাব' : 'Impact'}</TableHead>
                   </TableRow>
@@ -770,6 +782,9 @@ export function SensorDeviceImpactReport() {
                           )}
                           {selectedSensors.has('ammonia') && (
                             <TCell className="text-xs">{r.ammonia.toFixed(1)}</TCell>
+                          )}
+                          {selectedSensors.has('light_lux') && (
+                            <TCell className="text-xs">{r.light_lux > 0 ? r.light_lux.toFixed(0) : '—'}</TCell>
                           )}
                           <TCell className="text-xs">
                             {active.length === 0 ? (
