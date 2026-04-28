@@ -218,6 +218,37 @@ export function FarmSetupTab() {
       setIsProfileManual(true);
     }
   }, [farmSettings]);
+
+  // Sync setup wizard: mark automation profile step complete
+  const markAutomationProfileSelected = async () => {
+    try {
+      const farmId = (farmSettings as any)?.farm_id;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!farmId || !user) return;
+      const { data: existing } = await supabase
+        .from('farm_setup_status')
+        .select('id, step_automation_profile_selected')
+        .eq('farm_id', farmId)
+        .maybeSingle();
+      if (existing?.step_automation_profile_selected) return;
+      if (existing?.id) {
+        await supabase
+          .from('farm_setup_status')
+          .update({ step_automation_profile_selected: true })
+          .eq('id', existing.id);
+      } else {
+        await supabase
+          .from('farm_setup_status')
+          .insert({
+            farm_id: farmId,
+            user_id: user.id,
+            step_automation_profile_selected: true,
+          });
+      }
+    } catch (e) {
+      console.warn('[FarmSetupTab] markAutomationProfileSelected failed', e);
+    }
+  };
   
   // Pending change tracking for confirmation dialog
   const [pendingChange, setPendingChange] = useState<{
