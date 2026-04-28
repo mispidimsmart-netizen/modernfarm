@@ -146,17 +146,19 @@ export function AuditLogPage() {
 
             {/* Date range */}
             <div className="flex gap-2">
-              <Input
-                type="date"
-                className="h-9 flex-1"
-                value={filters.dateFrom || ''}
-                onChange={e => setFilters(f => ({ ...f, dateFrom: e.target.value || undefined }))}
+              <SmartDatePicker
+                value={filters.dateFrom || null}
+                onChange={(iso) => setFilters(f => ({ ...f, dateFrom: iso || undefined }))}
+                placeholder={isBn ? 'শুরু তারিখ' : 'From'}
+                className="flex-1"
+                disableFuture
               />
-              <Input
-                type="date"
-                className="h-9 flex-1"
-                value={filters.dateTo || ''}
-                onChange={e => setFilters(f => ({ ...f, dateTo: e.target.value || undefined }))}
+              <SmartDatePicker
+                value={filters.dateTo || null}
+                onChange={(iso) => setFilters(f => ({ ...f, dateTo: iso || undefined }))}
+                placeholder={isBn ? 'শেষ তারিখ' : 'To'}
+                className="flex-1"
+                disableFuture
               />
             </div>
           </CardContent>
