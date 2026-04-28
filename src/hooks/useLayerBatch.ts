@@ -350,3 +350,63 @@ export function useLayerBatchSummary(batchId: string | undefined) {
     enabled: !!batchId,
   });
 }
+
+// Daily egg + mortality trend for a batch (used by mini chart)
+export interface BatchTrendPoint {
+  date: string;
+  eggs: number;
+  mortality: number;
+}
+
+export function useLayerBatchTrend(batch: LayerBatch | null | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['layer-batch-trend', batch?.id],
+    queryFn: async (): Promise<BatchTrendPoint[]> => {
+      if (!user || !batch) return [];
+      const start = batch.start_date;
+      const end = batch.actual_end_date || new Date().toISOString().split('T')[0];
+
+      const [eggsRes, mortRes] = await Promise.all([
+        supabase
+          .from('egg_production')
+          .select('production_date,total_eggs')
+          .eq('user_id', user.id)
+          .gte('production_date', start)
+          .lte('production_date', end)
+          .order('production_date', { ascending: true }),
+        supabase
+          .from('daily_summary')
+          .select('summary_date,mortality_count')
+          .eq('user_id', user.id)
+          .gte('summary_date', start)
+          .lte('summary_date', end)
+          .order('summary_date', { ascending: true }),
+      ]);
+
+      const map = new Map<string, BatchTrendPoint>();
+      (eggsRes.data || []).forEach((e: any) => {
+        map.set(e.production_date, {
+          date: e.production_date,
+          eggs: e.total_eggs || 0,
+          mortality: 0,
+        });
+      });
+      (mortRes.data || []).forEach((m: any) => {
+        const existing = map.get(m.summary_date);
+        if (existing) existing.mortality = m.mortality_count || 0;
+        else
+          map.set(m.summary_date, {
+            date: m.summary_date,
+            eggs: 0,
+            mortality: m.mortality_count || 0,
+          });
+      });
+
+      return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+    },
+    enabled: !!user && !!batch,
+  });
+}
+
