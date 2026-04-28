@@ -3,53 +3,8 @@ project_id = "hbwfuvqrfgtefozajyfu"
 [functions.esp32-api]
 verify_jwt = false
 
-[functions.send-push-notification]
-verify_jwt = false
-
-[functions.fetch-weather]
-verify_jwt = false
-
-[functions.health-score]
-verify_jwt = false
-
-[functions.water-trend]
-verify_jwt = false
-
-[functions.heat-risk]
-verify_jwt = false
-
-[functions.mode-profile]
-verify_jwt = false
-
-[functions.automation-engine]
-verify_jwt = false
-
-[functions.schedule-notifier]
-verify_jwt = false
-
-[functions.daily-farm-report]
-verify_jwt = false
-
-[functions.push-public-key]
-verify_jwt = false
-
-[functions.admin-delete-user]
-verify_jwt = false
-
-[functions.lookup-login-identifier]
-verify_jwt = false
-
-[functions.export-data]
-verify_jwt = false
-
 [functions.ota-firmware]
 verify_jwt = false
 
-[functions.emergency-webhook]
-verify_jwt = false
-
-[functions.notification-escalation]
-verify_jwt = false
-
-[functions.safety-engine]
+[functions.device-monitor]
 verify_jwt = false

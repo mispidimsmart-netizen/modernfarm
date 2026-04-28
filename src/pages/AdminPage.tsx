@@ -33,6 +33,7 @@ import {
   BookOpen,
   Crown,
   FileText,
+  Upload,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
@@ -55,6 +56,7 @@ import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWiza
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
+import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 
 const t = {
   bn: {
@@ -93,6 +95,7 @@ const t = {
      tabDocs: 'অ্যাপ ডকুমেন্টেশন',
     tabAudit: 'অডিট রিপোর্ট',
     tabArchitecture: 'টেকনিক্যাল আর্কিটেকচার',
+    tabFirmware: 'ফার্মওয়্যার',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -139,6 +142,7 @@ const t = {
      tabDocs: 'App Documentation',
     tabAudit: 'Audit Report',
     tabArchitecture: 'Technical Architecture',
+    tabFirmware: 'Firmware',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -408,6 +412,10 @@ export default function AdminPage() {
               <Cpu className="w-4 h-4 mr-2" />
               {labels.tabArchitecture}
             </TabsTrigger>
+            <TabsTrigger value="firmware" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Upload className="w-4 h-4 mr-2" />
+              {labels.tabFirmware}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="admins" className="mt-4">
@@ -641,6 +649,10 @@ export default function AdminPage() {
 
           <TabsContent value="architecture" className="mt-4">
             <TechnicalArchitectureReport />
+          </TabsContent>
+
+          <TabsContent value="firmware" className="mt-4">
+            <FirmwareManagementTab language={language} />
           </TabsContent>
         </Tabs>
       </div>
