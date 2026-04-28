@@ -295,6 +295,7 @@ export function FarmSetupTab() {
         setIsProfileManual(true);
         setProfileOverride(newProfile);
         await updateFarmSettings.mutateAsync({ profile_override: newProfile } as any);
+        await markAutomationProfileSelected();
       } else if (pendingChange.type === 'apply') {
         if (selectedShedId) {
           await updateShed.mutateAsync({ id: selectedShedId, farm_type: farmType } as any);
@@ -306,6 +307,9 @@ export function FarmSetupTab() {
           season_override: isSeasonManual ? seasonOverride : null,
           profile_override: isProfileManual ? profileOverride : null,
         } as any);
+        if (isProfileManual && profileOverride) {
+          await markAutomationProfileSelected();
+        }
       }
       
       toast({
