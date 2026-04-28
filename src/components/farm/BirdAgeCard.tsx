@@ -157,12 +157,11 @@ export function BirdAgeCard() {
           </Label>
 
           {isBroiler ? (
-            <Input
-              type="date"
+            <SmartDatePicker
               value={draftDate}
-              max={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setDraftDate(e.target.value)}
-              className="h-10"
+              onChange={setDraftDate}
+              showAgePreview
+              maxDaysAgo={90}
             />
           ) : (
             <Input
