@@ -38,7 +38,7 @@ const Dashboard = lazyRetry(() => import("./pages/Dashboard").then(m => ({ defau
 const ControlPage = lazyRetry(() => import("./pages/ControlPage").then(m => ({ default: m.ControlPage })));
 const AutomationPage = lazyRetry(() => import("./pages/AutomationPage").then(m => ({ default: m.AutomationPage })));
 const AlertsPage = lazyRetry(() => import("./pages/AlertsPage").then(m => ({ default: m.AlertsPage })));
-const ReportsPage = lazyRetry(() => import("./pages/ReportsPage").then(m => ({ default: m.ReportsPage })));
+// ReportsPage removed — content embedded in Settings → Reports tab
 const SettingsPage = lazyRetry(() => import("./pages/SettingsPage").then(m => ({ default: m.SettingsPage })));
 const ApiDocsPage = lazyRetry(() => import("./pages/ApiDocsPage").then(m => ({ default: m.ApiDocsPage })));
 const FarmManagementPage = lazyRetry(() => import("./pages/FarmManagementPage").then(m => ({ default: m.FarmManagementPage })));
@@ -176,14 +176,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <ReportsPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* /reports route removed — analytics moved into Settings → Reports tab */}
         <Route
           path="/settings"
           element={
