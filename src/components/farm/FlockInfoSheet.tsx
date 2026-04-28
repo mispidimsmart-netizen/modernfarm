@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 
 interface FlockInfoSheetProps {
   open: boolean;
@@ -143,10 +144,19 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
 
             <div className="space-y-2">
               <Label>{t.purchaseDate[language]}</Label>
-              <Input
-                type="date"
-                value={formData.purchase_date}
-                onChange={(e) => setFormData(p => ({ ...p, purchase_date: e.target.value }))}
+              <SmartDatePicker
+                value={formData.purchase_date || null}
+                onChange={(iso) => setFormData(p => ({ ...p, purchase_date: iso }))}
+                placeholder={language === 'bn' ? 'তারিখ বাছাই করুন' : 'Pick a date'}
+                showAgePreview
+                disableFuture
+                presets={[
+                  { labelBn: 'আজ', labelEn: 'Today', daysAgo: 0 },
+                  { labelBn: '১ সপ্তাহ আগে', labelEn: '1 week ago', daysAgo: 7 },
+                  { labelBn: '১ মাস আগে', labelEn: '1 month ago', daysAgo: 30 },
+                  { labelBn: '৩ মাস আগে', labelEn: '3 months ago', daysAgo: 90 },
+                  { labelBn: '৬ মাস আগে', labelEn: '6 months ago', daysAgo: 180 },
+                ]}
               />
             </div>
 
