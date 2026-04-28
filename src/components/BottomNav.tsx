@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Sliders, Egg, Bell, Settings } from 'lucide-react';
+import { Home, Sliders, Egg, Lightbulb, Bell, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useAlerts } from '@/hooks/useFarmData';
@@ -10,6 +10,7 @@ import { triggerHaptic } from '@/hooks/useHapticFeedback';
 const navItems = [
   { path: '/', icon: Home, labelKey: 'home', emoji: '🏠' },
   { path: '/farm', icon: Egg, labelKey: 'farm', emoji: '🥚' },
+  { path: '/lighting', icon: Lightbulb, labelKey: 'lighting', emoji: '💡' },
   { path: '/control', icon: Sliders, labelKey: 'control', emoji: '🎛️' },
   { path: '/alerts', icon: Bell, labelKey: 'alerts', emoji: '🔔' },
   { path: '/settings', icon: Settings, labelKey: 'settings', emoji: '⚙️' },
@@ -40,7 +41,7 @@ export function BottomNav() {
               key={path}
               to={path}
               onClick={handleNavClick}
-              className="relative flex flex-col items-center justify-center py-2 px-4"
+              className="relative flex flex-1 flex-col items-center justify-center py-2 px-1 min-w-0"
             >
               {/* Active indicator pill */}
               {isActive && (
