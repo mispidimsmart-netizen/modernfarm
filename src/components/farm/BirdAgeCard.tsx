@@ -83,6 +83,11 @@ export function BirdAgeCard() {
       en: 'For layer enter current age in weeks directly.',
     },
     usedIn: { bn: 'এখানে ব্যবহৃত হয়:', en: 'Used in:' },
+    updating: {
+      bn: 'লাইটিং ও অটোমেশন আপডেট হচ্ছে…',
+      en: 'Updating lighting & automation…',
+    },
+    upToDate: { bn: 'সব আপডেটেড ✓', en: 'All in sync ✓' },
     chips: {
       lighting: { bn: 'লাইটিং সাজেশন', en: 'Lighting suggestion' },
       temp: { bn: 'তাপমাত্রা কার্ভ', en: 'Temp curve' },
