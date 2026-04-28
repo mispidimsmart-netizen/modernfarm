@@ -387,6 +387,8 @@ export function useEditCompletedLayerBatch() {
       current_bird_count,
       chick_cost_per_bird,
       notes,
+      expectedUpdatedAt,
+      force,
     }: {
       batchId: string;
       start_date: string;
@@ -395,6 +397,8 @@ export function useEditCompletedLayerBatch() {
       current_bird_count: number;
       chick_cost_per_bird?: number;
       notes?: string;
+      expectedUpdatedAt?: string;
+      force?: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -412,6 +416,24 @@ export function useEditCompletedLayerBatch() {
             ? 'চূড়ান্ত পাখি প্রাথমিকের চেয়ে বেশি হতে পারে না'
             : 'Final bird count cannot exceed initial'
         );
+      }
+
+      // Conflict check (optimistic concurrency)
+      if (expectedUpdatedAt && !force) {
+        const { data: latest, error: cErr } = await supabase
+          .from('layer_batches' as any)
+          .select('updated_at')
+          .eq('id', batchId)
+          .single();
+        if (cErr) throw cErr;
+        const latestTs = (latest as any)?.updated_at;
+        if (latestTs && latestTs !== expectedUpdatedAt) {
+          // Throw a typed conflict error the dialog can detect
+          const err: any = new Error('CONFLICT');
+          err.code = 'BATCH_CONFLICT';
+          err.serverUpdatedAt = latestTs;
+          throw err;
+        }
       }
 
       // 1. Update batch row
@@ -463,7 +485,9 @@ export function useEditCompletedLayerBatch() {
             : 'Batch info & summary recalculated',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Conflict has its own UI in the dialog — don't toast
+      if (error?.code === 'BATCH_CONFLICT') return;
       toast({
         title: language === 'bn' ? 'ত্রুটি' : 'Error',
         description: error.message,
