@@ -395,8 +395,22 @@ function calculateBroilerAnalytics(
     costPerKg,
     batchTotals,
     dailyTrends,
+    weightHistory,
+    fcrTrend,
   };
 }
+
+// Industry target FCR for Cobb 500 broilers by age (cumulative)
+function getTargetFCR(ageDays: number): number {
+  if (ageDays <= 7) return 0.85;
+  if (ageDays <= 14) return 1.10;
+  if (ageDays <= 21) return 1.35;
+  if (ageDays <= 28) return 1.55;
+  if (ageDays <= 35) return 1.70;
+  if (ageDays <= 42) return 1.85;
+  return 2.00;
+}
+
 
 function calculateDailyTrends(
   feed: any[],
