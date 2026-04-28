@@ -1,3 +1,4 @@
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -35,11 +36,34 @@ export function AlertsPage() {
   const { activeAlerts, resolvedAlerts, alertCounts, isQuietHours } = useSmartAlerts();
   const acknowledgeAlert = useAcknowledgeAlert();
 
-  const handleAcknowledge = (id: string) => {
-    acknowledgeAlert.mutate(id);
-  };
+  // Locally dismissed synthetic / grouped alerts (no DB row to acknowledge)
+  const [localDismissed, setLocalDismissed] = useState<Set<string>>(new Set());
 
-  const { critical, attention, safeInfo } = groupByPriority(activeAlerts);
+  const handleAcknowledge = useCallback((id: string) => {
+    // Synthetic broiler alerts and grouped alerts have no DB row — dismiss locally
+    if (id.startsWith('synthetic_') || id.startsWith('group_')) {
+      setLocalDismissed(prev => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      return;
+    }
+    acknowledgeAlert.mutate(id);
+  }, [acknowledgeAlert]);
+
+  const visibleActiveAlerts = useMemo(
+    () => activeAlerts.filter(a => !localDismissed.has(a.id)),
+    [activeAlerts, localDismissed]
+  );
+
+  const { critical, attention, safeInfo } = groupByPriority(visibleActiveAlerts);
+  const visibleCounts = {
+    danger: critical.length,
+    warning: attention.length,
+    info: safeInfo.length,
+    total: visibleActiveAlerts.length,
+  };
 
   return (
     <div className="min-h-screen bg-background">
