@@ -128,39 +128,39 @@ export function DeviceSystemTab() {
     enabled: !!selectedFarmId,
   });
 
-  // Fetch alerts for event logs
+  // Fetch alerts for event logs (farm-scoped via RLS)
   const { data: eventLogs, refetch: refetchEventLogs } = useQuery({
-    queryKey: ['event_logs', user?.id],
+    queryKey: ['event_logs', selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       return data;
     },
-    enabled: !!user && showEventLogs,
+    enabled: !!selectedFarmId && showEventLogs,
   });
 
   // Fetch error alerts specifically
   const { data: errorLogs, refetch: refetchErrorLogs } = useQuery({
-    queryKey: ['error_logs', user?.id],
+    queryKey: ['error_logs', selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .eq('severity', 'danger')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       return data;
     },
-    enabled: !!user && showErrorLogs,
+    enabled: !!selectedFarmId && showErrorLogs,
   });
 
   // Add device token
