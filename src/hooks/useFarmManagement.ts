@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
 
 // Types
@@ -376,14 +377,14 @@ export function useAddIncome() {
 // Flock Info Hooks
 export function useFlockInfo() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['flock-info', user?.id],
+    queryKey: ['flock-info', user?.id, selectedFarmId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('flock_info')
-        .select('*')
-        .single();
+      let query = supabase.from('flock_info').select('*');
+      if (selectedFarmId) query = query.eq('farm_id', selectedFarmId);
+      const { data, error } = await query.maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data as FlockInfo | null;
@@ -395,11 +396,13 @@ export function useFlockInfo() {
 export function useUpdateFlockInfo() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Partial<FlockInfo>) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
 
       // Age plausibility validation (age_weeks → convert to days for validation)
       if (data.age_weeks !== undefined) {
@@ -477,6 +480,7 @@ export function useUpdateFlockInfo() {
         .upsert({
           ...data,
           user_id: user.id,
+          farm_id: selectedFarmId,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
       
