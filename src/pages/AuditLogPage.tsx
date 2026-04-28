@@ -10,13 +10,15 @@ import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { 
   Search, Filter, Shield, Settings, Zap, Terminal, 
-  Cpu, User, ChevronDown, ChevronUp, RefreshCw 
+  Cpu, User, ChevronDown, ChevronUp, RefreshCw, ListChecks
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DeviceCommandLogTab } from '@/components/audit/DeviceCommandLogTab';
 
 const categoryConfig: Record<string, { icon: typeof Shield; label: string; labelBn: string; color: string }> = {
   settings: { icon: Settings, label: 'Settings', labelBn: 'সেটিংস', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -74,17 +76,33 @@ export function AuditLogPage() {
           <h1 className="text-xl font-bold text-foreground">
             {isBn ? '📋 অডিট লগ' : '📋 Audit Log'}
           </h1>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="gap-2"
-          >
-            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-            {isBn ? 'রিফ্রেশ' : 'Refresh'}
-          </Button>
         </div>
+
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="general" className="gap-1.5">
+              <Filter size={14} />
+              {isBn ? 'সাধারণ' : 'General'}
+            </TabsTrigger>
+            <TabsTrigger value="commands" className="gap-1.5">
+              <ListChecks size={14} />
+              {isBn ? 'ডিভাইস কমান্ড' : 'Device Commands'}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="mt-4 space-y-4">
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="gap-2"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+                {isBn ? 'রিফ্রেশ' : 'Refresh'}
+              </Button>
+            </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-2">
@@ -293,6 +311,12 @@ export function AuditLogPage() {
             )}
           </div>
         </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="commands" className="mt-4">
+            <DeviceCommandLogTab />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <BottomNav />
