@@ -211,22 +211,6 @@ export function useJoinFarm() {
     },
   });
 }
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user_role'] });
-      toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'আপনি ফার্মে যুক্ত হয়েছেন' : 'You have joined the farm',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
 
 export function useRemoveWorker() {
   const { language } = useAuth();
