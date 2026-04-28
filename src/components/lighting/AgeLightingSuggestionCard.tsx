@@ -1,7 +1,7 @@
 import { Bird, Lightbulb, Check, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAgeLightingSuggestion } from '@/hooks/useAgeLightingSuggestion';
-import { useFlockInfo } from '@/hooks/useFarmManagement';
+import { useBirdAge } from '@/hooks/useBirdAge';
 import { useUpdateLightingSchedule } from '@/hooks/useLightingCurve';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 
 export function AgeLightingSuggestionCard() {
   const { language } = useAuth();
-  const { data: flockInfo } = useFlockInfo();
+  const { ageWeeks, hasValue } = useBirdAge();
   const suggestion = useAgeLightingSuggestion();
   const updateSchedule = useUpdateLightingSchedule();
 
