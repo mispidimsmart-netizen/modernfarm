@@ -182,6 +182,10 @@ export function LightSensorCard() {
     >
       <div className="flex items-center justify-center gap-1 mb-1.5">
         <SunDim className={`h-4 w-4 ${tier.color}`} />
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          {language === 'bn' ? 'স্বাভাবিক' : 'Normal'}
+        </span>
       </div>
       <p className={`text-xl font-bold ${tier.color} leading-none mb-0.5 tabular-nums`}>
         {lux !== null ? Math.round(lux) : '—'} <span className="text-xs font-normal opacity-70">lux</span>
