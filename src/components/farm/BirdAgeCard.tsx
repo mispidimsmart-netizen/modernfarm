@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useBirdAge, useUpdateBirdAge } from '@/hooks/useBirdAge';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { cn } from '@/lib/utils';
 
 /**
