@@ -1,6 +1,36 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+// Detect Lovable preview / iframe contexts where service workers must NOT run.
+const isInIframe = (() => {
+  try {
+    return typeof window !== 'undefined' && window.self !== window.top;
+  } catch {
+    return true;
+  }
+})();
+const isPreviewHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.includes('lovableproject.com') ||
+    window.location.hostname.includes('lovable.app') === false &&
+      window.location.hostname.includes('id-preview--'));
+const PWA_DISABLED = isInIframe || isPreviewHost;
+
+// No-op stand-in that mirrors the shape of useRegisterSW's return value so
+// React always sees the same hook call order regardless of environment.
+const useNoopRegisterSW = (): ReturnType<typeof useRegisterSW> => {
+  const needRefresh = useState(false);
+  const offlineReady = useState(false);
+  const updateServiceWorker = useCallback(async (_reload?: boolean) => {}, []);
+  return {
+    needRefresh,
+    offlineReady,
+    updateServiceWorker,
+  } as ReturnType<typeof useRegisterSW>;
+};
+
+const useRegisterSWSafe = PWA_DISABLED ? useNoopRegisterSW : useRegisterSW;
+
 /**
  * Aggressive PWA auto-update strategy so installed apps reflect the latest
  * publish quickly:
@@ -16,8 +46,8 @@ export const usePWAUpdate = () => {
     needRefresh: [needRefresh],
     offlineReady: [offlineReady],
     updateServiceWorker,
-  } = useRegisterSW({
-    immediate: true,
+  } = useRegisterSWSafe({
+    immediate: !PWA_DISABLED,
     onRegisteredSW(swUrl, r) {
       console.log('[PWA] SW registered:', swUrl);
       if (r) {
