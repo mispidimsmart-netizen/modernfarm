@@ -50,6 +50,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
+import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 
 // Farmer-Friendly Assistant Components
@@ -158,6 +159,11 @@ export function Dashboard() {
         {/* ============ 3. CORE METRICS ROW (3 items only) ============ */}
         <div className="mb-3">
           <CoreMetricsRow />
+        </div>
+
+        {/* ============ LIGHT SENSOR (only if LDR installed) ============ */}
+        <div className="mb-3">
+          <LightSensorCard />
         </div>
 
         {/* ============ CURRENT ACTION + ADVISORY ============ */}
