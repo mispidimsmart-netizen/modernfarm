@@ -33,6 +33,7 @@ import {
   BookOpen,
   Crown,
   FileText,
+  Upload,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
