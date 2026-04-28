@@ -297,7 +297,7 @@ export function OperationPreferencesTab() {
         <p className="text-sm text-muted-foreground">
           {isManualMode
             ? (language === 'bn' ? '⚠️ ম্যানুয়াল মোডে এই সেটিংস নিষ্ক্রিয়' : '⚠️ These settings are inactive in Manual mode')
-            : (language === 'bn' ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' : 'Auto by default, manually adjust if needed')
+            : (language === 'bn' ? '✅ পরিবর্তন সঙ্গে সঙ্গে অটোমেশনে কার্যকর হয়' : '✅ Changes apply to automation immediately')
           }
         </p>
       </div>
