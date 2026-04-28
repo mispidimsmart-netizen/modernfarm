@@ -32,6 +32,7 @@ interface AuditLogEntry {
 
 export function useAuditLog() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
 
   const logAction = useCallback(async (entry: AuditLogEntry) => {
     if (!user) return;
@@ -40,6 +41,7 @@ export function useAuditLog() {
       await (supabase.from('farm_audit_logs') as any).insert({
         user_id: user.id,
         user_email: user.email || '',
+        farm_id: selectedFarmId || null,
         action_type: entry.action_type,
         action_category: entry.action_category,
         target_entity: entry.target_entity || null,
@@ -55,7 +57,7 @@ export function useAuditLog() {
     } catch (err) {
       console.error('[AuditLog] Failed to write:', err);
     }
-  }, [user]);
+  }, [user, selectedFarmId]);
 
   // Convenience methods
   const logSettingsChange = useCallback((
