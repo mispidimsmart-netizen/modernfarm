@@ -46,6 +46,10 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
+      devOptions: {
+        enabled: false,
+      },
       includeAssets: ["favicon.png", "robots.txt", "pwa-192x192.png", "pwa-512x512.png", "pwa-maskable-192.png", "pwa-maskable-512.png"],
       manifest: {
         name: "FarmEye - খামার থাকবে সবসময় নজরে",
@@ -145,7 +149,6 @@ export default defineConfig(({ mode }) => ({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'html-shell',
-              networkTimeoutSeconds: 3,
               expiration: {
                 maxEntries: 4,
                 maxAgeSeconds: 60 * 60 * 24, // 1 day fallback
@@ -153,22 +156,8 @@ export default defineConfig(({ mode }) => ({
             },
           },
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-api-cache",
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 5, // 5 minutes
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/i,
+            // Live farm data and auth must never be served from stale SW cache.
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkOnly",
           },
           {
