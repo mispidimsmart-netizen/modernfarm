@@ -489,7 +489,11 @@ export function FarmSetupTab() {
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
-            <RadioGroup value={farmSize} onValueChange={(v) => setFarmSize(v as FarmSize)}>
+            <RadioGroup value={farmSize} onValueChange={(v) => {
+              const newSize = v as FarmSize;
+              setFarmSize(newSize);
+              updateFarmSettings.mutate({ farm_size: newSize } as any);
+            }}>
               <div className="grid grid-cols-3 gap-2">
                 {FARM_SIZES.map((size) => (
                   <div key={size.id}>
