@@ -38,6 +38,30 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const LAYER_BREEDS = [
+  'ISA Brown',
+  'Hy-Line Brown',
+  'Hy-Line W-36',
+  'Lohmann Brown',
+  'Lohmann LSL',
+  'Bovans Brown',
+  'Bovans White',
+  'Hisex Brown',
+  'Novogen Brown',
+  'Shaver 579',
+  'BV-300',
+  'Sonali (সোনালী)',
+  'Local (দেশি)',
+  'Other',
+];
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
