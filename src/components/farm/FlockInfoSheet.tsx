@@ -80,7 +80,7 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+      <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl overflow-y-auto">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Bird className="h-5 w-5 text-primary" />
@@ -93,7 +93,10 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-8">
+            {/* 🐔 Unified Bird Age — single source of truth */}
+            <BirdAgeCard />
+
             <div className="space-y-2">
               <Label>{t.totalBirds[language]}</Label>
               <Input
@@ -105,39 +108,23 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>{t.ageWeeks[language]}</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={formData.age_weeks || ''}
-                  onChange={(e) => setFormData(p => ({ ...p, age_weeks: parseInt(e.target.value) || 0 }))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {language === 'bn'
-                    ? 'কেনার সময় মুরগির বয়স কত ছিল (যদি বড় মুরগি কিনে থাকেন)'
-                    : 'Age at the time of purchase (if you bought grown birds)'}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>{t.breed[language]}</Label>
-                <Select 
-                  value={formData.breed} 
-                  onValueChange={(v) => setFormData(p => ({ ...p, breed: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BREEDS.map(breed => (
-                      <SelectItem key={breed.value} value={breed.value}>
-                        {breed[language]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>{t.breed[language]}</Label>
+              <Select 
+                value={formData.breed} 
+                onValueChange={(v) => setFormData(p => ({ ...p, breed: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BREEDS.map(breed => (
+                    <SelectItem key={breed.value} value={breed.value}>
+                      {breed[language]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -146,7 +133,6 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
                 value={formData.purchase_date || null}
                 onChange={(iso) => setFormData(p => ({ ...p, purchase_date: iso }))}
                 placeholder={language === 'bn' ? 'তারিখ বাছাই করুন' : 'Pick a date'}
-                showAgePreview
                 disableFuture
                 presets={[
                   { labelBn: 'আজ', labelEn: 'Today', daysAgo: 0 },
