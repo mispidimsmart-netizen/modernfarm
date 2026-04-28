@@ -372,6 +372,107 @@ export function useLayerBatchSummary(batchId: string | undefined) {
   });
 }
 
+// Edit a completed batch (start/end date, bird counts) and recalc summary
+export function useEditCompletedLayerBatch() {
+  const queryClient = useQueryClient();
+  const { user, language } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({
+      batchId,
+      start_date,
+      actual_end_date,
+      initial_bird_count,
+      current_bird_count,
+      chick_cost_per_bird,
+      notes,
+    }: {
+      batchId: string;
+      start_date: string;
+      actual_end_date: string;
+      initial_bird_count: number;
+      current_bird_count: number;
+      chick_cost_per_bird?: number;
+      notes?: string;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      // Validation
+      if (new Date(actual_end_date) < new Date(start_date)) {
+        throw new Error(
+          language === 'bn'
+            ? 'শেষের তারিখ শুরুর তারিখের আগে হতে পারে না'
+            : 'End date cannot be before start date'
+        );
+      }
+      if (current_bird_count > initial_bird_count) {
+        throw new Error(
+          language === 'bn'
+            ? 'চূড়ান্ত পাখি প্রাথমিকের চেয়ে বেশি হতে পারে না'
+            : 'Final bird count cannot exceed initial'
+        );
+      }
+
+      // 1. Update batch row
+      const { data: updated, error: uErr } = await supabase
+        .from('layer_batches' as any)
+        .update({
+          start_date,
+          actual_end_date,
+          initial_bird_count,
+          current_bird_count,
+          chick_cost_per_bird: chick_cost_per_bird ?? undefined,
+        } as any)
+        .eq('id', batchId)
+        .select()
+        .single();
+      if (uErr) throw uErr;
+      const batch = updated as unknown as LayerBatch;
+
+      // 2. Recompute summary
+      const summary = await computeBatchSummary(
+        user.id,
+        batch,
+        start_date,
+        actual_end_date
+      );
+
+      // 3. Upsert summary (delete old, insert fresh)
+      await supabase.from('layer_batch_summary' as any).delete().eq('batch_id', batchId);
+      const { error: sErr } = await supabase.from('layer_batch_summary' as any).insert({
+        batch_id: batchId,
+        user_id: user.id,
+        farm_id: batch.farm_id,
+        ...summary,
+        notes: notes || null,
+      } as any);
+      if (sErr) throw sErr;
+
+      return { batchId, summary };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-trend'] });
+      toast({
+        title: language === 'bn' ? 'আপডেট সফল' : 'Updated',
+        description:
+          language === 'bn'
+            ? 'ব্যাচের তথ্য ও সারাংশ পুনরায় হিসাব করা হয়েছে'
+            : 'Batch info & summary recalculated',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 // Daily egg + mortality trend for a batch (used by mini chart)
 export interface BatchTrendPoint {
   date: string;
