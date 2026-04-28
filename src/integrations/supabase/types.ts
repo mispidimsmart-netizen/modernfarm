@@ -4431,6 +4431,7 @@ export type Database = {
         Row: {
           created_at: string
           expires_at: string
+          farm_id: string | null
           farm_owner_id: string
           id: string
           invite_code: string
@@ -4440,6 +4441,7 @@ export type Database = {
         Insert: {
           created_at?: string
           expires_at?: string
+          farm_id?: string | null
           farm_owner_id: string
           id?: string
           invite_code: string
@@ -4449,6 +4451,7 @@ export type Database = {
         Update: {
           created_at?: string
           expires_at?: string
+          farm_id?: string | null
           farm_owner_id?: string
           id?: string
           invite_code?: string
@@ -4479,6 +4482,7 @@ export type Database = {
         Returns: Json
       }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
+      cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       has_min_role: {
@@ -4494,6 +4498,7 @@ export type Database = {
       }
       is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      redeem_invitation: { Args: { _code: string }; Returns: Json }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
         Returns: boolean
