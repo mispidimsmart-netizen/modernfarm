@@ -377,6 +377,8 @@ export function SensorDeviceImpactReport() {
             [bn ? 'গড় আর্দ্রতা (%)' : 'Avg Humidity (%)']: h.avgHumidity,
             [bn ? 'গড় অ্যামোনিয়া (ppm)' : 'Avg Ammonia (ppm)']: h.avgAmmonia,
             [bn ? 'মোট পানি (L)' : 'Total Water (L)']: h.totalWater,
+            [bn ? 'গড় আলো (lux)' : 'Avg Light (lux)']: h.avgLux,
+            [bn ? 'সর্বোচ্চ আলো (lux)' : 'Max Light (lux)']: h.maxLux,
             'HSI': h.hsi,
           };
           ALL_DEVICES.forEach((d) => {
@@ -429,6 +431,7 @@ export function SensorDeviceImpactReport() {
           calc('humidity', bn ? 'আর্দ্রতা' : 'Humidity', '%'),
           calc('ammonia', bn ? 'অ্যামোনিয়া' : 'Ammonia', 'ppm'),
           calc('water_usage', bn ? 'পানি ব্যবহার' : 'Water Usage', 'L'),
+          calc('light_lux', bn ? 'আলো (LDR)' : 'Light (LDR)', 'lux'),
         ];
       };
 
