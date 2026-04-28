@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -30,7 +30,8 @@ import {
   FarmSetupTab, 
   OperationPreferencesTab, 
   ReportsDataTab, 
-  DeviceSystemTab 
+  DeviceSystemTab,
+  LightingTab,
 } from '@/components/settings/tabs';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
@@ -262,35 +263,42 @@ export function SettingsPage() {
           {/* Main Settings Tabs */}
           {canEditSettings && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'} mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl`}>
+              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'} mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl`}>
                 <TabsTrigger 
                   value="farm-setup" 
-                  className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                 >
                   <Home className="h-4 w-4 shrink-0" />
-                  <span>{language === 'bn' ? '🏠 খামার' : '🏠 Farm'}</span>
+                  <span>{language === 'bn' ? 'খামার' : 'Farm'}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="operation" 
-                  className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                 >
                   <Settings className="h-4 w-4 shrink-0" />
-                  <span>{language === 'bn' ? '⚙️ পরিচালনা' : '⚙️ Ops'}</span>
+                  <span>{language === 'bn' ? 'পরিচালনা' : 'Ops'}</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="lighting" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Lightbulb className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'লাইটিং' : 'Light'}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="reports" 
-                  className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                 >
                   <BarChart3 className="h-4 w-4 shrink-0" />
-                  <span>{language === 'bn' ? '📊 রিপোর্ট' : '📊 Reports'}</span>
+                  <span>{language === 'bn' ? 'রিপোর্ট' : 'Reports'}</span>
                 </TabsTrigger>
                 {isAdmin && (
                   <TabsTrigger 
                     value="device" 
-                    className="flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                    className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                   >
                     <Cpu className="h-4 w-4 shrink-0" />
-                    <span>{language === 'bn' ? '🔧 ডিভাইস' : '🔧 Device'}</span>
+                    <span>{language === 'bn' ? 'ডিভাইস' : 'Device'}</span>
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -301,6 +309,10 @@ export function SettingsPage() {
 
               <TabsContent value="operation">
                 <OperationPreferencesTab />
+              </TabsContent>
+
+              <TabsContent value="lighting">
+                <LightingTab />
               </TabsContent>
 
               <TabsContent value="reports">
