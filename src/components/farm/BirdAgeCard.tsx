@@ -31,6 +31,21 @@ export function BirdAgeCard() {
   const { ageDays, ageWeeks, source, startDate, isLoading, hasValue } = useBirdAge();
   const { mutate, isPending } = useUpdateBirdAge();
 
+  // Track fetches on every age-dependent query — shows "Updating…" while
+  // lighting / automation / curve thresholds are recomputing.
+  const fetchingFlock = useIsFetching({ queryKey: ['flock-info'] });
+  const fetchingActiveBatch = useIsFetching({ queryKey: ['broiler-batch-active'] });
+  const fetchingBatches = useIsFetching({ queryKey: ['broiler-batches'] });
+  const fetchingLightingSchedule = useIsFetching({ queryKey: ['lighting-schedule'] });
+  const fetchingLightingCurve = useIsFetching({ queryKey: ['lighting-curve'] });
+  const fetchingDailySummary = useIsFetching({ queryKey: ['daily-summary'] });
+  const fetchingFarmSettings = useIsFetching({ queryKey: ['farm-settings'] });
+  const isRecalculating =
+    isPending ||
+    fetchingFlock + fetchingActiveBatch + fetchingBatches +
+    fetchingLightingSchedule + fetchingLightingCurve +
+    fetchingDailySummary + fetchingFarmSettings > 0;
+
   const [draftDate, setDraftDate] = useState<string>('');
   const [draftWeeks, setDraftWeeks] = useState<string>('');
 
