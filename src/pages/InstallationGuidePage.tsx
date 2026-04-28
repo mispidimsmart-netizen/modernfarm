@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
+import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
+import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 import wiringDiagram from '@/assets/esp32-wiring-diagram.png';
 import relayAcWiringDiagram from '@/assets/relay-ac-wiring-diagram.png';
 import capacitorWiringDiagram from '@/assets/esp32-capacitor-wiring.png';
@@ -1164,6 +1166,12 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
       </header>
 
       <div className="p-4 space-y-6">
+        {/* LDR Hardware Status — large, farmer-friendly */}
+        <LDRStatusBanner />
+
+        {/* LDR Installation Guide (collapsible) */}
+        <LDRInstallationGuide />
+
         {/* Farm Type Info Banner */}
         <Card className="border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5">
           <CardContent className="p-4">
