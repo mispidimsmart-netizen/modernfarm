@@ -425,7 +425,10 @@ export function FarmSetupTab() {
                   checked={isSeasonManual}
                   onCheckedChange={(checked) => {
                     setIsSeasonManual(checked);
-                    if (!checked) setSeasonOverride(null);
+                    if (!checked) {
+                      setSeasonOverride(null);
+                      updateFarmSettings.mutate({ season_override: null } as any);
+                    }
                   }}
                 />
               </div>
@@ -469,6 +472,7 @@ export function FarmSetupTab() {
                 onClick={() => {
                   setIsSeasonManual(false);
                   setSeasonOverride(null);
+                  updateFarmSettings.mutate({ season_override: null } as any);
                 }}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
