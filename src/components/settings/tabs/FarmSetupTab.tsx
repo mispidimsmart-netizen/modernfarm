@@ -9,6 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile, useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
 import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
