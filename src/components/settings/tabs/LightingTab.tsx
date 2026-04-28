@@ -6,6 +6,7 @@ import { SmartLightingProfileCard } from '@/components/lighting/SmartLightingPro
 import { AgeLightingSuggestionCard } from '@/components/lighting/AgeLightingSuggestionCard';
 import { LDRSettingsCard } from '@/components/lighting/LDRSettingsCard';
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
+import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
 
 export function LightingTab() {
   const { language } = useAuth();
@@ -33,10 +34,13 @@ export function LightingTab() {
         </div>
       </div>
 
+      {/* 🐔 Unified Bird Age (single source of truth — used by lighting suggestion below) */}
+      <BirdAgeCard />
+
       {/* Smart Lighting Profile (flock + dark hours) */}
       <SmartLightingProfileCard />
 
-      {/* Age-Based Suggestion */}
+      {/* Age-Based Suggestion (reads bird age above) */}
       <AgeLightingSuggestionCard />
 
       {/* Lighting Curve Settings (start/end time, fade, brightness) */}
