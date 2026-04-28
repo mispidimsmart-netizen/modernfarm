@@ -292,7 +292,7 @@ export function TechnicalArchitectureReport() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-blue-200">🏗️ Technical Architecture & System Documentation</h2>
-              <p className="text-blue-400/80 text-sm mt-1">Version 8.0.0 | Industrial Grade | 14 Sections | Score: 100/100</p>
+              <p className="text-blue-400/80 text-sm mt-1">Version 8.2.0 | Industrial Grade | 18 Edge Functions | 67 Tables | Score: 100/100</p>
             </div>
             <Button onClick={handleDownloadPDF} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700">
               <Download className="w-4 h-4 mr-2" />
