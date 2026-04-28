@@ -396,11 +396,13 @@ export function useFlockInfo() {
 export function useUpdateFlockInfo() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Partial<FlockInfo>) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
 
       // Age plausibility validation (age_weeks → convert to days for validation)
       if (data.age_weeks !== undefined) {
