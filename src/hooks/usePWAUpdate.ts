@@ -12,12 +12,23 @@ export const usePWAUpdate = () => {
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const updateServiceWorkerRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
 
+  const applyUpdate = useCallback(async () => {
+    try {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    } catch (e) {
+      console.warn('[PWA] cache cleanup failed', e);
+    }
+    await updateServiceWorkerRef.current?.(true);
+    window.location.reload();
+  }, []);
+
   useEffect(() => {
     updateServiceWorkerRef.current = registerSW({
       immediate: true,
       onNeedRefresh() {
-      setShowUpdateBanner(true);
-      console.log('[PWA] New version detected — clearing caches & reloading...');
+        setShowUpdateBanner(true);
+        console.log('[PWA] New version detected — clearing caches & reloading...');
         window.setTimeout(() => {
           void applyUpdate();
         }, 500);
@@ -58,32 +69,12 @@ export const usePWAUpdate = () => {
     return () => {
       (window as any).__pwaUpdateCleanup?.();
     };
-  }, []);
-
-  const applyUpdate = useCallback(async () => {
-        try {
-          const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map((name) => caches.delete(name)));
-        } catch (e) {
-          console.warn('[PWA] cache cleanup failed', e);
-        }
-    await updateServiceWorkerRef.current?.(true);
-        window.location.reload();
-  }, []);
-
-  const updateApp = useCallback(async () => {
-    try {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((name) => caches.delete(name)));
-    } catch {}
-    await updateServiceWorkerRef.current?.(true);
-    window.location.reload();
-  }, []);
+  }, [applyUpdate]);
 
   return {
     showUpdatePrompt: showUpdateBanner,
     offlineReady: false,
-    updateApp,
-    dismissUpdate: updateApp,
+    updateApp: applyUpdate,
+    dismissUpdate: applyUpdate,
   };
 };
