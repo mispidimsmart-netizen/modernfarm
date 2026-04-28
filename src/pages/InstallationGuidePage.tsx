@@ -1169,8 +1169,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
         {/* LDR Hardware Status — large, farmer-friendly */}
         <LDRStatusBanner />
 
-        {/* LDR Installation Guide (collapsible) */}
-        <LDRInstallationGuide />
+        {/* LDR Installation Guide moved into the Wiring tab below */}
 
         {/* Farm Type Info Banner */}
         <Card className="border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5">
