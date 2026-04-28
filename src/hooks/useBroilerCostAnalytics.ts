@@ -487,5 +487,7 @@ function getEmptyAnalytics(): BroilerCostAnalytics {
       profitMargin: 0,
     },
     dailyTrends: [],
+    weightHistory: [],
+    fcrTrend: [],
   };
 }
