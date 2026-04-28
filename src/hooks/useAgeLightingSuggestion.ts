@@ -164,5 +164,5 @@ export function useAgeLightingSuggestion(): LightingSuggestion | null {
       isOptimal,
       deviation,
     };
-  }, [flockInfo, schedule, flockLoading, scheduleLoading]);
+  }, [ageWeeks, hasValue, schedule, ageLoading, scheduleLoading]);
 }
