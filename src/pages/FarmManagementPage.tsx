@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight } from 'lucide-react';
+import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -46,12 +46,18 @@ export function FarmManagementPage() {
   const t = {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
     input: { bn: '✏️ এন্ট্রি', en: '✏️ Entry' },
+    batch: { bn: '🐔 ব্যাচ', en: '🐔 Batch' },
     report: { bn: '📊 সারাংশ', en: '📊 Summary' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
     todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
     eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
     productionRate: { bn: 'উৎপাদন হার', en: 'Production Rate' },
     quickTip: { bn: '💡 দ্রুত টিপ: নিচের + বাটন দিয়েও এন্ট্রি করতে পারবেন', en: '💡 Quick tip: Use the + button below for quick entry' },
+    batchHeading: { bn: 'ব্যাচ ব্যবস্থাপনা', en: 'Batch Management' },
+    batchSubtitle: {
+      bn: 'চলমান ব্যাচ দেখুন, নতুন ব্যাচ শুরু করুন বা সমাপ্ত করুন',
+      en: 'View active batch, start new, or end batch',
+    },
   };
 
   const handleQuickAction = (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => {
