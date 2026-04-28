@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveBatch } from '@/hooks/useBroilerData';
+import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
 import { useWeatherCache } from '@/hooks/useWeather';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
