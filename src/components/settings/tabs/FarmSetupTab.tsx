@@ -552,7 +552,10 @@ export function FarmSetupTab() {
                   checked={isProfileManual}
                   onCheckedChange={(checked) => {
                     setIsProfileManual(checked);
-                    if (!checked) setProfileOverride(null);
+                    if (!checked) {
+                      setProfileOverride(null);
+                      updateFarmSettings.mutate({ profile_override: null } as any);
+                    }
                   }}
                 />
               </div>
@@ -607,6 +610,7 @@ export function FarmSetupTab() {
                 onClick={() => {
                   setIsProfileManual(false);
                   setProfileOverride(null);
+                  updateFarmSettings.mutate({ profile_override: null } as any);
                 }}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
