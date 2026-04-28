@@ -23,6 +23,7 @@ export function LDRSettingsCard() {
   const [threshold, setThreshold] = useState(50);
   const [hysteresis, setHysteresis] = useState(20);
   const [mode, setMode] = useState<LDRMode>('hybrid');
+  const [daylightOffLux, setDaylightOffLux] = useState(300);
   const [hasChanges, setHasChanges] = useState(false);
   const [currentLux, setCurrentLux] = useState<number | null>(null);
   const [ldrDetected, setLdrDetected] = useState<boolean | null>(null);
@@ -34,6 +35,7 @@ export function LDRSettingsCard() {
     setThreshold(Number((schedule as any).ldr_threshold_lux ?? 50));
     setHysteresis(Number((schedule as any).ldr_hysteresis_lux ?? 20));
     setMode(((schedule as any).ldr_mode ?? 'hybrid') as LDRMode);
+    setDaylightOffLux(Number((schedule as any).ldr_daylight_off_lux ?? 300));
     setHasChanges(false);
   }, [schedule]);
 
@@ -84,6 +86,7 @@ export function LDRSettingsCard() {
       ldr_threshold_lux: threshold,
       ldr_hysteresis_lux: hysteresis,
       ldr_mode: mode,
+      ldr_daylight_off_lux: daylightOffLux,
     } as any, {
       onSuccess: () => {
         setHasChanges(false);
