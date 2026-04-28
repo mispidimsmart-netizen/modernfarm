@@ -2522,6 +2522,7 @@ void syncWithCloud() {
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
+  if (ldrAvailable) doc["light_lux"] = lightLux;
   doc["power_on"] = powerOn;
   doc["fan_on"] = fanOn;
   doc["fan_speed"] = fanSpeed;
