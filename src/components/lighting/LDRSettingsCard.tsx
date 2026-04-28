@@ -251,7 +251,30 @@ export function LDRSettingsCard() {
             </p>
           </div>
 
-          <Button
+          {/* Daylight OFF threshold (power saving) */}
+          <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Sun size={16} className="text-emerald-600" />
+                {language === 'bn' ? '☀️ দিনের আলোয় বাতি বন্ধ' : '☀️ Daylight Auto-OFF'}
+              </label>
+              <Badge variant="outline">{daylightOffLux} lux</Badge>
+            </div>
+            <Slider
+              value={[daylightOffLux]}
+              onValueChange={(v) => { setDaylightOffLux(v[0]); setHasChanges(true); }}
+              min={150}
+              max={1000}
+              step={50}
+              className="py-2"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {language === 'bn'
+                ? `প্রাকৃতিক আলো ${daylightOffLux} lux-এর বেশি হলে কৃত্রিম বাতি বন্ধ থাকবে (বিদ্যুৎ সাশ্রয়)`
+                : `When ambient ≥ ${daylightOffLux} lux, artificial lights stay OFF (saves power)`}
+            </p>
+          </div>
+
             onClick={handleSave}
             disabled={!hasChanges || updateSchedule.isPending}
             className="w-full"
