@@ -3487,6 +3487,11 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(WATER_FLOW_PIN), waterPulseISR, FALLING);
   lastWaterPulse = millis();
 
+  // --- LDR Auto-Detection (optional sensor on GPIO 36) ---
+  ldrAvailable = detectLDR();
+  Serial.printf("💡 LDR Sensor: %s\n", ldrAvailable ? "DETECTED on GPIO 36" : "Not connected (optional)");
+
+
   // --- Stabilizing Mode ---
   stabilizingMode = true;
   stabilizingEndTime = millis() + SAFE_MODE_DURATION;
