@@ -35,7 +35,6 @@ function lazyRetry<T extends React.ComponentType<any>>(
 const LoginPage = lazyRetry(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
 const Dashboard = lazyRetry(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
 const ControlPage = lazyRetry(() => import("./pages/ControlPage").then(m => ({ default: m.ControlPage })));
-const LightingPage = lazyRetry(() => import("./pages/LightingPage").then(m => ({ default: m.LightingPage })));
 const AutomationPage = lazyRetry(() => import("./pages/AutomationPage").then(m => ({ default: m.AutomationPage })));
 const AlertsPage = lazyRetry(() => import("./pages/AlertsPage").then(m => ({ default: m.AlertsPage })));
 const ReportsPage = lazyRetry(() => import("./pages/ReportsPage").then(m => ({ default: m.ReportsPage })));
@@ -143,14 +142,8 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/lighting"
-          element={
-            <ProtectedRoute>
-              <LightingPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* /lighting merged into Dashboard + Settings → Lighting tab */}
+        <Route path="/lighting" element={<Navigate to="/settings" replace />} />
         <Route
           path="/automation"
           element={
