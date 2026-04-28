@@ -275,6 +275,7 @@ export function LDRSettingsCard() {
             </p>
           </div>
 
+          <Button
             onClick={handleSave}
             disabled={!hasChanges || updateSchedule.isPending}
             className="w-full"
