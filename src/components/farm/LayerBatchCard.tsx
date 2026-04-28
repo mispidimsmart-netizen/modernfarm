@@ -381,11 +381,11 @@ export function LayerBatchCard() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpenNew(false)}>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setOpenNew(false)}>
               {t.cancel[language]}
             </Button>
-            <Button onClick={handleCreate} disabled={createBatch.isPending}>
+            <Button className="h-12 w-full sm:w-auto text-base font-semibold" onClick={handleCreate} disabled={createBatch.isPending}>
               {t.save[language]}
             </Button>
           </DialogFooter>
