@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Upload, Cpu, CheckCircle2, XCircle, FileBinary, Loader2 } from "lucide-react";
+import { Upload, Cpu, CheckCircle2, XCircle, FileCode2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
