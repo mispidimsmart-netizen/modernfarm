@@ -133,7 +133,7 @@ export function ControlPage() {
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
-  const { data: userRole } = useUserRole();
+  // userRole removed (was unused) — permissions hook covers role-based gating
   const { data: permissions } = useUserPermissions();
   const { sensorData } = useRealtimeSensorData();
   const { isBroiler } = useFarmType();
