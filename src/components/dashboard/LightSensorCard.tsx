@@ -83,26 +83,24 @@ export function LightSensorCard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
+        className="rounded-2xl border border-dashed p-3 text-center bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800"
       >
-        <div
-          className="block rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 p-3"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-              <Plug className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight">
-                {language === 'bn' ? 'আলোর সেন্সর সংযুক্ত নেই' : 'Light sensor not connected'}
-              </p>
-              <p className="text-[11px] text-amber-700 dark:text-amber-300/80 mt-0.5 leading-tight">
-                {language === 'bn'
-                  ? 'LDR সেন্সর সংযোগ পরীক্ষা করুন'
-                  : 'Check LDR sensor connection'}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-center gap-1 mb-1.5">
+          <Plug className="h-4 w-4 text-red-600 dark:text-red-400" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+            {language === 'bn' ? 'বিচ্ছিন্ন' : 'Disconnected'}
+          </span>
         </div>
+        <p className="text-xl font-bold text-red-600 dark:text-red-400 leading-none mb-0.5 tabular-nums">
+          — <span className="text-xs font-normal opacity-70">lux</span>
+        </p>
+        <p className="text-[9px] font-medium text-red-600 dark:text-red-400 opacity-80 mb-0.5">
+          {language === 'bn' ? 'সেন্সর নেই' : 'No sensor'}
+        </p>
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          {language === 'bn' ? 'আলোর মাত্রা' : 'Light Level'}
+        </p>
       </motion.div>
     );
   }
