@@ -107,11 +107,86 @@ export function DeviceSystemTab() {
     }
   }, [debugMode]);
 
-  // Calibration offsets — persisted to localStorage so they survive reload.
-  // Note: ESP32 reads these via firmware config; UI is a local override hint until OTA config push is wired.
+  // Calibration offsets — load from DB (device_calibration), fallback to localStorage during initial load
   const [tempOffset, setTempOffset] = useState(() => Number(localStorage.getItem('cal_temp_offset') || 0));
   const [humidityOffset, setHumidityOffset] = useState(() => Number(localStorage.getItem('cal_humidity_offset') || 0));
   const [ammoniaOffset, setAmmoniaOffset] = useState(() => Number(localStorage.getItem('cal_ammonia_offset') || 0));
+
+  // Fetch calibration row for this farm
+  const { data: calibration } = useQuery({
+    queryKey: ['device_calibration', selectedFarmId],
+    queryFn: async () => {
+      if (!selectedFarmId) return null;
+      const { data, error } = await supabase
+        .from('device_calibration')
+        .select('*')
+        .eq('farm_id', selectedFarmId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedFarmId,
+  });
+
+  // Hydrate from DB once loaded
+  useEffect(() => {
+    if (!calibration) return;
+    const c: any = calibration;
+    if (c.temperature_offset_celsius !== undefined && c.temperature_offset_celsius !== null) {
+      setTempOffset(Number(c.temperature_offset_celsius));
+    }
+    if (c.humidity_offset_percent !== undefined && c.humidity_offset_percent !== null) {
+      setHumidityOffset(Number(c.humidity_offset_percent));
+    }
+    if (c.ammonia_offset_ppm !== undefined && c.ammonia_offset_ppm !== null) {
+      setAmmoniaOffset(Number(c.ammonia_offset_ppm));
+    }
+  }, [calibration]);
+
+  // Save calibration offsets to DB (upsert)
+  const saveCalibration = useMutation({
+    mutationFn: async () => {
+      if (!user || !selectedFarmId) throw new Error('No farm selected');
+      const payload: any = {
+        user_id: user.id,
+        farm_id: selectedFarmId,
+        temperature_offset_celsius: tempOffset,
+        humidity_offset_percent: humidityOffset,
+        ammonia_offset_ppm: ammoniaOffset,
+        updated_at: new Date().toISOString(),
+      };
+      if ((calibration as any)?.id) {
+        const { error } = await supabase
+          .from('device_calibration')
+          .update(payload)
+          .eq('id', (calibration as any).id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('device_calibration')
+          .insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device_calibration'] });
+      toast({
+        title: language === 'bn' ? 'ক্যালিব্রেশন সেভ হয়েছে' : 'Calibration saved',
+        description: language === 'bn'
+          ? 'অফসেট DB-তে সংরক্ষিত — ESP32 পরবর্তী সিঙ্কে গ্রহণ করবে'
+          : 'Offsets saved to DB — ESP32 will fetch on next sync',
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: language === 'bn' ? 'সেভ ব্যর্থ' : 'Save failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   // Fetch device tokens — scope by farm so workers see owner's devices via RLS
   const { data: deviceTokens } = useQuery({
@@ -520,19 +595,19 @@ export function DeviceSystemTab() {
 
           <Button 
             className="w-full"
+            disabled={saveCalibration.isPending}
             onClick={() => {
+              // Local cache (instant feedback on reload)
               localStorage.setItem('cal_temp_offset', String(tempOffset));
               localStorage.setItem('cal_humidity_offset', String(humidityOffset));
               localStorage.setItem('cal_ammonia_offset', String(ammoniaOffset));
-              toast({
-                title: language === 'bn' ? 'ক্যালিব্রেশন সেভ হয়েছে' : 'Calibration saved',
-                description: language === 'bn'
-                  ? 'অফসেট স্থানীয়ভাবে সংরক্ষিত — ESP32 এ পরবর্তী OTA পুশে প্রযোজ্য হবে'
-                  : 'Offsets saved locally — applied to ESP32 on next OTA push',
-              });
+              // DB persist (server-side, ESP32 reads via sync)
+              saveCalibration.mutate();
             }}
           >
-            {language === 'bn' ? 'ক্যালিব্রেশন সেভ করুন' : 'Save Calibration'}
+            {saveCalibration.isPending
+              ? (language === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+              : (language === 'bn' ? 'ক্যালিব্রেশন সেভ করুন' : 'Save Calibration')}
           </Button>
         </div>
       </CollapsibleSection>

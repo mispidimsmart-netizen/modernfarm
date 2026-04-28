@@ -27,6 +27,8 @@ export type Database = {
           ceiling_fan_enabled: boolean | null
           ceiling_fan_off_temp: number | null
           ceiling_fan_on_temp: number | null
+          comfort_preference: string
+          cooling_preference: string
           created_at: string
           curtain_advisory_enabled: boolean | null
           curtain_close_on_cold: boolean | null
@@ -43,6 +45,7 @@ export type Database = {
           heater_off_temp: number | null
           heater_on_temp: number | null
           heater_tolerance: number | null
+          heating_preference: string
           id: string
           lighting_fade_duration_minutes: number | null
           min_vent_ceiling_fan_always_on: boolean | null
@@ -50,6 +53,7 @@ export type Database = {
           min_vent_enabled: boolean | null
           min_vent_interval_minutes: number | null
           min_vent_temp_threshold: number | null
+          protection_preference: string
           shed_id: string | null
           sprinkler_cycle_off_seconds: number | null
           sprinkler_cycle_on_seconds: number | null
@@ -59,6 +63,7 @@ export type Database = {
           sprinkler_stop_hsi: number | null
           updated_at: string
           user_id: string
+          ventilation_preference: string
           water_baseline_hours: number | null
           water_drop_threshold_percent: number | null
           water_night_spike_enabled: boolean | null
@@ -76,6 +81,8 @@ export type Database = {
           ceiling_fan_enabled?: boolean | null
           ceiling_fan_off_temp?: number | null
           ceiling_fan_on_temp?: number | null
+          comfort_preference?: string
+          cooling_preference?: string
           created_at?: string
           curtain_advisory_enabled?: boolean | null
           curtain_close_on_cold?: boolean | null
@@ -92,6 +99,7 @@ export type Database = {
           heater_off_temp?: number | null
           heater_on_temp?: number | null
           heater_tolerance?: number | null
+          heating_preference?: string
           id?: string
           lighting_fade_duration_minutes?: number | null
           min_vent_ceiling_fan_always_on?: boolean | null
@@ -99,6 +107,7 @@ export type Database = {
           min_vent_enabled?: boolean | null
           min_vent_interval_minutes?: number | null
           min_vent_temp_threshold?: number | null
+          protection_preference?: string
           shed_id?: string | null
           sprinkler_cycle_off_seconds?: number | null
           sprinkler_cycle_on_seconds?: number | null
@@ -108,6 +117,7 @@ export type Database = {
           sprinkler_stop_hsi?: number | null
           updated_at?: string
           user_id: string
+          ventilation_preference?: string
           water_baseline_hours?: number | null
           water_drop_threshold_percent?: number | null
           water_night_spike_enabled?: boolean | null
@@ -125,6 +135,8 @@ export type Database = {
           ceiling_fan_enabled?: boolean | null
           ceiling_fan_off_temp?: number | null
           ceiling_fan_on_temp?: number | null
+          comfort_preference?: string
+          cooling_preference?: string
           created_at?: string
           curtain_advisory_enabled?: boolean | null
           curtain_close_on_cold?: boolean | null
@@ -141,6 +153,7 @@ export type Database = {
           heater_off_temp?: number | null
           heater_on_temp?: number | null
           heater_tolerance?: number | null
+          heating_preference?: string
           id?: string
           lighting_fade_duration_minutes?: number | null
           min_vent_ceiling_fan_always_on?: boolean | null
@@ -148,6 +161,7 @@ export type Database = {
           min_vent_enabled?: boolean | null
           min_vent_interval_minutes?: number | null
           min_vent_temp_threshold?: number | null
+          protection_preference?: string
           shed_id?: string | null
           sprinkler_cycle_off_seconds?: number | null
           sprinkler_cycle_on_seconds?: number | null
@@ -157,6 +171,7 @@ export type Database = {
           sprinkler_stop_hsi?: number | null
           updated_at?: string
           user_id?: string
+          ventilation_preference?: string
           water_baseline_hours?: number | null
           water_drop_threshold_percent?: number | null
           water_night_spike_enabled?: boolean | null
@@ -739,6 +754,7 @@ export type Database = {
       device_calibration: {
         Row: {
           air_volume_cubic_meters: number | null
+          ammonia_offset_ppm: number
           calibration_score: number | null
           clean_air_nh3_ppm: number | null
           created_at: string
@@ -752,6 +768,7 @@ export type Database = {
           heater_temp_rise: number | null
           heater_test_passed: boolean | null
           heater_tested_at: string | null
+          humidity_offset_percent: number
           id: string
           nh3_baseline_calibrated_at: string | null
           overall_status: string | null
@@ -760,6 +777,7 @@ export type Database = {
           temp_sensor_placement_status: string | null
           temp_sensor_test_passed: boolean | null
           temp_sensor_tested_at: string | null
+          temperature_offset_celsius: number
           updated_at: string
           user_id: string
           ventilation_baseline: number | null
@@ -771,6 +789,7 @@ export type Database = {
         }
         Insert: {
           air_volume_cubic_meters?: number | null
+          ammonia_offset_ppm?: number
           calibration_score?: number | null
           clean_air_nh3_ppm?: number | null
           created_at?: string
@@ -784,6 +803,7 @@ export type Database = {
           heater_temp_rise?: number | null
           heater_test_passed?: boolean | null
           heater_tested_at?: string | null
+          humidity_offset_percent?: number
           id?: string
           nh3_baseline_calibrated_at?: string | null
           overall_status?: string | null
@@ -792,6 +812,7 @@ export type Database = {
           temp_sensor_placement_status?: string | null
           temp_sensor_test_passed?: boolean | null
           temp_sensor_tested_at?: string | null
+          temperature_offset_celsius?: number
           updated_at?: string
           user_id: string
           ventilation_baseline?: number | null
@@ -803,6 +824,7 @@ export type Database = {
         }
         Update: {
           air_volume_cubic_meters?: number | null
+          ammonia_offset_ppm?: number
           calibration_score?: number | null
           clean_air_nh3_ppm?: number | null
           created_at?: string
@@ -816,6 +838,7 @@ export type Database = {
           heater_temp_rise?: number | null
           heater_test_passed?: boolean | null
           heater_tested_at?: string | null
+          humidity_offset_percent?: number
           id?: string
           nh3_baseline_calibrated_at?: string | null
           overall_status?: string | null
@@ -824,6 +847,7 @@ export type Database = {
           temp_sensor_placement_status?: string | null
           temp_sensor_test_passed?: boolean | null
           temp_sensor_tested_at?: string | null
+          temperature_offset_celsius?: number
           updated_at?: string
           user_id?: string
           ventilation_baseline?: number | null
@@ -1889,6 +1913,7 @@ export type Database = {
           fan_medium_temp_max: number
           fan_medium_temp_min: number
           farm_id: string | null
+          farm_size: string | null
           hsi_automation_enabled: boolean
           hsi_emergency_threshold: number
           hsi_mild_threshold: number
@@ -1898,6 +1923,8 @@ export type Database = {
           humidity_min: number
           id: string
           manual_mode_since: string | null
+          profile_override: string | null
+          season_override: string | null
           temperature_max: number
           temperature_min: number
           updated_at: string
@@ -1914,6 +1941,7 @@ export type Database = {
           fan_medium_temp_max?: number
           fan_medium_temp_min?: number
           farm_id?: string | null
+          farm_size?: string | null
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -1923,6 +1951,8 @@ export type Database = {
           humidity_min?: number
           id?: string
           manual_mode_since?: string | null
+          profile_override?: string | null
+          season_override?: string | null
           temperature_max?: number
           temperature_min?: number
           updated_at?: string
@@ -1939,6 +1969,7 @@ export type Database = {
           fan_medium_temp_max?: number
           fan_medium_temp_min?: number
           farm_id?: string | null
+          farm_size?: string | null
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -1948,6 +1979,8 @@ export type Database = {
           humidity_min?: number
           id?: string
           manual_mode_since?: string | null
+          profile_override?: string | null
+          season_override?: string | null
           temperature_max?: number
           temperature_min?: number
           updated_at?: string

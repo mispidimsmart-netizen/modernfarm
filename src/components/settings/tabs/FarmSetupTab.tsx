@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Egg, Drumstick, Sun, Cloud, Snowflake, CloudRain, 
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAuth } from '@/context/AuthContext';
-import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
+import { useProfile, useUpdateProfile, useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
 import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -170,6 +170,8 @@ export function FarmSetupTab() {
   const updateProfile = useUpdateProfile();
   const { data: sheds } = useSheds();
   const updateShed = useUpdateShed();
+  const { data: farmSettings } = useFarmSettings();
+  const updateFarmSettings = useUpdateFarmSettings();
   
   let selectedShedId: string | null = null;
   try {
@@ -200,6 +202,21 @@ export function FarmSetupTab() {
   const [profileOverride, setProfileOverride] = useState<ProfileType | null>(null);
   const [isProfileManual, setIsProfileManual] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Hydrate state from DB once farm_settings load
+  useEffect(() => {
+    if (!farmSettings) return;
+    const s: any = farmSettings;
+    if (s.farm_size) setFarmSize(s.farm_size as FarmSize);
+    if (s.season_override) {
+      setSeasonOverride(s.season_override as Season);
+      setIsSeasonManual(true);
+    }
+    if (s.profile_override) {
+      setProfileOverride(s.profile_override as ProfileType);
+      setIsProfileManual(true);
+    }
+  }, [farmSettings]);
   
   // Pending change tracking for confirmation dialog
   const [pendingChange, setPendingChange] = useState<{
@@ -264,30 +281,38 @@ export function FarmSetupTab() {
       if (pendingChange.type === 'farm_type' && pendingChange.value) {
         const newType = pendingChange.value as FarmType;
         setFarmType(newType);
-        // Update selected shed's farm_type
         if (selectedShedId) {
           await updateShed.mutateAsync({ id: selectedShedId, farm_type: newType } as any);
         }
-        // Also update profile as fallback default
         await updateProfile.mutateAsync({ farm_type: newType });
       } else if (pendingChange.type === 'season' && pendingChange.value) {
+        const newSeason = pendingChange.value as Season;
         setIsSeasonManual(true);
-        setSeasonOverride(pendingChange.value as Season);
+        setSeasonOverride(newSeason);
+        await updateFarmSettings.mutateAsync({ season_override: newSeason } as any);
       } else if (pendingChange.type === 'profile' && pendingChange.value) {
+        const newProfile = pendingChange.value as ProfileType;
         setIsProfileManual(true);
-        setProfileOverride(pendingChange.value as ProfileType);
+        setProfileOverride(newProfile);
+        await updateFarmSettings.mutateAsync({ profile_override: newProfile } as any);
       } else if (pendingChange.type === 'apply') {
         if (selectedShedId) {
           await updateShed.mutateAsync({ id: selectedShedId, farm_type: farmType } as any);
         }
         await updateProfile.mutateAsync({ farm_type: farmType });
+        // Persist farm size + override states
+        await updateFarmSettings.mutateAsync({
+          farm_size: farmSize,
+          season_override: isSeasonManual ? seasonOverride : null,
+          profile_override: isProfileManual ? profileOverride : null,
+        } as any);
       }
       
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' 
-          ? 'সেটিংস প্রয়োগ করা হয়েছে' 
-          : 'Settings applied',
+          ? 'সেটিংস সংরক্ষণ ও প্রয়োগ করা হয়েছে' 
+          : 'Settings saved and applied',
       });
     } catch (error) {
       toast({
@@ -400,7 +425,10 @@ export function FarmSetupTab() {
                   checked={isSeasonManual}
                   onCheckedChange={(checked) => {
                     setIsSeasonManual(checked);
-                    if (!checked) setSeasonOverride(null);
+                    if (!checked) {
+                      setSeasonOverride(null);
+                      updateFarmSettings.mutate({ season_override: null } as any);
+                    }
                   }}
                 />
               </div>
@@ -444,6 +472,7 @@ export function FarmSetupTab() {
                 onClick={() => {
                   setIsSeasonManual(false);
                   setSeasonOverride(null);
+                  updateFarmSettings.mutate({ season_override: null } as any);
                 }}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -464,7 +493,11 @@ export function FarmSetupTab() {
             </div>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
-            <RadioGroup value={farmSize} onValueChange={(v) => setFarmSize(v as FarmSize)}>
+            <RadioGroup value={farmSize} onValueChange={(v) => {
+              const newSize = v as FarmSize;
+              setFarmSize(newSize);
+              updateFarmSettings.mutate({ farm_size: newSize } as any);
+            }}>
               <div className="grid grid-cols-3 gap-2">
                 {FARM_SIZES.map((size) => (
                   <div key={size.id}>
@@ -519,7 +552,10 @@ export function FarmSetupTab() {
                   checked={isProfileManual}
                   onCheckedChange={(checked) => {
                     setIsProfileManual(checked);
-                    if (!checked) setProfileOverride(null);
+                    if (!checked) {
+                      setProfileOverride(null);
+                      updateFarmSettings.mutate({ profile_override: null } as any);
+                    }
                   }}
                 />
               </div>
@@ -574,6 +610,7 @@ export function FarmSetupTab() {
                 onClick={() => {
                   setIsProfileManual(false);
                   setProfileOverride(null);
+                  updateFarmSettings.mutate({ profile_override: null } as any);
                 }}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
