@@ -8,6 +8,7 @@ import {
   Shield, Zap, RotateCcw, Activity
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateDeviceToken } from '@/lib/esp32Api';
