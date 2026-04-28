@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
+import { registerSW } from 'virtual:pwa-register';
 
 /**
  * Aggressive PWA auto-update strategy.
@@ -10,19 +10,25 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 export const usePWAUpdate = () => {
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+  const updateServiceWorkerRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
 
-  const {
-    needRefresh: [needRefresh],
-    offlineReady: [offlineReady],
-    updateServiceWorker,
-  } = useRegisterSW({
-    immediate: true,
-    onRegisteredSW(swUrl, r) {
-      console.log('[PWA] SW registered:', swUrl);
-      if (r) {
+  useEffect(() => {
+    updateServiceWorkerRef.current = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+      setShowUpdateBanner(true);
+      console.log('[PWA] New version detected — clearing caches & reloading...');
+        window.setTimeout(() => {
+          void applyUpdate();
+        }, 500);
+      },
+      onRegisteredSW(swUrl, r) {
+        console.log('[PWA] SW registered:', swUrl);
+        if (!r) return;
+
         registrationRef.current = r;
 
-        const intervalId = setInterval(() => {
+        const intervalId = window.setInterval(() => {
           r.update().catch(() => {});
         }, 30 * 1000);
 
@@ -39,47 +45,44 @@ export const usePWAUpdate = () => {
         window.addEventListener('focus', onFocus);
 
         (window as any).__pwaUpdateCleanup = () => {
-          clearInterval(intervalId);
+          window.clearInterval(intervalId);
           document.removeEventListener('visibilitychange', onVisible);
           window.removeEventListener('focus', onFocus);
         };
-      }
-    },
-    onRegisterError(error) {
-      console.error('[PWA] SW registration error:', error);
-    },
-  });
+      },
+      onRegisterError(error) {
+        console.error('[PWA] SW registration error:', error);
+      },
+    });
 
-  useEffect(() => {
-    if (needRefresh) {
-      setShowUpdateBanner(true);
-      console.log('[PWA] New version detected — clearing caches & reloading...');
-      const timer = setTimeout(async () => {
+    return () => {
+      (window as any).__pwaUpdateCleanup?.();
+    };
+  }, []);
+
+  const applyUpdate = useCallback(async () => {
         try {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map((name) => caches.delete(name)));
         } catch (e) {
           console.warn('[PWA] cache cleanup failed', e);
         }
-        await updateServiceWorker(true);
+    await updateServiceWorkerRef.current?.(true);
         window.location.reload();
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [needRefresh, updateServiceWorker]);
+  }, []);
 
   const updateApp = useCallback(async () => {
     try {
       const cacheNames = await caches.keys();
       await Promise.all(cacheNames.map((name) => caches.delete(name)));
     } catch {}
-    await updateServiceWorker(true);
+    await updateServiceWorkerRef.current?.(true);
     window.location.reload();
-  }, [updateServiceWorker]);
+  }, []);
 
   return {
     showUpdatePrompt: showUpdateBanner,
-    offlineReady,
+    offlineReady: false,
     updateApp,
     dismissUpdate: updateApp,
   };
