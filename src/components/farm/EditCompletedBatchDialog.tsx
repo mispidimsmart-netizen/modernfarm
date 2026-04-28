@@ -168,6 +168,54 @@ export function EditCompletedBatchDialog({
           <DialogDescription className="text-xs">{t.desc[language]}</DialogDescription>
         </DialogHeader>
 
+        {/* Offline / sync status */}
+        {(!isOnline || pendingCount > 0) && (
+          <Alert
+            className={
+              !isOnline
+                ? 'border-amber-500/50 bg-amber-500/10'
+                : 'border-blue-500/50 bg-blue-500/10'
+            }
+          >
+            {!isOnline ? (
+              <WifiOff className="h-4 w-4 text-amber-600" />
+            ) : (
+              <CloudUpload className="h-4 w-4 text-blue-600" />
+            )}
+            <AlertDescription className="flex items-center justify-between gap-2 text-xs">
+              <span>
+                {!isOnline
+                  ? language === 'bn'
+                    ? `অফলাইন — সংরক্ষণ সারিতে যাবে${
+                        pendingCount > 0 ? ` (অপেক্ষমাণ: ${pendingCount})` : ''
+                      }`
+                    : `Offline — saves will be queued${
+                        pendingCount > 0 ? ` (pending: ${pendingCount})` : ''
+                      }`
+                  : language === 'bn'
+                  ? `${pendingCount}টি এডিট সিঙ্কের জন্য অপেক্ষমাণ`
+                  : `${pendingCount} edit(s) waiting to sync`}
+              </span>
+              {isOnline && pendingCount > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() => sync()}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? (
+                    <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <CloudUpload className="mr-1 h-3 w-3" />
+                  )}
+                  {language === 'bn' ? 'এখন সিঙ্ক' : 'Sync now'}
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Current summary preview */}
         {summary && (
           <div className="rounded-lg border bg-muted/30 p-2.5">
