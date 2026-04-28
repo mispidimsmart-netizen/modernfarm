@@ -182,6 +182,154 @@ export function LDRInstallationGuide() {
                 </div>
               </section>
 
+              {/* ── 10kΩ RESISTOR DETAILED GUIDE (NEW) ─────────────────── */}
+              <section className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-white p-4 dark:from-emerald-950/40 dark:to-background dark:border-emerald-800">
+                <h4 className="mb-3 flex items-center gap-2 font-bold text-base text-emerald-700 dark:text-emerald-300">
+                  <CircuitBoard size={18} />
+                  {bn ? '🔧 ১০kΩ রেজিস্টর কীভাবে লাগাবেন (বিস্তারিত)' : '🔧 How to install the 10kΩ resistor (detailed)'}
+                </h4>
+
+                {/* Resistor identification */}
+                <div className="mb-4 rounded-xl border bg-card p-3">
+                  <p className="text-sm font-semibold mb-2">
+                    {bn ? '১) সঠিক রেজিস্টর চিনবেন কীভাবে?' : '1) How to identify the correct resistor'}
+                  </p>
+                  <div className="flex items-center gap-3 mb-2">
+                    {/* Visual resistor with color bands */}
+                    <div className="flex items-center shrink-0">
+                      <div className="h-1 w-3 bg-slate-400" />
+                      <div className="flex h-6 w-16 items-center justify-around rounded bg-amber-100 border border-amber-300 dark:bg-amber-950/50">
+                        <div className="h-full w-1.5 bg-amber-700" title="Brown" />
+                        <div className="h-full w-1.5 bg-black" title="Black" />
+                        <div className="h-full w-1.5 bg-orange-500" title="Orange" />
+                        <div className="h-full w-1.5 bg-yellow-500" title="Gold" />
+                      </div>
+                      <div className="h-1 w-3 bg-slate-400" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {bn
+                        ? 'রঙের ব্যান্ড: বাদামি – কালো – কমলা – সোনালি (১০kΩ ±৫%)'
+                        : 'Color bands: Brown – Black – Orange – Gold (10kΩ ±5%)'}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {bn
+                      ? '👉 দোকানে গিয়ে বলবেন "১০ কিলো ওহম, ১/৪ ওয়াট রেজিস্টর" — দাম মাত্র ২–৫ টাকা।'
+                      : 'Ask at the shop: "10 kilo-ohm, 1/4 watt resistor" — costs ~2–5 BDT.'}
+                  </p>
+                </div>
+
+                {/* Why needed */}
+                <div className="mb-4 rounded-xl border-l-4 border-blue-500 bg-blue-50 p-3 dark:bg-blue-950/30">
+                  <p className="text-sm font-semibold mb-1 text-blue-700 dark:text-blue-300">
+                    {bn ? '২) কেন ১০kΩ রেজিস্টর লাগে?' : '2) Why is the 10kΩ resistor needed?'}
+                  </p>
+                  <p className="text-xs text-blue-700/90 dark:text-blue-300/90 leading-relaxed">
+                    {bn
+                      ? 'LDR একা GPIO 36-এ সংযোগ দিলে সঠিক ভোল্টেজ তৈরি হয় না। ১০kΩ রেজিস্টর "voltage divider" তৈরি করে — যা LDR এর আলো-নির্ভর রেজিস্ট্যান্সকে ০–৩.৩V এর মধ্যে পরিমাপযোগ্য সিগন্যালে রূপান্তর করে।'
+                      : 'Without the resistor, GPIO 36 floats randomly. The 10kΩ creates a voltage divider that converts the LDR\'s light-dependent resistance into a measurable 0–3.3V signal.'}
+                  </p>
+                </div>
+
+                {/* Where exactly */}
+                <div className="mb-4">
+                  <p className="text-sm font-semibold mb-2">
+                    {bn ? '৩) কোথায় ঠিক বসাবেন? (৩-পয়েন্ট জাংশন)' : '3) Where exactly to place it? (3-point junction)'}
+                  </p>
+                  <div className="rounded-xl border-2 border-dashed border-emerald-400 bg-white p-4 dark:bg-slate-900">
+                    {/* Visual 3-point junction */}
+                    <div className="flex flex-col items-center gap-2 text-xs font-mono">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-red-500 text-white px-2 py-1">3.3V</span>
+                        <span className="text-slate-400">━━━</span>
+                        <span className="rounded border-2 border-amber-500 bg-amber-100 px-3 py-1 dark:bg-amber-950">LDR</span>
+                        <span className="text-slate-400">━━━</span>
+                        <span className="h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-200 dark:ring-emerald-900" title="Junction" />
+                        <span className="text-slate-400">━━━►</span>
+                        <span className="rounded bg-amber-500 text-white px-2 py-1">GPIO 36</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-32">
+                        <span className="text-slate-400 text-lg">│</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="ml-24 rounded border-2 border-emerald-600 bg-emerald-100 px-3 py-1 dark:bg-emerald-950">10kΩ</span>
+                        <span className="text-slate-400">━━━</span>
+                        <span className="rounded bg-slate-700 text-white px-2 py-1">GND</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs dark:bg-emerald-950/40">
+                      <p className="font-semibold text-emerald-700 dark:text-emerald-300 mb-1">
+                        {bn ? '🟢 সবুজ বিন্দু = জাংশন পয়েন্ট' : '🟢 Green dot = junction point'}
+                      </p>
+                      <p className="text-emerald-700/90 dark:text-emerald-300/90">
+                        {bn
+                          ? 'এই এক জায়গায় ৩টা তার একসাথে মিলবে: (১) LDR-এর এক পা, (২) ১০kΩ রেজিস্টরের এক পা, (৩) GPIO 36-এ যাওয়া তার।'
+                          : '3 wires meet at this single point: (1) one leg of LDR, (2) one leg of 10kΩ, (3) wire going to GPIO 36.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Breadboard layout */}
+                <div className="mb-4">
+                  <p className="text-sm font-semibold mb-2">
+                    {bn ? '৪) ব্রেডবোর্ডে বসানোর সহজ পদ্ধতি' : '4) Easy breadboard layout'}
+                  </p>
+                  <pre className="text-[11px] bg-slate-900 text-emerald-300 rounded-lg p-3 overflow-x-auto font-mono leading-relaxed">
+{bn ? `  ব্রেডবোর্ড (Breadboard):
+
+   কলাম: A   B   C   D   E       F   G   H   I   J
+   ─────────────────────────────────────────────────
+   সারি 5:  ●───[LDR পা১]                    ← 3.3V তার এখানে
+   সারি 5:  ●───[LDR পা২]──[১০kΩ পা১]──●     ← GPIO 36 তার এখানে (junction)
+   সারি 10: ●─────────────[১০kΩ পা২]──●     ← GND তার এখানে
+
+   মোট ৩টি জাম্পার তার:
+     🔴 লাল   : ESP32 3V3 → ব্রেডবোর্ড সারি ৫ (LDR এর উপরে)
+     🟡 হলুদ  : ESP32 GPIO 36 → ব্রেডবোর্ড সারি ৫ (junction)
+     ⚫ কালো  : ESP32 GND → ব্রেডবোর্ড সারি ১০ (রেজিস্টর শেষ)`
+     : `  Breadboard layout:
+
+   Col:  A   B   C   D   E       F   G   H   I   J
+   ─────────────────────────────────────────────────
+   Row 5:  ●───[LDR leg1]                  ← 3.3V wire here
+   Row 5:  ●───[LDR leg2]──[10kΩ leg1]──●  ← GPIO 36 wire (junction)
+   Row 10: ●─────────────[10kΩ leg2]──●    ← GND wire here
+
+   3 jumper wires total:
+     🔴 RED    : ESP32 3V3   → breadboard row 5 (LDR top)
+     🟡 YELLOW : ESP32 GPIO 36 → breadboard row 5 (junction)
+     ⚫ BLACK  : ESP32 GND   → breadboard row 10 (resistor end)`}
+                  </pre>
+                </div>
+
+                {/* Direction note */}
+                <div className="rounded-xl border-l-4 border-amber-500 bg-amber-50 p-3 dark:bg-amber-950/30">
+                  <p className="text-sm font-semibold mb-1 text-amber-700 dark:text-amber-300">
+                    {bn ? '✅ গুরুত্বপূর্ণ: রেজিস্টরের দিক (Polarity)' : '✅ Important: Resistor direction (Polarity)'}
+                  </p>
+                  <p className="text-xs text-amber-700/90 dark:text-amber-300/90">
+                    {bn
+                      ? 'রেজিস্টরের কোনো + বা − দিক নেই — যেকোনো দিকে লাগাতে পারেন। কিন্তু LDR এর দুই পা অবশ্যই আলাদা পয়েন্টে থাকতে হবে (একটা 3.3V এ, আরেকটা junction এ)।'
+                      : 'Resistors have no polarity — you can install either way. But the LDR\'s two legs MUST go to different points (one to 3.3V, the other to the junction).'}
+                  </p>
+                </div>
+
+                {/* Test */}
+                <div className="mt-3 rounded-xl border bg-card p-3">
+                  <p className="text-sm font-semibold mb-1">
+                    {bn ? '৫) সংযোগ ঠিক হয়েছে কিনা টেস্ট করুন' : '5) Test if connection is correct'}
+                  </p>
+                  <ul className="text-xs space-y-1 text-muted-foreground list-disc pl-5">
+                    <li>{bn ? 'মাল্টিমিটার DC Volt mode-এ রাখুন (০–২০V রেঞ্জ)' : 'Set multimeter to DC Volt mode (0–20V range)'}</li>
+                    <li>{bn ? 'কালো প্রোব GND-তে, লাল প্রোব GPIO 36 এর তারে' : 'Black probe on GND, red probe on the GPIO 36 wire'}</li>
+                    <li>{bn ? 'উজ্জ্বল আলোতে: ২.৫V – ৩.১V দেখাবে ✅' : 'Bright light: should read 2.5V – 3.1V ✅'}</li>
+                    <li>{bn ? 'হাত দিয়ে LDR ঢাকলে: ০.১V – ০.৫V নেমে আসবে ✅' : 'Cover LDR with hand: should drop to 0.1V – 0.5V ✅'}</li>
+                    <li>{bn ? 'যদি সবসময় ০V বা ৩.৩V স্থির থাকে → সংযোগে সমস্যা' : 'If stuck at 0V or 3.3V always → wiring problem'}</li>
+                  </ul>
+                </div>
+              </section>
+
               {/* ── STEP-BY-STEP ──────────────────────────────────────── */}
               <section>
                 <h4 className="mb-2 flex items-center gap-2 font-semibold text-sm">
