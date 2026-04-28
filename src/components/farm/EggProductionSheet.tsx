@@ -84,10 +84,10 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
           <TabsContent value="add" className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label>{t.date[language]}</Label>
-              <Input
-                type="date"
-                value={formData.production_date}
-                onChange={(e) => updateForm('production_date', e.target.value)}
+              <SmartDatePicker
+                value={formData.production_date || null}
+                onChange={(iso) => updateForm('production_date', iso)}
+                disableFuture
               />
             </div>
 
