@@ -100,16 +100,14 @@ const AGE_RECOMMENDATIONS: AgeRecommendation[] = [
 ];
 
 export function useAgeLightingSuggestion(): LightingSuggestion | null {
-  const { data: flockInfo, isLoading: flockLoading } = useFlockInfo();
-  const { data: schedule, isLoading: scheduleLoading } = useLightingSchedule();
+  const { ageWeeks, isLoading: ageLoading, hasValue } = useBirdAge();
+  const { isLoading: scheduleLoading } = useLightingSchedule();
 
   return useMemo(() => {
-    if (flockLoading || scheduleLoading || !flockInfo) {
+    if (ageLoading || scheduleLoading || !hasValue || ageWeeks === null) {
       return null;
     }
 
-    const ageWeeks = flockInfo.age_weeks;
-    
     // Find matching recommendation
     const recommendation = AGE_RECOMMENDATIONS.find(
       r => ageWeeks >= r.minAge && ageWeeks < r.maxAge
