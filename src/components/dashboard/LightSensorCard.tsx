@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { SunDim } from 'lucide-react';
+import { SunDim, Plug, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -54,8 +55,38 @@ export function LightSensorCard() {
     return () => { mounted = false; supabase.removeChannel(channel); clearInterval(interval); };
   }, [user]);
 
-  // Hide card entirely if LDR has never reported (no install)
-  if (hasData === false) return null;
+  // Show install prompt if LDR has never reported (sensor not connected)
+  if (hasData === false) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        <Link
+          to="/installation-guide?tab=wiring"
+          className="block rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 p-3 hover:border-amber-400 dark:hover:border-amber-600 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+              <Plug className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 leading-tight">
+                {language === 'bn' ? 'আলোর সেন্সর সংযুক্ত নেই' : 'Light sensor not connected'}
+              </p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300/80 mt-0.5 leading-tight">
+                {language === 'bn'
+                  ? 'LDR সেন্সর ইনস্টল করতে এখানে ক্লিক করুন →'
+                  : 'Tap to install LDR sensor →'}
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+          </div>
+        </Link>
+      </motion.div>
+    );
+  }
 
   // Color tiers (uses semantic-friendly tailwind colors used elsewhere in dashboard)
   const tier = (() => {
