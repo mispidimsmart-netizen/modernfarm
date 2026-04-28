@@ -2,27 +2,15 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FileText, Bell, Calendar, 
-  Download, BarChart3, Clock, Loader2, CheckCircle2, ScrollText
+  BarChart3, Clock, ScrollText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
-
-const EXPORT_OPTIONS = [
-  { value: 'all', labelBn: 'সব ডেটা', labelEn: 'All Data' },
-  { value: 'sensor_readings', labelBn: 'সেন্সর রিডিং', labelEn: 'Sensor Readings' },
-  { value: 'egg_production', labelBn: 'ডিম উৎপাদন', labelEn: 'Egg Production' },
-  { value: 'feed_consumption', labelBn: 'খাদ্য খরচ', labelEn: 'Feed Consumption' },
-  { value: 'alerts', labelBn: 'অ্যালার্ট', labelEn: 'Alerts' },
-  { value: 'daily_summary', labelBn: 'দৈনিক সারাংশ', labelEn: 'Daily Summary' },
-  { value: 'broiler_batches', labelBn: 'ব্রয়লার ব্যাচ', labelEn: 'Broiler Batches' },
-];
 
 export function ReportsDataTab() {
   const { language } = useAuth();
@@ -30,9 +18,7 @@ export function ReportsDataTab() {
 
   const [dailyReport, setDailyReport] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(true);
-  const [exportType, setExportType] = useState('all');
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
+
 
   const handleDailyReportChange = (checked: boolean) => {
     setDailyReport(checked);
@@ -52,77 +38,6 @@ export function ReportsDataTab() {
     });
   };
 
-  const handleExportData = async () => {
-    setIsExporting(true);
-    setExportSuccess(false);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: language === 'bn' ? 'লগইন করুন' : 'Please login',
-          variant: 'destructive',
-        });
-        setIsExporting(false);
-        return;
-      }
-
-      const response = await supabase.functions.invoke('export-data', {
-        body: {},
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // For CSV download, we need to call the function URL directly
-      const functionUrl = `https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/export-data?type=${exportType}`;
-      
-      const fetchResponse = await fetch(functionUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!fetchResponse.ok) {
-        throw new Error('Export failed');
-      }
-
-      // Get the blob and download
-      const blob = await fetchResponse.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `farm_export_${exportType}_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      setExportSuccess(true);
-      toast({
-        title: language === 'bn' ? '✅ এক্সপোর্ট সফল!' : '✅ Export Successful!',
-        description: language === 'bn' 
-          ? 'CSV ফাইল ডাউনলোড হয়েছে' 
-          : 'CSV file downloaded',
-      });
-
-      // Reset success state after 3 seconds
-      setTimeout(() => setExportSuccess(false), 3000);
-    } catch (error) {
-      console.error('Export error:', error);
-      toast({
-        title: language === 'bn' ? 'এক্সপোর্ট ব্যর্থ' : 'Export Failed',
-        description: language === 'bn' 
-          ? 'আবার চেষ্টা করুন' 
-          : 'Please try again',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -226,69 +141,6 @@ export function ReportsDataTab() {
               </motion.div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Export Data Section */}
-      <Card className="border-primary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Download className="h-5 w-5 text-primary" />
-            {language === 'bn' ? 'ডেটা এক্সপোর্ট' : 'Data Export'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? 'আপনার খামারের ডেটা CSV ফাইলে ডাউনলোড করুন' 
-              : 'Download your farm data as CSV file'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Export Type Selector */}
-          <div className="space-y-2">
-            <Label>{language === 'bn' ? 'ডেটার ধরণ' : 'Data Type'}</Label>
-            <Select value={exportType} onValueChange={setExportType}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {language === 'bn' ? option.labelBn : option.labelEn}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Export Button */}
-          <Button 
-            className="w-full h-12 gap-2"
-            onClick={handleExportData}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                {language === 'bn' ? 'এক্সপোর্ট হচ্ছে...' : 'Exporting...'}
-              </>
-            ) : exportSuccess ? (
-              <>
-                <CheckCircle2 className="h-5 w-5" />
-                {language === 'bn' ? 'সফল!' : 'Success!'}
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5" />
-                {language === 'bn' ? 'CSV ডাউনলোড করুন' : 'Download CSV'}
-              </>
-            )}
-          </Button>
-
-          <p className="text-xs text-muted-foreground text-center">
-            {language === 'bn' 
-              ? '💡 এক্সপোর্ট করা ফাইল Excel এ সরাসরি খুলতে পারবেন'
-              : '💡 Exported file can be opened directly in Excel'}
-          </p>
         </CardContent>
       </Card>
 
