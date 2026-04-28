@@ -502,7 +502,7 @@ export function TechnicalArchitectureReport() {
           </ArchSection>
 
           {/* 10. Edge Functions */}
-          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (15+)">
+          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (18)">
             <DataTable
               headers={['Function', 'Purpose', 'Trigger']}
               rows={[
@@ -513,6 +513,7 @@ export function TechnicalArchitectureReport() {
                 ['fetch-weather', 'Predictive cooling', 'Scheduled'],
                 ['daily-farm-report', 'Daily summary', 'pg_cron'],
                 ['send-push-notification', 'Web Push/FCM', 'Event'],
+                ['push-public-key', 'VAPID key distribute', 'HTTP'],
                 ['ota-firmware', 'Firmware updates', 'Admin'],
                 ['health-score', 'Farm health score', 'On-demand'],
                 ['heat-risk', 'Heat stress analysis', 'Periodic'],
@@ -521,6 +522,37 @@ export function TechnicalArchitectureReport() {
                 ['notification-escalation', 'Alert escalation', 'Event'],
                 ['schedule-notifier', 'Schedule automation', 'Cron'],
                 ['lookup-login-identifier', 'Login lookup', 'Auth'],
+                ['mode-profile', 'Automation profile', 'HTTP'],
+                ['admin-delete-user', 'Super-admin removal', 'Admin'],
+              ]}
+            />
+          </ArchSection>
+
+          {/* 10.1 Multi-Tenant Team (NEW) */}
+          <ArchSection icon={<Lock className="w-5 h-5 text-purple-400" />} title="১০.১ Multi-Tenant Team (NEW)">
+            <DataTable
+              headers={['Component', 'Purpose', 'Details']}
+              rows={[
+                ['farms.owner_id', 'Farm owner', 'Original creator'],
+                ['farm_members', 'Multi-user access', 'role: owner/member/labor'],
+                ['user_can_access_farm()', 'RLS gate', 'SECURITY DEFINER'],
+                ['Labor Invite Code', 'Auto-membership', 'Owner ID → 6-char code'],
+                ['UserRoleManager UI', 'Settings → Team tab', 'Code gen + member list'],
+              ]}
+            />
+          </ArchSection>
+
+          {/* 10.2 Settings Persistence (NEW) */}
+          <ArchSection icon={<Settings className="w-5 h-5 text-indigo-400" />} title="১০.২ Settings Persistence (NEW)">
+            <DataTable
+              headers={['Setting', 'Table', 'Columns']}
+              rows={[
+                ['Farm Setup', 'farm_settings', 'farm_size, season, profile'],
+                ['HSI Thresholds', 'farm_settings', 'hsi_mild/moderate/severe/emerg'],
+                ['Fan Bands', 'farm_settings', 'fan_low/medium/high_temp'],
+                ['Calibration', 'device_calibration', 'temp/humidity/NH3 offset'],
+                ['Op Preferences', 'advanced_automation_settings', '5 channels low/auto/high'],
+                ['Live Modifier', 'useAdvancedAutomation', 'applyPreferences() soft nudge'],
               ]}
             />
           </ArchSection>
