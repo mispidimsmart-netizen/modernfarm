@@ -17,6 +17,7 @@ import { AgeLightingSuggestionCard } from '@/components/lighting/AgeLightingSugg
 import { LDRSettingsCard } from '@/components/lighting/LDRSettingsCard';
 import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
+import { SmartLightingProfileCard } from '@/components/lighting/SmartLightingProfileCard';
 
 export function LightingPage() {
   const { language } = useAuth();
@@ -113,6 +114,11 @@ export function LightingPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h2 className="section-title">{translations.lighting.title[language]}</h2>
+
+          {/* Smart Lighting Profile (flock type + dark hours + fade circuits) */}
+          <div className="mb-6">
+            <SmartLightingProfileCard />
+          </div>
 
           {/* Age-Based Lighting Suggestion */}
           <div className="mb-6">
