@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight } from 'lucide-react';
+import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -46,12 +46,18 @@ export function FarmManagementPage() {
   const t = {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
     input: { bn: '✏️ এন্ট্রি', en: '✏️ Entry' },
+    batch: { bn: '🐔 ব্যাচ', en: '🐔 Batch' },
     report: { bn: '📊 সারাংশ', en: '📊 Summary' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
     todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
     eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
     productionRate: { bn: 'উৎপাদন হার', en: 'Production Rate' },
     quickTip: { bn: '💡 দ্রুত টিপ: নিচের + বাটন দিয়েও এন্ট্রি করতে পারবেন', en: '💡 Quick tip: Use the + button below for quick entry' },
+    batchHeading: { bn: 'ব্যাচ ব্যবস্থাপনা', en: 'Batch Management' },
+    batchSubtitle: {
+      bn: 'চলমান ব্যাচ দেখুন, নতুন ব্যাচ শুরু করুন বা সমাপ্ত করুন',
+      en: 'View active batch, start new, or end batch',
+    },
   };
 
   const handleQuickAction = (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => {
@@ -77,9 +83,15 @@ export function FarmManagementPage() {
           {/* Stats Header */}
           <FarmStatsHeader onFlockClick={() => setActiveSheet('flock')} />
 
-          {/* Tabbed Interface - 3 tabs */}
-          <Tabs defaultValue="input" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-11 rounded-2xl bg-muted/50 p-1">
+          {/* Tabbed Interface - 4 tabs */}
+          <Tabs defaultValue="batch" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 h-11 rounded-2xl bg-muted/50 p-1">
+              <TabsTrigger 
+                value="batch" 
+                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+              >
+                {t.batch[language]}
+              </TabsTrigger>
               <TabsTrigger 
                 value="input" 
                 className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
@@ -100,13 +112,23 @@ export function FarmManagementPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Input Tab - Quick Entry Cards */}
-            <TabsContent value="input" className="mt-4">
+            {/* Batch Tab — Active batch lifecycle (start/view/end) */}
+            <TabsContent value="batch" className="mt-4">
               <div className="space-y-4">
-                {/* Entry Status & History */}
-                <RecentEntryHistory />
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <div>
+                    <h3 className="text-sm font-semibold leading-tight">
+                      {t.batchHeading[language]}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      {t.batchSubtitle[language]}
+                    </p>
+                  </div>
+                </div>
 
-                {/* Broiler Mode: Show Broiler Widget */}
+                {isLayer && <LayerBatchCard />}
+
                 {isBroiler && (
                   <BroilerDashboardWidget
                     onBatchClick={() => handleBroilerAction('batch')}
@@ -114,13 +136,29 @@ export function FarmManagementPage() {
                     onFeedClick={() => handleBroilerAction('broiler-feed')}
                   />
                 )}
-                
-                {/* Layer Mode: Batch lifecycle (prominent) + Input Cards */}
-                {isLayer && (
-                  <>
-                    <LayerBatchCard />
-                    <FarmInputCards onCardClick={handleQuickAction} />
-                  </>
+              </div>
+            </TabsContent>
+
+            {/* Input Tab - Quick Entry Cards */}
+            <TabsContent value="input" className="mt-4">
+              <div className="space-y-4">
+                {/* Entry Status & History */}
+                <RecentEntryHistory />
+
+                {/* Layer Mode: Quick Input Cards */}
+                {isLayer && <FarmInputCards onCardClick={handleQuickAction} />}
+
+                {/* Broiler Mode: Quick hint to switch to Batch tab for batch actions */}
+                {isBroiler && (
+                  <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                    <CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'bn'
+                          ? '💡 ব্যাচ, ওজন বা খাদ্য এন্ট্রির জন্য উপরের "🐔 ব্যাচ" ট্যাব দেখুন'
+                          : '💡 For batch, weight or feed entry, see the "🐔 Batch" tab above'}
+                      </p>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Schedule Quick Access */}
