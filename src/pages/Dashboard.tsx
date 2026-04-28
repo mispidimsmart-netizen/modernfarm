@@ -1,5 +1,5 @@
 import { useAuth } from '@/context/AuthContext';
-import { useFarmSettings } from '@/hooks/useFarmData';
+
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
@@ -70,7 +70,7 @@ export function Dashboard() {
   const { sensorData, isConnected } = useRealtimeSensorData();
   const statusLevels = useRealtimeStatusLevels(sensorData);
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
-  const { data: farmSettings } = useFarmSettings();
+  
   const { data: automationMode } = useAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
   const { data: deviceHealth } = useAllDeviceHealth();
