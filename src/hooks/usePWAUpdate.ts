@@ -46,8 +46,8 @@ export const usePWAUpdate = () => {
     needRefresh: [needRefresh],
     offlineReady: [offlineReady],
     updateServiceWorker,
-  } = useRegisterSW({
-    immediate: true,
+  } = useRegisterSWSafe({
+    immediate: !PWA_DISABLED,
     onRegisteredSW(swUrl, r) {
       console.log('[PWA] SW registered:', swUrl);
       if (r) {
