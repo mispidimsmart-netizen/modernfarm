@@ -167,6 +167,11 @@ export function Dashboard() {
           <LightStatusPanel />
         </div>
 
+        {/* ============ 📜 LIGHT ACTION HISTORY (last 24h) ============ */}
+        <div className="mb-3">
+          <LightActionHistory />
+        </div>
+
         {/* ============ LIGHT SENSOR (only if LDR installed) ============ */}
         <div className="mb-3">
           <LightSensorCard />
