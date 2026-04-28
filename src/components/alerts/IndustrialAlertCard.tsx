@@ -72,8 +72,8 @@ const LEVEL_STYLES: Record<AlertLevel, {
     iconBg: 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-400',
   },
   danger: {
-    card: 'border-l-4 border-red-500 bg-red-50/50 dark:bg-red-950/20',
-    iconBg: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400',
+    card: 'border-l-4 border-red-500 bg-red-50/50 dark:bg-red-950/20 ring-1 ring-red-500/20',
+    iconBg: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400 animate-pulse',
   },
 };
 

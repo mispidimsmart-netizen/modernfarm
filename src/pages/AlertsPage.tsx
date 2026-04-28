@@ -1,3 +1,4 @@
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -32,14 +33,37 @@ function groupByPriority(alerts: SmartAlert[]) {
 
 export function AlertsPage() {
   const { language } = useAuth();
-  const { activeAlerts, resolvedAlerts, alertCounts, isQuietHours } = useSmartAlerts();
+  const { activeAlerts, resolvedAlerts, isQuietHours } = useSmartAlerts();
   const acknowledgeAlert = useAcknowledgeAlert();
 
-  const handleAcknowledge = (id: string) => {
-    acknowledgeAlert.mutate(id);
-  };
+  // Locally dismissed synthetic / grouped alerts (no DB row to acknowledge)
+  const [localDismissed, setLocalDismissed] = useState<Set<string>>(new Set());
 
-  const { critical, attention, safeInfo } = groupByPriority(activeAlerts);
+  const handleAcknowledge = useCallback((id: string) => {
+    // Synthetic broiler alerts and grouped alerts have no DB row — dismiss locally
+    if (id.startsWith('synthetic_') || id.startsWith('group_')) {
+      setLocalDismissed(prev => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+      return;
+    }
+    acknowledgeAlert.mutate(id);
+  }, [acknowledgeAlert]);
+
+  const visibleActiveAlerts = useMemo(
+    () => activeAlerts.filter(a => !localDismissed.has(a.id)),
+    [activeAlerts, localDismissed]
+  );
+
+  const { critical, attention, safeInfo } = groupByPriority(visibleActiveAlerts);
+  const visibleCounts = {
+    danger: critical.length,
+    warning: attention.length,
+    info: safeInfo.length,
+    total: visibleActiveAlerts.length,
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,24 +78,24 @@ export function AlertsPage() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="section-title">{translations.alerts.title[language]}</h2>
             
-            {alertCounts.total > 0 && (
+            {visibleCounts.total > 0 && (
               <div className="flex items-center gap-2">
-                {alertCounts.danger > 0 && (
+                {visibleCounts.danger > 0 && (
                   <span className="flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-300">
                     <AlertCircle size={12} />
-                    {alertCounts.danger}
+                    {visibleCounts.danger}
                   </span>
                 )}
-                {alertCounts.warning > 0 && (
+                {visibleCounts.warning > 0 && (
                   <span className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                     <Eye size={12} />
-                    {alertCounts.warning}
+                    {visibleCounts.warning}
                   </span>
                 )}
-                {alertCounts.info > 0 && (
+                {visibleCounts.info > 0 && (
                   <span className="flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">
                     <ShieldCheck size={12} />
-                    {alertCounts.info}
+                    {visibleCounts.info}
                   </span>
                 )}
               </div>
@@ -95,9 +119,9 @@ export function AlertsPage() {
               <TabsTrigger value="active" className="flex items-center gap-2">
                 <Bell size={16} />
                 {language === 'bn' ? 'নতুন' : 'Active'}
-                {alertCounts.total > 0 && (
+                {visibleCounts.total > 0 && (
                   <span className="ml-1 rounded-full bg-destructive px-1.5 py-0.5 text-xs text-destructive-foreground">
-                    {alertCounts.total}
+                    {visibleCounts.total}
                   </span>
                 )}
               </TabsTrigger>
@@ -108,7 +132,7 @@ export function AlertsPage() {
             </TabsList>
 
             <TabsContent value="active">
-              {activeAlerts.length === 0 ? (
+              {visibleActiveAlerts.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
