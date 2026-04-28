@@ -214,19 +214,64 @@ export function DeviceSystemTab() {
     }
   };
 
-  const handleRestartDevice = () => {
+  const handleRestartDevice = async () => {
+    if (!user || !selectedFarmId) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: language === 'bn' ? 'ফার্ম নির্বাচিত নয়' : 'No farm selected',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const { error } = await supabase.from('device_commands').insert({
+      user_id: user.id,
+      farm_id: selectedFarmId,
+      device_name: 'ESP32',
+      command_type: 'restart',
+      command_value: true,
+      executed: false,
+    });
+    if (error) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
     toast({
       title: language === 'bn' ? 'রিস্টার্ট কমান্ড পাঠানো হয়েছে' : 'Restart command sent',
-      description: language === 'bn' ? 'ডিভাইস শীঘ্রই রিস্টার্ট হবে' : 'Device will restart shortly',
+      description: language === 'bn' ? 'ডিভাইস পরবর্তী চেকইনে রিস্টার্ট হবে' : 'Device will restart at next check-in',
     });
   };
 
-  const handleFactoryReset = () => {
-    toast({
-      title: language === 'bn' ? 'ফ্যাক্টরি রিসেট সম্পন্ন' : 'Factory reset complete',
-      variant: 'destructive',
+  const handleFactoryReset = async () => {
+    if (!user || !selectedFarmId) {
+      setShowFactoryResetDialog(false);
+      return;
+    }
+    const { error } = await supabase.from('device_commands').insert({
+      user_id: user.id,
+      farm_id: selectedFarmId,
+      device_name: 'ESP32',
+      command_type: 'factory_reset',
+      command_value: true,
+      executed: false,
     });
     setShowFactoryResetDialog(false);
+    if (error) {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: language === 'bn' ? 'ফ্যাক্টরি রিসেট কমান্ড পাঠানো হয়েছে' : 'Factory reset command sent',
+      description: language === 'bn' ? 'ডিভাইস পরবর্তী চেকইনে রিসেট হবে' : 'Device will reset at next check-in',
+      variant: 'destructive',
+    });
   };
 
   return (
