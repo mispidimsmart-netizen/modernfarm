@@ -32,7 +32,6 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
   
   const [formData, setFormData] = useState({
     total_birds: 0,
-    age_weeks: 0,
     breed: 'layer',
     purchase_date: '',
   });
@@ -41,7 +40,6 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
     if (flockInfo) {
       setFormData({
         total_birds: flockInfo.total_birds,
-        age_weeks: flockInfo.age_weeks,
         breed: flockInfo.breed || 'layer',
         purchase_date: flockInfo.purchase_date || '',
       });
@@ -51,11 +49,14 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
   const t = {
     title: { bn: 'মুরগির তথ্য', en: 'Flock Information' },
     totalBirds: { bn: 'মোট মুরগি', en: 'Total Birds' },
-    ageWeeks: { bn: 'বয়স (সপ্তাহ)', en: 'Age (weeks)' },
     breed: { bn: 'জাত', en: 'Breed' },
     purchaseDate: { bn: 'ক্রয়ের তারিখ', en: 'Purchase Date' },
     save: { bn: 'সংরক্ষণ করুন', en: 'Save' },
     tips: { bn: 'পরামর্শ', en: 'Tips' },
+    ageNote: {
+      bn: 'বয়স সকল ফিচারে (লাইটিং, অটোমেশন) একসাথে আপডেট হবে',
+      en: 'Age updates everywhere (lighting, automation) at once',
+    },
   };
 
   const tips = language === 'bn' 
