@@ -167,6 +167,36 @@ export function BirdAgeCard() {
           )}
         </div>
 
+        {/* Recalculation status — visible while age-dependent queries refetch */}
+        <AnimatePresence mode="wait">
+          {isRecalculating ? (
+            <motion.div
+              key="updating"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-medium text-primary"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>{t.updating[language]}</span>
+            </motion.div>
+          ) : hasValue ? (
+            <motion.div
+              key="upToDate"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-600 dark:text-emerald-400"
+            >
+              <span>{t.upToDate[language]}</span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         {/* Editor */}
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5 text-xs">
