@@ -744,6 +744,9 @@ export function SensorDeviceImpactReport() {
                     {selectedSensors.has('ammonia') && (
                       <TableHead className="text-xs"><Wind className="h-3 w-3 inline" /> NH₃</TableHead>
                     )}
+                    {selectedSensors.has('light_lux') && (
+                      <TableHead className="text-xs">💡 lux</TableHead>
+                    )}
                     <TableHead className="text-xs">{bn ? 'সক্রিয় ডিভাইস' : 'Active devices'}</TableHead>
                     <TableHead className="text-xs">{bn ? 'প্রভাব' : 'Impact'}</TableHead>
                   </TableRow>
@@ -779,6 +782,9 @@ export function SensorDeviceImpactReport() {
                           )}
                           {selectedSensors.has('ammonia') && (
                             <TCell className="text-xs">{r.ammonia.toFixed(1)}</TCell>
+                          )}
+                          {selectedSensors.has('light_lux') && (
+                            <TCell className="text-xs">{r.light_lux > 0 ? r.light_lux.toFixed(0) : '—'}</TCell>
                           )}
                           <TCell className="text-xs">
                             {active.length === 0 ? (
