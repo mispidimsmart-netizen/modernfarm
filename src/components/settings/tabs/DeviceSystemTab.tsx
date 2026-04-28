@@ -167,14 +167,16 @@ export function DeviceSystemTab() {
   const addDeviceToken = useMutation({
     mutationFn: async ({ name, shedId }: { name: string; shedId?: string }) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) throw new Error('No farm selected');
       const token = generateDeviceToken();
       const { error } = await supabase
         .from('device_tokens')
-        .insert({ 
-          user_id: user.id, 
-          device_name: name, 
+        .insert({
+          user_id: user.id,
+          farm_id: selectedFarmId,
+          device_name: name,
           token,
-          shed_id: shedId || null
+          shed_id: shedId || null,
         });
       if (error) throw error;
       return token;
