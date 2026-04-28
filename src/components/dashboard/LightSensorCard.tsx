@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { SunDim, Plug, ChevronRight, WifiOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { SunDim, Plug, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -85,9 +84,8 @@ export function LightSensorCard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
       >
-        <Link
-          to="/installation-guide?tab=wiring"
-          className="block rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 p-3 hover:border-amber-400 dark:hover:border-amber-600 transition-colors"
+        <div
+          className="block rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/20 p-3"
         >
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0 h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -99,13 +97,12 @@ export function LightSensorCard() {
               </p>
               <p className="text-[11px] text-amber-700 dark:text-amber-300/80 mt-0.5 leading-tight">
                 {language === 'bn'
-                  ? 'LDR সেন্সর ইনস্টল করতে এখানে ক্লিক করুন →'
-                  : 'Tap to install LDR sensor →'}
+                  ? 'LDR সেন্সর সংযোগ পরীক্ষা করুন'
+                  : 'Check LDR sensor connection'}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
           </div>
-        </Link>
+        </div>
       </motion.div>
     );
   }
