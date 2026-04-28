@@ -38,6 +38,7 @@ import { StateExplanationHeader } from '@/components/control/StateExplanationHea
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
 import { LiveEnvironmentPanel } from '@/components/control/LiveEnvironmentPanel';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
+import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
 
 // Broiler-specific devices (heater is more important)
 const BROILER_DEVICES = [
@@ -390,6 +391,9 @@ export function ControlPage() {
 
         {/* ===== 3. LIVE ENVIRONMENT + SENSOR HEALTH (always shown) ===== */}
         <LiveEnvironmentPanel />
+
+        {/* ===== 💡 LDR / Lighting Status (compact) ===== */}
+        <LDRStatusBanner />
 
         {/* ===== 4. DEVICE CONTROL PANEL ===== */}
         {isManualMode ? (
