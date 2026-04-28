@@ -107,11 +107,43 @@ export function DeviceSystemTab() {
     }
   }, [debugMode]);
 
-  // Calibration offsets — persisted to localStorage so they survive reload.
-  // Note: ESP32 reads these via firmware config; UI is a local override hint until OTA config push is wired.
+  // Calibration offsets — load from DB (device_calibration), fallback to localStorage during initial load
   const [tempOffset, setTempOffset] = useState(() => Number(localStorage.getItem('cal_temp_offset') || 0));
   const [humidityOffset, setHumidityOffset] = useState(() => Number(localStorage.getItem('cal_humidity_offset') || 0));
   const [ammoniaOffset, setAmmoniaOffset] = useState(() => Number(localStorage.getItem('cal_ammonia_offset') || 0));
+
+  // Fetch calibration row for this farm
+  const { data: calibration } = useQuery({
+    queryKey: ['device_calibration', selectedFarmId],
+    queryFn: async () => {
+      if (!selectedFarmId) return null;
+      const { data, error } = await supabase
+        .from('device_calibration')
+        .select('*')
+        .eq('farm_id', selectedFarmId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedFarmId,
+  });
+
+  // Hydrate from DB once loaded
+  useEffect(() => {
+    if (!calibration) return;
+    const c: any = calibration;
+    if (c.temperature_offset_celsius !== undefined && c.temperature_offset_celsius !== null) {
+      setTempOffset(Number(c.temperature_offset_celsius));
+    }
+    if (c.humidity_offset_percent !== undefined && c.humidity_offset_percent !== null) {
+      setHumidityOffset(Number(c.humidity_offset_percent));
+    }
+    if (c.ammonia_offset_ppm !== undefined && c.ammonia_offset_ppm !== null) {
+      setAmmoniaOffset(Number(c.ammonia_offset_ppm));
+    }
+  }, [calibration]);
 
   // Fetch device tokens — scope by farm so workers see owner's devices via RLS
   const { data: deviceTokens } = useQuery({
