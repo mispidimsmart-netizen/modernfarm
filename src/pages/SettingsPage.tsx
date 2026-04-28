@@ -253,8 +253,8 @@ export function SettingsPage() {
               <CardContent className="p-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   🔒 {language === 'bn' 
-                    ? 'সেটিংস পরিবর্তন করতে অ্যাডমিন বা মালিকের অনুমতি প্রয়োজন' 
-                    : 'Admin or owner permission required to change settings'}
+                    ? 'আপনি শুধুমাত্র দেখতে পারবেন — পরিবর্তন করতে অ্যাডমিন বা মালিকের অনুমতি প্রয়োজন' 
+                    : 'View only — admin or owner permission required to make changes'}
                 </p>
               </CardContent>
             </Card>
