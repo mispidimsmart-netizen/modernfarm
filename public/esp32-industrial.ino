@@ -1298,6 +1298,7 @@ void sensorManagerTick() {
 
   calculateWaterFlow();
   currentHSI = calculateHSI(temperature, humidity);
+  if (ldrAvailable) lightLux = readLightLux();
 }
 
 // ═══ FIX #6: User-configurable water flow pulse/liter calibration ═══
