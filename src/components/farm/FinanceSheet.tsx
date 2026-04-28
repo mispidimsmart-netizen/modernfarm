@@ -317,10 +317,10 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
               </div>
               <div className="space-y-2">
                 <Label>{t.date[language]}</Label>
-                <Input
-                  type="date"
-                  value={incomeForm.income_date}
-                  onChange={(e) => setIncomeForm(p => ({ ...p, income_date: e.target.value }))}
+                <SmartDatePicker
+                  value={incomeForm.income_date || null}
+                  onChange={(iso) => setIncomeForm(p => ({ ...p, income_date: iso }))}
+                  disableFuture
                 />
               </div>
             </div>
