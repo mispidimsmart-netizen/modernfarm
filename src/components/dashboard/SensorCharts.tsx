@@ -31,10 +31,32 @@ export function SensorCharts() {
     );
   }
 
-  // If no historical data, show a placeholder with current data simulation
-  const chartData = historyData && historyData.length > 0 ? historyData : generateMockData();
+  // Show empty state if no real sensor data
+  if (!historyData || historyData.length === 0) {
+    return (
+      <div className="rounded-3xl bg-card p-5 shadow-card border border-border">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 rounded-xl bg-primary/10">
+            <Activity className="h-5 w-5 text-primary" />
+          </div>
+          <h3 className="font-semibold text-base">{labels.title}</h3>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <Activity className="h-12 w-12 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground font-medium">{labels.noData}</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            {language === 'bn'
+              ? 'ডিভাইস কানেক্ট হলে ডেটা এখানে দেখানো হবে'
+              : 'Data will appear here once your device is connected'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  // Calculate stats
+  const chartData = historyData;
+
+  // Calculate stats from real data
   const temps = chartData.map(d => d.temperature);
   const humids = chartData.map(d => d.humidity);
   const avgTemp = temps.reduce((a, b) => a + b, 0) / temps.length;
@@ -271,23 +293,3 @@ export function SensorCharts() {
   );
 }
 
-// Generate mock data when no real data exists
-function generateMockData() {
-  const data = [];
-  const now = new Date();
-  
-  for (let i = 23; i >= 0; i--) {
-    const time = new Date(now);
-    time.setHours(time.getHours() - i);
-    
-    data.push({
-      time: time.toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }),
-      temperature: 25 + Math.sin(i / 4) * 5 + Math.random() * 2,
-      humidity: 60 + Math.cos(i / 3) * 10 + Math.random() * 5,
-      ammonia: 10 + Math.random() * 5,
-      water_usage: 40 + Math.random() * 20,
-    });
-  }
-  
-  return data;
-}

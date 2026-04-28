@@ -1,32 +1,70 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
 import { useFarmSettings, useDeviceStatus, useUpdateDeviceStatus } from './useFarmData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
-// Simulates live sensor data from ESP32 devices
-// In production, this would use WebSocket or Supabase realtime
+// Live sensor data from database — REAL ESP32 readings only, NO simulation
 export function useLiveSensorData() {
+  const { user } = useAuth();
   const [sensorData, setSensorData] = useState<SensorData>({
-    temperature: 28.5,
-    humidity: 65,
-    ammonia: 12,
-    waterUsage: 45,
+    temperature: 0,
+    humidity: 0,
+    ammonia: 0,
+    waterUsage: 0,
     timestamp: new Date(),
   });
 
-  // Simulate sensor updates every 3 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSensorData(prev => ({
-        temperature: Math.max(15, Math.min(40, prev.temperature + (Math.random() - 0.5) * 0.5)),
-        humidity: Math.max(30, Math.min(95, prev.humidity + (Math.random() - 0.5) * 2)),
-        ammonia: Math.max(0, Math.min(50, prev.ammonia + (Math.random() - 0.5) * 1)),
-        waterUsage: Math.max(0, Math.min(100, prev.waterUsage + (Math.random() - 0.5) * 5)),
-        timestamp: new Date(),
-      }));
-    }, 3000);
+    if (!user?.id) return;
+    let cancelled = false;
 
-    return () => clearInterval(interval);
-  }, []);
+    const fetchLatest = async () => {
+      const { data, error } = await supabase
+        .from('sensor_readings')
+        .select('temperature, humidity, ammonia, water_usage, recorded_at')
+        .eq('user_id', user.id)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+      setSensorData({
+        temperature: Number(data.temperature) || 0,
+        humidity: Number(data.humidity) || 0,
+        ammonia: Number(data.ammonia) || 0,
+        waterUsage: Number(data.water_usage) || 0,
+        timestamp: new Date(data.recorded_at),
+      });
+    };
+
+    fetchLatest();
+
+    const channel = supabase
+      .channel(`sensor_readings_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'sensor_readings', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const r: any = payload.new;
+          setSensorData({
+            temperature: Number(r.temperature) || 0,
+            humidity: Number(r.humidity) || 0,
+            ammonia: Number(r.ammonia) || 0,
+            waterUsage: Number(r.water_usage) || 0,
+            timestamp: new Date(r.recorded_at),
+          });
+        }
+      )
+      .subscribe();
+
+    const interval = setInterval(fetchLatest, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   return sensorData;
 }
