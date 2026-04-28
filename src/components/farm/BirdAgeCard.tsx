@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bird, Calendar, Save, Info, Lightbulb } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bird, Calendar, Save, Info, Lightbulb, Loader2 } from 'lucide-react';
+import { useIsFetching } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,21 @@ export function BirdAgeCard() {
   const { isBroiler } = useFarmType();
   const { ageDays, ageWeeks, source, startDate, isLoading, hasValue } = useBirdAge();
   const { mutate, isPending } = useUpdateBirdAge();
+
+  // Track fetches on every age-dependent query — shows "Updating…" while
+  // lighting / automation / curve thresholds are recomputing.
+  const fetchingFlock = useIsFetching({ queryKey: ['flock-info'] });
+  const fetchingActiveBatch = useIsFetching({ queryKey: ['broiler-batch-active'] });
+  const fetchingBatches = useIsFetching({ queryKey: ['broiler-batches'] });
+  const fetchingLightingSchedule = useIsFetching({ queryKey: ['lighting-schedule'] });
+  const fetchingLightingCurve = useIsFetching({ queryKey: ['lighting-curve'] });
+  const fetchingDailySummary = useIsFetching({ queryKey: ['daily-summary'] });
+  const fetchingFarmSettings = useIsFetching({ queryKey: ['farm-settings'] });
+  const isRecalculating =
+    isPending ||
+    fetchingFlock + fetchingActiveBatch + fetchingBatches +
+    fetchingLightingSchedule + fetchingLightingCurve +
+    fetchingDailySummary + fetchingFarmSettings > 0;
 
   const [draftDate, setDraftDate] = useState<string>('');
   const [draftWeeks, setDraftWeeks] = useState<string>('');
@@ -67,6 +83,11 @@ export function BirdAgeCard() {
       en: 'For layer enter current age in weeks directly.',
     },
     usedIn: { bn: 'এখানে ব্যবহৃত হয়:', en: 'Used in:' },
+    updating: {
+      bn: 'লাইটিং ও অটোমেশন আপডেট হচ্ছে…',
+      en: 'Updating lighting & automation…',
+    },
+    upToDate: { bn: 'সব আপডেটেড ✓', en: 'All in sync ✓' },
     chips: {
       lighting: { bn: 'লাইটিং সাজেশন', en: 'Lighting suggestion' },
       temp: { bn: 'তাপমাত্রা কার্ভ', en: 'Temp curve' },
@@ -145,6 +166,36 @@ export function BirdAgeCard() {
             </span>
           )}
         </div>
+
+        {/* Recalculation status — visible while age-dependent queries refetch */}
+        <AnimatePresence mode="wait">
+          {isRecalculating ? (
+            <motion.div
+              key="updating"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-medium text-primary"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>{t.updating[language]}</span>
+            </motion.div>
+          ) : hasValue ? (
+            <motion.div
+              key="upToDate"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18 }}
+              className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-600 dark:text-emerald-400"
+            >
+              <span>{t.upToDate[language]}</span>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         {/* Editor */}
         <div className="space-y-2">
