@@ -216,10 +216,10 @@ export function FeedManagementSheet({ open, onOpenChange }: FeedManagementSheetP
 
             <div className="space-y-2">
               <Label>{t.date[language]}</Label>
-              <Input
-                type="date"
-                value={usageForm.consumption_date}
-                onChange={(e) => setUsageForm(p => ({ ...p, consumption_date: e.target.value }))}
+              <SmartDatePicker
+                value={usageForm.consumption_date || null}
+                onChange={(iso) => setUsageForm(p => ({ ...p, consumption_date: iso }))}
+                disableFuture
               />
             </div>
 
