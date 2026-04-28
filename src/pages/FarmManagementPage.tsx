@@ -13,6 +13,7 @@ import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
 import { MortalitySheet } from '@/components/farm/MortalitySheet';
 import { FinanceSheet } from '@/components/farm/FinanceSheet';
 import { FlockInfoSheet } from '@/components/farm/FlockInfoSheet';
+import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
 import { QuickActionFAB } from '@/components/farm/QuickActionFAB';
@@ -114,9 +115,12 @@ export function FarmManagementPage() {
                   />
                 )}
                 
-                {/* Layer Mode: Show Layer Input Cards */}
+                {/* Layer Mode: Batch lifecycle (prominent) + Input Cards */}
                 {isLayer && (
-                  <FarmInputCards onCardClick={handleQuickAction} />
+                  <>
+                    <LayerBatchCard />
+                    <FarmInputCards onCardClick={handleQuickAction} />
+                  </>
                 )}
 
                 {/* Schedule Quick Access */}
