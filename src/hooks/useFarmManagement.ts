@@ -377,14 +377,14 @@ export function useAddIncome() {
 // Flock Info Hooks
 export function useFlockInfo() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['flock-info', user?.id],
+    queryKey: ['flock-info', user?.id, selectedFarmId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('flock_info')
-        .select('*')
-        .single();
+      let query = supabase.from('flock_info').select('*');
+      if (selectedFarmId) query = query.eq('farm_id', selectedFarmId);
+      const { data, error } = await query.maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data as FlockInfo | null;
