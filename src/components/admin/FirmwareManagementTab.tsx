@@ -257,7 +257,7 @@ export function FirmwareManagementTab({ language }: Props) {
             <p className="text-slate-400 text-sm">{t("লোড হচ্ছে...", "Loading...")}</p>
           ) : !firmwares?.length ? (
             <div className="text-center py-8">
-              <FileBinary className="w-12 h-12 mx-auto text-slate-500 mb-2" />
+              <FileCode2 className="w-12 h-12 mx-auto text-slate-500 mb-2" />
               <p className="text-slate-400">{t("কোনো ফার্মওয়্যার আপলোড করা হয়নি", "No firmware uploaded yet")}</p>
             </div>
           ) : (
