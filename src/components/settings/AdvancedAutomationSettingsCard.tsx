@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, Settings2, Zap, Gauge, ShieldCheck, ShieldAlert, Info, RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
+import { useRawAdvancedAutomationSettings as useAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
 import { useFarmType } from '@/hooks/useFarmType';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
