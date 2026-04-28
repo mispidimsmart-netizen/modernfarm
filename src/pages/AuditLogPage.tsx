@@ -10,13 +10,15 @@ import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { 
   Search, Filter, Shield, Settings, Zap, Terminal, 
-  Cpu, User, ChevronDown, ChevronUp, RefreshCw 
+  Cpu, User, ChevronDown, ChevronUp, RefreshCw, ListChecks
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DeviceCommandLogTab } from '@/components/audit/DeviceCommandLogTab';
 
 const categoryConfig: Record<string, { icon: typeof Shield; label: string; labelBn: string; color: string }> = {
   settings: { icon: Settings, label: 'Settings', labelBn: 'সেটিংস', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
