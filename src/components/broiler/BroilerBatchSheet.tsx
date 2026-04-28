@@ -428,11 +428,15 @@ export function BroilerBatchSheet({ open, onOpenChange }: BroilerBatchSheetProps
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Cobb 500">Cobb 500</SelectItem>
-                        <SelectItem value="Ross 308">Ross 308</SelectItem>
-                        <SelectItem value="Arbor Acres">Arbor Acres</SelectItem>
-                        <SelectItem value="Hubbard">Hubbard</SelectItem>
-                        <SelectItem value="Local">Local / দেশি</SelectItem>
+                        <SelectItem value="Cobb 500">Cobb 500 (কব ৫০০)</SelectItem>
+                        <SelectItem value="Ross 308">Ross 308 (রস ৩০৮)</SelectItem>
+                        <SelectItem value="Hubbard Classic">Hubbard Classic (হাবার্ড ক্লাসিক)</SelectItem>
+                        <SelectItem value="Arbor Acres Plus">Arbor Acres Plus (আরবর একর্স প্লাস)</SelectItem>
+                        <SelectItem value="Indian River">Indian River (ইন্ডিয়ান রিভার)</SelectItem>
+                        <SelectItem value="Sonali">Sonali (সোনালী)</SelectItem>
+                        <SelectItem value="Cobb 700">Cobb 700 (কব ৭০০)</SelectItem>
+                        <SelectItem value="Local">দেশি (Local)</SelectItem>
+                        <SelectItem value="Other">অন্যান্য (Other)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

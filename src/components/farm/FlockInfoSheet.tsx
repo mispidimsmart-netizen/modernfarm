@@ -17,11 +17,19 @@ interface FlockInfoSheetProps {
 }
 
 const BREEDS = [
-  { value: 'layer', bn: 'লেয়ার', en: 'Layer' },
-  { value: 'isa_brown', bn: 'আইএসএ ব্রাউন', en: 'ISA Brown' },
-  { value: 'lohmann_brown', bn: 'লোহম্যান ব্রাউন', en: 'Lohmann Brown' },
-  { value: 'hy_line', bn: 'হাই-লাইন', en: 'Hy-Line' },
-  { value: 'novogen', bn: 'নোভোজেন', en: 'Novogen' },
+  { value: 'isa_brown', bn: 'আইএসএ ব্রাউন (ISA Brown)', en: 'ISA Brown' },
+  { value: 'hy_line_brown', bn: 'হাই-লাইন ব্রাউন (Hy-Line Brown)', en: 'Hy-Line Brown' },
+  { value: 'hy_line_w36', bn: 'হাই-লাইন W-36 (Hy-Line W-36)', en: 'Hy-Line W-36' },
+  { value: 'lohmann_brown', bn: 'লোহম্যান ব্রাউন (Lohmann Brown)', en: 'Lohmann Brown' },
+  { value: 'lohmann_lsl', bn: 'লোহম্যান এলএসএল (Lohmann LSL)', en: 'Lohmann LSL' },
+  { value: 'bovans_brown', bn: 'বোভান্স ব্রাউন (Bovans Brown)', en: 'Bovans Brown' },
+  { value: 'bovans_white', bn: 'বোভান্স হোয়াইট (Bovans White)', en: 'Bovans White' },
+  { value: 'hisex_brown', bn: 'হাইসেক্স ব্রাউন (Hisex Brown)', en: 'Hisex Brown' },
+  { value: 'novogen_brown', bn: 'নোভোজেন ব্রাউন (Novogen Brown)', en: 'Novogen Brown' },
+  { value: 'shaver', bn: 'শেভার (Shaver 579)', en: 'Shaver 579' },
+  { value: 'bv300', bn: 'বিভি-৩০০ (BV-300)', en: 'BV-300' },
+  { value: 'sonali', bn: 'সোনালী (Sonali)', en: 'Sonali' },
+  { value: 'local', bn: 'দেশি (Local)', en: 'Local' },
   { value: 'other', bn: 'অন্যান্য', en: 'Other' },
 ];
 
@@ -32,15 +40,22 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
   
   const [formData, setFormData] = useState({
     total_birds: 0,
-    breed: 'layer',
+    breed: 'isa_brown',
     purchase_date: '',
   });
 
   useEffect(() => {
     if (flockInfo) {
+      // Backward-compat: map removed legacy values to closest current option
+      const legacyMap: Record<string, string> = {
+        layer: 'isa_brown',
+        hy_line: 'hy_line_brown',
+        novogen: 'novogen_brown',
+      };
+      const rawBreed = flockInfo.breed || 'isa_brown';
       setFormData({
         total_birds: flockInfo.total_birds,
-        breed: flockInfo.breed || 'layer',
+        breed: legacyMap[rawBreed] || rawBreed,
         purchase_date: flockInfo.purchase_date || '',
       });
     }
