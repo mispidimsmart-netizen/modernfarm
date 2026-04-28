@@ -9,6 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+
+const BROILER_BREEDS: BreedOption[] = [
+  { value: 'Cobb 500', label: 'Cobb 500 (কব ৫০০)', keywords: 'কব cobb 500' },
+  { value: 'Cobb 700', label: 'Cobb 700 (কব ৭০০)', keywords: 'কব cobb 700' },
+  { value: 'Ross 308', label: 'Ross 308 (রস ৩০৮)', keywords: 'রস ross 308' },
+  { value: 'Hubbard Classic', label: 'Hubbard Classic (হাবার্ড ক্লাসিক)', keywords: 'হাবার্ড hubbard classic' },
+  { value: 'Arbor Acres Plus', label: 'Arbor Acres Plus (আরবর একর্স প্লাস)', keywords: 'আরবর arbor acres' },
+  { value: 'Indian River', label: 'Indian River (ইন্ডিয়ান রিভার)', keywords: 'ইন্ডিয়ান indian river' },
+  { value: 'Sonali', label: 'Sonali (সোনালী)', keywords: 'সোনালী sonali bd' },
+  { value: 'Local', label: 'দেশি (Local)', keywords: 'দেশি local desi' },
+  { value: 'Other', label: 'অন্যান্য (Other)', keywords: 'অন্যান্য other' },
+];
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -423,22 +436,11 @@ export function BroilerBatchSheet({ open, onOpenChange }: BroilerBatchSheetProps
                   </div>
                   <div className="space-y-2">
                     <Label>{t.breed[language]}</Label>
-                    <Select value={form.breed} onValueChange={(v) => setForm({ ...form, breed: v })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cobb 500">Cobb 500 (কব ৫০০)</SelectItem>
-                        <SelectItem value="Ross 308">Ross 308 (রস ৩০৮)</SelectItem>
-                        <SelectItem value="Hubbard Classic">Hubbard Classic (হাবার্ড ক্লাসিক)</SelectItem>
-                        <SelectItem value="Arbor Acres Plus">Arbor Acres Plus (আরবর একর্স প্লাস)</SelectItem>
-                        <SelectItem value="Indian River">Indian River (ইন্ডিয়ান রিভার)</SelectItem>
-                        <SelectItem value="Sonali">Sonali (সোনালী)</SelectItem>
-                        <SelectItem value="Cobb 700">Cobb 700 (কব ৭০০)</SelectItem>
-                        <SelectItem value="Local">দেশি (Local)</SelectItem>
-                        <SelectItem value="Other">অন্যান্য (Other)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <BreedCombobox
+                      options={BROILER_BREEDS}
+                      value={form.breed}
+                      onChange={(v) => setForm({ ...form, breed: v })}
+                    />
                   </div>
                 </div>
 

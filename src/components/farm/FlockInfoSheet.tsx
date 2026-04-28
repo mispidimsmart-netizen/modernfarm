@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
 import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
 
@@ -16,21 +16,28 @@ interface FlockInfoSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const BREEDS = [
-  { value: 'isa_brown', bn: 'আইএসএ ব্রাউন (ISA Brown)', en: 'ISA Brown' },
-  { value: 'hy_line_brown', bn: 'হাই-লাইন ব্রাউন (Hy-Line Brown)', en: 'Hy-Line Brown' },
-  { value: 'hy_line_w36', bn: 'হাই-লাইন W-36 (Hy-Line W-36)', en: 'Hy-Line W-36' },
-  { value: 'lohmann_brown', bn: 'লোহম্যান ব্রাউন (Lohmann Brown)', en: 'Lohmann Brown' },
-  { value: 'lohmann_lsl', bn: 'লোহম্যান এলএসএল (Lohmann LSL)', en: 'Lohmann LSL' },
-  { value: 'bovans_brown', bn: 'বোভান্স ব্রাউন (Bovans Brown)', en: 'Bovans Brown' },
-  { value: 'bovans_white', bn: 'বোভান্স হোয়াইট (Bovans White)', en: 'Bovans White' },
-  { value: 'hisex_brown', bn: 'হাইসেক্স ব্রাউন (Hisex Brown)', en: 'Hisex Brown' },
-  { value: 'novogen_brown', bn: 'নোভোজেন ব্রাউন (Novogen Brown)', en: 'Novogen Brown' },
-  { value: 'shaver', bn: 'শেভার (Shaver 579)', en: 'Shaver 579' },
-  { value: 'bv300', bn: 'বিভি-৩০০ (BV-300)', en: 'BV-300' },
-  { value: 'sonali', bn: 'সোনালী (Sonali)', en: 'Sonali' },
-  { value: 'local', bn: 'দেশি (Local)', en: 'Local' },
-  { value: 'other', bn: 'অন্যান্য', en: 'Other' },
+interface LayerBreed {
+  value: string;
+  bn: string;
+  en: string;
+  keywords?: string;
+}
+
+const BREEDS: LayerBreed[] = [
+  { value: 'isa_brown', bn: 'আইএসএ ব্রাউন (ISA Brown)', en: 'ISA Brown', keywords: 'isa brown আইএসএ ব্রাউন' },
+  { value: 'hy_line_brown', bn: 'হাই-লাইন ব্রাউন (Hy-Line Brown)', en: 'Hy-Line Brown', keywords: 'hy-line hyline brown হাই-লাইন' },
+  { value: 'hy_line_w36', bn: 'হাই-লাইন W-36 (Hy-Line W-36)', en: 'Hy-Line W-36', keywords: 'hy-line hyline w36 হাই-লাইন' },
+  { value: 'lohmann_brown', bn: 'লোহম্যান ব্রাউন (Lohmann Brown)', en: 'Lohmann Brown', keywords: 'lohmann brown লোহম্যান' },
+  { value: 'lohmann_lsl', bn: 'লোহম্যান এলএসএল (Lohmann LSL)', en: 'Lohmann LSL', keywords: 'lohmann lsl লোহম্যান' },
+  { value: 'bovans_brown', bn: 'বোভান্স ব্রাউন (Bovans Brown)', en: 'Bovans Brown', keywords: 'bovans brown বোভান্স' },
+  { value: 'bovans_white', bn: 'বোভান্স হোয়াইট (Bovans White)', en: 'Bovans White', keywords: 'bovans white বোভান্স' },
+  { value: 'hisex_brown', bn: 'হাইসেক্স ব্রাউন (Hisex Brown)', en: 'Hisex Brown', keywords: 'hisex brown হাইসেক্স' },
+  { value: 'novogen_brown', bn: 'নোভোজেন ব্রাউন (Novogen Brown)', en: 'Novogen Brown', keywords: 'novogen brown নোভোজেন' },
+  { value: 'shaver', bn: 'শেভার (Shaver 579)', en: 'Shaver 579', keywords: 'shaver 579 শেভার' },
+  { value: 'bv300', bn: 'বিভি-৩০০ (BV-300)', en: 'BV-300', keywords: 'bv 300 বিভি' },
+  { value: 'sonali', bn: 'সোনালী (Sonali)', en: 'Sonali', keywords: 'sonali সোনালী' },
+  { value: 'local', bn: 'দেশি (Local)', en: 'Local', keywords: 'local desi দেশি' },
+  { value: 'other', bn: 'অন্যান্য', en: 'Other', keywords: 'অন্যান্য other' },
 ];
 
 export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
@@ -125,21 +132,15 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
 
             <div className="space-y-2">
               <Label>{t.breed[language]}</Label>
-              <Select 
-                value={formData.breed} 
-                onValueChange={(v) => setFormData(p => ({ ...p, breed: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BREEDS.map(breed => (
-                    <SelectItem key={breed.value} value={breed.value}>
-                      {breed[language]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <BreedCombobox
+                options={BREEDS.map((b) => ({
+                  value: b.value,
+                  label: b[language],
+                  keywords: b.keywords,
+                }))}
+                value={formData.breed}
+                onChange={(v) => setFormData((p) => ({ ...p, breed: v }))}
+              />
             </div>
 
             <div className="space-y-2">
