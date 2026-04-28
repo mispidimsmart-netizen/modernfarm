@@ -184,6 +184,106 @@ export function useUpdateLayerBatch() {
   });
 }
 
+// Shared recompute logic — returns summary fields for a batch given its dates & bird count
+async function computeBatchSummary(
+  userId: string,
+  batch: LayerBatch,
+  startDate: string,
+  endDate: string
+) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const durationDays = Math.max(
+    1,
+    Math.floor((end.getTime() - start.getTime()) / 86400000)
+  );
+
+  // Eggs
+  const { data: eggs } = await supabase
+    .from('egg_production')
+    .select('production_date,total_eggs')
+    .eq('user_id', userId)
+    .gte('production_date', startDate)
+    .lte('production_date', endDate);
+
+  const totalEggs = (eggs || []).reduce((s, e: any) => s + (e.total_eggs || 0), 0);
+
+  let peakPercent = 0;
+  let peakAgeWeeks: number | null = null;
+  if (batch.current_bird_count > 0 && eggs) {
+    for (const e of eggs as any[]) {
+      const pct = (e.total_eggs / batch.current_bird_count) * 100;
+      if (pct > peakPercent) {
+        peakPercent = pct;
+        const dDays = Math.floor(
+          (new Date(e.production_date).getTime() - start.getTime()) / 86400000
+        );
+        peakAgeWeeks = batch.age_at_start_weeks + Math.floor(dDays / 7);
+      }
+    }
+  }
+
+  // Feed
+  const { data: feed } = await supabase
+    .from('feed_consumption')
+    .select('quantity_kg,consumption_date')
+    .eq('user_id', userId)
+    .gte('consumption_date', startDate)
+    .lte('consumption_date', endDate);
+
+  const totalFeedKg = (feed || []).reduce((s, f: any) => s + Number(f.quantity_kg || 0), 0);
+
+  const { data: inv } = await supabase
+    .from('feed_inventory')
+    .select('unit_price,quantity_kg')
+    .eq('user_id', userId);
+  const totalInvKg = (inv || []).reduce((s, i: any) => s + Number(i.quantity_kg || 0), 0);
+  const totalInvCost = (inv || []).reduce(
+    (s, i: any) => s + Number(i.unit_price || 0) * Number(i.quantity_kg || 0),
+    0
+  );
+  const avgPricePerKg = totalInvKg > 0 ? totalInvCost / totalInvKg : 0;
+  const totalFeedCost = totalFeedKg * avgPricePerKg;
+
+  // FCR (layer): feed kg / egg mass kg, assume 60g/egg
+  const eggMassKg = (totalEggs * 60) / 1000;
+  const fcr = eggMassKg > 0 ? totalFeedKg / eggMassKg : 0;
+
+  const mortality = Math.max(0, batch.initial_bird_count - batch.current_bird_count);
+  const mortalityPct =
+    batch.initial_bird_count > 0 ? (mortality / batch.initial_bird_count) * 100 : 0;
+
+  const { data: exp } = await supabase
+    .from('expenses')
+    .select('amount,expense_date')
+    .eq('user_id', userId)
+    .gte('expense_date', startDate)
+    .lte('expense_date', endDate);
+
+  const totalExpenses = (exp || []).reduce((s, e: any) => s + Number(e.amount || 0), 0);
+  const totalRevenue = 0;
+  const netProfit =
+    totalRevenue -
+    totalExpenses -
+    totalFeedCost -
+    batch.initial_bird_count * batch.chick_cost_per_bird;
+
+  return {
+    total_eggs: totalEggs,
+    peak_production_percent: Math.round(peakPercent * 10) / 10,
+    peak_age_weeks: peakAgeWeeks,
+    total_mortality: mortality,
+    mortality_percent: Math.round(mortalityPct * 10) / 10,
+    total_feed_kg: Math.round(totalFeedKg * 10) / 10,
+    total_feed_cost: Math.round(totalFeedCost),
+    fcr: Math.round(fcr * 100) / 100,
+    total_revenue: totalRevenue,
+    total_expenses: totalExpenses,
+    net_profit: netProfit,
+    duration_days: durationDays,
+  };
+}
+
 // Close batch + create summary snapshot
 export function useCloseLayerBatch() {
   const queryClient = useQueryClient();
@@ -204,7 +304,6 @@ export function useCloseLayerBatch() {
       if (!user) throw new Error('Not authenticated');
       const farmId = selectedFarmId || farms[0]?.id;
 
-      // Fetch batch
       const { data: batchData, error: bErr } = await supabase
         .from('layer_batches' as any)
         .select('*')
@@ -213,101 +312,23 @@ export function useCloseLayerBatch() {
       if (bErr) throw bErr;
       const batch = batchData as unknown as LayerBatch;
 
-      const start = new Date(batch.start_date);
-      const end = new Date(endDate || new Date().toISOString().split('T')[0]);
-      const durationDays = Math.max(1, Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+      const endIso = endDate || new Date().toISOString().split('T')[0];
+      const summary = await computeBatchSummary(user.id, batch, batch.start_date, endIso);
 
-      // Aggregate eggs
-      const { data: eggs } = await supabase
-        .from('egg_production')
-        .select('production_date,total_eggs')
-        .eq('user_id', user.id)
-        .gte('production_date', batch.start_date)
-        .lte('production_date', end.toISOString().split('T')[0]);
-
-      const totalEggs = (eggs || []).reduce((s, e: any) => s + (e.total_eggs || 0), 0);
-
-      // Peak production %: best daily eggs / current_bird_count * 100
-      let peakPercent = 0;
-      let peakAgeWeeks: number | null = null;
-      if (batch.current_bird_count > 0 && eggs) {
-        for (const e of eggs as any[]) {
-          const pct = (e.total_eggs / batch.current_bird_count) * 100;
-          if (pct > peakPercent) {
-            peakPercent = pct;
-            const dDays = Math.floor((new Date(e.production_date).getTime() - start.getTime()) / 86400000);
-            peakAgeWeeks = batch.age_at_start_weeks + Math.floor(dDays / 7);
-          }
-        }
-      }
-
-      // Aggregate feed
-      const { data: feed } = await supabase
-        .from('feed_consumption')
-        .select('quantity_kg,consumption_date')
-        .eq('user_id', user.id)
-        .gte('consumption_date', batch.start_date)
-        .lte('consumption_date', end.toISOString().split('T')[0]);
-
-      const totalFeedKg = (feed || []).reduce((s, f: any) => s + Number(f.quantity_kg || 0), 0);
-
-      // Feed cost from inventory (avg unit price * total kg)
-      const { data: inv } = await supabase
-        .from('feed_inventory')
-        .select('unit_price,quantity_kg')
-        .eq('user_id', user.id);
-      const totalInvKg = (inv || []).reduce((s, i: any) => s + Number(i.quantity_kg || 0), 0);
-      const totalInvCost = (inv || []).reduce((s, i: any) => s + Number(i.unit_price || 0) * Number(i.quantity_kg || 0), 0);
-      const avgPricePerKg = totalInvKg > 0 ? totalInvCost / totalInvKg : 0;
-      const totalFeedCost = totalFeedKg * avgPricePerKg;
-
-      // FCR for layers = feed (kg) / egg mass (kg) — assume 60g per egg
-      const eggMassKg = (totalEggs * 60) / 1000;
-      const fcr = eggMassKg > 0 ? totalFeedKg / eggMassKg : 0;
-
-      // Mortality
-      const mortality = Math.max(0, batch.initial_bird_count - batch.current_bird_count);
-      const mortalityPct = batch.initial_bird_count > 0 ? (mortality / batch.initial_bird_count) * 100 : 0;
-
-      // Revenue (egg sales not tracked — leave 0 unless expenses table has income)
-      const { data: exp } = await supabase
-        .from('expenses')
-        .select('amount,category,expense_date')
-        .eq('user_id', user.id)
-        .gte('expense_date', batch.start_date)
-        .lte('expense_date', end.toISOString().split('T')[0]);
-
-      const totalExpenses = (exp || []).reduce((s, e: any) => s + Number(e.amount || 0), 0);
-      const totalRevenue = 0; // placeholder until egg sales tracked
-      const netProfit = totalRevenue - totalExpenses - totalFeedCost - (batch.initial_bird_count * batch.chick_cost_per_bird);
-
-      // Insert summary
       const { error: sErr } = await supabase.from('layer_batch_summary' as any).insert({
         batch_id: batchId,
         user_id: user.id,
         farm_id: farmId,
-        total_eggs: totalEggs,
-        peak_production_percent: Math.round(peakPercent * 10) / 10,
-        peak_age_weeks: peakAgeWeeks,
-        total_mortality: mortality,
-        mortality_percent: Math.round(mortalityPct * 10) / 10,
-        total_feed_kg: Math.round(totalFeedKg * 10) / 10,
-        total_feed_cost: Math.round(totalFeedCost),
-        fcr: Math.round(fcr * 100) / 100,
-        total_revenue: totalRevenue,
-        total_expenses: totalExpenses,
-        net_profit: netProfit,
-        duration_days: durationDays,
+        ...summary,
         notes: notes || null,
       } as any);
       if (sErr) throw sErr;
 
-      // Mark batch closed
       const { error: uErr } = await supabase
         .from('layer_batches' as any)
         .update({
           status: 'completed',
-          actual_end_date: end.toISOString().split('T')[0],
+          actual_end_date: endIso,
         } as any)
         .eq('id', batchId);
       if (uErr) throw uErr;
