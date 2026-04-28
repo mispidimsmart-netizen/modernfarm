@@ -281,30 +281,38 @@ export function FarmSetupTab() {
       if (pendingChange.type === 'farm_type' && pendingChange.value) {
         const newType = pendingChange.value as FarmType;
         setFarmType(newType);
-        // Update selected shed's farm_type
         if (selectedShedId) {
           await updateShed.mutateAsync({ id: selectedShedId, farm_type: newType } as any);
         }
-        // Also update profile as fallback default
         await updateProfile.mutateAsync({ farm_type: newType });
       } else if (pendingChange.type === 'season' && pendingChange.value) {
+        const newSeason = pendingChange.value as Season;
         setIsSeasonManual(true);
-        setSeasonOverride(pendingChange.value as Season);
+        setSeasonOverride(newSeason);
+        await updateFarmSettings.mutateAsync({ season_override: newSeason } as any);
       } else if (pendingChange.type === 'profile' && pendingChange.value) {
+        const newProfile = pendingChange.value as ProfileType;
         setIsProfileManual(true);
-        setProfileOverride(pendingChange.value as ProfileType);
+        setProfileOverride(newProfile);
+        await updateFarmSettings.mutateAsync({ profile_override: newProfile } as any);
       } else if (pendingChange.type === 'apply') {
         if (selectedShedId) {
           await updateShed.mutateAsync({ id: selectedShedId, farm_type: farmType } as any);
         }
         await updateProfile.mutateAsync({ farm_type: farmType });
+        // Persist farm size + override states
+        await updateFarmSettings.mutateAsync({
+          farm_size: farmSize,
+          season_override: isSeasonManual ? seasonOverride : null,
+          profile_override: isProfileManual ? profileOverride : null,
+        } as any);
       }
       
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' 
-          ? 'সেটিংস প্রয়োগ করা হয়েছে' 
-          : 'Settings applied',
+          ? 'সেটিংস সংরক্ষণ ও প্রয়োগ করা হয়েছে' 
+          : 'Settings saved and applied',
       });
     } catch (error) {
       toast({
