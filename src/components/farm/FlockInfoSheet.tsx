@@ -10,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
-import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 
 interface FlockInfoSheetProps {
   open: boolean;
@@ -95,9 +94,6 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
           </div>
         ) : (
           <div className="space-y-4 pb-8">
-            {/* 📦 Layer Batch lifecycle — start / close / history */}
-            <LayerBatchCard />
-
             {/* 🐔 Unified Bird Age — single source of truth */}
             <BirdAgeCard />
 
