@@ -145,21 +145,20 @@ export function FarmManagementPage() {
                 {/* Entry Status & History */}
                 <RecentEntryHistory />
 
-                {/* Broiler Mode: Show Broiler Widget */}
+                {/* Layer Mode: Quick Input Cards */}
+                {isLayer && <FarmInputCards onCardClick={handleQuickAction} />}
+
+                {/* Broiler Mode: Quick hint to switch to Batch tab for batch actions */}
                 {isBroiler && (
-                  <BroilerDashboardWidget
-                    onBatchClick={() => handleBroilerAction('batch')}
-                    onWeightClick={() => handleBroilerAction('weight')}
-                    onFeedClick={() => handleBroilerAction('broiler-feed')}
-                  />
-                )}
-                
-                {/* Layer Mode: Batch lifecycle (prominent) + Input Cards */}
-                {isLayer && (
-                  <>
-                    <LayerBatchCard />
-                    <FarmInputCards onCardClick={handleQuickAction} />
-                  </>
+                  <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                    <CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'bn'
+                          ? '💡 ব্যাচ, ওজন বা খাদ্য এন্ট্রির জন্য উপরের "🐔 ব্যাচ" ট্যাব দেখুন'
+                          : '💡 For batch, weight or feed entry, see the "🐔 Batch" tab above'}
+                      </p>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Schedule Quick Access */}
