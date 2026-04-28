@@ -104,6 +104,15 @@ const ProtectedRoute = memo(function ProtectedRoute({ children }: { children: Re
   return <>{children}</>;
 });
 
+// Mounts globally so queued batch edits sync as soon as the user returns online,
+// regardless of whether the edit dialog is currently open.
+function GlobalBatchEditQueue() {
+  // Lazy import via require-style to avoid top-of-file churn
+  const { useBatchEditQueue } = require('@/hooks/useBatchEditQueue');
+  useBatchEditQueue();
+  return null;
+}
+
 // App routes component
 function AppRoutes() {
   const { user, isLoading } = useAuth();
