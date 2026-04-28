@@ -288,6 +288,22 @@ Deno.serve(async (req) => {
         }
       }
 
+      // ✅ Auto-resolve active emergency_events when conditions normalize.
+      // Without this, the badge stays "active" forever after a single spike.
+      if (result.emergency_priority !== "LIFE_THREATENING" && result.emergency_priority !== "CRITICAL") {
+        await supabase
+          .from("emergency_events")
+          .update({
+            status: "resolved",
+            resolved_at: new Date().toISOString(),
+            resolution_notes: "Auto-resolved by safety-engine: conditions returned to normal",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", input.user_id)
+          .in("status", ["active", "escalated"])
+          .lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+      }
+
       return new Response(JSON.stringify({ ok: true, safety: result }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
