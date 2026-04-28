@@ -337,21 +337,11 @@ export function LayerBatchCard() {
 
             <div className="space-y-1.5">
               <Label>{t.breed[language]}</Label>
-              <Select
+              <BreedCombobox
+                options={LAYER_BREEDS}
                 value={newForm.breed}
-                onValueChange={(v) => setNewForm((p) => ({ ...p, breed: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LAYER_BREEDS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setNewForm((p) => ({ ...p, breed: v }))}
+              />
             </div>
 
             <div className="space-y-1.5">
