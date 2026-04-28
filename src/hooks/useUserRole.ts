@@ -127,6 +127,7 @@ export function useWorkerInvitations() {
 
 export function useCreateInvitation() {
   const { user, language } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -142,6 +143,7 @@ export function useCreateInvitation() {
         .insert({
           farm_owner_id: user.id,
           invite_code: inviteCode,
+          farm_id: selectedFarmId, // bind invitation to current farm
         })
         .select()
         .single();
