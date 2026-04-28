@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { calculateFCR, evaluateFCR, getBroilerTargetWeight } from './useFarmType';
 
 export interface BroilerCostAnalytics {
