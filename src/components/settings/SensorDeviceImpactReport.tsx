@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 
 type Hours = 6 | 12 | 24 | 72 | 168;
-type SensorKey = 'temperature' | 'humidity' | 'ammonia' | 'water_usage';
+type SensorKey = 'temperature' | 'humidity' | 'ammonia' | 'water_usage' | 'light_lux';
 type DeviceKey = 'fan' | 'heater' | 'fogger' | 'sprinkler' | 'ceiling_fan' | 'light' | 'alarm';
 
 const SENSOR_META: Record<SensorKey, { bn: string; en: string; color: string; unit: string }> = {
@@ -30,6 +30,7 @@ const SENSOR_META: Record<SensorKey, { bn: string; en: string; color: string; un
   humidity:    { bn: 'আর্দ্রতা',   en: 'Humidity',    color: 'hsl(var(--sensor-humidity, 200 80% 55%))',     unit: '%' },
   ammonia:     { bn: 'অ্যামোনিয়া', en: 'Ammonia',     color: 'hsl(var(--sensor-ammonia, 280 70% 60%))',      unit: 'ppm' },
   water_usage: { bn: 'পানি',       en: 'Water',       color: 'hsl(var(--sensor-water, 190 80% 50%))',        unit: 'L' },
+  light_lux:   { bn: 'আলো (LDR)',  en: 'Light (LDR)', color: 'hsl(45 95% 55%)',                              unit: 'lux' },
 };
 
 const DEVICE_META: Record<DeviceKey, { bn: string; en: string; color: string }> = {
@@ -42,7 +43,7 @@ const DEVICE_META: Record<DeviceKey, { bn: string; en: string; color: string }> 
   alarm:        { bn: 'অ্যালার্ম',     en: 'Alarm',       color: 'hsl(0 80% 55%)' },
 };
 
-const ALL_SENSORS: SensorKey[] = ['temperature', 'humidity', 'ammonia', 'water_usage'];
+const ALL_SENSORS: SensorKey[] = ['temperature', 'humidity', 'ammonia', 'water_usage', 'light_lux'];
 const ALL_DEVICES: DeviceKey[] = ['fan', 'heater', 'fogger', 'sprinkler', 'ceiling_fan', 'light', 'alarm'];
 
 function statusFromSensors(t: number, h: number, nh3: number, hsi: number) {
