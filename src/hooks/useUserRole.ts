@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
 
 export type AppRole = 'owner' | 'worker' | 'super_admin' | 'viewer' | 'farmer' | 'admin' | 'manager' | 'technician';
@@ -126,6 +127,7 @@ export function useWorkerInvitations() {
 
 export function useCreateInvitation() {
   const { user, language } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -141,6 +143,7 @@ export function useCreateInvitation() {
         .insert({
           farm_owner_id: user.id,
           invite_code: inviteCode,
+          farm_id: selectedFarmId, // bind invitation to current farm
         })
         .select()
         .single();
@@ -174,58 +177,26 @@ export function useJoinFarm() {
     mutationFn: async (inviteCode: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Find the invitation
-      const { data: invitation, error: findError } = await supabase
-        .from('worker_invitations')
-        .select('*')
-        .eq('invite_code', inviteCode.toUpperCase())
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('redeem_invitation', {
+        _code: inviteCode.toUpperCase().trim(),
+      });
 
-      if (findError) throw findError;
-      if (!invitation) {
-        throw new Error(language === 'bn' ? 'অবৈধ বা মেয়াদোত্তীর্ণ আমন্ত্রণ কোড' : 'Invalid or expired invitation code');
+      if (error) {
+        throw new Error(
+          language === 'bn'
+            ? 'অবৈধ বা মেয়াদোত্তীর্ণ আমন্ত্রণ কোড'
+            : error.message || 'Invalid or expired invitation code'
+        );
       }
 
-      // Check if already a worker for this owner
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('farm_owner_id', invitation.farm_owner_id)
-        .maybeSingle();
-
-      if (existingRole) {
-        throw new Error(language === 'bn' ? 'আপনি ইতিমধ্যে এই ফার্মে যুক্ত আছেন' : 'You are already part of this farm');
-      }
-
-      // Create the worker role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          farm_owner_id: invitation.farm_owner_id,
-          role: 'worker',
-        });
-
-      if (roleError) throw roleError;
-
-      // Mark invitation as used
-      const { error: updateError } = await supabase
-        .from('worker_invitations')
-        .update({
-          used_at: new Date().toISOString(),
-          used_by: user.id,
-        })
-        .eq('id', invitation.id);
-
-      if (updateError) throw updateError;
-
-      return invitation;
+      return data;
     },
     onSuccess: () => {
+      // Invalidate everything farm-scoped so the worker immediately sees owner's data
       queryClient.invalidateQueries({ queryKey: ['user_role'] });
+      queryClient.invalidateQueries({ queryKey: ['farms'] });
+      queryClient.invalidateQueries({ queryKey: ['farm_members'] });
+      queryClient.invalidateQueries();
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'আপনি ফার্মে যুক্ত হয়েছেন' : 'You have joined the farm',
