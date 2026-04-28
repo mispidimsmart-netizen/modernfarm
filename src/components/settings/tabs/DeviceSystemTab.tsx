@@ -82,6 +82,7 @@ function CollapsibleSection({ title, titleBn, icon: Icon, color, children, defau
 
 export function DeviceSystemTab() {
   const { language, user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: sheds } = useSheds();
