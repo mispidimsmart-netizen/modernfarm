@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -144,17 +145,25 @@ export interface AuditLogFilters {
 
 export function useAuditLogs(filters: AuditLogFilters = {}) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
 
   return useQuery({
-    queryKey: ['audit-logs', user?.id, filters],
+    queryKey: ['audit-logs', user?.id, selectedFarmId, filters],
     queryFn: async () => {
       if (!user) return [];
 
+      // Filter by farm_id (RLS-safe and includes device/edge-function logs);
+      // fall back to user_id if no farm is selected yet.
       let query = (supabase.from('farm_audit_logs') as any)
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(200);
+
+      if (selectedFarmId) {
+        query = query.eq('farm_id', selectedFarmId);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
 
       if (filters.category) {
         query = query.eq('action_category', filters.category);
