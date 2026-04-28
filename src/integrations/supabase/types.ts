@@ -868,7 +868,7 @@ export type Database = {
           {
             foreignKeyName: "device_calibration_farm_id_fkey"
             columns: ["farm_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "farms"
             referencedColumns: ["id"]
           },
