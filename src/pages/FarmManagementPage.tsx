@@ -85,28 +85,28 @@ export function FarmManagementPage() {
 
           {/* Tabbed Interface - 4 tabs */}
           <Tabs defaultValue="batch" className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-11 rounded-2xl bg-muted/50 p-1">
-              <TabsTrigger 
-                value="batch" 
-                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+            <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
+              <TabsTrigger
+                value="batch"
+                className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
               >
                 {t.batch[language]}
               </TabsTrigger>
-              <TabsTrigger 
-                value="input" 
-                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+              <TabsTrigger
+                value="input"
+                className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
               >
                 {t.input[language]}
               </TabsTrigger>
-              <TabsTrigger 
-                value="report" 
-                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+              <TabsTrigger
+                value="report"
+                className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
               >
                 {t.report[language]}
               </TabsTrigger>
-              <TabsTrigger 
-                value="analysis" 
-                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+              <TabsTrigger
+                value="analysis"
+                className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
               >
                 {t.analysis[language]}
               </TabsTrigger>
