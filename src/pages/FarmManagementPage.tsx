@@ -83,9 +83,15 @@ export function FarmManagementPage() {
           {/* Stats Header */}
           <FarmStatsHeader onFlockClick={() => setActiveSheet('flock')} />
 
-          {/* Tabbed Interface - 3 tabs */}
-          <Tabs defaultValue="input" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-11 rounded-2xl bg-muted/50 p-1">
+          {/* Tabbed Interface - 4 tabs */}
+          <Tabs defaultValue="batch" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 h-11 rounded-2xl bg-muted/50 p-1">
+              <TabsTrigger 
+                value="batch" 
+                className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
+              >
+                {t.batch[language]}
+              </TabsTrigger>
               <TabsTrigger 
                 value="input" 
                 className="rounded-xl text-[10px] font-medium data-[state=active]:bg-card data-[state=active]:shadow-md transition-all"
@@ -105,6 +111,33 @@ export function FarmManagementPage() {
                 {t.analysis[language]}
               </TabsTrigger>
             </TabsList>
+
+            {/* Batch Tab — Active batch lifecycle (start/view/end) */}
+            <TabsContent value="batch" className="mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <div>
+                    <h3 className="text-sm font-semibold leading-tight">
+                      {t.batchHeading[language]}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      {t.batchSubtitle[language]}
+                    </p>
+                  </div>
+                </div>
+
+                {isLayer && <LayerBatchCard />}
+
+                {isBroiler && (
+                  <BroilerDashboardWidget
+                    onBatchClick={() => handleBroilerAction('batch')}
+                    onWeightClick={() => handleBroilerAction('weight')}
+                    onFeedClick={() => handleBroilerAction('broiler-feed')}
+                  />
+                )}
+              </div>
+            </TabsContent>
 
             {/* Input Tab - Quick Entry Cards */}
             <TabsContent value="input" className="mt-4">
