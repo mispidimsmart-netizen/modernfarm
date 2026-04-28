@@ -145,28 +145,32 @@ export function DeviceSystemTab() {
     }
   }, [calibration]);
 
-  // Save calibration offsets to DB (upsert)
+  // Save calibration offsets to DB (update existing or insert new — single row per farm)
   const saveCalibration = useMutation({
     mutationFn: async () => {
       if (!user || !selectedFarmId) throw new Error('No farm selected');
-      const payload: any = {
-        user_id: user.id,
-        farm_id: selectedFarmId,
+      const existingId = (calibration as any)?.id as string | undefined;
+      const basePayload = {
         temperature_offset_celsius: tempOffset,
         humidity_offset_percent: humidityOffset,
         ammonia_offset_ppm: ammoniaOffset,
         updated_at: new Date().toISOString(),
       };
-      if ((calibration as any)?.id) {
+      if (existingId) {
+        // Update existing row in place — avoids duplicates on rapid clicks
         const { error } = await supabase
           .from('device_calibration')
-          .update(payload)
-          .eq('id', (calibration as any).id);
+          .update(basePayload)
+          .eq('id', existingId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('device_calibration')
-          .insert(payload);
+          .insert({
+            user_id: user.id,
+            farm_id: selectedFarmId,
+            ...basePayload,
+          });
         if (error) throw error;
       }
     },
@@ -443,9 +447,11 @@ export function DeviceSystemTab() {
             )}
 
             <Button
-              onClick={() => newDeviceName && addDeviceToken.mutate({ 
-                name: newDeviceName, 
-                shedId: selectedShedForDevice !== 'none' ? selectedShedForDevice : undefined 
+              onClick={() => newDeviceName && addDeviceToken.mutate({
+                name: newDeviceName,
+                shedId: selectedShedForDevice && selectedShedForDevice !== 'none'
+                  ? selectedShedForDevice
+                  : undefined,
               })}
               disabled={!newDeviceName || addDeviceToken.isPending}
               className="w-full"
