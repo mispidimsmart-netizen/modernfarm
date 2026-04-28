@@ -6,13 +6,18 @@ import { Card, CardContent } from '@/components/ui/card';
 
 interface FarmInputCardsProps {
   onCardClick: (type: 'egg' | 'feed' | 'mortality' | 'finance') => void;
+  /**
+   * Cards to show. Defaults to all four (Layer mode).
+   * For Broiler mode, pass ['mortality', 'finance'] since egg/feed are handled in Batch tab.
+   */
+  show?: Array<'egg' | 'feed' | 'mortality' | 'finance'>;
 }
 
-export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
+export function FarmInputCards({ onCardClick, show }: FarmInputCardsProps) {
   const { language } = useAuth();
   const { data: summary } = useTodaySummary();
 
-  const items = [
+  const allItems = [
     {
       key: 'egg' as const,
       icon: Egg,
@@ -53,6 +58,8 @@ export function FarmInputCards({ onCardClick }: FarmInputCardsProps) {
       iconColor: 'text-blue-600 dark:text-blue-400',
     },
   ];
+
+  const items = show ? allItems.filter(i => show.includes(i.key)) : allItems;
 
   return (
     <div className="space-y-3">

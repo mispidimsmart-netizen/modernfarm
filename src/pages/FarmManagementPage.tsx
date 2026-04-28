@@ -148,17 +148,23 @@ export function FarmManagementPage() {
                 {/* Layer Mode: Quick Input Cards */}
                 {isLayer && <FarmInputCards onCardClick={handleQuickAction} />}
 
-                {/* Broiler Mode: Quick hint to switch to Batch tab for batch actions */}
+                {/* Broiler Mode: Mortality + Finance entries (egg/feed live in Batch tab) */}
                 {isBroiler && (
-                  <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                    <CardContent className="p-3">
-                      <p className="text-xs text-muted-foreground">
-                        {language === 'bn'
-                          ? '💡 ব্যাচ, ওজন বা খাদ্য এন্ট্রির জন্য উপরের "🐔 ব্যাচ" ট্যাব দেখুন'
-                          : '💡 For batch, weight or feed entry, see the "🐔 Batch" tab above'}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <>
+                    <FarmInputCards 
+                      onCardClick={handleQuickAction} 
+                      show={['mortality', 'finance']}
+                    />
+                    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                      <CardContent className="p-3">
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn'
+                            ? '💡 ব্যাচ, ওজন বা খাদ্য এন্ট্রির জন্য উপরের "🐔 ব্যাচ" ট্যাব দেখুন'
+                            : '💡 For batch, weight or feed entry, see the "🐔 Batch" tab above'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </>
                 )}
 
                 {/* Schedule Quick Access */}
@@ -234,6 +240,22 @@ export function FarmManagementPage() {
                         </div>
                       </CardContent>
                     </Card>
+                  </>
+                )}
+
+                {/* Broiler Mode: Show batch overview as summary */}
+                {isBroiler && (
+                  <>
+                    <BroilerDashboardWidget
+                      onBatchClick={() => handleBroilerAction('batch')}
+                      onWeightClick={() => handleBroilerAction('weight')}
+                      onFeedClick={() => handleBroilerAction('broiler-feed')}
+                    />
+                    <p className="text-xs text-center text-muted-foreground">
+                      {language === 'bn' 
+                        ? '📊 FCR, ওজন বৃদ্ধি ও খরচের বিস্তারিত উপরের কার্ডে দেখুন' 
+                        : '📊 See FCR, weight gain & cost details in the card above'}
+                    </p>
                   </>
                 )}
               </div>
