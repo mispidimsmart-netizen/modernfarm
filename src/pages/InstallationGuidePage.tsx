@@ -1169,8 +1169,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
         {/* LDR Hardware Status — large, farmer-friendly */}
         <LDRStatusBanner />
 
-        {/* LDR Installation Guide (collapsible) */}
-        <LDRInstallationGuide />
+        {/* LDR Installation Guide moved into the Wiring tab below */}
 
         {/* Farm Type Info Banner */}
         <Card className="border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5">
@@ -3223,6 +3222,22 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                     </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 🔆 LDR (আলো সেন্সর) ইনস্টলেশন গাইড */}
+            <Card className="border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Lightbulb className="h-5 w-5 text-amber-500" />
+                  🔆 LDR আলো সেন্সর ইনস্টলেশন
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  ঐচ্ছিক — শুধু স্মার্ট লাইটিং অটোমেশন চালু করতে চাইলে যোগ করুন
+                </p>
+              </CardHeader>
+              <CardContent>
+                <LDRInstallationGuide />
               </CardContent>
             </Card>
 
