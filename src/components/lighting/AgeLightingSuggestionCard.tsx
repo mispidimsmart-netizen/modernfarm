@@ -26,7 +26,7 @@ export function AgeLightingSuggestionCard() {
     deviation: { bn: 'বর্তমান থেকে পার্থক্য', en: 'Deviation from current' },
   };
 
-  if (!suggestion || !flockInfo) {
+  if (!suggestion || !hasValue) {
     return (
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
@@ -72,7 +72,7 @@ export function AgeLightingSuggestionCard() {
         <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary">
-              {flockInfo.age_weeks}
+              {ageWeeks}
             </div>
             <div className="text-xs text-muted-foreground">
               {t.weeks[language]}
