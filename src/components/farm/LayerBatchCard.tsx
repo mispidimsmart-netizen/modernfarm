@@ -343,10 +343,21 @@ export function LayerBatchCard() {
 
             <div className="space-y-1.5">
               <Label>{t.breed[language]}</Label>
-              <Input
+              <Select
                 value={newForm.breed}
-                onChange={(e) => setNewForm((p) => ({ ...p, breed: e.target.value }))}
-              />
+                onValueChange={(v) => setNewForm((p) => ({ ...p, breed: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LAYER_BREEDS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
