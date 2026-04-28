@@ -52,8 +52,7 @@ import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
-import { LightingCurveCard } from '@/components/lighting/LightingCurveCard';
-import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
+import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
 
 // Farmer-Friendly Assistant Components
 import { 
@@ -163,12 +162,9 @@ export function Dashboard() {
           <CoreMetricsRow />
         </div>
 
-        {/* ============ 💡 LIGHTING (curve + LDR) ============ */}
+        {/* ============ 💡 LIGHT STATUS (single compact panel) ============ */}
         <div className="mb-3">
-          <LightingCurveCard />
-        </div>
-        <div className="mb-3">
-          <LDRStatusBanner />
+          <LightStatusPanel />
         </div>
 
         {/* ============ LIGHT SENSOR (only if LDR installed) ============ */}
