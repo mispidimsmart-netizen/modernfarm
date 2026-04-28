@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  FileText, Bell, Calendar, 
-  BarChart3, Clock, ScrollText
+  FileText, Bell, 
+  BarChart3, ScrollText, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
+import { ReportsAnalyticsView } from '@/components/reports/ReportsAnalyticsView';
 
 export function ReportsDataTab() {
   const { language } = useAuth();
@@ -54,7 +55,20 @@ export function ReportsDataTab() {
         </p>
       </div>
 
-      {/* NEW: Sensor ↔ Device ↔ Impact correlation + full Excel export */}
+      {/* Embedded Reports Analytics (formerly /reports page): Overview, Performance, Costs */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            {language === 'bn' ? 'বিশ্লেষণ ও ট্রেন্ড' : 'Analytics & Trends'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReportsAnalyticsView />
+        </CardContent>
+      </Card>
+
+      {/* Sensor ↔ Device ↔ Impact correlation + full Excel export */}
       <SensorDeviceImpactReport />
 
       {/* Notification Settings */}
@@ -156,19 +170,6 @@ export function ReportsDataTab() {
           <Button 
             variant="outline" 
             className="w-full justify-start h-12"
-            onClick={() => window.location.href = '/reports'}
-          >
-            <BarChart3 className="mr-3 h-5 w-5 text-primary" />
-            <div className="text-left">
-              <p className="font-medium">{language === 'bn' ? 'রিপোর্ট দেখুন' : 'View Reports'}</p>
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'বিস্তারিত বিশ্লেষণ' : 'Detailed analytics'}
-              </p>
-            </div>
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full justify-start h-12 mt-2"
             onClick={() => window.location.href = '/audit-log'}
           >
             <ScrollText className="mr-3 h-5 w-5 text-primary" />
