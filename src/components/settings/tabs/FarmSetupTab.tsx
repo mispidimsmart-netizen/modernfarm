@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useAuth } from '@/context/AuthContext';
-import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
+import { useProfile, useUpdateProfile, useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
 import { useSheds, useSelectedShed, useUpdateShed } from '@/hooks/useSheds';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -170,6 +170,8 @@ export function FarmSetupTab() {
   const updateProfile = useUpdateProfile();
   const { data: sheds } = useSheds();
   const updateShed = useUpdateShed();
+  const { data: farmSettings } = useFarmSettings();
+  const updateFarmSettings = useUpdateFarmSettings();
   
   let selectedShedId: string | null = null;
   try {
@@ -200,6 +202,21 @@ export function FarmSetupTab() {
   const [profileOverride, setProfileOverride] = useState<ProfileType | null>(null);
   const [isProfileManual, setIsProfileManual] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Hydrate state from DB once farm_settings load
+  useEffect(() => {
+    if (!farmSettings) return;
+    const s: any = farmSettings;
+    if (s.farm_size) setFarmSize(s.farm_size as FarmSize);
+    if (s.season_override) {
+      setSeasonOverride(s.season_override as Season);
+      setIsSeasonManual(true);
+    }
+    if (s.profile_override) {
+      setProfileOverride(s.profile_override as ProfileType);
+      setIsProfileManual(true);
+    }
+  }, [farmSettings]);
   
   // Pending change tracking for confirmation dialog
   const [pendingChange, setPendingChange] = useState<{
