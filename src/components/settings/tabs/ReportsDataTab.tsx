@@ -2,27 +2,15 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   FileText, Bell, Calendar, 
-  Download, BarChart3, Clock, Loader2, CheckCircle2, ScrollText
+  BarChart3, Clock, ScrollText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
-
-const EXPORT_OPTIONS = [
-  { value: 'all', labelBn: 'সব ডেটা', labelEn: 'All Data' },
-  { value: 'sensor_readings', labelBn: 'সেন্সর রিডিং', labelEn: 'Sensor Readings' },
-  { value: 'egg_production', labelBn: 'ডিম উৎপাদন', labelEn: 'Egg Production' },
-  { value: 'feed_consumption', labelBn: 'খাদ্য খরচ', labelEn: 'Feed Consumption' },
-  { value: 'alerts', labelBn: 'অ্যালার্ট', labelEn: 'Alerts' },
-  { value: 'daily_summary', labelBn: 'দৈনিক সারাংশ', labelEn: 'Daily Summary' },
-  { value: 'broiler_batches', labelBn: 'ব্রয়লার ব্যাচ', labelEn: 'Broiler Batches' },
-];
 
 export function ReportsDataTab() {
   const { language } = useAuth();
@@ -30,9 +18,7 @@ export function ReportsDataTab() {
 
   const [dailyReport, setDailyReport] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(true);
-  const [exportType, setExportType] = useState('all');
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
+
 
   const handleDailyReportChange = (checked: boolean) => {
     setDailyReport(checked);
