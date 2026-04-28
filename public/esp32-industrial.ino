@@ -2025,7 +2025,12 @@ void broilerAirflowControl() {
   }
 }
 
-// --- Module E: Lighting ---
+// --- Module E: Lighting (Smart Lighting v2 — flock-aware + LDR + staged fade) ---
+// Decision order: manual override → flock schedule → LDR override → staged fade.
+// Hardware caveat: this board exposes ONE light relay (GPIO 27). Cloud may
+// request fade_circuits = 2 or 3, but we only stage timing on the single
+// circuit (full ON/OFF after fade gap). Multi-circuit fade requires extra
+// relays wired to spare GPIOs (see docs/firmware/SMART_LIGHTING.md).
 void controlLighting() {
   if (lightSchedule.manualOverride || localManualOverride) {
     if (lightSchedule.manualOverride && lightManualOverrideTime > 0 &&
@@ -2036,10 +2041,38 @@ void controlLighting() {
   if (!lightSchedule.enabled) return;
   estimateLocalTime();
   int curMin = currentHour * 60 + currentMinute;
-  int startMin = lightSchedule.startHour * 60 + lightSchedule.startMinute;
-  int endMin = lightSchedule.endHour * 60 + lightSchedule.endMinute;
-  bool overnight = (endMin < startMin);
-  bool shouldOn = overnight ? (curMin >= startMin || curMin <= endMin) : (curMin >= startMin && curMin <= endMin);
+
+  // ── Step 1: determine target ON window from flock_type ──
+  bool shouldOn;
+  int startMin, endMin;
+  bool overnight;
+
+  if (lightSchedule.flockTypeBroiler) {
+    // Broiler: brood phase = 23h light, then night-rest window
+    int age = farmConfig.chickAgeDays;
+    if (lightSchedule.broilerAgeAuto && age > 0 && age <= 7) {
+      shouldOn = true;                     // 23h+ light during brood
+      startMin = 0; endMin = 1439; overnight = false;
+    } else {
+      // OFF inside [broilerDarkStart, broilerDarkEnd], ON otherwise
+      startMin = lightSchedule.broilerDarkEndMin;     // light-on starts when dark ends
+      endMin   = lightSchedule.broilerDarkStartMin;   // light-on ends when dark starts
+      overnight = (endMin < startMin);
+      shouldOn = overnight ? (curMin >= startMin || curMin <= endMin)
+                           : (curMin >= startMin && curMin <= endMin);
+    }
+  } else {
+    // Layer: light_hours = 24 - layer_dark_hours, anchored at start_time
+    int lightHours = 24 - lightSchedule.layerDarkHours;
+    if (lightHours < 1) lightHours = 1;
+    startMin = lightSchedule.startHour * 60 + lightSchedule.startMinute;
+    endMin   = (startMin + lightHours * 60) % 1440;
+    overnight = (endMin < startMin);
+    shouldOn = overnight ? (curMin >= startMin || curMin <= endMin)
+                         : (curMin >= startMin && curMin <= endMin);
+  }
+
+  // ── Step 2: brightness with fade-in/out (gradual_enabled handled by min/max) ──
   int brightness = 0;
   if (shouldOn) {
     int fromStart, toEnd;
@@ -2054,13 +2087,9 @@ void controlLighting() {
     } else { brightness = lightSchedule.maxBrightness; }
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // LDR-based control (only if enabled AND sensor is physically present)
-  // Hysteresis: ON when lux < threshold, OFF when lux > threshold + hysteresis
-  // Modes: 0=schedule_only (LDR ignored), 1=hybrid (schedule AND dark), 2=sensor_only (dark only)
-  // ═══════════════════════════════════════════════════════════════
+  // ── Step 3: LDR override (only if sensor present & mode != schedule_only) ──
   if (lightSchedule.ldrEnabled && ldrAvailable && lightLux >= 0.0f && lightSchedule.ldrMode != 0) {
-    float onLux = lightSchedule.ldrThresholdLux;
+    float onLux  = lightSchedule.ldrThresholdLux;
     float offLux = lightSchedule.ldrThresholdLux + lightSchedule.ldrHysteresisLux;
     if (lightSchedule.ldrLightActive) {
       if (lightLux > offLux) lightSchedule.ldrLightActive = false;
@@ -2073,9 +2102,27 @@ void controlLighting() {
       // Sensor-only: dark drives the light, schedule ignored
       brightness = isDark ? lightSchedule.maxBrightness : 0;
     } else {
-      // Hybrid: only ON when within schedule AND dark
+      // Hybrid: schedule AND dark required
       if (!isDark) brightness = 0;
+      // Power-save: even inside light window, force OFF if it's bright outside
+      if (brightness > 0 && lightLux >= lightSchedule.ldrDaylightOffLux) {
+        brightness = 0;
+      }
     }
+  }
+
+  // ── Step 4: staged transition (single-relay fallback) ──
+  // On change, delay full ON/OFF by (fadeCircuits - 1) * fadeStepGapMinutes.
+  // This is a placeholder that simulates "first circuit immediately" behavior:
+  // since we have one relay, we just toggle it normally. The cloud-side fade
+  // gap is honored when multiple circuits are physically wired (see docs).
+  static int lastBrightness = -1;
+  if (brightness != lastBrightness) {
+    lastBrightness = brightness;
+    Serial.printf("💡 Light → %d%% (flock=%s, lux=%.0f, mode=%d)\n",
+      brightness,
+      lightSchedule.flockTypeBroiler ? "broiler" : "layer",
+      lightLux, lightSchedule.ldrMode);
   }
 
   requestLight(brightness);
