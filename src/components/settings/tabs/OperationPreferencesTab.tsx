@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useWeatherCache } from '@/hooks/useWeather';
-import { useAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
+import { useRawAdvancedAutomationSettings, useUpdateAdvancedAutomationSettings } from '@/hooks/useAdvancedAutomation';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,7 +105,7 @@ export function OperationPreferencesTab() {
   const { data: weatherData } = useWeatherCache();
   const { isBroiler, isLayer } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
-  const { data: advSettings } = useAdvancedAutomationSettings();
+  const { data: advSettings } = useRawAdvancedAutomationSettings();
   const updateAdvSettings = useUpdateAdvancedAutomationSettings();
   const { toast } = useToast();
 
@@ -297,7 +297,7 @@ export function OperationPreferencesTab() {
         <p className="text-sm text-muted-foreground">
           {isManualMode
             ? (language === 'bn' ? '⚠️ ম্যানুয়াল মোডে এই সেটিংস নিষ্ক্রিয়' : '⚠️ These settings are inactive in Manual mode')
-            : (language === 'bn' ? 'ডিফল্টে অটো, প্রয়োজনে ম্যানুয়াল অ্যাডজাস্ট করুন' : 'Auto by default, manually adjust if needed')
+            : (language === 'bn' ? '✅ পরিবর্তন সঙ্গে সঙ্গে অটোমেশনে কার্যকর হয়' : '✅ Changes apply to automation immediately')
           }
         </p>
       </div>
