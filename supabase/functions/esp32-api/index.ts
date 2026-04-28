@@ -3583,6 +3583,10 @@ async function handleFailsafeSync(
         min_brightness: lightingSchedule.min_brightness,
         max_brightness: lightingSchedule.max_brightness,
         manual_override: lightingSchedule.manual_override,
+        ldr_enabled: (lightingSchedule as any).ldr_enabled ?? false,
+        ldr_threshold_lux: (lightingSchedule as any).ldr_threshold_lux ?? 50,
+        ldr_hysteresis_lux: (lightingSchedule as any).ldr_hysteresis_lux ?? 20,
+        ldr_mode: (lightingSchedule as any).ldr_mode ?? 'hybrid',
       } : null,
       
       // Automation rules for local execution
@@ -3806,6 +3810,10 @@ async function getSystemStatus(
         min_brightness: lightingSchedule.min_brightness,
         max_brightness: lightingSchedule.max_brightness,
         manual_override: lightingSchedule.manual_override,
+        ldr_enabled: (lightingSchedule as any).ldr_enabled ?? false,
+        ldr_threshold_lux: (lightingSchedule as any).ldr_threshold_lux ?? 50,
+        ldr_hysteresis_lux: (lightingSchedule as any).ldr_hysteresis_lux ?? 20,
+        ldr_mode: (lightingSchedule as any).ldr_mode ?? 'hybrid',
       } : null,
       
       // Pending commands for execution
