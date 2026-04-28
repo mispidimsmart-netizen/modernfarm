@@ -311,6 +311,12 @@ export function AuditLogPage() {
             )}
           </div>
         </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="commands" className="mt-4">
+            <DeviceCommandLogTab />
+          </TabsContent>
+        </Tabs>
       </main>
 
       <BottomNav />
