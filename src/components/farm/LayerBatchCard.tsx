@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   History,
   ChevronDown,
+  Pencil,
 } from 'lucide-react';
+import { EditCompletedBatchDialog } from '@/components/farm/EditCompletedBatchDialog';
 import { useAuth } from '@/context/AuthContext';
 import {
   useActiveLayerBatch,
@@ -451,64 +453,88 @@ function Stat({
 function PastBatchRow({ batch, language }: { batch: LayerBatch; language: 'bn' | 'en' }) {
   const { data: summary } = useLayerBatchSummary(batch.id);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <button className="w-full rounded-lg border bg-muted/30 p-2.5 text-left hover:bg-muted/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">
-                {batch.batch_name_bn || batch.batch_name}
+    <>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <div className="flex items-stretch gap-1">
+          <CollapsibleTrigger asChild>
+            <button className="flex-1 rounded-lg border bg-muted/30 p-2.5 text-left hover:bg-muted/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">
+                    {batch.batch_name_bn || batch.batch_name}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatDateBn(batch.start_date)} → {formatDateBn(batch.actual_end_date)}
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 text-muted-foreground transition-transform ${
+                    open ? 'rotate-180' : ''
+                  }`}
+                />
               </div>
-              <div className="text-xs text-muted-foreground">
-                {formatDateBn(batch.start_date)} → {formatDateBn(batch.actual_end_date)}
-              </div>
-            </div>
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground transition-transform ${
-                open ? 'rotate-180' : ''
-              }`}
-            />
-          </div>
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="mt-1 grid grid-cols-3 gap-1.5 px-2">
-        <MiniStat
-          icon={<Egg className="h-3 w-3" />}
-          label={language === 'bn' ? 'মোট ডিম' : 'Eggs'}
-          value={summary?.total_eggs?.toLocaleString() || '—'}
-        />
-        <MiniStat
-          icon={<TrendingUp className="h-3 w-3" />}
-          label={language === 'bn' ? 'পিক %' : 'Peak %'}
-          value={summary ? `${summary.peak_production_percent}%` : '—'}
-        />
-        <MiniStat
-          icon={<Skull className="h-3 w-3" />}
-          label={language === 'bn' ? 'মৃত্যু %' : 'Mort %'}
-          value={summary ? `${summary.mortality_percent}%` : '—'}
-        />
-        <MiniStat
-          icon={<Wheat className="h-3 w-3" />}
-          label={language === 'bn' ? 'খাদ্য' : 'Feed'}
-          value={summary ? `${summary.total_feed_kg} kg` : '—'}
-        />
-        <MiniStat
-          icon={<TrendingUp className="h-3 w-3" />}
-          label="FCR"
-          value={summary?.fcr?.toString() || '—'}
-        />
-        <MiniStat
-          icon={<Calendar className="h-3 w-3" />}
-          label={language === 'bn' ? 'দিন' : 'Days'}
-          value={summary?.duration_days?.toString() || '—'}
-        />
-      </CollapsibleContent>
-      <CollapsibleContent className="mt-2 px-2">
-        <BatchTrendChart batch={batch} language={language} />
-      </CollapsibleContent>
-    </Collapsible>
+            </button>
+          </CollapsibleTrigger>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-auto w-9 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditOpen(true);
+            }}
+            title={language === 'bn' ? 'সম্পাদনা' : 'Edit'}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <CollapsibleContent className="mt-1 grid grid-cols-3 gap-1.5 px-2">
+          <MiniStat
+            icon={<Egg className="h-3 w-3" />}
+            label={language === 'bn' ? 'মোট ডিম' : 'Eggs'}
+            value={summary?.total_eggs?.toLocaleString() || '—'}
+          />
+          <MiniStat
+            icon={<TrendingUp className="h-3 w-3" />}
+            label={language === 'bn' ? 'পিক %' : 'Peak %'}
+            value={summary ? `${summary.peak_production_percent}%` : '—'}
+          />
+          <MiniStat
+            icon={<Skull className="h-3 w-3" />}
+            label={language === 'bn' ? 'মৃত্যু %' : 'Mort %'}
+            value={summary ? `${summary.mortality_percent}%` : '—'}
+          />
+          <MiniStat
+            icon={<Wheat className="h-3 w-3" />}
+            label={language === 'bn' ? 'খাদ্য' : 'Feed'}
+            value={summary ? `${summary.total_feed_kg} kg` : '—'}
+          />
+          <MiniStat
+            icon={<TrendingUp className="h-3 w-3" />}
+            label="FCR"
+            value={summary?.fcr?.toString() || '—'}
+          />
+          <MiniStat
+            icon={<Calendar className="h-3 w-3" />}
+            label={language === 'bn' ? 'দিন' : 'Days'}
+            value={summary?.duration_days?.toString() || '—'}
+          />
+        </CollapsibleContent>
+        <CollapsibleContent className="mt-2 px-2">
+          <BatchTrendChart batch={batch} language={language} />
+        </CollapsibleContent>
+      </Collapsible>
+
+      <EditCompletedBatchDialog
+        batch={batch}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
   );
 }
 
