@@ -3587,6 +3587,15 @@ async function handleFailsafeSync(
         ldr_threshold_lux: (lightingSchedule as any).ldr_threshold_lux ?? 50,
         ldr_hysteresis_lux: (lightingSchedule as any).ldr_hysteresis_lux ?? 20,
         ldr_mode: (lightingSchedule as any).ldr_mode ?? 'hybrid',
+        // Smart Lighting v2
+        ldr_daylight_off_lux: (lightingSchedule as any).ldr_daylight_off_lux ?? 300,
+        fade_circuits: (lightingSchedule as any).fade_circuits ?? 2,
+        fade_step_gap_minutes: (lightingSchedule as any).fade_step_gap_minutes ?? 5,
+        flock_type: (lightingSchedule as any).flock_type ?? 'layer',
+        layer_dark_hours: (lightingSchedule as any).layer_dark_hours ?? 9,
+        broiler_dark_start: (lightingSchedule as any).broiler_dark_start ?? '23:00:00',
+        broiler_dark_end: (lightingSchedule as any).broiler_dark_end ?? '05:00:00',
+        broiler_age_auto: (lightingSchedule as any).broiler_age_auto ?? true,
       } : null,
       
       // Automation rules for local execution
