@@ -427,21 +427,30 @@ export function useUpdateFeedConsumption() {
 // Mortality Hooks
 export function useMortalityRecords(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
   
   return useQuery({
-    queryKey: ['mortality-records', user?.id, days],
+    queryKey: ['mortality-records', user?.id, selectedFarmId, isLayer ? 'layer' : isBroiler ? 'broiler' : 'none', days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
       const { data, error } = await supabase
         .from('mortality_records')
-        .select('*')
+        .select('*, sheds:shed_id(farm_id, farm_type)')
         .gte('record_date', startDate.toISOString().split('T')[0])
         .order('record_date', { ascending: false });
       
       if (error) throw error;
-      return data as MortalityRecord[];
+      const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
+      return (data ?? []).filter((record: any) => {
+        const shed = record.sheds;
+        if (!shed) return !selectedFarmId;
+        if (selectedFarmId && shed.farm_id !== selectedFarmId) return false;
+        if (activeMode && shed.farm_type && shed.farm_type !== activeMode && shed.farm_type !== 'both') return false;
+        return true;
+      }) as MortalityRecord[];
     },
     enabled: !!user,
   });
@@ -451,6 +460,7 @@ export function useAddMortalityRecord() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { selectedShedId } = useSelectedShed();
 
   return useMutation({
     mutationFn: async (data: Omit<MortalityRecord, 'id' | 'user_id' | 'created_at'>) => {
@@ -458,6 +468,7 @@ export function useAddMortalityRecord() {
         .from('mortality_records')
         .insert({
           ...data,
+          shed_id: (data as any).shed_id ?? selectedShedId,
           user_id: user!.id,
         });
       
