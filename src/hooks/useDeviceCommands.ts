@@ -93,7 +93,14 @@ export function useSendDeviceCommand() {
           .from('device_status')
           .update(desiredUpdate)
           .eq('user_id', user.id);
-        
+
+        // Multi-farm safety: scope update to the active farm only.
+        // Without this filter, a user with multiple farms would have
+        // desired_* columns overwritten across ALL their farms.
+        if (selectedFarmId) {
+          query = query.eq('farm_id', selectedFarmId);
+        }
+
         if (shedId) {
           query = query.eq('shed_id', shedId);
         }
