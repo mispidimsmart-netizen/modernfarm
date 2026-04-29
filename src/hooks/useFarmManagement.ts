@@ -596,3 +596,103 @@ export function useFarmSummary() {
     flockInfo,
   };
 }
+
+// ─── Delete & Update mutation hooks (used by RecentEntryHistory edit/delete UI) ───
+
+function makeDeleteHook<T extends 'egg_production' | 'expenses' | 'mortality_records'>(
+  table: T,
+  invalidateKeys: string[],
+  successMsg: string,
+) {
+  return () => {
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    return useMutation({
+      mutationFn: async (id: string) => {
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) throw error;
+      },
+      onSuccess: () => {
+        invalidateKeys.forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+        toast({ title: successMsg });
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'ডিলিট করতে সমস্যা হয়েছে',
+          description: error?.message,
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+}
+
+export const useDeleteEggProduction = makeDeleteHook(
+  'egg_production',
+  ['egg-production', 'today-summary', 'daily-summary'],
+  'ডিম এন্ট্রি মুছে ফেলা হয়েছে',
+);
+
+export const useDeleteExpense = makeDeleteHook(
+  'expenses',
+  ['expenses', 'today-summary', 'daily-summary'],
+  'খরচ এন্ট্রি মুছে ফেলা হয়েছে',
+);
+
+export const useDeleteMortalityRecord = makeDeleteHook(
+  'mortality_records',
+  ['mortality-records', 'today-summary', 'daily-summary'],
+  'মৃত্যু এন্ট্রি মুছে ফেলা হয়েছে',
+);
+
+// Update hooks (partial updates by id)
+export function useUpdateEggProduction() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string } & Partial<EggProduction>) => {
+      const { error } = await supabase.from('egg_production').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['egg-production'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast({ title: 'ডিম এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useUpdateExpense() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; amount?: number; description?: string | null; expense_date?: string; category?: string }) => {
+      const { error } = await supabase.from('expenses').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast({ title: 'খরচ এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useUpdateMortalityRecord() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; count?: number; cause?: string; record_date?: string; notes?: string | null }) => {
+      const { error } = await supabase.from('mortality_records').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mortality-records'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast({ title: 'মৃত্যু এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
