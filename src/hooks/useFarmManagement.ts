@@ -14,6 +14,7 @@ export interface EggProduction {
   id: string;
   user_id: string;
   farm_id?: string | null;
+  shed_id?: string | null;
   production_date: string;
   total_eggs: number;
   grade_a: number;
