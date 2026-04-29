@@ -596,3 +596,111 @@ export function useFarmSummary() {
     flockInfo,
   };
 }
+
+// ─── Delete & Update mutation hooks (used by RecentEntryHistory edit/delete UI) ───
+
+export function useDeleteEggProduction() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('egg_production').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['egg-production', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'ডিম এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useDeleteExpense() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['expenses', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'খরচ এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useDeleteMortalityRecord() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('mortality_records').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['mortality-records', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'মৃত্যু এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+// Update hooks (partial updates by id)
+export function useUpdateEggProduction() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string } & Partial<EggProduction>) => {
+      const { error } = await supabase.from('egg_production').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['egg-production'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast({ title: 'ডিম এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useUpdateExpense() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; amount?: number; description?: string | null; expense_date?: string; category?: string }) => {
+      const { error } = await supabase.from('expenses').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast({ title: 'খরচ এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useUpdateMortalityRecord() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; count?: number; cause?: string; record_date?: string; notes?: string | null }) => {
+      const { error } = await supabase.from('mortality_records').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mortality-records'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      toast({ title: 'মৃত্যু এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
