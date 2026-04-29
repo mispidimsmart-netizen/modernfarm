@@ -11,7 +11,7 @@ import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EggProductionSheet } from '@/components/farm/EggProductionSheet';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
