@@ -111,6 +111,7 @@ const ProtectedRoute = memo(function ProtectedRoute({ children }: { children: Re
 // regardless of whether the edit dialog is currently open.
 function GlobalBatchEditQueue() {
   useBatchEditQueue();
+  useFarmDataRealtime();
   return null;
 }
 
