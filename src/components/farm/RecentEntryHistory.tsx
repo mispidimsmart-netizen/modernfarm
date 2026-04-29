@@ -34,6 +34,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
 type EntryType = 'egg' | 'mortality' | 'expense';
 
@@ -56,6 +60,15 @@ export function RecentEntryHistory() {
   const { data: eggs } = useEggProduction(7);
   const { data: expenses } = useExpenses(7);
   const { data: mortality } = useMortalityRecords(7);
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId = isLayer
+    ? activeLayerBatch?.id ?? null
+    : isBroiler
+      ? activeBroilerBatch?.id ?? null
+      : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
 
   const deleteEgg = useDeleteEggProduction();
   const deleteExp = useDeleteExpense();
@@ -70,11 +83,14 @@ export function RecentEntryHistory() {
 
   const today = new Date().toISOString().split('T')[0];
   const hasTodayEggs = eggs?.some((e) => e.production_date === today);
-  const missingEntries = !hasTodayEggs;
+  const missingEntries = isLayer && !hasTodayEggs;
+  const scopedExpenses = (expenses ?? []).filter((e) =>
+    matchesActiveFinanceScope(e, 'expense', financeScope),
+  );
 
   // Build recent entries list (last 5)
   const recentEntries: RecentEntry[] = [
-    ...(eggs?.slice(0, 3).map((e) => ({
+    ...((isLayer ? eggs : [])?.slice(0, 3).map((e) => ({
       id: e.id,
       type: 'egg' as const,
       date: e.production_date,
@@ -88,7 +104,7 @@ export function RecentEntryHistory() {
       label: language === 'bn' ? `💀 মৃত্যু: ${m.count}টি` : `💀 Deaths: ${m.count}`,
       raw: { count: m.count },
     })) ?? []),
-    ...(expenses?.slice(0, 2).map((e) => ({
+    ...(scopedExpenses.slice(0, 2).map((e) => ({
       id: e.id,
       type: 'expense' as const,
       date: e.expense_date,
@@ -165,7 +181,7 @@ export function RecentEntryHistory() {
         </Card>
       )}
 
-      {!missingEntries && (
+      {isLayer && !missingEntries && (
         <Card className="border-emerald-500/30 bg-emerald-500/5">
           <CardContent className="p-3 flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 text-emerald-500" />

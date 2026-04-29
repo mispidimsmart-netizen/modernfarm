@@ -7,11 +7,14 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
+import { useSelectedShed, useSheds } from '@/hooks/useSheds';
 
 // Types
 export interface EggProduction {
   id: string;
   user_id: string;
+  farm_id?: string | null;
+  shed_id?: string | null;
   production_date: string;
   total_eggs: number;
   grade_a: number;
@@ -47,6 +50,7 @@ export interface FeedConsumption {
 export interface MortalityRecord {
   id: string;
   user_id: string;
+  shed_id?: string | null;
   record_date: string;
   count: number;
   cause: string;
@@ -95,23 +99,31 @@ export interface FlockInfo {
 // Egg Production Hooks
 export function useEggProduction(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
+  const { isLayer } = useFarmType();
+  const { data: sheds } = useSheds();
   
   return useQuery({
-    queryKey: ['egg-production', user?.id, days],
+    queryKey: ['egg-production', user?.id, selectedFarmId, isLayer ? 'layer' : 'not-layer', days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      const { data, error } = await supabase
+      let q = supabase
         .from('egg_production')
         .select('*')
         .gte('production_date', startDate.toISOString().split('T')[0])
         .order('production_date', { ascending: false });
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+
+      const { data, error } = await q;
       
       if (error) throw error;
-      return data as EggProduction[];
+      const layerShedIds = new Set((sheds ?? []).filter((s) => s.farm_type === 'layer').map((s) => s.id));
+      const rows = (data ?? []) as EggProduction[];
+      return isLayer ? rows.filter((row) => !row.shed_id || layerShedIds.has(row.shed_id)) : [];
     },
-    enabled: !!user,
+    enabled: !!user && (!isLayer || !!sheds),
   });
 }
 
@@ -419,21 +431,30 @@ export function useUpdateFeedConsumption() {
 // Mortality Hooks
 export function useMortalityRecords(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
   
   return useQuery({
-    queryKey: ['mortality-records', user?.id, days],
+    queryKey: ['mortality-records', user?.id, selectedFarmId, isLayer ? 'layer' : isBroiler ? 'broiler' : 'none', days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
       const { data, error } = await supabase
         .from('mortality_records')
-        .select('*')
+        .select('*, sheds:shed_id(farm_id, farm_type)')
         .gte('record_date', startDate.toISOString().split('T')[0])
         .order('record_date', { ascending: false });
       
       if (error) throw error;
-      return data as MortalityRecord[];
+      const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
+      return (data ?? []).filter((record) => {
+        const shed = record.sheds;
+        if (!shed) return !selectedFarmId;
+        if (selectedFarmId && shed.farm_id !== selectedFarmId) return false;
+        if (activeMode && shed.farm_type && shed.farm_type !== activeMode && shed.farm_type !== 'both') return false;
+        return true;
+      }) as MortalityRecord[];
     },
     enabled: !!user,
   });
@@ -443,13 +464,16 @@ export function useAddMortalityRecord() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { selectedShedId } = useSelectedShed();
 
   return useMutation({
     mutationFn: async (data: Omit<MortalityRecord, 'id' | 'user_id' | 'created_at'>) => {
+      if (!selectedShedId && !data.shed_id) throw new Error('কোনো শেড নির্বাচন করা নেই');
       const { error } = await supabase
         .from('mortality_records')
         .insert({
           ...data,
+          shed_id: data.shed_id ?? selectedShedId,
           user_id: user!.id,
         });
       
