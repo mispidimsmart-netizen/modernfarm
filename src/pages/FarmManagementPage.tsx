@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info, ChevronDown } from 'lucide-react';
+import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info, ChevronDown, Plus, PackageOpen } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { Card, CardContent } from '@/components/ui/card';
