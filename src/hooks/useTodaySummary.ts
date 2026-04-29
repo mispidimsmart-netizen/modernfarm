@@ -138,6 +138,8 @@ export function useTodaySummary() {
       const filteredMortality = mortalityData.filter((m: any) => {
         const recordFarmId = m.farm_id ?? m.sheds?.farm_id ?? null;
         const recordMode = m.farm_mode ?? m.sheds?.farm_type ?? null;
+        if (activeBatchId && m.batch_id && m.batch_id !== activeBatchId) return false;
+        if (activeMode === 'broiler' && !m.batch_id && !recordMode) return false;
         if (selectedFarmId) {
           if (recordFarmId && recordFarmId !== selectedFarmId) return false;
           if (!recordFarmId) return false;
@@ -149,17 +151,35 @@ export function useTodaySummary() {
 
       // Eggs only make sense in layer mode
       const showEggs = isLayer;
+      const todayEggTotals = eggRows.reduce(
+        (acc, row) => ({
+          total: acc.total + Number(row.total_eggs || 0),
+          gradeA: acc.gradeA + Number(row.grade_a || 0),
+          gradeB: acc.gradeB + Number(row.grade_b || 0),
+          gradeC: acc.gradeC + Number(row.grade_c || 0),
+          broken: acc.broken + Number(row.broken || 0),
+        }),
+        { total: 0, gradeA: 0, gradeB: 0, gradeC: 0, broken: 0 },
+      );
+      const todayBroilerFeedKg = broilerFeedRows.reduce((sum, row) => sum + Number(row.quantity_kg || 0), 0);
+      const todayBroilerWeightGrams = Number(broilerWeightRows[0]?.average_weight_grams || 0);
+      const hasTodayEntry = isLayer
+        ? eggRows.length > 0 || filteredIncome.length > 0 || filteredExpenses.length > 0 || filteredMortality.length > 0
+        : broilerFeedRows.length > 0 || broilerWeightRows.length > 0 || filteredIncome.length > 0 || filteredExpenses.length > 0 || filteredMortality.length > 0;
 
       return {
-        todayEggs: showEggs ? eggs?.total_eggs ?? 0 : 0,
-        todayGradeA: showEggs ? eggs?.grade_a ?? 0 : 0,
-        todayGradeB: showEggs ? eggs?.grade_b ?? 0 : 0,
-        todayGradeC: showEggs ? eggs?.grade_c ?? 0 : 0,
-        todayBroken: showEggs ? eggs?.broken ?? 0 : 0,
+        todayEggs: showEggs ? todayEggTotals.total : 0,
+        todayGradeA: showEggs ? todayEggTotals.gradeA : 0,
+        todayGradeB: showEggs ? todayEggTotals.gradeB : 0,
+        todayGradeC: showEggs ? todayEggTotals.gradeC : 0,
+        todayBroken: showEggs ? todayEggTotals.broken : 0,
+        todayBroilerFeedKg,
+        todayBroilerWeightGrams,
         todayIncome,
         todayExpenses,
         todayProfit: todayIncome - todayExpenses,
         todayMortality,
+        hasTodayEntry,
       };
     },
     enabled: !!user,
