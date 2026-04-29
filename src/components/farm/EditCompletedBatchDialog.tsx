@@ -58,6 +58,9 @@ export function EditCompletedBatchDialog({
   const { isOnline, pendingCount, isSyncing, sync } = useBatchEditQueue();
 
   const [form, setForm] = useState({
+    batch_name_bn: batch.batch_name_bn || batch.batch_name || '',
+    breed: batch.breed || 'Hy-Line Brown',
+    age_at_start_weeks: batch.age_at_start_weeks ?? 0,
     start_date: batch.start_date,
     actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
     initial_bird_count: batch.initial_bird_count,
@@ -73,6 +76,9 @@ export function EditCompletedBatchDialog({
   useEffect(() => {
     if (open) {
       setForm({
+        batch_name_bn: batch.batch_name_bn || batch.batch_name || '',
+        breed: batch.breed || 'Hy-Line Brown',
+        age_at_start_weeks: batch.age_at_start_weeks ?? 0,
         start_date: batch.start_date,
         actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
         initial_bird_count: batch.initial_bird_count,
@@ -86,15 +92,18 @@ export function EditCompletedBatchDialog({
   }, [open, batch]);
 
   const t = {
-    title: { bn: 'সমাপ্ত ব্যাচ সম্পাদনা', en: 'Edit Completed Batch' },
+    title: { bn: 'ব্যাচ সম্পাদনা', en: 'Edit Batch' },
     desc: {
-      bn: 'তারিখ বা পাখির সংখ্যা পরিবর্তন করলে FCR, মৃত্যুহার, ও মোট হিসাব স্বয়ংক্রিয়ভাবে পুনঃগণনা হবে।',
-      en: 'Changing dates or bird count will auto-recalculate FCR, mortality, and totals.',
+      bn: 'এখান থেকে যা পরিবর্তন করবেন তা ফার্মের সকল তথ্যে (মোট মুরগি, বয়স, সেটিংস) স্বয়ংক্রিয়ভাবে আপডেট হবে।',
+      en: 'Changes here auto-sync to flock info, age and settings everywhere.',
     },
+    batchName: { bn: 'ব্যাচের নাম', en: 'Batch Name' },
+    breedLabel: { bn: 'জাত', en: 'Breed' },
+    ageStart: { bn: 'শুরুর বয়স (সপ্তাহ)', en: 'Age at Start (weeks)' },
     startDate: { bn: 'শুরুর তারিখ', en: 'Start Date' },
     endDate: { bn: 'শেষের তারিখ', en: 'End Date' },
     initial: { bn: 'প্রাথমিক পাখি', en: 'Initial Birds' },
-    final: { bn: 'চূড়ান্ত পাখি', en: 'Final Birds' },
+    final: { bn: 'বর্তমান পাখি', en: 'Current Birds' },
     chickCost: { bn: 'প্রতি পাখির দাম (৳)', en: 'Cost per Bird (৳)' },
     notes: { bn: 'নোট (ঐচ্ছিক)', en: 'Notes (optional)' },
     save: { bn: 'সংরক্ষণ ও পুনঃগণনা', en: 'Save & Recalculate' },
