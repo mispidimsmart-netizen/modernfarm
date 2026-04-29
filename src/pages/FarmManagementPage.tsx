@@ -51,6 +51,8 @@ export function FarmManagementPage() {
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
   const [summarySectionOpen, setSummarySectionOpen] = useState(true);
   const [analysisSectionOpen, setAnalysisSectionOpen] = useState(true);
+  const [reportRange, setReportRange] = useState<ReportRangeValue>({ days: 30 });
+  const reportDays = Math.max(1, Math.min(reportRange.days, 365));
 
   // Auto-open batch management section when an active batch is detected
   useEffect(() => {
