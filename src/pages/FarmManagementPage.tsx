@@ -339,38 +339,36 @@ export function FarmManagementPage() {
                     <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
-                    {/* Range-aware Income / Expense / Net summary */}
+                    {/* 1. Finance — Income / Expense / Net (most important) */}
                     <FinanceSummaryRange days={reportDays} />
 
-                    {/* Performance Snapshot — environmental conditions & flock health */}
-                    <FarmPerformanceView days={Math.min(reportDays, 30)} />
-
-                    {/* Mortality Trend Chart - Both modes */}
+                    {/* 2. Mortality Trend Chart - Both modes */}
                     <MortalityTrendChart days={reportDays} />
 
-                    {/* Cost Analytics — energy, water, feed cost trends */}
-                    <CostAnalyticsDashboard days={reportDays} />
+                    {/* 3. Performance Snapshot — environmental conditions & flock health */}
+                    <FarmPerformanceView days={Math.min(reportDays, 30)} />
 
-                    {/* Layer Mode: Egg Correlation Analysis */}
-                    {isLayer && (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {language === 'bn'
-                            ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন'
-                            : '🔍 See how temperature, humidity & other factors affect egg production'}
-                        </p>
-                        <EggCorrelationCard days={reportDays} />
-                      </>
-                    )}
+                    {/* 4. Layer Mode: Egg Correlation Analysis */}
+                    {isLayer && <EggCorrelationCard days={reportDays} />}
 
-                    {/* Broiler Mode: FCR & Weight hint */}
-                    {isBroiler && (
-                      <p className="text-xs text-muted-foreground">
-                        {language === 'bn'
-                          ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ মৃত্যুহার চার্টের সাথে দেখুন'
-                          : '🔍 View FCR, weight gain & feed cost analysis alongside mortality trends'}
-                      </p>
-                    )}
+                    {/* 5. Cost Analytics — collapsible (detailed energy/water/feed breakdown) */}
+                    <Collapsible open={costDetailOpen} onOpenChange={setCostDetailOpen}>
+                      <CollapsibleTrigger className="w-full flex items-center gap-2 rounded-xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-3 group">
+                        <BarChart3 className="h-4 w-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0 text-left">
+                          <h3 className="text-sm font-semibold leading-tight">
+                            {language === 'bn' ? 'বিস্তারিত খরচ বিশ্লেষণ' : 'Detailed Cost Analytics'}
+                          </h3>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            {language === 'bn' ? 'বিদ্যুৎ, পানি ও ফিড খরচের ট্রেন্ড' : 'Energy, water & feed cost trends'}
+                          </p>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-4">
+                        <CostAnalyticsDashboard days={reportDays} />
+                      </CollapsibleContent>
+                    </Collapsible>
                   </CollapsibleContent>
                 </Collapsible>
               </div>
