@@ -577,12 +577,12 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('user_id', user_id);
 
-      // Get latest sensor data per shed
+      // ★ FIX #1: read sensor_readings (not sensor_logs which is empty/legacy)
       const { data: sensorData } = await supabase
-        .from('sensor_logs')
-        .select('*')
+        .from('sensor_readings')
+        .select('shed_id, temperature, humidity, ammonia, recorded_at')
         .eq('user_id', user_id)
-        .order('timestamp', { ascending: false })
+        .order('recorded_at', { ascending: false })
         .limit(50);
 
       // Get settings
@@ -590,7 +590,7 @@ Deno.serve(async (req) => {
         .from('farm_settings')
         .select('*')
         .eq('user_id', user_id)
-        .single();
+        .maybeSingle();
 
       // Build status per shed
       const shedStatus = (sheds || []).map(shed => {
