@@ -126,7 +126,7 @@ function LayerCostDashboard({ language, days }: { language: 'en' | 'bn'; days: n
                 {language === 'bn' ? 'প্রতি ডিম খরচ' : 'Cost Per Egg'}
               </h3>
               <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'গত ৩০ দিনের হিসাব' : 'Last 30 days calculation'}
+                {language === 'bn' ? `গত ${days} দিনের হিসাব` : `Last ${days} days calculation`}
               </p>
             </div>
           </div>
