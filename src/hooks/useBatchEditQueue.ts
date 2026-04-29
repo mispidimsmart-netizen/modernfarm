@@ -26,6 +26,12 @@ export interface QueuedBatchEdit {
     current_bird_count: number;
     chick_cost_per_bird?: number;
     notes?: string;
+    // SSOT fields — when synced, the DB trigger recomputes flock_info.age_weeks
+    // from (age_at_start_weeks + weeks_elapsed_since start_date) so the
+    // current age stays correct even after long offline periods.
+    batch_name_bn?: string;
+    breed?: string;
+    age_at_start_weeks?: number;
   };
   queuedAt: string;
   attempts: number;
