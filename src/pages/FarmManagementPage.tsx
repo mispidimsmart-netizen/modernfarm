@@ -29,6 +29,8 @@ import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { DataExportButton } from '@/components/farm/DataExportButton';
+import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
+import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
 // Broiler components
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
@@ -44,8 +46,10 @@ export function FarmManagementPage() {
   const hasActiveBatch = !!(activeLayerBatch || activeBroilerBatch);
 
   const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'medicine' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
-  const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report' | 'analysis'>('batch');
+  const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report'>('batch');
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
+  const [summarySectionOpen, setSummarySectionOpen] = useState(true);
+  const [analysisSectionOpen, setAnalysisSectionOpen] = useState(true);
 
   // Auto-open batch management section when an active batch is detected
   useEffect(() => {
@@ -61,8 +65,12 @@ export function FarmManagementPage() {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
     input: { bn: '✏️ এন্ট্রি', en: '✏️ Entry' },
     batch: { bn: '🐔 ব্যাচ', en: '🐔 Batch' },
-    report: { bn: '📊 সারাংশ', en: '📊 Summary' },
+    report: { bn: '📊 রিপোর্ট', en: '📊 Report' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
+    summarySection: { bn: '📊 আজকের সারাংশ', en: "📊 Today's Summary" },
+    analysisSection: { bn: '📈 ট্রেন্ড ও বিশ্লেষণ', en: '📈 Trends & Analysis' },
+    summarySubtitle: { bn: 'আজকের পরিসংখ্যান ও খরচ', en: "Today's stats & expenses" },
+    analysisSubtitle: { bn: 'পারফরম্যান্স, খরচ ও ট্রেন্ড চার্ট', en: 'Performance, cost & trend charts' },
     todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
     eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
     productionRate: { bn: 'উৎপাদন হার', en: 'Production Rate' },
