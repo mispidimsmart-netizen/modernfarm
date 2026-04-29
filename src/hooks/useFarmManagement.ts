@@ -729,17 +729,13 @@ export function useFarmSummary() {
     : isBroiler
       ? ((activeBroilerBatch as any)?.id ?? null)
       : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
 
   const filteredExpenses = (expenses ?? []).filter((e: any) => {
-    if (e.batch_id) return e.batch_id === activeBatchId;
-    return true;
+    return matchesActiveFinanceScope(e, 'expense', financeScope);
   });
   const filteredIncome = (income ?? []).filter((i: any) => {
-    const cat = (i.category ?? '').toString();
-    if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
-    if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
-    if (i.batch_id) return i.batch_id === activeBatchId;
-    return true;
+    return matchesActiveFinanceScope(i, 'income', financeScope);
   });
 
   const totalEggs = isLayer ? (eggs?.reduce((sum, e) => sum + e.total_eggs, 0) ?? 0) : 0;
