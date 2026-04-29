@@ -599,51 +599,59 @@ export function useFarmSummary() {
 
 // ─── Delete & Update mutation hooks (used by RecentEntryHistory edit/delete UI) ───
 
-function makeDeleteHook<T extends 'egg_production' | 'expenses' | 'mortality_records'>(
-  table: T,
-  invalidateKeys: string[],
-  successMsg: string,
-) {
-  return () => {
-    const queryClient = useQueryClient();
-    const { toast } = useToast();
-    return useMutation({
-      mutationFn: async (id: string) => {
-        const { error } = await supabase.from(table).delete().eq('id', id);
-        if (error) throw error;
-      },
-      onSuccess: () => {
-        invalidateKeys.forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
-        toast({ title: successMsg });
-      },
-      onError: (error: any) => {
-        toast({
-          title: 'ডিলিট করতে সমস্যা হয়েছে',
-          description: error?.message,
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+export function useDeleteEggProduction() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('egg_production').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['egg-production', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'ডিম এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
 }
 
-export const useDeleteEggProduction = makeDeleteHook(
-  'egg_production',
-  ['egg-production', 'today-summary', 'daily-summary'],
-  'ডিম এন্ট্রি মুছে ফেলা হয়েছে',
-);
+export function useDeleteExpense() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['expenses', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'খরচ এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
 
-export const useDeleteExpense = makeDeleteHook(
-  'expenses',
-  ['expenses', 'today-summary', 'daily-summary'],
-  'খরচ এন্ট্রি মুছে ফেলা হয়েছে',
-);
-
-export const useDeleteMortalityRecord = makeDeleteHook(
-  'mortality_records',
-  ['mortality-records', 'today-summary', 'daily-summary'],
-  'মৃত্যু এন্ট্রি মুছে ফেলা হয়েছে',
-);
+export function useDeleteMortalityRecord() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('mortality_records').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['mortality-records', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'মৃত্যু এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
 
 // Update hooks (partial updates by id)
 export function useUpdateEggProduction() {
