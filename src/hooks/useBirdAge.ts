@@ -30,12 +30,16 @@ export function useBirdAge(): UnifiedBirdAge {
   const { isBroiler } = useFarmType();
   const { data: flockInfo, isLoading: flockLoading } = useFlockInfo();
   const { data: activeBatch, isLoading: batchLoading } = useActiveBatch();
+  const { data: layerBatch, isLoading: layerBatchLoading } = useActiveLayerBatch();
+  const today = useDailyTick(); // re-renders on midnight cross / tab refocus
 
   return useMemo<UnifiedBirdAge>(() => {
+    const todayMs = new Date(today).getTime();
+
     if (isBroiler) {
       const startDate = activeBatch?.start_date ?? null;
       const ageDays = startDate
-        ? Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000))
+        ? Math.max(0, Math.floor((todayMs - new Date(startDate).getTime()) / 86_400_000))
         : null;
       return {
         ageDays,
@@ -48,7 +52,24 @@ export function useBirdAge(): UnifiedBirdAge {
       };
     }
 
-    // Layer
+    // Layer — derive live from active batch (start_date + age_at_start_weeks)
+    // so the value re-computes daily without depending on the stored snapshot.
+    if (layerBatch?.start_date) {
+      const startMs = new Date(layerBatch.start_date).getTime();
+      const weeksElapsed = Math.max(0, Math.floor((todayMs - startMs) / (7 * 86_400_000)));
+      const ageWeeks = (layerBatch.age_at_start_weeks ?? 0) + weeksElapsed;
+      return {
+        ageDays: ageWeeks * 7,
+        ageWeeks,
+        source: 'flock_info',
+        sourceLabel: { bn: 'লেয়ার ব্যাচ', en: 'Layer Batch' },
+        startDate: layerBatch.start_date,
+        isLoading: layerBatchLoading,
+        hasValue: true,
+      };
+    }
+
+    // Fallback: stored flock_info.age_weeks (no active batch)
     const ageWeeks = flockInfo?.age_weeks ?? null;
     return {
       ageDays: ageWeeks !== null ? ageWeeks * 7 : null,
@@ -59,7 +80,7 @@ export function useBirdAge(): UnifiedBirdAge {
       isLoading: flockLoading,
       hasValue: ageWeeks !== null,
     };
-  }, [isBroiler, flockInfo, activeBatch, flockLoading, batchLoading]);
+  }, [isBroiler, flockInfo, activeBatch, layerBatch, flockLoading, batchLoading, layerBatchLoading, today]);
 }
 
 /**
