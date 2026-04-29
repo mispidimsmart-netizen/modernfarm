@@ -449,19 +449,23 @@ export function useAddMortalityRecord() {
 // Expense Hooks
 export function useExpenses(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['expenses', user?.id, days],
+    queryKey: ['expenses', user?.id, selectedFarmId, days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      const { data, error } = await supabase
+      let q = supabase
         .from('expenses')
         .select('*')
         .gte('expense_date', startDate.toISOString().split('T')[0])
         .order('expense_date', { ascending: false });
       
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      
+      const { data, error } = await q;
       if (error) throw error;
       return data as Expense[];
     },
@@ -503,19 +507,23 @@ export function useAddExpense() {
 // Income Hooks
 export function useIncome(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['income', user?.id, days],
+    queryKey: ['income', user?.id, selectedFarmId, days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      const { data, error } = await supabase
+      let q = supabase
         .from('income')
         .select('*')
         .gte('income_date', startDate.toISOString().split('T')[0])
         .order('income_date', { ascending: false });
       
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      
+      const { data, error } = await q;
       if (error) throw error;
       return data as Income[];
     },
