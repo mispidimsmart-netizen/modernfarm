@@ -75,12 +75,17 @@ export function FarmManagementPage() {
   };
 
   const handleQuickAction = (action: import('@/components/farm/FarmInputCards').EntryActionKey) => {
-    // Map non-sheet actions to existing sheets where applicable
+    // Medicine → unified Health sheet
     if (action === 'medicine') {
-      // Medicine entry currently lives inside Mortality sheet (cause=disease)
+      setActiveSheet('medicine');
+      return;
+    }
+    // Mortality → unified Health sheet (opens to mortality tab)
+    if (action === 'mortality') {
       setActiveSheet('mortality');
       return;
     }
+    // Feed Stock → FeedManagementSheet (Stock tab)
     if (action === 'feed-stock') {
       setActiveSheet('feed');
       return;
