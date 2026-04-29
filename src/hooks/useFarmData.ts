@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { Database } from '@/integrations/supabase/types';
 
 type FarmSettings = Database['public']['Tables']['farm_settings']['Row'];
@@ -218,19 +219,21 @@ export function useDeleteAutomationRule() {
   });
 }
 
-// Lighting schedule hooks
+// Lighting schedule hooks — farm-scoped to prevent cross-farm overwrites
 export function useLightingSchedule() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['lighting_schedule', user?.id],
+    queryKey: ['lighting_schedule', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      let q = supabase
         .from('lighting_schedule')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      const { data, error } = await q.maybeSingle();
       if (error) throw error;
       return data as LightingSchedule;
     },
@@ -241,14 +244,17 @@ export function useLightingSchedule() {
 export function useUpdateLightingSchedule() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useMutation({
     mutationFn: async (schedule: Partial<LightingSchedule>) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
+      let q = supabase
         .from('lighting_schedule')
         .update(schedule)
         .eq('user_id', user.id);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      const { error } = await q;
       if (error) throw error;
     },
     onSuccess: () => {
