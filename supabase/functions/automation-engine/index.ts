@@ -352,7 +352,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, shed_id, user_id } = await req.json();
+    const { action, shed_id, user_id, farm_id: bodyFarmId } = await req.json();
 
     // ========================================
     // ACTION: run-automation (Per-Shed Automation)
@@ -365,12 +365,25 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get farm settings (or shed-specific overrides)
-      const { data: settings } = await supabase
+      // ★ FIX #2: Resolve farm_id from shed (multi-farm safety).
+      // Without this, settings/device_status from a different farm could be used.
+      let farm_id: string | null = bodyFarmId || null;
+      if (!farm_id && shed_id) {
+        const { data: shedRow } = await supabase
+          .from('sheds')
+          .select('farm_id')
+          .eq('id', shed_id)
+          .maybeSingle();
+        farm_id = shedRow?.farm_id || null;
+      }
+
+      // Get farm settings — scoped by farm_id when available
+      let settingsQuery = supabase
         .from('farm_settings')
         .select('*')
-        .eq('user_id', user_id)
-        .single();
+        .eq('user_id', user_id);
+      if (farm_id) settingsQuery = settingsQuery.eq('farm_id', farm_id);
+      const { data: settings } = await settingsQuery.maybeSingle();
 
       if (!settings) {
         return new Response(
@@ -384,7 +397,7 @@ Deno.serve(async (req) => {
       // Safety invariants (INV-1 to INV-8) remain on ESP32 hardware
       // ========================================
       if (settings.automation_mode === 'MANUAL') {
-        console.log(`⏸️ [MANUAL MODE] Skipping automation for user ${user_id} — manual mode active`);
+        console.log(`⏸️ [MANUAL MODE] Skipping automation for user ${user_id} farm ${farm_id}`);
         return new Response(
           JSON.stringify({
             success: true,
@@ -397,17 +410,16 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get latest sensor data for the shed
+      // ★ FIX #1: Get latest sensor data from sensor_readings (the actual table ESP32 writes to)
       let sensorQuery = supabase
-        .from('sensor_logs')
-        .select('*')
+        .from('sensor_readings')
+        .select('temperature, humidity, ammonia, recorded_at')
         .eq('user_id', user_id)
-        .order('timestamp', { ascending: false })
+        .order('recorded_at', { ascending: false })
         .limit(1);
 
-      if (shed_id) {
-        sensorQuery = sensorQuery.eq('shed_id', shed_id);
-      }
+      if (farm_id) sensorQuery = sensorQuery.eq('farm_id', farm_id);
+      if (shed_id) sensorQuery = sensorQuery.eq('shed_id', shed_id);
 
       const { data: sensorData } = await sensorQuery;
 
@@ -427,10 +439,10 @@ Deno.serve(async (req) => {
       // Run automation rules
       const automationAction = runAutomationRules(
         {
-          temperature: latestSensor.temperature,
-          humidity: latestSensor.humidity,
-          ammonia: latestSensor.ammonia,
-          powerOn: latestSensor.power_status !== 'OFF',
+          temperature: Number(latestSensor.temperature) || 0,
+          humidity: Number(latestSensor.humidity) || 0,
+          ammonia: Number(latestSensor.ammonia) || 0,
+          powerOn: true, // sensor_readings has no power_status; ESP32 reports it via device_status
         },
         {
           temperature_max: settings.temperature_max,
@@ -447,8 +459,8 @@ Deno.serve(async (req) => {
 
       // Calculate HSI for response
       const hsiResult = getHSIResult(
-        latestSensor.temperature,
-        latestSensor.humidity,
+        Number(latestSensor.temperature) || 0,
+        Number(latestSensor.humidity) || 0,
         {
           mild: settings.hsi_mild_threshold,
           moderate: settings.hsi_moderate_threshold,
@@ -457,32 +469,32 @@ Deno.serve(async (req) => {
         }
       );
 
-      // Update device status if not in manual override
-      // Check BOTH manual_override (set by ESP32) AND desired_manual_override (set by app)
-      const { data: deviceStatus } = await supabase
+      // ★ FIX #2 + #3: scope by farm_id AND only write desired_* columns
+      // (Hardware-as-Source-of-Truth — ESP32 owns actual relay state)
+      let dsQuery = supabase
         .from('device_status')
         .select('manual_override, desired_manual_override')
-        .eq('user_id', user_id)
-        .eq('shed_id', shed_id)
-        .single();
+        .eq('user_id', user_id);
+      if (farm_id) dsQuery = dsQuery.eq('farm_id', farm_id);
+      if (shed_id) dsQuery = dsQuery.eq('shed_id', shed_id);
+      const { data: deviceStatus } = await dsQuery.maybeSingle();
 
       const isManualOverride = deviceStatus?.manual_override || deviceStatus?.desired_manual_override;
 
       if (!isManualOverride) {
-        await supabase
+        let updateQuery = supabase
           .from('device_status')
           .update({
-            fan_on: automationAction.fan,
-            fan_speed: automationAction.fanSpeed,
-            alarm_on: automationAction.alarm,
-            // Reset non-automated devices to OFF when automation takes control
-            heater_on: false,
-            fogger_on: false,
-            circulation_fan_on: false,
+            // ★ FIX #3: desired_* only — never overwrite hardware actual state
+            desired_fan_on: automationAction.fan,
+            desired_fan_speed: automationAction.fanSpeed,
+            desired_alarm_on: automationAction.alarm,
             updated_at: new Date().toISOString(),
           })
-          .eq('user_id', user_id)
-          .eq('shed_id', shed_id);
+          .eq('user_id', user_id);
+        if (farm_id) updateQuery = updateQuery.eq('farm_id', farm_id);
+        if (shed_id) updateQuery = updateQuery.eq('shed_id', shed_id);
+        await updateQuery;
       }
 
       // Create alert if needed
