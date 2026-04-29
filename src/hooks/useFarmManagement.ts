@@ -703,15 +703,9 @@ export function useFarmSummary() {
   const { data: flockInfo } = useFlockInfo();
   const { data: feedConsumption } = useFeedConsumption(30);
 
-  // Lazy-import to avoid circular: read mode + active batch via existing hooks
-  // (these are safe — they participate in the same React tree).
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { useFarmType } = require('@/hooks/useFarmType') as typeof import('@/hooks/useFarmType');
-  const { useActiveLayerBatch } = require('@/hooks/useLayerBatch') as typeof import('@/hooks/useLayerBatch');
-  const { useActiveBatch } = require('@/hooks/useBroilerData') as typeof import('@/hooks/useBroilerData');
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeLayerBatch } = useActiveLayerBatch();
-  const { data: activeBroilerBatch } = useActiveBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const activeBatchId: string | null = isLayer
     ? (activeLayerBatch?.id ?? null)
     : isBroiler
