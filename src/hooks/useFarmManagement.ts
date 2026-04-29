@@ -58,6 +58,7 @@ export interface Expense {
   category: string;
   amount: number;
   description: string | null;
+  batch_id: string | null;
   created_at: string;
 }
 
@@ -70,6 +71,7 @@ export interface Income {
   quantity: number | null;
   unit_price: number | null;
   description: string | null;
+  batch_id: string | null;
   created_at: string;
 }
 

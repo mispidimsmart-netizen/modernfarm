@@ -5,6 +5,9 @@ import { bn, enUS } from 'date-fns/locale';
 import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3, Egg } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction } from '@/hooks/useFarmManagement';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { useFarmType } from '@/hooks/useFarmType';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +46,14 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { data: eggProduction } = useEggProduction(60);
   const addExpense = useAddExpense();
   const addIncome = useAddIncome();
-
-  // Calculate available egg stock = total produced (last 60d) - total sold via income(category=eggs).
-  // Broken eggs are subtracted as they're not sellable.
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId: string | null = isLayer
+    ? (activeLayerBatch?.id ?? null)
+    : isBroiler
+      ? ((activeBroilerBatch as any)?.id ?? null)
+      : null;
   const totalEggsProduced = (eggProduction ?? []).reduce(
     (sum, e) => sum + (e.total_eggs || 0) - (e.broken || 0),
     0
@@ -100,6 +108,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
     addExpense.mutate({
       ...expenseForm,
       description: expenseForm.description || null,
+      batch_id: activeBatchId,
     });
   };
 
@@ -109,6 +118,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
       quantity: incomeForm.quantity || null,
       unit_price: incomeForm.unit_price || null,
       description: incomeForm.description || null,
+      batch_id: activeBatchId,
     });
   };
 
