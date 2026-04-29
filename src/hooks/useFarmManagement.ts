@@ -468,6 +468,7 @@ export function useAddMortalityRecord() {
 
   return useMutation({
     mutationFn: async (data: Omit<MortalityRecord, 'id' | 'user_id' | 'created_at'>) => {
+      if (!selectedShedId && !(data as any).shed_id) throw new Error('কোনো শেড নির্বাচন করা নেই');
       const { error } = await supabase
         .from('mortality_records')
         .insert({
