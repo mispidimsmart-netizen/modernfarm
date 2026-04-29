@@ -66,7 +66,7 @@ export function RecentEntryHistory() {
   const activeBatchId = isLayer
     ? activeLayerBatch?.id ?? null
     : isBroiler
-      ? (activeBroilerBatch as any)?.id ?? null
+      ? activeBroilerBatch?.id ?? null
       : null;
   const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
 
@@ -84,7 +84,7 @@ export function RecentEntryHistory() {
   const today = new Date().toISOString().split('T')[0];
   const hasTodayEggs = eggs?.some((e) => e.production_date === today);
   const missingEntries = isLayer && !hasTodayEggs;
-  const scopedExpenses = (expenses ?? []).filter((e: any) =>
+  const scopedExpenses = (expenses ?? []).filter((e) =>
     matchesActiveFinanceScope(e, 'expense', financeScope),
   );
 
