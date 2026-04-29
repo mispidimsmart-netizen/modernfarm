@@ -12,7 +12,9 @@ export type EntryActionKey =
   | 'weight'
   | 'broiler-feed'
   | 'medicine'
-  | 'feed-stock';
+  | 'feed-stock'
+  | 'schedule'
+  | 'batch';
 
 interface FarmInputCardsProps {
   onCardClick: (type: EntryActionKey) => void;
