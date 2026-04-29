@@ -260,6 +260,33 @@ export function OTAFirmwareTab() {
           </summary>
 
           <div className="border-t border-amber-500/20 p-4 space-y-4">
+            {/* Downloadable PDF guide */}
+            <a
+              href="/ota-firmware-guide-bn.pdf"
+              download="OTA-ফার্মওয়্যার-গাইড.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-3 rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-3 hover:bg-emerald-500/15 transition-colors group/dl"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
+                  <Download className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm text-emerald-700 dark:text-emerald-400">
+                    {t('সম্পূর্ণ গাইড PDF ডাউনলোড করুন', 'Download full PDF guide')}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {t(
+                      'বাংলায় ৩ পৃষ্ঠার নির্দেশিকা ও প্রথমবার আপলোডের চেকলিস্ট (PDF, ৪০KB)',
+                      '3-page Bengali guide with first-time upload checklist (PDF, 40KB)',
+                    )}
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-emerald-600 shrink-0 transition-transform group-hover/dl:translate-x-1" />
+            </a>
+
             {/* Step 1 — Source file */}
             <div className="flex gap-3">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">১</div>
