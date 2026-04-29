@@ -26,6 +26,12 @@ export interface QueuedBatchEdit {
     current_bird_count: number;
     chick_cost_per_bird?: number;
     notes?: string;
+    // SSOT fields — when synced, the DB trigger recomputes flock_info.age_weeks
+    // from (age_at_start_weeks + weeks_elapsed_since start_date) so the
+    // current age stays correct even after long offline periods.
+    batch_name_bn?: string;
+    breed?: string;
+    age_at_start_weeks?: number;
   };
   queuedAt: string;
   attempts: number;
@@ -71,16 +77,28 @@ async function applyQueuedEdit(
 ): Promise<void> {
   const { batchId, payload } = item;
 
-  // 1. Update batch row
+  // 1. Update batch row — include SSOT fields so the DB trigger
+  // re-derives flock_info.age_weeks from the latest start_date +
+  // age_at_start_weeks (handles long offline gaps gracefully).
+  const updatePayload: any = {
+    start_date: payload.start_date,
+    actual_end_date: payload.actual_end_date,
+    initial_bird_count: payload.initial_bird_count,
+    current_bird_count: payload.current_bird_count,
+  };
+  if (payload.chick_cost_per_bird !== undefined)
+    updatePayload.chick_cost_per_bird = payload.chick_cost_per_bird;
+  if (payload.batch_name_bn) {
+    updatePayload.batch_name_bn = payload.batch_name_bn;
+    updatePayload.batch_name = payload.batch_name_bn;
+  }
+  if (payload.breed !== undefined) updatePayload.breed = payload.breed;
+  if (payload.age_at_start_weeks !== undefined)
+    updatePayload.age_at_start_weeks = payload.age_at_start_weeks;
+
   const { data: updated, error: uErr } = await supabase
     .from('layer_batches' as any)
-    .update({
-      start_date: payload.start_date,
-      actual_end_date: payload.actual_end_date,
-      initial_bird_count: payload.initial_bird_count,
-      current_bird_count: payload.current_bird_count,
-      chick_cost_per_bird: payload.chick_cost_per_bird ?? undefined,
-    } as any)
+    .update(updatePayload)
     .eq('id', batchId)
     .select()
     .single();
@@ -146,9 +164,18 @@ export function useBatchEditQueue() {
     setIsSyncing(false);
 
     if (succeeded > 0) {
+      // Batch caches
       queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-active'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-trend'] });
+      // SSOT-synced caches (DB trigger updates flock_info on sync)
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['farm-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['lighting-schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['lighting-curve'] });
       toast({
         title: language === 'bn' ? 'অফলাইন পরিবর্তন সিঙ্ক হয়েছে' : 'Offline edits synced',
         description:
