@@ -54,19 +54,21 @@ export interface BroilerFeed {
 // Fetch active batch
 export function useActiveBatch() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
 
   return useQuery({
-    queryKey: ['broiler-batch-active', user?.id],
+    queryKey: ['broiler-batch-active', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      let q = supabase
         .from('broiler_batches')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .order('start_date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      const { data, error } = await q.maybeSingle();
 
       if (error) throw error;
       return data as BroilerBatch | null;
