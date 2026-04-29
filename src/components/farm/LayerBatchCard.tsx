@@ -478,6 +478,50 @@ export function LayerBatchCard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit ACTIVE batch — reuses EditCompletedBatchDialog */}
+      {activeBatch && (
+        <EditCompletedBatchDialog
+          batch={activeBatch}
+          open={openEditActive}
+          onOpenChange={setOpenEditActive}
+        />
+      )}
+
+      {/* Delete ACTIVE batch confirmation */}
+      <Dialog open={openDeleteActive} onOpenChange={setOpenDeleteActive}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              {language === 'bn' ? 'ব্যাচ মুছে ফেলবেন?' : 'Delete batch?'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'bn'
+                ? 'এই ব্যাচের সকল তথ্য (সারাংশ সহ) স্থায়ীভাবে মুছে যাবে। ডিম, খাদ্য বা মৃত্যু রেকর্ড মুছবে না — শুধু ব্যাচ মেটাডেটা।'
+                : 'This batch and its summary will be permanently removed. Egg/feed/mortality records are NOT deleted — only the batch metadata.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" className="h-12 w-full sm:w-auto" onClick={() => setOpenDeleteActive(false)}>
+              {language === 'bn' ? 'বাতিল' : 'Cancel'}
+            </Button>
+            <Button
+              variant="destructive"
+              className="h-12 w-full sm:w-auto text-base font-semibold"
+              disabled={deleteBatch.isPending}
+              onClick={() => {
+                if (!activeBatch) return;
+                deleteBatch.mutate(activeBatch.id, {
+                  onSuccess: () => setOpenDeleteActive(false),
+                });
+              }}
+            >
+              <Trash2 className="mr-2 h-5 w-5" />
+              {language === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
