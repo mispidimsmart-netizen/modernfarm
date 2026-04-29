@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useExpenses, useIncome } from '@/hooks/useFarmManagement';
+import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useMemo } from 'react';
@@ -8,13 +9,20 @@ export function DailyExpenseSummary() {
   const { language } = useAuth();
   const { data: expenses } = useExpenses(7);
   const { data: income } = useIncome(7);
+  const batchStart = useActiveBatchStart();
 
   const today = new Date().toISOString().split('T')[0];
 
-  const todayExpenses = useMemo(() => 
-    expenses?.filter(e => e.expense_date === today) ?? [], [expenses, today]);
-  const todayIncome = useMemo(() => 
-    income?.filter(i => i.income_date === today) ?? [], [income, today]);
+  // "Today" is always >= batchStart, but we still gate to ensure we don't show
+  // stale data when there is no active batch (which would mean no current flock).
+  const showData = !batchStart || today >= batchStart;
+
+  const todayExpenses = useMemo(() =>
+    showData ? (expenses?.filter(e => e.expense_date === today) ?? []) : [],
+    [expenses, today, showData]);
+  const todayIncome = useMemo(() =>
+    showData ? (income?.filter(i => i.income_date === today) ?? []) : [],
+    [income, today, showData]);
 
   const totalExpense = todayExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = todayIncome.reduce((s, i) => s + Number(i.amount), 0);

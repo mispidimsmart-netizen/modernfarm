@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useMortalityRecords } from '@/hooks/useFarmManagement';
+import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skull, TrendingDown, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
@@ -11,16 +12,22 @@ interface MortalityTrendChartProps {
 
 export function MortalityTrendChart({ days = 14 }: MortalityTrendChartProps = {}) {
   const { language } = useAuth();
+  const batchStart = useActiveBatchStart();
   // Fetch enough data to cover the window plus the previous-period trend comparison
   const fetchDays = Math.max(days * 2, 30);
-  const { data: mortality } = useMortalityRecords(fetchDays);
+  const { data: mortalityRaw } = useMortalityRecords(fetchDays);
+
+  // Scope to current active batch (start_date onward) when available
+  const mortality = batchStart
+    ? (mortalityRaw ?? []).filter((m: any) => (m.record_date ?? '') >= batchStart)
+    : (mortalityRaw ?? []);
 
   // Aggregate by date for selected window
   const seriesData = Array.from({ length: days }, (_, i) => {
     const date = subDays(new Date(), days - 1 - i);
     const dateStr = format(date, 'yyyy-MM-dd');
-    const dayMortality = mortality?.filter(m => m.record_date === dateStr) ?? [];
-    const total = dayMortality.reduce((sum, m) => sum + m.count, 0);
+    const dayMortality = mortality.filter((m: any) => m.record_date === dateStr);
+    const total = dayMortality.reduce((sum: number, m: any) => sum + m.count, 0);
     return {
       date: format(date, 'dd/MM'),
       count: total,
