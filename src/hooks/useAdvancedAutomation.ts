@@ -176,7 +176,7 @@ export function useAdvancedAutomationSettings() {
       if (error) throw error;
       
       const base: AdvancedAutomationSettings = data
-        ? (data as any as AdvancedAutomationSettings)
+        ? (data as unknown as AdvancedAutomationSettings)
         : {
             id: '',
             user_id: user.id,
@@ -255,7 +255,7 @@ export function useRawAdvancedAutomationSettings() {
       else query = query.is('shed_id', null);
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
-      return data as any as AdvancedAutomationSettings | null;
+      return data as unknown as AdvancedAutomationSettings | null;
     },
     enabled: !!user,
   });
@@ -276,19 +276,36 @@ export function useUpdateAdvancedAutomationSettings() {
       if (!user) throw new Error('Not authenticated');
       if (!selectedFarmId) throw new Error('No farm selected');
 
-      const { error } = await supabase
-        .from('advanced_automation_settings')
-        .upsert({
-          user_id: user.id,
-          farm_id: selectedFarmId,
-          shed_id: selectedShedId || null,
-          ...settings,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,shed_id'
-        });
+      const payload = {
+        user_id: user.id,
+        farm_id: selectedFarmId,
+        shed_id: selectedShedId || null,
+        ...settings,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (error) throw error;
+      let updateQuery = supabase
+        .from('advanced_automation_settings')
+        .update(payload)
+        .eq('user_id', user.id);
+
+      updateQuery = selectedShedId
+        ? updateQuery.eq('shed_id', selectedShedId)
+        : updateQuery.is('shed_id', null);
+
+      const { data: updatedRow, error: updateError } = await updateQuery
+        .select('id')
+        .maybeSingle();
+
+      if (updateError) throw updateError;
+
+      if (!updatedRow) {
+        const { error: insertError } = await supabase
+          .from('advanced_automation_settings')
+          .insert(payload);
+
+        if (insertError) throw insertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['advanced_automation_settings'] });
