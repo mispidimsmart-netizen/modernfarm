@@ -248,6 +248,8 @@ export function useFarmPerformance(days: number = 7) {
         metrics = {
           overallCondition,
           heatStressAvoidedHours: Math.round(heatStressAvoidedHours * 10) / 10,
+          heatRiskWindowHours: Math.round((totalRiskSamples * SAMPLE_MINUTES) / 60 * 10) / 10,
+          heatStressActualHours: Math.round((totalStressSamples * SAMPLE_MINUTES) / 60 * 10) / 10,
           tempStabilityIndex: Math.round(avgTempStability),
           eggProductionStabilityIndex,
           stressReductionIndex,
