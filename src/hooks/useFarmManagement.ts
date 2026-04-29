@@ -51,6 +51,9 @@ export interface MortalityRecord {
   id: string;
   user_id: string;
   shed_id?: string | null;
+  farm_id?: string | null;
+  farm_mode?: 'layer' | 'broiler' | null;
+  batch_id?: string | null;
   record_date: string;
   count: number;
   cause: string;
