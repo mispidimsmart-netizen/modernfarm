@@ -51,10 +51,14 @@ export function getFinanceScopeIssues(
     if (scope.activeBatchId && row.batch_id !== scope.activeBatchId) {
       reasons.push(labels?.otherBatch ?? 'Other batch');
     }
-  } else if (scope.activeBatchId && !rowMode) {
-    reasons.push(labels?.untagged ?? 'Batch/mode not tagged');
-  } else if (scope.batchStart && date && date < scope.batchStart) {
-    reasons.push(labels?.beforeBatch ?? 'Before active batch start');
+  } else {
+    // Untagged row: include if it falls within the active batch's time window.
+    // Only exclude when we have a batch start date AND the row predates it.
+    if (scope.batchStart && date && date < scope.batchStart) {
+      reasons.push(labels?.beforeBatch ?? 'Before active batch start');
+    }
+    // If no batch info at all on the row but mode mismatch was already handled above,
+    // allow the row through (legacy data within the visible window).
   }
 
   return reasons;
