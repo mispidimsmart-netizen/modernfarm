@@ -29,6 +29,8 @@ import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { DataExportButton } from '@/components/farm/DataExportButton';
+import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
+import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
 // Broiler components
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
@@ -44,8 +46,10 @@ export function FarmManagementPage() {
   const hasActiveBatch = !!(activeLayerBatch || activeBroilerBatch);
 
   const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'medicine' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
-  const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report' | 'analysis'>('batch');
+  const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report'>('batch');
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
+  const [summarySectionOpen, setSummarySectionOpen] = useState(true);
+  const [analysisSectionOpen, setAnalysisSectionOpen] = useState(true);
 
   // Auto-open batch management section when an active batch is detected
   useEffect(() => {
@@ -61,10 +65,12 @@ export function FarmManagementPage() {
     title: { bn: '🏠 ফার্ম ম্যানেজমেন্ট', en: '🏠 Farm Management' },
     input: { bn: '✏️ এন্ট্রি', en: '✏️ Entry' },
     batch: { bn: '🐔 ব্যাচ', en: '🐔 Batch' },
-    report: { bn: '📊 সারাংশ', en: '📊 Summary' },
+    report: { bn: '📊 রিপোর্ট', en: '📊 Report' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
-    todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
-    eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
+    summarySection: { bn: '📊 আজকের সারাংশ', en: "📊 Today's Summary" },
+    analysisSection: { bn: '📈 ট্রেন্ড ও বিশ্লেষণ', en: '📈 Trends & Analysis' },
+    summarySubtitle: { bn: 'আজকের পরিসংখ্যান ও খরচ', en: "Today's stats & expenses" },
+    analysisSubtitle: { bn: 'পারফরম্যান্স, খরচ ও ট্রেন্ড চার্ট', en: 'Performance, cost & trend charts' },
     productionRate: { bn: 'উৎপাদন হার', en: 'Production Rate' },
     quickTip: { bn: '💡 দ্রুত টিপ: নিচের + বাটন দিয়েও এন্ট্রি করতে পারবেন', en: '💡 Quick tip: Use the + button below for quick entry' },
     batchHeading: { bn: 'ব্যাচ ব্যবস্থাপনা', en: 'Batch Management' },
@@ -112,9 +118,9 @@ export function FarmManagementPage() {
           {/* Stats Header */}
           <FarmStatsHeader onFlockClick={() => setActiveTab('batch')} />
 
-          {/* Tabbed Interface - 4 tabs */}
+          {/* Tabbed Interface - 3 tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
+            <TabsList className="w-full grid grid-cols-3 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
               <TabsTrigger
                 value="batch"
                 className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
@@ -132,12 +138,6 @@ export function FarmManagementPage() {
                 className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
               >
                 {t.report[language]}
-              </TabsTrigger>
-              <TabsTrigger
-                value="analysis"
-                className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
-              >
-                {t.analysis[language]}
               </TabsTrigger>
             </TabsList>
 
@@ -272,109 +272,135 @@ export function FarmManagementPage() {
               </div>
             </TabsContent>
 
-            {/* Report Tab - Today's Summary */}
+            {/* Report Tab - Merged: Today's Summary + Trends & Analysis */}
             <TabsContent value="report" className="mt-4">
               <div className="space-y-4">
+                {/* Top action bar */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">{t.todaySummary[language]}</h3>
+                    <h3 className="text-sm font-semibold">{t.report[language]}</h3>
                   </div>
                   <DataExportButton />
                 </div>
-                
-                {/* Daily Expense Summary */}
-                <DailyExpenseSummary />
 
-                {/* Layer Mode: Show Layer Summary */}
-                {isLayer && (
-                  <>
-                    <FarmSummaryCards />
-                    
-                    {/* Production Rate Card */}
-                    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">{t.productionRate[language]}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-3xl font-bold text-primary">{summary.productionRate}%</p>
-                              {Number(summary.productionRate) > 80 ? (
-                                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
-                                  <TrendingUp className="h-3 w-3" />
-                                  {language === 'bn' ? 'ভালো' : 'Good'}
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                                  <TrendingDown className="h-3 w-3" />
-                                  {language === 'bn' ? 'উন্নতি দরকার' : 'Needs improvement'}
-                                </span>
-                              )}
+                {/* === Section 1: Today's Summary (collapsible) === */}
+                <Collapsible open={summarySectionOpen} onOpenChange={setSummarySectionOpen}>
+                  <CollapsibleTrigger className="w-full flex items-center gap-2 rounded-xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-3 group">
+                    <FileText className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0 text-left">
+                      <h3 className="text-sm font-semibold leading-tight">
+                        {t.summarySection[language]}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        {t.summarySubtitle[language]}
+                      </p>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    {/* Daily Expense Summary */}
+                    <DailyExpenseSummary />
+
+                    {/* Layer Mode: Show Layer Summary */}
+                    {isLayer && (
+                      <>
+                        <FarmSummaryCards />
+
+                        {/* Production Rate Card */}
+                        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-muted-foreground">{t.productionRate[language]}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className="text-3xl font-bold text-primary">{summary.productionRate}%</p>
+                                  {Number(summary.productionRate) > 80 ? (
+                                    <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
+                                      <TrendingUp className="h-3 w-3" />
+                                      {language === 'bn' ? 'ভালো' : 'Good'}
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                      <TrendingDown className="h-3 w-3" />
+                                      {language === 'bn' ? 'উন্নতি দরকার' : 'Needs improvement'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Egg className="h-8 w-8 text-primary" />
+                              </div>
                             </div>
-                          </div>
-                          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Egg className="h-8 w-8 text-primary" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
+                          </CardContent>
+                        </Card>
+                      </>
+                    )}
 
-                {/* Broiler Mode: Show batch overview as summary */}
-                {isBroiler && (
-                  <>
-                    <BroilerDashboardWidget
-                      onBatchClick={() => handleBroilerAction('batch')}
-                      onWeightClick={() => handleBroilerAction('weight')}
-                      onFeedClick={() => handleBroilerAction('broiler-feed')}
-                    />
-                    <p className="text-xs text-center text-muted-foreground">
-                      {language === 'bn' 
-                        ? '📊 FCR, ওজন বৃদ্ধি ও খরচের বিস্তারিত উপরের কার্ডে দেখুন' 
-                        : '📊 See FCR, weight gain & cost details in the card above'}
-                    </p>
-                  </>
-                )}
-              </div>
-            </TabsContent>
+                    {/* Broiler Mode: Show batch overview as summary */}
+                    {isBroiler && (
+                      <>
+                        <BroilerDashboardWidget
+                          onBatchClick={() => handleBroilerAction('batch')}
+                          onWeightClick={() => handleBroilerAction('weight')}
+                          onFeedClick={() => handleBroilerAction('broiler-feed')}
+                        />
+                        <p className="text-xs text-center text-muted-foreground">
+                          {language === 'bn'
+                            ? '📊 FCR, ওজন বৃদ্ধি ও খরচের বিস্তারিত উপরের কার্ডে দেখুন'
+                            : '📊 See FCR, weight gain & cost details in the card above'}
+                        </p>
+                      </>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
 
-            {/* Analysis Tab */}
-            <TabsContent value="analysis" className="mt-4">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">
-                    {isBroiler 
-                      ? (language === 'bn' ? 'পারফরম্যান্স বিশ্লেষণ' : 'Performance Analysis')
-                      : t.eggAnalysis[language]
-                    }
-                  </h3>
-                </div>
+                {/* === Section 2: Trends & Analysis (collapsible) === */}
+                <Collapsible open={analysisSectionOpen} onOpenChange={setAnalysisSectionOpen}>
+                  <CollapsibleTrigger className="w-full flex items-center gap-2 rounded-xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-3 group">
+                    <BarChart3 className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0 text-left">
+                      <h3 className="text-sm font-semibold leading-tight">
+                        {t.analysisSection[language]}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        {t.analysisSubtitle[language]}
+                      </p>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    {/* Performance Snapshot — environmental conditions & flock health */}
+                    <FarmPerformanceView />
 
-                {/* Mortality Trend Chart - Both modes */}
-                <MortalityTrendChart />
-                
-                {/* Layer Mode: Egg Correlation Analysis */}
-                {isLayer && (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      {language === 'bn' 
-                        ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন' 
-                        : '🔍 See how temperature, humidity & other factors affect egg production'}
-                    </p>
-                    <EggCorrelationCard />
-                  </>
-                )}
-                
-                {/* Broiler Mode: FCR & Weight hint */}
-                {isBroiler && (
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'bn' 
-                      ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ মৃত্যুহার চার্টের সাথে দেখুন' 
-                      : '🔍 View FCR, weight gain & feed cost analysis alongside mortality trends'}
-                  </p>
-                )}
+                    {/* Mortality Trend Chart - Both modes */}
+                    <MortalityTrendChart />
+
+                    {/* Cost Analytics — energy, water, feed cost trends */}
+                    <CostAnalyticsDashboard />
+
+                    {/* Layer Mode: Egg Correlation Analysis */}
+                    {isLayer && (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn'
+                            ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন'
+                            : '🔍 See how temperature, humidity & other factors affect egg production'}
+                        </p>
+                        <EggCorrelationCard />
+                      </>
+                    )}
+
+                    {/* Broiler Mode: FCR & Weight hint */}
+                    {isBroiler && (
+                      <p className="text-xs text-muted-foreground">
+                        {language === 'bn'
+                          ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ মৃত্যুহার চার্টের সাথে দেখুন'
+                          : '🔍 View FCR, weight gain & feed cost analysis alongside mortality trends'}
+                      </p>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </TabsContent>
           </Tabs>
