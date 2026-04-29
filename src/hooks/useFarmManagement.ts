@@ -7,11 +7,13 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
+import { useSelectedShed } from '@/hooks/useSheds';
 
 // Types
 export interface EggProduction {
   id: string;
   user_id: string;
+  farm_id?: string | null;
   production_date: string;
   total_eggs: number;
   grade_a: number;
@@ -47,6 +49,7 @@ export interface FeedConsumption {
 export interface MortalityRecord {
   id: string;
   user_id: string;
+  shed_id?: string | null;
   record_date: string;
   count: number;
   cause: string;
