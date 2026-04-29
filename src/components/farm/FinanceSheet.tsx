@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3 } from 'lucide-react';
+import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3, Egg } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useExpenses, useIncome, useAddExpense, useAddIncome } from '@/hooks/useFarmManagement';
+import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,8 +40,20 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const navigate = useNavigate();
   const { data: expenses } = useExpenses();
   const { data: income } = useIncome();
+  const { data: eggProduction } = useEggProduction(60);
   const addExpense = useAddExpense();
   const addIncome = useAddIncome();
+
+  // Calculate available egg stock = total produced (last 60d) - total sold via income(category=eggs).
+  // Broken eggs are subtracted as they're not sellable.
+  const totalEggsProduced = (eggProduction ?? []).reduce(
+    (sum, e) => sum + (e.total_eggs || 0) - (e.broken || 0),
+    0
+  );
+  const totalEggsSold = (income ?? [])
+    .filter((i) => i.category === 'eggs')
+    .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+  const availableEggStock = Math.max(0, totalEggsProduced - totalEggsSold);
   
   const [activeTab, setActiveTab] = useState('summary');
   const [expenseForm, setExpenseForm] = useState({
@@ -294,29 +306,47 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             </div>
 
             {incomeForm.category === 'eggs' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>{t.quantity[language]}</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={incomeForm.quantity || ''}
-                    onChange={(e) => updateIncomeAmount('quantity', parseInt(e.target.value) || 0)}
-                    placeholder="0"
-                  />
+              <>
+                {/* Egg stock hint — small, non-intrusive */}
+                <div
+                  className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${
+                    availableEggStock > 0
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                      : 'border-border bg-muted/40 text-muted-foreground'
+                  }`}
+                >
+                  <Egg className="h-3.5 w-3.5 shrink-0" />
+                  <span className="leading-tight">
+                    {language === 'bn'
+                      ? <>স্টকে আছে: <span className="font-semibold">{availableEggStock.toLocaleString('bn-BD')}</span> টি ডিম <span className="opacity-70">(গত ৬০ দিন)</span></>
+                      : <>In stock: <span className="font-semibold">{availableEggStock.toLocaleString()}</span> eggs <span className="opacity-70">(last 60d)</span></>}
+                  </span>
                 </div>
-                <div className="space-y-2">
-                  <Label>{t.unitPrice[language]}</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={incomeForm.unit_price || ''}
-                    onChange={(e) => updateIncomeAmount('unit_price', parseFloat(e.target.value) || 0)}
-                    placeholder="0"
-                  />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>{t.quantity[language]}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={incomeForm.quantity || ''}
+                      onChange={(e) => updateIncomeAmount('quantity', parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t.unitPrice[language]}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={incomeForm.unit_price || ''}
+                      onChange={(e) => updateIncomeAmount('unit_price', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             <div className="grid grid-cols-2 gap-3">
