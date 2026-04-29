@@ -98,21 +98,26 @@ export interface FlockInfo {
 // Egg Production Hooks
 export function useEggProduction(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
+  const { isLayer } = useFarmType();
   
   return useQuery({
-    queryKey: ['egg-production', user?.id, days],
+    queryKey: ['egg-production', user?.id, selectedFarmId, isLayer ? 'layer' : 'not-layer', days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      const { data, error } = await supabase
+      let q = supabase
         .from('egg_production')
         .select('*')
         .gte('production_date', startDate.toISOString().split('T')[0])
         .order('production_date', { ascending: false });
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+
+      const { data, error } = await q;
       
       if (error) throw error;
-      return data as EggProduction[];
+      return (isLayer ? data : []) as EggProduction[];
     },
     enabled: !!user,
   });
