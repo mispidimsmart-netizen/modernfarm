@@ -69,10 +69,10 @@ export function useTodaySummary() {
         return q;
       };
       const buildMortality = () => {
-        // mortality_records has no farm_id; rely on RLS/user_id scope
+        // mortality_records has no farm_id/batch_id — scope via shed_id → sheds
         return supabase
           .from('mortality_records')
-          .select('count')
+          .select('count, shed_id, sheds:shed_id(farm_id, farm_type)')
           .eq('record_date', today);
       };
 
