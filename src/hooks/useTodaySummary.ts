@@ -14,10 +14,13 @@ export interface TodaySummary {
   todayGradeB: number;
   todayGradeC: number;
   todayBroken: number;
+  todayBroilerFeedKg: number;
+  todayBroilerWeightGrams: number;
   todayIncome: number;
   todayExpenses: number;
   todayProfit: number;
   todayMortality: number;
+  hasTodayEntry: boolean;
 }
 
 export function useTodaySummary() {
@@ -31,7 +34,12 @@ export function useTodaySummary() {
     : isBroiler
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
-  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
+  const activeBatchStart: string | null = isLayer
+    ? activeLayerBatch?.start_date ?? null
+    : isBroiler
+      ? (activeBroilerBatch as any)?.start_date ?? null
+      : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: activeBatchStart };
   const today = format(new Date(), 'yyyy-MM-dd');
 
   return useQuery({
@@ -46,12 +54,13 @@ export function useTodaySummary() {
     queryFn: async (): Promise<TodaySummary> => {
       // Build farm-scoped queries
       const buildEggs = () => {
+        if (!isLayer) return Promise.resolve({ data: [], error: null } as any);
         let q = supabase
           .from('egg_production')
           .select('total_eggs, grade_a, grade_b, grade_c, broken')
           .eq('production_date', today);
         if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
-        return q.maybeSingle();
+        return q;
       };
       const buildIncome = () => {
         let q = supabase
@@ -72,21 +81,46 @@ export function useTodaySummary() {
       const buildMortality = () => {
         return supabase
           .from('mortality_records')
-          .select('count, shed_id, farm_id, farm_mode, sheds:shed_id(farm_id, farm_type)')
+          .select('count, shed_id, farm_id, farm_mode, batch_id, sheds:shed_id(farm_id, farm_type)')
           .eq('record_date', today);
       };
+      const buildBroilerFeed = () => {
+        if (!isBroiler) return Promise.resolve({ data: [], error: null } as any);
+        let q = supabase
+          .from('broiler_feed')
+          .select('quantity_kg, batch_id, farm_id')
+          .eq('feed_date', today);
+        if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+        if (activeBatchId) q = q.eq('batch_id', activeBatchId);
+        return q;
+      };
+      const buildBroilerWeights = () => {
+        if (!isBroiler) return Promise.resolve({ data: [], error: null } as any);
+        let q = supabase
+          .from('broiler_weights')
+          .select('average_weight_grams, batch_id, farm_id')
+          .eq('record_date', today)
+          .order('created_at', { ascending: false });
+        if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+        if (activeBatchId) q = q.eq('batch_id', activeBatchId);
+        return q;
+      };
 
-      const [eggsRes, incomeRes, expensesRes, mortalityRes] = await Promise.all([
+      const [eggsRes, incomeRes, expensesRes, mortalityRes, broilerFeedRes, broilerWeightsRes] = await Promise.all([
         buildEggs(),
         buildIncome(),
         buildExpenses(),
         buildMortality(),
+        buildBroilerFeed(),
+        buildBroilerWeights(),
       ]);
 
-      const eggs = eggsRes.data;
+      const eggRows = (eggsRes.data ?? []) as any[];
       const incomeRows = (incomeRes.data ?? []) as any[];
       const expenseRows = (expensesRes.data ?? []) as any[];
       const mortalityData = mortalityRes.data ?? [];
+      const broilerFeedRows = (broilerFeedRes.data ?? []) as any[];
+      const broilerWeightRows = (broilerWeightsRes.data ?? []) as any[];
 
       // Filter by active batch / mode-aware income category
       const filteredIncome = incomeRows.filter((i) => {
