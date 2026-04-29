@@ -8,6 +8,7 @@ import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction }
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { useFarmType } from '@/hooks/useFarmType';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +56,8 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
     : isBroiler
       ? ((activeBroilerBatch as any)?.id ?? null)
       : null;
+  const farmMode = getFinanceMode(isLayer, isBroiler);
+  const financeScope = { mode: farmMode, activeBatchId, batchStart: null };
   const totalEggsProduced = (eggProduction ?? []).reduce(
     (sum, e) => sum + (e.total_eggs || 0) - (e.broken || 0),
     0
@@ -101,8 +104,10 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
     last30Days: { bn: 'গত ৩০ দিন', en: 'Last 30 days' },
   };
 
-  const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) ?? 0;
-  const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount), 0) ?? 0;
+  const scopedExpenses = (expenses ?? []).filter((e: any) => matchesActiveFinanceScope(e, 'expense', financeScope));
+  const scopedIncome = (income ?? []).filter((i: any) => matchesActiveFinanceScope(i, 'income', financeScope));
+  const totalExpenses = scopedExpenses.reduce((sum, e) => sum + Number(e.amount), 0) ?? 0;
+  const totalIncome = scopedIncome.reduce((sum, i) => sum + Number(i.amount), 0) ?? 0;
   const profit = totalIncome - totalExpenses;
 
   const handleAddExpense = () => {
@@ -110,6 +115,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
       ...expenseForm,
       description: expenseForm.description || null,
       batch_id: activeBatchId,
+      farm_mode: farmMode,
     });
   };
 
@@ -120,6 +126,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
       unit_price: incomeForm.unit_price || null,
       description: incomeForm.description || null,
       batch_id: activeBatchId,
+      farm_mode: farmMode,
     });
   };
 
@@ -135,8 +142,8 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
 
   // Combine and sort all transactions
   const allTransactions = [
-    ...(expenses?.map(e => ({ ...e, type: 'expense' as const, date: e.expense_date })) ?? []),
-    ...(income?.map(i => ({ ...i, type: 'income' as const, date: i.income_date })) ?? []),
+    ...scopedExpenses.map(e => ({ ...e, type: 'expense' as const, date: e.expense_date })),
+    ...scopedIncome.map(i => ({ ...i, type: 'income' as const, date: i.income_date })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
