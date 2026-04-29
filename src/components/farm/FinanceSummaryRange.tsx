@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useExpenses, useIncome } from '@/hooks/useFarmManagement';
+import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
 
@@ -26,14 +27,26 @@ const incomeSourceLabels: Record<string, { bn: string; en: string }> = {
 
 export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
   const { language } = useAuth();
-  const { data: expenses } = useExpenses(days);
-  const { data: income } = useIncome(days);
+  const { data: expensesRaw } = useExpenses(days);
+  const { data: incomeRaw } = useIncome(days);
+  const batchStart = useActiveBatchStart();
   const isBn = language === 'bn';
   const locale = isBn ? 'bn-BD' : 'en-US';
 
+  // Scope to current active batch (start_date onward) when available
+  const expenses = useMemo(() => {
+    if (!batchStart) return expensesRaw ?? [];
+    return (expensesRaw ?? []).filter((e: any) => (e.expense_date ?? '') >= batchStart);
+  }, [expensesRaw, batchStart]);
+
+  const income = useMemo(() => {
+    if (!batchStart) return incomeRaw ?? [];
+    return (incomeRaw ?? []).filter((i: any) => (i.income_date ?? '') >= batchStart);
+  }, [incomeRaw, batchStart]);
+
   const totals = useMemo(() => {
-    const totalExpense = (expenses ?? []).reduce((s, e) => s + Number(e.amount || 0), 0);
-    const totalIncome = (income ?? []).reduce((s, i) => s + Number(i.amount || 0), 0);
+    const totalExpense = expenses.reduce((s, e: any) => s + Number(e.amount || 0), 0);
+    const totalIncome = income.reduce((s, i: any) => s + Number(i.amount || 0), 0);
     const net = totalIncome - totalExpense;
     const margin = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
     return { totalExpense, totalIncome, net, margin };
@@ -41,7 +54,7 @@ export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
 
   const expenseByCategory = useMemo(() => {
     const map = new Map<string, number>();
-    (expenses ?? []).forEach((e) => {
+    expenses.forEach((e: any) => {
       const cat = e.category || 'other';
       map.set(cat, (map.get(cat) || 0) + Number(e.amount || 0));
     });
@@ -50,7 +63,7 @@ export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
 
   const incomeBySource = useMemo(() => {
     const map = new Map<string, number>();
-    (income ?? []).forEach((i: any) => {
+    income.forEach((i: any) => {
       const src = i.source || 'other';
       map.set(src, (map.get(src) || 0) + Number(i.amount || 0));
     });
