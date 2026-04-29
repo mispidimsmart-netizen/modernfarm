@@ -20,6 +20,144 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 
+// ---------------------------------------------------------------------------
+// OTA Progress Timeline — visualizes queued → downloading → flashing →
+// verifying → done/failed using device_health.ota_status + ota_progress.
+// ---------------------------------------------------------------------------
+
+type OtaStage = 'queued' | 'downloading' | 'flashing' | 'verifying' | 'done' | 'failed';
+
+const STAGE_ORDER: OtaStage[] = ['queued', 'downloading', 'flashing', 'verifying', 'done'];
+
+// Map raw firmware status strings (from ESP32) to a normalized UI stage.
+function mapOtaStatus(status: string | null | undefined): OtaStage | null {
+  if (!status) return null;
+  const s = status.toLowerCase();
+  if (['idle', 'up_to_date', 'uptodate', 'none'].includes(s)) return null;
+  if (['available', 'pending', 'queued', 'scheduled'].includes(s)) return 'queued';
+  if (['downloading', 'fetching', 'download'].includes(s)) return 'downloading';
+  if (['flashing', 'writing', 'installing', 'install'].includes(s)) return 'flashing';
+  if (['verifying', 'verify', 'crc_check', 'validating'].includes(s)) return 'verifying';
+  if (['complete', 'completed', 'done', 'success', 'finished', 'rebooted'].includes(s)) return 'done';
+  if (['failed', 'error', 'rollback', 'aborted'].includes(s)) return 'failed';
+  return null;
+}
+
+interface StageMeta {
+  icon: typeof Cloud;
+  label: string;
+  labelBn: string;
+}
+
+const STAGE_META: Record<OtaStage, StageMeta> = {
+  queued:      { icon: Clock,        label: 'Queued',      labelBn: 'অপেক্ষমাণ' },
+  downloading: { icon: Download,     label: 'Downloading', labelBn: 'ডাউনলোড' },
+  flashing:    { icon: Flame,        label: 'Flashing',    labelBn: 'ফ্ল্যাশিং' },
+  verifying:   { icon: ShieldCheck,  label: 'Verifying',   labelBn: 'যাচাই' },
+  done:        { icon: CheckCircle2, label: 'Done',        labelBn: 'সম্পন্ন' },
+  failed:      { icon: XCircle,      label: 'Failed',      labelBn: 'ব্যর্থ' },
+};
+
+interface OtaProgressTimelineProps {
+  stage: OtaStage;
+  progress: number | null;
+  language: 'bn' | 'en';
+  targetVersion?: string | null;
+}
+
+function OtaProgressTimeline({ stage, progress, language, targetVersion }: OtaProgressTimelineProps) {
+  const t = (bn: string, en: string) => (language === 'bn' ? bn : en);
+  const isFailed = stage === 'failed';
+  const currentIdx = isFailed ? -1 : STAGE_ORDER.indexOf(stage);
+
+  // For the active stage, prefer real ota_progress (0-100); else infer from index.
+  const showInlineProgress =
+    stage === 'downloading' && progress !== null && progress >= 0 && progress <= 100;
+
+  return (
+    <div className="mt-3 space-y-3 rounded-lg border bg-muted/40 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs font-medium">
+          {isFailed ? (
+            <XCircle className="h-4 w-4 text-destructive" />
+          ) : stage === 'done' ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
+          )}
+          <span>
+            {isFailed
+              ? t('আপডেট ব্যর্থ', 'Update failed')
+              : stage === 'done'
+                ? t('আপডেট সম্পন্ন', 'Update complete')
+                : t('আপডেট চলছে', 'Update in progress')}
+          </span>
+        </div>
+        {targetVersion && (
+          <Badge variant="outline" className="font-mono text-[10px]">
+            → {targetVersion}
+          </Badge>
+        )}
+      </div>
+
+      {/* Stage chips */}
+      <div className="flex items-center gap-1">
+        {STAGE_ORDER.map((s, idx) => {
+          const meta = STAGE_META[s];
+          const Icon = meta.icon;
+          const isActive = !isFailed && idx === currentIdx;
+          const isCompleted = !isFailed && idx < currentIdx;
+          const isPending = !isFailed && idx > currentIdx;
+
+          return (
+            <div key={s} className="flex flex-1 items-center gap-1">
+              <div
+                className={cn(
+                  'flex flex-1 flex-col items-center gap-1 rounded-md px-1 py-1.5 transition-colors',
+                  isActive && 'bg-cyan-500/15 text-cyan-600 ring-1 ring-cyan-500/40',
+                  isCompleted && 'bg-emerald-500/10 text-emerald-600',
+                  isPending && 'text-muted-foreground/50',
+                )}
+              >
+                <Icon className={cn('h-3.5 w-3.5', isActive && 'animate-pulse')} />
+                <span className="text-[9px] font-medium leading-none text-center">
+                  {language === 'bn' ? meta.labelBn : meta.label}
+                </span>
+              </div>
+              {idx < STAGE_ORDER.length - 1 && (
+                <div
+                  className={cn(
+                    'h-px flex-shrink-0 w-2 transition-colors',
+                    idx < currentIdx ? 'bg-emerald-500/60' : 'bg-border',
+                  )}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Inline progress bar for the downloading stage */}
+      {showInlineProgress && (
+        <div className="space-y-1">
+          <Progress value={progress!} className="h-1.5" />
+          <p className="text-right text-[10px] text-muted-foreground">{progress}%</p>
+        </div>
+      )}
+
+      {isFailed && (
+        <p className="text-[11px] text-destructive">
+          {t(
+            'ডিভাইস স্বয়ংক্রিয়ভাবে আগের ভার্সনে ফিরে যাবে। পরে আবার চেষ্টা করুন।',
+            'Device will roll back to the previous version. Try again later.',
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+
 export function OTAFirmwareTab() {
   const { language, user } = useAuth();
   const { selectedFarmId } = useFarmContext();
