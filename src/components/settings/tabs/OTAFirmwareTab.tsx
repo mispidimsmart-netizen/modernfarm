@@ -4,8 +4,7 @@ import { motion } from 'framer-motion';
 import {
   HardDrive, Cloud, Cpu, ArrowRight, RefreshCw, CheckCircle2,
   AlertCircle, Shield, Globe, Home, Clock, Download, Flame,
-  ShieldCheck, XCircle, Loader2, HelpCircle, ChevronDown,
-  FileCode, Settings as SettingsIcon, Upload, Wrench,
+  ShieldCheck, XCircle, Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
