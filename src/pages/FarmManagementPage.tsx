@@ -71,8 +71,6 @@ export function FarmManagementPage() {
     analysisSection: { bn: '📈 ট্রেন্ড ও বিশ্লেষণ', en: '📈 Trends & Analysis' },
     summarySubtitle: { bn: 'আজকের পরিসংখ্যান ও খরচ', en: "Today's stats & expenses" },
     analysisSubtitle: { bn: 'পারফরম্যান্স, খরচ ও ট্রেন্ড চার্ট', en: 'Performance, cost & trend charts' },
-    todaySummary: { bn: 'আজকের সারাংশ', en: "Today's Summary" },
-    eggAnalysis: { bn: 'উৎপাদন বিশ্লেষণ', en: 'Production Analysis' },
     productionRate: { bn: 'উৎপাদন হার', en: 'Production Rate' },
     quickTip: { bn: '💡 দ্রুত টিপ: নিচের + বাটন দিয়েও এন্ট্রি করতে পারবেন', en: '💡 Quick tip: Use the + button below for quick entry' },
     batchHeading: { bn: 'ব্যাচ ব্যবস্থাপনা', en: 'Batch Management' },
