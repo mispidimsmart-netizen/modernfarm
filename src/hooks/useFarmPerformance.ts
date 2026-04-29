@@ -132,11 +132,23 @@ export function useFarmPerformance(days: number = 7) {
       let totalHumidityStability = 0;
       let totalWater = 0;
       let totalAlerts = 0;
+      // Reality-based heat stress avoidance:
+      //   risk_sample      = a 15-min sample where temp got into the at-risk zone
+      //                      (>= stressThreshold - riskBuffer)
+      //   stress_sample    = a risk sample where temp actually exceeded stressThreshold
+      //   managed_sample   = risk_sample - stress_sample (we kept it under control)
+      // heatStressAvoidedHours = managed_sample * 15 / 60
+      let totalRiskSamples = 0;
+      let totalManagedSamples = 0;
+      let totalStressSamples = 0;
+      const SAMPLE_MINUTES = 15;
+      const RISK_BUFFER = 2; // °C below threshold counts as "at risk"
       
       // Ideal temperature range (depends on farm type and bird age)
       const idealTempMin = isBroiler ? 24 : 18;
       const idealTempMax = isBroiler ? 32 : 28;
       const heatStressThreshold = isBroiler ? 32 : 30;
+      const riskZoneStart = heatStressThreshold - RISK_BUFFER;
       
       dailyData.forEach((data, date) => {
         const avgTemp = data.temps.length > 0 
@@ -151,7 +163,14 @@ export function useFarmPerformance(days: number = 7) {
         
         // Heat stress minutes: count readings above threshold
         const stressReadings = data.temps.filter(t => t > heatStressThreshold).length;
-        const heatStressMinutes = stressReadings * 15; // Assume 15-min intervals
+        const heatStressMinutes = stressReadings * SAMPLE_MINUTES;
+        
+        // Reality-based: only count samples where temperature was actually at-risk
+        const riskReadings = data.temps.filter(t => t >= riskZoneStart).length;
+        const managedReadings = Math.max(0, riskReadings - stressReadings);
+        totalRiskSamples += riskReadings;
+        totalStressSamples += stressReadings;
+        totalManagedSamples += managedReadings;
         
         // Humidity stability
         const avgHumidity = data.humidities.length > 0
@@ -185,7 +204,9 @@ export function useFarmPerformance(days: number = 7) {
       const numDays = Math.max(dailyMetrics.length, 1);
       const avgTempStability = totalTempStability / numDays;
       const avgHumidityStability = totalHumidityStability / numDays;
-      const heatStressAvoidedHours = Math.max(0, (days * 8) - (totalHeatStressMinutes / 60)); // Assume 8 potential stress hours/day
+      // REAL metric: hours where temp was at-risk but we kept it under threshold.
+      // No data → 0. No risk windows → 0. Honest baseline.
+      const heatStressAvoidedHours = (totalManagedSamples * SAMPLE_MINUTES) / 60;
       
       // Determine overall condition
       let overallCondition: 'GOOD' | 'MODERATE' | 'POOR' = 'GOOD';
