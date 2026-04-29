@@ -41,6 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+import { useDailyTick } from '@/hooks/useDailyTick';
 
 const LAYER_BREEDS: BreedOption[] = [
   { value: 'ISA Brown', label: 'ISA Brown (আইএসএ ব্রাউন)', keywords: 'isa brown আইএসএ' },
@@ -85,14 +86,16 @@ function formatDateBn(iso: string | null) {
   });
 }
 
-function ageWeeksFromBatch(b: LayerBatch) {
+function ageWeeksFromBatch(b: LayerBatch, todayIso?: string) {
   const start = new Date(b.start_date);
-  const days = Math.floor((Date.now() - start.getTime()) / 86400000);
+  const today = todayIso ? new Date(todayIso) : new Date();
+  const days = Math.floor((today.getTime() - start.getTime()) / 86400000);
   return b.age_at_start_weeks + Math.floor(days / 7);
 }
 
 export function LayerBatchCard() {
   const { language } = useAuth();
+  const today = useDailyTick(); // re-renders on midnight & tab refocus
   const { data: activeBatch, isLoading } = useActiveLayerBatch();
   const { data: allBatches = [] } = useLayerBatches();
   const createBatch = useCreateLayerBatch();
@@ -251,7 +254,7 @@ export function LayerBatchCard() {
                   <Stat
                     icon={<TrendingUp className="h-4 w-4" />}
                     label={t.age[language]}
-                    value={`${ageWeeksFromBatch(activeBatch)} ${t.weeks[language]}`}
+                    value={`${ageWeeksFromBatch(activeBatch, today)} ${t.weeks[language]}`}
                   />
                   <Stat
                     icon={<Bird className="h-4 w-4" />}
