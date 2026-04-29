@@ -85,9 +85,10 @@ function formatDateBn(iso: string | null) {
   });
 }
 
-function ageWeeksFromBatch(b: LayerBatch) {
+function ageWeeksFromBatch(b: LayerBatch, todayIso?: string) {
   const start = new Date(b.start_date);
-  const days = Math.floor((Date.now() - start.getTime()) / 86400000);
+  const today = todayIso ? new Date(todayIso) : new Date();
+  const days = Math.floor((today.getTime() - start.getTime()) / 86400000);
   return b.age_at_start_weeks + Math.floor(days / 7);
 }
 
