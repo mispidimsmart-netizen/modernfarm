@@ -168,6 +168,18 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
               </CardContent>
             </Card>
 
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/finance-report');
+              }}
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              পূর্ণ আয়-ব্যয় রিপোর্ট দেখুন
+            </Button>
+
             {/* Recent Transactions */}
             <div className="max-h-[300px] space-y-2 overflow-y-auto">
               {allTransactions.slice(0, 20).map((tx) => (
