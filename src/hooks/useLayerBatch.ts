@@ -489,6 +489,9 @@ export function useEditCompletedLayerBatch() {
   return useMutation({
     mutationFn: async ({
       batchId,
+      batch_name_bn,
+      breed,
+      age_at_start_weeks,
       start_date,
       actual_end_date,
       initial_bird_count,
@@ -499,6 +502,9 @@ export function useEditCompletedLayerBatch() {
       force,
     }: {
       batchId: string;
+      batch_name_bn?: string;
+      breed?: string;
+      age_at_start_weeks?: number;
       start_date: string;
       actual_end_date: string;
       initial_bird_count: number;
