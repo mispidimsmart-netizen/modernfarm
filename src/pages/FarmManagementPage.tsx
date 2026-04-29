@@ -377,6 +377,9 @@ export function FarmManagementPage() {
                     <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
+                    {/* Range-aware Income / Expense / Net summary */}
+                    <FinanceSummaryRange days={reportDays} />
+
                     {/* Performance Snapshot — environmental conditions & flock health */}
                     <FarmPerformanceView days={Math.min(reportDays, 30)} />
 
