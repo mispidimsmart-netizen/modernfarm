@@ -48,6 +48,7 @@ import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatu
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
+import { SensorFreshnessBadge } from '@/components/dashboard/SensorFreshnessBadge';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
 import { LightActionHistory } from '@/components/lighting/LightActionHistory';
@@ -210,9 +211,12 @@ export function Dashboard() {
 
               {/* ── 📡 সেন্সর ── */}
               <div>
-                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
-                </p>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
+                  </p>
+                  <SensorFreshnessBadge timestamp={sensorData.timestamp} compact />
+                </div>
                 <div className="grid grid-cols-2 gap-2.5">
                   <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
                   <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
