@@ -157,7 +157,7 @@ export function useAddMedicineUsage() {
 
   return useMutation({
     mutationFn: async (
-      data: Omit<MedicineUsage, 'id' | 'user_id' | 'created_at'>
+      data: Omit<MedicineUsage, 'id' | 'user_id' | 'created_at' | 'farm_id'>
     ) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { error } = await supabase.from('medicine_usage' as any).insert({
