@@ -97,6 +97,18 @@ export function ReportRangePicker({ value, onChange }: ReportRangePickerProps) {
           />
         </PopoverContent>
       </Popover>
+      {(isCustomActive || value.days !== DEFAULT_DAYS) && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => onChange({ days: DEFAULT_DAYS })}
+          title={isBn ? 'রিসেট' : 'Reset'}
+        >
+          <RotateCcw className="h-3 w-3" />
+          {isBn ? 'রিসেট' : 'Reset'}
+        </Button>
+      )}
     </div>
   );
 }
