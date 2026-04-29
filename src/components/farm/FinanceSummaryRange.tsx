@@ -94,7 +94,7 @@ export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
   const incomeBySource = useMemo(() => {
     const map = new Map<string, number>();
     income.forEach((i: any) => {
-      const src = i.source || 'other';
+      const src = i.source || i.category || 'other';
       map.set(src, (map.get(src) || 0) + Number(i.amount || 0));
     });
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
