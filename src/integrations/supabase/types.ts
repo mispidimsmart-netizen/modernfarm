@@ -2968,9 +2968,12 @@ export type Database = {
       mortality_records: {
         Row: {
           age_weeks: number | null
+          batch_id: string | null
           cause: string
           count: number
           created_at: string
+          farm_id: string | null
+          farm_mode: string | null
           id: string
           notes: string | null
           record_date: string
@@ -2979,9 +2982,12 @@ export type Database = {
         }
         Insert: {
           age_weeks?: number | null
+          batch_id?: string | null
           cause?: string
           count?: number
           created_at?: string
+          farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           notes?: string | null
           record_date?: string
@@ -2990,9 +2996,12 @@ export type Database = {
         }
         Update: {
           age_weeks?: number | null
+          batch_id?: string | null
           cause?: string
           count?: number
           created_at?: string
+          farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           notes?: string | null
           record_date?: string

@@ -51,6 +51,9 @@ export interface MortalityRecord {
   id: string;
   user_id: string;
   shed_id?: string | null;
+  farm_id?: string | null;
+  farm_mode?: 'layer' | 'broiler' | null;
+  batch_id?: string | null;
   record_date: string;
   count: number;
   cause: string;
@@ -448,11 +451,15 @@ export function useMortalityRecords(days: number = 30) {
       
       if (error) throw error;
       const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
-      return (data ?? []).filter((record) => {
-        const shed = record.sheds;
-        if (!shed) return !selectedFarmId;
-        if (selectedFarmId && shed.farm_id !== selectedFarmId) return false;
-        if (activeMode && shed.farm_type && shed.farm_type !== activeMode && shed.farm_type !== 'both') return false;
+      return (data ?? []).filter((record: any) => {
+        // Prefer direct farm_id/farm_mode if present
+        const recordFarmId = record.farm_id ?? record.sheds?.farm_id ?? null;
+        const recordMode = record.farm_mode ?? record.sheds?.farm_type ?? null;
+        if (selectedFarmId) {
+          if (recordFarmId && recordFarmId !== selectedFarmId) return false;
+          if (!recordFarmId) return false; // legacy untagged hidden when farm selected
+        }
+        if (activeMode && recordMode && recordMode !== activeMode && recordMode !== 'both') return false;
         return true;
       }) as MortalityRecord[];
     },
@@ -465,26 +472,49 @@ export function useAddMortalityRecord() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { selectedShedId } = useSelectedShed();
+  const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: sheds } = useSheds();
+  const { data: layerBatch } = useActiveLayerBatch();
+  const { data: broilerBatch } = useActiveBroilerBatch();
 
   return useMutation({
     mutationFn: async (data: Omit<MortalityRecord, 'id' | 'user_id' | 'created_at'>) => {
-      if (!selectedShedId && !data.shed_id) throw new Error('কোনো শেড নির্বাচন করা নেই');
+      if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
+      const farmMode: 'layer' | 'broiler' | null = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
+
+      // Try to infer a shed if none selected: pick first shed in farm matching mode
+      let shedId = data.shed_id ?? selectedShedId ?? null;
+      if (!shedId && sheds && sheds.length > 0) {
+        const match = sheds.find((s: any) =>
+          s.farm_id === selectedFarmId &&
+          (!farmMode || s.farm_type === farmMode || s.farm_type === 'both')
+        );
+        shedId = match?.id ?? null;
+      }
+
+      const activeBatchId = isLayer ? (layerBatch as any)?.id ?? null : isBroiler ? (broilerBatch as any)?.id ?? null : null;
+
       const { error } = await supabase
         .from('mortality_records')
         .insert({
           ...data,
-          shed_id: data.shed_id ?? selectedShedId,
+          shed_id: shedId,
+          farm_id: selectedFarmId,
+          farm_mode: farmMode,
+          batch_id: data.batch_id ?? activeBatchId,
           user_id: user!.id,
-        });
+        } as any);
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mortality-records'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
       toast({ title: 'মৃত্যু রেকর্ড সংরক্ষণ হয়েছে' });
     },
-    onError: () => {
-      toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });
+    onError: (e: any) => {
+      toast({ title: 'ত্রুটি হয়েছে', description: e?.message, variant: 'destructive' });
     },
   });
 }
