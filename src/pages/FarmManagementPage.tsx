@@ -60,8 +60,18 @@ export function FarmManagementPage() {
     },
   };
 
-  const handleQuickAction = (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => {
-    setActiveSheet(action);
+  const handleQuickAction = (action: import('@/components/farm/FarmInputCards').EntryActionKey) => {
+    // Map non-sheet actions to existing sheets where applicable
+    if (action === 'medicine') {
+      // Medicine entry currently lives inside Mortality sheet (cause=disease)
+      setActiveSheet('mortality');
+      return;
+    }
+    if (action === 'feed-stock') {
+      setActiveSheet('feed');
+      return;
+    }
+    setActiveSheet(action as any);
   };
 
   return (
