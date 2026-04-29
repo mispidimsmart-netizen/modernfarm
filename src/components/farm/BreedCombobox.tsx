@@ -81,6 +81,9 @@ export function BreedCombobox({
       <PopoverContent
         className="p-0 w-[--radix-popover-trigger-width] min-w-[280px]"
         align="start"
+        side="bottom"
+        sideOffset={4}
+        style={{ maxHeight: 'min(350px, var(--radix-popover-content-available-height, 350px))' }}
       >
         <Command
           filter={(itemValue, search) => {
@@ -93,7 +96,7 @@ export function BreedCombobox({
         >
           <CommandInput placeholder={t.search} />
 
-          <CommandList className="max-h-64">
+          <CommandList className="max-h-[250px] overflow-y-auto">
             <CommandEmpty>{t.empty}</CommandEmpty>
             <CommandGroup>
               {options.map((opt) => (
