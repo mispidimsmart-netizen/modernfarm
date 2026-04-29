@@ -11,6 +11,7 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { RoleProtectedRoute } from "./components/auth";
 import { useBatchEditQueue } from "./hooks/useBatchEditQueue";
+import { useFarmDataRealtime } from "./hooks/useFarmDataRealtime";
 
 // Retry wrapper for lazy imports (handles stale cache / failed fetches)
 function lazyRetry<T extends React.ComponentType<any>>(
