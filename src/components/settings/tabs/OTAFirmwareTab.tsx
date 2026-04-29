@@ -3,9 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   HardDrive, Cloud, Cpu, ArrowRight, RefreshCw, CheckCircle2,
-  AlertCircle, Shield, Globe, Home,
+  AlertCircle, Shield, Globe, Home, Clock, Download, Flame,
+  ShieldCheck, XCircle, Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
