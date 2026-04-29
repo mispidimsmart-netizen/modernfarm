@@ -45,6 +45,12 @@ export function FarmManagementPage() {
 
   const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
   const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report' | 'analysis'>('batch');
+  const [batchSectionOpen, setBatchSectionOpen] = useState(false);
+
+  // Auto-open batch management section when an active batch is detected
+  useEffect(() => {
+    if (hasActiveBatch) setBatchSectionOpen(true);
+  }, [hasActiveBatch]);
 
   // Handle broiler-specific actions
   const handleBroilerAction = (action: 'batch' | 'weight' | 'broiler-feed') => {
