@@ -533,6 +533,16 @@ export function useEditCompletedLayerBatch() {
               : 'Final bird count cannot exceed initial'
           );
         }
+        if (
+          age_at_start_weeks !== undefined &&
+          (age_at_start_weeks < 0 || age_at_start_weeks > 80)
+        ) {
+          throw new Error(
+            language === 'bn'
+              ? 'শুরুর বয়স ০–৮০ সপ্তাহের মধ্যে হতে হবে'
+              : 'Start age must be between 0 and 80 weeks'
+          );
+        }
         enqueueBatchEdit(batchId, {
           start_date,
           actual_end_date,
@@ -540,6 +550,9 @@ export function useEditCompletedLayerBatch() {
           current_bird_count,
           chick_cost_per_bird,
           notes,
+          batch_name_bn,
+          breed,
+          age_at_start_weeks,
         });
         return { batchId, queued: true } as any;
       }
