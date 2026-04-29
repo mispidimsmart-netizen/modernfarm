@@ -166,7 +166,7 @@ export function FarmInputCards({
     ? ['weight', 'broiler-feed']
     : ['egg', 'feed'];
   const healthKeys: EntryActionKey[] = ['mortality', 'medicine'];
-  const financeKeys: EntryActionKey[] = ['finance', 'feed-stock'];
+  const financeKeys: EntryActionKey[] = ['finance'];
 
   const filterAndOrder = (keys: EntryActionKey[]) =>
     keys
