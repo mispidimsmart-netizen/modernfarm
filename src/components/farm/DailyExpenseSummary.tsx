@@ -1,28 +1,53 @@
 import { useAuth } from '@/context/AuthContext';
 import { useExpenses, useIncome } from '@/hooks/useFarmManagement';
 import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
+import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useMemo } from 'react';
+
+const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
+const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
 
 export function DailyExpenseSummary() {
   const { language } = useAuth();
   const { data: expenses } = useExpenses(7);
   const { data: income } = useIncome(7);
   const batchStart = useActiveBatchStart();
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId: string | null = isLayer
+    ? activeLayerBatch?.id ?? null
+    : isBroiler
+      ? (activeBroilerBatch as any)?.id ?? null
+      : null;
 
   const today = new Date().toISOString().split('T')[0];
-
-  // "Today" is always >= batchStart, but we still gate to ensure we don't show
-  // stale data when there is no active batch (which would mean no current flock).
   const showData = !batchStart || today >= batchStart;
 
-  const todayExpenses = useMemo(() =>
-    showData ? (expenses?.filter(e => e.expense_date === today) ?? []) : [],
-    [expenses, today, showData]);
-  const todayIncome = useMemo(() =>
-    showData ? (income?.filter(i => i.income_date === today) ?? []) : [],
-    [income, today, showData]);
+  const todayExpenses = useMemo(() => {
+    if (!showData) return [];
+    return (expenses ?? []).filter((e: any) => {
+      if (e.expense_date !== today) return false;
+      if (e.batch_id) return e.batch_id === activeBatchId;
+      return true;
+    });
+  }, [expenses, today, showData, activeBatchId]);
+
+  const todayIncome = useMemo(() => {
+    if (!showData) return [];
+    return (income ?? []).filter((i: any) => {
+      if (i.income_date !== today) return false;
+      const cat = (i.category ?? i.source ?? '').toString();
+      if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
+      if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
+      if (i.batch_id) return i.batch_id === activeBatchId;
+      return true;
+    });
+  }, [income, today, showData, activeBatchId, isLayer, isBroiler]);
 
   const totalExpense = todayExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = todayIncome.reduce((s, i) => s + Number(i.amount), 0);
