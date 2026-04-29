@@ -2466,38 +2466,65 @@ export type Database = {
       income: {
         Row: {
           amount: number
+          batch_id: string | null
+          buyer_name: string | null
           category: string
           created_at: string
           description: string | null
           farm_id: string | null
+          farm_mode: string
           id: string
           income_date: string
+          notes: string | null
           quantity: number | null
+          shed_id: string | null
+          source: string
+          total_amount: number
+          unit: string
           unit_price: number | null
+          updated_at: string
           user_id: string
         }
         Insert: {
           amount?: number
+          batch_id?: string | null
+          buyer_name?: string | null
           category?: string
           created_at?: string
           description?: string | null
           farm_id?: string | null
+          farm_mode?: string
           id?: string
           income_date?: string
+          notes?: string | null
           quantity?: number | null
+          shed_id?: string | null
+          source?: string
+          total_amount?: number
+          unit?: string
           unit_price?: number | null
+          updated_at?: string
           user_id: string
         }
         Update: {
           amount?: number
+          batch_id?: string | null
+          buyer_name?: string | null
           category?: string
           created_at?: string
           description?: string | null
           farm_id?: string | null
+          farm_mode?: string
           id?: string
           income_date?: string
+          notes?: string | null
           quantity?: number | null
+          shed_id?: string | null
+          source?: string
+          total_amount?: number
+          unit?: string
           unit_price?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -2727,6 +2754,114 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      medicine_inventory: {
+        Row: {
+          created_at: string
+          expiry_date: string | null
+          farm_id: string | null
+          id: string
+          medicine_name: string
+          medicine_type: string
+          notes: string | null
+          purchase_date: string
+          quantity: number
+          supplier: string | null
+          total_cost: number
+          unit: string
+          unit_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expiry_date?: string | null
+          farm_id?: string | null
+          id?: string
+          medicine_name: string
+          medicine_type?: string
+          notes?: string | null
+          purchase_date?: string
+          quantity?: number
+          supplier?: string | null
+          total_cost?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expiry_date?: string | null
+          farm_id?: string | null
+          id?: string
+          medicine_name?: string
+          medicine_type?: string
+          notes?: string | null
+          purchase_date?: string
+          quantity?: number
+          supplier?: string | null
+          total_cost?: number
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medicine_usage: {
+        Row: {
+          batch_id: string | null
+          birds_treated: number | null
+          created_at: string
+          farm_id: string | null
+          id: string
+          inventory_id: string | null
+          medicine_name: string
+          medicine_type: string
+          notes: string | null
+          quantity_used: number
+          reason: string | null
+          shed_id: string | null
+          unit: string
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          batch_id?: string | null
+          birds_treated?: number | null
+          created_at?: string
+          farm_id?: string | null
+          id?: string
+          inventory_id?: string | null
+          medicine_name: string
+          medicine_type?: string
+          notes?: string | null
+          quantity_used?: number
+          reason?: string | null
+          shed_id?: string | null
+          unit?: string
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string | null
+          birds_treated?: number | null
+          created_at?: string
+          farm_id?: string | null
+          id?: string
+          inventory_id?: string | null
+          medicine_name?: string
+          medicine_type?: string
+          notes?: string | null
+          quantity_used?: number
+          reason?: string | null
+          shed_id?: string | null
+          unit?: string
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       mode_profiles: {
         Row: {
