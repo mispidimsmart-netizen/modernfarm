@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useExpenses, useIncome, useAddExpense, useAddIncome } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -36,6 +37,7 @@ const INCOME_CATEGORIES = [
 
 export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { language } = useAuth();
+  const navigate = useNavigate();
   const { data: expenses } = useExpenses();
   const { data: income } = useIncome();
   const addExpense = useAddExpense();
@@ -165,6 +167,18 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
                 </span>
               </CardContent>
             </Card>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                onOpenChange(false);
+                navigate('/finance-report');
+              }}
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              পূর্ণ আয়-ব্যয় রিপোর্ট দেখুন
+            </Button>
 
             {/* Recent Transactions */}
             <div className="max-h-[300px] space-y-2 overflow-y-auto">

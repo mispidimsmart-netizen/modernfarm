@@ -48,6 +48,7 @@ const AdminPage = lazyRetry(() => import("./pages/AdminPage"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 const FarmSetupWizardPage = lazyRetry(() => import("./pages/FarmSetupWizardPage"));
 const ResetPasswordPage = lazyRetry(() => import("./pages/ResetPasswordPage"));
+const FinanceReportPage = lazyRetry(() => import("./pages/FinanceReportPage"));
 
 
 // Optimized QueryClient with better caching
@@ -225,6 +226,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <AuditLogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/finance-report"
+          element={
+            <ProtectedRoute>
+              <FinanceReportPage />
             </ProtectedRoute>
           }
         />
