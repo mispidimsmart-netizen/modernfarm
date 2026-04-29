@@ -548,8 +548,10 @@ function Stat({
 
 function PastBatchRow({ batch, language }: { batch: LayerBatch; language: 'bn' | 'en' }) {
   const { data: summary } = useLayerBatchSummary(batch.id);
+  const deleteBatch = useDeleteLayerBatch();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <>
@@ -586,6 +588,19 @@ function PastBatchRow({ batch, language }: { batch: LayerBatch; language: 'bn' |
             title={language === 'bn' ? 'সম্পাদনা' : 'Edit'}
           >
             <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-auto w-9 shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteOpen(true);
+            }}
+            title={language === 'bn' ? 'মুছুন' : 'Delete'}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
         <CollapsibleContent className="mt-1 grid grid-cols-3 gap-1.5 px-2">
@@ -630,6 +645,36 @@ function PastBatchRow({ batch, language }: { batch: LayerBatch; language: 'bn' |
         open={editOpen}
         onOpenChange={setEditOpen}
       />
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              {language === 'bn' ? 'এই ব্যাচ মুছবেন?' : 'Delete this batch?'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'bn'
+                ? `"${batch.batch_name_bn || batch.batch_name}" ব্যাচ ও তার সারাংশ স্থায়ীভাবে মুছে যাবে। দৈনিক রেকর্ড অপরিবর্তিত থাকবে।`
+                : `"${batch.batch_name_bn || batch.batch_name}" batch and its summary will be permanently deleted. Daily records remain untouched.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              {language === 'bn' ? 'বাতিল' : 'Cancel'}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteBatch.isPending}
+              onClick={() =>
+                deleteBatch.mutate(batch.id, { onSuccess: () => setDeleteOpen(false) })
+              }
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              {language === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
