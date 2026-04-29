@@ -314,18 +314,11 @@ export function FarmManagementPage() {
 
                     {/* Broiler Mode: Show batch overview as summary */}
                     {isBroiler && (
-                      <>
-                        <BroilerDashboardWidget
-                          onBatchClick={() => handleBroilerAction('batch')}
-                          onWeightClick={() => handleBroilerAction('weight')}
-                          onFeedClick={() => handleBroilerAction('broiler-feed')}
-                        />
-                        <p className="text-xs text-center text-muted-foreground">
-                          {language === 'bn'
-                            ? '📊 FCR, ওজন বৃদ্ধি ও খরচের বিস্তারিত উপরের কার্ডে দেখুন'
-                            : '📊 See FCR, weight gain & cost details in the card above'}
-                        </p>
-                      </>
+                      <BroilerDashboardWidget
+                        onBatchClick={() => handleBroilerAction('batch')}
+                        onWeightClick={() => handleBroilerAction('weight')}
+                        onFeedClick={() => handleBroilerAction('broiler-feed')}
+                      />
                     )}
                   </CollapsibleContent>
                 </Collapsible>
