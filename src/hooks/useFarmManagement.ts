@@ -485,15 +485,17 @@ export function useAddExpense() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at'>) => {
+    mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { error } = await supabase
         .from('expenses')
         .insert({
           ...data,
+          farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
           user_id: user!.id,
           farm_id: selectedFarmId,
         });
@@ -543,15 +545,17 @@ export function useAddIncome() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at'>) => {
+    mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { error } = await supabase
         .from('income')
         .insert({
           ...data,
+          farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
           user_id: user!.id,
           farm_id: selectedFarmId,
         });
