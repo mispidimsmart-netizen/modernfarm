@@ -52,13 +52,15 @@ export function getFinanceScopeIssues(
       reasons.push(labels?.otherBatch ?? 'Other batch');
     }
   } else {
-    // Untagged row: include if it falls within the active batch's time window.
-    // Only exclude when we have a batch start date AND the row predates it.
-    if (scope.batchStart && date && date < scope.batchStart) {
+    // Untagged row (no batch_id, no farm_mode):
+    // - In broiler mode, hide to prevent layer-era data leakage into a fresh batch.
+    // - In layer mode, include legacy entries that fall within the active batch window
+    //   (or always, if no batch is active) so historical totals are not lost.
+    if (mode === 'broiler' && !rowMode) {
+      reasons.push(labels?.untagged ?? 'Batch/mode not tagged');
+    } else if (scope.batchStart && date && date < scope.batchStart) {
       reasons.push(labels?.beforeBatch ?? 'Before active batch start');
     }
-    // If no batch info at all on the row but mode mismatch was already handled above,
-    // allow the row through (legacy data within the visible window).
   }
 
   return reasons;
