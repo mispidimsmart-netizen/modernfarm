@@ -7,7 +7,7 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
-import { useSelectedShed } from '@/hooks/useSheds';
+import { useSelectedShed, useSheds } from '@/hooks/useSheds';
 
 // Types
 export interface EggProduction {
@@ -100,6 +100,7 @@ export function useEggProduction(days: number = 30) {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const { isLayer } = useFarmType();
+  const { data: sheds } = useSheds();
   
   return useQuery({
     queryKey: ['egg-production', user?.id, selectedFarmId, isLayer ? 'layer' : 'not-layer', days],
@@ -117,9 +118,12 @@ export function useEggProduction(days: number = 30) {
       const { data, error } = await q;
       
       if (error) throw error;
-      return (isLayer ? data : []) as EggProduction[];
+      const layerShedIds = new Set((sheds ?? []).filter((s) => s.farm_type === 'layer').map((s) => s.id));
+      return (isLayer
+        ? (data ?? []).filter((row: any) => !row.shed_id || layerShedIds.has(row.shed_id))
+        : []) as EggProduction[];
     },
-    enabled: !!user,
+    enabled: !!user && (!isLayer || !!sheds),
   });
 }
 
