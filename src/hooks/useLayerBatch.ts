@@ -419,12 +419,34 @@ export function useCloseLayerBatch() {
         .eq('id', batchId);
       if (uErr) throw uErr;
 
+      // Auto-reset flock_info so stale "মোট মুরগি" doesn't linger after batch closes.
+      // Only reset if no other ACTIVE batch exists for this farm.
+      if (farmId) {
+        const { data: stillActive } = await supabase
+          .from('layer_batches' as any)
+          .select('id')
+          .eq('farm_id', farmId)
+          .eq('status', 'active')
+          .limit(1);
+
+        if (!stillActive || stillActive.length === 0) {
+          await supabase
+            .from('flock_info')
+            .update({
+              total_birds: 0,
+              purchase_date: null,
+            })
+            .eq('farm_id', farmId);
+        }
+      }
+
       return { batchId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-active'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
       toast({
         title: language === 'bn' ? 'ব্যাচ সম্পন্ন' : 'Batch Closed',
         description: language === 'bn' ? 'সারাংশ সংরক্ষিত হয়েছে' : 'Summary saved',
