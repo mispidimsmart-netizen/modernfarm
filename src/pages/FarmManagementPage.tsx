@@ -120,9 +120,9 @@ export function FarmManagementPage() {
           {/* Stats Header */}
           <FarmStatsHeader onFlockClick={() => setActiveTab('batch')} />
 
-          {/* Tabbed Interface - 4 tabs */}
+          {/* Tabbed Interface - 3 tabs */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-            <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
+            <TabsList className="w-full grid grid-cols-3 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
               <TabsTrigger
                 value="batch"
                 className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
@@ -140,12 +140,6 @@ export function FarmManagementPage() {
                 className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
               >
                 {t.report[language]}
-              </TabsTrigger>
-              <TabsTrigger
-                value="analysis"
-                className="rounded-xl text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all duration-200"
-              >
-                {t.analysis[language]}
               </TabsTrigger>
             </TabsList>
 
