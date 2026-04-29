@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import {
   HardDrive, Cloud, Cpu, ArrowRight, RefreshCw, CheckCircle2,
   AlertCircle, Shield, Globe, Home, Clock, Download, Flame,
-  ShieldCheck, XCircle, Loader2,
+  ShieldCheck, XCircle, Loader2, HelpCircle, ChevronDown,
+  FileCode, Settings as SettingsIcon, Upload, Wrench,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
@@ -236,6 +237,174 @@ export function OTAFirmwareTab() {
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Step-by-step help panel — how to build & upload firmware .bin */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <details className="group">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 p-4 list-none [&::-webkit-details-marker]:hidden">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 shrink-0">
+                <HelpCircle className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-sm">
+                  {t('কীভাবে নতুন ফার্মওয়্যার তৈরি ও আপলোড করবেন?', 'How to build & upload new firmware?')}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {t('ধাপে ধাপে গাইড — .bin ফাইল, বোর্ড সেটিংস, পার্টিশন', 'Step-by-step guide — .bin file, board settings, partition')}
+                </div>
+              </div>
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="border-t border-amber-500/20 p-4 space-y-4">
+            {/* Step 1 — Source file */}
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">১</div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <FileCode className="h-4 w-4 text-amber-600" />
+                  <h4 className="font-semibold text-sm">{t('সোর্স ফাইল খুঁজুন', 'Find the source file')}</h4>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t(
+                    'প্রজেক্টের public/ ফোল্ডারে ESP32 সোর্স কোড পাওয়া যাবে। প্রধান ফাইল:',
+                    'ESP32 source code is in the project\'s public/ folder. Main file:',
+                  )}
+                </p>
+                <div className="rounded-md bg-background border p-2 font-mono text-xs space-y-1">
+                  <div>📄 <span className="text-emerald-600 font-semibold">public/esp32-unified.ino</span> {t('— প্রধান', '— main')}</div>
+                  <div className="text-muted-foreground">📄 public/esp32-industrial.ino</div>
+                  <div className="text-muted-foreground">📄 public/esp32-failsafe.ino</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 — Compile */}
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">২</div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-amber-600" />
+                  <h4 className="font-semibold text-sm">{t('Arduino IDE-তে কম্পাইল করুন', 'Compile in Arduino IDE')}</h4>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t(
+                    'Arduino IDE 2.x বা PlatformIO খুলে .ino ফাইল লোড করুন। তারপর নিচের মতো সেটিংস বাছাই করুন:',
+                    'Open Arduino IDE 2.x or PlatformIO and load the .ino file. Then select these settings:',
+                  )}
+                </p>
+                <div className="rounded-md bg-background border p-3 text-xs space-y-1.5">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t('বোর্ড', 'Board')}:</span>
+                    <span className="font-mono font-semibold text-right">ESP32 Dev Module</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t('চিপ', 'Chip')}:</span>
+                    <span className="font-mono font-semibold text-right">ESP32-WROOM-32</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t('ফ্ল্যাশ সাইজ', 'Flash Size')}:</span>
+                    <span className="font-mono font-semibold text-right">4MB (32Mb)</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{t('আপলোড স্পিড', 'Upload Speed')}:</span>
+                    <span className="font-mono font-semibold text-right">115200</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">CPU Frequency:</span>
+                    <span className="font-mono font-semibold text-right">240MHz</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3 — Partition Scheme */}
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">৩</div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <SettingsIcon className="h-4 w-4 text-amber-600" />
+                  <h4 className="font-semibold text-sm">
+                    {t('পার্টিশন স্কিম (গুরুত্বপূর্ণ!)', 'Partition Scheme (Important!)')}
+                  </h4>
+                </div>
+                <div className="rounded-md border-2 border-emerald-500/40 bg-emerald-500/10 p-3 text-xs">
+                  <div className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                    Minimal SPIFFS (1.9MB APP with OTA / 190KB SPIFFS)
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 p-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-xs text-destructive leading-relaxed">
+                    {t(
+                      'OTA সাপোর্টের জন্য এই পার্টিশন স্কিম বাধ্যতামূলক। অন্য কিছু বাছাই করলে রিমোট আপডেট কাজ করবে না।',
+                      'This partition scheme is mandatory for OTA support. Other choices will break remote updates.',
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4 — Export Binary */}
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">৪</div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Download className="h-4 w-4 text-amber-600" />
+                  <h4 className="font-semibold text-sm">{t('.bin ফাইল এক্সপোর্ট করুন', 'Export the .bin file')}</h4>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t(
+                    'Arduino IDE মেনু থেকে: Sketch → Export Compiled Binary (Ctrl+Alt+S)। এটি .ino ফাইলের পাশে .bin ফাইল তৈরি করবে।',
+                    'Arduino IDE menu: Sketch → Export Compiled Binary (Ctrl+Alt+S). This creates a .bin file next to your .ino file.',
+                  )}
+                </p>
+                <div className="rounded-md bg-background border p-2 font-mono text-xs">
+                  ✅ esp32-unified.ino.esp32.<span className="text-emerald-600 font-semibold">bin</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 5 — Upload */}
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold">৫</div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-amber-600" />
+                  <h4 className="font-semibold text-sm">{t('Admin → Firmware-এ আপলোড করুন', 'Upload via Admin → Firmware')}</h4>
+                </div>
+                <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4 leading-relaxed">
+                  <li>{t('ভার্সন: সেমান্টিক ফরম্যাট, যেমন', 'Version: semantic format, e.g.')} <span className="font-mono text-foreground">v1.2.3</span></li>
+                  <li>{t('চ্যানেল: প্রথমে', 'Channel: first')} <span className="font-mono text-foreground">beta</span> {t(', পরে', ', then')} <span className="font-mono text-foreground">stable</span></li>
+                  <li>{t('সিস্টেম স্বয়ংক্রিয়ভাবে CRC32 চেকসাম যাচাই করবে', 'System will auto-verify CRC32 checksum')}</li>
+                  <li>{t('শুধু .bin ফাইল গ্রহণযোগ্য — .ino সরাসরি আপলোড হবে না', 'Only .bin accepted — .ino cannot be uploaded directly')}</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Quick reference link */}
+            <div className="rounded-md bg-muted/50 border p-3 text-xs flex items-start gap-2">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-muted-foreground leading-relaxed">
+                {t(
+                  'বিস্তারিত গাইড: ',
+                  'Detailed guide: ',
+                )}
+                <a
+                  href="https://docs.espressif.com/projects/arduino-esp32/en/latest/ota_web_update.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline font-medium"
+                >
+                  Espressif OTA Documentation
+                </a>
+              </p>
+            </div>
+          </div>
+        </details>
       </Card>
 
       {/* Latest available release (informational) */}
