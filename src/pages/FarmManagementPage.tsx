@@ -43,7 +43,7 @@ export function FarmManagementPage() {
   const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const hasActiveBatch = !!(activeLayerBatch || activeBroilerBatch);
 
-  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'medicine' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
   const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report' | 'analysis'>('batch');
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
 
