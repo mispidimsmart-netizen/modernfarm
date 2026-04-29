@@ -297,24 +297,43 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
           </TabsContent>
 
           <TabsContent value="income" className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>{t.category[language]}</Label>
-              <Select 
-                value={incomeForm.category} 
-                onValueChange={(v) => setIncomeForm(p => ({ ...p, category: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INCOME_CATEGORIES.map(cat => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat[language]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {(() => {
+              const mode: 'layer' | 'broiler' | null = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
+              const visibleIncomeCategories = INCOME_CATEGORIES.filter(
+                (c) => c.mode === 'both' || !mode || c.mode === mode
+              );
+              // Auto-correct invalid default for current mode
+              if (
+                mode &&
+                !visibleIncomeCategories.some((c) => c.value === incomeForm.category)
+              ) {
+                const fallback = visibleIncomeCategories[0]?.value ?? 'other';
+                if (incomeForm.category !== fallback) {
+                  // defer to avoid setState during render
+                  queueMicrotask(() => setIncomeForm((p) => ({ ...p, category: fallback })));
+                }
+              }
+              return (
+                <div className="space-y-2">
+                  <Label>{t.category[language]}</Label>
+                  <Select
+                    value={incomeForm.category}
+                    onValueChange={(v) => setIncomeForm((p) => ({ ...p, category: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {visibleIncomeCategories.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat[language]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })()}
 
             {incomeForm.category === 'eggs' && (
               <>
