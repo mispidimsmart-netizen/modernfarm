@@ -416,7 +416,11 @@ export function FarmSetupTab() {
               <Baby className="h-5 w-5 text-pink-500" />
               {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
               <Badge variant="secondary" className="ml-1 text-xs">
-                {birdAge} {language === 'bn' ? 'দিন' : 'days'}
+                {hasAge
+                  ? (farmType === 'layer'
+                      ? `${unifiedAgeWeeks} ${language === 'bn' ? 'সপ্তাহ' : 'weeks'}`
+                      : `${birdAge} ${language === 'bn' ? 'দিন' : 'days'}`)
+                  : (language === 'bn' ? 'সেট করা হয়নি' : 'Not set')}
               </Badge>
             </div>
           </AccordionTrigger>
