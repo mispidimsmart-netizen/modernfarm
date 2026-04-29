@@ -353,25 +353,30 @@ export function useExpenses(days: number = 30) {
 export function useAddExpense() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at'>) => {
+      if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { error } = await supabase
         .from('expenses')
         .insert({
           ...data,
           user_id: user!.id,
+          farm_id: selectedFarmId,
         });
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
       toast({ title: 'খরচ রেকর্ড হয়েছে' });
     },
-    onError: () => {
-      toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'ত্রুটি হয়েছে', description: error?.message, variant: 'destructive' });
     },
   });
 }
