@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
+import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 
 // Types
 export interface EggProduction {
@@ -689,6 +692,9 @@ export function useUpdateFlockInfo() {
 }
 
 // Summary Stats Hook
+const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
+const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
+
 export function useFarmSummary() {
   const { data: eggs } = useEggProduction(30);
   const { data: expenses } = useExpenses(30);
@@ -697,13 +703,34 @@ export function useFarmSummary() {
   const { data: flockInfo } = useFlockInfo();
   const { data: feedConsumption } = useFeedConsumption(30);
 
-  const totalEggs = eggs?.reduce((sum, e) => sum + e.total_eggs, 0) ?? 0;
-  const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) ?? 0;
-  const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount), 0) ?? 0;
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId: string | null = isLayer
+    ? (activeLayerBatch?.id ?? null)
+    : isBroiler
+      ? ((activeBroilerBatch as any)?.id ?? null)
+      : null;
+
+  const filteredExpenses = (expenses ?? []).filter((e: any) => {
+    if (e.batch_id) return e.batch_id === activeBatchId;
+    return true;
+  });
+  const filteredIncome = (income ?? []).filter((i: any) => {
+    const cat = (i.category ?? '').toString();
+    if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
+    if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
+    if (i.batch_id) return i.batch_id === activeBatchId;
+    return true;
+  });
+
+  const totalEggs = isLayer ? (eggs?.reduce((sum, e) => sum + e.total_eggs, 0) ?? 0) : 0;
+  const totalExpenses = filteredExpenses.reduce((sum, e: any) => sum + Number(e.amount), 0);
+  const totalIncome = filteredIncome.reduce((sum, i: any) => sum + Number(i.amount), 0);
   const totalMortality = mortality?.reduce((sum, m) => sum + m.count, 0) ?? 0;
   const totalFeedUsed = feedConsumption?.reduce((sum, f) => sum + Number(f.quantity_kg), 0) ?? 0;
-  
-  const productionRate = flockInfo?.total_birds 
+
+  const productionRate = flockInfo?.total_birds
     ? ((totalEggs / 30) / flockInfo.total_birds * 100).toFixed(1)
     : '0';
 
