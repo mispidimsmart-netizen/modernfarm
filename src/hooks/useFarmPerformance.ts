@@ -19,6 +19,10 @@ export interface PerformanceMetrics {
   // Common
   overallCondition: 'GOOD' | 'MODERATE' | 'POOR';
   heatStressAvoidedHours: number;
+  /** Total hours in the period when temp entered the at-risk zone (>= threshold - 2°C). */
+  heatRiskWindowHours: number;
+  /** Hours when temp actually crossed the stress threshold (failed to control). */
+  heatStressActualHours: number;
   tempStabilityIndex: number;
   
   // Layer specific
