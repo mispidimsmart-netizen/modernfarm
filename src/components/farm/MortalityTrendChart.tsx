@@ -62,9 +62,9 @@ export function MortalityTrendChart({ days = 14 }: MortalityTrendChartProps = {}
 
         <div className="h-32">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={last14Days}>
+            <BarChart data={seriesData}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-              <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={2} />
+              <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={xInterval} />
               <YAxis tick={{ fontSize: 9 }} width={20} allowDecimals={false} />
               <Tooltip
                 formatter={(value: number) => [value, language === 'bn' ? 'মৃত্যু' : 'Deaths']}
