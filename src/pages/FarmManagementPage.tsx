@@ -325,10 +325,6 @@ export function FarmManagementPage() {
         open={activeSheet === 'finance'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
-      <FlockInfoSheet 
-        open={activeSheet === 'flock'} 
-        onOpenChange={(open) => !open && setActiveSheet(null)} 
-      />
       <ScheduleSheet 
         open={activeSheet === 'schedule'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
