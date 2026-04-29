@@ -24,6 +24,7 @@ interface ReportRangePickerProps {
 }
 
 const PRESETS: ReportRangePreset[] = [7, 14, 30, 90];
+const DEFAULT_DAYS: ReportRangePreset = 7;
 
 export function ReportRangePicker({ value, onChange }: ReportRangePickerProps) {
   const { language } = useAuth();
