@@ -108,6 +108,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
     addExpense.mutate({
       ...expenseForm,
       description: expenseForm.description || null,
+      batch_id: activeBatchId,
     });
   };
 
@@ -117,6 +118,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
       quantity: incomeForm.quantity || null,
       unit_price: incomeForm.unit_price || null,
       description: incomeForm.description || null,
+      batch_id: activeBatchId,
     });
   };
 
