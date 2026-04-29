@@ -120,9 +120,8 @@ export function useEggProduction(days: number = 30) {
       
       if (error) throw error;
       const layerShedIds = new Set((sheds ?? []).filter((s) => s.farm_type === 'layer').map((s) => s.id));
-      return (isLayer
-        ? (data ?? []).filter((row: any) => !row.shed_id || layerShedIds.has(row.shed_id))
-        : []) as EggProduction[];
+      const rows = (data ?? []) as EggProduction[];
+      return isLayer ? rows.filter((row) => !row.shed_id || layerShedIds.has(row.shed_id)) : [];
     },
     enabled: !!user && (!isLayer || !!sheds),
   });
@@ -449,7 +448,7 @@ export function useMortalityRecords(days: number = 30) {
       
       if (error) throw error;
       const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
-      return (data ?? []).filter((record: any) => {
+      return (data ?? []).filter((record) => {
         const shed = record.sheds;
         if (!shed) return !selectedFarmId;
         if (selectedFarmId && shed.farm_id !== selectedFarmId) return false;
@@ -469,12 +468,12 @@ export function useAddMortalityRecord() {
 
   return useMutation({
     mutationFn: async (data: Omit<MortalityRecord, 'id' | 'user_id' | 'created_at'>) => {
-      if (!selectedShedId && !(data as any).shed_id) throw new Error('কোনো শেড নির্বাচন করা নেই');
+      if (!selectedShedId && !data.shed_id) throw new Error('কোনো শেড নির্বাচন করা নেই');
       const { error } = await supabase
         .from('mortality_records')
         .insert({
           ...data,
-          shed_id: (data as any).shed_id ?? selectedShedId,
+          shed_id: data.shed_id ?? selectedShedId,
           user_id: user!.id,
         });
       
