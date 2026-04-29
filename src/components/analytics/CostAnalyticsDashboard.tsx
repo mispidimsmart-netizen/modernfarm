@@ -13,7 +13,11 @@ import {
   Tooltip, CartesianGrid, BarChart, Bar, Legend 
 } from 'recharts';
 
-export function CostAnalyticsDashboard() {
+interface CostAnalyticsDashboardProps {
+  days?: number;
+}
+
+export function CostAnalyticsDashboard({ days = 30 }: CostAnalyticsDashboardProps = {}) {
   const { language } = useAuth();
   const { isBroiler } = useFarmType();
 
@@ -23,12 +27,12 @@ export function CostAnalyticsDashboard() {
   }
 
   // Layer farm analytics - only called for layer farms
-  return <LayerCostDashboard language={language} />;
+  return <LayerCostDashboard language={language} days={days} />;
 }
 
 // Separate component for layer farm to maintain consistent hook order
-function LayerCostDashboard({ language }: { language: 'en' | 'bn' }) {
-  const analytics = useCostAnalytics(30);
+function LayerCostDashboard({ language, days }: { language: 'en' | 'bn'; days: number }) {
+  const analytics = useCostAnalytics(days);
 
   const formatCurrency = (value: number) => {
     return `৳${value.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')}`;
