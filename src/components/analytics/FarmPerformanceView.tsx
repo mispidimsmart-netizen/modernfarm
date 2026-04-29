@@ -149,14 +149,49 @@ export function FarmPerformanceView({ days = 7 }: FarmPerformanceViewProps = {})
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Heat Stress Avoided */}
-          <MetricCard
-            icon={Thermometer}
-            label={language === 'bn' ? 'হিট স্ট্রেস এড়ানো হয়েছে' : 'Heat Stress Avoided'}
-            value={metrics.heatStressAvoidedHours}
-            unit={language === 'bn' ? 'ঘণ্টা' : 'hours'}
-            color="text-sensor-temperature"
-          />
+          {/* Heat Stress Avoided — REAL data based */}
+          {metrics.heatRiskWindowHours > 0 ? (
+            <div className="p-4 rounded-xl bg-muted/50 space-y-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-background text-sensor-temperature">
+                  <Thermometer size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'bn' ? 'হিট স্ট্রেস নিয়ন্ত্রণ (বাস্তব)' : 'Heat Stress Control (real)'}
+                  </p>
+                  <p className="text-lg font-bold">
+                    {metrics.heatStressAvoidedHours}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                      / {metrics.heatRiskWindowHours} {language === 'bn' ? 'ঘণ্টা' : 'hours'}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                    {language === 'bn'
+                      ? `মোট ঝুঁকির সময়ে (≥${(isBroiler ? 32 : 30) - 2}°C) সফলভাবে নিয়ন্ত্রণে রাখা হয়েছে। ${metrics.heatStressActualHours} ঘণ্টা থ্রেশহোল্ড অতিক্রম করেছিল।`
+                      : `Of total at-risk hours (≥${(isBroiler ? 32 : 30) - 2}°C), successfully kept under control. ${metrics.heatStressActualHours}h crossed threshold.`}
+                  </p>
+                </div>
+              </div>
+              {/* Visual progress */}
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 transition-all"
+                  style={{
+                    width: `${Math.min(100, (metrics.heatStressAvoidedHours / Math.max(0.1, metrics.heatRiskWindowHours)) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <MetricCard
+              icon={Thermometer}
+              label={language === 'bn' ? 'হিট স্ট্রেস নিয়ন্ত্রণ' : 'Heat Stress Control'}
+              value={language === 'bn' ? 'কোনো ঝুঁকি ছিল না' : 'No risk windows'}
+              subtext={language === 'bn' ? `গত ${days} দিনে তাপমাত্রা নিরাপদ পরিসরে ছিল` : `Temperature stayed safe over the last ${days} days`}
+              color="text-sensor-temperature"
+            />
+          )}
           
           {/* Layer specific */}
           {isLayer && metrics.estimatedFeedSavedKg !== undefined && (
