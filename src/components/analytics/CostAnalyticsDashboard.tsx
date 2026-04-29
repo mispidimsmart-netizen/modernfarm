@@ -101,7 +101,7 @@ function LayerCostDashboard({ language, days }: { language: 'en' | 'bn'; days: n
           </div>
           <p className="text-2xl font-bold">{analytics.waterUsage.totalLiters.toLocaleString()} L</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {formatCurrency(analytics.waterUsage.estimatedCost)} / {language === 'bn' ? '৩০ দিন' : '30 days'}
+            {formatCurrency(analytics.waterUsage.estimatedCost)} / {language === 'bn' ? `${days} দিন` : `${days} days`}
           </p>
           <p className="text-xs text-blue-500 mt-2">
             {language === 'bn' ? 'গড়:' : 'Avg:'} {analytics.waterUsage.dailyAverage} L/{language === 'bn' ? 'দিন' : 'day'}
