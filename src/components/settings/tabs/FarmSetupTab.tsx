@@ -258,14 +258,9 @@ export function FarmSetupTab() {
     label?: string;
   } | null>(null);
 
-  // Calculate bird age from active batch or flock info
-  const birdAge = useMemo(() => {
-    if (farmType === 'broiler' && activeBatch?.start_date) {
-      return Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24));
-    }
-    // For layers, we could use flock_info purchase_date if available
-    return 0;
-  }, [farmType, activeBatch]);
+  // Calculate bird age — unified across broiler (from batch start_date) and layer (from flock_info.age_weeks)
+  const { ageDays: unifiedAgeDays, ageWeeks: unifiedAgeWeeks, hasValue: hasAge } = useBirdAge();
+  const birdAge = unifiedAgeDays ?? 0;
 
   // Auto-detect profile from bird age
   const autoDetectedProfile = useMemo(() => {
