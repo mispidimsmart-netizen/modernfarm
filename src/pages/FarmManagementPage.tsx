@@ -12,7 +12,6 @@ import { EggProductionSheet } from '@/components/farm/EggProductionSheet';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
 import { MortalitySheet } from '@/components/farm/MortalitySheet';
 import { FinanceSheet } from '@/components/farm/FinanceSheet';
-import { FlockInfoSheet } from '@/components/farm/FlockInfoSheet';
 import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
 import { EggCorrelationCard } from '@/components/analytics/EggCorrelationCard';
@@ -36,7 +35,8 @@ export function FarmManagementPage() {
   const summary = useFarmSummary();
   const { isLayer, isBroiler } = useFarmType();
   
-  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'flock' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
+  const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report' | 'analysis'>('batch');
 
   // Handle broiler-specific actions
   const handleBroilerAction = (action: 'batch' | 'weight' | 'broiler-feed') => {
@@ -81,10 +81,10 @@ export function FarmManagementPage() {
           <TodayStatusBanner />
 
           {/* Stats Header */}
-          <FarmStatsHeader onFlockClick={() => setActiveSheet('flock')} />
+          <FarmStatsHeader onFlockClick={() => setActiveTab('batch')} />
 
           {/* Tabbed Interface - 4 tabs */}
-          <Tabs defaultValue="batch" className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
             <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
               <TabsTrigger
                 value="batch"
@@ -323,10 +323,6 @@ export function FarmManagementPage() {
       />
       <FinanceSheet 
         open={activeSheet === 'finance'} 
-        onOpenChange={(open) => !open && setActiveSheet(null)} 
-      />
-      <FlockInfoSheet 
-        open={activeSheet === 'flock'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
       <ScheduleSheet 

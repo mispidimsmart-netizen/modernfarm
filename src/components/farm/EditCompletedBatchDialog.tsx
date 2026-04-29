@@ -22,6 +22,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+
+const LAYER_BREEDS: BreedOption[] = [
+  { value: 'ISA Brown', label: 'ISA Brown (আইএসএ ব্রাউন)', keywords: 'isa brown আইএসএ' },
+  { value: 'Hy-Line Brown', label: 'Hy-Line Brown (হাই-লাইন ব্রাউন)', keywords: 'hyline hy-line brown হাই-লাইন' },
+  { value: 'Hy-Line W-36', label: 'Hy-Line W-36 (হাই-লাইন W-36)', keywords: 'hyline w36 হাই-লাইন' },
+  { value: 'Lohmann Brown', label: 'Lohmann Brown (লোহম্যান ব্রাউন)', keywords: 'lohmann brown লোহম্যান' },
+  { value: 'Lohmann LSL', label: 'Lohmann LSL (লোহম্যান এলএসএল)', keywords: 'lohmann lsl লোহম্যান' },
+  { value: 'Bovans Brown', label: 'Bovans Brown (বোভান্স ব্রাউন)', keywords: 'bovans brown বোভান্স' },
+  { value: 'Bovans White', label: 'Bovans White (বোভান্স হোয়াইট)', keywords: 'bovans white বোভান্স' },
+  { value: 'Hisex Brown', label: 'Hisex Brown (হাইসেক্স ব্রাউন)', keywords: 'hisex brown হাইসেক্স' },
+  { value: 'Novogen Brown', label: 'Novogen Brown (নোভোজেন ব্রাউন)', keywords: 'novogen brown নোভোজেন' },
+  { value: 'Shaver 579', label: 'Shaver 579 (শেভার ৫৭৯)', keywords: 'shaver 579 শেভার' },
+  { value: 'BV-300', label: 'BV-300 (বিভি-৩০০)', keywords: 'bv 300 বিভি' },
+  { value: 'Sonali (সোনালী)', label: 'Sonali (সোনালী)', keywords: 'sonali সোনালী' },
+  { value: 'Local (দেশি)', label: 'Local (দেশি)', keywords: 'local desi দেশি' },
+  { value: 'Other', label: 'Other (অন্যান্য)', keywords: 'other অন্যান্য' },
+];
 
 interface EditCompletedBatchDialogProps {
   batch: LayerBatch;
@@ -40,6 +58,9 @@ export function EditCompletedBatchDialog({
   const { isOnline, pendingCount, isSyncing, sync } = useBatchEditQueue();
 
   const [form, setForm] = useState({
+    batch_name_bn: batch.batch_name_bn || batch.batch_name || '',
+    breed: batch.breed || 'Hy-Line Brown',
+    age_at_start_weeks: batch.age_at_start_weeks ?? 0,
     start_date: batch.start_date,
     actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
     initial_bird_count: batch.initial_bird_count,
@@ -55,6 +76,9 @@ export function EditCompletedBatchDialog({
   useEffect(() => {
     if (open) {
       setForm({
+        batch_name_bn: batch.batch_name_bn || batch.batch_name || '',
+        breed: batch.breed || 'Hy-Line Brown',
+        age_at_start_weeks: batch.age_at_start_weeks ?? 0,
         start_date: batch.start_date,
         actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
         initial_bird_count: batch.initial_bird_count,
@@ -68,15 +92,18 @@ export function EditCompletedBatchDialog({
   }, [open, batch]);
 
   const t = {
-    title: { bn: 'সমাপ্ত ব্যাচ সম্পাদনা', en: 'Edit Completed Batch' },
+    title: { bn: 'ব্যাচ সম্পাদনা', en: 'Edit Batch' },
     desc: {
-      bn: 'তারিখ বা পাখির সংখ্যা পরিবর্তন করলে FCR, মৃত্যুহার, ও মোট হিসাব স্বয়ংক্রিয়ভাবে পুনঃগণনা হবে।',
-      en: 'Changing dates or bird count will auto-recalculate FCR, mortality, and totals.',
+      bn: 'এখান থেকে যা পরিবর্তন করবেন তা ফার্মের সকল তথ্যে (মোট মুরগি, বয়স, সেটিংস) স্বয়ংক্রিয়ভাবে আপডেট হবে।',
+      en: 'Changes here auto-sync to flock info, age and settings everywhere.',
     },
+    batchName: { bn: 'ব্যাচের নাম', en: 'Batch Name' },
+    breedLabel: { bn: 'জাত', en: 'Breed' },
+    ageStart: { bn: 'শুরুর বয়স (সপ্তাহ)', en: 'Age at Start (weeks)' },
     startDate: { bn: 'শুরুর তারিখ', en: 'Start Date' },
     endDate: { bn: 'শেষের তারিখ', en: 'End Date' },
     initial: { bn: 'প্রাথমিক পাখি', en: 'Initial Birds' },
-    final: { bn: 'চূড়ান্ত পাখি', en: 'Final Birds' },
+    final: { bn: 'বর্তমান পাখি', en: 'Current Birds' },
     chickCost: { bn: 'প্রতি পাখির দাম (৳)', en: 'Cost per Bird (৳)' },
     notes: { bn: 'নোট (ঐচ্ছিক)', en: 'Notes (optional)' },
     save: { bn: 'সংরক্ষণ ও পুনঃগণনা', en: 'Save & Recalculate' },
@@ -114,6 +141,9 @@ export function EditCompletedBatchDialog({
     editBatch.mutate(
       {
         batchId: batch.id,
+        batch_name_bn: form.batch_name_bn,
+        breed: form.breed,
+        age_at_start_weeks: form.age_at_start_weeks,
         start_date: form.start_date,
         actual_end_date: form.actual_end_date,
         initial_bird_count: form.initial_bird_count,
@@ -142,6 +172,9 @@ export function EditCompletedBatchDialog({
   const handleReload = () => {
     // Re-snapshot from latest prop (parent will refetch via query invalidation)
     setForm({
+      batch_name_bn: batch.batch_name_bn || batch.batch_name || '',
+      breed: batch.breed || 'Hy-Line Brown',
+      age_at_start_weeks: batch.age_at_start_weeks ?? 0,
       start_date: batch.start_date,
       actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
       initial_bird_count: batch.initial_bird_count,
@@ -238,6 +271,41 @@ export function EditCompletedBatchDialog({
         )}
 
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.batchName[language]}</Label>
+            <Input
+              value={form.batch_name_bn}
+              onChange={(e) => setForm((p) => ({ ...p, batch_name_bn: e.target.value }))}
+              placeholder={language === 'bn' ? 'যেমন: ব্যাচ ১' : 'e.g. Batch 1'}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t.breedLabel[language]}</Label>
+              <BreedCombobox
+                options={LAYER_BREEDS}
+                value={form.breed}
+                onChange={(v) => setForm((p) => ({ ...p, breed: v }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t.ageStart[language]}</Label>
+              <Input
+                type="number"
+                min="0"
+                max="80"
+                value={form.age_at_start_weeks || ''}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    age_at_start_weeks: parseInt(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">{t.startDate[language]}</Label>

@@ -489,6 +489,9 @@ export function useEditCompletedLayerBatch() {
   return useMutation({
     mutationFn: async ({
       batchId,
+      batch_name_bn,
+      breed,
+      age_at_start_weeks,
       start_date,
       actual_end_date,
       initial_bird_count,
@@ -499,6 +502,9 @@ export function useEditCompletedLayerBatch() {
       force,
     }: {
       batchId: string;
+      batch_name_bn?: string;
+      breed?: string;
+      age_at_start_weeks?: number;
       start_date: string;
       actual_end_date: string;
       initial_bird_count: number;
@@ -573,15 +579,23 @@ export function useEditCompletedLayerBatch() {
       }
 
       // 1. Update batch row
+      const updatePayload: any = {
+        start_date,
+        actual_end_date,
+        initial_bird_count,
+        current_bird_count,
+      };
+      if (chick_cost_per_bird !== undefined) updatePayload.chick_cost_per_bird = chick_cost_per_bird;
+      if (batch_name_bn !== undefined && batch_name_bn !== '') {
+        updatePayload.batch_name_bn = batch_name_bn;
+        updatePayload.batch_name = batch_name_bn;
+      }
+      if (breed !== undefined) updatePayload.breed = breed;
+      if (age_at_start_weeks !== undefined) updatePayload.age_at_start_weeks = age_at_start_weeks;
+
       const { data: updated, error: uErr } = await supabase
         .from('layer_batches' as any)
-        .update({
-          start_date,
-          actual_end_date,
-          initial_bird_count,
-          current_bird_count,
-          chick_cost_per_bird: chick_cost_per_bird ?? undefined,
-        } as any)
+        .update(updatePayload)
         .eq('id', batchId)
         .select()
         .single();
