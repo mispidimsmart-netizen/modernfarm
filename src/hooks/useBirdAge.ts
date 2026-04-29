@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useFlockInfo, useUpdateFlockInfo } from '@/hooks/useFarmManagement';
 import { useActiveBatch, useUpdateBatch } from '@/hooks/useBroilerData';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useDailyTick } from '@/hooks/useDailyTick';
 
 /**
  * Unified Bird Age — single source of truth.
