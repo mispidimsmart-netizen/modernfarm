@@ -110,25 +110,38 @@ export function useEggProduction(days: number = 30) {
 export function useAddEggProduction() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Omit<EggProduction, 'id' | 'user_id' | 'created_at'>) => {
+      if (!user) throw new Error('লগইন করা নেই');
+      if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
       const { error } = await supabase
         .from('egg_production')
-        .upsert({
-          ...data,
-          user_id: user!.id,
-        }, { onConflict: 'user_id,production_date' });
-      
+        .upsert(
+          {
+            ...data,
+            user_id: user.id,
+            farm_id: selectedFarmId,
+          } as any,
+          { onConflict: 'user_id,production_date' }
+        );
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['egg-production'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
       toast({ title: 'ডিম উৎপাদন সংরক্ষণ হয়েছে' });
     },
-    onError: () => {
-      toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({
+        title: 'ত্রুটি হয়েছে',
+        description: error?.message || 'অজানা ত্রুটি',
+        variant: 'destructive',
+      });
     },
   });
 }
