@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -24,6 +24,7 @@ interface ReportRangePickerProps {
 }
 
 const PRESETS: ReportRangePreset[] = [7, 14, 30, 90];
+const DEFAULT_DAYS: ReportRangePreset = 7;
 
 export function ReportRangePicker({ value, onChange }: ReportRangePickerProps) {
   const { language } = useAuth();
@@ -96,6 +97,18 @@ export function ReportRangePicker({ value, onChange }: ReportRangePickerProps) {
           />
         </PopoverContent>
       </Popover>
+      {(isCustomActive || value.days !== DEFAULT_DAYS) && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => onChange({ days: DEFAULT_DAYS })}
+          title={isBn ? 'রিসেট' : 'Reset'}
+        >
+          <RotateCcw className="h-3 w-3" />
+          {isBn ? 'রিসেট' : 'Reset'}
+        </Button>
+      )}
     </div>
   );
 }
