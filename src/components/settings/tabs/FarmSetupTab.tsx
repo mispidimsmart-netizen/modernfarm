@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveBatch } from '@/hooks/useBroilerData';
 import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
+import { useBirdAge } from '@/hooks/useBirdAge';
 import { useWeatherCache } from '@/hooks/useWeather';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -257,14 +258,9 @@ export function FarmSetupTab() {
     label?: string;
   } | null>(null);
 
-  // Calculate bird age from active batch or flock info
-  const birdAge = useMemo(() => {
-    if (farmType === 'broiler' && activeBatch?.start_date) {
-      return Math.floor((Date.now() - new Date(activeBatch.start_date).getTime()) / (1000 * 60 * 60 * 24));
-    }
-    // For layers, we could use flock_info purchase_date if available
-    return 0;
-  }, [farmType, activeBatch]);
+  // Calculate bird age — unified across broiler (from batch start_date) and layer (from flock_info.age_weeks)
+  const { ageDays: unifiedAgeDays, ageWeeks: unifiedAgeWeeks, hasValue: hasAge } = useBirdAge();
+  const birdAge = unifiedAgeDays ?? 0;
 
   // Auto-detect profile from bird age
   const autoDetectedProfile = useMemo(() => {
@@ -420,7 +416,11 @@ export function FarmSetupTab() {
               <Baby className="h-5 w-5 text-pink-500" />
               {language === 'bn' ? 'পাখির বয়স' : 'Bird Age'}
               <Badge variant="secondary" className="ml-1 text-xs">
-                {birdAge} {language === 'bn' ? 'দিন' : 'days'}
+                {hasAge
+                  ? (farmType === 'layer'
+                      ? `${unifiedAgeWeeks} ${language === 'bn' ? 'সপ্তাহ' : 'weeks'}`
+                      : `${birdAge} ${language === 'bn' ? 'দিন' : 'days'}`)
+                  : (language === 'bn' ? 'সেট করা হয়নি' : 'Not set')}
               </Badge>
             </div>
           </AccordionTrigger>
