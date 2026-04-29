@@ -30,15 +30,22 @@ export function getFinanceScopeIssues(
 ): string[] {
   const reasons: string[] = [];
   const mode = scope.mode;
-  const category = (row?.category ?? row?.source ?? '').toString();
+  // Check BOTH category and source — some legacy rows store the real type in
+  // `source` while `category` holds an unrelated value (e.g. category='manure',
+  // source='egg_sale'). We must catch layer/broiler-only on either field.
+  const category = (row?.category ?? '').toString();
+  const source = (row?.source ?? '').toString();
+  const tags = [category, source].filter(Boolean);
   const rowMode = (row?.farm_mode ?? '').toString();
   const date = kind === 'income' ? row?.income_date : row?.expense_date;
 
   if (kind === 'income') {
-    if (mode === 'broiler' && LAYER_ONLY_INCOME.has(category)) {
+    const isLayerOnly = tags.some((t) => LAYER_ONLY_INCOME.has(t));
+    const isBroilerOnly = tags.some((t) => BROILER_ONLY_INCOME.has(t));
+    if (mode === 'broiler' && isLayerOnly) {
       reasons.push(labels?.layerOnly ?? 'Layer-only category');
     }
-    if (mode === 'layer' && BROILER_ONLY_INCOME.has(category)) {
+    if (mode === 'layer' && isBroilerOnly) {
       reasons.push(labels?.broilerOnly ?? 'Broiler-only category');
     }
   }
