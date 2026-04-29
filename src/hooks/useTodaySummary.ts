@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
+import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 
 export interface TodaySummary {
   todayEggs: number;
@@ -14,49 +18,103 @@ export interface TodaySummary {
   todayMortality: number;
 }
 
+const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
+const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
+
 export function useTodaySummary() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId: string | null = isLayer
+    ? activeLayerBatch?.id ?? null
+    : isBroiler
+      ? (activeBroilerBatch as any)?.id ?? null
+      : null;
   const today = new Date().toISOString().split('T')[0];
-  
+
   return useQuery({
-    queryKey: ['today-summary', user?.id, today],
+    queryKey: [
+      'today-summary',
+      user?.id,
+      selectedFarmId,
+      isLayer ? 'layer' : isBroiler ? 'broiler' : 'none',
+      activeBatchId,
+      today,
+    ],
     queryFn: async (): Promise<TodaySummary> => {
-      // Fetch today's data in parallel
-      const [eggsRes, incomeRes, expensesRes, mortalityRes] = await Promise.all([
-        supabase
+      // Build farm-scoped queries
+      const buildEggs = () => {
+        let q = supabase
           .from('egg_production')
           .select('total_eggs, grade_a, grade_b, grade_c, broken')
-          .eq('production_date', today)
-          .maybeSingle(),
-        supabase
+          .eq('production_date', today);
+        if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+        return q.maybeSingle();
+      };
+      const buildIncome = () => {
+        let q = supabase
           .from('income')
-          .select('amount')
-          .eq('income_date', today),
-        supabase
+          .select('amount, category, batch_id')
+          .eq('income_date', today);
+        if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+        return q;
+      };
+      const buildExpenses = () => {
+        let q = supabase
           .from('expenses')
-          .select('amount')
-          .eq('expense_date', today),
-        supabase
+          .select('amount, batch_id')
+          .eq('expense_date', today);
+        if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+        return q;
+      };
+      const buildMortality = () => {
+        // mortality_records has no farm_id; rely on RLS/user_id scope
+        return supabase
           .from('mortality_records')
           .select('count')
-          .eq('record_date', today),
+          .eq('record_date', today);
+      };
+
+      const [eggsRes, incomeRes, expensesRes, mortalityRes] = await Promise.all([
+        buildEggs(),
+        buildIncome(),
+        buildExpenses(),
+        buildMortality(),
       ]);
-      
+
       const eggs = eggsRes.data;
-      const incomeData = incomeRes.data || [];
-      const expensesData = expensesRes.data || [];
-      const mortalityData = mortalityRes.data || [];
-      
-      const todayIncome = incomeData.reduce((sum, i) => sum + Number(i.amount), 0);
-      const todayExpenses = expensesData.reduce((sum, e) => sum + Number(e.amount), 0);
+      const incomeRows = (incomeRes.data ?? []) as any[];
+      const expenseRows = (expensesRes.data ?? []) as any[];
+      const mortalityData = mortalityRes.data ?? [];
+
+      // Filter by active batch / mode-aware income category
+      const filteredIncome = incomeRows.filter((i) => {
+        const cat = (i.category ?? '').toString();
+        if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
+        if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
+        if (i.batch_id) return i.batch_id === activeBatchId;
+        return true;
+      });
+      const filteredExpenses = expenseRows.filter((e) => {
+        if (e.batch_id) return e.batch_id === activeBatchId;
+        return true;
+      });
+
+      const todayIncome = filteredIncome.reduce((sum, i) => sum + Number(i.amount), 0);
+      const todayExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
       const todayMortality = mortalityData.reduce((sum, m) => sum + m.count, 0);
-      
+
+      // Eggs only make sense in layer mode
+      const showEggs = isLayer;
+
       return {
-        todayEggs: eggs?.total_eggs ?? 0,
-        todayGradeA: eggs?.grade_a ?? 0,
-        todayGradeB: eggs?.grade_b ?? 0,
-        todayGradeC: eggs?.grade_c ?? 0,
-        todayBroken: eggs?.broken ?? 0,
+        todayEggs: showEggs ? eggs?.total_eggs ?? 0 : 0,
+        todayGradeA: showEggs ? eggs?.grade_a ?? 0 : 0,
+        todayGradeB: showEggs ? eggs?.grade_b ?? 0 : 0,
+        todayGradeC: showEggs ? eggs?.grade_c ?? 0 : 0,
+        todayBroken: showEggs ? eggs?.broken ?? 0 : 0,
         todayIncome,
         todayExpenses,
         todayProfit: todayIncome - todayExpenses,
@@ -64,6 +122,6 @@ export function useTodaySummary() {
       };
     },
     enabled: !!user,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 60000,
   });
 }
