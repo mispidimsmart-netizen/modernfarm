@@ -309,40 +309,8 @@ export function FarmManagementPage() {
                     {/* Daily Expense Summary */}
                     <DailyExpenseSummary />
 
-                    {/* Layer Mode: Show Layer Summary */}
-                    {isLayer && (
-                      <>
-                        <FarmSummaryCards />
-
-                        {/* Production Rate Card */}
-                        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-muted-foreground">{t.productionRate[language]}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <p className="text-3xl font-bold text-primary">{summary.productionRate}%</p>
-                                  {Number(summary.productionRate) > 80 ? (
-                                    <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
-                                      <TrendingUp className="h-3 w-3" />
-                                      {language === 'bn' ? 'ভালো' : 'Good'}
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                                      <TrendingDown className="h-3 w-3" />
-                                      {language === 'bn' ? 'উন্নতি দরকার' : 'Needs improvement'}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Egg className="h-8 w-8 text-primary" />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </>
-                    )}
+                    {/* Layer Mode: Show Layer Summary (production rate is already included) */}
+                    {isLayer && <FarmSummaryCards />}
 
                     {/* Broiler Mode: Show batch overview as summary */}
                     {isBroiler && (
