@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info, ChevronDown, Plus, PackageOpen } from 'lucide-react';
+import { FileText, BarChart3, Calendar, ChevronRight, Layers, Info, ChevronDown, Plus, PackageOpen } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
