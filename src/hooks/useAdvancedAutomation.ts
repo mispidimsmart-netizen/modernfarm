@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { useSelectedShed } from './useSheds';
 import { useToast } from '@/hooks/use-toast';
 
@@ -266,21 +267,24 @@ export function useRawAdvancedAutomationSettings() {
 export function useUpdateAdvancedAutomationSettings() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { selectedShedId } = useSelectedShed();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (settings: AdvancedAutomationSettingsUpdate) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) throw new Error('No farm selected');
 
       const { error } = await supabase
         .from('advanced_automation_settings')
         .upsert({
           user_id: user.id,
+          farm_id: selectedFarmId,
           shed_id: selectedShedId || null,
           ...settings,
           updated_at: new Date().toISOString(),
-        }, { 
+        }, {
           onConflict: 'user_id,shed_id'
         });
 
