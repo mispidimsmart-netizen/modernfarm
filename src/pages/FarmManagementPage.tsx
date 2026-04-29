@@ -147,6 +147,28 @@ export function FarmManagementPage() {
                     onFeedClick={() => handleBroilerAction('broiler-feed')}
                   />
                 )}
+
+                {/* Schedule Card - moved from Entry tab */}
+                <button
+                  type="button"
+                  onClick={() => setActiveSheet('schedule')}
+                  className="w-full text-left rounded-2xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-4 flex items-center gap-3 shadow-sm"
+                >
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Calendar className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold leading-tight">
+                      {language === 'bn' ? '⏰ শিডিউল ও রিমাইন্ডার' : '⏰ Schedule & Reminders'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+                      {language === 'bn'
+                        ? 'খাবার, পরিষ্কার, টিকা — স্বয়ংক্রিয় রিমাইন্ডার সেট করুন'
+                        : 'Feeding, cleaning, vaccination — set automatic reminders'}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
               </div>
             </TabsContent>
 
