@@ -29,6 +29,7 @@ import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { FinanceSummaryRange } from '@/components/farm/FinanceSummaryRange';
+import { FinanceAuditPanel } from '@/components/farm/FinanceAuditPanel';
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
@@ -342,6 +343,8 @@ export function FarmManagementPage() {
                     {/* 1. Finance — Income / Expense / Net (most important) */}
                     <FinanceSummaryRange days={reportDays} />
 
+                    {/* Audit panel — surfaces hidden/mismatched legacy entries */}
+                    <FinanceAuditPanel days={reportDays} />
                     {/* 2. Mortality Trend Chart - Both modes */}
                     <MortalityTrendChart days={reportDays} />
 
