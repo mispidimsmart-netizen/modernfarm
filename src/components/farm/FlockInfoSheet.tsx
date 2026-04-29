@@ -155,19 +155,19 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
             {/* 🐔 Unified Bird Age — single source of truth */}
             <BirdAgeCard />
 
-            {autoFilledFromBatch && activeBatch && (
+            {activeBatch && (
               <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div className="text-xs leading-relaxed">
                   <p className="font-medium text-primary">
                     {language === 'bn'
-                      ? `সক্রিয় ব্যাচ থেকে অটো-ফিল হয়েছে: ${activeBatch.batch_name_bn || activeBatch.batch_name}`
-                      : `Auto-filled from active batch: ${activeBatch.batch_name_bn || activeBatch.batch_name}`}
+                      ? `সক্রিয় ব্যাচ থেকে স্বয়ংক্রিয় সিঙ্ক: ${activeBatch.batch_name_bn || activeBatch.batch_name}`
+                      : `Auto-synced from active batch: ${activeBatch.batch_name_bn || activeBatch.batch_name}`}
                   </p>
                   <p className="mt-0.5 text-muted-foreground">
                     {language === 'bn'
-                      ? 'প্রয়োজনে পরিবর্তন করে সংরক্ষণ করুন।'
-                      : 'Adjust if needed and save.'}
+                      ? 'মোট মুরগি, জাত ও তারিখ পরিবর্তন করতে ব্যাচ এডিট করুন। ব্যাচ-ই একমাত্র সত্য উৎস।'
+                      : 'To change bird count, breed or date, edit the batch. Batch is the source of truth.'}
                   </p>
                 </div>
               </div>
@@ -181,6 +181,7 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
                 value={formData.total_birds || ''}
                 onChange={(e) => setFormData(p => ({ ...p, total_birds: parseInt(e.target.value) || 0 }))}
                 className="text-lg"
+                disabled={!!activeBatch}
               />
             </div>
 
@@ -194,6 +195,7 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
                 }))}
                 value={formData.breed}
                 onChange={(v) => setFormData((p) => ({ ...p, breed: v }))}
+                disabled={!!activeBatch}
               />
             </div>
 
@@ -204,6 +206,7 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
                 onChange={(iso) => setFormData(p => ({ ...p, purchase_date: iso }))}
                 placeholder={language === 'bn' ? 'তারিখ বাছাই করুন' : 'Pick a date'}
                 disableFuture
+                disabled={!!activeBatch}
                 presets={[
                   { labelBn: 'আজ', labelEn: 'Today', daysAgo: 0 },
                   { labelBn: '১ সপ্তাহ আগে', labelEn: '1 week ago', daysAgo: 7 },
@@ -217,10 +220,12 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
             <Button 
               onClick={handleSubmit} 
               className="w-full"
-              disabled={updateFlockInfo.isPending}
+              disabled={updateFlockInfo.isPending || !!activeBatch}
             >
               <Save className="mr-2 h-4 w-4" />
-              {t.save[language]}
+              {activeBatch
+                ? (language === 'bn' ? 'ব্যাচ থেকে নিয়ন্ত্রিত' : 'Controlled by batch')
+                : t.save[language]}
             </Button>
 
             {/* Tips Card */}
