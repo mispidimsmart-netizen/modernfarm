@@ -77,16 +77,28 @@ async function applyQueuedEdit(
 ): Promise<void> {
   const { batchId, payload } = item;
 
-  // 1. Update batch row
+  // 1. Update batch row — include SSOT fields so the DB trigger
+  // re-derives flock_info.age_weeks from the latest start_date +
+  // age_at_start_weeks (handles long offline gaps gracefully).
+  const updatePayload: any = {
+    start_date: payload.start_date,
+    actual_end_date: payload.actual_end_date,
+    initial_bird_count: payload.initial_bird_count,
+    current_bird_count: payload.current_bird_count,
+  };
+  if (payload.chick_cost_per_bird !== undefined)
+    updatePayload.chick_cost_per_bird = payload.chick_cost_per_bird;
+  if (payload.batch_name_bn) {
+    updatePayload.batch_name_bn = payload.batch_name_bn;
+    updatePayload.batch_name = payload.batch_name_bn;
+  }
+  if (payload.breed !== undefined) updatePayload.breed = payload.breed;
+  if (payload.age_at_start_weeks !== undefined)
+    updatePayload.age_at_start_weeks = payload.age_at_start_weeks;
+
   const { data: updated, error: uErr } = await supabase
     .from('layer_batches' as any)
-    .update({
-      start_date: payload.start_date,
-      actual_end_date: payload.actual_end_date,
-      initial_bird_count: payload.initial_bird_count,
-      current_bird_count: payload.current_bird_count,
-      chick_cost_per_bird: payload.chick_cost_per_bird ?? undefined,
-    } as any)
+    .update(updatePayload)
     .eq('id', batchId)
     .select()
     .single();
