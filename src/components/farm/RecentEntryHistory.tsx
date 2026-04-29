@@ -181,7 +181,7 @@ export function RecentEntryHistory() {
         </Card>
       )}
 
-      {!missingEntries && (
+      {isLayer && !missingEntries && (
         <Card className="border-emerald-500/30 bg-emerald-500/5">
           <CardContent className="p-3 flex items-center gap-3">
             <CheckCircle2 className="h-5 w-5 text-emerald-500" />
