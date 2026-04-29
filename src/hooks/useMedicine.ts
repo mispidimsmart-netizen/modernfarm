@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
+import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode } from '@/lib/financeScope';
 
 export type MedicineType = 'medicine' | 'vaccine' | 'vitamin' | 'supplement' | 'other';
 export type MedicineUnit = 'ml' | 'gm' | 'piece' | 'dose' | 'bottle' | 'gallon';
@@ -74,7 +78,11 @@ export function useAddMedicineInventory() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
+  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
 
   return useMutation({
     mutationFn: async (
@@ -91,6 +99,8 @@ export function useAddMedicineInventory() {
         .insert({
           ...data,
           total_cost,
+          batch_id: (data as any).batch_id ?? activeBatchId,
+          farm_mode: (data as any).farm_mode ?? getFinanceMode(isLayer, isBroiler),
           user_id: user!.id,
           farm_id: selectedFarmId,
         } as any);
