@@ -125,7 +125,7 @@ export function useAddEggProduction() {
             user_id: user.id,
             farm_id: selectedFarmId,
           } as any,
-          { onConflict: 'user_id,production_date' }
+          { onConflict: 'user_id,farm_id,production_date' }
         );
 
       if (error) throw error;
