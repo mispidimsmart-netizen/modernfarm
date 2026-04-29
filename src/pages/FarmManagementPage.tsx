@@ -31,6 +31,7 @@ import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
+import { ReportRangePicker, type ReportRangeValue } from '@/components/farm/ReportRangePicker';
 // Broiler components
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
