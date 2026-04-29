@@ -40,8 +40,20 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const navigate = useNavigate();
   const { data: expenses } = useExpenses();
   const { data: income } = useIncome();
+  const { data: eggProduction } = useEggProduction(60);
   const addExpense = useAddExpense();
   const addIncome = useAddIncome();
+
+  // Calculate available egg stock = total produced (last 60d) - total sold via income(category=eggs).
+  // Broken eggs are subtracted as they're not sellable.
+  const totalEggsProduced = (eggProduction ?? []).reduce(
+    (sum, e) => sum + (e.total_eggs || 0) - (e.broken || 0),
+    0
+  );
+  const totalEggsSold = (income ?? [])
+    .filter((i) => i.category === 'eggs')
+    .reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+  const availableEggStock = Math.max(0, totalEggsProduced - totalEggsSold);
   
   const [activeTab, setActiveTab] = useState('summary');
   const [expenseForm, setExpenseForm] = useState({
