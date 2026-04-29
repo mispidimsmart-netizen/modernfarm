@@ -343,6 +343,8 @@ export function FarmManagementPage() {
                     {/* 1. Finance — Income / Expense / Net (most important) */}
                     <FinanceSummaryRange days={reportDays} />
 
+                    {/* Audit panel — surfaces hidden/mismatched legacy entries */}
+                    <FinanceAuditPanel days={reportDays} />
                     {/* 2. Mortality Trend Chart - Both modes */}
                     <MortalityTrendChart days={reportDays} />
 
