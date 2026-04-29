@@ -279,13 +279,16 @@ export function FarmManagementPage() {
             <TabsContent value="report" className="mt-4">
               <div className="space-y-4">
                 {/* Top action bar */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-semibold">{t.report[language]}</h3>
                   </div>
                   <DataExportButton />
                 </div>
+
+                {/* Date range picker — drives the Trends & Analysis section below */}
+                <ReportRangePicker value={reportRange} onChange={setReportRange} />
 
                 {/* === Section 1: Today's Summary (collapsible) === */}
                 <Collapsible open={summarySectionOpen} onOpenChange={setSummarySectionOpen}>
