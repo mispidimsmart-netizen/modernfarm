@@ -150,6 +150,42 @@ export function useCreateLayerBatch() {
   });
 }
 
+// Delete batch (and its summary if exists)
+export function useDeleteLayerBatch() {
+  const queryClient = useQueryClient();
+  const { language } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      // Delete summary first (no FK cascade guaranteed)
+      await supabase.from('layer_batch_summary' as any).delete().eq('batch_id', batchId);
+      const { error } = await supabase
+        .from('layer_batches' as any)
+        .delete()
+        .eq('id', batchId);
+      if (error) throw error;
+      return { batchId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-active'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      toast({
+        title: language === 'bn' ? 'ব্যাচ মুছে ফেলা হয়েছে' : 'Batch deleted',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 // Update batch
 export function useUpdateLayerBatch() {
   const queryClient = useQueryClient();
