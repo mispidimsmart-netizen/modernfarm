@@ -201,20 +201,21 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
 
             <div className="space-y-2">
               <Label>{t.purchaseDate[language]}</Label>
-              <SmartDatePicker
-                value={formData.purchase_date || null}
-                onChange={(iso) => setFormData(p => ({ ...p, purchase_date: iso }))}
-                placeholder={language === 'bn' ? 'তারিখ বাছাই করুন' : 'Pick a date'}
-                disableFuture
-                disabled={!!activeBatch}
-                presets={[
-                  { labelBn: 'আজ', labelEn: 'Today', daysAgo: 0 },
-                  { labelBn: '১ সপ্তাহ আগে', labelEn: '1 week ago', daysAgo: 7 },
-                  { labelBn: '১ মাস আগে', labelEn: '1 month ago', daysAgo: 30 },
-                  { labelBn: '৩ মাস আগে', labelEn: '3 months ago', daysAgo: 90 },
-                  { labelBn: '৬ মাস আগে', labelEn: '6 months ago', daysAgo: 180 },
-                ]}
-              />
+              <div className={activeBatch ? 'pointer-events-none opacity-60' : ''}>
+                <SmartDatePicker
+                  value={formData.purchase_date || null}
+                  onChange={(iso) => setFormData(p => ({ ...p, purchase_date: iso }))}
+                  placeholder={language === 'bn' ? 'তারিখ বাছাই করুন' : 'Pick a date'}
+                  disableFuture
+                  presets={[
+                    { labelBn: 'আজ', labelEn: 'Today', daysAgo: 0 },
+                    { labelBn: '১ সপ্তাহ আগে', labelEn: '1 week ago', daysAgo: 7 },
+                    { labelBn: '১ মাস আগে', labelEn: '1 month ago', daysAgo: 30 },
+                    { labelBn: '৩ মাস আগে', labelEn: '3 months ago', daysAgo: 90 },
+                    { labelBn: '৬ মাস আগে', labelEn: '6 months ago', daysAgo: 180 },
+                  ]}
+                />
+              </div>
             </div>
 
             <Button 
