@@ -395,8 +395,8 @@ export function FarmManagementPage() {
         open={activeSheet === 'feed'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
-      <MortalitySheet 
-        open={activeSheet === 'mortality'} 
+      <HealthSheet 
+        open={activeSheet === 'mortality' || activeSheet === 'medicine'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
       <FinanceSheet 
