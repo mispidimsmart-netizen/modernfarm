@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 export function FarmSummaryCards() {
   const { language } = useAuth();
   const { data: summary, isLoading } = useTodaySummary();
-  const { isLayer, isBroiler } = useFarmType();
+  const { isLayer } = useFarmType();
   const location = useLocation();
   const isOnFarmPage = location.pathname === '/farm';
 
