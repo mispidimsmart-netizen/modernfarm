@@ -41,6 +41,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+import { useDailyTick } from '@/hooks/useDailyTick';
 
 const LAYER_BREEDS: BreedOption[] = [
   { value: 'ISA Brown', label: 'ISA Brown (আইএসএ ব্রাউন)', keywords: 'isa brown আইএসএ' },
