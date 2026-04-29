@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTodaySummary } from '@/hooks/useTodaySummary';
+import { useFarmType } from '@/hooks/useFarmType';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
@@ -9,13 +10,19 @@ import { bn, enUS } from 'date-fns/locale';
 export function TodayStatusBanner() {
   const { language } = useAuth();
   const { data: summary, isLoading } = useTodaySummary();
+  const { isLayer, isBroiler } = useFarmType();
   
   const today = new Date();
   const dateStr = format(today, 'EEEE, d MMMM', { 
     locale: language === 'bn' ? bn : enUS 
   });
 
-  const hasEnteredToday = summary && summary.todayEggs > 0;
+  const hasEnteredToday = Boolean(summary?.hasTodayEntry);
+  const completedText = isLayer
+    ? `${(summary?.todayEggs ?? 0).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')} টি ডিম রেকর্ড করা হয়েছে`
+    : isBroiler
+      ? `খাদ্য ${(summary?.todayBroilerFeedKg ?? 0).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')} কেজি, মৃত্যু ${(summary?.todayMortality ?? 0).toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')}টি`
+      : '';
 
   if (isLoading) {
     return (
@@ -42,10 +49,7 @@ export function TodayStatusBanner() {
                         {language === 'bn' ? 'আজকের ডেটা এন্ট্রি সম্পন্ন ✓' : "Today's entry complete ✓"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {language === 'bn' 
-                          ? `${summary.todayEggs.toLocaleString('bn-BD')} টি ডিম রেকর্ড করা হয়েছে`
-                          : `${summary.todayEggs.toLocaleString()} eggs recorded`
-                        }
+                        {language === 'bn' ? completedText : completedText}
                       </p>
                     </div>
                   </>
