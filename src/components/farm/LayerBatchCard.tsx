@@ -265,6 +265,25 @@ export function LayerBatchCard() {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-11 text-sm font-medium"
+                    onClick={() => setOpenEditActive(true)}
+                  >
+                    <Pencil className="mr-1.5 h-4 w-4" />
+                    {language === 'bn' ? 'সম্পাদনা' : 'Edit'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11 text-sm font-medium border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={() => setOpenDeleteActive(true)}
+                  >
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                    {language === 'bn' ? 'মুছুন' : 'Delete'}
+                  </Button>
+                </div>
+
                 <Button
                   variant="outline"
                   className="w-full h-12 text-base font-semibold border-destructive/30 text-destructive hover:bg-destructive/10"
