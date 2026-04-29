@@ -1757,6 +1757,7 @@ export type Database = {
           description: string | null
           expense_date: string
           farm_id: string | null
+          farm_mode: string | null
           id: string
           user_id: string
         }
@@ -1768,6 +1769,7 @@ export type Database = {
           description?: string | null
           expense_date?: string
           farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           user_id: string
         }
@@ -1779,6 +1781,7 @@ export type Database = {
           description?: string | null
           expense_date?: string
           farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           user_id?: string
         }
@@ -2760,9 +2763,11 @@ export type Database = {
       }
       medicine_inventory: {
         Row: {
+          batch_id: string | null
           created_at: string
           expiry_date: string | null
           farm_id: string | null
+          farm_mode: string | null
           id: string
           medicine_name: string
           medicine_type: string
@@ -2777,9 +2782,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           expiry_date?: string | null
           farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           medicine_name: string
           medicine_type?: string
@@ -2794,9 +2801,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           expiry_date?: string | null
           farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           medicine_name?: string
           medicine_type?: string

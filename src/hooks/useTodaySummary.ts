@@ -5,6 +5,7 @@ import { useFarmContext } from '@/context/FarmContext';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
 export interface TodaySummary {
   todayEggs: number;
@@ -18,9 +19,6 @@ export interface TodaySummary {
   todayMortality: number;
 }
 
-const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
-const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
-
 export function useTodaySummary() {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
@@ -32,6 +30,7 @@ export function useTodaySummary() {
     : isBroiler
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
   const today = new Date().toISOString().split('T')[0];
 
   return useQuery({
@@ -56,7 +55,7 @@ export function useTodaySummary() {
       const buildIncome = () => {
         let q = supabase
           .from('income')
-          .select('amount, category, batch_id')
+          .select('amount, category, batch_id, farm_mode')
           .eq('income_date', today);
         if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
         return q;
@@ -64,7 +63,7 @@ export function useTodaySummary() {
       const buildExpenses = () => {
         let q = supabase
           .from('expenses')
-          .select('amount, batch_id')
+          .select('amount, batch_id, farm_mode')
           .eq('expense_date', today);
         if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
         return q;
@@ -91,15 +90,10 @@ export function useTodaySummary() {
 
       // Filter by active batch / mode-aware income category
       const filteredIncome = incomeRows.filter((i) => {
-        const cat = (i.category ?? '').toString();
-        if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
-        if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
-        if (i.batch_id) return i.batch_id === activeBatchId;
-        return true;
+        return matchesActiveFinanceScope(i, 'income', financeScope);
       });
       const filteredExpenses = expenseRows.filter((e) => {
-        if (e.batch_id) return e.batch_id === activeBatchId;
-        return true;
+        return matchesActiveFinanceScope(e, 'expense', financeScope);
       });
 
       const todayIncome = filteredIncome.reduce((sum, i) => sum + Number(i.amount), 0);

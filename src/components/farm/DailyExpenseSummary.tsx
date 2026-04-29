@@ -4,12 +4,10 @@ import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useMemo } from 'react';
-
-const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
-const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
 
 export function DailyExpenseSummary() {
   const { language } = useAuth();
@@ -24,6 +22,7 @@ export function DailyExpenseSummary() {
     : isBroiler
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
 
   const today = new Date().toISOString().split('T')[0];
   const showData = !batchStart || today >= batchStart;
@@ -32,22 +31,17 @@ export function DailyExpenseSummary() {
     if (!showData) return [];
     return (expenses ?? []).filter((e: any) => {
       if (e.expense_date !== today) return false;
-      if (e.batch_id) return e.batch_id === activeBatchId;
-      return true;
+      return matchesActiveFinanceScope(e, 'expense', financeScope);
     });
-  }, [expenses, today, showData, activeBatchId]);
+  }, [expenses, today, showData, financeScope]);
 
   const todayIncome = useMemo(() => {
     if (!showData) return [];
     return (income ?? []).filter((i: any) => {
       if (i.income_date !== today) return false;
-      const cat = (i.category ?? i.source ?? '').toString();
-      if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
-      if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
-      if (i.batch_id) return i.batch_id === activeBatchId;
-      return true;
+      return matchesActiveFinanceScope(i, 'income', financeScope);
     });
-  }, [income, today, showData, activeBatchId, isLayer, isBroiler]);
+  }, [income, today, showData, financeScope]);
 
   const totalExpense = todayExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const totalIncome = todayIncome.reduce((s, i) => s + Number(i.amount), 0);

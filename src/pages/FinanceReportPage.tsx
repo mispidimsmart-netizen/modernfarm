@@ -20,6 +20,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useExpenses, useIncome } from '@/hooks/useFarmManagement';
+import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
+import { useFarmType } from '@/hooks/useFarmType';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
 type Bucket = { key: string; label: string; income: number; expense: number; net: number };
 
@@ -71,17 +76,36 @@ export default function FinanceReportPage() {
 
   const { data: expenses = [] } = useExpenses(days);
   const { data: income = [] } = useIncome(days);
+  const batchStart = useActiveBatchStart();
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId = isLayer
+    ? activeLayerBatch?.id ?? null
+    : isBroiler
+      ? (activeBroilerBatch as any)?.id ?? null
+      : null;
+
+  const scopedExpenses = useMemo(() => {
+    const scope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
+    return expenses.filter((row: any) => matchesActiveFinanceScope(row, 'expense', scope));
+  }, [expenses, isLayer, isBroiler, activeBatchId, batchStart]);
+
+  const scopedIncome = useMemo(() => {
+    const scope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
+    return income.filter((row: any) => matchesActiveFinanceScope(row, 'income', scope));
+  }, [income, isLayer, isBroiler, activeBatchId, batchStart]);
 
   const buckets = useMemo(
-    () => bucketize(income as any, expenses as any, mode),
-    [income, expenses, mode],
+    () => bucketize(scopedIncome as any, scopedExpenses as any, mode),
+    [scopedIncome, scopedExpenses, mode],
   );
 
   const totals = useMemo(() => {
-    const totalIncome = (income ?? []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
-    const totalExpense = (expenses ?? []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
+    const totalIncome = scopedIncome.reduce((s, r: any) => s + Number(r.amount || 0), 0);
+    const totalExpense = scopedExpenses.reduce((s, r: any) => s + Number(r.amount || 0), 0);
     return { totalIncome, totalExpense, net: totalIncome - totalExpense };
-  }, [income, expenses]);
+  }, [scopedIncome, scopedExpenses]);
 
   return (
     <div className="min-h-screen bg-background pb-24">

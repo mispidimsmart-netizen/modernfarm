@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
 // Types
 export interface EggProduction {
@@ -62,6 +63,7 @@ export interface Expense {
   amount: number;
   description: string | null;
   batch_id: string | null;
+  farm_mode: 'layer' | 'broiler' | null;
   created_at: string;
 }
 
@@ -75,6 +77,7 @@ export interface Income {
   unit_price: number | null;
   description: string | null;
   batch_id: string | null;
+  farm_mode: 'layer' | 'broiler' | null;
   created_at: string;
 }
 
@@ -259,18 +262,21 @@ export function useDeleteFeedInventory() {
 // Feed Consumption Hooks
 export function useFeedConsumption(days: number = 30) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['feed-consumption', user?.id, days],
+    queryKey: ['feed-consumption', user?.id, selectedFarmId, days],
     queryFn: async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
       
-      const { data, error } = await supabase
+      let q = supabase
         .from('feed_consumption')
         .select('*')
         .gte('consumption_date', startDate.toISOString().split('T')[0])
         .order('consumption_date', { ascending: false });
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      const { data, error } = await q;
       
       if (error) throw error;
       return data as FeedConsumption[];
@@ -283,7 +289,12 @@ export function useAddFeedConsumption() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
+  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
+  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<FeedConsumption, 'id' | 'user_id' | 'created_at'>) => {
@@ -294,6 +305,7 @@ export function useAddFeedConsumption() {
         .from('feed_consumption')
         .insert({
           ...data,
+          batch_id: (data as any).batch_id ?? activeBatchId,
           user_id: user.id,
           farm_id: selectedFarmId,
         } as any)
@@ -314,6 +326,8 @@ export function useAddFeedConsumption() {
           category: 'feed',
           amount: Number(totalCost.toFixed(2)),
           description,
+          batch_id: (data as any).batch_id ?? activeBatchId,
+          farm_mode: farmMode,
         } as any);
         if (expErr) console.warn('Auto-expense for feed usage failed:', expErr.message);
       }
@@ -482,15 +496,17 @@ export function useAddExpense() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at'>) => {
+    mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { error } = await supabase
         .from('expenses')
         .insert({
           ...data,
+          farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
           user_id: user!.id,
           farm_id: selectedFarmId,
         });
@@ -540,15 +556,17 @@ export function useAddIncome() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { isLayer, isBroiler } = useFarmType();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at'>) => {
+    mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { error } = await supabase
         .from('income')
         .insert({
           ...data,
+          farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
           user_id: user!.id,
           farm_id: selectedFarmId,
         });
@@ -711,17 +729,13 @@ export function useFarmSummary() {
     : isBroiler
       ? ((activeBroilerBatch as any)?.id ?? null)
       : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
 
   const filteredExpenses = (expenses ?? []).filter((e: any) => {
-    if (e.batch_id) return e.batch_id === activeBatchId;
-    return true;
+    return matchesActiveFinanceScope(e, 'expense', financeScope);
   });
   const filteredIncome = (income ?? []).filter((i: any) => {
-    const cat = (i.category ?? '').toString();
-    if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
-    if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
-    if (i.batch_id) return i.batch_id === activeBatchId;
-    return true;
+    return matchesActiveFinanceScope(i, 'income', financeScope);
   });
 
   const totalEggs = isLayer ? (eggs?.reduce((sum, e) => sum + e.total_eggs, 0) ?? 0) : 0;
