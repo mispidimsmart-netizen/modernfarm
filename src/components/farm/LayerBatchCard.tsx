@@ -13,6 +13,7 @@ import {
   History,
   ChevronDown,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import { EditCompletedBatchDialog } from '@/components/farm/EditCompletedBatchDialog';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +22,7 @@ import {
   useLayerBatches,
   useCreateLayerBatch,
   useCloseLayerBatch,
+  useDeleteLayerBatch,
   useLayerBatchSummary,
   useLayerBatchTrend,
   type LayerBatch,
@@ -95,9 +97,12 @@ export function LayerBatchCard() {
   const { data: allBatches = [] } = useLayerBatches();
   const createBatch = useCreateLayerBatch();
   const closeBatch = useCloseLayerBatch();
+  const deleteBatch = useDeleteLayerBatch();
 
   const [openNew, setOpenNew] = useState(false);
   const [openClose, setOpenClose] = useState(false);
+  const [openEditActive, setOpenEditActive] = useState(false);
+  const [openDeleteActive, setOpenDeleteActive] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const completed = allBatches.filter((b) => b.status === 'completed');
