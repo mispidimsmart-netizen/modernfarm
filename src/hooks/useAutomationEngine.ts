@@ -152,11 +152,19 @@ export function useCurrentShedAutomation() {
     queryFn: async (): Promise<{ success: boolean; automation: AutomationResult }> => {
       if (!user || !selectedShedId) throw new Error('Not ready');
 
+      // Resolve farm_id from shed for multi-farm safety
+      const { data: shed } = await supabase
+        .from('sheds')
+        .select('farm_id')
+        .eq('id', selectedShedId)
+        .maybeSingle();
+
       const { data, error } = await supabase.functions.invoke('automation-engine', {
         body: {
           action: 'run-automation',
           user_id: user.id,
           shed_id: selectedShedId,
+          farm_id: shed?.farm_id ?? null,
         },
       });
 
