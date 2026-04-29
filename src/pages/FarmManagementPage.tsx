@@ -28,6 +28,7 @@ import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
+import { FinanceSummaryRange } from '@/components/farm/FinanceSummaryRange';
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
@@ -376,6 +377,9 @@ export function FarmManagementPage() {
                     <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
+                    {/* Range-aware Income / Expense / Net summary */}
+                    <FinanceSummaryRange days={reportDays} />
+
                     {/* Performance Snapshot — environmental conditions & flock health */}
                     <FarmPerformanceView days={Math.min(reportDays, 30)} />
 
