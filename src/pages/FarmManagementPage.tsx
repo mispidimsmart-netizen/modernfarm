@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EggProductionSheet } from '@/components/farm/EggProductionSheet';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
-import { MortalitySheet } from '@/components/farm/MortalitySheet';
+import { HealthSheet } from '@/components/farm/HealthSheet';
 import { FinanceSheet } from '@/components/farm/FinanceSheet';
 import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
@@ -43,7 +43,7 @@ export function FarmManagementPage() {
   const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const hasActiveBatch = !!(activeLayerBatch || activeBroilerBatch);
 
-  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
+  const [activeSheet, setActiveSheet] = useState<'egg' | 'feed' | 'mortality' | 'medicine' | 'finance' | 'schedule' | 'batch' | 'weight' | 'broiler-feed' | null>(null);
   const [activeTab, setActiveTab] = useState<'batch' | 'input' | 'report' | 'analysis'>('batch');
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
 
@@ -75,12 +75,17 @@ export function FarmManagementPage() {
   };
 
   const handleQuickAction = (action: import('@/components/farm/FarmInputCards').EntryActionKey) => {
-    // Map non-sheet actions to existing sheets where applicable
+    // Medicine → unified Health sheet
     if (action === 'medicine') {
-      // Medicine entry currently lives inside Mortality sheet (cause=disease)
+      setActiveSheet('medicine');
+      return;
+    }
+    // Mortality → unified Health sheet (opens to mortality tab)
+    if (action === 'mortality') {
       setActiveSheet('mortality');
       return;
     }
+    // Feed Stock → FeedManagementSheet (Stock tab)
     if (action === 'feed-stock') {
       setActiveSheet('feed');
       return;
@@ -390,8 +395,8 @@ export function FarmManagementPage() {
         open={activeSheet === 'feed'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
-      <MortalitySheet 
-        open={activeSheet === 'mortality'} 
+      <HealthSheet 
+        open={activeSheet === 'mortality' || activeSheet === 'medicine'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
       <FinanceSheet 
