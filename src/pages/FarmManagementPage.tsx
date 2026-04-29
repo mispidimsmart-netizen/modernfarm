@@ -72,7 +72,7 @@ export function FarmManagementPage() {
     batch: { bn: '🐔 ব্যাচ', en: '🐔 Batch' },
     report: { bn: '📊 রিপোর্ট', en: '📊 Report' },
     analysis: { bn: '📈 বিশ্লেষণ', en: '📈 Analysis' },
-    summarySection: { bn: '📊 আজকের সারাংশ', en: "📊 Today's Summary" },
+    summarySection: { bn: '📅 আজকের পরিস্থিতি', en: "📅 Today's Situation" },
     analysisSection: { bn: '📈 ট্রেন্ড ও বিশ্লেষণ', en: '📈 Trends & Analysis' },
     summarySubtitle: { bn: 'আজকের পরিসংখ্যান ও খরচ', en: "Today's stats & expenses" },
     analysisSubtitle: { bn: 'পারফরম্যান্স, খরচ ও ট্রেন্ড চার্ট', en: 'Performance, cost & trend charts' },
