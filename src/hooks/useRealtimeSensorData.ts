@@ -6,19 +6,68 @@ import { useFarmSettings, useDeviceStatus } from './useFarmData';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNotificationSound } from './useNotificationSound';
 import { areSoundsEnabled } from '@/components/settings/NotificationSoundCard';
+import {
+  readCachedSensorData,
+  writeCachedSensorData,
+  useBrowserOnline,
+} from './useOfflineSensorCache';
 
-// Realtime sensor data with Supabase subscriptions
+// Realtime sensor data with Supabase subscriptions + offline cache fallback
 export function useRealtimeSensorData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [sensorData, setSensorData] = useState<SensorData>({
-    temperature: 28.5,
-    humidity: 65,
-    ammonia: 12,
-    waterUsage: 45,
-    timestamp: new Date(),
+  const browserOnline = useBrowserOnline();
+
+  // Seed initial state from localStorage so the UI shows the last known values
+  // immediately on mount — even before the first network round-trip succeeds,
+  // and even if the browser is currently offline.
+  const [sensorData, setSensorData] = useState<SensorData>(() => {
+    const cached = user?.id ? readCachedSensorData(user.id) : null;
+    if (cached) {
+      return {
+        temperature: cached.temperature,
+        humidity: cached.humidity,
+        ammonia: cached.ammonia,
+        waterUsage: cached.waterUsage,
+        timestamp: cached.timestamp,
+      };
+    }
+    return {
+      temperature: 0,
+      humidity: 0,
+      ammonia: 0,
+      waterUsage: 0,
+      timestamp: new Date(0),
+    };
   });
   const [isConnected, setIsConnected] = useState(false);
+
+  // Helper: update state AND persist to cache so reloads / offline tabs survive.
+  const applyReading = useCallback(
+    (data: SensorData) => {
+      setSensorData(data);
+      if (user?.id) writeCachedSensorData(user.id, data);
+    },
+    [user?.id]
+  );
+
+  // When the browser comes back online after being offline, re-hydrate from
+  // cache once (cheap) — the realtime subscription / next fetch will overwrite
+  // with fresh data shortly after.
+  useEffect(() => {
+    if (!user?.id) return;
+    if (browserOnline) return;
+    const cached = readCachedSensorData(user.id);
+    if (cached) {
+      setSensorData({
+        temperature: cached.temperature,
+        humidity: cached.humidity,
+        ammonia: cached.ammonia,
+        waterUsage: cached.waterUsage,
+        timestamp: cached.timestamp,
+      });
+    }
+  }, [user?.id, browserOnline]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -31,10 +80,10 @@ export function useRealtimeSensorData() {
         .eq('user_id', user.id)
         .order('recorded_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (data) {
-        setSensorData({
+        applyReading({
           temperature: Number(data.temperature),
           humidity: Number(data.humidity),
           ammonia: Number(data.ammonia),
@@ -46,7 +95,8 @@ export function useRealtimeSensorData() {
 
     fetchLatest();
 
-    // Subscribe to realtime sensor updates
+    // Subscribe to realtime sensor updates — when ESP32 reconnects and writes,
+    // this auto-syncs the UI with the new value (and updates the cache).
     const channel = supabase
       .channel(`sensor_readings_${user.id}`)
       .on(
@@ -59,7 +109,7 @@ export function useRealtimeSensorData() {
         },
         (payload) => {
           const data = payload.new;
-          setSensorData({
+          applyReading({
             temperature: Number(data.temperature),
             humidity: Number(data.humidity),
             ammonia: Number(data.ammonia),
@@ -75,7 +125,7 @@ export function useRealtimeSensorData() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, applyReading]);
 
   return { sensorData, isConnected };
 }
