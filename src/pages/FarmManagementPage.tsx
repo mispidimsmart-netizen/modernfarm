@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers } from 'lucide-react';
+import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -60,8 +61,18 @@ export function FarmManagementPage() {
     },
   };
 
-  const handleQuickAction = (action: 'egg' | 'feed' | 'mortality' | 'finance' | 'schedule') => {
-    setActiveSheet(action);
+  const handleQuickAction = (action: import('@/components/farm/FarmInputCards').EntryActionKey) => {
+    // Map non-sheet actions to existing sheets where applicable
+    if (action === 'medicine') {
+      // Medicine entry currently lives inside Mortality sheet (cause=disease)
+      setActiveSheet('mortality');
+      return;
+    }
+    if (action === 'feed-stock') {
+      setActiveSheet('feed');
+      return;
+    }
+    setActiveSheet(action as any);
   };
 
   return (
@@ -139,55 +150,54 @@ export function FarmManagementPage() {
               </div>
             </TabsContent>
 
-            {/* Input Tab - Quick Entry Cards */}
+            {/* Input Tab - Grouped Quick Entry */}
             <TabsContent value="input" className="mt-4">
-              <div className="space-y-4">
-                {/* Entry Status & History */}
-                <RecentEntryHistory />
-
-                {/* Layer Mode: Quick Input Cards */}
-                {isLayer && <FarmInputCards onCardClick={handleQuickAction} />}
-
-                {/* Broiler Mode: Mortality + Finance entries (egg/feed live in Batch tab) */}
-                {isBroiler && (
-                  <>
-                    <FarmInputCards 
-                      onCardClick={handleQuickAction} 
-                      show={['mortality', 'finance']}
-                    />
-                    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                      <CardContent className="p-3">
-                        <p className="text-xs text-muted-foreground">
-                          {language === 'bn'
-                            ? '💡 ব্যাচ, ওজন বা খাদ্য এন্ট্রির জন্য উপরের "🐔 ব্যাচ" ট্যাব দেখুন'
-                            : '💡 For batch, weight or feed entry, see the "🐔 Batch" tab above'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </>
+              <div className="space-y-5">
+                {/* Layer Mode: Grouped entries (egg/feed → mortality/medicine → finance/feed-stock) */}
+                {isLayer && (
+                  <FarmInputCards
+                    onCardClick={handleQuickAction}
+                    grouped
+                  />
                 )}
 
-                {/* Schedule Quick Access */}
-                <Card 
-                  onClick={() => setActiveSheet('schedule')}
-                  className="cursor-pointer transition-all active:scale-[0.98] hover:shadow-md bg-gradient-to-br from-purple-500/5 to-purple-500/10 border-purple-500/20"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-purple-500" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{language === 'bn' ? '📅 শিডিউল দেখুন ও যোগ করুন' : '📅 View & Add Schedules'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {language === 'bn' ? 'খাবার, পরিষ্কার, টিকা' : 'Feed, Cleaning, Vaccination'}
-                        </p>
-                      </div>
-                      <ChevronRight size={18} className="text-muted-foreground" />
+                {/* Broiler Mode: weight/feed in production, mortality/medicine in health, finance/feed-stock in financial */}
+                {isBroiler && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {language === 'bn' ? '🐔 ব্রয়লার এন্ট্রি' : '🐔 Broiler Entries'}
+                      </h4>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={language === 'bn' ? 'তথ্য' : 'Info'}
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-[240px]">
+                          <p className="text-xs">
+                            {language === 'bn'
+                              ? 'ব্যাচ তৈরি বা ব্যাচ-স্পেসিফিক ভিউ এর জন্য উপরের "🐔 ব্যাচ" ট্যাব দেখুন'
+                              : 'For batch creation or batch-specific view, see the "🐔 Batch" tab above'}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
-                  </CardContent>
-                </Card>
-                
+                    <FarmInputCards
+                      onCardClick={handleQuickAction}
+                      grouped
+                      isBroiler
+                    />
+                  </div>
+                )}
+
+                {/* Recent History pushed to bottom */}
+                <RecentEntryHistory />
+
                 <p className="text-xs text-center text-muted-foreground">
                   {t.quickTip[language]}
                 </p>
