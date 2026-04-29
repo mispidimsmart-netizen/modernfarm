@@ -271,6 +271,41 @@ export function EditCompletedBatchDialog({
         )}
 
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t.batchName[language]}</Label>
+            <Input
+              value={form.batch_name_bn}
+              onChange={(e) => setForm((p) => ({ ...p, batch_name_bn: e.target.value }))}
+              placeholder={language === 'bn' ? 'যেমন: ব্যাচ ১' : 'e.g. Batch 1'}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t.breedLabel[language]}</Label>
+              <BreedCombobox
+                options={LAYER_BREEDS}
+                value={form.breed}
+                onChange={(v) => setForm((p) => ({ ...p, breed: v }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t.ageStart[language]}</Label>
+              <Input
+                type="number"
+                min="0"
+                max="80"
+                value={form.age_at_start_weeks || ''}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    age_at_start_weeks: parseInt(e.target.value) || 0,
+                  }))
+                }
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">{t.startDate[language]}</Label>
