@@ -8,6 +8,7 @@ import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { useMemo } from 'react';
+import { format } from 'date-fns';
 
 export function DailyExpenseSummary() {
   const { language } = useAuth();
@@ -24,7 +25,7 @@ export function DailyExpenseSummary() {
       : null;
   const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = format(new Date(), 'yyyy-MM-dd');
   const showData = !batchStart || today >= batchStart;
 
   const todayExpenses = useMemo(() => {

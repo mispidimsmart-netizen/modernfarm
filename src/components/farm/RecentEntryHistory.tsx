@@ -81,7 +81,7 @@ export function RecentEntryHistory() {
   const [editEntry, setEditEntry] = useState<RecentEntry | null>(null);
   const [editValue, setEditValue] = useState<number>(0);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = format(new Date(), 'yyyy-MM-dd');
   const hasTodayEggs = eggs?.some((e) => e.production_date === today);
   const missingEntries = isLayer && !hasTodayEggs;
   const scopedExpenses = (expenses ?? []).filter((e) =>
