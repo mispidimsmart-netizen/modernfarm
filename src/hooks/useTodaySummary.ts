@@ -69,10 +69,9 @@ export function useTodaySummary() {
         return q;
       };
       const buildMortality = () => {
-        // mortality_records has no farm_id/batch_id — scope via shed_id → sheds
         return supabase
           .from('mortality_records')
-          .select('count, shed_id, sheds:shed_id(farm_id, farm_type)')
+          .select('count, shed_id, farm_id, farm_mode, sheds:shed_id(farm_id, farm_type)')
           .eq('record_date', today);
       };
 
@@ -99,14 +98,16 @@ export function useTodaySummary() {
       const todayIncome = filteredIncome.reduce((sum, i) => sum + Number(i.amount), 0);
       const todayExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
-      // Mortality: filter by selected farm + active mode (via shed.farm_type)
+      // Mortality: prefer direct farm_id/farm_mode; fallback to shed join
       const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
       const filteredMortality = mortalityData.filter((m: any) => {
-        const shed = m.sheds;
-        // If no shed link, only include when no farm filter is active (legacy data)
-        if (!shed) return !selectedFarmId;
-        if (selectedFarmId && shed.farm_id !== selectedFarmId) return false;
-        if (activeMode && shed.farm_type && shed.farm_type !== activeMode && shed.farm_type !== 'both') return false;
+        const recordFarmId = m.farm_id ?? m.sheds?.farm_id ?? null;
+        const recordMode = m.farm_mode ?? m.sheds?.farm_type ?? null;
+        if (selectedFarmId) {
+          if (recordFarmId && recordFarmId !== selectedFarmId) return false;
+          if (!recordFarmId) return false;
+        }
+        if (activeMode && recordMode && recordMode !== activeMode && recordMode !== 'both') return false;
         return true;
       });
       const todayMortality = filteredMortality.reduce((sum: number, m: any) => sum + (m.count ?? 0), 0);
