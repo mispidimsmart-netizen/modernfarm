@@ -39,7 +39,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
-// OTAManagementCard removed — OTA management is now Admin-only (Admin → Firmware tab)
+import { OTAFirmwareTab } from './OTAFirmwareTab';
+import { Cloud } from 'lucide-react';
 
 interface SectionProps {
   title: string;
@@ -788,6 +789,18 @@ export function DeviceSystemTab() {
             </SheetContent>
           </Sheet>
         </div>
+      </CollapsibleSection>
+
+      {/* OTA Firmware Section — moved from standalone tab */}
+      <CollapsibleSection
+        title="OTA Firmware"
+        titleBn="OTA ফার্মওয়্যার"
+        icon={Cloud}
+        color="bg-cyan-500/10 text-cyan-500"
+        defaultOpen={false}
+        language={language}
+      >
+        <OTAFirmwareTab />
       </CollapsibleSection>
 
       {/* Factory Reset Dialog */}

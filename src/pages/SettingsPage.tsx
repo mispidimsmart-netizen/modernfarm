@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Cloud
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -32,7 +32,6 @@ import {
   ReportsDataTab, 
   DeviceSystemTab,
   LightingTab,
-  OTAFirmwareTab,
 } from '@/components/settings/tabs';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
@@ -265,7 +264,7 @@ export function SettingsPage() {
           <div className={!canEditSettings ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={!canEditSettings}>
           {(canEditSettings || !permissionsLoading) && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-5'} mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl`}>
+              <TabsList className="grid w-full grid-cols-5 mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl">
                 <TabsTrigger 
                   value="farm-setup" 
                   className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
@@ -295,21 +294,12 @@ export function SettingsPage() {
                   <span>{language === 'bn' ? 'রিপোর্ট' : 'Reports'}</span>
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="ota" 
+                  value="device" 
                   className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                 >
-                  <Cloud className="h-4 w-4 shrink-0" />
-                  <span>{language === 'bn' ? 'OTA' : 'OTA'}</span>
+                  <Cpu className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'ডিভাইস' : 'Device'}</span>
                 </TabsTrigger>
-                {isAdmin && (
-                  <TabsTrigger 
-                    value="device" 
-                    className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                  >
-                    <Cpu className="h-4 w-4 shrink-0" />
-                    <span>{language === 'bn' ? 'ডিভাইস' : 'Device'}</span>
-                  </TabsTrigger>
-                )}
               </TabsList>
 
               <TabsContent value="farm-setup">
@@ -328,15 +318,9 @@ export function SettingsPage() {
                 <ReportsDataTab />
               </TabsContent>
 
-              <TabsContent value="ota">
-                <OTAFirmwareTab />
+              <TabsContent value="device">
+                <DeviceSystemTab />
               </TabsContent>
-
-              {isAdmin && (
-                <TabsContent value="device">
-                  <DeviceSystemTab />
-                </TabsContent>
-              )}
             </Tabs>
           )}
           </div>
