@@ -1,0 +1,1 @@
+ALTER TABLE public.advanced_automation_settings DROP CONSTRAINT IF EXISTS advanced_automation_settings_farm_id_unique;
