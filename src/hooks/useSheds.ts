@@ -22,7 +22,7 @@ interface ShedContextType {
   setSelectedShedId: (id: string | null) => void;
 }
 
-const ShedContext = createContext<ShedContextType | undefined>(undefined);
+export const ShedContext = createContext<ShedContextType | undefined>(undefined);
 
 export function ShedProvider({ children }: { children: ReactNode }) {
   const [selectedShedId, setSelectedShedId] = useState<string | null>(null);

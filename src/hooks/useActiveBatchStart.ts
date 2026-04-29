@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch } from '@/hooks/useBroilerData';
-import { useSelectedShed } from '@/hooks/useSheds';
+import { ShedContext } from '@/hooks/useSheds';
 import { useFarmContext } from '@/context/FarmContext';
 
 /**
@@ -23,13 +23,9 @@ export function useActiveBatchStart(): string | null {
   const queryClient = useQueryClient();
   const { selectedFarmId } = useFarmContext();
 
-  // Read selected shed if a ShedProvider is mounted (otherwise ignore).
-  let selectedShedId: string | null = null;
-  try {
-    selectedShedId = useSelectedShed().selectedShedId;
-  } catch {
-    // No ShedProvider — fine, just skip shed-scoped invalidation.
-  }
+  // Read selected shed if a ShedProvider is mounted (otherwise null).
+  const shedCtx = useContext(ShedContext);
+  const selectedShedId = shedCtx?.selectedShedId ?? null;
 
   const activeBatchId = isLayer
     ? (layerBatch?.id ?? null)
