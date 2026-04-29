@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Egg, TrendingUp, TrendingDown, Skull, ChevronRight } from 'lucide-react';
+import { Egg, TrendingUp, TrendingDown, Skull, ChevronRight, Wheat } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTodaySummary } from '@/hooks/useTodaySummary';
@@ -24,26 +24,28 @@ export function FarmSummaryCards() {
     );
   }
 
+  const primaryCard = isLayer
+    ? {
+        id: 'eggs',
+        icon: Egg,
+        label: language === 'bn' ? 'আজকের ডিম' : "Today's Eggs",
+        value: summary?.todayEggs ?? 0,
+        subLabel: `A: ${summary?.todayGradeA ?? 0} | B: ${summary?.todayGradeB ?? 0}`,
+        color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        iconBg: 'bg-amber-500/20',
+      }
+    : {
+        id: 'broilerFeed',
+        icon: Wheat,
+        label: language === 'bn' ? 'আজকের খাদ্য' : "Today's Feed",
+        value: `${(summary?.todayBroilerFeedKg ?? 0).toLocaleString('bn-BD')} কেজি`,
+        subLabel: language === 'bn' ? 'ব্রয়লার ফিড' : 'Broiler feed',
+        color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        iconBg: 'bg-amber-500/20',
+      };
+
   const cards = [
-    isLayer
-      ? {
-          id: 'eggs',
-          icon: Egg,
-          label: language === 'bn' ? 'আজকের ডিম' : "Today's Eggs",
-          value: summary?.todayEggs ?? 0,
-          subLabel: `A: ${summary?.todayGradeA ?? 0} | B: ${summary?.todayGradeB ?? 0}`,
-          color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-          iconBg: 'bg-amber-500/20',
-        }
-      : {
-          id: 'broilerFeed',
-          icon: Egg,
-          label: language === 'bn' ? 'আজকের খাদ্য' : "Today's Feed",
-          value: `${(summary?.todayBroilerFeedKg ?? 0).toLocaleString('bn-BD')} কেজি`,
-          subLabel: language === 'bn' ? 'ব্রয়লার ফিড' : 'Broiler feed',
-          color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-          iconBg: 'bg-amber-500/20',
-        },
+    primaryCard,
     {
       id: 'profit',
       icon: (summary?.todayProfit ?? 0) >= 0 ? TrendingUp : TrendingDown,
@@ -75,7 +77,7 @@ export function FarmSummaryCards() {
       color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
       iconBg: 'bg-orange-500/20',
     },
-  ].filter(Boolean);
+  ];
 
   return (
     <motion.div
