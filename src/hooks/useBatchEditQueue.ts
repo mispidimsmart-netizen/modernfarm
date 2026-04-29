@@ -164,9 +164,18 @@ export function useBatchEditQueue() {
     setIsSyncing(false);
 
     if (succeeded > 0) {
+      // Batch caches
       queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-active'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-trend'] });
+      // SSOT-synced caches (DB trigger updates flock_info on sync)
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['farm-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['lighting-schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['lighting-curve'] });
       toast({
         title: language === 'bn' ? 'অফলাইন পরিবর্তন সিঙ্ক হয়েছে' : 'Offline edits synced',
         description:
