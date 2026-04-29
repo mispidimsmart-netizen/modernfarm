@@ -48,6 +48,7 @@ import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatu
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
+import { SensorFreshnessBadge } from '@/components/dashboard/SensorFreshnessBadge';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
 import { LightActionHistory } from '@/components/lighting/LightActionHistory';
