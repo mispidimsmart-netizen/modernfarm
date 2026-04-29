@@ -139,7 +139,7 @@ export function FarmManagementPage() {
             {/* Batch Tab — Active batch lifecycle (start/view/end) */}
             <TabsContent value="batch" className="mt-4">
               <div className="space-y-4">
-                <Collapsible defaultOpen={false}>
+                <Collapsible open={batchSectionOpen} onOpenChange={setBatchSectionOpen}>
                   <CollapsibleTrigger className="w-full flex items-center gap-2 rounded-xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-3 group">
                     <Layers className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1 min-w-0 text-left">
@@ -147,7 +147,9 @@ export function FarmManagementPage() {
                         {t.batchHeading[language]}
                       </h3>
                       <p className="text-[11px] text-muted-foreground leading-tight">
-                        {t.batchSubtitle[language]}
+                        {hasActiveBatch
+                          ? (language === 'bn' ? '✅ সক্রিয় ব্যাচ চলছে' : '✅ Active batch running')
+                          : t.batchSubtitle[language]}
                       </p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -155,12 +157,34 @@ export function FarmManagementPage() {
                   <CollapsibleContent className="space-y-4 pt-4">
                     {isLayer && <LayerBatchCard />}
 
-                    {isBroiler && (
+                    {isBroiler && activeBroilerBatch && (
                       <BroilerDashboardWidget
                         onBatchClick={() => handleBroilerAction('batch')}
                         onWeightClick={() => handleBroilerAction('weight')}
                         onFeedClick={() => handleBroilerAction('broiler-feed')}
                       />
+                    )}
+
+                    {/* Empty-state hint for broiler when no active batch */}
+                    {isBroiler && !activeBroilerBatch && (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-5 text-center space-y-3">
+                        <div className="mx-auto h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <PackageOpen className="h-5 w-5 text-primary" />
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {language === 'bn'
+                            ? 'এখনো কোনো ব্যাচ যোগ করা হয়নি। ট্র্যাকিং শুরু করতে নতুন ব্যাচ যোগ করুন।'
+                            : 'No batch added yet. Add a new batch to start tracking.'}
+                        </p>
+                        <Button
+                          size="sm"
+                          className="h-10 font-semibold"
+                          onClick={() => handleBroilerAction('batch')}
+                        >
+                          <Plus className="mr-1.5 h-4 w-4" />
+                          {language === 'bn' ? 'ব্যাচ যোগ করুন' : 'Add Batch'}
+                        </Button>
+                      </div>
                     )}
                   </CollapsibleContent>
                 </Collapsible>
