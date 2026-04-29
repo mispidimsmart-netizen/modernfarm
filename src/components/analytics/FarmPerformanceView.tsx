@@ -80,10 +80,14 @@ function MetricCard({ icon: Icon, label, value, unit, subtext, color = 'text-pri
   );
 }
 
-export function FarmPerformanceView() {
+interface FarmPerformanceViewProps {
+  days?: number;
+}
+
+export function FarmPerformanceView({ days = 7 }: FarmPerformanceViewProps = {}) {
   const { language } = useAuth();
   const { isLayer, isBroiler } = useFarmType();
-  const { data: performance, isLoading } = useFarmPerformance(7);
+  const { data: performance, isLoading } = useFarmPerformance(days);
   
   if (isLoading) {
     return (
