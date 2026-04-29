@@ -28,6 +28,7 @@ import { ScheduleSheet } from '@/components/schedule/ScheduleSheet';
 import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
+import { FinanceSummaryRange } from '@/components/farm/FinanceSummaryRange';
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
