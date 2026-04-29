@@ -81,10 +81,10 @@ export function FarmManagementPage() {
           <TodayStatusBanner />
 
           {/* Stats Header */}
-          <FarmStatsHeader onFlockClick={() => setActiveSheet('flock')} />
+          <FarmStatsHeader onFlockClick={() => setActiveTab('batch')} />
 
           {/* Tabbed Interface - 4 tabs */}
-          <Tabs defaultValue="batch" className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
             <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-gradient-to-r from-muted/60 to-muted/40 p-1.5 gap-1 border border-border/50 shadow-sm">
               <TabsTrigger
                 value="batch"
