@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
 // Types
 export interface EggProduction {
@@ -62,6 +63,7 @@ export interface Expense {
   amount: number;
   description: string | null;
   batch_id: string | null;
+  farm_mode: 'layer' | 'broiler' | null;
   created_at: string;
 }
 
@@ -75,6 +77,7 @@ export interface Income {
   unit_price: number | null;
   description: string | null;
   batch_id: string | null;
+  farm_mode: 'layer' | 'broiler' | null;
   created_at: string;
 }
 
