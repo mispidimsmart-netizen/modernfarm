@@ -295,31 +295,47 @@ export function OTAFirmwareTab() {
             <div className="space-y-2">
               {devicesWithFirmware.map((d) => {
                 const isUpToDate = latestVersion && d.firmware_version === latestVersion;
+                const otaStage = mapOtaStatus(d.ota_status);
                 return (
                   <div
                     key={d.id}
-                    className="flex items-center justify-between rounded-lg border bg-card p-3"
+                    className="rounded-lg border bg-card p-3"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <HardDrive className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-mono text-sm truncate">{d.firmware_version}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {d.is_online
-                            ? t('🟢 অনলাইন', '🟢 Online')
-                            : t('⚫ অফলাইন', '⚫ Offline')}
-                        </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <HardDrive className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-mono text-sm truncate">{d.firmware_version}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {d.is_online
+                              ? t('🟢 অনলাইন', '🟢 Online')
+                              : t('⚫ অফলাইন', '⚫ Offline')}
+                          </p>
+                        </div>
                       </div>
+                      {otaStage && otaStage !== 'done' && otaStage !== 'failed' ? (
+                        <Badge className="bg-cyan-500/15 text-cyan-600 border-cyan-500/30">
+                          {t('আপডেট চলছে', 'Updating')}
+                        </Badge>
+                      ) : isUpToDate ? (
+                        <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">
+                          {t('হালনাগাদ', 'Up to date')}
+                        </Badge>
+                      ) : latestVersion ? (
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-600">
+                          {t('আপডেট আছে', 'Update available')}
+                        </Badge>
+                      ) : null}
                     </div>
-                    {isUpToDate ? (
-                      <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">
-                        {t('হালনাগাদ', 'Up to date')}
-                      </Badge>
-                    ) : latestVersion ? (
-                      <Badge variant="outline" className="border-amber-500/40 text-amber-600">
-                        {t('আপডেট আছে', 'Update available')}
-                      </Badge>
-                    ) : null}
+
+                    {otaStage && (
+                      <OtaProgressTimeline
+                        stage={otaStage}
+                        progress={d.ota_progress}
+                        language={language as 'bn' | 'en'}
+                        targetVersion={d.ota_version_available}
+                      />
+                    )}
                   </div>
                 );
               })}
