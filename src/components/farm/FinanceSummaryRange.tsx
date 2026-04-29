@@ -5,6 +5,7 @@ import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
 
@@ -30,11 +31,6 @@ const incomeSourceLabels: Record<string, { bn: string; en: string }> = {
   other: { bn: '📦 অন্যান্য', en: '📦 Other' },
 };
 
-// Income categories that only make sense for layer farms
-const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale']);
-// Income categories that only make sense for broiler farms
-const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
-
 export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
   const { language } = useAuth();
   const { data: expensesRaw } = useExpenses(days);
@@ -48,6 +44,7 @@ export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
     : isBroiler
       ? ((activeBroilerBatch as any)?.id ?? null)
       : null;
+  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
   const isBn = language === 'bn';
   const locale = isBn ? 'bn-BD' : 'en-US';
 
@@ -57,22 +54,15 @@ export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
   //   3. Drop layer-only sources in broiler mode and broiler-only sources in layer mode.
   const expenses = useMemo(() => {
     return (expensesRaw ?? []).filter((e: any) => {
-      if (e.batch_id) return e.batch_id === activeBatchId;
-      if (batchStart && (e.expense_date ?? '') < batchStart) return false;
-      return true;
+      return matchesActiveFinanceScope(e, 'expense', financeScope);
     });
-  }, [expensesRaw, batchStart, activeBatchId]);
+  }, [expensesRaw, financeScope]);
 
   const income = useMemo(() => {
     return (incomeRaw ?? []).filter((i: any) => {
-      const cat = (i.category ?? i.source ?? '').toString();
-      if (isBroiler && LAYER_ONLY_INCOME.has(cat)) return false;
-      if (isLayer && BROILER_ONLY_INCOME.has(cat)) return false;
-      if (i.batch_id) return i.batch_id === activeBatchId;
-      if (batchStart && (i.income_date ?? '') < batchStart) return false;
-      return true;
+      return matchesActiveFinanceScope(i, 'income', financeScope);
     });
-  }, [incomeRaw, batchStart, activeBatchId, isLayer, isBroiler]);
+  }, [incomeRaw, financeScope]);
 
   const totals = useMemo(() => {
     const totalExpense = expenses.reduce((s, e: any) => s + Number(e.amount || 0), 0);
