@@ -176,7 +176,7 @@ export function useAdvancedAutomationSettings() {
       if (error) throw error;
       
       const base: AdvancedAutomationSettings = data
-        ? (data as any as AdvancedAutomationSettings)
+        ? (data as unknown as AdvancedAutomationSettings)
         : {
             id: '',
             user_id: user.id,
@@ -255,7 +255,7 @@ export function useRawAdvancedAutomationSettings() {
       else query = query.is('shed_id', null);
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
-      return data as any as AdvancedAutomationSettings | null;
+      return data as unknown as AdvancedAutomationSettings | null;
     },
     enabled: !!user,
   });
