@@ -95,6 +95,7 @@ function ageWeeksFromBatch(b: LayerBatch, todayIso?: string) {
 
 export function LayerBatchCard() {
   const { language } = useAuth();
+  const today = useDailyTick(); // re-renders on midnight & tab refocus
   const { data: activeBatch, isLoading } = useActiveLayerBatch();
   const { data: allBatches = [] } = useLayerBatches();
   const createBatch = useCreateLayerBatch();
