@@ -52,6 +52,7 @@ export function FarmManagementPage() {
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
   const [summarySectionOpen, setSummarySectionOpen] = useState(true);
   const [analysisSectionOpen, setAnalysisSectionOpen] = useState(true);
+  const [costDetailOpen, setCostDetailOpen] = useState(false);
   const [reportRange, setReportRange] = useState<ReportRangeValue>({ days: 30 });
   const reportDays = Math.max(1, Math.min(reportRange.days, 365));
 
