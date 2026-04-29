@@ -155,6 +155,24 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
             {/* 🐔 Unified Bird Age — single source of truth */}
             <BirdAgeCard />
 
+            {autoFilledFromBatch && activeBatch && (
+              <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="text-xs leading-relaxed">
+                  <p className="font-medium text-primary">
+                    {language === 'bn'
+                      ? `সক্রিয় ব্যাচ থেকে অটো-ফিল হয়েছে: ${activeBatch.batch_name_bn || activeBatch.batch_name}`
+                      : `Auto-filled from active batch: ${activeBatch.batch_name_bn || activeBatch.batch_name}`}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {language === 'bn'
+                      ? 'প্রয়োজনে পরিবর্তন করে সংরক্ষণ করুন।'
+                      : 'Adjust if needed and save.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>{t.totalBirds[language]}</Label>
               <Input
