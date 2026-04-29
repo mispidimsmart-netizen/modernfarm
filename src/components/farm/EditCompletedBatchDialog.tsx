@@ -141,6 +141,9 @@ export function EditCompletedBatchDialog({
     editBatch.mutate(
       {
         batchId: batch.id,
+        batch_name_bn: form.batch_name_bn,
+        breed: form.breed,
+        age_at_start_weeks: form.age_at_start_weeks,
         start_date: form.start_date,
         actual_end_date: form.actual_end_date,
         initial_bird_count: form.initial_bird_count,
@@ -169,6 +172,9 @@ export function EditCompletedBatchDialog({
   const handleReload = () => {
     // Re-snapshot from latest prop (parent will refetch via query invalidation)
     setForm({
+      batch_name_bn: batch.batch_name_bn || batch.batch_name || '',
+      breed: batch.breed || 'Hy-Line Brown',
+      age_at_start_weeks: batch.age_at_start_weeks ?? 0,
       start_date: batch.start_date,
       actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
       initial_bird_count: batch.initial_bird_count,
