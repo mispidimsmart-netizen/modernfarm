@@ -254,7 +254,7 @@ export function LayerBatchCard() {
                   <Stat
                     icon={<TrendingUp className="h-4 w-4" />}
                     label={t.age[language]}
-                    value={`${ageWeeksFromBatch(activeBatch)} ${t.weeks[language]}`}
+                    value={`${ageWeeksFromBatch(activeBatch, today)} ${t.weeks[language]}`}
                   />
                   <Stat
                     icon={<Bird className="h-4 w-4" />}
