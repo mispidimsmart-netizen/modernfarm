@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EggProductionSheet } from '@/components/farm/EggProductionSheet';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
-import { MortalitySheet } from '@/components/farm/MortalitySheet';
+import { HealthSheet } from '@/components/farm/HealthSheet';
 import { FinanceSheet } from '@/components/farm/FinanceSheet';
 import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { FarmSummaryCards } from '@/components/dashboard/FarmSummaryCards';
