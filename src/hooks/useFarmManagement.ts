@@ -284,19 +284,40 @@ export function useAddFeedConsumption() {
     mutationFn: async (data: Omit<FeedConsumption, 'id' | 'user_id' | 'created_at'>) => {
       if (!user) throw new Error('লগইন করা নেই');
       if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
-      const { error } = await supabase
+
+      const { data: inserted, error } = await supabase
         .from('feed_consumption')
         .insert({
           ...data,
           user_id: user.id,
           farm_id: selectedFarmId,
-        } as any);
+        } as any)
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Auto-create linked expense from weighted-avg ৳/kg of current stock
+      const avgCost = await getWeightedAvgCostPerKg(data.feed_type, selectedFarmId);
+      const totalCost = Number(data.quantity_kg || 0) * avgCost;
+      if (totalCost > 0 && inserted?.id) {
+        const description = `[Auto-Feed-Usage:${inserted.id}] ${data.feed_type} • ${data.quantity_kg}kg @ ৳${avgCost.toFixed(2)}/kg`;
+        const { error: expErr } = await supabase.from('expenses').insert({
+          user_id: user.id,
+          farm_id: selectedFarmId,
+          expense_date: data.consumption_date,
+          category: 'feed',
+          amount: Number(totalCost.toFixed(2)),
+          description,
+        } as any);
+        if (expErr) console.warn('Auto-expense for feed usage failed:', expErr.message);
+      }
+      return inserted;
     },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['feed-consumption'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['expenses'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['today-summary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['daily-summary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['daily_reports'], refetchType: 'active' }),
@@ -310,6 +331,69 @@ export function useAddFeedConsumption() {
         variant: 'destructive',
       });
     },
+  });
+}
+
+// Helper: delete the auto-expense row linked to a feed_consumption id
+async function deleteLinkedFeedExpense(consumptionId: string) {
+  await supabase
+    .from('expenses')
+    .delete()
+    .like('description', `[Auto-Feed-Usage:${consumptionId}]%`);
+}
+
+export function useDeleteFeedConsumption() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await deleteLinkedFeedExpense(id);
+      const { error } = await supabase.from('feed_consumption').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['feed-consumption', 'expenses', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'ব্যবহার এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useUpdateFeedConsumption() {
+  const queryClient = useQueryClient();
+  const { selectedFarmId } = useFarmContext();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string } & Partial<FeedConsumption>) => {
+      const { error } = await supabase.from('feed_consumption').update(patch).eq('id', id);
+      if (error) throw error;
+      await deleteLinkedFeedExpense(id);
+      const { data: row } = await supabase.from('feed_consumption').select('*').eq('id', id).maybeSingle();
+      if (row) {
+        const r: any = row;
+        const avgCost = await getWeightedAvgCostPerKg(r.feed_type, selectedFarmId);
+        const totalCost = Number(r.quantity_kg || 0) * avgCost;
+        if (totalCost > 0) {
+          await supabase.from('expenses').insert({
+            user_id: r.user_id,
+            farm_id: r.farm_id,
+            expense_date: r.consumption_date,
+            category: 'feed',
+            amount: Number(totalCost.toFixed(2)),
+            description: `[Auto-Feed-Usage:${id}] ${r.feed_type} • ${r.quantity_kg}kg @ ৳${avgCost.toFixed(2)}/kg`,
+          } as any);
+        }
+      }
+    },
+    onSuccess: () => {
+      ['feed-consumption', 'expenses', 'today-summary', 'daily-summary'].forEach((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      );
+      toast({ title: 'ব্যবহার এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
   });
 }
 
