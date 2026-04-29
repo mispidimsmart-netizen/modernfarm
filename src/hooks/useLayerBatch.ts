@@ -624,9 +624,18 @@ export function useEditCompletedLayerBatch() {
       return { batchId, summary };
     },
     onSuccess: (result: any) => {
+      // Batch & summary
       queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
+      queryClient.invalidateQueries({ queryKey: ['layer-batch-active'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-summary'] });
       queryClient.invalidateQueries({ queryKey: ['layer-batch-trend'] });
+      // SSOT-synced caches (DB trigger updates flock_info → cascade refresh)
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['farm-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['lighting-schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['lighting-curve'] });
       if (result?.queued) {
         toast({
           title: language === 'bn' ? 'অফলাইন — সারিতে যোগ হয়েছে' : 'Offline — queued',
