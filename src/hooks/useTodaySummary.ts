@@ -98,7 +98,18 @@ export function useTodaySummary() {
 
       const todayIncome = filteredIncome.reduce((sum, i) => sum + Number(i.amount), 0);
       const todayExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
-      const todayMortality = mortalityData.reduce((sum, m) => sum + m.count, 0);
+
+      // Mortality: filter by selected farm + active mode (via shed.farm_type)
+      const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
+      const filteredMortality = mortalityData.filter((m: any) => {
+        const shed = m.sheds;
+        // If no shed link, only include when no farm filter is active (legacy data)
+        if (!shed) return !selectedFarmId;
+        if (selectedFarmId && shed.farm_id !== selectedFarmId) return false;
+        if (activeMode && shed.farm_type && shed.farm_type !== activeMode && shed.farm_type !== 'both') return false;
+        return true;
+      });
+      const todayMortality = filteredMortality.reduce((sum: number, m: any) => sum + (m.count ?? 0), 0);
 
       // Eggs only make sense in layer mode
       const showEggs = isLayer;
