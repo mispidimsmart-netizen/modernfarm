@@ -501,6 +501,7 @@ Deno.serve(async (req) => {
       if (automationAction.alert) {
         const { data: alertData } = await supabase.from('alerts').insert({
           user_id,
+          farm_id,
           shed_id,
           alert_type: automationAction.alert.type,
           severity: automationAction.alert.severity,
