@@ -377,13 +377,13 @@ export function FarmManagementPage() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
                     {/* Performance Snapshot — environmental conditions & flock health */}
-                    <FarmPerformanceView />
+                    <FarmPerformanceView days={Math.min(reportDays, 30)} />
 
                     {/* Mortality Trend Chart - Both modes */}
-                    <MortalityTrendChart />
+                    <MortalityTrendChart days={reportDays} />
 
                     {/* Cost Analytics — energy, water, feed cost trends */}
-                    <CostAnalyticsDashboard />
+                    <CostAnalyticsDashboard days={reportDays} />
 
                     {/* Layer Mode: Egg Correlation Analysis */}
                     {isLayer && (
@@ -393,7 +393,7 @@ export function FarmManagementPage() {
                             ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন'
                             : '🔍 See how temperature, humidity & other factors affect egg production'}
                         </p>
-                        <EggCorrelationCard />
+                        <EggCorrelationCard days={reportDays} />
                       </>
                     )}
 
