@@ -112,25 +112,6 @@ export function SmartDatePicker({
         </PopoverTrigger>
 
         <PopoverContent className="w-auto p-0" align="start">
-          {/* Quick presets */}
-          <div className="border-b p-2">
-            <p className="mb-1.5 px-1 text-[11px] font-medium text-muted-foreground">
-              {language === 'bn' ? '⚡ দ্রুত নির্বাচন' : '⚡ Quick pick'}
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {presets.map((p) => (
-                <Button
-                  key={p.daysAgo}
-                  size="sm"
-                  variant="secondary"
-                  className="h-7 px-2 text-[11px]"
-                  onClick={() => handlePreset(p.daysAgo)}
-                >
-                  {language === 'bn' ? p.labelBn : p.labelEn}
-                </Button>
-              ))}
-            </div>
-          </div>
 
           <Calendar
             mode="single"
