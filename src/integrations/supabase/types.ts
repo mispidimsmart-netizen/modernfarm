@@ -1757,6 +1757,7 @@ export type Database = {
           description: string | null
           expense_date: string
           farm_id: string | null
+          farm_mode: string | null
           id: string
           user_id: string
         }
@@ -1768,6 +1769,7 @@ export type Database = {
           description?: string | null
           expense_date?: string
           farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           user_id: string
         }
@@ -1779,6 +1781,7 @@ export type Database = {
           description?: string | null
           expense_date?: string
           farm_id?: string | null
+          farm_mode?: string | null
           id?: string
           user_id?: string
         }
