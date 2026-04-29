@@ -266,10 +266,13 @@ export function useAddFeedConsumption() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed-consumption'] });
-      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
-      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['feed-consumption'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['today-summary'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['daily-summary'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['daily_reports'], refetchType: 'active' }),
+      ]);
       toast({ title: 'খাদ্য খরচ রেকর্ড হয়েছে' });
     },
     onError: (error: any) => {
