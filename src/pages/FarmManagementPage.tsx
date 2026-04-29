@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info } from 'lucide-react';
+import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSummary } from '@/hooks/useFarmManagement';
@@ -126,27 +127,31 @@ export function FarmManagementPage() {
             {/* Batch Tab — Active batch lifecycle (start/view/end) */}
             <TabsContent value="batch" className="mt-4">
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-primary" />
-                  <div>
-                    <h3 className="text-sm font-semibold leading-tight">
-                      {t.batchHeading[language]}
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground leading-tight">
-                      {t.batchSubtitle[language]}
-                    </p>
-                  </div>
-                </div>
+                <Collapsible defaultOpen={false}>
+                  <CollapsibleTrigger className="w-full flex items-center gap-2 rounded-xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-3 group">
+                    <Layers className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0 text-left">
+                      <h3 className="text-sm font-semibold leading-tight">
+                        {t.batchHeading[language]}
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        {t.batchSubtitle[language]}
+                      </p>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                    {isLayer && <LayerBatchCard />}
 
-                {isLayer && <LayerBatchCard />}
-
-                {isBroiler && (
-                  <BroilerDashboardWidget
-                    onBatchClick={() => handleBroilerAction('batch')}
-                    onWeightClick={() => handleBroilerAction('weight')}
-                    onFeedClick={() => handleBroilerAction('broiler-feed')}
-                  />
-                )}
+                    {isBroiler && (
+                      <BroilerDashboardWidget
+                        onBatchClick={() => handleBroilerAction('batch')}
+                        onWeightClick={() => handleBroilerAction('weight')}
+                        onFeedClick={() => handleBroilerAction('broiler-feed')}
+                      />
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Schedule Card - moved from Entry tab */}
                 <button
