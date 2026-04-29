@@ -46,9 +46,14 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { data: eggProduction } = useEggProduction(60);
   const addExpense = useAddExpense();
   const addIncome = useAddIncome();
-
-  // Calculate available egg stock = total produced (last 60d) - total sold via income(category=eggs).
-  // Broken eggs are subtracted as they're not sellable.
+  const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
+  const activeBatchId: string | null = isLayer
+    ? (activeLayerBatch?.id ?? null)
+    : isBroiler
+      ? ((activeBroilerBatch as any)?.id ?? null)
+      : null;
   const totalEggsProduced = (eggProduction ?? []).reduce(
     (sum, e) => sum + (e.total_eggs || 0) - (e.broken || 0),
     0
