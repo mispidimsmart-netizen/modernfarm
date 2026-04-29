@@ -311,8 +311,8 @@ export function FarmManagementPage() {
                     {/* Daily Expense Summary */}
                     <DailyExpenseSummary />
 
-                    {/* Layer Mode: Show Layer Summary (production rate is already included) */}
-                    {isLayer && <FarmSummaryCards />}
+                    {/* Mode-aware daily summary */}
+                    <FarmSummaryCards />
 
                     {/* Broiler Mode: Show batch overview as summary */}
                     {isBroiler && (
