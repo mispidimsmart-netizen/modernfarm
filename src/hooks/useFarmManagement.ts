@@ -155,22 +155,50 @@ export function useFeedInventory() {
 export function useAddFeedInventory() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Omit<FeedInventory, 'id' | 'user_id' | 'created_at'>) => {
-      const { error } = await supabase
+      // 1. Insert feed inventory row
+      const { data: inserted, error } = await supabase
         .from('feed_inventory')
         .insert({
           ...data,
           user_id: user!.id,
-        });
-      
+          ...(selectedFarmId ? { farm_id: selectedFarmId } : {}),
+        } as any)
+        .select()
+        .single();
+
       if (error) throw error;
+
+      // 2. Auto-link: create matching expense entry so finance stays in sync
+      const totalCost = Number(data.quantity_kg || 0) * Number(data.unit_price || 0);
+      if (totalCost > 0) {
+        const description =
+          `[Auto] Feed: ${data.feed_type} • ${data.quantity_kg}kg @ ৳${data.unit_price}` +
+          (data.supplier ? ` • ${data.supplier}` : '');
+        const { error: expErr } = await supabase.from('expenses').insert({
+          user_id: user!.id,
+          ...(selectedFarmId ? { farm_id: selectedFarmId } : {}),
+          expense_date: data.purchase_date,
+          category: 'feed',
+          amount: totalCost,
+          description,
+        } as any);
+        // Non-fatal: log but don't block feed inventory save
+        if (expErr) {
+          console.warn('Auto-expense link failed:', expErr.message);
+        }
+      }
+
+      return inserted;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed-inventory'] });
-      toast({ title: 'খাদ্য স্টক যোগ হয়েছে' });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      toast({ title: 'খাদ্য স্টক যোগ হয়েছে (খরচে সংযুক্ত)' });
     },
     onError: () => {
       toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });

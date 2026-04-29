@@ -178,6 +178,12 @@ export function FeedManagementSheet({ open, onOpenChange }: FeedManagementSheetP
               />
             </div>
 
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-2.5 text-xs text-blue-700 dark:text-blue-300">
+              {language === 'bn'
+                ? '💡 স্টক সংরক্ষণ করলে স্বয়ংক্রিয়ভাবে আয়-ব্যয় হিসাবে "খাদ্য" বিভাগে খরচ যোগ হবে।'
+                : '💡 Saving stock will automatically add the cost to Finance under "Feed" category.'}
+            </div>
+
             <Button onClick={handleAddStock} className="w-full" disabled={addInventory.isPending}>
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}

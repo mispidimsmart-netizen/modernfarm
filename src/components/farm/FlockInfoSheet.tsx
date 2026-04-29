@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Bird, Save } from 'lucide-react';
+import { Bird, Save, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFlockInfo, useUpdateFlockInfo } from '@/hooks/useFarmManagement';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,30 +44,65 @@ const BREEDS: LayerBreed[] = [
 export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
   const { language } = useAuth();
   const { data: flockInfo, isLoading } = useFlockInfo();
+  const { data: activeBatch } = useActiveLayerBatch();
   const updateFlockInfo = useUpdateFlockInfo();
-  
+
   const [formData, setFormData] = useState({
     total_birds: 0,
     breed: 'isa_brown',
     purchase_date: '',
   });
+  const [autoFilledFromBatch, setAutoFilledFromBatch] = useState(false);
+
+  // Map a free-text breed (from layer_batches) to the BREEDS list value
+  const mapBatchBreedToValue = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
+    const lower = raw.toLowerCase();
+    const match = BREEDS.find(
+      (b) =>
+        b.value === raw ||
+        b.en.toLowerCase() === lower ||
+        (b.keywords || '').toLowerCase().split(/\s+/).some((k) => k && lower.includes(k))
+    );
+    return match ? match.value : null;
+  };
 
   useEffect(() => {
+    // Backward-compat: map removed legacy values to closest current option
+    const legacyMap: Record<string, string> = {
+      layer: 'isa_brown',
+      hy_line: 'hy_line_brown',
+      novogen: 'novogen_brown',
+    };
+
+    // Detect "empty" flock_info (default state from handle_new_user)
+    const isFlockEmpty =
+      !flockInfo ||
+      ((flockInfo.total_birds ?? 0) === 0 && !flockInfo.purchase_date);
+
+    if (isFlockEmpty && activeBatch) {
+      // Auto-fill from active batch
+      const breedValue =
+        mapBatchBreedToValue(activeBatch.breed) || 'isa_brown';
+      setFormData({
+        total_birds: activeBatch.current_bird_count || activeBatch.initial_bird_count || 0,
+        breed: breedValue,
+        purchase_date: activeBatch.start_date || '',
+      });
+      setAutoFilledFromBatch(true);
+      return;
+    }
+
     if (flockInfo) {
-      // Backward-compat: map removed legacy values to closest current option
-      const legacyMap: Record<string, string> = {
-        layer: 'isa_brown',
-        hy_line: 'hy_line_brown',
-        novogen: 'novogen_brown',
-      };
       const rawBreed = flockInfo.breed || 'isa_brown';
       setFormData({
         total_birds: flockInfo.total_birds,
         breed: legacyMap[rawBreed] || rawBreed,
         purchase_date: flockInfo.purchase_date || '',
       });
+      setAutoFilledFromBatch(false);
     }
-  }, [flockInfo]);
+  }, [flockInfo, activeBatch]);
 
   const t = {
     title: { bn: 'মুরগির তথ্য', en: 'Flock Information' },
@@ -118,6 +154,24 @@ export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
           <div className="space-y-4 pb-8">
             {/* 🐔 Unified Bird Age — single source of truth */}
             <BirdAgeCard />
+
+            {autoFilledFromBatch && activeBatch && (
+              <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="text-xs leading-relaxed">
+                  <p className="font-medium text-primary">
+                    {language === 'bn'
+                      ? `সক্রিয় ব্যাচ থেকে অটো-ফিল হয়েছে: ${activeBatch.batch_name_bn || activeBatch.batch_name}`
+                      : `Auto-filled from active batch: ${activeBatch.batch_name_bn || activeBatch.batch_name}`}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {language === 'bn'
+                      ? 'প্রয়োজনে পরিবর্তন করে সংরক্ষণ করুন।'
+                      : 'Adjust if needed and save.'}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>{t.totalBirds[language]}</Label>
