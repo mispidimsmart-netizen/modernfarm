@@ -169,6 +169,23 @@ export function useFeedInventory() {
   });
 }
 
+// Helper: weighted-average cost per kg for a given feed_type, from current stock
+async function getWeightedAvgCostPerKg(feedType: string, farmId: string | null): Promise<number> {
+  let q = supabase.from('feed_inventory').select('quantity_kg, unit_price').eq('feed_type', feedType);
+  if (farmId) q = q.eq('farm_id', farmId);
+  const { data, error } = await q;
+  if (error || !data || data.length === 0) return 0;
+  let totalQty = 0;
+  let totalCost = 0;
+  for (const row of data as any[]) {
+    const qty = Number(row.quantity_kg || 0);
+    const price = Number(row.unit_price || 0);
+    totalQty += qty;
+    totalCost += qty * price;
+  }
+  return totalQty > 0 ? totalCost / totalQty : 0;
+}
+
 export function useAddFeedInventory() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -177,7 +194,8 @@ export function useAddFeedInventory() {
 
   return useMutation({
     mutationFn: async (data: Omit<FeedInventory, 'id' | 'user_id' | 'created_at'>) => {
-      // 1. Insert feed inventory row
+      // Stock entry only — does NOT create an expense row.
+      // Daily expense is recorded via consumption × weighted-avg ৳/kg.
       const { data: inserted, error } = await supabase
         .from('feed_inventory')
         .insert({
@@ -189,37 +207,47 @@ export function useAddFeedInventory() {
         .single();
 
       if (error) throw error;
-
-      // 2. Auto-link: create matching expense entry so finance stays in sync
-      const totalCost = Number(data.quantity_kg || 0) * Number(data.unit_price || 0);
-      if (totalCost > 0) {
-        const description =
-          `[Auto] Feed: ${data.feed_type} • ${data.quantity_kg}kg @ ৳${data.unit_price}` +
-          (data.supplier ? ` • ${data.supplier}` : '');
-        const { error: expErr } = await supabase.from('expenses').insert({
-          user_id: user!.id,
-          ...(selectedFarmId ? { farm_id: selectedFarmId } : {}),
-          expense_date: data.purchase_date,
-          category: 'feed',
-          amount: totalCost,
-          description,
-        } as any);
-        // Non-fatal: log but don't block feed inventory save
-        if (expErr) {
-          console.warn('Auto-expense link failed:', expErr.message);
-        }
-      }
-
       return inserted;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed-inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      toast({ title: 'খাদ্য স্টক যোগ হয়েছে (খরচে সংযুক্ত)' });
+      toast({ title: 'খাদ্য স্টক যোগ হয়েছে' });
     },
     onError: () => {
       toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });
     },
+  });
+}
+
+export function useUpdateFeedInventory() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string } & Partial<FeedInventory>) => {
+      const { error } = await supabase.from('feed_inventory').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-inventory'] });
+      toast({ title: 'স্টক আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useDeleteFeedInventory() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('feed_inventory').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-inventory'] });
+      toast({ title: 'স্টক মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
   });
 }
 
