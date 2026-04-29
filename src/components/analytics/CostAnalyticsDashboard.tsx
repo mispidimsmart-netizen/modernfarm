@@ -69,7 +69,7 @@ function LayerCostDashboard({ language, days }: { language: 'en' | 'bn'; days: n
           </div>
           <p className="text-2xl font-bold">{analytics.fanRuntime.estimatedKwh} kWh</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {formatCurrency(analytics.fanRuntime.estimatedCost)} / {language === 'bn' ? '৩০ দিন' : '30 days'}
+            {formatCurrency(analytics.fanRuntime.estimatedCost)} / {language === 'bn' ? `${days} দিন` : `${days} days`}
           </p>
           <div className="mt-2 flex gap-1 text-[10px]">
             <span className="rounded bg-green-500/20 px-1.5 py-0.5 text-green-600">
