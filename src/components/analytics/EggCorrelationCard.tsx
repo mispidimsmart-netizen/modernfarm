@@ -146,9 +146,13 @@ function InsightItem({ insight, language, index }: InsightItemProps) {
   );
 }
 
-export function EggCorrelationCard() {
+interface EggCorrelationCardProps {
+  days?: number;
+}
+
+export function EggCorrelationCard({ days = 30 }: EggCorrelationCardProps = {}) {
   const { language } = useAuth();
-  const { insights, summary, isLoading } = useEggCorrelation();
+  const { insights, summary, isLoading } = useEggCorrelation(days);
 
   if (isLoading) {
     return (

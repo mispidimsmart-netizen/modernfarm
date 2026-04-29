@@ -31,6 +31,7 @@ import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
+import { ReportRangePicker, type ReportRangeValue } from '@/components/farm/ReportRangePicker';
 // Broiler components
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
@@ -50,6 +51,8 @@ export function FarmManagementPage() {
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
   const [summarySectionOpen, setSummarySectionOpen] = useState(true);
   const [analysisSectionOpen, setAnalysisSectionOpen] = useState(true);
+  const [reportRange, setReportRange] = useState<ReportRangeValue>({ days: 30 });
+  const reportDays = Math.max(1, Math.min(reportRange.days, 365));
 
   // Auto-open batch management section when an active batch is detected
   useEffect(() => {
@@ -276,13 +279,16 @@ export function FarmManagementPage() {
             <TabsContent value="report" className="mt-4">
               <div className="space-y-4">
                 {/* Top action bar */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-semibold">{t.report[language]}</h3>
                   </div>
                   <DataExportButton />
                 </div>
+
+                {/* Date range picker — drives the Trends & Analysis section below */}
+                <ReportRangePicker value={reportRange} onChange={setReportRange} />
 
                 {/* === Section 1: Today's Summary (collapsible) === */}
                 <Collapsible open={summarySectionOpen} onOpenChange={setSummarySectionOpen}>
@@ -371,13 +377,13 @@ export function FarmManagementPage() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
                     {/* Performance Snapshot — environmental conditions & flock health */}
-                    <FarmPerformanceView />
+                    <FarmPerformanceView days={Math.min(reportDays, 30)} />
 
                     {/* Mortality Trend Chart - Both modes */}
-                    <MortalityTrendChart />
+                    <MortalityTrendChart days={reportDays} />
 
                     {/* Cost Analytics — energy, water, feed cost trends */}
-                    <CostAnalyticsDashboard />
+                    <CostAnalyticsDashboard days={reportDays} />
 
                     {/* Layer Mode: Egg Correlation Analysis */}
                     {isLayer && (
@@ -387,7 +393,7 @@ export function FarmManagementPage() {
                             ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন'
                             : '🔍 See how temperature, humidity & other factors affect egg production'}
                         </p>
-                        <EggCorrelationCard />
+                        <EggCorrelationCard days={reportDays} />
                       </>
                     )}
 

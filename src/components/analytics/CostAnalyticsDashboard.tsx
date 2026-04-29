@@ -13,7 +13,11 @@ import {
   Tooltip, CartesianGrid, BarChart, Bar, Legend 
 } from 'recharts';
 
-export function CostAnalyticsDashboard() {
+interface CostAnalyticsDashboardProps {
+  days?: number;
+}
+
+export function CostAnalyticsDashboard({ days = 30 }: CostAnalyticsDashboardProps = {}) {
   const { language } = useAuth();
   const { isBroiler } = useFarmType();
 
@@ -23,12 +27,12 @@ export function CostAnalyticsDashboard() {
   }
 
   // Layer farm analytics - only called for layer farms
-  return <LayerCostDashboard language={language} />;
+  return <LayerCostDashboard language={language} days={days} />;
 }
 
 // Separate component for layer farm to maintain consistent hook order
-function LayerCostDashboard({ language }: { language: 'en' | 'bn' }) {
-  const analytics = useCostAnalytics(30);
+function LayerCostDashboard({ language, days }: { language: 'en' | 'bn'; days: number }) {
+  const analytics = useCostAnalytics(days);
 
   const formatCurrency = (value: number) => {
     return `৳${value.toLocaleString(language === 'bn' ? 'bn-BD' : 'en-US')}`;
@@ -65,7 +69,7 @@ function LayerCostDashboard({ language }: { language: 'en' | 'bn' }) {
           </div>
           <p className="text-2xl font-bold">{analytics.fanRuntime.estimatedKwh} kWh</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {formatCurrency(analytics.fanRuntime.estimatedCost)} / {language === 'bn' ? '৩০ দিন' : '30 days'}
+            {formatCurrency(analytics.fanRuntime.estimatedCost)} / {language === 'bn' ? `${days} দিন` : `${days} days`}
           </p>
           <div className="mt-2 flex gap-1 text-[10px]">
             <span className="rounded bg-green-500/20 px-1.5 py-0.5 text-green-600">
@@ -97,7 +101,7 @@ function LayerCostDashboard({ language }: { language: 'en' | 'bn' }) {
           </div>
           <p className="text-2xl font-bold">{analytics.waterUsage.totalLiters.toLocaleString()} L</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {formatCurrency(analytics.waterUsage.estimatedCost)} / {language === 'bn' ? '৩০ দিন' : '30 days'}
+            {formatCurrency(analytics.waterUsage.estimatedCost)} / {language === 'bn' ? `${days} দিন` : `${days} days`}
           </p>
           <p className="text-xs text-blue-500 mt-2">
             {language === 'bn' ? 'গড়:' : 'Avg:'} {analytics.waterUsage.dailyAverage} L/{language === 'bn' ? 'দিন' : 'day'}
@@ -122,7 +126,7 @@ function LayerCostDashboard({ language }: { language: 'en' | 'bn' }) {
                 {language === 'bn' ? 'প্রতি ডিম খরচ' : 'Cost Per Egg'}
               </h3>
               <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'গত ৩০ দিনের হিসাব' : 'Last 30 days calculation'}
+                {language === 'bn' ? `গত ${days} দিনের হিসাব` : `Last ${days} days calculation`}
               </p>
             </div>
           </div>

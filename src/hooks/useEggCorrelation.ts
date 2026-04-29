@@ -64,15 +64,15 @@ function getConfidence(dataPoints: number): 'low' | 'medium' | 'high' {
   return 'low';
 }
 
-export function useEggCorrelation() {
+export function useEggCorrelation(days: number = 30) {
   const { user } = useAuth();
 
-  // Fetch last 30 days of egg production
+  // Fetch last N days of egg production
   const { data: eggData } = useQuery({
-    queryKey: ['egg-correlation-eggs', user?.id],
+    queryKey: ['egg-correlation-eggs', user?.id, days],
     queryFn: async () => {
       if (!user) return [];
-      const startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+      const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
       
       const { data, error } = await supabase
         .from('egg_production')
@@ -90,10 +90,10 @@ export function useEggCorrelation() {
 
   // Fetch sensor readings for same period
   const { data: sensorData } = useQuery({
-    queryKey: ['egg-correlation-sensors', user?.id],
+    queryKey: ['egg-correlation-sensors', user?.id, days],
     queryFn: async () => {
       if (!user) return [];
-      const startDate = subDays(new Date(), 30);
+      const startDate = subDays(new Date(), days);
       
       const { data, error } = await supabase
         .from('sensor_readings')
