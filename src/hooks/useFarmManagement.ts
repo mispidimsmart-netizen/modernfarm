@@ -245,25 +245,35 @@ export function useFeedConsumption(days: number = 30) {
 export function useAddFeedConsumption() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (data: Omit<FeedConsumption, 'id' | 'user_id' | 'created_at'>) => {
+      if (!user) throw new Error('লগইন করা নেই');
+      if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
       const { error } = await supabase
         .from('feed_consumption')
         .insert({
           ...data,
-          user_id: user!.id,
-        });
-      
+          user_id: user.id,
+          farm_id: selectedFarmId,
+        } as any);
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed-consumption'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['today-summary'] });
       toast({ title: 'খাদ্য খরচ রেকর্ড হয়েছে' });
     },
-    onError: () => {
-      toast({ title: 'ত্রুটি হয়েছে', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({
+        title: 'ত্রুটি হয়েছে',
+        description: error?.message || 'অজানা ত্রুটি',
+        variant: 'destructive',
+      });
     },
   });
 }
