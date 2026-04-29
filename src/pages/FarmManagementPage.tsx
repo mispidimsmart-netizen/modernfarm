@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, BarChart3, Egg, TrendingUp, TrendingDown, Calendar, ChevronRight, Layers, Info, ChevronDown, Plus, PackageOpen } from 'lucide-react';
+import { FileText, BarChart3, Calendar, ChevronRight, Layers, Info, ChevronDown, Plus, PackageOpen } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EggProductionSheet } from '@/components/farm/EggProductionSheet';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
@@ -52,6 +52,7 @@ export function FarmManagementPage() {
   const [batchSectionOpen, setBatchSectionOpen] = useState(false);
   const [summarySectionOpen, setSummarySectionOpen] = useState(true);
   const [analysisSectionOpen, setAnalysisSectionOpen] = useState(true);
+  const [costDetailOpen, setCostDetailOpen] = useState(false);
   const [reportRange, setReportRange] = useState<ReportRangeValue>({ days: 30 });
   const reportDays = Math.max(1, Math.min(reportRange.days, 365));
 
@@ -309,55 +310,16 @@ export function FarmManagementPage() {
                     {/* Daily Expense Summary */}
                     <DailyExpenseSummary />
 
-                    {/* Layer Mode: Show Layer Summary */}
-                    {isLayer && (
-                      <>
-                        <FarmSummaryCards />
-
-                        {/* Production Rate Card */}
-                        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-muted-foreground">{t.productionRate[language]}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <p className="text-3xl font-bold text-primary">{summary.productionRate}%</p>
-                                  {Number(summary.productionRate) > 80 ? (
-                                    <span className="flex items-center gap-1 text-xs text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
-                                      <TrendingUp className="h-3 w-3" />
-                                      {language === 'bn' ? 'ভালো' : 'Good'}
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                                      <TrendingDown className="h-3 w-3" />
-                                      {language === 'bn' ? 'উন্নতি দরকার' : 'Needs improvement'}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Egg className="h-8 w-8 text-primary" />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </>
-                    )}
+                    {/* Layer Mode: Show Layer Summary (production rate is already included) */}
+                    {isLayer && <FarmSummaryCards />}
 
                     {/* Broiler Mode: Show batch overview as summary */}
                     {isBroiler && (
-                      <>
-                        <BroilerDashboardWidget
-                          onBatchClick={() => handleBroilerAction('batch')}
-                          onWeightClick={() => handleBroilerAction('weight')}
-                          onFeedClick={() => handleBroilerAction('broiler-feed')}
-                        />
-                        <p className="text-xs text-center text-muted-foreground">
-                          {language === 'bn'
-                            ? '📊 FCR, ওজন বৃদ্ধি ও খরচের বিস্তারিত উপরের কার্ডে দেখুন'
-                            : '📊 See FCR, weight gain & cost details in the card above'}
-                        </p>
-                      </>
+                      <BroilerDashboardWidget
+                        onBatchClick={() => handleBroilerAction('batch')}
+                        onWeightClick={() => handleBroilerAction('weight')}
+                        onFeedClick={() => handleBroilerAction('broiler-feed')}
+                      />
                     )}
                   </CollapsibleContent>
                 </Collapsible>
@@ -377,38 +339,36 @@ export function FarmManagementPage() {
                     <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
-                    {/* Range-aware Income / Expense / Net summary */}
+                    {/* 1. Finance — Income / Expense / Net (most important) */}
                     <FinanceSummaryRange days={reportDays} />
 
-                    {/* Performance Snapshot — environmental conditions & flock health */}
-                    <FarmPerformanceView days={Math.min(reportDays, 30)} />
-
-                    {/* Mortality Trend Chart - Both modes */}
+                    {/* 2. Mortality Trend Chart - Both modes */}
                     <MortalityTrendChart days={reportDays} />
 
-                    {/* Cost Analytics — energy, water, feed cost trends */}
-                    <CostAnalyticsDashboard days={reportDays} />
+                    {/* 3. Performance Snapshot — environmental conditions & flock health */}
+                    <FarmPerformanceView days={Math.min(reportDays, 30)} />
 
-                    {/* Layer Mode: Egg Correlation Analysis */}
-                    {isLayer && (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {language === 'bn'
-                            ? '🔍 তাপমাত্রা, আর্দ্রতা ও অন্যান্য ফ্যাক্টরের সাথে ডিম উৎপাদনের সম্পর্ক দেখুন'
-                            : '🔍 See how temperature, humidity & other factors affect egg production'}
-                        </p>
-                        <EggCorrelationCard days={reportDays} />
-                      </>
-                    )}
+                    {/* 4. Layer Mode: Egg Correlation Analysis */}
+                    {isLayer && <EggCorrelationCard days={reportDays} />}
 
-                    {/* Broiler Mode: FCR & Weight hint */}
-                    {isBroiler && (
-                      <p className="text-xs text-muted-foreground">
-                        {language === 'bn'
-                          ? '🔍 FCR, ওজন বৃদ্ধি ও খাদ্য খরচের বিশ্লেষণ মৃত্যুহার চার্টের সাথে দেখুন'
-                          : '🔍 View FCR, weight gain & feed cost analysis alongside mortality trends'}
-                      </p>
-                    )}
+                    {/* 5. Cost Analytics — collapsible (detailed energy/water/feed breakdown) */}
+                    <Collapsible open={costDetailOpen} onOpenChange={setCostDetailOpen}>
+                      <CollapsibleTrigger className="w-full flex items-center gap-2 rounded-xl border border-border/60 bg-card hover:bg-accent/40 transition-colors p-3 group">
+                        <BarChart3 className="h-4 w-4 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0 text-left">
+                          <h3 className="text-sm font-semibold leading-tight">
+                            {language === 'bn' ? 'বিস্তারিত খরচ বিশ্লেষণ' : 'Detailed Cost Analytics'}
+                          </h3>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
+                            {language === 'bn' ? 'বিদ্যুৎ, পানি ও ফিড খরচের ট্রেন্ড' : 'Energy, water & feed cost trends'}
+                          </p>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-4">
+                        <CostAnalyticsDashboard days={reportDays} />
+                      </CollapsibleContent>
+                    </Collapsible>
                   </CollapsibleContent>
                 </Collapsible>
               </div>
