@@ -132,10 +132,10 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
       const twentyFourHoursAgo = subHours(new Date(), 24).toISOString();
       
       let query = supabase
-        .from('sensor_logs')
-        .select('temperature, humidity, ammonia, timestamp, user_id')
-        .gte('timestamp', twentyFourHoursAgo)
-        .order('timestamp', { ascending: true });
+        .from('sensor_readings')
+        .select('temperature, humidity, ammonia, recorded_at, user_id')
+        .gte('recorded_at', twentyFourHoursAgo)
+        .order('recorded_at', { ascending: true });
 
       // Filter by selected user if not "all"
       if (selectedUserId !== 'all') {
