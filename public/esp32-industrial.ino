@@ -1883,6 +1883,13 @@ void sprinklerControl() {
 
   unsigned long now = millis();
 
+  // ═══ FULL MANUAL MODE: skip automation entirely ═══
+  if (localManualOverride) {
+    sprinklerCycleActive = false;
+    sprinklerSprayPhase = false;
+    return;
+  }
+
   if (sprinklerWindowStart == 0 || intervalPassed(now, sprinklerWindowStart, 24UL * 60UL * 60UL * 1000UL)) {
     sprinklerWindowStart = now;
     sprinklerDailyOnMs = 0;
