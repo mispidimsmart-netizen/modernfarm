@@ -320,7 +320,7 @@ function exportFlaggedAsPdf(
 <body>
   <h1>${escapeHtml(title)}</h1>
   <div class="sub">${escapeHtml(subtitle)}</div>
-  <div class="meta">${isBn ? 'তৈরি' : 'Generated'}: ${escapeHtml(generated)}</div>
+  <div class="meta">${isBn ? 'ফার্ম মোড' : 'Farm Mode'}: <strong>${escapeHtml(modeStr)}</strong> · ${isBn ? 'তৈরি' : 'Generated'}: ${escapeHtml(generated)}</div>
   <table>
     <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
     <tbody>${body}</tbody>
