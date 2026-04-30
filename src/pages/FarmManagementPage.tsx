@@ -343,8 +343,8 @@ export function FarmManagementPage() {
                     {/* 1. Finance — Income / Expense / Net (most important) */}
                     <FinanceSummaryRange days={reportDays} />
 
-                    {/* Audit panel — surfaces hidden/mismatched legacy entries */}
-                    <FinanceAuditPanel days={reportDays} />
+                    {/* Audit panel hidden — caused confusion for farmers (technical jargon).
+                        Filtering still happens silently in FinanceSummaryRange / FinanceReportPage. */}
                     {/* 2. Mortality Trend Chart - Both modes */}
                     <MortalityTrendChart days={reportDays} />
 
