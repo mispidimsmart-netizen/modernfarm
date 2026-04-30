@@ -79,6 +79,7 @@ export interface Income {
   user_id: string;
   income_date: string;
   category: string;
+  source: string | null;
   amount: number;
   quantity: number | null;
   unit_price: number | null;
@@ -614,12 +615,14 @@ export function useAddIncome() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
+    mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode' | 'source'> & { farm_mode?: 'layer' | 'broiler' | null; source?: string | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
+      const source = data.source || data.category || 'other';
       const { error } = await supabase
         .from('income')
         .insert({
           ...data,
+          source,
           farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
           user_id: user!.id,
           farm_id: selectedFarmId,
