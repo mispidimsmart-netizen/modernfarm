@@ -8,6 +8,7 @@ import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData'
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wallet, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
+import { FinanceExportButton } from './FinanceExportButton';
 
 interface FinanceSummaryRangeProps {
   days: number;
