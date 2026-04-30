@@ -157,7 +157,7 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
     const hourMap = new Map<string, { temps: number[]; humidities: number[]; ammonias: number[] }>();
 
     sensorData.forEach(reading => {
-      const hour = format(new Date(reading.timestamp), 'HH:00');
+      const hour = format(new Date(reading.recorded_at), 'HH:00');
       if (!hourMap.has(hour)) {
         hourMap.set(hour, { temps: [], humidities: [], ammonias: [] });
       }
