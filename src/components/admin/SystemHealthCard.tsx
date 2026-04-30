@@ -194,9 +194,9 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
 
       // Get users with no recent sensor data (no data in last hour)
       const { data: recentSensorUsers } = await supabase
-        .from('sensor_logs')
+        .from('sensor_readings')
         .select('user_id')
-        .gte('timestamp', oneHourAgo);
+        .gte('recorded_at', oneHourAgo);
 
       const recentUserIds = new Set(recentSensorUsers?.map(s => s.user_id) || []);
       const allUserIds = new Set(profiles?.map(p => p.id) || []);
@@ -283,11 +283,11 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString();
 
-      // Sensor logs today
+      // Sensor readings today
       let sensorQuery = supabase
-        .from('sensor_logs')
+        .from('sensor_readings')
         .select('*', { count: 'exact', head: true })
-        .gte('timestamp', todayStr);
+        .gte('recorded_at', todayStr);
       
       if (selectedUserId !== 'all') {
         sensorQuery = sensorQuery.eq('user_id', selectedUserId);
@@ -447,10 +447,10 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       
       let query = supabase
-        .from('sensor_logs')
-        .select('temperature, humidity, ammonia, water_flow, timestamp')
-        .gte('timestamp', oneHourAgo)
-        .order('timestamp', { ascending: false })
+        .from('sensor_readings')
+        .select('temperature, humidity, ammonia, water_usage, recorded_at')
+        .gte('recorded_at', oneHourAgo)
+        .order('recorded_at', { ascending: false })
         .limit(10);
 
       if (selectedUserId !== 'all') {
