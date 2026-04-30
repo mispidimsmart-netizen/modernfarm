@@ -121,7 +121,7 @@ export function FirmwareManagementTab({ language }: Props) {
         is_active: true,
         min_hardware: {
           board_types: [boardType],
-          min_relay_count: parseInt(minRelays) || 4,
+          min_relay_count: parseInt(minRelays) || 8,
           required_features: [],
         },
         created_by: user?.id,
