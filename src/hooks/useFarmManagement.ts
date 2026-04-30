@@ -9,6 +9,24 @@ import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData'
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { useSelectedShed, useSheds } from '@/hooks/useSheds';
 
+// Lazily resolve active batch + farm_mode for a given farm without using hooks.
+// Used inside mutationFn to keep call-site hook order stable across HMR.
+async function resolveActiveScope(farmId: string): Promise<{ activeBatchId: string | null; farmMode: 'layer' | 'broiler' | null }> {
+  try {
+    const [layerRes, broilerRes] = await Promise.all([
+      supabase.from('layer_batches').select('id').eq('farm_id', farmId).eq('status', 'active').order('start_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('broiler_batches').select('id').eq('farm_id', farmId).eq('status', 'active').order('start_date', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    const layerId = (layerRes.data as any)?.id ?? null;
+    const broilerId = (broilerRes.data as any)?.id ?? null;
+    if (layerId) return { activeBatchId: layerId, farmMode: 'layer' };
+    if (broilerId) return { activeBatchId: broilerId, farmMode: 'broiler' };
+    return { activeBatchId: null, farmMode: null };
+  } catch {
+    return { activeBatchId: null, farmMode: null };
+  }
+}
+
 // Types
 export interface EggProduction {
   id: string;
@@ -551,16 +569,12 @@ export function useAddExpense() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
-  const { isLayer, isBroiler } = useFarmType();
-  const { data: activeLayerBatch } = useActiveLayerBatch();
-  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
-  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
-  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
+      const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
       const { error } = await supabase
         .from('expenses')
         .insert({
@@ -616,16 +630,12 @@ export function useAddIncome() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
-  const { isLayer, isBroiler } = useFarmType();
-  const { data: activeLayerBatch } = useActiveLayerBatch();
-  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
-  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
-  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode' | 'source'> & { farm_mode?: 'layer' | 'broiler' | null; source?: string | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
+      const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
       const source = data.source || data.category || 'other';
       const { error } = await supabase
         .from('income')
