@@ -145,7 +145,7 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
                 className="h-7 text-[11px] gap-1"
                 onClick={(e) => {
                   e.stopPropagation();
-                  exportFlaggedAsCsv(flagged, isBn);
+                  exportFlaggedAsCsv(flagged, isBn, financeScope.mode);
                 }}
               >
                 <FileDown className="h-3 w-3" />
@@ -157,7 +157,7 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
                 className="h-7 text-[11px] gap-1"
                 onClick={(e) => {
                   e.stopPropagation();
-                  exportFlaggedAsPdf(flagged, isBn, fmt);
+                  exportFlaggedAsPdf(flagged, isBn, fmt, financeScope.mode);
                 }}
               >
                 <Printer className="h-3 w-3" />
