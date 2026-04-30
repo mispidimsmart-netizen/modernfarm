@@ -9,6 +9,8 @@ export interface FinanceScope {
 export const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
 export const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
 
+const normalizeTag = (value: unknown) => (value ?? '').toString().trim().toLowerCase();
+
 export function getFinanceMode(isLayer: boolean, isBroiler: boolean): FinanceMode {
   if (isLayer) return 'layer';
   if (isBroiler) return 'broiler';
@@ -33,10 +35,10 @@ export function getFinanceScopeIssues(
   // Check BOTH category and source — some legacy rows store the real type in
   // `source` while `category` holds an unrelated value (e.g. category='manure',
   // source='egg_sale'). We must catch layer/broiler-only on either field.
-  const category = (row?.category ?? '').toString();
-  const source = (row?.source ?? '').toString();
+  const category = normalizeTag(row?.category);
+  const source = normalizeTag(row?.source);
   const tags = [category, source].filter(Boolean);
-  const rowMode = (row?.farm_mode ?? '').toString();
+  const rowMode = normalizeTag(row?.farm_mode);
   const date = kind === 'income' ? row?.income_date : row?.expense_date;
 
   if (kind === 'income') {
@@ -54,8 +56,9 @@ export function getFinanceScopeIssues(
     reasons.push(labels?.wrongMode ?? 'Other farm mode');
   }
 
-  if (row?.batch_id) {
-    if (scope.activeBatchId && row.batch_id !== scope.activeBatchId) {
+  const rowBatchId = (row?.batch_id ?? '').toString();
+  if (rowBatchId) {
+    if (scope.activeBatchId && rowBatchId !== scope.activeBatchId) {
       reasons.push(labels?.otherBatch ?? 'Other batch');
     }
   } else {
