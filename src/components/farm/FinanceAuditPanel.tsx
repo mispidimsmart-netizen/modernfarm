@@ -266,8 +266,12 @@ function exportFlaggedAsPdf(
   rows: FlaggedRow[],
   isBn: boolean,
   fmt: (n: number) => string,
+  mode: FinanceMode,
 ) {
-  const title = isBn ? 'ফিনান্স অডিট রিপোর্ট' : 'Finance Audit Report';
+  const modeStr = modeLabel(mode, isBn);
+  const title = isBn
+    ? `ফিনান্স অডিট রিপোর্ট — ${modeStr} মোড`
+    : `Finance Audit Report — ${modeStr} Mode`;
   const subtitle = isBn
     ? `${rows.length}টি এন্ট্রি রিপোর্ট থেকে বাদ দেওয়া হয়েছে`
     : `${rows.length} entries hidden from report`;
