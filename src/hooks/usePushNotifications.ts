@@ -10,6 +10,23 @@ import {
   getNotificationPermission,
 } from '@/lib/pushNotifications';
 
+const isPwaDisabledContext = () => {
+  if (typeof window === 'undefined') return true;
+  const isInIframe = (() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+  return (
+    isInIframe ||
+    window.location.hostname.includes('id-preview--') ||
+    window.location.hostname.includes('lovableproject.com') ||
+    window.location.hostname === 'localhost'
+  );
+};
+
 export function usePushNotifications() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -19,6 +36,12 @@ export function usePushNotifications() {
 
   // Check if notifications are supported
   useEffect(() => {
+    if (isPwaDisabledContext()) {
+      setIsSupported(false);
+      setIsLoading(false);
+      return;
+    }
+
     setIsSupported(areNotificationsSupported());
     setPermission(getNotificationPermission());
   }, []);

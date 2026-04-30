@@ -1,6 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { registerSW } from 'virtual:pwa-register';
 
+const isPwaDisabledContext = () => {
+  if (typeof window === 'undefined') return true;
+  const isInIframe = (() => {
+    try {
+      return window.self !== window.top;
+    } catch {
+      return true;
+    }
+  })();
+  return (
+    isInIframe ||
+    window.location.hostname.includes('id-preview--') ||
+    window.location.hostname.includes('lovableproject.com') ||
+    window.location.hostname === 'localhost'
+  );
+};
+
 /**
  * Aggressive PWA auto-update strategy.
  * NOTE: Must NOT be called in Lovable preview / iframe contexts — gate at the
@@ -24,6 +41,8 @@ export const usePWAUpdate = () => {
   }, []);
 
   useEffect(() => {
+    if (isPwaDisabledContext()) return;
+
     updateServiceWorkerRef.current = registerSW({
       immediate: true,
       onNeedRefresh() {
