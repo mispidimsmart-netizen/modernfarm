@@ -552,7 +552,11 @@ export function useAddExpense() {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
+  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
+  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
@@ -561,7 +565,8 @@ export function useAddExpense() {
         .from('expenses')
         .insert({
           ...data,
-          farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
+          batch_id: data.batch_id ?? activeBatchId,
+          farm_mode: data.farm_mode ?? farmMode,
           user_id: user!.id,
           farm_id: selectedFarmId,
         });
@@ -612,7 +617,11 @@ export function useAddIncome() {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const { isLayer, isBroiler } = useFarmType();
+  const { data: activeLayerBatch } = useActiveLayerBatch();
+  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
+  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
+  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode' | 'source'> & { farm_mode?: 'layer' | 'broiler' | null; source?: string | null }) => {
@@ -623,7 +632,8 @@ export function useAddIncome() {
         .insert({
           ...data,
           source,
-          farm_mode: data.farm_mode ?? getFinanceMode(isLayer, isBroiler),
+          batch_id: data.batch_id ?? activeBatchId,
+          farm_mode: data.farm_mode ?? farmMode,
           user_id: user!.id,
           farm_id: selectedFarmId,
         });
