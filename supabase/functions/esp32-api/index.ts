@@ -426,6 +426,17 @@ Deno.serve(async (req) => {
       return await handlePowerStatus(bodyData, supabase, userId, deviceToken);
     }
 
+    // ===== SAFETY ENGINE PROXY ENDPOINTS =====
+    // ESP32 sends these through esp32-api so the same device-token auth,
+    // farm isolation, and shed binding are used for safety + forensic logs.
+    if (req.method === 'POST' && path === 'safety-evaluate') {
+      return await proxySafetyEngine('evaluate', bodyData, userId, deviceFarmId, deviceShedId);
+    }
+
+    if (req.method === 'POST' && path === 'forensic-log') {
+      return await proxySafetyEngine('forensic_log', bodyData, userId, deviceFarmId, deviceShedId);
+    }
+
     if (req.method === 'GET' && path === 'power-outages') {
       return await getPowerOutages(supabase, userId);
     }
