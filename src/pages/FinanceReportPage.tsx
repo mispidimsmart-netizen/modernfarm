@@ -25,6 +25,9 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
+import { FinanceExportButton } from '@/components/farm/FinanceExportButton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Bucket = { key: string; label: string; income: number; expense: number; net: number };
 
