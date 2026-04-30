@@ -202,3 +202,130 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
     </Collapsible>
   );
 }
+
+// ---------- Export helpers ----------
+
+type FlaggedRow = {
+  id: string;
+  kind: 'income' | 'expense';
+  date: string;
+  amount: number;
+  category: string;
+  reason: string;
+};
+
+function csvEscape(v: string | number): string {
+  const s = String(v ?? '');
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function exportFlaggedAsCsv(rows: FlaggedRow[], isBn: boolean) {
+  const headers = isBn
+    ? ['ধরন', 'তারিখ', 'ক্যাটাগরি', 'কারণ', 'পরিমাণ (৳)']
+    : ['Type', 'Date', 'Category', 'Reason', 'Amount (BDT)'];
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach((r) => {
+    lines.push(
+      [
+        r.kind === 'income' ? (isBn ? 'আয়' : 'Income') : (isBn ? 'ব্যয়' : 'Expense'),
+        r.date,
+        r.category,
+        r.reason,
+        Math.round(r.amount),
+      ]
+        .map(csvEscape)
+        .join(','),
+    );
+  });
+  // BOM so Excel detects UTF-8 (Bengali) correctly
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `finance-audit-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportFlaggedAsPdf(
+  rows: FlaggedRow[],
+  isBn: boolean,
+  fmt: (n: number) => string,
+) {
+  const title = isBn ? 'ফিনান্স অডিট রিপোর্ট' : 'Finance Audit Report';
+  const subtitle = isBn
+    ? `${rows.length}টি এন্ট্রি রিপোর্ট থেকে বাদ দেওয়া হয়েছে`
+    : `${rows.length} entries hidden from report`;
+  const headers = isBn
+    ? ['ধরন', 'তারিখ', 'ক্যাটাগরি', 'কারণ', 'পরিমাণ']
+    : ['Type', 'Date', 'Category', 'Reason', 'Amount'];
+  const generated = new Date().toLocaleString(isBn ? 'bn-BD' : 'en-US');
+
+  const body = rows
+    .map(
+      (r) => `
+        <tr>
+          <td><span class="badge ${r.kind}">${
+            r.kind === 'income' ? (isBn ? 'আয়' : 'Income') : (isBn ? 'ব্যয়' : 'Expense')
+          }</span></td>
+          <td>${escapeHtml(r.date)}</td>
+          <td>${escapeHtml(r.category)}</td>
+          <td class="reason">${escapeHtml(r.reason)}</td>
+          <td class="amount">${escapeHtml(fmt(r.amount))}</td>
+        </tr>`,
+    )
+    .join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="${isBn ? 'bn' : 'en'}">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Nikosh', 'SolaimanLipi', system-ui, -apple-system, sans-serif; color: #111; padding: 24px; }
+    h1 { color: #1F7A3E; margin: 0 0 4px; font-size: 22px; }
+    .sub { color: #b45309; font-size: 13px; margin-bottom: 4px; }
+    .meta { color: #6b7280; font-size: 11px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; font-weight: 600; }
+    .amount { text-align: right; font-weight: 600; white-space: nowrap; }
+    .reason { color: #b45309; font-size: 11px; }
+    .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+    .badge.income { background: #d1fae5; color: #065f46; }
+    .badge.expense { background: #fee2e2; color: #991b1b; }
+    @media print { body { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <div class="sub">${escapeHtml(subtitle)}</div>
+  <div class="meta">${isBn ? 'তৈরি' : 'Generated'}: ${escapeHtml(generated)}</div>
+  <table>
+    <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+    <tbody>${body}</tbody>
+  </table>
+  <script>window.addEventListener('load', () => setTimeout(() => window.print(), 250));</script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (!w) return;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+function escapeHtml(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
