@@ -31,7 +31,7 @@ const handleDownloadPDF = () => {
     </style></head><body>
     <h1>🏗️ FarmEye Automation Platform — Technical Architecture</h1>
     <p class="subtitle">Version 8.2.0 | Industrial Grade | Production-Ready | Score: 100/100</p>
-    <p class="subtitle">18 Edge Functions | 67 DB Tables | Multi-Tenant | Date: ${new Date().toLocaleDateString('bn-BD')}</p>
+    <p class="subtitle">19 Edge Functions | 69 DB Tables | Multi-Tenant | Date: ${new Date().toLocaleDateString('bn-BD')}</p>
 
     <h2>1. System Overview — 6-Layer Architecture</h2>
     <table><tr><th>Layer</th><th>Component</th><th>Role</th></tr>
@@ -39,7 +39,7 @@ const handleDownloadPDF = () => {
     <tr><td>Layer 2 (Safety)</td><td>Safety Arbiter (500ms loop)</td><td>8 Invariants enforced every 500ms. Cannot be overridden.</td></tr>
     <tr><td>Layer 3 (Automation)</td><td>Local Automation Engine</td><td>HSI calculation, fan speed, heater control, fogger cycling.</td></tr>
     <tr><td>Layer 4 (Communication)</td><td>WiFi + GSM SIM800L</td><td>Cloud sync + SMS fallback. Offline buffer 360 entries.</td></tr>
-    <tr><td>Layer 5 (Backend)</td><td>Edge Functions (Deno/TypeScript)</td><td>15+ functions: automation, safety, notifications, OTA.</td></tr>
+    <tr><td>Layer 5 (Backend)</td><td>Edge Functions (Deno/TypeScript)</td><td>19 functions: automation, safety, notifications, OTA, device monitor.</td></tr>
     <tr><td>Layer 6 (Frontend)</td><td>React 18 PWA + Capacitor</td><td>Read-only monitoring. Manual override (with timeout).</td></tr></table>
     <p><strong>Key Principle:</strong> Hardware-as-Source-of-Truth. ESP32 makes all final relay decisions.</p>
 
@@ -48,8 +48,8 @@ const handleDownloadPDF = () => {
     <tr><td>MCU</td><td>ESP32 DevKit V1</td><td>Arduino C++, 240MHz dual-core</td></tr>
     <tr><td>Sensors</td><td>DHT22 x2, MQ-137, YF-S201, ZMPT101B</td><td>Temp/Humidity, NH3, Water Flow, Voltage</td></tr>
     <tr><td>Communication</td><td>WiFi + GSM (SIM800L)</td><td>HTTP + SMS fallback</td></tr>
-    <tr><td>Backend DB</td><td>PostgreSQL</td><td>Row-Level Security (RLS), 67 tables</td></tr>
-    <tr><td>Backend Functions</td><td>Deno Edge Functions</td><td>18 functions deployed</td></tr>
+    <tr><td>Backend DB</td><td>PostgreSQL</td><td>Row-Level Security (RLS), 69 tables</td></tr>
+    <tr><td>Backend Functions</td><td>Deno Edge Functions</td><td>19 functions deployed</td></tr>
     <tr><td>Frontend</td><td>React 18 + TypeScript 5</td><td>Vite 5 build system</td></tr>
     <tr><td>UI Library</td><td>shadcn/ui + Tailwind CSS v3</td><td>Bengali (Nikosh), dark theme</td></tr>
     <tr><td>Mobile</td><td>PWA + Capacitor 8</td><td>iOS/Android native wrapper</td></tr></table>
@@ -71,7 +71,7 @@ const handleDownloadPDF = () => {
     <tr><td>DHT22 #1</td><td>4</td><td>3.3V</td><td>10K pull-up required</td></tr>
     <tr><td>DHT22 #2</td><td>16</td><td>3.3V</td><td>10K pull-up required</td></tr>
     <tr><td>MQ-137 (NH3)</td><td>34 (ADC)</td><td>5V (VIN)</td><td>24-hour pre-heat mandatory</td></tr>
-    <tr><td>YF-S201 (Water)</td><td>17</td><td>5V</td><td>Interrupt-driven pulse count</td></tr>
+    <tr><td>YF-S201 (Water)</td><td>18</td><td>5V</td><td>Interrupt-driven pulse count</td></tr>
     <tr><td>ZMPT101B (Voltage)</td><td>35 (ADC)</td><td>5V</td><td>AC voltage monitoring</td></tr>
     <tr><td>GSM SIM800L TX/RX</td><td>23/19</td><td>-</td><td>Serial communication</td></tr></table>
 
@@ -142,13 +142,13 @@ const handleDownloadPDF = () => {
     <li>Buffer persists across reboots via NVS save every 10 entries</li>
     <li>Full automation continues with last cached settings</li></ul>
 
-    <h2>8. Manual Takeover Mode (Proposed)</h2>
+    <h2>8. Manual Takeover Mode (Implemented)</h2>
     <ul>
     <li><strong>Master Override Switch:</strong> Single button disables ALL automation logic</li>
     <li><strong>Double Confirmation:</strong> Requires confirmation dialog + reason logging</li>
     <li><strong>Individual Device Control:</strong> Direct toggle for all 8 relay channels</li>
     <li><strong>Safety Guardrail:</strong> ESM invariants still active even in Manual Mode</li>
-    <li><strong>Auto-Reset Timer:</strong> 60-minute mandatory timeout → auto-reverts to Auto Mode</li>
+    <li><strong>Auto-Reset Timer:</strong> 20-minute mandatory timeout → auto-reverts to Auto Mode (INV-5)</li>
     <li><strong>SMS Notification:</strong> Immediate SMS sent when Manual Mode is activated</li>
     <li><strong>Audit Log:</strong> All manual actions recorded with timestamp and user ID</li></ul>
 
@@ -161,7 +161,7 @@ const handleDownloadPDF = () => {
     <tr><td>Cross-Validation Alert</td><td>DHT22 delta ≥ 3°C</td><td>10 minutes</td></tr>
     <tr><td>Manual Mode Activated</td><td>User switches to manual</td><td>Immediate</td></tr></table>
 
-    <h2>10. Cloud Backend (18 Edge Functions)</h2>
+    <h2>10. Cloud Backend (19 Edge Functions)</h2>
     <table><tr><th>Function</th><th>Purpose</th><th>Trigger</th></tr>
     <tr><td>esp32-api</td><td>Device telemetry ingestion & command delivery</td><td>HTTP (ESP32 polls)</td></tr>
     <tr><td>automation-engine</td><td>HSI calculation, fan speed decisions</td><td>HTTP (periodic)</td></tr>
@@ -180,7 +180,8 @@ const handleDownloadPDF = () => {
     <tr><td>schedule-notifier</td><td>Schedule-based automation</td><td>Cron</td></tr>
     <tr><td>lookup-login-identifier</td><td>Phone/email login lookup</td><td>Auth flow</td></tr>
     <tr><td>mode-profile</td><td>Automation mode profile resolution</td><td>HTTP</td></tr>
-    <tr><td>admin-delete-user</td><td>Super-admin user removal</td><td>Admin-triggered</td></tr></table>
+    <tr><td>admin-delete-user</td><td>Super-admin user removal</td><td>Admin-triggered</td></tr>
+    <tr><td>device-monitor</td><td>Device health & online status tracking</td><td>Periodic</td></tr></table>
 
     <h2>10.1 Multi-Tenant & Team Management (NEW)</h2>
     <table><tr><th>Component</th><th>Purpose</th><th>Details</th></tr>
@@ -221,7 +222,7 @@ const handleDownloadPDF = () => {
     <li>Override Safety Band — 26-35°C সীমার বাইরে reject</li>
     <li>Service Role Keys — Edge functions-এ, client-এ না</li>
     <li>Audit Trail — প্রতিটি critical action logged</li>
-    <li>RBAC — Viewer / Farmer / Admin roles</li></ul>
+    <li>RBAC — Owner / Member / Labor / Super Admin roles</li></ul>
 
     <h2>14. Deployment Checklist</h2>
     <ul>
@@ -292,7 +293,7 @@ export function TechnicalArchitectureReport() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-blue-200">🏗️ Technical Architecture & System Documentation</h2>
-              <p className="text-blue-400/80 text-sm mt-1">Version 8.2.0 | Industrial Grade | 18 Edge Functions | 67 Tables | Score: 100/100</p>
+              <p className="text-blue-400/80 text-sm mt-1">Version 8.2.0 | Industrial Grade | 19 Edge Functions | 69 Tables | Score: 100/100</p>
             </div>
             <Button onClick={handleDownloadPDF} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700">
               <Download className="w-4 h-4 mr-2" />
@@ -313,7 +314,7 @@ export function TechnicalArchitectureReport() {
                 ['L2 (Safety)', 'Safety Arbiter (500ms)', '8 Invariants enforced. Cannot override.'],
                 ['L3 (Automation)', 'Local Automation Engine', 'HSI, fan speed, heater, fogger.'],
                 ['L4 (Comms)', 'WiFi + GSM SIM800L', 'Cloud sync + SMS. 360 offline buffer.'],
-                ['L5 (Backend)', 'Edge Functions (Deno)', '15+ functions. Safety, OTA, reports.'],
+                ['L5 (Backend)', 'Edge Functions (Deno)', '19 functions. Safety, OTA, monitor, reports.'],
                 ['L6 (Frontend)', 'React 18 PWA + Capacitor', 'Dashboard. Manual override (20min).'],
               ]}
             />
@@ -328,7 +329,7 @@ export function TechnicalArchitectureReport() {
                 ['MCU', 'ESP32 DevKit V1', 'Arduino C++, 240MHz'],
                 ['Sensors', 'DHT22×2, MQ-137, YF-S201', 'Temp, NH3, Water, Voltage'],
                 ['Communication', 'WiFi + GSM SIM800L', 'HTTP + SMS fallback'],
-                ['Backend', 'PostgreSQL + Deno Edge', '18 functions, 67 tables, RLS'],
+                ['Backend', 'PostgreSQL + Deno Edge', '19 functions, 69 tables, RLS'],
                 ['Frontend', 'React 18 + TypeScript 5', 'Vite 5, shadcn/ui'],
                 ['Mobile', 'PWA + Capacitor 8', 'iOS/Android wrapper'],
               ]}
@@ -360,7 +361,7 @@ export function TechnicalArchitectureReport() {
                 ['DHT22 #1', '4', '3.3V', '10K pull-up'],
                 ['DHT22 #2', '16', '3.3V', '10K pull-up'],
                 ['MQ-137 (NH3)', '34 (ADC)', '5V', '24h pre-heat'],
-                ['YF-S201 (Water)', '17', '5V', 'Interrupt-driven'],
+                ['YF-S201 (Water)', '18', '5V', 'Interrupt-driven'],
                 ['ZMPT101B (Voltage)', '35 (ADC)', '5V', 'AC monitoring'],
                 ['GSM SIM800L', '23/19', '-', 'Serial TX/RX'],
               ]}
@@ -474,7 +475,7 @@ export function TechnicalArchitectureReport() {
                 { label: 'Double Confirmation', value: 'Dialog + reason logging required' },
                 { label: 'Individual Control', value: 'Direct toggle for all 8 relay channels' },
                 { label: 'Safety Guardrail', value: 'ESM invariants still active in Manual Mode' },
-                { label: 'Auto-Reset Timer', value: '60-min timeout → auto-reverts to Auto' },
+                { label: 'Auto-Reset Timer', value: '20-min timeout → auto-reverts to Auto (INV-5)' },
                 { label: 'SMS Alert', value: 'Immediate SMS when Manual Mode activated' },
                 { label: 'Audit Log', value: 'All actions recorded with timestamp + user ID' },
               ].map((item, i) => (
@@ -502,7 +503,7 @@ export function TechnicalArchitectureReport() {
           </ArchSection>
 
           {/* 10. Edge Functions */}
-          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (18)">
+          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (19)">
             <DataTable
               headers={['Function', 'Purpose', 'Trigger']}
               rows={[
@@ -524,6 +525,7 @@ export function TechnicalArchitectureReport() {
                 ['lookup-login-identifier', 'Login lookup', 'Auth'],
                 ['mode-profile', 'Automation profile', 'HTTP'],
                 ['admin-delete-user', 'Super-admin removal', 'Admin'],
+                ['device-monitor', 'Device health & online tracking', 'Periodic'],
               ]}
             />
           </ArchSection>

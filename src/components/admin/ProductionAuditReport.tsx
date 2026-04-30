@@ -5,8 +5,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, CheckCircle, Shield, Thermometer, Cpu, Radio, Server, HardDrive, Lock, Smartphone, Rocket, Hand, MessageSquare, Trash2, Users, Sliders, Wrench } from 'lucide-react';
 
 const REPORT_VERSION = 'v8.2.0';
-const EDGE_FN_COUNT = 18;
-const TABLE_COUNT = 67;
+const EDGE_FN_COUNT = 19;
+const TABLE_COUNT = 69;
 
 const handleDownloadPDF = () => {
   const printWindow = window.open('', '_blank');
@@ -494,7 +494,7 @@ export function ProductionAuditReport() {
             score="✅"
             items={[
               { name: 'Admin Management Tab', detail: 'Super admin add/remove' },
-              { name: 'User Management', detail: '67 tables — full visibility' },
+              { name: 'User Management', detail: `${TABLE_COUNT} tables — full visibility` },
               { name: 'Sensor Charts', detail: 'Live সব farm-এর data' },
               { name: 'Notification Sender', detail: 'Push + SMS broadcast' },
               { name: 'System Health', detail: 'Online devices, alerts, restart count' },
