@@ -53,6 +53,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -2579,8 +2580,17 @@ void connectWiFi() {
     failsafeMode = true; return;
   }
   
-  WiFi.disconnect(true);  // Force disconnect any previous session
-  delay(100);
+  if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == activeWifiSSID) {
+    wifiConnected = true;
+    Serial.printf("✓ WiFi already connected (IP: %s, RSSI: %d)\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    return;
+  }
+
+  WiFi.persistent(false);      // Do not erase/rewrite flash credentials on reconnect
+  WiFi.setAutoReconnect(true);
+  WiFi.setSleep(false);
+  WiFi.disconnect(false, false);  // Reconnect radio only; do NOT wipe stored WiFi state
+  delay(200);
   WiFi.mode(WIFI_STA);
   WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
   Serial.printf("📡 WiFi: Attempting connection (max 10s)...\n");
@@ -3727,15 +3737,14 @@ void callBackendSafetyEngine() {
   safetyEngine.markSafetyEngineCalled(now);
 
   HTTPClient http;
-  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/safety-engine?action=evaluate";
+  String url = String(API_URL) + "/safety-evaluate";
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhid2Z1dnFyZmd0ZWZvemFqeWZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMDI5ODksImV4cCI6MjA4NTU3ODk4OX0.3yCPVRrzrfvpwBIBKITkfm-Y3dsVzo_QUzVs3RNlHC8");
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   esp_task_wdt_reset();
 
   DynamicJsonDocument doc(2048);
-  doc["user_id"] = activeFarmId; // farm owner resolved server-side
   doc["farm_id"] = activeFarmId;
   doc["shed_id"] = activeShedId;
   doc["temperature"] = temperature;
@@ -3795,15 +3804,14 @@ void recordForensicEntry(String eventType, String eventDetail) {
   if (!wifiConnected) return; // Only log when online (offline entries handled by offline buffer)
   
   HTTPClient http;
-  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/safety-engine?action=forensic_log";
+  String url = String(API_URL) + "/forensic-log";
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhid2Z1dnFyZmd0ZWZvemFqeWZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMDI5ODksImV4cCI6MjA4NTU3ODk4OX0.3yCPVRrzrfvpwBIBKITkfm-Y3dsVzo_QUzVs3RNlHC8");
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(3000);
   esp_task_wdt_reset();
 
   DynamicJsonDocument doc(2048);
-  doc["user_id"] = activeFarmId;
   doc["farm_id"] = activeFarmId;
   doc["shed_id"] = activeShedId;
   doc["system_state"] = stateNames[currentState];
