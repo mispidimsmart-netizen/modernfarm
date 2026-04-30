@@ -360,6 +360,40 @@ export function DeviceSystemTab() {
 
   return (
     <div className="space-y-4">
+      {/* Non-admin users only see OTA Firmware (read-only view) */}
+      {!isAdmin ? (
+        <>
+          <Card className="bg-amber-500/10 border-amber-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">
+                    {language === 'bn' ? 'সীমিত অ্যাক্সেস' : 'Limited Access'}
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    {language === 'bn'
+                      ? 'ডিভাইস ম্যানেজমেন্ট, ক্যালিব্রেশন, থ্রেশহোল্ড এবং অ্যাডভান্সড সেটিংস শুধুমাত্র অ্যাডমিন দেখতে ও পরিবর্তন করতে পারেন। আপনি শুধুমাত্র OTA ফার্মওয়্যার তথ্য দেখতে পারবেন।'
+                      : 'Device management, calibration, thresholds, and advanced settings are admin-only. You can view OTA firmware information below.'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <CollapsibleSection
+            title="OTA Firmware"
+            titleBn="OTA ফার্মওয়্যার"
+            icon={Cloud}
+            color="bg-cyan-500/10 text-cyan-500"
+            defaultOpen={true}
+            language={language}
+          >
+            <OTAFirmwareTab />
+          </CollapsibleSection>
+        </>
+      ) : (
+        <>
       {/* Admin Warning */}
       <Card className="bg-purple-500/10 border-purple-500/30">
         <CardContent className="pt-4">
