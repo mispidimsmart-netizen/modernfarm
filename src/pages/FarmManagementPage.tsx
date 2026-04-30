@@ -29,7 +29,7 @@ import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { FinanceSummaryRange } from '@/components/farm/FinanceSummaryRange';
-import { FinanceAuditPanel } from '@/components/farm/FinanceAuditPanel';
+// FinanceAuditPanel intentionally not imported — hidden from farm page (kept in repo for future debug use).
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
