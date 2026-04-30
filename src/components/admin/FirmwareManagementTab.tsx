@@ -201,14 +201,15 @@ export function FirmwareManagementTab({ language }: Props) {
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   {t(
-                    "প্রজেক্টের public/ ফোল্ডারে ESP32 সোর্স কোড পাওয়া যাবে। প্রধান ফাইল:",
-                    "ESP32 source code is in the project's public/ folder. Main file:",
+                    "প্রজেক্টের public/ ফোল্ডারে ESP32 সোর্স কোড পাওয়া যাবে। অনুমোদিত প্রধান ফাইল:",
+                    "ESP32 source code is in the project's public/ folder. Authorized main file:",
                   )}
                 </p>
                 <div className="rounded-md bg-slate-950/60 border border-slate-700 p-2 font-mono text-xs space-y-1 text-slate-300">
-                  <div>📄 <span className="text-emerald-400 font-semibold">public/esp32-unified.ino</span> {t('— প্রধান', '— main')}</div>
-                  <div className="text-slate-500">📄 public/esp32-industrial.ino</div>
-                  <div className="text-slate-500">📄 public/esp32-failsafe.ino</div>
+                  <div>📄 <span className="text-emerald-400 font-semibold">public/esp32-industrial.ino</span> {t('— ✅ অনুমোদিত (v8.2)', '— ✅ Authorized (v8.2)')}</div>
+                  <div>📄 <span className="text-emerald-400/70">public/esp32-safety-engine.h</span> {t('— সেফটি হেডার', '— safety header')}</div>
+                  <div className="text-red-400/70">⛔ public/esp32-unified.ino {t('— DISABLED stub, ব্যবহার করবেন না', '— DISABLED stub, do not use')}</div>
+                  <div className="text-slate-500">📄 public/esp32-failsafe.ino {t('— ফলব্যাক', '— fallback')}</div>
                 </div>
               </div>
             </div>
@@ -279,7 +280,7 @@ export function FirmwareManagementTab({ language }: Props) {
                   )}
                 </p>
                 <div className="rounded-md bg-slate-950/60 border border-slate-700 p-2 font-mono text-xs text-slate-300">
-                  ✅ esp32-unified.ino.esp32.<span className="text-emerald-400 font-semibold">bin</span>
+                  ✅ esp32-industrial.ino.esp32.<span className="text-emerald-400 font-semibold">bin</span>
                 </div>
               </div>
             </div>
