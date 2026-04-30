@@ -121,7 +121,7 @@ export function FirmwareManagementTab({ language }: Props) {
         is_active: true,
         min_hardware: {
           board_types: [boardType],
-          min_relay_count: parseInt(minRelays) || 4,
+          min_relay_count: parseInt(minRelays) || 8,
           required_features: [],
         },
         created_by: user?.id,
@@ -431,6 +431,14 @@ export function FirmwareManagementTab({ language }: Props) {
               <Cpu className="w-5 h-5 text-white" />
             </div>
             {t("আপলোডকৃত ফার্মওয়্যার", "Uploaded Firmware")}
+            {firmwares && firmwares.length > 0 && (() => {
+              const activeStable = firmwares.find(f => f.is_active && f.release_channel === 'stable');
+              return activeStable ? (
+                <Badge className="ml-auto bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-mono">
+                  {t('সক্রিয়:', 'Active:')} {activeStable.version}
+                </Badge>
+              ) : null;
+            })()}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -466,6 +474,12 @@ export function FirmwareManagementTab({ language }: Props) {
                         {" • "}CRC: <span className="font-mono">{fw.crc32_checksum?.slice(0, 8) ?? "—"}</span>
                         {" • "}{format(new Date(fw.created_at), "yyyy-MM-dd HH:mm")}
                       </p>
+                      {fw.min_hardware && (
+                        <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                          {Array.isArray((fw.min_hardware as any)?.board_types) && (fw.min_hardware as any).board_types.join(', ')}
+                          {(fw.min_hardware as any)?.min_relay_count ? ` • ${(fw.min_hardware as any).min_relay_count}-ch relay` : ''}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <Button
