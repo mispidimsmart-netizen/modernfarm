@@ -143,16 +143,66 @@ export default function FinanceReportPage() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3"
+          className="flex items-start gap-3"
         >
           <Button variant="ghost" size="icon" onClick={() => navigate('/farm')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold">📊 আয়-ব্যয় সারাংশ রিপোর্ট</h1>
             <p className="text-sm text-muted-foreground">দৈনিক ও মাসিক হিসাব এবং নেট ব্যালেন্স</p>
           </div>
+          <FinanceExportButton
+            income={scopedIncome}
+            expenses={scopedExpenses}
+            mode={financeMode}
+            rangeLabel={rangeLabel}
+            startDate={startDate || null}
+            endDate={endDate || null}
+          />
         </motion.div>
+
+        {/* Date range filter — applied to both income & expense before export */}
+        <Card>
+          <CardContent className="p-3 flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[140px]">
+              <Label htmlFor="from-date" className="text-xs text-muted-foreground">
+                শুরুর তারিখ
+              </Label>
+              <Input
+                id="from-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate || undefined}
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <Label htmlFor="to-date" className="text-xs text-muted-foreground">
+                শেষ তারিখ
+              </Label>
+              <Input
+                id="to-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate || undefined}
+              />
+            </div>
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+              >
+                রিসেট
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground basis-full">
+              📌 ফিল্টার অনুযায়ী সব আয়-ব্যয় এক্সপোর্ট হবে ({financeMode === 'layer' ? 'লেয়ার' : financeMode === 'broiler' ? 'ব্রয়লার' : 'মিশ্র'} মোড)
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
