@@ -1846,6 +1846,8 @@ void advancedHeaterControl() {
 // --- Module C: Fogger ---
 void foggerControl() {
   if (!foggerSettings.enabled) return;
+  // ═══ FULL MANUAL MODE: skip automation entirely ═══
+  if (localManualOverride) return;
   if (foggerManualOverride) {
     if (foggerManualTime > 0 && (millis() - foggerManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
       foggerManualOverride = false; foggerManualTime = 0;
