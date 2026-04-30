@@ -77,8 +77,15 @@ export default function FinanceReportPage() {
   const [mode, setMode] = useState<'daily' | 'monthly'>('daily');
   const days = mode === 'daily' ? 30 : 365;
 
-  const { data: expenses = [] } = useExpenses(days);
-  const { data: income = [] } = useIncome(days);
+  // Optional custom date range — overrides the default `days` window.
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Pull a wide window so custom ranges still resolve.
+  const fetchDays = startDate ? 365 : days;
+
+  const { data: expenses = [] } = useExpenses(fetchDays);
+  const { data: income = [] } = useIncome(fetchDays);
   const batchStart = useActiveBatchStart();
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeLayerBatch } = useActiveLayerBatch();
@@ -89,20 +96,39 @@ export default function FinanceReportPage() {
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
 
+  const inDateRange = (date: string | undefined): boolean => {
+    if (!date) return false;
+    if (startDate && date < startDate) return false;
+    if (endDate && date > endDate) return false;
+    return true;
+  };
+
   const scopedExpenses = useMemo(() => {
     const scope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
-    return expenses.filter((row: any) => matchesActiveFinanceScope(row, 'expense', scope));
-  }, [expenses, isLayer, isBroiler, activeBatchId, batchStart]);
+    return expenses.filter((row: any) =>
+      matchesActiveFinanceScope(row, 'expense', scope) &&
+      (!startDate && !endDate ? true : inDateRange(row.expense_date)),
+    );
+  }, [expenses, isLayer, isBroiler, activeBatchId, batchStart, startDate, endDate]);
 
   const scopedIncome = useMemo(() => {
     const scope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
-    return income.filter((row: any) => matchesActiveFinanceScope(row, 'income', scope));
-  }, [income, isLayer, isBroiler, activeBatchId, batchStart]);
+    return income.filter((row: any) =>
+      matchesActiveFinanceScope(row, 'income', scope) &&
+      (!startDate && !endDate ? true : inDateRange(row.income_date)),
+    );
+  }, [income, isLayer, isBroiler, activeBatchId, batchStart, startDate, endDate]);
 
   const buckets = useMemo(
     () => bucketize(scopedIncome as any, scopedExpenses as any, mode),
     [scopedIncome, scopedExpenses, mode],
   );
+
+  const rangeLabel = startDate || endDate
+    ? `${startDate || '…'} → ${endDate || '…'}`
+    : mode === 'daily' ? 'গত ৩০ দিন' : 'গত ১২ মাস';
+
+  const financeMode = getFinanceMode(isLayer, isBroiler);
 
   const totals = useMemo(() => {
     const totalIncome = scopedIncome.reduce((s, r: any) => s + Number(r.amount || 0), 0);
