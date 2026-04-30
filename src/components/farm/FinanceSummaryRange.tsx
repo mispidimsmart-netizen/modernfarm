@@ -107,9 +107,17 @@ export function FinanceSummaryRange({ days }: FinanceSummaryRangeProps) {
               {isBn ? 'আর্থিক সারাংশ' : 'Financial Summary'}
             </p>
           </div>
-          <span className="text-[11px] text-muted-foreground">
-            {isBn ? `গত ${days} দিন` : `Last ${days}d`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">
+              {isBn ? `গত ${days} দিন` : `Last ${days}d`}
+            </span>
+            <FinanceExportButton
+              income={income}
+              expenses={expenses}
+              mode={financeScope.mode}
+              rangeLabel={isBn ? `গত ${days} দিন` : `Last ${days} days`}
+            />
+          </div>
         </div>
 
         {/* Income / Expense / Net */}
