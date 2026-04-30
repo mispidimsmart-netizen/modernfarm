@@ -5,13 +5,11 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { getFinanceMode, getFinanceScopeIssues } from '@/lib/financeScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, ChevronDown, ShieldCheck } from 'lucide-react';
-
-const LAYER_ONLY = new Set(['eggs', 'egg_sale', 'spent_hen']);
-const BROILER_ONLY = new Set(['culled_birds', 'bird_sale']);
 
 interface FinanceAuditPanelProps {
   days: number;
@@ -38,6 +36,21 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
     : isBroiler
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
+  const financeScope = useMemo(
+    () => ({ mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart }),
+    [isLayer, isBroiler, activeBatchId, batchStart],
+  );
+  const labels = useMemo(
+    () => ({
+      layerOnly: isBn ? 'লেয়ার-only ক্যাটাগরি' : 'Layer-only category',
+      broilerOnly: isBn ? 'ব্রয়লার-only ক্যাটাগরি' : 'Broiler-only category',
+      wrongMode: isBn ? 'অন্য ফার্ম মোড' : 'Other farm mode',
+      otherBatch: isBn ? 'অন্য ব্যাচের' : 'Other batch',
+      beforeBatch: isBn ? 'বর্তমান ব্যাচের আগের তারিখ' : 'Before active batch start',
+      untagged: isBn ? 'ব্যাচ/মোড ট্যাগ নেই' : 'Batch/mode not tagged',
+    }),
+    [isBn],
+  );
 
   const [open, setOpen] = useState(false);
 
@@ -52,14 +65,8 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
     }> = [];
 
     (incomeRaw ?? []).forEach((i: any) => {
-      const cat = (i.category ?? i.source ?? '').toString();
-      const reasons: string[] = [];
-      if (isBroiler && LAYER_ONLY.has(cat)) reasons.push(isBn ? 'লেয়ার-only ক্যাটাগরি' : 'Layer-only category');
-      if (isLayer && BROILER_ONLY.has(cat)) reasons.push(isBn ? 'ব্রয়লার-only ক্যাটাগরি' : 'Broiler-only category');
-      if (i.batch_id && activeBatchId && i.batch_id !== activeBatchId)
-        reasons.push(isBn ? 'অন্য ব্যাচের' : 'Other batch');
-      if (!i.batch_id && batchStart && (i.income_date ?? '') < batchStart)
-        reasons.push(isBn ? 'বর্তমান ব্যাচের আগের তারিখ' : 'Before active batch start');
+      const cat = (i.source || i.category || '').toString();
+      const reasons = getFinanceScopeIssues(i, 'income', financeScope, labels);
       if (reasons.length) {
         out.push({
           id: i.id,
@@ -73,11 +80,7 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
     });
 
     (expensesRaw ?? []).forEach((e: any) => {
-      const reasons: string[] = [];
-      if (e.batch_id && activeBatchId && e.batch_id !== activeBatchId)
-        reasons.push(isBn ? 'অন্য ব্যাচের' : 'Other batch');
-      if (!e.batch_id && batchStart && (e.expense_date ?? '') < batchStart)
-        reasons.push(isBn ? 'বর্তমান ব্যাচের আগের তারিখ' : 'Before active batch start');
+      const reasons = getFinanceScopeIssues(e, 'expense', financeScope, labels);
       if (reasons.length) {
         out.push({
           id: e.id,
@@ -91,7 +94,7 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
     });
 
     return out.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [incomeRaw, expensesRaw, isLayer, isBroiler, activeBatchId, batchStart, isBn]);
+  }, [incomeRaw, expensesRaw, financeScope, labels]);
 
   const fmt = (n: number) => `৳${Math.round(n).toLocaleString(locale)}`;
 

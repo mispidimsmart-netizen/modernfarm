@@ -9,6 +9,8 @@ export interface FinanceScope {
 export const LAYER_ONLY_INCOME = new Set(['eggs', 'egg_sale', 'spent_hen']);
 export const BROILER_ONLY_INCOME = new Set(['culled_birds', 'bird_sale']);
 
+const normalizeTag = (value: unknown) => (value ?? '').toString().trim().toLowerCase();
+
 export function getFinanceMode(isLayer: boolean, isBroiler: boolean): FinanceMode {
   if (isLayer) return 'layer';
   if (isBroiler) return 'broiler';
@@ -33,10 +35,10 @@ export function getFinanceScopeIssues(
   // Check BOTH category and source — some legacy rows store the real type in
   // `source` while `category` holds an unrelated value (e.g. category='manure',
   // source='egg_sale'). We must catch layer/broiler-only on either field.
-  const category = (row?.category ?? '').toString();
-  const source = (row?.source ?? '').toString();
+  const category = normalizeTag(row?.category);
+  const source = normalizeTag(row?.source);
   const tags = [category, source].filter(Boolean);
-  const rowMode = (row?.farm_mode ?? '').toString();
+  const rowMode = normalizeTag(row?.farm_mode);
   const date = kind === 'income' ? row?.income_date : row?.expense_date;
 
   if (kind === 'income') {
@@ -50,20 +52,21 @@ export function getFinanceScopeIssues(
     }
   }
 
-  if (mode && rowMode && rowMode !== mode) {
+  if (mode && rowMode && rowMode !== mode && rowMode !== 'both') {
     reasons.push(labels?.wrongMode ?? 'Other farm mode');
   }
 
-  if (row?.batch_id) {
-    if (scope.activeBatchId && row.batch_id !== scope.activeBatchId) {
+  const rowBatchId = (row?.batch_id ?? '').toString();
+  if (rowBatchId) {
+    if (scope.activeBatchId && rowBatchId !== scope.activeBatchId) {
       reasons.push(labels?.otherBatch ?? 'Other batch');
     }
   } else {
-    // Untagged row (no batch_id, no farm_mode):
-    // - In broiler mode, hide to prevent layer-era data leakage into a fresh batch.
-    // - In layer mode, include legacy entries that fall within the active batch window
-    //   (or always, if no batch is active) so historical totals are not lost.
-    if (mode === 'broiler' && !rowMode) {
+    // Active batch is the finance SSOT: rows without batch_id are not part of
+    // the active report, even if their date/mode looks current.
+    if (scope.activeBatchId) {
+      reasons.push(labels?.untagged ?? 'Batch/mode not tagged');
+    } else if (mode === 'broiler' && !rowMode) {
       reasons.push(labels?.untagged ?? 'Batch/mode not tagged');
     } else if (scope.batchStart && date && date < scope.batchStart) {
       reasons.push(labels?.beforeBatch ?? 'Before active batch start');
