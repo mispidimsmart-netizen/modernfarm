@@ -52,7 +52,7 @@ export function getFinanceScopeIssues(
     }
   }
 
-  if (mode && rowMode && rowMode !== mode) {
+  if (mode && rowMode && rowMode !== mode && rowMode !== 'both') {
     reasons.push(labels?.wrongMode ?? 'Other farm mode');
   }
 
