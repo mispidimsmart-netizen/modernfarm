@@ -36,15 +36,21 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
     : isBroiler
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
-  const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
-  const labels = {
-    layerOnly: isBn ? 'লেয়ার-only ক্যাটাগরি' : 'Layer-only category',
-    broilerOnly: isBn ? 'ব্রয়লার-only ক্যাটাগরি' : 'Broiler-only category',
-    wrongMode: isBn ? 'অন্য ফার্ম মোড' : 'Other farm mode',
-    otherBatch: isBn ? 'অন্য ব্যাচের' : 'Other batch',
-    beforeBatch: isBn ? 'বর্তমান ব্যাচের আগের তারিখ' : 'Before active batch start',
-    untagged: isBn ? 'ব্যাচ/মোড ট্যাগ নেই' : 'Batch/mode not tagged',
-  };
+  const financeScope = useMemo(
+    () => ({ mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart }),
+    [isLayer, isBroiler, activeBatchId, batchStart],
+  );
+  const labels = useMemo(
+    () => ({
+      layerOnly: isBn ? 'লেয়ার-only ক্যাটাগরি' : 'Layer-only category',
+      broilerOnly: isBn ? 'ব্রয়লার-only ক্যাটাগরি' : 'Broiler-only category',
+      wrongMode: isBn ? 'অন্য ফার্ম মোড' : 'Other farm mode',
+      otherBatch: isBn ? 'অন্য ব্যাচের' : 'Other batch',
+      beforeBatch: isBn ? 'বর্তমান ব্যাচের আগের তারিখ' : 'Before active batch start',
+      untagged: isBn ? 'ব্যাচ/মোড ট্যাগ নেই' : 'Batch/mode not tagged',
+    }),
+    [isBn],
+  );
 
   const [open, setOpen] = useState(false);
 
