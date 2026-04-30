@@ -9,7 +9,8 @@ import { getFinanceMode, getFinanceScopeIssues } from '@/lib/financeScope';
 import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, ChevronDown, ShieldCheck, FileDown, Printer } from 'lucide-react';
 
 interface FinanceAuditPanelProps {
   days: number;
@@ -137,6 +138,32 @@ export function FinanceAuditPanel({ days }: FinanceAuditPanelProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0 pb-3 space-y-1.5">
+            <div className="flex items-center gap-2 pb-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportFlaggedAsCsv(flagged, isBn);
+                }}
+              >
+                <FileDown className="h-3 w-3" />
+                {isBn ? 'CSV ডাউনলোড' : 'Download CSV'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] gap-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportFlaggedAsPdf(flagged, isBn, fmt);
+                }}
+              >
+                <Printer className="h-3 w-3" />
+                {isBn ? 'PDF প্রিন্ট' : 'Print PDF'}
+              </Button>
+            </div>
             {flagged.slice(0, 25).map((row) => (
               <div
                 key={`${row.kind}-${row.id}`}
