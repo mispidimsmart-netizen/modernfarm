@@ -13,6 +13,7 @@ import {
   getRecurrenceLabel,
 } from '@/hooks/useSchedules';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
+import { TestPushButton } from '@/components/notifications/TestPushButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -135,6 +136,14 @@ export function ScheduleSheet({ trigger, open, onOpenChange }: ScheduleSheetProp
           <SheetDescription>
             {language === 'bn' ? 'খাবার, পরিষ্কার ও ভ্যাক্সিনেশন শিডিউল সেট করুন' : 'Set feed, cleaning and vaccination schedules'}
           </SheetDescription>
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="text-xs text-muted-foreground pr-2">
+              {language === 'bn'
+                ? 'নোটিফিকেশন কাজ করছে কিনা যাচাই করুন'
+                : 'Verify notifications are working'}
+            </div>
+            <TestPushButton />
+          </div>
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
