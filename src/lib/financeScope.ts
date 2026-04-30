@@ -62,11 +62,11 @@ export function getFinanceScopeIssues(
       reasons.push(labels?.otherBatch ?? 'Other batch');
     }
   } else {
-    // Untagged row (no batch_id, no farm_mode):
-    // - In broiler mode, hide to prevent layer-era data leakage into a fresh batch.
-    // - In layer mode, include legacy entries that fall within the active batch window
-    //   (or always, if no batch is active) so historical totals are not lost.
-    if (mode === 'broiler' && !rowMode) {
+    // Active batch is the finance SSOT: rows without batch_id are not part of
+    // the active report, even if their date/mode looks current.
+    if (scope.activeBatchId) {
+      reasons.push(labels?.untagged ?? 'Batch/mode not tagged');
+    } else if (mode === 'broiler' && !rowMode) {
       reasons.push(labels?.untagged ?? 'Batch/mode not tagged');
     } else if (scope.batchStart && date && date < scope.batchStart) {
       reasons.push(labels?.beforeBatch ?? 'Before active batch start');
