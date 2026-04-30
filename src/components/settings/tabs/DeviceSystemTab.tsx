@@ -839,6 +839,8 @@ export function DeviceSystemTab() {
       >
         <OTAFirmwareTab />
       </CollapsibleSection>
+        </>
+      )}
 
       {/* Factory Reset Dialog */}
       <AlertDialog open={showFactoryResetDialog} onOpenChange={setShowFactoryResetDialog}>
