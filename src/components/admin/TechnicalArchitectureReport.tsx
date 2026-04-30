@@ -293,7 +293,7 @@ export function TechnicalArchitectureReport() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-blue-200">🏗️ Technical Architecture & System Documentation</h2>
-              <p className="text-blue-400/80 text-sm mt-1">Version 8.2.0 | Industrial Grade | 18 Edge Functions | 67 Tables | Score: 100/100</p>
+              <p className="text-blue-400/80 text-sm mt-1">Version 8.2.0 | Industrial Grade | 19 Edge Functions | 69 Tables | Score: 100/100</p>
             </div>
             <Button onClick={handleDownloadPDF} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700">
               <Download className="w-4 h-4 mr-2" />
@@ -314,7 +314,7 @@ export function TechnicalArchitectureReport() {
                 ['L2 (Safety)', 'Safety Arbiter (500ms)', '8 Invariants enforced. Cannot override.'],
                 ['L3 (Automation)', 'Local Automation Engine', 'HSI, fan speed, heater, fogger.'],
                 ['L4 (Comms)', 'WiFi + GSM SIM800L', 'Cloud sync + SMS. 360 offline buffer.'],
-                ['L5 (Backend)', 'Edge Functions (Deno)', '15+ functions. Safety, OTA, reports.'],
+                ['L5 (Backend)', 'Edge Functions (Deno)', '19 functions. Safety, OTA, monitor, reports.'],
                 ['L6 (Frontend)', 'React 18 PWA + Capacitor', 'Dashboard. Manual override (20min).'],
               ]}
             />
@@ -329,7 +329,7 @@ export function TechnicalArchitectureReport() {
                 ['MCU', 'ESP32 DevKit V1', 'Arduino C++, 240MHz'],
                 ['Sensors', 'DHT22×2, MQ-137, YF-S201', 'Temp, NH3, Water, Voltage'],
                 ['Communication', 'WiFi + GSM SIM800L', 'HTTP + SMS fallback'],
-                ['Backend', 'PostgreSQL + Deno Edge', '18 functions, 67 tables, RLS'],
+                ['Backend', 'PostgreSQL + Deno Edge', '19 functions, 69 tables, RLS'],
                 ['Frontend', 'React 18 + TypeScript 5', 'Vite 5, shadcn/ui'],
                 ['Mobile', 'PWA + Capacitor 8', 'iOS/Android wrapper'],
               ]}
@@ -361,7 +361,7 @@ export function TechnicalArchitectureReport() {
                 ['DHT22 #1', '4', '3.3V', '10K pull-up'],
                 ['DHT22 #2', '16', '3.3V', '10K pull-up'],
                 ['MQ-137 (NH3)', '34 (ADC)', '5V', '24h pre-heat'],
-                ['YF-S201 (Water)', '17', '5V', 'Interrupt-driven'],
+                ['YF-S201 (Water)', '18', '5V', 'Interrupt-driven'],
                 ['ZMPT101B (Voltage)', '35 (ADC)', '5V', 'AC monitoring'],
                 ['GSM SIM800L', '23/19', '-', 'Serial TX/RX'],
               ]}
@@ -475,7 +475,7 @@ export function TechnicalArchitectureReport() {
                 { label: 'Double Confirmation', value: 'Dialog + reason logging required' },
                 { label: 'Individual Control', value: 'Direct toggle for all 8 relay channels' },
                 { label: 'Safety Guardrail', value: 'ESM invariants still active in Manual Mode' },
-                { label: 'Auto-Reset Timer', value: '60-min timeout → auto-reverts to Auto' },
+                { label: 'Auto-Reset Timer', value: '20-min timeout → auto-reverts to Auto (INV-5)' },
                 { label: 'SMS Alert', value: 'Immediate SMS when Manual Mode activated' },
                 { label: 'Audit Log', value: 'All actions recorded with timestamp + user ID' },
               ].map((item, i) => (
@@ -503,7 +503,7 @@ export function TechnicalArchitectureReport() {
           </ArchSection>
 
           {/* 10. Edge Functions */}
-          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (18)">
+          <ArchSection icon={<Server className="w-5 h-5 text-violet-400" />} title="১০. Cloud Edge Functions (19)">
             <DataTable
               headers={['Function', 'Purpose', 'Trigger']}
               rows={[
@@ -525,6 +525,7 @@ export function TechnicalArchitectureReport() {
                 ['lookup-login-identifier', 'Login lookup', 'Auth'],
                 ['mode-profile', 'Automation profile', 'HTTP'],
                 ['admin-delete-user', 'Super-admin removal', 'Admin'],
+                ['device-monitor', 'Device health & online tracking', 'Periodic'],
               ]}
             />
           </ArchSection>
