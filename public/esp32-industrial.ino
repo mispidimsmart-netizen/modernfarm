@@ -1953,6 +1953,13 @@ void sprinklerControl() {
 void ceilingFanControl() {
   unsigned long now = millis();
 
+  // ═══ FULL MANUAL MODE: skip automation entirely ═══
+  // When user enables "Stop Automation" (localManualOverride),
+  // ceiling fan is fully under user control — no temp-based override.
+  if (localManualOverride) {
+    return;
+  }
+
   if (ceilingFanManualOverride) {
     if (ceilingFanManualTime > 0 && safeElapsed(now, ceilingFanManualTime) >= MANUAL_OVERRIDE_TIMEOUT) {
       ceilingFanManualOverride = false;
