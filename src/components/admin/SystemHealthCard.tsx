@@ -474,7 +474,7 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
       }
 
       const latest = data[0];
-      const lastReading = latest.timestamp;
+      const lastReading = latest.recorded_at;
 
       // Define normal ranges
       const tempRange = { min: 15, max: 40 };
@@ -505,8 +505,8 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
           lastReading,
         },
         waterFlow: {
-          status: getStatus(latest.water_flow, waterFlowRange),
-          value: latest.water_flow,
+          status: getStatus(latest.water_usage, waterFlowRange),
+          value: latest.water_usage,
           lastReading,
         },
       };
