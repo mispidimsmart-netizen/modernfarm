@@ -44,6 +44,28 @@ const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.
 
 const inputClass = "h-11 sm:h-13 rounded-xl border-2 border-border bg-muted/10 pl-11 sm:pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
 
+// Module-scope footer & spinner — defining these inside LoginPage caused a remount
+// (and motion-fade "blink") on every keystroke.
+const Spinner = () => (
+  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+    className="h-5 w-5 rounded-full border-2 border-primary-foreground border-t-transparent" />
+);
+
+const Footer = ({ isSignUp, onToggle }: { isSignUp: boolean; onToggle: () => void }) => (
+  <>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-3 sm:mt-4 text-center">
+      <button type="button" onClick={onToggle}
+        className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline">
+        {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
+      </button>
+    </motion.div>
+    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+      className="mt-2 sm:mt-3 text-center text-[10px] sm:text-xs text-muted-foreground/60 pb-2">
+      © 2026 FarmEye Automation Platform
+    </motion.p>
+  </>
+);
+
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
   const navigate = useNavigate();
@@ -296,25 +318,7 @@ export function LoginPage() {
     </div>
   );
 
-  const Footer = () => (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-3 sm:mt-4 text-center">
-        <button type="button" onClick={() => { setIsSignUp(!isSignUp); setShowForgotPassword(false); }}
-          className="text-sm font-semibold text-primary underline-offset-4 transition-colors hover:underline">
-          {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
-        </button>
-      </motion.div>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="mt-2 sm:mt-3 text-center text-[10px] sm:text-xs text-muted-foreground/60 pb-2">
-        © 2026 FarmEye Automation Platform
-      </motion.p>
-    </>
-  );
-
-  const Spinner = () => (
-    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-      className="h-5 w-5 rounded-full border-2 border-primary-foreground border-t-transparent" />
-  );
+  const toggleSignUp = () => { setIsSignUp(!isSignUp); setShowForgotPassword(false); };
 
   // Detect login input type for icon
   const loginIsPhone = isPhoneInput(identifier);
@@ -412,7 +416,7 @@ export function LoginPage() {
           </div>
 
           <div className="mt-auto">
-            <Footer />
+            <Footer isSignUp={isSignUp} onToggle={toggleSignUp} />
           </div>
         </motion.div>
         </div>
@@ -579,7 +583,7 @@ export function LoginPage() {
           <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
         </motion.div>
 
-        <Footer />
+        <Footer isSignUp={isSignUp} onToggle={toggleSignUp} />
       </motion.div>
       </div>
     </div>
