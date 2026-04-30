@@ -728,7 +728,7 @@ export function AppDocumentation() {
                       <ul className="text-sm text-slate-400 space-y-1">
                         <li>• তাপমাত্রা: -40 to 80°C</li>
                         <li>• আর্দ্রতা: 0-100%</li>
-                        <li>• GPIO: 4, 5</li>
+                        <li>• GPIO: <strong>4</strong> (DHT #1), <strong>16/RX2</strong> (DHT #2)</li>
                       </ul>
                     </div>
                     <div className="p-4 bg-slate-800/50 rounded-xl border border-white/10">
@@ -747,7 +747,7 @@ export function AppDocumentation() {
                       </h5>
                       <ul className="text-sm text-slate-400 space-y-1">
                         <li>• পানি: 1-30 L/min</li>
-                        <li>• GPIO: 27 (Interrupt)</li>
+                        <li>• GPIO: <strong>18</strong> (Pulse)</li>
                       </ul>
                     </div>
                     <div className="p-4 bg-slate-800/50 rounded-xl border border-white/10">
@@ -759,6 +759,22 @@ export function AppDocumentation() {
                         <li>• GPIO: 35 (ADC)</li>
                       </ul>
                     </div>
+                  </div>
+
+                  {/* 8-Channel Relay Map (v8.0 - 2026) */}
+                  <div className="mt-4 p-4 bg-gradient-to-br from-emerald-500/10 to-teal-500/5 rounded-xl border border-emerald-500/30">
+                    <h5 className="font-semibold text-emerald-400 mb-3">⚡ 8-চ্যানেল রিলে ম্যাপিং (v8.0)</h5>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                      <div>IN1 → GPIO <strong>25</strong> · এক্সহস্ট ফ্যান</div>
+                      <div>IN2 → GPIO <strong>26</strong> · সিলিং ফ্যান</div>
+                      <div>IN3 → GPIO <strong>27</strong> · লাইট</div>
+                      <div>IN4 → GPIO <strong>14</strong> · হিটার</div>
+                      <div>IN5 → GPIO <strong>12</strong> · ফগার</div>
+                      <div>IN6 → GPIO <strong>13</strong> · অ্যালার্ম</div>
+                      <div>IN7 → GPIO <strong>15</strong> · স্প্রিংকলার</div>
+                      <div>IN8 → GPIO <strong>33</strong> · সার্কুলেশন ফ্যান</div>
+                    </div>
+                    <p className="mt-2 text-xs text-amber-300">⚠️ ESP32-WROOM-32 only — WROVER নিষিদ্ধ (PSRAM GPIO 16/17 conflict)</p>
                   </div>
                 </DocSection>
 
