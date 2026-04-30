@@ -551,16 +551,12 @@ export function useAddExpense() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
-  const { isLayer, isBroiler } = useFarmType();
-  const { data: activeLayerBatch } = useActiveLayerBatch();
-  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
-  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
-  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
+      const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
       const { error } = await supabase
         .from('expenses')
         .insert({
@@ -616,16 +612,12 @@ export function useAddIncome() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
-  const { isLayer, isBroiler } = useFarmType();
-  const { data: activeLayerBatch } = useActiveLayerBatch();
-  const { data: activeBroilerBatch } = useActiveBroilerBatch();
   const { toast } = useToast();
-  const activeBatchId = isLayer ? activeLayerBatch?.id ?? null : isBroiler ? (activeBroilerBatch as any)?.id ?? null : null;
-  const farmMode = getFinanceMode(isLayer, isBroiler);
 
   return useMutation({
     mutationFn: async (data: Omit<Income, 'id' | 'user_id' | 'created_at' | 'farm_mode' | 'source'> & { farm_mode?: 'layer' | 'broiler' | null; source?: string | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
+      const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
       const source = data.source || data.category || 'other';
       const { error } = await supabase
         .from('income')
