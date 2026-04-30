@@ -25,6 +25,9 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
+import { FinanceExportButton } from '@/components/farm/FinanceExportButton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Bucket = { key: string; label: string; income: number; expense: number; net: number };
 
@@ -74,8 +77,15 @@ export default function FinanceReportPage() {
   const [mode, setMode] = useState<'daily' | 'monthly'>('daily');
   const days = mode === 'daily' ? 30 : 365;
 
-  const { data: expenses = [] } = useExpenses(days);
-  const { data: income = [] } = useIncome(days);
+  // Optional custom date range — overrides the default `days` window.
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  // Pull a wide window so custom ranges still resolve.
+  const fetchDays = startDate ? 365 : days;
+
+  const { data: expenses = [] } = useExpenses(fetchDays);
+  const { data: income = [] } = useIncome(fetchDays);
   const batchStart = useActiveBatchStart();
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeLayerBatch } = useActiveLayerBatch();
@@ -86,20 +96,39 @@ export default function FinanceReportPage() {
       ? (activeBroilerBatch as any)?.id ?? null
       : null;
 
+  const inDateRange = (date: string | undefined): boolean => {
+    if (!date) return false;
+    if (startDate && date < startDate) return false;
+    if (endDate && date > endDate) return false;
+    return true;
+  };
+
   const scopedExpenses = useMemo(() => {
     const scope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
-    return expenses.filter((row: any) => matchesActiveFinanceScope(row, 'expense', scope));
-  }, [expenses, isLayer, isBroiler, activeBatchId, batchStart]);
+    return expenses.filter((row: any) =>
+      matchesActiveFinanceScope(row, 'expense', scope) &&
+      (!startDate && !endDate ? true : inDateRange(row.expense_date)),
+    );
+  }, [expenses, isLayer, isBroiler, activeBatchId, batchStart, startDate, endDate]);
 
   const scopedIncome = useMemo(() => {
     const scope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
-    return income.filter((row: any) => matchesActiveFinanceScope(row, 'income', scope));
-  }, [income, isLayer, isBroiler, activeBatchId, batchStart]);
+    return income.filter((row: any) =>
+      matchesActiveFinanceScope(row, 'income', scope) &&
+      (!startDate && !endDate ? true : inDateRange(row.income_date)),
+    );
+  }, [income, isLayer, isBroiler, activeBatchId, batchStart, startDate, endDate]);
 
   const buckets = useMemo(
     () => bucketize(scopedIncome as any, scopedExpenses as any, mode),
     [scopedIncome, scopedExpenses, mode],
   );
+
+  const rangeLabel = startDate || endDate
+    ? `${startDate || '…'} → ${endDate || '…'}`
+    : mode === 'daily' ? 'গত ৩০ দিন' : 'গত ১২ মাস';
+
+  const financeMode = getFinanceMode(isLayer, isBroiler);
 
   const totals = useMemo(() => {
     const totalIncome = scopedIncome.reduce((s, r: any) => s + Number(r.amount || 0), 0);
@@ -114,16 +143,66 @@ export default function FinanceReportPage() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3"
+          className="flex items-start gap-3"
         >
           <Button variant="ghost" size="icon" onClick={() => navigate('/farm')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold">📊 আয়-ব্যয় সারাংশ রিপোর্ট</h1>
             <p className="text-sm text-muted-foreground">দৈনিক ও মাসিক হিসাব এবং নেট ব্যালেন্স</p>
           </div>
+          <FinanceExportButton
+            income={scopedIncome}
+            expenses={scopedExpenses}
+            mode={financeMode}
+            rangeLabel={rangeLabel}
+            startDate={startDate || null}
+            endDate={endDate || null}
+          />
         </motion.div>
+
+        {/* Date range filter — applied to both income & expense before export */}
+        <Card>
+          <CardContent className="p-3 flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[140px]">
+              <Label htmlFor="from-date" className="text-xs text-muted-foreground">
+                শুরুর তারিখ
+              </Label>
+              <Input
+                id="from-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate || undefined}
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <Label htmlFor="to-date" className="text-xs text-muted-foreground">
+                শেষ তারিখ
+              </Label>
+              <Input
+                id="to-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate || undefined}
+              />
+            </div>
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+              >
+                রিসেট
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground basis-full">
+              📌 ফিল্টার অনুযায়ী সব আয়-ব্যয় এক্সপোর্ট হবে ({financeMode === 'layer' ? 'লেয়ার' : financeMode === 'broiler' ? 'ব্রয়লার' : 'মিশ্র'} মোড)
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
