@@ -84,6 +84,8 @@ function CollapsibleSection({ title, titleBn, icon: Icon, color, children, defau
 
 export function DeviceSystemTab() {
   const { language, user } = useAuth();
+  const { data: permissions } = useUserPermissions();
+  const isAdmin = permissions?.role === 'admin';
   const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
