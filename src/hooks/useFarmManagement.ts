@@ -9,6 +9,24 @@ import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData'
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { useSelectedShed, useSheds } from '@/hooks/useSheds';
 
+// Lazily resolve active batch + farm_mode for a given farm without using hooks.
+// Used inside mutationFn to keep call-site hook order stable across HMR.
+async function resolveActiveScope(farmId: string): Promise<{ activeBatchId: string | null; farmMode: 'layer' | 'broiler' | null }> {
+  try {
+    const [layerRes, broilerRes] = await Promise.all([
+      supabase.from('layer_batches').select('id').eq('farm_id', farmId).eq('status', 'active').order('start_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('broiler_batches').select('id').eq('farm_id', farmId).eq('status', 'active').order('start_date', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    const layerId = (layerRes.data as any)?.id ?? null;
+    const broilerId = (broilerRes.data as any)?.id ?? null;
+    if (layerId) return { activeBatchId: layerId, farmMode: 'layer' };
+    if (broilerId) return { activeBatchId: broilerId, farmMode: 'broiler' };
+    return { activeBatchId: null, farmMode: null };
+  } catch {
+    return { activeBatchId: null, farmMode: null };
+  }
+}
+
 // Types
 export interface EggProduction {
   id: string;
