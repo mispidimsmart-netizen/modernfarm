@@ -65,7 +65,7 @@ export function useTodaySummary() {
       const buildIncome = () => {
         let q = supabase
           .from('income')
-          .select('amount, category, batch_id, farm_mode')
+          .select('amount, category, source, batch_id, farm_mode')
           .eq('income_date', today);
         if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
         return q;
