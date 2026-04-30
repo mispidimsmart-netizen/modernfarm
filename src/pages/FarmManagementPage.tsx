@@ -29,7 +29,7 @@ import { RecentEntryHistory } from '@/components/farm/RecentEntryHistory';
 import { MortalityTrendChart } from '@/components/farm/MortalityTrendChart';
 import { DailyExpenseSummary } from '@/components/farm/DailyExpenseSummary';
 import { FinanceSummaryRange } from '@/components/farm/FinanceSummaryRange';
-import { FinanceAuditPanel } from '@/components/farm/FinanceAuditPanel';
+// FinanceAuditPanel intentionally not imported — hidden from farm page (kept in repo for future debug use).
 import { DataExportButton } from '@/components/farm/DataExportButton';
 import { CostAnalyticsDashboard } from '@/components/analytics/CostAnalyticsDashboard';
 import { FarmPerformanceView } from '@/components/analytics/FarmPerformanceView';
@@ -343,8 +343,8 @@ export function FarmManagementPage() {
                     {/* 1. Finance — Income / Expense / Net (most important) */}
                     <FinanceSummaryRange days={reportDays} />
 
-                    {/* Audit panel — surfaces hidden/mismatched legacy entries */}
-                    <FinanceAuditPanel days={reportDays} />
+                    {/* Audit panel hidden — caused confusion for farmers (technical jargon).
+                        Filtering still happens silently in FinanceSummaryRange / FinanceReportPage. */}
                     {/* 2. Mortality Trend Chart - Both modes */}
                     <MortalityTrendChart days={reportDays} />
 
