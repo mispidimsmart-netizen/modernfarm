@@ -220,14 +220,24 @@ function csvEscape(v: string | number): string {
   return s;
 }
 
-function exportFlaggedAsCsv(rows: FlaggedRow[], isBn: boolean) {
+type FinanceMode = 'layer' | 'broiler' | null;
+
+function modeLabel(mode: FinanceMode, isBn: boolean): string {
+  if (mode === 'layer') return isBn ? 'লেয়ার' : 'Layer';
+  if (mode === 'broiler') return isBn ? 'ব্রয়লার' : 'Broiler';
+  return isBn ? 'মিশ্র' : 'Mixed';
+}
+
+function exportFlaggedAsCsv(rows: FlaggedRow[], isBn: boolean, mode: FinanceMode) {
   const headers = isBn
-    ? ['ধরন', 'তারিখ', 'ক্যাটাগরি', 'কারণ', 'পরিমাণ (৳)']
-    : ['Type', 'Date', 'Category', 'Reason', 'Amount (BDT)'];
+    ? ['ফার্ম মোড', 'ধরন', 'তারিখ', 'ক্যাটাগরি', 'কারণ', 'পরিমাণ (৳)']
+    : ['Farm Mode', 'Type', 'Date', 'Category', 'Reason', 'Amount (BDT)'];
+  const modeStr = modeLabel(mode, isBn);
   const lines = [headers.map(csvEscape).join(',')];
   rows.forEach((r) => {
     lines.push(
       [
+        modeStr,
         r.kind === 'income' ? (isBn ? 'আয়' : 'Income') : (isBn ? 'ব্যয়' : 'Expense'),
         r.date,
         r.category,
@@ -243,8 +253,9 @@ function exportFlaggedAsCsv(rows: FlaggedRow[], isBn: boolean) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const stamp = new Date().toISOString().slice(0, 10);
+  const modeSlug = mode ?? 'mixed';
   a.href = url;
-  a.download = `finance-audit-${stamp}.csv`;
+  a.download = `finance-audit-${modeSlug}-${stamp}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
