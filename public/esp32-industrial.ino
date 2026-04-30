@@ -1380,9 +1380,10 @@ void relayManagerApply() {
   bool sprinklerChange = (relayTarget.sprinkler != sprinklerOn);
   bool anyChange    = fanChange || alarmChange || heaterChange || foggerChange || circChange || ceilingChange || sprinklerChange;
   
-  // If protection active and no safety bypass AND not manual command, skip all relay changes
+  // If protection active and no safety bypass AND no manual intent, skip all relay changes
   // Manual commands from user must ALWAYS be honored — protection is only for automation oscillation
-  if (relayProtectionActive && !safetyBypass && !manualCommandPending && anyChange) {
+  // Also: in full manual mode (localManualOverride), bypass protection so user toggles are instant
+  if (relayProtectionActive && !safetyBypass && !manualCommandPending && !localManualOverride && anyChange) {
     // Silently blocked — relay protection window active (automation only)
     return;
   }
@@ -1845,6 +1846,8 @@ void advancedHeaterControl() {
 // --- Module C: Fogger ---
 void foggerControl() {
   if (!foggerSettings.enabled) return;
+  // ═══ FULL MANUAL MODE: skip automation entirely ═══
+  if (localManualOverride) return;
   if (foggerManualOverride) {
     if (foggerManualTime > 0 && (millis() - foggerManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
       foggerManualOverride = false; foggerManualTime = 0;
@@ -1881,6 +1884,13 @@ void sprinklerControl() {
   static unsigned long sprinklerDailyOnMs = 0;
 
   unsigned long now = millis();
+
+  // ═══ FULL MANUAL MODE: skip automation entirely ═══
+  if (localManualOverride) {
+    sprinklerCycleActive = false;
+    sprinklerSprayPhase = false;
+    return;
+  }
 
   if (sprinklerWindowStart == 0 || intervalPassed(now, sprinklerWindowStart, 24UL * 60UL * 60UL * 1000UL)) {
     sprinklerWindowStart = now;
