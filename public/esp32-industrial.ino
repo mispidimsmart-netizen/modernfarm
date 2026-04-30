@@ -1380,9 +1380,10 @@ void relayManagerApply() {
   bool sprinklerChange = (relayTarget.sprinkler != sprinklerOn);
   bool anyChange    = fanChange || alarmChange || heaterChange || foggerChange || circChange || ceilingChange || sprinklerChange;
   
-  // If protection active and no safety bypass AND not manual command, skip all relay changes
+  // If protection active and no safety bypass AND no manual intent, skip all relay changes
   // Manual commands from user must ALWAYS be honored — protection is only for automation oscillation
-  if (relayProtectionActive && !safetyBypass && !manualCommandPending && anyChange) {
+  // Also: in full manual mode (localManualOverride), bypass protection so user toggles are instant
+  if (relayProtectionActive && !safetyBypass && !manualCommandPending && !localManualOverride && anyChange) {
     // Silently blocked — relay protection window active (automation only)
     return;
   }
