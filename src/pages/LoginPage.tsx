@@ -416,7 +416,7 @@ export function LoginPage() {
           </div>
 
           <div className="mt-auto">
-            <Footer />
+            <Footer isSignUp={isSignUp} onToggle={toggleSignUp} />
           </div>
         </motion.div>
         </div>
@@ -583,7 +583,7 @@ export function LoginPage() {
           <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
         </motion.div>
 
-        <Footer />
+        <Footer isSignUp={isSignUp} onToggle={toggleSignUp} />
       </motion.div>
       </div>
     </div>
