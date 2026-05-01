@@ -841,7 +841,10 @@ export function DeviceSystemTab() {
         <OTAFirmwareTab />
       </CollapsibleSection>
 
-      {/* Device Health Section — collapsible, includes Restart History */}
+        </>
+      )}
+
+      {/* Device Health Section — visible to ALL users (own farm only via RLS) */}
       {deviceHealthList && deviceHealthList.length > 0 && (
         <CollapsibleSection
           title="Device Health"
@@ -861,8 +864,6 @@ export function DeviceSystemTab() {
             ))}
           </div>
         </CollapsibleSection>
-      )}
-        </>
       )}
 
       {/* Factory Reset Dialog */}
