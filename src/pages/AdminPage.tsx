@@ -214,7 +214,7 @@ export default function AdminPage() {
 
   if (authLoading || checkingAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#0b1e3a] flex items-center justify-center">
         <div className="text-white flex items-center gap-3 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
           <RefreshCw className="animate-spin text-indigo-400 w-6 h-6" />
           <span className="text-lg font-medium">{labels.loading}</span>
