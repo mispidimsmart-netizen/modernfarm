@@ -414,19 +414,6 @@ export function DeviceSystemTab() {
         </CardContent>
       </Card>
 
-      {/* Device Health Card — visible at top, includes Restart History button */}
-      {deviceHealthList && deviceHealthList.length > 0 && (
-        <div className="space-y-3">
-          {deviceHealthList.map((health) => (
-            <DeviceHealthCard
-              key={health.id}
-              device={health}
-              deviceName={health.device_token_id}
-            />
-          ))}
-        </div>
-      )}
-
       {/* Device Section */}
       <CollapsibleSection
         title="Device Management"
@@ -853,6 +840,28 @@ export function DeviceSystemTab() {
       >
         <OTAFirmwareTab />
       </CollapsibleSection>
+
+      {/* Device Health Section — collapsible, includes Restart History */}
+      {deviceHealthList && deviceHealthList.length > 0 && (
+        <CollapsibleSection
+          title="Device Health"
+          titleBn="ডিভাইস হেলথ"
+          icon={Activity}
+          color="bg-green-500/10 text-green-500"
+          defaultOpen={false}
+          language={language}
+        >
+          <div className="space-y-3">
+            {deviceHealthList.map((health) => (
+              <DeviceHealthCard
+                key={health.id}
+                device={health}
+                deviceName={health.device_token_id}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
         </>
       )}
 
