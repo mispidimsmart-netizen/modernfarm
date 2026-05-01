@@ -92,17 +92,43 @@ export function AdminDeviceHealthPanel({ language }: Props) {
     refetchInterval: 30000,
   });
 
-  // Realtime subscription
+  // Realtime subscription with throttled invalidation to avoid UI freezes
+  // under bursty updates (many devices reporting at once).
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastRun = 0;
+    const MIN_INTERVAL = 1500; // ms — coalesce bursts into at most ~1 refetch / 1.5s
+    const TRAIL_DELAY = 400;   // ms — small trailing wait so multi-row bursts merge
+
+    const scheduleInvalidate = () => {
+      const now = Date.now();
+      const sinceLast = now - lastRun;
+      const wait = Math.max(TRAIL_DELAY, MIN_INTERVAL - sinceLast);
+      if (timer) return; // already scheduled, will pick up latest state
+      timer = setTimeout(() => {
+        timer = null;
+        lastRun = Date.now();
+        // Only refetch queries currently mounted/visible
+        queryClient.invalidateQueries({
+          queryKey: ['admin-all-device-health'],
+          refetchType: 'active',
+        });
+      }, wait);
+    };
+
     const channel = supabase
       .channel('admin-device-health-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'device_health' },
-        () => queryClient.invalidateQueries({ queryKey: ['admin-all-device-health'] }),
+        scheduleInvalidate,
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   const filtered = useMemo(() => {
