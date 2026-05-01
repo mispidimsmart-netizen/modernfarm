@@ -138,7 +138,7 @@ export function UserHealthExtras({ language, userId }: Props) {
     <div className="space-y-3">
       {/* Data Freshness Score - per user */}
       {userId !== 'all' && (
-        <Card className={`p-4 bg-gradient-to-br ${freshness ? scoreBg(freshness.score) : 'from-slate-800/50 to-slate-900/50 border-slate-700/30'}`}>
+        <Card className={`p-4 bg-gradient-to-br text-primary ${freshness ? scoreBg(freshness.score) : 'from-slate-800/50 to-slate-900/50 border-slate-700/30'}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-cyan-400" />
@@ -175,7 +175,7 @@ export function UserHealthExtras({ language, userId }: Props) {
 
       {/* Sparklines - per user */}
       {userId !== 'all' && (
-        <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/30">
+        <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/30 text-primary">
           <div className="flex items-center gap-2 mb-3">
             <Gauge className="w-4 h-4 text-purple-400" />
             <span className="text-sm font-medium text-white">
@@ -206,7 +206,7 @@ export function UserHealthExtras({ language, userId }: Props) {
       )}
 
       {/* Automation Activity */}
-      <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/30">
+      <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/30 text-primary">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-amber-400" />
@@ -238,7 +238,7 @@ export function UserHealthExtras({ language, userId }: Props) {
       </Card>
 
       {/* Edge Function Health */}
-      <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/30">
+      <Card className="p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-slate-700/30 text-primary">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-blue-400" />
