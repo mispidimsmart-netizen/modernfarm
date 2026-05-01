@@ -57,6 +57,7 @@ import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
+import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 
 const t = {
   bn: {
@@ -581,6 +582,7 @@ export default function AdminPage() {
 
           <TabsContent value="system" className="mt-4 space-y-4">
             <SystemHealthCard language={language} />
+            <AdminDeviceHealthPanel language={language} />
             <ForensicTimelineCard />
             {/* Calibration Wizard Card */}
             <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
