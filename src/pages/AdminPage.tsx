@@ -225,7 +225,7 @@ export default function AdminPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-rose-950/20 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#0b1e3a] flex items-center justify-center p-4">
         <Card className="max-w-md w-full bg-gradient-to-br from-rose-950/40 to-red-950/30 border-rose-500/30 shadow-2xl shadow-rose-500/10">
           <CardContent className="pt-8 pb-6 text-center">
             <div className="w-20 h-20 rounded-full bg-rose-500/20 flex items-center justify-center mx-auto mb-5">
