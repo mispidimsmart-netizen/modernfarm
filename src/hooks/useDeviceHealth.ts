@@ -265,14 +265,18 @@ export function getRestartReasonLabel(reason: string | null): { label: string; l
   
   const reasonMap: Record<string, { label: string; labelBn: string; severity: 'normal' | 'warning' | 'danger' }> = {
     'POWER_ON': { label: 'Power On', labelBn: 'পাওয়ার অন', severity: 'normal' },
+    'POWER_EVENT': { label: 'Power Event', labelBn: 'পাওয়ার ইভেন্ট', severity: 'warning' },
     'SW_RESET': { label: 'Software Reset', labelBn: 'সফটওয়্যার রিসেট', severity: 'normal' },
-    'BROWNOUT': { label: 'Brownout', labelBn: 'ব্রাউনআউট', severity: 'danger' },
-    'PANIC': { label: 'Panic', labelBn: 'প্যানিক ক্র্যাশ', severity: 'danger' },
+    'SOFTWARE': { label: 'Software Reset', labelBn: 'সফটওয়্যার রিসেট', severity: 'normal' },
+    'BROWNOUT': { label: 'Brownout', labelBn: 'ব্রাউনআউট (পাওয়ার দুর্বল)', severity: 'danger' },
+    'PANIC': { label: 'Panic Crash', labelBn: 'প্যানিক ক্র্যাশ', severity: 'danger' },
     'WDT': { label: 'Watchdog', labelBn: 'ওয়াচডগ', severity: 'warning' },
+    'WATCHDOG': { label: 'Watchdog Reset', labelBn: 'ওয়াচডগ রিসেট', severity: 'warning' },
     'TASK_WDT': { label: 'Task Watchdog', labelBn: 'টাস্ক ওয়াচডগ', severity: 'warning' },
     'INT_WDT': { label: 'Int Watchdog', labelBn: 'ইন্ট ওয়াচডগ', severity: 'warning' },
     'DEEPSLEEP': { label: 'Deep Sleep', labelBn: 'ডিপ স্লিপ', severity: 'normal' },
-    'EXTERNAL': { label: 'External', labelBn: 'এক্সটারনাল', severity: 'normal' },
+    'EXTERNAL': { label: 'External Reset', labelBn: 'এক্সটারনাল রিসেট', severity: 'normal' },
+    'UNKNOWN': { label: 'Unknown', labelBn: 'অজানা', severity: 'normal' },
   };
   
   return reasonMap[reason] || { label: reason, labelBn: reason, severity: 'normal' };
