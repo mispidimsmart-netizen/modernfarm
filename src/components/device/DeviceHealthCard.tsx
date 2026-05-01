@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { DeviceHealth, getSignalStrengthLabel, formatUptime, isDeviceOffline, getRestartReasonLabel, formatDuration, getOTAStatusLabel } from '@/hooks/useDeviceHealth';
-import { Wifi, WifiOff, Battery, Cpu, Clock, AlertTriangle, Power, Zap, RefreshCw, Shield, Database, Download, Activity, Bird, Cloud, Server, Droplets } from 'lucide-react';
+import { Wifi, WifiOff, Battery, Cpu, Clock, AlertTriangle, Power, Zap, RefreshCw, Shield, Database, Download, Activity, Bird, Cloud, Server, Droplets, History } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { RestartHistorySheet } from './RestartHistorySheet';
 
 interface DeviceHealthCardProps {
   device: DeviceHealth;
@@ -13,6 +16,7 @@ interface DeviceHealthCardProps {
 
 export function DeviceHealthCard({ device, deviceName }: DeviceHealthCardProps) {
   const { language } = useAuth();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const isOffline = isDeviceOffline(device.last_seen_at);
   const signal = getSignalStrengthLabel(device.wifi_signal_strength);
   
