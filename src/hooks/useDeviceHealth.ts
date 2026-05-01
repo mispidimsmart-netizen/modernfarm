@@ -110,9 +110,29 @@ export function useAllDeviceHealth() {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates (throttled to prevent UI freezes on bursty updates)
   useEffect(() => {
     if (!user?.id) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastRun = 0;
+    const MIN_INTERVAL = 1500; // ms
+    const TRAIL_DELAY = 400;   // ms
+
+    const scheduleInvalidate = () => {
+      const now = Date.now();
+      const sinceLast = now - lastRun;
+      const wait = Math.max(TRAIL_DELAY, MIN_INTERVAL - sinceLast);
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        lastRun = Date.now();
+        queryClient.invalidateQueries({
+          queryKey: ['device_health'],
+          refetchType: 'active',
+        });
+      }, wait);
+    };
 
     const channel = supabase
       .channel(`device_health_${user.id}`)
@@ -124,13 +144,12 @@ export function useAllDeviceHealth() {
           table: 'device_health',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['device_health'] });
-        }
+        scheduleInvalidate,
       )
       .subscribe();
 
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);
