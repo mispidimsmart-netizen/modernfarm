@@ -286,76 +286,80 @@ export default function AdminPage() {
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 border-0 text-white shadow-xl shadow-blue-500/20 hover:shadow-blue-500/30 transition-shadow">
+          {/* Total Users — Teal primary brand */}
+          <Card className="bg-gradient-to-br from-[#1F7A3E] via-emerald-700 to-teal-800 border border-emerald-400/30 text-white shadow-xl shadow-emerald-900/40 hover:shadow-emerald-500/30 transition-shadow">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100/80 text-sm font-medium">{labels.totalUsers}</p>
+                  <p className="text-emerald-100/80 text-sm font-medium">{labels.totalUsers}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-9 w-16 bg-blue-400/30 mt-1" />
+                    <Skeleton className="h-9 w-16 bg-emerald-400/30 mt-1" />
                   ) : (
                     <p className="text-4xl font-bold mt-1">{stats?.totalUsers || 0}</p>
                   )}
                   {!loadingStats && stats && (
                     <div className="flex gap-2 mt-1.5">
-                      <Badge variant="outline" className="text-[10px] border-blue-300/50 text-blue-100 px-1.5 py-0">
+                      <Badge variant="outline" className="text-[10px] border-emerald-300/50 text-emerald-100 px-1.5 py-0">
                         🥚 {stats.layerFarms}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px] border-blue-300/50 text-blue-100 px-1.5 py-0">
+                      <Badge variant="outline" className="text-[10px] border-emerald-300/50 text-emerald-100 px-1.5 py-0">
                         🐔 {stats.broilerFarms}
                       </Badge>
                     </div>
                   )}
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
                   <Users className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 border-0 text-white shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-shadow">
+          {/* Total Sheds — Cyan/Sky */}
+          <Card className="bg-gradient-to-br from-sky-600 via-cyan-700 to-teal-800 border border-cyan-400/30 text-white shadow-xl shadow-cyan-900/40 hover:shadow-cyan-500/30 transition-shadow">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-emerald-100/80 text-sm font-medium">{labels.totalSheds}</p>
+                  <p className="text-cyan-100/80 text-sm font-medium">{labels.totalSheds}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-9 w-16 bg-emerald-400/30 mt-1" />
+                    <Skeleton className="h-9 w-16 bg-cyan-400/30 mt-1" />
                   ) : (
                     <p className="text-4xl font-bold mt-1">{stats?.totalSheds || 0}</p>
                   )}
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
                   <Building2 className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-700 border-0 text-white shadow-xl shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow">
+          {/* Active Devices — Indigo/Blue */}
+          <Card className="bg-gradient-to-br from-indigo-600 via-blue-700 to-slate-800 border border-blue-400/30 text-white shadow-xl shadow-blue-900/40 hover:shadow-blue-500/30 transition-shadow">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-violet-100/80 text-sm font-medium">{labels.activeDevices}</p>
+                  <p className="text-blue-100/80 text-sm font-medium">{labels.activeDevices}</p>
                   {loadingStats ? (
-                    <Skeleton className="h-9 w-16 bg-violet-400/30 mt-1" />
+                    <Skeleton className="h-9 w-16 bg-blue-400/30 mt-1" />
                   ) : (
                     <p className="text-4xl font-bold mt-1">{stats?.activeDevices || 0}</p>
                   )}
                   {!loadingStats && stats && stats.activeBroilerBatches > 0 && (
-                    <Badge variant="outline" className="text-[10px] border-violet-300/50 text-violet-100 px-1.5 py-0 mt-1.5">
+                    <Badge variant="outline" className="text-[10px] border-blue-300/50 text-blue-100 px-1.5 py-0 mt-1.5">
                       🐔 {stats.activeBroilerBatches} ব্যাচ সক্রিয়
                     </Badge>
                   )}
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
                   <Cpu className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-amber-500 via-orange-600 to-rose-700 border-0 text-white shadow-xl shadow-amber-500/20 hover:shadow-amber-500/30 transition-shadow">
+          {/* Alerts Today — Amber/Rose */}
+          <Card className="bg-gradient-to-br from-amber-600 via-orange-700 to-rose-800 border border-amber-400/30 text-white shadow-xl shadow-amber-900/40 hover:shadow-amber-500/30 transition-shadow">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -366,7 +370,7 @@ export default function AdminPage() {
                     <p className="text-4xl font-bold mt-1">{stats?.alertsToday || 0}</p>
                   )}
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
                   <AlertTriangle className="w-7 h-7 text-white" />
                 </div>
               </div>
