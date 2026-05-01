@@ -414,6 +414,19 @@ export function DeviceSystemTab() {
         </CardContent>
       </Card>
 
+      {/* Device Health Card — visible at top, includes Restart History button */}
+      {deviceHealthList && deviceHealthList.length > 0 && (
+        <div className="space-y-3">
+          {deviceHealthList.map((health) => (
+            <DeviceHealthCard
+              key={health.device_id}
+              device={health}
+              deviceName={health.device_id}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Device Section */}
       <CollapsibleSection
         title="Device Management"
