@@ -214,7 +214,7 @@ export default function AdminPage() {
 
   if (authLoading || checkingAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#0b1e3a] flex items-center justify-center">
         <div className="text-white flex items-center gap-3 bg-white/5 px-6 py-4 rounded-2xl border border-white/10">
           <RefreshCw className="animate-spin text-indigo-400 w-6 h-6" />
           <span className="text-lg font-medium">{labels.loading}</span>
@@ -225,7 +225,7 @@ export default function AdminPage() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-rose-950/20 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#0b1e3a] flex items-center justify-center p-4">
         <Card className="max-w-md w-full bg-gradient-to-br from-rose-950/40 to-red-950/30 border-rose-500/30 shadow-2xl shadow-rose-500/10">
           <CardContent className="pt-8 pb-6 text-center">
             <div className="w-20 h-20 rounded-full bg-rose-500/20 flex items-center justify-center mx-auto mb-5">
@@ -248,9 +248,9 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#0b1e3a]">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 backdrop-blur-xl border-b border-indigo-500/20 sticky top-0 z-10 shadow-lg shadow-indigo-500/5">
+      <div className="bg-gradient-to-r from-slate-950/90 via-[#0b1e3a]/80 to-slate-950/90 backdrop-blur-xl border-b border-slate-700/40 sticky top-0 z-10 shadow-lg shadow-slate-950/40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
