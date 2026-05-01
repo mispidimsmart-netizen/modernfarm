@@ -287,22 +287,40 @@ export function DeviceHealthCard({ device, deviceName }: DeviceHealthCardProps) 
         </div>
       )}
 
+      {/* Restart history button */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setHistoryOpen(true)}
+        className="mt-3 h-8 w-full text-xs"
+      >
+        <History className="mr-1.5 h-3.5 w-3.5" />
+        {language === 'bn' ? 'রিস্টার্ট ইতিহাস দেখুন' : 'View Restart History'}
+        {device.total_restarts !== null && device.total_restarts > 0 && (
+          <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">
+            {device.total_restarts}
+          </Badge>
+        )}
+      </Button>
+
       {/* Footer */}
       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {language === 'bn' ? 'সর্বশেষ দেখা:' : 'Last seen:'} {lastSeenText}
         </span>
         <div className="flex items-center gap-2">
-          {device.total_restarts !== null && device.total_restarts > 0 && (
-            <span title={language === 'bn' ? 'মোট রিস্টার্ট' : 'Total restarts'}>
-              🔄 {device.total_restarts}
-            </span>
-          )}
           {device.firmware_version && (
             <Badge variant="outline" className="text-[10px]">v{device.firmware_version}</Badge>
           )}
         </div>
       </div>
+
+      <RestartHistorySheet
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        deviceTokenId={device.device_token_id}
+        deviceName={deviceName}
+      />
     </div>
   );
 }
