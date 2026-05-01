@@ -419,9 +419,9 @@ export function DeviceSystemTab() {
         <div className="space-y-3">
           {deviceHealthList.map((health) => (
             <DeviceHealthCard
-              key={health.device_id}
+              key={health.id}
               device={health}
-              deviceName={health.device_id}
+              deviceName={health.device_token_id}
             />
           ))}
         </div>
