@@ -238,7 +238,7 @@ export function AdminDeviceHealthPanel({ language }: Props) {
       const userIds = Array.from(new Set(offline.map(d => d.user_id)));
       const rows = userIds.map(uid => ({
         user_id: uid,
-        alert_type: 'device' as const,
+        alert_type: 'power' as const,
         severity: 'warning' as const,
         message: 'Your ESP32 device appears offline. Please check power and WiFi.',
         message_bn: 'আপনার ESP32 ডিভাইস অফলাইন দেখাচ্ছে। অনুগ্রহ করে পাওয়ার ও WiFi চেক করুন।',
