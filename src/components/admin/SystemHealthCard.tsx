@@ -33,6 +33,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { UserHealthExtras } from './UserHealthExtras';
 
 interface SystemHealthCardProps {
   language?: 'bn' | 'en';
@@ -1178,6 +1179,9 @@ export function SystemHealthCard({ language = 'bn' }: SystemHealthCardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Enhanced metrics: sparklines, automation activity, freshness, edge health */}
+      <UserHealthExtras language={language} userId={selectedUserId} />
     </div>
   );
 }
