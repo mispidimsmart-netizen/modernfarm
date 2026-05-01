@@ -138,7 +138,7 @@ export function UserHealthExtras({ language, userId }: Props) {
     <div className="space-y-3">
       {/* Data Freshness Score - per user */}
       {userId !== 'all' && (
-        <Card className={`p-4 bg-gradient-to-br ${freshness ? scoreBg(freshness.score) : 'from-slate-800/50 to-slate-900/50 border-slate-700/30'}`}>
+        <Card className={`p-4 bg-gradient-to-br text-primary ${freshness ? scoreBg(freshness.score) : 'from-slate-800/50 to-slate-900/50 border-slate-700/30'}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-cyan-400" />
