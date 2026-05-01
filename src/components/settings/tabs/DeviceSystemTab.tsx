@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateDeviceToken } from '@/lib/esp32Api';
 import { useSheds } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
+import { DeviceHealthCard } from '@/components/device/DeviceHealthCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -412,6 +413,19 @@ export function DeviceSystemTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Device Health Card — visible at top, includes Restart History button */}
+      {deviceHealthList && deviceHealthList.length > 0 && (
+        <div className="space-y-3">
+          {deviceHealthList.map((health) => (
+            <DeviceHealthCard
+              key={health.id}
+              device={health}
+              deviceName={health.device_token_id}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Device Section */}
       <CollapsibleSection
