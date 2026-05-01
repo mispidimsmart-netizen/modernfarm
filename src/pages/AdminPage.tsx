@@ -248,9 +248,9 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950/30 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#0b1e3a]">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-950/80 via-purple-950/60 to-indigo-950/80 backdrop-blur-xl border-b border-indigo-500/20 sticky top-0 z-10 shadow-lg shadow-indigo-500/5">
+      <div className="bg-gradient-to-r from-slate-950/90 via-[#0b1e3a]/80 to-slate-950/90 backdrop-blur-xl border-b border-slate-700/40 sticky top-0 z-10 shadow-lg shadow-slate-950/40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
