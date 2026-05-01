@@ -57,6 +57,7 @@ import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
+import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 
 const t = {
   bn: {
