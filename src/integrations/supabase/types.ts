@@ -1337,6 +1337,51 @@ export type Database = {
           },
         ]
       }
+      device_restart_log: {
+        Row: {
+          created_at: string
+          device_token_id: string
+          error_message: string | null
+          farm_id: string | null
+          firmware_version: string | null
+          free_memory_bytes: number | null
+          id: string
+          occurred_at: string
+          restart_reason: string
+          uptime_before_restart_seconds: number | null
+          user_id: string
+          wifi_signal_strength: number | null
+        }
+        Insert: {
+          created_at?: string
+          device_token_id: string
+          error_message?: string | null
+          farm_id?: string | null
+          firmware_version?: string | null
+          free_memory_bytes?: number | null
+          id?: string
+          occurred_at?: string
+          restart_reason: string
+          uptime_before_restart_seconds?: number | null
+          user_id: string
+          wifi_signal_strength?: number | null
+        }
+        Update: {
+          created_at?: string
+          device_token_id?: string
+          error_message?: string | null
+          farm_id?: string | null
+          firmware_version?: string | null
+          free_memory_bytes?: number | null
+          id?: string
+          occurred_at?: string
+          restart_reason?: string
+          uptime_before_restart_seconds?: number | null
+          user_id?: string
+          wifi_signal_strength?: number | null
+        }
+        Relationships: []
+      }
       device_status: {
         Row: {
           age_profile_days: number | null
@@ -4671,6 +4716,7 @@ export type Database = {
         Returns: Json
       }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
+      cleanup_old_restart_logs: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }

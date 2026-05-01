@@ -1408,6 +1408,44 @@ async function handleDeviceState(
 
     if (body.restart_reason) {
       healthUpdate.restart_reason = body.restart_reason;
+
+      // Log a new restart event when device just booted (uptime < 120s).
+      // Idempotent: only one log row per boot because uptime grows past 120s quickly.
+      if (typeof body.uptime_seconds === 'number' && body.uptime_seconds < 120) {
+        try {
+          // Check that we haven't already logged this exact boot in the last 5 min
+          const { data: recent } = await supabase
+            .from('device_restart_log')
+            .select('id')
+            .eq('device_token_id', deviceTokenId)
+            .gte('occurred_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+            .limit(1);
+
+          if (!recent || recent.length === 0) {
+            await supabase.from('device_restart_log').insert({
+              user_id: userId,
+              farm_id: deviceInfo.farm_id ?? null,
+              device_token_id: deviceTokenId,
+              restart_reason: body.restart_reason,
+              uptime_before_restart_seconds:
+                typeof body.uptime_seconds === 'number'
+                  ? Math.max(0, Math.floor(body.uptime_seconds))
+                  : null,
+              free_memory_bytes:
+                typeof (body as any).free_memory_bytes === 'number'
+                  ? (body as any).free_memory_bytes
+                  : null,
+              wifi_signal_strength:
+                typeof (body as any).wifi_rssi === 'number' ? (body as any).wifi_rssi : null,
+              error_message: (body as any).last_error_message ?? null,
+              firmware_version: body.firmware_version ?? null,
+              occurred_at: new Date().toISOString(),
+            });
+          }
+        } catch (logErr) {
+          console.error('[esp32-api] restart log insert failed', logErr);
+        }
+      }
     }
 
     if (typeof body.restart_count === 'number') {
