@@ -8,8 +8,22 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export function FarmerSensorHealth() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { issues } = useSensorValidation(sensorData);
+
+  if (!hasRealData) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <Card className="border-dashed bg-muted/30">
+          <CardContent className="pt-4 pb-4 text-center">
+            <p className="text-sm font-medium text-muted-foreground">
+              📡 {language === 'bn' ? 'সেন্সর ডেটা নেই — ESP32 কানেক্ট করুন' : 'No sensor data — connect ESP32'}
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   const sensors = useMemo(() => {
     const issueMap = new Map(issues.map((i) => [i.sensor, i]));
