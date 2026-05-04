@@ -144,79 +144,74 @@ export function Dashboard() {
           <ShedManagementSheet />
         </div>
 
-        {/* ============ SETUP REMINDER ============ */}
-        <SetupReminderBanner />
-        <ManualModeWarningBanner />
+        {/* ============ 🔝 STICKY CRITICAL ZONE (always visible) ============ */}
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-md border-b border-border/40 mb-3 space-y-2">
+          {/* Setup / Manual / Emergency / Alert banners */}
+          <SetupReminderBanner />
+          <ManualModeWarningBanner />
+          <EmergencyProtectionBanner />
+          <AlertSummaryBanner />
 
-        {/* ============ EMERGENCY PROTECTION BANNER ============ */}
-        <EmergencyProtectionBanner />
+          {/* Quick sensor strip — temp / humidity / ammonia */}
+          <QuickSensorDisplay />
 
-        {/* ============ ALERT SUMMARY BANNER ============ */}
-        <AlertSummaryBanner />
-
-        {/* ============ 1. HERO STATUS (Largest element) ============ */}
-        <div className="mb-3">
-          <IndustrialHeroStatus />
+          {/* Farm Health Score */}
+          <FarmHealthScore />
         </div>
 
-
-        {/* ============ 3. CORE METRICS ROW (3 items only) ============ */}
-        <div className="mb-3">
-          <CoreMetricsRow />
-        </div>
-
-        {/* ============ 💡 LIGHT STATUS (single compact panel) ============ */}
-        <div className="mb-3">
-          <LightStatusPanel />
-        </div>
-
-        {/* ============ 📜 LIGHT ACTION HISTORY (last 24h) ============ */}
-        <div className="mb-3">
-          <LightActionHistory />
-        </div>
-
-        {/* ============ LIGHT SENSOR (only if LDR installed) ============ */}
-        <div className="mb-3">
-          <LightSensorCard />
-        </div>
-
-        {/* ============ CURRENT ACTION + ADVISORY ============ */}
-        <div className="mb-3 grid grid-cols-2 gap-3">
-          <CurrentActionPanel />
-          <AdvisoryAssistant />
-        </div>
-
-
-        {/* ============ TABS (Home extras + Full Details) ============ */}
+        {/* ============ 🗂️ MAIN TABS (4 sections) ============ */}
         <div className="mb-5">
-          <Tabs defaultValue="home" className="w-full">
-            <TabsList className="w-full grid grid-cols-2 h-11 rounded-2xl bg-muted/50 p-1 border border-border/50">
+          <Tabs defaultValue="summary" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-muted/50 p-1 border border-border/50 gap-1">
               <TabsTrigger 
-                value="home" 
-                className="rounded-xl text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+                value="summary" 
+                className="rounded-xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md flex flex-col gap-0.5 h-full"
               >
-                {language === 'bn' ? '🏠 হোম' : '🏠 Home'}
+                <span className="text-base leading-none">🏠</span>
+                <span className="leading-none">{language === 'bn' ? 'সারসংক্ষেপ' : 'Summary'}</span>
               </TabsTrigger>
               <TabsTrigger 
-                value="details" 
-                className="rounded-xl text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+                value="environment" 
+                className="rounded-xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md flex flex-col gap-0.5 h-full"
               >
-                {language === 'bn' ? '📊 বিস্তারিত' : '📊 Details'}
+                <span className="text-base leading-none">🌡️</span>
+                <span className="leading-none">{language === 'bn' ? 'পরিবেশ' : 'Env'}</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="control" 
+                className="rounded-xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md flex flex-col gap-0.5 h-full"
+              >
+                <span className="text-base leading-none">⚡</span>
+                <span className="leading-none">{language === 'bn' ? 'নিয়ন্ত্রণ' : 'Control'}</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="flock" 
+                className="rounded-xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md flex flex-col gap-0.5 h-full"
+              >
+                <span className="text-base leading-none">🐔</span>
+                <span className="leading-none">{language === 'bn' ? 'ফ্লক' : 'Flock'}</span>
               </TabsTrigger>
             </TabsList>
-            
-            {/* TAB: Home */}
-            <TabsContent value="home" className="mt-3 space-y-3">
-              {/* Device Online/Offline Status */}
+
+            {/* TAB 1: 🏠 সারসংক্ষেপ */}
+            <TabsContent value="summary" className="mt-3 space-y-3">
               <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-
-              {/* ── 🐔 আরাম সূচক ── */}
+              <IndustrialHeroStatus />
               <ComfortIndicators />
+              <div>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
+                </p>
+                <WeatherCard />
+              </div>
+              <TodayReadableSummary />
+            </TabsContent>
 
-              {/* ── 📡 সেন্সর ── */}
+            {/* TAB 2: 🌡️ পরিবেশ */}
+            <TabsContent value="environment" className="mt-3 space-y-3">
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
                   </p>
                   <SensorFreshnessBadge timestamp={sensorData.timestamp} compact />
@@ -228,64 +223,28 @@ export function Dashboard() {
                   <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
                 </div>
               </div>
-
-              {/* ── 🌤️ আবহাওয়া ── */}
-              <div>
-                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
-                </p>
-                <WeatherCard />
-              </div>
-
-              {/* ── ⚡ কার্যক্রম ── */}
-              <div>
-                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
-                </p>
-                <SystemActivityCard />
-              </div>
-
-              {/* Today Summary */}
-              <TodayReadableSummary />
-
-              {/* PowerOutageCard moved to Details tab to avoid duplication */}
-
-              {/* Mode Status Strip */}
-              <div className={`rounded-xl border px-4 py-2 text-center ${
-                isManualMode
-                  ? 'bg-amber-500/10 border-amber-500/20'
-                  : 'bg-primary/5 border-primary/20'
-              }`}>
-                <p className={`text-xs font-medium ${isManualMode ? 'text-amber-700 dark:text-amber-400' : 'text-primary'}`}>
-                  {isManualMode
-                    ? (language === 'bn' 
-                        ? '✋ ম্যানুয়াল মোড — আপনি ডিভাইস নিয়ন্ত্রণ করছেন (সেফটি সক্রিয়)'
-                        : '✋ Manual Mode — You control devices (Safety active)')
-                    : (language === 'bn' 
-                        ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
-                        : '🤖 Automation system is monitoring your farm')
-                  }
-                </p>
-              </div>
+              <CoreMetricsRow />
+              <InsideOutsideDeltaCard />
+              <SensorCharts />
+              <HourlyForecastCard />
+              <AmmoniaTrendCard result={ammoniaTrendResult} />
+              <CoolingEfficiencyCard result={coolingEfficiencyResult} />
+              {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
             </TabsContent>
-            
-            {/* TAB: Details (Technical/Graphs) */}
-            <TabsContent value="details" className="mt-4 space-y-6">
-              
-              {/* ── GROUP 1: পরিবেশ (Environment) ── */}
-              <section>
-                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                  🌡️ {language === 'bn' ? 'পরিবেশ পরিস্থিতি' : 'Environment'}
-                </h3>
-                <div className="space-y-3">
-                  <InsideOutsideDeltaCard />
-                  <SensorCharts />
-                </div>
-              </section>
 
-              {/* ── GROUP 2: অটোমেশন ও সেফটি ── */}
+            {/* TAB 3: ⚡ নিয়ন্ত্রণ ও অটোমেশন */}
+            <TabsContent value="control" className="mt-3 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <CurrentActionPanel />
+                <AdvisoryAssistant />
+              </div>
+
+              <LightStatusPanel />
+              <LightActionHistory />
+              <LightSensorCard />
+
               <section>
-                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
                   {isManualMode ? '✋' : '⚙️'} {language === 'bn' 
                     ? (isManualMode ? 'সিস্টেম স্ট্যাটাস' : 'অটোমেশন ও সেফটি') 
                     : (isManualMode ? 'System Status' : 'Automation & Safety')}
@@ -296,8 +255,7 @@ export function Dashboard() {
                     <SystemModeCard />
                   </div>
                   {!isManualMode && <AutomationStatusCard />}
-                  
-                  {/* Broiler Specific - show in both modes (temp info is useful) */}
+
                   {isBroiler && (
                     <>
                       {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
@@ -317,40 +275,15 @@ export function Dashboard() {
                       <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
                     </>
                   )}
-                  
-                  {/* Layer Specific */}
+
                   {isLayer && !isManualMode && (
                     <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                   )}
                 </div>
               </section>
 
-              {/* ── GROUP 3: সতর্কতা ও ট্রেন্ড ── */}
               <section>
-                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
-                  📈 {language === 'bn' ? 'ট্রেন্ড ও সতর্কতা' : 'Trends & Alerts'}
-                </h3>
-                <div className="space-y-3">
-                  <AmmoniaTrendCard result={ammoniaTrendResult} />
-                  <CoolingEfficiencyCard result={coolingEfficiencyResult} />
-                  {isLayer && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
-                  {isBroiler && broilerWaterResult && (
-                    <WaterAnomalyCard result={{
-                      todayUsage: broilerWaterResult.currentUsage,
-                      last3DaysAvg: broilerWaterResult.avgLast6Hours,
-                      percentChange: broilerWaterResult.percentChange,
-                      isAnomaly: broilerWaterResult.isAnomaly,
-                      threshold: broilerWaterResult.threshold,
-                      message: broilerWaterResult.message,
-                    }} />
-                  )}
-                  {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
-                </div>
-              </section>
-
-              {/* ── GROUP 4: ডিভাইস ও সিস্টেম ── */}
-              <section>
-                <h3 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
                   🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
                 </h3>
                 <div className="space-y-3">
@@ -358,6 +291,48 @@ export function Dashboard() {
                   <PowerOutageCard />
                 </div>
               </section>
+
+              <div className={`rounded-xl border px-4 py-2 text-center ${
+                isManualMode
+                  ? 'bg-amber-500/10 border-amber-500/20'
+                  : 'bg-primary/5 border-primary/20'
+              }`}>
+                <p className={`text-xs font-medium ${isManualMode ? 'text-amber-700 dark:text-amber-400' : 'text-primary'}`}>
+                  {isManualMode
+                    ? (language === 'bn' 
+                        ? '✋ ম্যানুয়াল মোড — আপনি ডিভাইস নিয়ন্ত্রণ করছেন (সেফটি সক্রিয়)'
+                        : '✋ Manual Mode — You control devices (Safety active)')
+                    : (language === 'bn' 
+                        ? '🤖 অটোমেশন সিস্টেম আপনার খামার পর্যবেক্ষণ করছে'
+                        : '🤖 Automation system is monitoring your farm')
+                  }
+                </p>
+              </div>
+            </TabsContent>
+
+            {/* TAB 4: 🐔 ফ্লক / ব্যাচ */}
+            <TabsContent value="flock" className="mt-3 space-y-3">
+              <div>
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
+                </p>
+                <SystemActivityCard />
+              </div>
+
+              {isLayer && <LayerBatchCard />}
+              {isBroiler && <BroilerDashboardWidget />}
+
+              {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
+              {isBroiler && broilerWaterResult && (
+                <WaterAnomalyCard result={{
+                  todayUsage: broilerWaterResult.currentUsage,
+                  last3DaysAvg: broilerWaterResult.avgLast6Hours,
+                  percentChange: broilerWaterResult.percentChange,
+                  isAnomaly: broilerWaterResult.isAnomaly,
+                  threshold: broilerWaterResult.threshold,
+                  message: broilerWaterResult.message,
+                }} />
+              )}
             </TabsContent>
           </Tabs>
         </div>
