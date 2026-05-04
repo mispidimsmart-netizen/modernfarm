@@ -35,7 +35,7 @@ export function QuickSensorDisplay() {
     {
       icon: Thermometer,
       label: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
-      value: `${sensorData.temperature.toFixed(1)}°C`,
+      value: hasRealData ? `${sensorData.temperature.toFixed(1)}°C` : '—',
       color: 'text-orange-600 dark:text-orange-400',
       bg: 'bg-orange-50 dark:bg-orange-950/50',
       border: 'border-orange-200 dark:border-orange-800',
@@ -43,7 +43,7 @@ export function QuickSensorDisplay() {
     {
       icon: Droplets,
       label: { bn: 'আর্দ্রতা', en: 'Humidity' },
-      value: `${sensorData.humidity.toFixed(0)}%`,
+      value: hasRealData ? `${sensorData.humidity.toFixed(0)}%` : '—',
       color: 'text-blue-600 dark:text-blue-400',
       bg: 'bg-blue-50 dark:bg-blue-950/50',
       border: 'border-blue-200 dark:border-blue-800',
@@ -51,11 +51,11 @@ export function QuickSensorDisplay() {
     {
       icon: Wind,
       label: { bn: 'গ্যাসের মাত্রা', en: 'Ammonia' },
-      value: `${sensorData.ammonia.toFixed(0)} ppm`,
-      subValue: ammoniaStatus.label[language],
-      color: ammoniaStatus.color,
-      bg: ammoniaStatus.bg,
-      border: ammoniaStatus.border,
+      value: hasRealData ? `${sensorData.ammonia.toFixed(0)} ppm` : '—',
+      subValue: hasRealData ? ammoniaStatus.label[language] : (language === 'bn' ? 'ডেটা নেই' : 'No data'),
+      color: hasRealData ? ammoniaStatus.color : 'text-muted-foreground',
+      bg: hasRealData ? ammoniaStatus.bg : 'bg-muted/30',
+      border: hasRealData ? ammoniaStatus.border : 'border-border',
     },
   ];
 
