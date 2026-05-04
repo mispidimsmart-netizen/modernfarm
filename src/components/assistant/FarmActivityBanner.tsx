@@ -112,13 +112,26 @@ const FARM_STATES: FarmState[] = [
 
 export function FarmActivityBanner() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: settings } = useFarmSettings();
   const { isBroiler } = useFarmType();
 
   // Determine current farm state based on sensor data and device status
   const currentState = useMemo((): FarmState => {
+    // No real sensor data — show neutral state
+    if (!hasRealData) {
+      return {
+        id: 'no_data',
+        icon: AlertTriangle,
+        label: { bn: '⚪ সেন্সর ডেটা নেই', en: '⚪ No Sensor Data' },
+        description: { bn: 'ESP32 কানেক্ট করুন', en: 'Connect ESP32 device' },
+        gradient: 'from-slate-600 via-gray-500 to-slate-600',
+        borderColor: 'border-slate-400/50',
+        textColor: 'text-slate-100',
+        priority: 0,
+      };
+    }
     const temp = sensorData.temperature;
     const humidity = sensorData.humidity;
     const ammonia = sensorData.ammonia;
@@ -157,7 +170,7 @@ export function FarmActivityBanner() {
 
     // Default: Optimal
     return FARM_STATES.find(s => s.id === 'optimal')!;
-  }, [sensorData, deviceStatus]);
+  }, [sensorData, deviceStatus, hasRealData]);
 
   const Icon = currentState.icon;
 

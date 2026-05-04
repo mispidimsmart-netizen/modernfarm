@@ -27,7 +27,7 @@ interface BannerConfig {
 
 export function HeroFarmBanner() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: settings } = useFarmSettings();
   const { isLayer, isBroiler, type } = useFarmType();
@@ -59,7 +59,19 @@ export function HeroFarmBanner() {
     const temp = sensorData.temperature;
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
-    
+
+    // No real sensor data — show neutral "no data" state
+    if (!hasRealData) {
+      return {
+        state: 'good',
+        gradient: 'from-slate-600 via-gray-500 to-slate-600',
+        borderColor: 'border-slate-400/50',
+        icon: Activity,
+        title: { bn: '⚪ সেন্সর ডেটা নেই', en: '⚪ No Sensor Data' },
+        subtitle: { bn: 'ESP32 ডিভাইস কানেক্ট করুন', en: 'Please connect your ESP32 device' },
+      };
+    }
+
     // DANGER/EMERGENCY state
     if (temp > 38 || ammonia > 25 || hsi > 85) {
       return {
@@ -117,7 +129,7 @@ export function HeroFarmBanner() {
       title: { bn: '🟢 খামার স্বাভাবিক চলছে', en: '🟢 Farm Running Normal' },
       subtitle: { bn: 'খামার সম্পূর্ণ অটোমেটিক চলছে', en: 'Farm is fully automatic' },
     };
-  }, [sensorData, hsiResult, isBroiler, batchStats]);
+  }, [sensorData, hsiResult, isBroiler, batchStats, hasRealData]);
 
   // Determine current automation activity
   const automationActivity = useMemo(() => {
