@@ -424,6 +424,10 @@ export default function AdminPage() {
               <Upload className="w-4 h-4 mr-2" />
               {labels.tabFirmware}
             </TabsTrigger>
+            <TabsTrigger value="security" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Shield className="w-4 h-4 mr-2" />
+              {labels.tabSecurity}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="admins" className="mt-4">
