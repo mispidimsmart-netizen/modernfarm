@@ -436,7 +436,7 @@ export function LoginPage() {
           </button>
         </motion.div>
 
-        <form onSubmit={handleSignup} className="space-y-3 sm:space-y-4">
+        <form onSubmit={handleSignup} className="space-y-4">
           {/* 1. নাম */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">{userType === 'owner' ? 'মালিকের নাম' : 'কর্মীর নাম'} *</label>
