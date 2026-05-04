@@ -18,7 +18,7 @@ interface ScoreBreakdown {
 
 export function FarmHealthScore() {
   const { language } = useAuth();
-  const { sensorData, isConnected } = useRealtimeSensorData();
+  const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: settings } = useFarmSettings();
   const { data: weather } = useWeatherCache();
