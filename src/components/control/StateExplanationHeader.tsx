@@ -71,7 +71,7 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
 
 export function StateExplanationHeader() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { selectedShedId } = useSelectedShed();
   const { data: deviceHealth } = useAllDeviceHealth();
   
@@ -88,6 +88,16 @@ export function StateExplanationHeader() {
   });
 
   const currentState = useMemo((): StateConfig => {
+    if (!hasRealData) {
+      return {
+        id: 'sensor_fail',
+        icon: Wrench,
+        explanation: { bn: 'সেন্সর ডেটা নেই — ESP32 কানেক্ট করুন', en: 'No sensor data — connect ESP32' },
+        systemLabel: 'NO_DATA',
+        gradient: 'from-slate-600 via-gray-500 to-slate-600',
+        borderColor: 'border-slate-400/50',
+      };
+    }
     const temp = sensorData.temperature;
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
@@ -96,7 +106,7 @@ export function StateExplanationHeader() {
     if (temp > 32 || hsi > 70) return STATE_MAP.cooling;
     if (temp < 18) return STATE_MAP.adjusting;
     return STATE_MAP.normal;
-  }, [sensorData, hsiResult]);
+  }, [sensorData, hsiResult, hasRealData]);
 
   const Icon = currentState.icon;
   const isEmergency = currentState.id === 'emergency';

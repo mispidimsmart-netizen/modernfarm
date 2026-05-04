@@ -8,10 +8,22 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export function LiveEnvironmentPanel() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { issues } = useSensorValidation(sensorData);
 
   const issueMap = useMemo(() => new Map(issues.map((i) => [i.sensor, i])), [issues]);
+
+  if (!hasRealData) {
+    return (
+      <Card>
+        <CardContent className="pt-4 pb-4 text-center">
+          <p className="text-sm font-medium text-muted-foreground">
+            📡 {language === 'bn' ? 'লাইভ পরিবেশ — সেন্সর ডেটা নেই' : 'Live environment — no sensor data'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const tempInterpretation = useMemo(() => {
     const t = sensorData.temperature;

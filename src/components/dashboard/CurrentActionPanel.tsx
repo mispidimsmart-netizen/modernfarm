@@ -131,7 +131,7 @@ export function CurrentActionPanel() {
       color: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     };
-  }, [sensorData, deviceStatus, isManualMode, language]);
+  }, [sensorData, deviceStatus, isManualMode, language, hasRealData]);
 
   const Icon = currentAction.icon;
 

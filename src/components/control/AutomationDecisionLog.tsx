@@ -13,7 +13,7 @@ interface LogEntry {
 
 export function AutomationDecisionLog() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const prevStateRef = useRef<{ fan: boolean; heater: boolean; temp: number; ammonia: number }>({
