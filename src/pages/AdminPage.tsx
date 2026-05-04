@@ -58,6 +58,7 @@ import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport'
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
+import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 
 const t = {
   bn: {
@@ -97,6 +98,7 @@ const t = {
     tabAudit: 'অডিট রিপোর্ট',
     tabArchitecture: 'টেকনিক্যাল আর্কিটেকচার',
     tabFirmware: 'ফার্মওয়্যার',
+    tabSecurity: 'সিকিউরিটি লগ',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -144,6 +146,7 @@ const t = {
     tabAudit: 'Audit Report',
     tabArchitecture: 'Technical Architecture',
     tabFirmware: 'Firmware',
+    tabSecurity: 'Security Logs',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -421,6 +424,10 @@ export default function AdminPage() {
               <Upload className="w-4 h-4 mr-2" />
               {labels.tabFirmware}
             </TabsTrigger>
+            <TabsTrigger value="security" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Shield className="w-4 h-4 mr-2" />
+              {labels.tabSecurity}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="admins" className="mt-4">
@@ -659,6 +666,10 @@ export default function AdminPage() {
 
           <TabsContent value="firmware" className="mt-4">
             <FirmwareManagementTab language={language} />
+          </TabsContent>
+
+          <TabsContent value="security" className="mt-4">
+            <SecurityAuditLogPanel />
           </TabsContent>
         </Tabs>
       </div>
