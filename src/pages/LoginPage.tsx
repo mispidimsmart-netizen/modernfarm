@@ -339,7 +339,7 @@ export function LoginPage() {
                         placeholder="আপনার ইমেইল ঠিকানা লিখুন" className={inputClass} required />
                     </IconInput>
                   </div>
-                  <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25">
+                  <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-2xl text-base font-bold shadow-lg shadow-primary/25">
                     {isLoading ? <Spinner /> : 'রিসেট লিংক পাঠান'}
                   </Button>
                   <button type="button" onClick={() => setShowForgotPassword(false)}
