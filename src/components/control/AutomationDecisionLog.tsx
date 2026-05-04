@@ -24,6 +24,7 @@ export function AutomationDecisionLog() {
   });
 
   useEffect(() => {
+    if (!hasRealData) return; // Don't log decisions inferred from stale/missing data
     const prev = prevStateRef.current;
     const now = new Date().toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
       hour: '2-digit',
@@ -104,7 +105,7 @@ export function AutomationDecisionLog() {
       temp: sensorData.temperature,
       ammonia: sensorData.ammonia,
     };
-  }, [deviceStatus.fan, deviceStatus.heater, sensorData.temperature, sensorData.ammonia, language]);
+  }, [deviceStatus.fan, deviceStatus.heater, sensorData.temperature, sensorData.ammonia, language, hasRealData]);
 
   // Seed initial entry on mount
   useEffect(() => {
