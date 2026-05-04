@@ -56,8 +56,12 @@ import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 // Farmer-Friendly Assistant Components
 import { 
   ComfortIndicators, AdvisoryAssistant, QuickControlFAB,
-  SystemActivityCard, TodayReadableSummary
+  SystemActivityCard, TodayReadableSummary, FarmHealthScore,
+  HourlyForecastCard
 } from '@/components/assistant';
+import { QuickSensorDisplay } from '@/components/assistant/QuickSensorDisplay';
+import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
+import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 
 // Smart Alert Banner
 import { AlertSummaryBanner } from '@/components/alerts';
