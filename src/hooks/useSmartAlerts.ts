@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useAlerts } from './useFarmData';
 import { useLiveSensorData } from './useSensorData';
+import { useRealtimeSensorData } from './useRealtimeSensorData';
 import { useNotificationSound } from './useNotificationSound';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmType, getBroilerTempRangeByDays } from './useFarmType';
@@ -315,6 +316,7 @@ function isQuietHours(): boolean {
 export function useSmartAlerts() {
   const { data: rawAlerts = [] } = useAlerts();
   const sensorData = useLiveSensorData();
+  const { hasRealData } = useRealtimeSensorData();
   const { playDangerAlarm, playWarningSound } = useNotificationSound();
   const { language } = useAuth();
   const { isBroiler, isLayer } = useFarmType();
@@ -338,7 +340,20 @@ export function useSmartAlerts() {
 
   // Convert raw alerts to smart alerts
   const processAlerts = useCallback(() => {
-    const processed: SmartAlert[] = rawAlerts.map(alert => {
+    // When ESP32 is fully offline (no fresh data), suppress sensor-derived
+    // alerts like "sensor_failure" / "no_ventilation" — they are stale and
+    // misleading. The dedicated EspConnectionBanner already informs the user.
+    const STALE_SUPPRESS_TYPES = new Set([
+      'sensor_failure',
+      'no_ventilation',
+      'heat_stress',
+      'temperature_rising',
+    ]);
+    const filteredAlerts = hasRealData
+      ? rawAlerts
+      : rawAlerts.filter((a) => !STALE_SUPPRESS_TYPES.has(a.alert_type));
+
+    const processed: SmartAlert[] = filteredAlerts.map(alert => {
       const template = ALERT_TEMPLATES[alert.alert_type] || ALERT_TEMPLATES['sensor_failure'];
       const msgData = template.getMessage({
         temp: sensorData?.temperature,
@@ -367,7 +382,8 @@ export function useSmartAlerts() {
     });
 
     // Add broiler-specific temperature alerts based on live sensor data
-    if (isBroiler && broilerTempTarget && sensorData?.temperature) {
+    // Skip when ESP32 is offline — sensorData would be stale.
+    if (hasRealData && isBroiler && broilerTempTarget && sensorData?.temperature) {
       const temp = sensorData.temperature;
       const target = broilerTempTarget.targetTemp;
       const tolerance = 2; // 2°C tolerance
@@ -418,7 +434,7 @@ export function useSmartAlerts() {
     }
 
     return groupAlerts(processed);
-  }, [rawAlerts, sensorData, isBroiler, broilerTempTarget, broilerAgeDays]);
+  }, [rawAlerts, sensorData, isBroiler, broilerTempTarget, broilerAgeDays, hasRealData]);
 
   // Handle notifications with anti-spam
   const notify = useCallback((alert: SmartAlert) => {
