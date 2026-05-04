@@ -45,6 +45,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Industrial Dashboard Components
 import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
+import { EspConnectionBanner } from '@/components/dashboard/EspConnectionBanner';
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
