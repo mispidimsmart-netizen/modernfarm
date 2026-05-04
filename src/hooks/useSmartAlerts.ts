@@ -434,7 +434,7 @@ export function useSmartAlerts() {
     }
 
     return groupAlerts(processed);
-  }, [rawAlerts, sensorData, isBroiler, broilerTempTarget, broilerAgeDays]);
+  }, [rawAlerts, sensorData, isBroiler, broilerTempTarget, broilerAgeDays, hasRealData]);
 
   // Handle notifications with anti-spam
   const notify = useCallback((alert: SmartAlert) => {
