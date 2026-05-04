@@ -84,6 +84,39 @@ export const SecurityAuditLogPanel = () => {
     });
   }, []);
 
+  // Realtime subscription — new audit events stream in live
+  useEffect(() => {
+    const channel = supabase
+      .channel('security-audit-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'security_audit_log' },
+        (payload) => {
+          const row = payload.new as AuditRow;
+          // Apply current filters client-side before prepending
+          if (eventType !== 'all' && row.event_type !== eventType) return;
+          if (farmId !== 'all' && row.farm_id !== farmId) return;
+          const hours = RANGES[range];
+          if (hours > 0) {
+            const sinceMs = Date.now() - hours * 3600 * 1000;
+            if (new Date(row.created_at).getTime() < sinceMs) return;
+          }
+          setRows((prev) => {
+            if (prev.some((r) => r.id === row.id)) return prev;
+            return [row, ...prev].slice(0, 500);
+          });
+          setLiveCount((c) => c + 1);
+        }
+      )
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventType, farmId, range]);
+
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
     const s = search.toLowerCase();
