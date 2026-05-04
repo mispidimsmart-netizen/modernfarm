@@ -340,7 +340,20 @@ export function useSmartAlerts() {
 
   // Convert raw alerts to smart alerts
   const processAlerts = useCallback(() => {
-    const processed: SmartAlert[] = rawAlerts.map(alert => {
+    // When ESP32 is fully offline (no fresh data), suppress sensor-derived
+    // alerts like "sensor_failure" / "no_ventilation" — they are stale and
+    // misleading. The dedicated EspConnectionBanner already informs the user.
+    const STALE_SUPPRESS_TYPES = new Set([
+      'sensor_failure',
+      'no_ventilation',
+      'heat_stress',
+      'temperature_rising',
+    ]);
+    const filteredAlerts = hasRealData
+      ? rawAlerts
+      : rawAlerts.filter((a) => !STALE_SUPPRESS_TYPES.has(a.alert_type));
+
+    const processed: SmartAlert[] = filteredAlerts.map(alert => {
       const template = ALERT_TEMPLATES[alert.alert_type] || ALERT_TEMPLATES['sensor_failure'];
       const msgData = template.getMessage({
         temp: sensorData?.temperature,
