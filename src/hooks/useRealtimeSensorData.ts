@@ -137,7 +137,15 @@ export function useRealtimeSensorData() {
   const hasAnyData = sensorData.timestamp.getTime() > 0;
   const hasRealData = hasAnyData && ageMs < FRESH_WINDOW_MS;
 
-  return { sensorData, isConnected, hasRealData, hasAnyData };
+  return {
+    sensorData,
+    isConnected,
+    hasRealData,
+    hasAnyData,
+    lastSeenAt: hasAnyData ? sensorData.timestamp : null,
+    ageMs: hasAnyData ? ageMs : null,
+    browserOnline,
+  };
 }
 
 // Realtime device status with Supabase subscriptions
