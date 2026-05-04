@@ -13,7 +13,7 @@ interface Reason {
 
 export function WhyFanRunning() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
 
   const anyRelayOn = deviceStatus.fan || deviceStatus.heater || deviceStatus.fogger || deviceStatus.circulation_fan;
