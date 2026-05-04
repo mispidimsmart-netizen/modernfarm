@@ -18,20 +18,20 @@ function lazyRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
   retries = 2
 ): React.LazyExoticComponent<T> {
-  return lazy(() =>
+  const load = (remaining: number): Promise<{ default: T }> =>
     factory().catch((err) => {
-      if (retries > 0) {
-        // Clear caches and retry
+      if (remaining > 0) {
         return new Promise<{ default: T }>((resolve) => {
-          setTimeout(() => resolve(lazyRetry(factory, retries - 1) as any), 500);
+          setTimeout(() => resolve(load(remaining - 1)), 500);
         });
       }
       // Final fallback: reload page to get fresh assets
       window.location.reload();
-      return factory(); // won't resolve but satisfies TS
-    })
-  );
+      throw err;
+    });
+  return lazy(() => load(retries));
 }
+
 
 // Lazy load pages for better initial load performance
 const LoginPage = lazyRetry(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
