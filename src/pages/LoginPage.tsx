@@ -322,7 +322,7 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-6 flex flex-1 flex-col justify-between bg-background px-4 sm:px-6 pb-4 pt-2">
+          className="relative z-10 flex flex-1 flex-col justify-between bg-background px-4 sm:px-6 pb-4 pt-4">
 
           <div className="flex-1 flex flex-col justify-center">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
