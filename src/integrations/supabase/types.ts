@@ -4746,6 +4746,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      audit_tenant_isolation: { Args: never; Returns: Json }
       can_access_farm: {
         Args: { _owner_id: string; _user_id: string }
         Returns: boolean
