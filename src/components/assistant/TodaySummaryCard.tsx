@@ -75,7 +75,7 @@ export function TodaySummaryCard() {
     });
 
     return baseStats;
-  }, [summary, sensorData, isLayer, language]);
+  }, [summary, sensorData, isLayer, language, hasRealData]);
 
   if (isLoading) {
     return (
