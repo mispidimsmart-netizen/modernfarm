@@ -667,6 +667,10 @@ export default function AdminPage() {
           <TabsContent value="firmware" className="mt-4">
             <FirmwareManagementTab language={language} />
           </TabsContent>
+
+          <TabsContent value="security" className="mt-4">
+            <SecurityAuditLogPanel />
+          </TabsContent>
         </Tabs>
       </div>
 
