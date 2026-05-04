@@ -171,14 +171,15 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     }
   }, [showFarmSelector, selectedFarmId]);
 
-  // Save WiFi credentials to localStorage for auto-fill
+  // Save WiFi SSID to localStorage for auto-fill (password intentionally NOT stored)
   useEffect(() => {
     if (ssid) localStorage.setItem('farmeye_wifi_ssid', ssid);
   }, [ssid]);
 
+  // Cleanup any previously persisted password from older versions
   useEffect(() => {
-    if (password) localStorage.setItem('farmeye_wifi_pass', password);
-  }, [password]);
+    localStorage.removeItem('farmeye_wifi_pass');
+  }, []);
 
   const t = {
     title: language === 'bn' ? '🚀 ESP32 ফার্মওয়্যার জেনারেটর' : '🚀 ESP32 Firmware Generator',
