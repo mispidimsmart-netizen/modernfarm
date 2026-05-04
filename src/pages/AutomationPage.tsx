@@ -41,7 +41,26 @@ export function AutomationPage() {
   const addRule = useAddAutomationRule();
   const updateRule = useUpdateAutomationRule();
   const deleteRule = useDeleteAutomationRule();
-  
+  const { hasRealData } = useRealtimeSensorData();
+  const queryClient = useQueryClient();
+  const wasOfflineRef = useRef(!hasRealData);
+
+  // When ESP32 comes back online, refresh rules + automation status so any
+  // "Pending" badge clears and the engine view reflects fresh evaluations.
+  useEffect(() => {
+    if (wasOfflineRef.current && hasRealData) {
+      queryClient.invalidateQueries({ queryKey: ['automation_rules'] });
+      queryClient.invalidateQueries({ queryKey: ['automation_status'] });
+      queryClient.invalidateQueries({ queryKey: ['device_status'] });
+      toast.success(
+        language === 'bn'
+          ? 'ESP32 অনলাইন — নিয়মগুলো এখন কার্যকর হচ্ছে'
+          : 'ESP32 online — rules are now active'
+      );
+    }
+    wasOfflineRef.current = !hasRealData;
+  }, [hasRealData, queryClient, language]);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newRule, setNewRule] = useState({
     name: '',
