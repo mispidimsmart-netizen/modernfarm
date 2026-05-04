@@ -86,7 +86,7 @@ export function CoreMetricsRow() {
     {
       icon: Thermometer,
       label: { bn: 'ঘরের তাপমাত্রা', en: 'Temperature' },
-      value: `${sensorData.temperature.toFixed(1)}°`,
+      value: hasRealData ? `${sensorData.temperature.toFixed(1)}°` : '—',
       subtitle: null as string | null,
       ...tempStatus,
     },
@@ -100,7 +100,7 @@ export function CoreMetricsRow() {
     {
       icon: Wind,
       label: { bn: 'গ্যাসের অবস্থা', en: 'Gas Level' },
-      value: gasStatus.label[language],
+      value: hasRealData ? gasStatus.label[language] : '—',
       subtitle: null as string | null,
       ...gasStatus,
     },
