@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Thermometer, Droplets, AlertTriangle, Flame } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { HeatStressResult } from '@/lib/heatStressIndex';
 
 interface HeatStressStatusCardProps {
@@ -11,6 +12,18 @@ interface HeatStressStatusCardProps {
 
 export function HeatStressStatusCard({ hsiResult, temperature, humidity }: HeatStressStatusCardProps) {
   const { language } = useAuth();
+  const { hasRealData } = useRealtimeSensorData();
+
+  if (!hasRealData) {
+    return (
+      <div className="rounded-3xl border border-dashed border-border bg-muted/30 p-4 text-center">
+        <Flame className="mx-auto h-6 w-6 text-muted-foreground mb-1" />
+        <p className="text-sm font-medium text-muted-foreground">
+          {language === 'bn' ? 'হিট স্ট্রেস — সেন্সর ডেটা নেই' : 'Heat Stress — No sensor data'}
+        </p>
+      </div>
+    );
+  }
 
   const getStatusConfig = (level: string | undefined) => {
     switch (level) {
