@@ -57,6 +57,8 @@ export const SecurityAuditLogPanel = () => {
   const [farmId, setFarmId] = useState<string>('all');
   const [range, setRange] = useState<string>('24h');
   const [search, setSearch] = useState('');
+  const [liveCount, setLiveCount] = useState(0);
+  const [isLive, setIsLive] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -74,13 +76,46 @@ export const SecurityAuditLogPanel = () => {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [eventType, farmId, range]);
+  useEffect(() => { load(); setLiveCount(0); }, [eventType, farmId, range]);
 
   useEffect(() => {
     supabase.from('farms').select('id, name').order('name').then(({ data }) => {
       setFarms((data || []) as FarmOpt[]);
     });
   }, []);
+
+  // Realtime subscription — new audit events stream in live
+  useEffect(() => {
+    const channel = supabase
+      .channel('security-audit-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'security_audit_log' },
+        (payload) => {
+          const row = payload.new as AuditRow;
+          // Apply current filters client-side before prepending
+          if (eventType !== 'all' && row.event_type !== eventType) return;
+          if (farmId !== 'all' && row.farm_id !== farmId) return;
+          const hours = RANGES[range];
+          if (hours > 0) {
+            const sinceMs = Date.now() - hours * 3600 * 1000;
+            if (new Date(row.created_at).getTime() < sinceMs) return;
+          }
+          setRows((prev) => {
+            if (prev.some((r) => r.id === row.id)) return prev;
+            return [row, ...prev].slice(0, 500);
+          });
+          setLiveCount((c) => c + 1);
+        }
+      )
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventType, farmId, range]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
@@ -106,7 +141,12 @@ export const SecurityAuditLogPanel = () => {
             <Shield className="w-5 h-5 text-emerald-400" />
             সিকিউরিটি অডিট লগ
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className={`border-white/10 ${isLive ? 'text-emerald-300' : 'text-slate-400'}`}>
+              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              {isLive ? 'লাইভ' : 'অফলাইন'}
+              {liveCount > 0 && <span className="ml-1.5 text-emerald-400">+{liveCount}</span>}
+            </Badge>
             <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">
               মোট: {stats.total}
             </Badge>
