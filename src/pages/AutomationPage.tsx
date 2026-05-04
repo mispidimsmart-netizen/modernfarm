@@ -291,23 +291,52 @@ export function AutomationPage() {
                 </Dialog>
               </div>
 
+              {!hasRealData && (automationRules?.some((r) => r.enabled) ?? false) && (
+                <div
+                  className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <WifiOff className="h-4 w-4 shrink-0" />
+                  <span className="flex-1">
+                    {language === 'bn'
+                      ? 'ESP32 অফলাইন — সক্রিয় নিয়মগুলো Pending অবস্থায় আছে, ডিভাইস অনলাইনে এলে স্বয়ংক্রিয়ভাবে চালু হবে।'
+                      : 'ESP32 offline — active rules are pending and will resume automatically when the device is back online.'}
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <AnimatePresence>
-                  {automationRules?.map((rule) => (
+                  {automationRules?.map((rule) => {
+                    const isPending = rule.enabled && !hasRealData;
+                    return (
                     <motion.div
                       key={rule.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
-                      className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card"
+                      className={cn(
+                        'flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card',
+                        isPending && 'border border-amber-500/40'
+                      )}
                     >
                       <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                        rule.enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        isPending
+                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                          : rule.enabled ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                       }`}>
-                        <Zap size={20} />
+                        {isPending ? <Clock size={20} /> : <Zap size={20} />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground">{rule.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground truncate">{rule.name}</p>
+                          {isPending && (
+                            <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                              {language === 'bn' ? 'Pending' : 'Pending'}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {sensorLabels[rule.condition_sensor as keyof typeof sensorLabels]} {rule.condition_operator} {rule.condition_value}
                           <ChevronRight size={14} className="mx-1 inline" />
