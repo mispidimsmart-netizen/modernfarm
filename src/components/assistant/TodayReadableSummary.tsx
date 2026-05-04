@@ -18,8 +18,26 @@ interface SummaryItem {
 
 export function TodayReadableSummary() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { data: history } = useSensorHistory();
+
+  if (!hasRealData) {
+    return (
+      <Card className="border-primary/10">
+        <CardHeader className="pb-2 pt-3 px-4">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <span className="text-lg">📋</span>
+            {language === 'bn' ? 'আজকের সারাংশ' : "Today's Summary"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 text-center">
+          <p className="text-sm text-muted-foreground">
+            📡 {language === 'bn' ? 'সেন্সর ডেটা না আসা পর্যন্ত সারাংশ দেখানো যাবে না' : 'Summary unavailable until sensor data arrives'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const summaryItems = useMemo((): SummaryItem[] => {
     // Calculate trends from history
