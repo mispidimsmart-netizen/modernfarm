@@ -127,13 +127,17 @@ export function useRealtimeSensorData() {
     };
   }, [user?.id, applyReading]);
 
-  // hasRealData = at least one real reading has been received from a device.
-  // New accounts (or accounts whose ESP32 has never reported) get all-zero
-  // defaults; we use the epoch timestamp to distinguish "no data yet" from
-  // genuine zero readings, so UI never shows fabricated values or false advice.
-  const hasRealData = sensorData.timestamp.getTime() > 0;
+  // hasRealData = a real reading exists AND it is fresh (within last 1 hour).
+  // Stale readings (e.g. ESP32 offline for days) must NOT drive UI values or
+  // advisories — otherwise farmers see weeks-old "25°C" as if it were live.
+  // hasAnyData = ever received a real reading (used to distinguish "never
+  // connected" vs "device offline").
+  const FRESH_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+  const ageMs = Date.now() - sensorData.timestamp.getTime();
+  const hasAnyData = sensorData.timestamp.getTime() > 0;
+  const hasRealData = hasAnyData && ageMs < FRESH_WINDOW_MS;
 
-  return { sensorData, isConnected, hasRealData };
+  return { sensorData, isConnected, hasRealData, hasAnyData };
 }
 
 // Realtime device status with Supabase subscriptions

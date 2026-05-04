@@ -18,7 +18,7 @@ interface ScoreBreakdown {
 
 export function FarmHealthScore() {
   const { language } = useAuth();
-  const { sensorData, isConnected } = useRealtimeSensorData();
+  const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: settings } = useFarmSettings();
   const { data: weather } = useWeatherCache();
@@ -26,6 +26,16 @@ export function FarmHealthScore() {
 
   // Calculate score 0-100
   const { score, breakdown, trend, label } = useMemo(() => {
+    // No fresh sensor data → don't fabricate a score; show neutral "unknown".
+    if (!hasRealData) {
+      return {
+        score: 0,
+        breakdown: { temperature: 0, humidity: 0, ammonia: 0, sensors: 0, devices: 0 },
+        trend: 'stable' as const,
+        label: { bn: 'সেন্সর ডেটা নেই 📡', en: 'No sensor data 📡' },
+      };
+    }
+
     let tempScore = 100;
     let humScore = 100;
     let ammoniaScore = 100;
@@ -94,7 +104,7 @@ export function FarmHealthScore() {
       trend: scoreTrend,
       label: scoreLabel,
     };
-  }, [sensorData, deviceStatus, sensorIssues, isConnected]);
+  }, [sensorData, deviceStatus, sensorIssues, isConnected, hasRealData]);
 
   // Gradient based on score
   const getGradient = () => {

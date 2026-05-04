@@ -72,7 +72,7 @@ import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
 export function Dashboard() {
   const { language } = useAuth();
-  const { sensorData, isConnected } = useRealtimeSensorData();
+  const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
   const statusLevels = useRealtimeStatusLevels(sensorData);
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   
@@ -216,12 +216,25 @@ export function Dashboard() {
                   </p>
                   <SensorFreshnessBadge timestamp={sensorData.timestamp} compact />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
-                  <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
-                  <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
-                  <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
-                </div>
+                {hasRealData ? (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
+                    <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
+                    <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
+                    <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
+                    <p className="text-sm font-medium text-muted-foreground mb-1">
+                      📡 {language === 'bn' ? 'কোনো লাইভ সেন্সর ডেটা নেই' : 'No live sensor data'}
+                    </p>
+                    <p className="text-xs text-muted-foreground/80">
+                      {language === 'bn'
+                        ? 'ESP32 ডিভাইস কানেক্ট হলে এখানে রিয়েল-টাইম ডেটা দেখানো হবে'
+                        : 'Real-time data will appear here once your ESP32 connects'}
+                    </p>
+                  </div>
+                )}
               </div>
               <CoreMetricsRow />
               <InsideOutsideDeltaCard />
