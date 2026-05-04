@@ -382,7 +382,8 @@ export function useSmartAlerts() {
     });
 
     // Add broiler-specific temperature alerts based on live sensor data
-    if (isBroiler && broilerTempTarget && sensorData?.temperature) {
+    // Skip when ESP32 is offline — sensorData would be stale.
+    if (hasRealData && isBroiler && broilerTempTarget && sensorData?.temperature) {
       const temp = sensorData.temperature;
       const target = broilerTempTarget.targetTemp;
       const tolerance = 2; // 2°C tolerance
