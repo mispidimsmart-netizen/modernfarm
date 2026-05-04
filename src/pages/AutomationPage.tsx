@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Zap, ChevronRight, Activity } from 'lucide-react';
+import { Plus, Trash2, Zap, ChevronRight, Activity, Clock, WifiOff } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { 
@@ -11,6 +12,7 @@ import {
   useUpdateAutomationRule, 
   useDeleteAutomationRule 
 } from '@/hooks/useFarmData';
+import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { translations } from '@/lib/translations';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -23,6 +25,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database } from '@/integrations/supabase/types';
 import { AutomationEngineDashboard } from '@/components/automation/AutomationEngineDashboard';
 import { SetupBlocker } from '@/components/setup/SetupBlocker';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 type SensorType = Database['public']['Enums']['sensor_type'];
 type OperatorType = Database['public']['Enums']['operator_type'];
