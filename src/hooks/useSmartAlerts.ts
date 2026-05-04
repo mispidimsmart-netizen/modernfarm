@@ -316,6 +316,7 @@ function isQuietHours(): boolean {
 export function useSmartAlerts() {
   const { data: rawAlerts = [] } = useAlerts();
   const sensorData = useLiveSensorData();
+  const { hasRealData } = useRealtimeSensorData();
   const { playDangerAlarm, playWarningSound } = useNotificationSound();
   const { language } = useAuth();
   const { isBroiler, isLayer } = useFarmType();
