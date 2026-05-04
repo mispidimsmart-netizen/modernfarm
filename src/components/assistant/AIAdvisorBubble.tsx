@@ -167,7 +167,7 @@ export function AIAdvisorBubble() {
     }
 
     return result.slice(0, 3); // Max 3 messages
-  }, [sensorData, weather, isBroiler, batchStats, language]);
+  }, [sensorData, weather, isBroiler, batchStats, language, hasRealData]);
 
   const primaryMessage = messages[0];
   const secondaryMessages = messages.slice(1);
