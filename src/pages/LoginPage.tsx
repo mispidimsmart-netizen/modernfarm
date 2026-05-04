@@ -197,23 +197,9 @@ export function LoginPage() {
     }
 
     try {
-      let validInvitation: any = null;
-      if (userType === 'worker') {
-        const { data: invitation, error: findError } = await supabase
-          .from('worker_invitations')
-          .select('*')
-          .eq('invite_code', invitationCode.toUpperCase().trim())
-          .is('used_at', null)
-          .gt('expires_at', new Date().toISOString())
-          .maybeSingle();
-
-        if (!invitation || findError) {
-          toast({ title: 'ত্রুটি', description: 'অবৈধ বা মেয়াদোত্তীর্ণ আমন্ত্রণ কোড', variant: 'destructive' });
-          setIsLoading(false);
-          return;
-        }
-        validInvitation = invitation;
-      }
+      // Note: invitation code is validated server-side via redeem_invitation RPC.
+      // We no longer pre-fetch worker_invitations (RLS now blocks anonymous reads
+      // to prevent invitation code enumeration).
 
       const farmNameValue = userType === 'owner' ? (signupFarmName.trim() || 'আমার ফার্ম') : 'Worker Account';
       const { error } = await signUp(signupPhone, signupPassword, {
@@ -231,27 +217,29 @@ export function LoginPage() {
         if (!signInError) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Profile already created by trigger with metadata, update worker role if needed
-
-            if (userType === 'worker' && validInvitation) {
-              // Atomic redemption: creates user_role + farm_members + marks invite used
-              const { error: redeemError } = await supabase.rpc('redeem_invitation', {
+            if (userType === 'worker') {
+              // Atomic redemption: validates code, creates user_role + farm_members + marks invite used
+              const { data: redeemData, error: redeemError } = await supabase.rpc('redeem_invitation', {
                 _code: invitationCode.toUpperCase().trim(),
               });
               if (redeemError) {
                 toast({
                   title: 'ত্রুটি',
-                  description: 'আমন্ত্রণ গ্রহণে সমস্যা: ' + redeemError.message,
+                  description: 'অবৈধ বা মেয়াদোত্তীর্ণ আমন্ত্রণ কোড',
                   variant: 'destructive',
                 });
               } else {
-                // Remove the auto-created farm so worker only sees owner's farm
-                await supabase.rpc('cleanup_worker_farm', {
-                  _farm_owner_id: validInvitation.farm_owner_id,
-                });
+                const ownerId = (redeemData as { farm_owner_id?: string } | null)?.farm_owner_id;
+                if (ownerId) {
+                  // Remove the auto-created farm so worker only sees owner's farm
+                  await supabase.rpc('cleanup_worker_farm', {
+                    _farm_owner_id: ownerId,
+                  });
+                }
               }
             }
           }
+
           navigate('/');
         }
       }
