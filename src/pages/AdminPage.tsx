@@ -146,6 +146,7 @@ const t = {
     tabAudit: 'Audit Report',
     tabArchitecture: 'Technical Architecture',
     tabFirmware: 'Firmware',
+    tabSecurity: 'Security Logs',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
