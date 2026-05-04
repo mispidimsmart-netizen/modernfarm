@@ -57,6 +57,8 @@ export const SecurityAuditLogPanel = () => {
   const [farmId, setFarmId] = useState<string>('all');
   const [range, setRange] = useState<string>('24h');
   const [search, setSearch] = useState('');
+  const [liveCount, setLiveCount] = useState(0);
+  const [isLive, setIsLive] = useState(false);
 
   const load = async () => {
     setLoading(true);
