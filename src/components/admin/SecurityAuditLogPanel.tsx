@@ -141,7 +141,12 @@ export const SecurityAuditLogPanel = () => {
             <Shield className="w-5 h-5 text-emerald-400" />
             সিকিউরিটি অডিট লগ
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className={`border-white/10 ${isLive ? 'text-emerald-300' : 'text-slate-400'}`}>
+              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              {isLive ? 'লাইভ' : 'অফলাইন'}
+              {liveCount > 0 && <span className="ml-1.5 text-emerald-400">+{liveCount}</span>}
+            </Badge>
             <Badge variant="outline" className="border-emerald-500/30 text-emerald-300">
               মোট: {stats.total}
             </Badge>
