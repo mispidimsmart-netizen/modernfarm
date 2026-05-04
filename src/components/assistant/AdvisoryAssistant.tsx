@@ -287,6 +287,7 @@ export function AdvisoryAssistant() {
   };
 
   if (activeAdvisories.length === 0) {
+    const noData = !hasRealData;
     return (
       <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/30 h-full">
         <CardContent className="p-3 text-center h-full flex flex-col items-center justify-center">
@@ -294,10 +295,14 @@ export function AdvisoryAssistant() {
             <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            {language === 'bn' ? '✨ সব ঠিক আছে!' : '✨ All Good!'}
+            {noData
+              ? (language === 'bn' ? 'সেন্সর ডেটা নেই' : 'No sensor data')
+              : (language === 'bn' ? '✨ সব ঠিক আছে!' : '✨ All Good!')}
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {language === 'bn' ? 'এই মুহূর্তে কোনো পরামর্শ নেই' : 'No advisories at this time'}
+            {noData
+              ? (language === 'bn' ? 'ডিভাইস কানেক্ট হলে পরামর্শ দেখানো হবে' : 'Advice will appear once your device connects')
+              : (language === 'bn' ? 'এই মুহূর্তে কোনো পরামর্শ নেই' : 'No advisories at this time')}
           </p>
         </CardContent>
       </Card>
