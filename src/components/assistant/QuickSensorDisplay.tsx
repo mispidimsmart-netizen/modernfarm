@@ -5,7 +5,7 @@ import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 
 export function QuickSensorDisplay() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
 
   // Determine ammonia status
   const getAmmoniaStatus = (value: number) => {
