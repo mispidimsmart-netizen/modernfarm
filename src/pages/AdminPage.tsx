@@ -58,6 +58,7 @@ import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport'
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
+import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 
 const t = {
   bn: {
