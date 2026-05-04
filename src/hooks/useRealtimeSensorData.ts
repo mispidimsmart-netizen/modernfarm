@@ -127,7 +127,13 @@ export function useRealtimeSensorData() {
     };
   }, [user?.id, applyReading]);
 
-  return { sensorData, isConnected };
+  // hasRealData = at least one real reading has been received from a device.
+  // New accounts (or accounts whose ESP32 has never reported) get all-zero
+  // defaults; we use the epoch timestamp to distinguish "no data yet" from
+  // genuine zero readings, so UI never shows fabricated values or false advice.
+  const hasRealData = sensorData.timestamp.getTime() > 0;
+
+  return { sensorData, isConnected, hasRealData };
 }
 
 // Realtime device status with Supabase subscriptions
