@@ -359,7 +359,6 @@ export function LoginPage() {
                         placeholder="মোবাইল নম্বর বা ইমেইল লিখুন"
                         className={inputClass} required />
                     </IconInput>
-                    <p className="text-[11px] text-muted-foreground">রেজিস্টার্ড মোবাইল নম্বর অথবা ইমেইল দিয়ে লগইন করুন</p>
                   </div>
 
                   <div className="space-y-1.5">
