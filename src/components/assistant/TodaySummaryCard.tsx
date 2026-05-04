@@ -11,7 +11,7 @@ import { bn, enUS } from 'date-fns/locale';
 
 export function TodaySummaryCard() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { data: summary, isLoading } = useTodaySummary();
   const { isLayer, isBroiler } = useFarmType();
 
@@ -29,16 +29,16 @@ export function TodaySummaryCard() {
       {
         icon: Thermometer,
         label: { bn: 'তাপমাত্রা', en: 'Temp' },
-        value: sensorData.temperature.toFixed(1),
-        unit: '°C',
+        value: hasRealData ? sensorData.temperature.toFixed(1) : '—',
+        unit: hasRealData ? '°C' : '',
         color: 'text-orange-500',
         bg: 'bg-orange-500/10',
       },
       {
         icon: Droplets,
         label: { bn: 'আর্দ্রতা', en: 'Humidity' },
-        value: sensorData.humidity.toFixed(0),
-        unit: '%',
+        value: hasRealData ? sensorData.humidity.toFixed(0) : '—',
+        unit: hasRealData ? '%' : '',
         color: 'text-cyan-500',
         bg: 'bg-cyan-500/10',
       },
@@ -75,7 +75,7 @@ export function TodaySummaryCard() {
     });
 
     return baseStats;
-  }, [summary, sensorData, isLayer, language]);
+  }, [summary, sensorData, isLayer, language, hasRealData]);
 
   if (isLoading) {
     return (

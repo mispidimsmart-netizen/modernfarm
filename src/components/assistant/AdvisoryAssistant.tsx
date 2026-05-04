@@ -29,7 +29,7 @@ interface Advisory {
 
 export function AdvisoryAssistant() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
@@ -44,6 +44,9 @@ export function AdvisoryAssistant() {
   // Generate advisories based on current conditions
   const advisories = useMemo((): Advisory[] => {
     const result: Advisory[] = [];
+    // Without real sensor data, do NOT generate temp/humidity/ammonia advisories
+    // (would produce false "Low Temperature" etc. for new accounts on zero defaults).
+    if (!hasRealData) return result;
     const temp = sensorData.temperature;
     const humidity = sensorData.humidity;
     const ammonia = sensorData.ammonia;
@@ -258,7 +261,7 @@ export function AdvisoryAssistant() {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
-  }, [sensorData, weather, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats]);
+  }, [sensorData, weather, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats, hasRealData]);
 
   // Filter out dismissed advisories
   const activeAdvisories = advisories.filter(a => !dismissedIds.has(a.id));
@@ -284,6 +287,7 @@ export function AdvisoryAssistant() {
   };
 
   if (activeAdvisories.length === 0) {
+    const noData = !hasRealData;
     return (
       <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-green-50/50 dark:from-emerald-950/30 dark:to-green-950/30 h-full">
         <CardContent className="p-3 text-center h-full flex flex-col items-center justify-center">
@@ -291,10 +295,14 @@ export function AdvisoryAssistant() {
             <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            {language === 'bn' ? '✨ সব ঠিক আছে!' : '✨ All Good!'}
+            {noData
+              ? (language === 'bn' ? 'সেন্সর ডেটা নেই' : 'No sensor data')
+              : (language === 'bn' ? '✨ সব ঠিক আছে!' : '✨ All Good!')}
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {language === 'bn' ? 'এই মুহূর্তে কোনো পরামর্শ নেই' : 'No advisories at this time'}
+            {noData
+              ? (language === 'bn' ? 'ডিভাইস কানেক্ট হলে পরামর্শ দেখানো হবে' : 'Advice will appear once your device connects')
+              : (language === 'bn' ? 'এই মুহূর্তে কোনো পরামর্শ নেই' : 'No advisories at this time')}
           </p>
         </CardContent>
       </Card>
