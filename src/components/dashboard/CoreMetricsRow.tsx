@@ -7,7 +7,7 @@ import { useAutomationMode } from '@/hooks/useAutomationMode';
 
 export function CoreMetricsRow() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: automationMode } = useAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
