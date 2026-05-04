@@ -261,7 +261,7 @@ export function AdvisoryAssistant() {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       return priorityOrder[a.priority] - priorityOrder[b.priority];
     });
-  }, [sensorData, weather, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats]);
+  }, [sensorData, weather, waterAnomaly, ammoniaTrend, sensorIssues, isBroiler, batchStats, hasRealData]);
 
   // Filter out dismissed advisories
   const activeAdvisories = advisories.filter(a => !dismissedIds.has(a.id));
