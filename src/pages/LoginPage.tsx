@@ -317,11 +317,12 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 flex flex-1 flex-col justify-between bg-background px-4 sm:px-6 pb-4 pt-4">
+          className="relative z-10 flex flex-1 flex-col bg-background px-4 sm:px-6 pb-6 pt-5 gap-5">
 
-          <div className="flex-1 flex flex-col justify-center">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
-            <h2 className="text-xl font-bold text-foreground">স্বাগতম</h2>
+          <div className="flex-1 flex flex-col">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-3 text-center">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">স্বাগতম</h2>
+            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">আপনার ফার্মে আবার স্বাগতম</p>
           </motion.div>
 
           {/* Forgot Password View */}
