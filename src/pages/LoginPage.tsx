@@ -421,7 +421,7 @@ export function LoginPage() {
       <Header />
       <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 -mt-2 flex-1 bg-background px-4 sm:px-6 pb-6 sm:pb-8 pt-2 sm:pt-4">
+        className="relative z-10 flex-1 bg-background px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-5">
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-3 sm:mb-5 text-center">
           <h2 className="text-lg sm:text-xl font-bold text-foreground">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
