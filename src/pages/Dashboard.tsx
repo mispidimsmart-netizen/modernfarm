@@ -320,7 +320,7 @@ export function Dashboard() {
               </div>
 
               {isLayer && <LayerBatchCard />}
-              {isBroiler && <BroilerDashboardWidget />}
+              {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
 
               {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
               {isBroiler && broilerWaterResult && (
