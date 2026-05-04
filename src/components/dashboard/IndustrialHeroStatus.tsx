@@ -24,7 +24,7 @@ interface StatusConfig {
   dotColor: string;
 }
 
-const STATUS_MAP: Record<StatusId, StatusConfig> = {
+const STATUS_MAP: Record<string, StatusConfig> = {
   normal: {
     id: 'normal',
     icon: CheckCircle2,
@@ -73,6 +73,14 @@ const STATUS_MAP: Record<StatusId, StatusConfig> = {
     borderColor: 'border-blue-400/50',
     dotColor: 'bg-blue-400',
   },
+  no_data: {
+    id: 'sensor_fail',
+    icon: Wrench,
+    title: { bn: '⚪ সেন্সর ডেটা নেই — ESP32 কানেক্ট করুন', en: '⚪ No Sensor Data — Connect ESP32' },
+    gradient: 'from-slate-600 via-gray-500 to-slate-600',
+    borderColor: 'border-slate-400/50',
+    dotColor: 'bg-slate-400',
+  } as StatusConfig,
 };
 
 interface DeviceItem {
@@ -84,7 +92,7 @@ interface DeviceItem {
 
 export function IndustrialHeroStatus() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { isBroiler } = useFarmType();
   const { selectedShedId } = useSelectedShed();
@@ -105,6 +113,11 @@ export function IndustrialHeroStatus() {
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
     const anyDeviceActive = deviceStatus.fan || deviceStatus.heater || deviceStatus.fogger || deviceStatus.ceilingFan || deviceStatus.sprinkler;
+
+    // No real sensor data — don't fabricate "normal" status
+    if (!hasRealData) {
+      return (STATUS_MAP as any).no_data as StatusConfig;
+    }
 
     // Emergency: extreme values (same in both modes — safety is always active)
     if (temp > 38 || ammonia > 25 || hsi > 85) {
@@ -140,7 +153,7 @@ export function IndustrialHeroStatus() {
       }
     }
     return STATUS_MAP.normal;
-  }, [sensorData, hsiResult, isBroiler, batchStats, deviceStatus, isManualMode]);
+  }, [sensorData, hsiResult, isBroiler, batchStats, deviceStatus, isManualMode, hasRealData]);
 
   // Build device status list with reasons
   const deviceItems = useMemo((): DeviceItem[] => {
