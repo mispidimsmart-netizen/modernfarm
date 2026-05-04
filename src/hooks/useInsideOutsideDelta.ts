@@ -21,8 +21,8 @@ const HOT_OUTSIDE_THRESHOLD = 0; // If outside is hotter than inside
  * Hook to compare inside temperature vs outside (weather) temperature
  * and provide ventilation recommendations based on delta
  */
-export function useInsideOutsideDelta(): InsideOutsideDelta & { hasRealData: boolean } {
-  const { sensorData, hasRealData } = useRealtimeSensorData();
+export function useInsideOutsideDelta(): InsideOutsideDelta {
+  const { sensorData } = useRealtimeSensorData();
   const { data: weather } = useWeatherCache();
   
   return useMemo(() => {

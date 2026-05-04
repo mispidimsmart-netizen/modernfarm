@@ -4,14 +4,16 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useInsideOutsideDelta, getVentilationModifier } from '@/hooks/useInsideOutsideDelta';
+import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { cn } from '@/lib/utils';
 
 export function InsideOutsideDeltaCard() {
   const { language } = useAuth();
   const delta = useInsideOutsideDelta();
+  const { hasRealData } = useRealtimeSensorData();
   
-  // Don't show if no outside temperature
-  if (delta.outsideTemp === null) {
+  // Don't show if no live sensor data or no outside temperature
+  if (!hasRealData || delta.outsideTemp === null) {
     return null;
   }
 
