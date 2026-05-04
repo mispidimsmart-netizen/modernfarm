@@ -380,7 +380,7 @@ export function LoginPage() {
                   </div>
 
                   <div className="pt-1 sm:pt-2">
-                    <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
+                    <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-2xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
