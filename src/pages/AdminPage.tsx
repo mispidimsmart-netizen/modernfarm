@@ -98,6 +98,7 @@ const t = {
     tabAudit: 'অডিট রিপোর্ট',
     tabArchitecture: 'টেকনিক্যাল আর্কিটেকচার',
     tabFirmware: 'ফার্মওয়্যার',
+    tabSecurity: 'সিকিউরিটি লগ',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
