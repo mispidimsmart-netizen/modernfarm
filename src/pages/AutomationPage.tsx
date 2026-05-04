@@ -356,7 +356,8 @@ export function AutomationPage() {
                         <Trash2 size={18} />
                       </Button>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </AnimatePresence>
 
                 {(!automationRules || automationRules.length === 0) && (
