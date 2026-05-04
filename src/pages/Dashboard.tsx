@@ -197,6 +197,7 @@ export function Dashboard() {
             {/* TAB 1: 🏠 সারসংক্ষেপ */}
             <TabsContent value="summary" className="mt-3 space-y-3">
               <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+              <EspConnectionBanner />
               <IndustrialHeroStatus />
               <ComfortIndicators />
               <div>
