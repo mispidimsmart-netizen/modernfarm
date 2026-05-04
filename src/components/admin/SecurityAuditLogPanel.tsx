@@ -76,7 +76,7 @@ export const SecurityAuditLogPanel = () => {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [eventType, farmId, range]);
+  useEffect(() => { load(); setLiveCount(0); }, [eventType, farmId, range]);
 
   useEffect(() => {
     supabase.from('farms').select('id, name').order('name').then(({ data }) => {
