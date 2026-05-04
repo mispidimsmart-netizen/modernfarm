@@ -25,7 +25,7 @@ interface Indicator {
 
 export function ComfortIndicators() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { data: settings } = useFarmSettings();
   const { isLayer, isBroiler } = useFarmType();
   const { selectedShedId } = useSelectedShed();
@@ -36,6 +36,19 @@ export function ComfortIndicators() {
     shedId: selectedShedId,
     enabled: true,
   });
+
+  if (!hasRealData) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center">
+        <p className="text-sm font-medium text-muted-foreground mb-1">
+          📡 {language === 'bn' ? 'সেন্সর ডেটা নেই' : 'No sensor data'}
+        </p>
+        <p className="text-xs text-muted-foreground/80">
+          {language === 'bn' ? 'ESP32 কানেক্ট হলে আরাম/বায়ু/চাপ/উৎপাদন দেখানো হবে' : 'Comfort indicators will appear when ESP32 connects'}
+        </p>
+      </div>
+    );
+  }
 
   const indicators = useMemo((): Indicator[] => {
     const temp = sensorData.temperature;

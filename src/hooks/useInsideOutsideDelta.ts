@@ -28,7 +28,7 @@ export function useInsideOutsideDelta(): InsideOutsideDelta {
   return useMemo(() => {
     const insideTemp = sensorData.temperature;
     const outsideTemp = weather?.temperature ?? null;
-    
+
     // If no outside temp available, return normal recommendation
     if (outsideTemp === null) {
       return {

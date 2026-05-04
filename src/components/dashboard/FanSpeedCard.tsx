@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Fan } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { FanSpeed, getFanSpeedColor, getFanSpeedBgColor } from '@/hooks/useFanSpeedAutomation';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -13,6 +14,20 @@ interface FanSpeedCardProps {
 
 export function FanSpeedCard({ temperature, fanSpeed, message }: FanSpeedCardProps) {
   const { language } = useAuth();
+  const { hasRealData } = useRealtimeSensorData();
+
+  if (!hasRealData) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="p-4 text-center">
+          <Fan className="mx-auto h-6 w-6 text-muted-foreground mb-1" />
+          <p className="text-sm font-medium text-muted-foreground">
+            {language === 'bn' ? 'ফ্যান স্পিড — সেন্সর ডেটা নেই' : 'Fan Speed — No sensor data'}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const getSpeedLabel = (speed: FanSpeed) => {
     const labels = {

@@ -10,9 +10,11 @@ import { Badge } from '@/components/ui/badge';
 
 export function HourlyForecastCard() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { data: weather } = useWeatherCache();
   const { data: history } = useSensorHistory(3);
+
+  if (!hasRealData) return null;
 
   const forecast = useMemo(() => {
     const now = new Date();
