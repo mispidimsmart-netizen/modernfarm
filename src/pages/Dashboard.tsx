@@ -72,7 +72,7 @@ import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
 export function Dashboard() {
   const { language } = useAuth();
-  const { sensorData, isConnected } = useRealtimeSensorData();
+  const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
   const statusLevels = useRealtimeStatusLevels(sensorData);
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   
