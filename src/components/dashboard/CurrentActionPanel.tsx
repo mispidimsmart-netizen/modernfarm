@@ -15,12 +15,21 @@ interface ActionInfo {
 
 export function CurrentActionPanel() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: automationMode } = useAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
 
   const currentAction = useMemo((): ActionInfo => {
+    // No live sensor data — don't fabricate an action
+    if (!hasRealData && !isManualMode) {
+      return {
+        icon: ShieldCheck,
+        text: { bn: 'সেন্সর ডেটা নেই — ESP32 কানেক্ট করুন', en: 'No sensor data — connect ESP32' },
+        color: 'bg-muted border-border',
+        iconColor: 'text-muted-foreground',
+      };
+    }
     // Manual mode: show user-centric messages
     if (isManualMode) {
       const activeDevices: string[] = [];
