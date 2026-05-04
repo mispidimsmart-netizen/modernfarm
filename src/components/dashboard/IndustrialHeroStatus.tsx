@@ -24,7 +24,7 @@ interface StatusConfig {
   dotColor: string;
 }
 
-const STATUS_MAP: Record<StatusId, StatusConfig> = {
+const STATUS_MAP: Record<string, StatusConfig> = {
   normal: {
     id: 'normal',
     icon: CheckCircle2,
