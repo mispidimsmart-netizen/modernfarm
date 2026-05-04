@@ -141,8 +141,8 @@ export function AIAdvisorBubble() {
       });
     }
 
-    // All good message
-    if (result.length === 0 || (temp >= 22 && temp <= 28 && humidity >= 50 && humidity <= 70 && ammonia < 10)) {
+    // All good — only when real sensor data confirms ideal range
+    if (hasRealData && temp >= 22 && temp <= 28 && humidity >= 50 && humidity <= 70 && ammonia < 10) {
       result.unshift({
         id: 'all-good',
         text: { 
