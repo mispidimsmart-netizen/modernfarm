@@ -252,7 +252,7 @@ export function LoginPage() {
 
   // ─── Compact Header ───
   const Header = () => (
-    <div className={`sticky top-0 z-30 shrink-0 overflow-hidden bg-gradient-to-br from-[hsl(165,45%,35%)] via-primary to-[hsl(155,40%,30%)] px-6 text-center shadow-lg shadow-primary/20 ${isSignUp ? 'pb-10 pt-5 sm:pb-14 sm:pt-8' : 'pb-12 pt-6 sm:pb-16 sm:pt-10'}`}>
+    <div className={`sticky top-0 z-30 shrink-0 overflow-hidden bg-gradient-to-br from-primary/90 via-primary to-primary/80 dark:from-primary/70 dark:via-primary/85 dark:to-primary/60 px-6 text-center shadow-lg shadow-primary/20 ${isSignUp ? 'pb-10 pt-5 sm:pb-14 sm:pt-8' : 'pb-12 pt-6 sm:pb-16 sm:pt-10'}`}>
       <div className="absolute inset-0 overflow-hidden">
         <motion.div animate={{ y: [0, -8, 0], rotate: [0, 5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           className="absolute top-8 left-6 text-white/10">
@@ -277,7 +277,7 @@ export function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-            className={`mx-auto mb-1.5 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-16 w-16 sm:h-24 sm:w-24'}`}
+            className={`mx-auto mb-1.5 flex items-center justify-center rounded-[2rem] bg-white dark:bg-card shadow-2xl ring-1 ring-white/20 dark:ring-white/10 ${isSignUp ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-16 w-16 sm:h-24 sm:w-24'}`}
           >
             <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-10 w-10 sm:h-16 sm:w-16' : 'h-12 w-12 sm:h-20 sm:w-20'}`} />
           </motion.div>
@@ -322,7 +322,7 @@ export function LoginPage() {
         <Header />
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-          className="relative z-10 -mt-6 flex flex-1 flex-col justify-between bg-background px-4 sm:px-6 pb-4 pt-2">
+          className="relative z-10 flex flex-1 flex-col justify-between bg-background px-4 sm:px-6 pb-4 pt-4">
 
           <div className="flex-1 flex flex-col justify-center">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-1 text-center">
@@ -421,7 +421,7 @@ export function LoginPage() {
       <Header />
       <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 -mt-2 flex-1 bg-background px-4 sm:px-6 pb-6 sm:pb-8 pt-2 sm:pt-4">
+        className="relative z-10 flex-1 bg-background px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-5">
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-3 sm:mb-5 text-center">
           <h2 className="text-lg sm:text-xl font-bold text-foreground">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
