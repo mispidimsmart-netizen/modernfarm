@@ -4138,6 +4138,45 @@ export type Database = {
           },
         ]
       }
+      security_audit_log: {
+        Row: {
+          created_at: string
+          details: Json | null
+          device_token_id: string | null
+          event_type: string
+          farm_id: string | null
+          id: string
+          ip_address: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          device_token_id?: string | null
+          event_type: string
+          farm_id?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          device_token_id?: string | null
+          event_type?: string
+          farm_id?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sensor_buffer: {
         Row: {
           ammonia: number
@@ -4717,6 +4756,7 @@ export type Database = {
       }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_restart_logs: { Args: never; Returns: undefined }
+      cleanup_old_security_audit: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
@@ -4733,6 +4773,17 @@ export type Database = {
       }
       is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_security_event: {
+        Args: {
+          _details?: Json
+          _device_token_id?: string
+          _event_type: string
+          _farm_id?: string
+          _success?: boolean
+          _user_id?: string
+        }
+        Returns: undefined
+      }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }

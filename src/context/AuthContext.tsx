@@ -155,6 +155,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (error) {
+        // Audit log: failed login (no user_id since auth failed)
+        supabase.rpc('log_security_event', {
+          _event_type: 'login_failure',
+          _success: false,
+          _details: {
+            identifier_type: isPhone ? 'phone' : 'email',
+            reason: error.message.includes('Invalid login credentials') ? 'invalid_credentials'
+              : error.message.includes('Email not confirmed') ? 'email_not_confirmed'
+              : 'other',
+          },
+        }).then(() => {}, () => {});
+
         if (error.message.includes('Invalid login credentials')) {
           return { error: new Error(language === 'bn' 
             ? 'ভুল মোবাইল নম্বর/ইমেইল বা পাসওয়ার্ড'
@@ -165,6 +177,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: new Error(language === 'bn' ? 'অনুগ্রহ করে আপনার ইমেইল যাচাই করুন' : 'Please verify your email first') };
         }
         return { error };
+      }
+
+      // Audit log: successful login
+      const { data: { user: signedInUser } } = await supabase.auth.getUser();
+      if (signedInUser) {
+        supabase.rpc('log_security_event', {
+          _event_type: 'login_success',
+          _user_id: signedInUser.id,
+          _success: true,
+          _details: { identifier_type: isPhone ? 'phone' : 'email' },
+        }).then(() => {}, () => {});
       }
 
       return { error: null };

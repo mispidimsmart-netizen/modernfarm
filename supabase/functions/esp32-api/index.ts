@@ -285,6 +285,12 @@ Deno.serve(async (req) => {
     }
     
     if (!deviceToken) {
+      // Audit log: missing token
+      await supabase.rpc('log_security_event', {
+        _event_type: 'device_auth_failure',
+        _success: false,
+        _details: { reason: 'missing_token', path: req.url },
+      }).catch(() => {});
       return new Response(
         JSON.stringify({ error: 'Missing device token or device_id', code: 'MISSING_TOKEN' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -294,12 +300,17 @@ Deno.serve(async (req) => {
     // Verify device token, get user AND farm_id (multi-tenant isolation)
     const { data: device, error: deviceError } = await supabase
       .from('device_tokens')
-      .select('user_id, is_active, farm_id, shed_id')
+      .select('id, user_id, is_active, farm_id, shed_id')
       .eq('token', deviceToken)
       .single();
 
     if (deviceError || !device) {
       console.error('Device token validation failed:', deviceError);
+      await supabase.rpc('log_security_event', {
+        _event_type: 'device_auth_failure',
+        _success: false,
+        _details: { reason: 'invalid_token', token_prefix: deviceToken.substring(0, 8) },
+      }).catch(() => {});
       return new Response(
         JSON.stringify({ error: 'Invalid device token', code: 'INVALID_TOKEN' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -307,6 +318,14 @@ Deno.serve(async (req) => {
     }
 
     if (!device.is_active) {
+      await supabase.rpc('log_security_event', {
+        _event_type: 'device_auth_failure',
+        _user_id: device.user_id,
+        _farm_id: device.farm_id,
+        _device_token_id: device.id,
+        _success: false,
+        _details: { reason: 'device_inactive' },
+      }).catch(() => {});
       return new Response(
         JSON.stringify({ error: 'Device is deactivated', code: 'DEVICE_INACTIVE' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
