@@ -45,7 +45,9 @@ interface FarmOption {
 
 export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
   const [ssid, setSsid] = useState(() => localStorage.getItem('farmeye_wifi_ssid') || '');
-  const [password, setPassword] = useState(() => localStorage.getItem('farmeye_wifi_pass') || '');
+  // SECURITY: WiFi password is intentionally NOT persisted (was vulnerable to XSS).
+  // User must re-enter on each session — acceptable tradeoff for infrequent ESP32 setup.
+  const [password, setPassword] = useState('');
   const [deviceToken, setDeviceToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
