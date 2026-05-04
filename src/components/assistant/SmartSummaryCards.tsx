@@ -22,11 +22,24 @@ interface SummaryCard {
 
 export function SmartSummaryCards() {
   const { language, user } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
   const batchStats = useBatchStats(activeBatch?.id);
+
+  if (!hasRealData) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4 text-center">
+        <p className="text-sm font-medium text-muted-foreground mb-1">
+          📡 {language === 'bn' ? 'সেন্সর ডেটা নেই' : 'No sensor data'}
+        </p>
+        <p className="text-xs text-muted-foreground/80">
+          {language === 'bn' ? 'ESP32 কানেক্ট হলে সারাংশ কার্ড দেখানো হবে' : 'Summary cards will appear when ESP32 connects'}
+        </p>
+      </div>
+    );
+  }
 
   // Fetch water usage comparison (today vs yesterday)
   const { data: waterComparison } = useQuery({

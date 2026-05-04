@@ -22,8 +22,26 @@ const severityColors: Record<string, string> = {
 
 export function SensorHealthCard() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { issues, hasIssues, ignoredSensors, safeModeActive, safeModeUntil } = useSensorValidation(sensorData);
+
+  // No live sensor data — never claim "all sensors OK"
+  if (!hasRealData && !safeModeActive) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <Card className="border-dashed bg-muted/30">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2">
+              <WifiOff className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {language === 'bn' ? 'সেন্সর ডেটা নেই — ESP32 কানেক্ট করুন' : 'No sensor data — connect ESP32'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   // Safe mode banner
   if (safeModeActive) {
