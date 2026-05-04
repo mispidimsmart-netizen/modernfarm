@@ -56,75 +56,88 @@ export function AIAdvisorBubble() {
       });
     }
 
-    // Temperature-based advice
-    if (temp > 32 && outsideTemp && outsideTemp < temp) {
-      result.push({
-        id: 'hot-open-curtain',
-        text: { 
-          bn: `ভেতরে ${temp.toFixed(0)}°, বাইরে ${outsideTemp.toFixed(0)}° - পর্দা খুলে বাতাস আসতে দিন! 🪟`, 
-          en: `Inside ${temp.toFixed(0)}°, outside ${outsideTemp.toFixed(0)}° - Open curtains for ventilation! 🪟` 
-        },
-        type: 'advice',
-        icon: Wind,
-      });
-    } else if (temp > 32 && outsideTemp && outsideTemp >= temp) {
-      result.push({
-        id: 'hot-use-fogger',
-        text: { 
-          bn: `বাইরে আরও গরম! 🥵 ফগার চালু রাখুন, পর্দা বন্ধ।`, 
-          en: `It's hotter outside! 🥵 Use fogger, keep curtains closed.` 
-        },
-        type: 'warning',
-        icon: Droplets,
-      });
-    } else if (temp > 30) {
-      result.push({
-        id: 'warm',
-        text: { 
-          bn: 'তাপমাত্রা বাড়ছে। 🌡️ ঠান্ডা পানি নিশ্চিত করুন।', 
-          en: "Temperature rising. 🌡️ Ensure cool water is available." 
-        },
-        type: 'advice',
-        icon: ThermometerSun,
-      });
-    }
+    // Sensor-based advice — only when real device data exists
+    if (hasRealData) {
+      // Temperature-based advice
+      if (temp > 32 && outsideTemp && outsideTemp < temp) {
+        result.push({
+          id: 'hot-open-curtain',
+          text: { 
+            bn: `ভেতরে ${temp.toFixed(0)}°, বাইরে ${outsideTemp.toFixed(0)}° - পর্দা খুলে বাতাস আসতে দিন! 🪟`, 
+            en: `Inside ${temp.toFixed(0)}°, outside ${outsideTemp.toFixed(0)}° - Open curtains for ventilation! 🪟` 
+          },
+          type: 'advice',
+          icon: Wind,
+        });
+      } else if (temp > 32 && outsideTemp && outsideTemp >= temp) {
+        result.push({
+          id: 'hot-use-fogger',
+          text: { 
+            bn: `বাইরে আরও গরম! 🥵 ফগার চালু রাখুন, পর্দা বন্ধ।`, 
+            en: `It's hotter outside! 🥵 Use fogger, keep curtains closed.` 
+          },
+          type: 'warning',
+          icon: Droplets,
+        });
+      } else if (temp > 30) {
+        result.push({
+          id: 'warm',
+          text: { 
+            bn: 'তাপমাত্রা বাড়ছে। 🌡️ ঠান্ডা পানি নিশ্চিত করুন।', 
+            en: "Temperature rising. 🌡️ Ensure cool water is available." 
+          },
+          type: 'advice',
+          icon: ThermometerSun,
+        });
+      }
 
-    // Low temperature for broiler chicks
-    if (isBroiler && batchStats && temp < 28 && batchStats.ageDays <= 14) {
-      result.push({
-        id: 'cold-chicks',
-        text: { 
-          bn: `বাচ্চাদের জন্য ${28 - batchStats.ageDays}°C দরকার! 🐣 হিটার চেক করুন।`, 
-          en: `Chicks need ${28 - batchStats.ageDays}°C! 🐣 Check heater.` 
-        },
-        type: 'warning',
-        icon: ThermometerSun,
-      });
-    }
+      // Low temperature for broiler chicks
+      if (isBroiler && batchStats && temp < 28 && batchStats.ageDays <= 14) {
+        result.push({
+          id: 'cold-chicks',
+          text: { 
+            bn: `বাচ্চাদের জন্য ${28 - batchStats.ageDays}°C দরকার! 🐣 হিটার চেক করুন।`, 
+            en: `Chicks need ${28 - batchStats.ageDays}°C! 🐣 Check heater.` 
+          },
+          type: 'warning',
+          icon: ThermometerSun,
+        });
+      }
 
-    // Ammonia advice
-    if (ammonia > 15) {
-      result.push({
-        id: 'ammonia',
-        text: { 
-          bn: 'অ্যামোনিয়া বেশি! 💨 লিটার শুকনো রাখুন ও বায়ু চলাচল বাড়ান।', 
-          en: 'Ammonia is high! 💨 Keep litter dry and improve ventilation.' 
-        },
-        type: 'warning',
-        icon: Wind,
-      });
-    }
+      // Ammonia advice
+      if (ammonia > 15) {
+        result.push({
+          id: 'ammonia',
+          text: { 
+            bn: 'অ্যামোনিয়া বেশি! 💨 লিটার শুকনো রাখুন ও বায়ু চলাচল বাড়ান।', 
+            en: 'Ammonia is high! 💨 Keep litter dry and improve ventilation.' 
+          },
+          type: 'warning',
+          icon: Wind,
+        });
+      }
 
-    // Humidity advice
-    if (humidity > 80) {
+      // Humidity advice
+      if (humidity > 80) {
+        result.push({
+          id: 'humid',
+          text: { 
+            bn: 'আর্দ্রতা অনেক বেশি! 💦 ফ্যান বাড়ান, ফগার বন্ধ রাখুন।', 
+            en: 'Humidity too high! 💦 Increase fans, stop fogger.' 
+          },
+          type: 'warning',
+          icon: Droplets,
+        });
+      }
+    } else {
+      // No real sensor data yet (new account / device offline)
       result.push({
-        id: 'humid',
-        text: { 
-          bn: 'আর্দ্রতা অনেক বেশি! 💦 ফ্যান বাড়ান, ফগার বন্ধ রাখুন।', 
-          en: 'Humidity too high! 💦 Increase fans, stop fogger.' 
+        id: 'no-sensor-data',
+        text: {
+          bn: 'এখনো সেন্সর ডেটা পাইনি। 📡 ESP32 ডিভাইস কানেক্ট করুন।',
+          en: 'No sensor data yet. 📡 Connect your ESP32 device to get live advice.',
         },
-        type: 'warning',
-        icon: Droplets,
+        type: 'tip',
       });
     }
 
