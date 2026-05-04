@@ -51,6 +51,7 @@ import { AdminNotificationSender } from '@/components/admin/AdminNotificationSen
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
 import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 import { AdminManagementTab } from '@/components/admin/AdminManagementTab';
+import { TenantIsolationAuditTab } from '@/components/admin/TenantIsolationAuditTab';
 import { AppDocumentation } from '@/components/admin/AppDocumentation';
 import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWizard';
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
@@ -428,7 +429,15 @@ export default function AdminPage() {
               <Shield className="w-4 h-4 mr-2" />
               {labels.tabSecurity}
             </TabsTrigger>
+            <TabsTrigger value="isolation" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Shield className="w-4 h-4 mr-2" />
+              আইসোলেশন
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="isolation" className="mt-4">
+            <TenantIsolationAuditTab />
+          </TabsContent>
 
           <TabsContent value="admins" className="mt-4">
             <AdminManagementTab language={language} />
