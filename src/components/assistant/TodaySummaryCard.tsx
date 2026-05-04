@@ -11,7 +11,7 @@ import { bn, enUS } from 'date-fns/locale';
 
 export function TodaySummaryCard() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { data: summary, isLoading } = useTodaySummary();
   const { isLayer, isBroiler } = useFarmType();
 
