@@ -104,7 +104,7 @@ export function FarmHealthScore() {
       trend: scoreTrend,
       label: scoreLabel,
     };
-  }, [sensorData, deviceStatus, sensorIssues, isConnected]);
+  }, [sensorData, deviceStatus, sensorIssues, isConnected, hasRealData]);
 
   // Gradient based on score
   const getGradient = () => {
