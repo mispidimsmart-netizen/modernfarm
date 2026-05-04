@@ -298,11 +298,6 @@ export function LoginPage() {
           Smart Poultry Farm Automation
         </motion.p>
       </motion.div>
-      <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 100 12" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg" className="block w-full h-8 sm:h-10">
-          <path d="M0 12H100V4Q100 0 96 0H4Q0 0 0 4V12Z" fill="hsl(var(--background))" />
-        </svg>
-      </div>
     </div>
   );
 
