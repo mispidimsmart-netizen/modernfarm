@@ -561,13 +561,15 @@ export function LoginPage() {
         </form>
 
         {/* Trust Indicators */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-3 sm:mt-5 flex flex-col items-center gap-0.5 sm:gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.65 }} className="mt-5 sm:mt-6 flex flex-col items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
           <span>🔒 তথ্য এনক্রিপ্টেডভাবে সংরক্ষিত</span>
           <span>🛡 অফলাইন সুরক্ষা সমর্থিত</span>
           <span>📡 রিয়েল-টাইম ফার্ম মনিটরিং</span>
         </motion.div>
 
-        <Footer isSignUp={isSignUp} onToggle={toggleSignUp} />
+        <div className="mt-6 pt-4 border-t border-border/40">
+          <Footer isSignUp={isSignUp} onToggle={toggleSignUp} />
+        </div>
       </motion.div>
       </div>
     </div>
