@@ -44,6 +44,9 @@ export function AdvisoryAssistant() {
   // Generate advisories based on current conditions
   const advisories = useMemo((): Advisory[] => {
     const result: Advisory[] = [];
+    // Without real sensor data, do NOT generate temp/humidity/ammonia advisories
+    // (would produce false "Low Temperature" etc. for new accounts on zero defaults).
+    if (!hasRealData) return result;
     const temp = sensorData.temperature;
     const humidity = sensorData.humidity;
     const ammonia = sensorData.ammonia;
