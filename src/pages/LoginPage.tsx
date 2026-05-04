@@ -277,7 +277,7 @@ export function LoginPage() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 20 }}
-            className={`mx-auto mb-1.5 flex items-center justify-center rounded-[2rem] bg-white shadow-2xl ${isSignUp ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-16 w-16 sm:h-24 sm:w-24'}`}
+            className={`mx-auto mb-1.5 flex items-center justify-center rounded-[2rem] bg-white dark:bg-card shadow-2xl ring-1 ring-white/20 dark:ring-white/10 ${isSignUp ? 'h-14 w-14 sm:h-20 sm:w-20' : 'h-16 w-16 sm:h-24 sm:w-24'}`}
           >
             <img src={farmeyeLogo} alt="FarmEye" className={`rounded-2xl object-contain ${isSignUp ? 'h-10 w-10 sm:h-16 sm:w-16' : 'h-12 w-12 sm:h-20 sm:w-20'}`} />
           </motion.div>
