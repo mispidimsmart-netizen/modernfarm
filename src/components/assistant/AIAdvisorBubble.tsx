@@ -18,7 +18,7 @@ interface Message {
 
 export function AIAdvisorBubble() {
   const { language } = useAuth();
-  const { sensorData } = useRealtimeSensorData();
+  const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeBatch } = useActiveBatch();
