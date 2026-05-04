@@ -42,7 +42,7 @@ const IconInput = ({ icon, children }: { icon: React.ReactNode; children: React.
   </div>
 );
 
-const inputClass = "h-11 sm:h-13 rounded-xl border-2 border-border bg-muted/10 pl-11 sm:pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
+const inputClass = "h-11 sm:h-13 rounded-2xl border-2 border-border bg-muted/10 pl-11 sm:pl-12 text-base transition-all duration-200 focus:border-primary focus:bg-background focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]";
 
 // Module-scope footer & spinner — defining these inside LoginPage caused a remount
 // (and motion-fade "blink") on every keystroke.
@@ -339,7 +339,7 @@ export function LoginPage() {
                         placeholder="আপনার ইমেইল ঠিকানা লিখুন" className={inputClass} required />
                     </IconInput>
                   </div>
-                  <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/25">
+                  <Button type="submit" disabled={isLoading} className="h-14 w-full rounded-2xl text-base font-bold shadow-lg shadow-primary/25">
                     {isLoading ? <Spinner /> : 'রিসেট লিংক পাঠান'}
                   </Button>
                   <button type="button" onClick={() => setShowForgotPassword(false)}
@@ -380,7 +380,7 @@ export function LoginPage() {
                   </div>
 
                   <div className="pt-1 sm:pt-2">
-                    <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
+                    <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-2xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
@@ -554,7 +554,7 @@ export function LoginPage() {
           </div>
 
           <div className="pt-2">
-            <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
+            <Button type="submit" disabled={isLoading} className="h-12 sm:h-14 w-full rounded-2xl bg-primary text-base font-bold shadow-lg shadow-primary/30 transition-all hover:brightness-110 hover:shadow-xl hover:shadow-primary/40 active:scale-[0.98]">
               {isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}
             </Button>
           </div>
