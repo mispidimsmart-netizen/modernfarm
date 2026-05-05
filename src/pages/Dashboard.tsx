@@ -163,7 +163,7 @@ export function Dashboard() {
         {/* ============ 🗂️ MAIN TABS (4 sections) ============ */}
         <div className="mb-5">
           <Tabs defaultValue="summary" className="w-full">
-            <div className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-md border-b border-border/40">
+            <div className="sticky top-[60px] z-30 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-md border-b border-border/40">
             <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-muted/50 p-1 border border-border/50 gap-1">
               <TabsTrigger 
                 value="summary" 
