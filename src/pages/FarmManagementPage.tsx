@@ -38,7 +38,7 @@ import { ReportRangePicker, type ReportRangeValue } from '@/components/farm/Repo
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
 import { BroilerWeightSheet } from '@/components/broiler/BroilerWeightSheet';
-import { BroilerFeedSheet } from '@/components/broiler/BroilerFeedSheet';
+// BroilerFeedSheet replaced by unified FeedManagementSheet (mode='broiler')
 
 export function FarmManagementPage() {
   const { language } = useAuth();
