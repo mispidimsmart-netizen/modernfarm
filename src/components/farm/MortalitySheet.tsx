@@ -61,6 +61,12 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
     birds: { bn: 'টি', en: '' },
     mortalityRate: { bn: 'মর্টালিটি রেট', en: 'Mortality Rate' },
     last30Days: { bn: 'গত ৩০ দিন', en: 'Last 30 days' },
+    edit: { bn: '✏️ মৃত্যু এন্ট্রি এডিট', en: '✏️ Edit Mortality Entry' },
+    update: { bn: 'আপডেট', en: 'Update' },
+    cancel: { bn: 'বাতিল', en: 'Cancel' },
+    delete: { bn: 'মুছুন', en: 'Delete' },
+    confirmDelete: { bn: 'এই এন্ট্রি মুছবেন?', en: 'Delete this entry?' },
+    confirmDeleteDesc: { bn: 'মৃত্যু রেকর্ড স্থায়ীভাবে মুছে যাবে।', en: 'Mortality record will be permanently deleted.' },
   };
 
   const totalMortality = records?.reduce((sum, r) => sum + r.count, 0) ?? 0;
