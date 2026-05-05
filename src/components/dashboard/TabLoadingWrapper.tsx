@@ -11,6 +11,10 @@ interface TabLoadingWrapperProps {
   emptyHint?: { bn: string; en: string };
   children: ReactNode;
   skeletonRows?: number;
+  /** Optional custom skeleton matching the tab's actual layout */
+  skeleton?: ReactNode;
+  /** Optional custom loading hint text */
+  loadingHint?: { bn: string; en: string };
 }
 
 /**
@@ -26,6 +30,8 @@ export function TabLoadingWrapper({
   emptyHint,
   children,
   skeletonRows = 3,
+  skeleton,
+  loadingHint,
 }: TabLoadingWrapperProps) {
   const { language } = useAuth();
   const fetchingCount = useIsFetching({
@@ -36,6 +42,7 @@ export function TabLoadingWrapper({
   });
 
   if (fetchingCount > 0) {
+    if (skeleton) return <>{skeleton}</>;
     return (
       <div className="space-y-3 animate-in fade-in duration-200">
         {Array.from({ length: skeletonRows }).map((_, i) => (
@@ -45,7 +52,11 @@ export function TabLoadingWrapper({
           />
         ))}
         <p className="text-center text-xs text-muted-foreground animate-pulse">
-          {language === 'bn' ? 'লোড হচ্ছে…' : 'Loading…'}
+          {loadingHint
+            ? loadingHint[language]
+            : language === 'bn'
+            ? 'লোড হচ্ছে…'
+            : 'Loading…'}
         </p>
       </div>
     );

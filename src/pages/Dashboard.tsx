@@ -74,6 +74,12 @@ import { EmergencyProtectionBanner } from '@/components/emergency/EmergencyProte
 import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
 import { TabLoadingWrapper } from '@/components/dashboard/TabLoadingWrapper';
+import {
+  SummaryTabSkeleton,
+  EnvironmentTabSkeleton,
+  ControlTabSkeleton,
+  FlockTabSkeleton,
+} from '@/components/dashboard/TabSkeletons';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
@@ -219,7 +225,11 @@ export function Dashboard() {
 
             {/* TAB 1: 🏠 সারসংক্ষেপ */}
             <TabsContent value="summary" className="mt-3 space-y-3">
-              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.summary}>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.summary}
+                skeleton={<SummaryTabSkeleton />}
+                loadingHint={{ bn: 'সারসংক্ষেপ লোড হচ্ছে…', en: 'Loading summary…' }}
+              >
                 <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
@@ -236,7 +246,11 @@ export function Dashboard() {
 
             {/* TAB 2: 🌡️ পরিবেশ */}
             <TabsContent value="environment" className="mt-3 space-y-3">
-              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.environment}>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.environment}
+                skeleton={<EnvironmentTabSkeleton />}
+                loadingHint={{ bn: 'সেন্সর ও পরিবেশ ডেটা লোড হচ্ছে…', en: 'Loading environment data…' }}
+              >
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -276,7 +290,11 @@ export function Dashboard() {
 
             {/* TAB 3: ⚡ নিয়ন্ত্রণ ও অটোমেশন */}
             <TabsContent value="control" className="mt-3 space-y-3">
-              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.control} skeletonRows={4}>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.control}
+                skeleton={<ControlTabSkeleton />}
+                loadingHint={{ bn: 'নিয়ন্ত্রণ ও অটোমেশন স্ট্যাটাস লোড হচ্ছে…', en: 'Loading controls & automation…' }}
+              >
               <div className="grid grid-cols-2 gap-3">
                 <CurrentActionPanel />
                 <AdvisoryAssistant />
@@ -365,6 +383,8 @@ export function Dashboard() {
                   bn: 'একটি লেয়ার বা ব্রয়লার ব্যাচ যোগ করলে এখানে তথ্য দেখা যাবে',
                   en: 'Add a layer or broiler batch to see flock data here',
                 }}
+                skeleton={<FlockTabSkeleton />}
+                loadingHint={{ bn: 'ব্যাচ ও ফ্লক তথ্য লোড হচ্ছে…', en: 'Loading flock & batch info…' }}
               >
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
