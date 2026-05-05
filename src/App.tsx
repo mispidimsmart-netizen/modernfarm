@@ -58,11 +58,23 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 2, // 2 minutes
       gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+      // Never trigger a hard reload on focus — too noisy on mobile.
       refetchOnWindowFocus: false,
+      // On reconnect: silently refresh in the background. Cached data stays
+      // visible (no Skeleton flash) because we serve cache first via
+      // networkMode 'offlineFirst' and components keep previous data.
+      refetchOnReconnect: 'always',
+      refetchOnMount: false,
+      networkMode: 'offlineFirst',
+      retry: 1,
+    },
+    mutations: {
+      networkMode: 'offlineFirst',
       retry: 1,
     },
   },
 });
+
 
 // Loading spinner component - memoized
 const LoadingSpinner = memo(function LoadingSpinner() {
