@@ -225,7 +225,11 @@ export function Dashboard() {
 
             {/* TAB 1: 🏠 সারসংক্ষেপ */}
             <TabsContent value="summary" className="mt-3 space-y-3">
-              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.summary}>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.summary}
+                skeleton={<SummaryTabSkeleton />}
+                loadingHint={{ bn: 'সারসংক্ষেপ লোড হচ্ছে…', en: 'Loading summary…' }}
+              >
                 <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
