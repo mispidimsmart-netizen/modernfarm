@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 export function LightStatusPanel() {
   const { language } = useAuth();
   const { currentState, settings, isLoading } = useLightingCurve();
-  const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
+  const { status: deviceStatus, manualOverride, isDeviceOnline } = useRealtimeDeviceStatus();
 
   if (isLoading || !currentState || !settings) {
     return (
