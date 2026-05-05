@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { Skull, Plus, Calendar, AlertTriangle } from 'lucide-react';
+import { Skull, Plus, Calendar, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useMortalityRecords, useAddMortalityRecord, useFlockInfo } from '@/hooks/useFarmManagement';
+import { useMortalityRecords, useAddMortalityRecord, useFlockInfo, useUpdateMortalityRecord, useDeleteMortalityRecord, type MortalityRecord } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface MortalitySheetProps {
   open: boolean;
