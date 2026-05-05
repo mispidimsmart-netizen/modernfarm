@@ -295,30 +295,40 @@ export function Dashboard() {
                 skeleton={<ControlTabSkeleton />}
                 loadingHint={{ bn: 'নিয়ন্ত্রণ ও অটোমেশন স্ট্যাটাস লোড হচ্ছে…', en: 'Loading controls & automation…' }}
               >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <CurrentActionPanel />
-                <AdvisoryAssistant />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="min-w-0"><CurrentActionPanel /></div>
+                <div className="min-w-0"><AdvisoryAssistant /></div>
               </div>
 
               <LightStatusPanel />
               <LightActionHistory />
               <LightSensorCard />
 
-              <section>
+              <section className="min-w-0">
                 <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
-                  {isManualMode ? '✋' : '⚙️'} {language === 'bn' 
-                    ? (isManualMode ? 'সিস্টেম স্ট্যাটাস' : 'অটোমেশন ও সেফটি') 
+                  {isManualMode ? '✋' : '⚙️'} {language === 'bn'
+                    ? (isManualMode ? 'সিস্টেম স্ট্যাটাস' : 'অটোমেশন ও সেফটি')
                     : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {!isManualMode && <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />}
-                    <SystemModeCard />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {!isManualMode && (
+                      <div className="min-w-0">
+                        <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <SystemModeCard />
+                    </div>
                   </div>
-                  {!isManualMode && <AutomationStatusCard />}
+                  {!isManualMode && (
+                    <div className="min-w-0">
+                      <AutomationStatusCard />
+                    </div>
+                  )}
 
                   {isBroiler && (
-                    <>
+                    <div className="space-y-3 min-w-0">
                       {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
                       <BroilerTempStatusCard tempResult={broilerEnvResult ? {
                         currentTemp: broilerEnvResult.temperature.current,
@@ -334,11 +344,13 @@ export function Dashboard() {
                         message: broilerEnvResult.overallMessage,
                       } : null} />
                       <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
-                    </>
+                    </div>
                   )}
 
                   {isLayer && !isManualMode && (
-                    <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
+                    <div className="min-w-0">
+                      <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
+                    </div>
                   )}
                 </div>
               </section>
