@@ -36,10 +36,10 @@ import {
 } from '@/components/ui/dialog';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
-import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { useActiveBatch as useActiveBroilerBatch, useBatchFeed, useBatchWeights } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
-type EntryType = 'egg' | 'mortality' | 'expense';
+type EntryType = 'egg' | 'mortality' | 'expense' | 'broiler-feed' | 'broiler-weight';
 
 interface RecentEntry {
   id: string;
@@ -52,6 +52,8 @@ interface RecentEntry {
     count?: number;
     amount?: number;
     description?: string | null;
+    quantity_kg?: number;
+    average_weight_grams?: number;
   };
 }
 
@@ -68,6 +70,8 @@ export function RecentEntryHistory() {
     : isBroiler
       ? activeBroilerBatch?.id ?? null
       : null;
+  const { data: broilerFeedRecords } = useBatchFeed(isBroiler ? activeBatchId ?? undefined : undefined);
+  const { data: broilerWeightRecords } = useBatchWeights(isBroiler ? activeBatchId ?? undefined : undefined);
   const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
 
   const deleteEgg = useDeleteEggProduction();
@@ -113,6 +117,26 @@ export function RecentEntryHistory() {
           ? `💰 খরচ: ৳${Number(e.amount).toLocaleString('bn-BD')}`
           : `💰 Expense: ৳${Number(e.amount).toLocaleString()}`,
       raw: { amount: Number(e.amount), description: e.description },
+    })) ?? []),
+    ...((isBroiler ? broilerFeedRecords : [])?.slice(0, 3).map((f: any) => ({
+      id: f.id,
+      type: 'broiler-feed' as const,
+      date: f.feed_date,
+      label:
+        language === 'bn'
+          ? `🌾 ফিড: ${Number(f.quantity_kg).toLocaleString('bn-BD')} কেজি`
+          : `🌾 Feed: ${Number(f.quantity_kg).toLocaleString()} kg`,
+      raw: { quantity_kg: Number(f.quantity_kg) },
+    })) ?? []),
+    ...((isBroiler ? broilerWeightRecords : [])?.slice(0, 2).map((w: any) => ({
+      id: w.id,
+      type: 'broiler-weight' as const,
+      date: w.record_date,
+      label:
+        language === 'bn'
+          ? `⚖️ ওজন: ${Number(w.average_weight_grams).toLocaleString('bn-BD')} গ্রাম`
+          : `⚖️ Weight: ${Number(w.average_weight_grams).toLocaleString()} g`,
+      raw: { average_weight_grams: Number(w.average_weight_grams) },
     })) ?? []),
   ]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -211,26 +235,31 @@ export function RecentEntryHistory() {
                     : format(parseISO(entry.date), 'dd MMM')}
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-primary"
-                    onClick={() => openEdit(entry)}
-                    aria-label={language === 'bn' ? 'এডিট' : 'Edit'}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => setConfirmDelete(entry)}
-                    aria-label={language === 'bn' ? 'ডিলিট' : 'Delete'}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {/* Broiler feed/weight entries are managed from their own sheets */}
+                  {entry.type !== 'broiler-feed' && entry.type !== 'broiler-weight' && (
+                    <>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                        onClick={() => openEdit(entry)}
+                        aria-label={language === 'bn' ? 'এডিট' : 'Edit'}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setConfirmDelete(entry)}
+                        aria-label={language === 'bn' ? 'ডিলিট' : 'Delete'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
