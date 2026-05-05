@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { 
   Search, Filter, Shield, Settings, Zap, Terminal, 
-  Cpu, User, ChevronDown, ChevronUp, RefreshCw, ListChecks
+  Cpu, User, ChevronDown, ChevronUp, RefreshCw, ListChecks,
+  AlertTriangle, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DeviceCommandLogTab } from '@/components/audit/DeviceCommandLogTab';
@@ -45,7 +46,33 @@ const actionLabels: Record<string, { en: string; bn: string }> = {
   manual_control: { en: 'Manual Control', bn: 'ম্যানুয়াল কন্ট্রোল' },
   safety_override: { en: 'Safety Override', bn: 'সেফটি ওভাররাইড' },
   firmware_update: { en: 'Firmware Update', bn: 'ফার্মওয়্যার আপডেট' },
+  safety_engine_sensor_fail: { en: 'Sensor Fail', bn: 'সেন্সর ফেল' },
+  safety_engine_stuck_relay: { en: 'Stuck Relay', bn: 'রিলে আটকে গেছে' },
+  safety_engine_airflow_ineffective: { en: 'Airflow Ineffective', bn: 'বাতাস অকার্যকর' },
+  safety_engine_sensor_drift: { en: 'Sensor Drift', bn: 'সেন্সর ড্রিফট' },
+  safety_engine_emergency: { en: 'Emergency', bn: 'জরুরি অবস্থা' },
+  safety_engine_survival: { en: 'Survival Mode', bn: 'সারভাইভাল মোড' },
+  power_fail: { en: 'Power Fail', bn: 'পাওয়ার ফেল' },
+  power_restored: { en: 'Power Restored', bn: 'পাওয়ার ফিরেছে' },
 };
+
+// Quick-pick incident types (most common safety/power events)
+const INCIDENT_QUICK_PICKS: { key: string; bn: string; en: string; emoji: string }[] = [
+  { key: 'safety_engine_sensor_fail', bn: 'সেন্সর ফেল', en: 'Sensor Fail', emoji: '🌡️' },
+  { key: 'safety_engine_stuck_relay', bn: 'রিলে আটকে', en: 'Stuck Relay', emoji: '🔌' },
+  { key: 'safety_engine_emergency', bn: 'জরুরি', en: 'Emergency', emoji: '🚨' },
+  { key: 'safety_engine_survival', bn: 'সারভাইভাল', en: 'Survival', emoji: '🛡️' },
+  { key: 'safety_engine_airflow_ineffective', bn: 'বাতাস অকার্যকর', en: 'No Airflow', emoji: '💨' },
+  { key: 'safety_engine_sensor_drift', bn: 'সেন্সর ড্রিফট', en: 'Sensor Drift', emoji: '📊' },
+  { key: 'power_fail', bn: 'পাওয়ার ফেল', en: 'Power Fail', emoji: '⚡' },
+  { key: 'safety_override', bn: 'সেফটি ওভাররাইড', en: 'Safety Override', emoji: '⚠️' },
+];
+
+const DATE_PRESETS: { key: string; bn: string; en: string; days: number }[] = [
+  { key: 'today', bn: 'আজ', en: 'Today', days: 0 },
+  { key: '7d', bn: '৭ দিন', en: '7 days', days: 7 },
+  { key: '30d', bn: '৩০ দিন', en: '30 days', days: 30 },
+];
 
 export function AuditLogPage() {
   const { language } = useAuth();
@@ -170,7 +197,40 @@ export function AuditLogPage() {
               </Select>
             </div>
 
-            {/* Date range */}
+            {/* Date range presets */}
+            <div className="flex gap-1.5 flex-wrap">
+              {DATE_PRESETS.map(p => {
+                const from = format(startOfDay(subDays(new Date(), p.days)), 'yyyy-MM-dd');
+                const to = format(endOfDay(new Date()), 'yyyy-MM-dd');
+                const active = filters.dateFrom === from && filters.dateTo === to;
+                return (
+                  <Button
+                    key={p.key}
+                    type="button"
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    className="h-7 px-2.5 text-[11px]"
+                    onClick={() => setFilters(f => ({ ...f, dateFrom: from, dateTo: to }))}
+                  >
+                    {isBn ? p.bn : p.en}
+                  </Button>
+                );
+              })}
+              {(filters.dateFrom || filters.dateTo) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setFilters(f => ({ ...f, dateFrom: undefined, dateTo: undefined }))}
+                >
+                  <X size={12} className="mr-1" />
+                  {isBn ? 'সব সময়' : 'All time'}
+                </Button>
+              )}
+            </div>
+
+            {/* Date range custom */}
             <div className="flex gap-2">
               <SmartDatePicker
                 value={filters.dateFrom || null}
@@ -186,6 +246,47 @@ export function AuditLogPage() {
                 className="flex-1"
                 disableFuture
               />
+            </div>
+
+            {/* Quick incident pickers */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground">
+                <AlertTriangle size={12} />
+                <span>{isBn ? 'দ্রুত ঘটনা ফিল্টার:' : 'Quick incident filter:'}</span>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {INCIDENT_QUICK_PICKS.map(p => {
+                  const active = filters.actionType === p.key;
+                  return (
+                    <Button
+                      key={p.key}
+                      type="button"
+                      size="sm"
+                      variant={active ? 'default' : 'outline'}
+                      className="h-7 px-2 text-[11px] gap-1"
+                      onClick={() => setFilters(f => ({
+                        ...f,
+                        actionType: active ? undefined : p.key,
+                      }))}
+                    >
+                      <span>{p.emoji}</span>
+                      <span>{isBn ? p.bn : p.en}</span>
+                    </Button>
+                  );
+                })}
+                {filters.actionType && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => setFilters(f => ({ ...f, actionType: undefined }))}
+                  >
+                    <X size={12} className="mr-1" />
+                    {isBn ? 'মুছুন' : 'Clear'}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
