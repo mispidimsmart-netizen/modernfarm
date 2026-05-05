@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Scale, Plus, TrendingUp, TrendingDown, Target, AlertCircle } from 'lucide-react';
+import { Scale, Plus, TrendingUp, TrendingDown, Target, AlertCircle, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useActiveBatch, useAddWeight, useBatchWeights, useBatchStats } from '@/hooks/useBroilerData';
+import { useActiveBatch, useAddWeight, useBatchWeights, useBatchStats, useUpdateWeight, useDeleteWeight, type BroilerWeight } from '@/hooks/useBroilerData';
 import { getBroilerTargetWeight } from '@/hooks/useFarmType';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface BroilerWeightSheetProps {
   open: boolean;
