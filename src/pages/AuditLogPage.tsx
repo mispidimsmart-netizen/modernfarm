@@ -301,6 +301,13 @@ export function AuditLogPage() {
                                   </pre>
                                 </div>
                               )}
+
+                              {(() => {
+                                const tipKey = getTroubleshootingKey(log.action_type);
+                                return tipKey ? (
+                                  <TroubleshootingTips tipKey={tipKey} logId={log.id} isBn={isBn} />
+                                ) : null;
+                              })()}
                             </motion.div>
                           )}
                         </CardContent>
