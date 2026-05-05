@@ -65,7 +65,7 @@ const Footer = ({ isSignUp, onToggle }: { isSignUp: boolean; onToggle: () => voi
         A <span className="text-primary">Nexiot Labs</span> Product
       </p>
       <p className="text-[9px] sm:text-[10px] text-muted-foreground/50">
-        © ২০২৬ Nexiot Labs · FarmEye Automation Platform
+        © 2026 Nexiot Labs · FarmEye Automation Platform
       </p>
     </motion.div>
   </>
