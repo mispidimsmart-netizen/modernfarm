@@ -143,6 +143,8 @@ export interface AuditLogFilters {
   dateFrom?: string;
   dateTo?: string;
   searchQuery?: string;
+  actionType?: string;        // exact match (e.g. 'safety_engine_sensor_fail')
+  actionTypes?: string[];     // OR-match across multiple types
 }
 
 export function useAuditLogs(filters: AuditLogFilters = {}) {
@@ -154,8 +156,6 @@ export function useAuditLogs(filters: AuditLogFilters = {}) {
     queryFn: async () => {
       if (!user) return [];
 
-      // Filter by farm_id (RLS-safe and includes device/edge-function logs);
-      // fall back to user_id if no farm is selected yet.
       let query = (supabase.from('farm_audit_logs') as any)
         .select('*')
         .order('created_at', { ascending: false })
@@ -172,6 +172,12 @@ export function useAuditLogs(filters: AuditLogFilters = {}) {
       }
       if (filters.severity) {
         query = query.eq('severity', filters.severity);
+      }
+      if (filters.actionType) {
+        query = query.eq('action_type', filters.actionType);
+      }
+      if (filters.actionTypes && filters.actionTypes.length > 0) {
+        query = query.in('action_type', filters.actionTypes);
       }
       if (filters.dateFrom) {
         query = query.gte('created_at', filters.dateFrom);
