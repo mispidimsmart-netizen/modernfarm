@@ -59,10 +59,15 @@ const Footer = ({ isSignUp, onToggle }: { isSignUp: boolean; onToggle: () => voi
         {isSignUp ? 'ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করুন'}
       </button>
     </motion.div>
-    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-      className="mt-2 sm:mt-3 text-center text-[10px] sm:text-xs text-muted-foreground/60 pb-2">
-      © 2026 FarmEye Automation Platform
-    </motion.p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+      className="mt-2 sm:mt-3 text-center pb-2 space-y-0.5">
+      <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground/80">
+        একটি <span className="text-primary">Nexiot Labs</span> পণ্য
+      </p>
+      <p className="text-[9px] sm:text-[10px] text-muted-foreground/50">
+        © ২০২৬ Nexiot Labs · FarmEye Automation Platform
+      </p>
+    </motion.div>
   </>
 );
 
