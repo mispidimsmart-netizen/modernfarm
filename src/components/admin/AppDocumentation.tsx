@@ -889,6 +889,14 @@ export function AppDocumentation() {
             </ScrollArea>
           </TabsContent>
         </Tabs>
+        <div className="mt-6 pt-4 border-t border-white/10 text-center">
+          <p className="text-xs text-slate-400">
+            A <span className="text-indigo-300 font-semibold">Nexiot Labs</span> Product
+          </p>
+          <p className="text-[10px] text-slate-500 mt-1">
+            © 2026 Nexiot Labs · FarmEye Automation Platform
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

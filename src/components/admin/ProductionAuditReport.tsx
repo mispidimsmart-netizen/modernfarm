@@ -17,7 +17,7 @@ const handleDownloadPDF = () => {
     <html>
     <head>
       <meta charset="utf-8">
-      <title>FarmEye Production Audit Report</title>
+      <title>FarmEye Production Audit Report — Nexiot Labs</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -183,7 +183,7 @@ const handleDownloadPDF = () => {
       </ul>
 
       <div class="footer">
-        <p>© ${new Date().getFullYear()} FarmEye — Smart Poultry Farm Automation System | Developed by MonirIoT</p>
+        <p>© ${new Date().getFullYear()} Nexiot Labs · FarmEye Automation Platform — Smart Poultry Farm Automation System</p>
         <p>Report Version: ${REPORT_VERSION} | Auto-generated</p>
       </div>
     </body>
