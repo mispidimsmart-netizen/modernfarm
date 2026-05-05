@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 export function LightStatusPanel() {
   const { language } = useAuth();
   const { currentState, settings, isLoading } = useLightingCurve();
-  const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
+  const { status: deviceStatus, manualOverride, isDeviceOnline } = useRealtimeDeviceStatus();
 
   if (isLoading || !currentState || !settings) {
     return (
@@ -40,8 +40,38 @@ export function LightStatusPanel() {
     );
   }
 
-  const relayOn = deviceStatus?.light ?? false;
+  const relayOn = isDeviceOnline ? (deviceStatus?.light ?? false) : false;
   const isManual = manualOverride === true;
+
+  // ESP32 offline → show neutral offline card; do not pretend the schedule is acting
+  if (!isDeviceOnline) {
+    return (
+      <Card className="border-2 border-slate-500/40 bg-gradient-to-br from-slate-500/10 to-slate-600/5">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-600 text-white shadow-sm">
+              <LightbulbOff className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-bold leading-tight truncate">
+                  {language === 'bn' ? '📡 ESP32 অফলাইন' : '📡 ESP32 offline'}
+                </p>
+                <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-bold bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30">
+                  {language === 'bn' ? 'অফলাইন' : 'OFFLINE'}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                {language === 'bn'
+                  ? 'লাইটের আসল অবস্থা যাচাই করা যাচ্ছে না — ডিভাইস কানেক্ট করুন'
+                  : 'Cannot verify actual light state — please reconnect device'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // ───── Determine the dominant reason ─────
   type Reason = 'manual' | 'fade-in' | 'on' | 'fade-out' | 'off-schedule';

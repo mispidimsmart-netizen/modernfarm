@@ -93,7 +93,7 @@ interface DeviceItem {
 export function IndustrialHeroStatus() {
   const { language } = useAuth();
   const { sensorData, hasRealData } = useRealtimeSensorData();
-  const { status: deviceStatus } = useRealtimeDeviceStatus();
+  const { status: deviceStatus, isDeviceOnline } = useRealtimeDeviceStatus();
   const { isBroiler } = useFarmType();
   const { selectedShedId } = useSelectedShed();
   const { data: activeBatch } = useActiveBatch();
@@ -166,7 +166,7 @@ export function IndustrialHeroStatus() {
     const offlineLabel = { bn: 'অজানা — ESP32 অফলাইন', en: 'Unknown — ESP32 offline' };
 
     // ESP32 offline → we cannot trust any relay state. Show all as unknown/off.
-    if (!hasRealData) {
+    if (!hasRealData || !isDeviceOnline) {
       return [
         { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: false, reason: offlineLabel },
         { icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' }, isOn: false, reason: offlineLabel },
@@ -251,7 +251,7 @@ export function IndustrialHeroStatus() {
       { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
       { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler, reason: sprinklerReason },
     ];
-  }, [deviceStatus, sensorData, hsiResult, isManualMode, hasRealData]);
+  }, [deviceStatus, sensorData, hsiResult, isManualMode, hasRealData, isDeviceOnline]);
 
   const Icon = currentStatus.icon;
   const isEmergency = currentStatus.id === 'emergency';

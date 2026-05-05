@@ -149,6 +149,10 @@ export function useRealtimeSensorData() {
 }
 
 // Realtime device status with Supabase subscriptions
+// Adds an `isDeviceOnline` flag derived from `updated_at` freshness so that
+// UI consumers can show a single, consistent "অফলাইন" fallback for ALL relays
+// when the ESP32 hasn't reported in (Hardware-as-Source-of-Truth: if the
+// device is silent, cloud-side relay flags cannot be trusted).
 export function useRealtimeDeviceStatus() {
   const { user } = useAuth();
   const { data: initialStatus, isLoading } = useDeviceStatus();
@@ -180,11 +184,27 @@ export function useRealtimeDeviceStatus() {
     };
   }, [user?.id, queryClient]);
 
+  // ── Online/offline detection ──
+  // Prefer `last_device_ack_at` (set by ESP32 heartbeat) and fall back to
+  // `updated_at`. Anything older than 3 minutes is treated as offline.
+  const DEVICE_FRESH_WINDOW_MS = 3 * 60 * 1000;
+  const ackRaw =
+    (initialStatus as any)?.last_device_ack_at ??
+    (initialStatus as any)?.updated_at ??
+    null;
+  const lastAckAt = ackRaw ? new Date(ackRaw) : null;
+  const ageMs = lastAckAt ? Date.now() - lastAckAt.getTime() : null;
+  const isDeviceOnline =
+    !!initialStatus && ageMs !== null && ageMs < DEVICE_FRESH_WINDOW_MS;
+
   // In MANUAL mode, show desired_* states (what user commanded) when explicitly set
   // In AUTO mode, show actual states from ESP32
   const isManualMode = initialStatus?.desired_manual_override || initialStatus?.manual_override;
 
   const resolveState = (actual: boolean, desired: boolean | null | undefined): boolean => {
+    // Device offline → cannot trust ANY relay state. Force OFF/false so UI
+    // never shows misleading "চালু" while ESP32 is silent.
+    if (!isDeviceOnline) return false;
     if (isManualMode && desired !== null && desired !== undefined) {
       return desired;
     }
@@ -192,7 +212,7 @@ export function useRealtimeDeviceStatus() {
   };
 
   const status: DeviceStatus = initialStatus ? {
-    power: initialStatus.power_on,
+    power: isDeviceOnline ? initialStatus.power_on : false,
     fan: resolveState(initialStatus.fan_on, initialStatus.desired_fan_on),
     light: resolveState(initialStatus.light_on, initialStatus.desired_light_on),
     alarm: resolveState(initialStatus.alarm_on, initialStatus.desired_alarm_on),
@@ -202,7 +222,7 @@ export function useRealtimeDeviceStatus() {
     ceilingFan: resolveState(initialStatus.ceiling_fan_on ?? false, initialStatus.desired_ceiling_fan_on),
     sprinkler: resolveState(initialStatus.sprinkler_on ?? false, initialStatus.desired_sprinkler_on),
   } : {
-    power: true,
+    power: false,
     fan: false,
     light: false,
     alarm: false,
@@ -215,7 +235,14 @@ export function useRealtimeDeviceStatus() {
 
   const manualOverride = initialStatus?.manual_override || initialStatus?.desired_manual_override || false;
 
-  return { status, manualOverride, isLoading };
+  return {
+    status,
+    manualOverride,
+    isLoading,
+    isDeviceOnline,
+    lastAckAt,
+    ageMs,
+  };
 }
 
 // Realtime alerts subscription with sound support
