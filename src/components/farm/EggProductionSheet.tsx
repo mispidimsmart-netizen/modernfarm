@@ -23,6 +23,10 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
   const { language } = useAuth();
   const { data: eggData, isLoading } = useEggProduction();
   const addEggProduction = useAddEggProduction();
+  const updateEgg = useUpdateEggProduction();
+  const deleteEgg = useDeleteEggProduction();
+  const [editEntry, setEditEntry] = useState<EggProduction | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     production_date: format(new Date(), 'yyyy-MM-dd'),
