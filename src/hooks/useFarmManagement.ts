@@ -944,3 +944,35 @@ export function useUpdateMortalityRecord() {
     onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
   });
 }
+
+export function useUpdateIncome() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: { id: string; amount?: number; description?: string | null; income_date?: string; category?: string; quantity?: number | null; unit_price?: number | null }) => {
+      const { error } = await supabase.from('income').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['income', 'today-summary', 'daily-summary'].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+      toast({ title: 'আয় এন্ট্রি আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'আপডেট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useDeleteIncome() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('income').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      ['income', 'today-summary', 'daily-summary'].forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+      toast({ title: 'আয় এন্ট্রি মুছে ফেলা হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ডিলিট ব্যর্থ', description: e?.message, variant: 'destructive' }),
+  });
+}
