@@ -100,7 +100,6 @@ export function QuickSensorDisplay() {
       </motion.div>
     );
   }
-  }
 
   return (
     <motion.div
