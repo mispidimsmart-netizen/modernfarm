@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Thermometer, Wind, AlertTriangle, Wrench, Zap } from 'lucide-react';
+import { CheckCircle2, Thermometer, Wind, AlertTriangle, Wrench, Zap, Fan, Droplets, ArrowUpFromDot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
