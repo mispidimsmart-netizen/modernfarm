@@ -43,11 +43,13 @@ const LAYER_FEED_TYPES = [
   { value: 'grower', bn: 'গ্রোয়ার', en: 'Grower' },
 ];
 
+// Order matters: first item becomes the default selection.
+// 'starter' is the most common day-1 feed for broilers (pre-starter is optional).
 const BROILER_FEED_TYPES = [
-  { value: 'pre_starter', bn: 'প্রি-স্টার্টার', en: 'Pre-Starter' },
   { value: 'starter', bn: 'স্টার্টার', en: 'Starter' },
   { value: 'grower', bn: 'গ্রোয়ার', en: 'Grower' },
   { value: 'finisher', bn: 'ফিনিশার', en: 'Finisher' },
+  { value: 'pre_starter', bn: 'প্রি-স্টার্টার', en: 'Pre-Starter' },
 ];
 
 export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: FeedManagementSheetProps) {
