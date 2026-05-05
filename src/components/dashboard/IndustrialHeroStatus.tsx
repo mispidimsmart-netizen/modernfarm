@@ -93,7 +93,7 @@ interface DeviceItem {
 export function IndustrialHeroStatus() {
   const { language } = useAuth();
   const { sensorData, hasRealData } = useRealtimeSensorData();
-  const { status: deviceStatus } = useRealtimeDeviceStatus();
+  const { status: deviceStatus, isDeviceOnline } = useRealtimeDeviceStatus();
   const { isBroiler } = useFarmType();
   const { selectedShedId } = useSelectedShed();
   const { data: activeBatch } = useActiveBatch();
