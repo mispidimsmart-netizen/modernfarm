@@ -106,9 +106,15 @@ export function Dashboard() {
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
+    // Show cached data instantly. Only background-refetch queries that are
+    // already stale — never force a full reload that triggers Skeletons.
     const keys = TAB_QUERY_KEYS[value] || [];
     keys.forEach((key) => {
-      queryClient.invalidateQueries({ queryKey: [key] });
+      queryClient.refetchQueries({
+        queryKey: [key],
+        type: 'active',
+        stale: true,
+      });
     });
   }, [queryClient]);
 
