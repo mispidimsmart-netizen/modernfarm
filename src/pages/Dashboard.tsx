@@ -84,7 +84,25 @@ export function Dashboard() {
   const { data: deviceHealth } = useAllDeviceHealth();
   const { selectedShedId } = useSelectedShed();
   const { isLayer, isBroiler } = useFarmType();
-  
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<string>('summary');
+
+  // Tab → query keys map: refetch relevant data when user switches tabs
+  const TAB_QUERY_KEYS: Record<string, string[]> = {
+    summary: ['device_health', 'today-summary', 'farm-health-score', 'weather_cache', 'flock-info'],
+    environment: ['sensor_history', 'weather_cache', 'inside_outside_delta', 'heat-risk', 'ammonia-trend'],
+    control: ['device_health', 'automation-status', 'safety_status', 'light-status', 'light-action-history', 'power-outages', 'sensor-health'],
+    flock: ['today-summary', 'layer-batch-active', 'layer-batches', 'broiler-batch-active', 'broiler-batches', 'water-anomaly', 'flock-info'],
+  };
+
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    const keys = TAB_QUERY_KEYS[value] || [];
+    keys.forEach((key) => {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    });
+  }, [queryClient]);
+
   // Subscribe to realtime alerts
   useRealtimeAlerts();
   
