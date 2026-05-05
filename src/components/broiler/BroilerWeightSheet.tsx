@@ -24,7 +24,10 @@ export function BroilerWeightSheet({ open, onOpenChange }: BroilerWeightSheetPro
   const { data: weights } = useBatchWeights(batch?.id);
   const stats = useBatchStats(batch?.id);
   const addWeight = useAddWeight();
-
+  const updateWeight = useUpdateWeight();
+  const deleteWeight = useDeleteWeight();
+  const [editEntry, setEditEntry] = useState<BroilerWeight | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({
     average_weight_grams: '',
     sample_count: '10',
