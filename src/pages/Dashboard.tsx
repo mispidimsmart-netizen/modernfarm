@@ -146,7 +146,7 @@ export function Dashboard() {
         </div>
 
         {/* ============ 🔝 STICKY CRITICAL ZONE (always visible) ============ */}
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-md border-b border-border/40 mb-3 space-y-2">
+        <div className="mb-3 space-y-2">
           {/* Setup / Manual / Emergency / Alert banners */}
           <SetupReminderBanner />
           <ManualModeWarningBanner />
