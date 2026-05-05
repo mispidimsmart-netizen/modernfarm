@@ -185,19 +185,6 @@ export const translations = {
     pending: { bn: 'পেন্ডিং', en: 'Pending' },
     syncNow: { bn: 'সিঙ্ক করুন', en: 'Sync Now' },
   },
-
-  // Device labels (used by status pill-badges, device cards, etc.)
-  devices: {
-    fan: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
-    exhaustFan: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
-    ceilingFan: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
-    circulationFan: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
-    fogger: { bn: 'ফগার', en: 'Fogger' },
-    sprinkler: { bn: 'স্প্রিংকলার', en: 'Sprinkler' },
-    heater: { bn: 'হিটার', en: 'Heater' },
-    light: { bn: 'লাইট', en: 'Light' },
-    alarm: { bn: 'অ্যালার্ম', en: 'Alarm' },
-  },
 } as const;
 
 export type Language = 'bn' | 'en';
