@@ -276,6 +276,7 @@ export function Dashboard() {
 
             {/* TAB 3: ⚡ নিয়ন্ত্রণ ও অটোমেশন */}
             <TabsContent value="control" className="mt-3 space-y-3">
+              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.control} skeletonRows={4}>
               <div className="grid grid-cols-2 gap-3">
                 <CurrentActionPanel />
                 <AdvisoryAssistant />
