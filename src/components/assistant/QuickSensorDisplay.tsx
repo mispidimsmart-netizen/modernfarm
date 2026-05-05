@@ -81,15 +81,22 @@ export function QuickSensorDisplay() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-5 text-center"
+        className="rounded-2xl border border-dashed border-border bg-muted/30 p-2.5 sm:p-3.5"
       >
-        <Thermometer className="h-6 w-6 mx-auto mb-1.5 text-muted-foreground/60" />
-        <p className="text-sm font-semibold text-muted-foreground">
-          {language === 'bn' ? 'সেন্সর ডেটার অপেক্ষায়...' : 'Waiting for sensor data...'}
-        </p>
-        <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-          {language === 'bn' ? 'ESP32 কানেক্ট হলে এখানে দেখাবে' : 'Will appear once ESP32 connects'}
-        </p>
+        <div className="flex items-center gap-2 sm:gap-3 min-h-[88px]">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <Thermometer className="h-5 w-5 text-muted-foreground/60 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-muted-foreground leading-tight">
+                {language === 'bn' ? 'সেন্সর ডেটার অপেক্ষায়...' : 'Waiting for sensor data...'}
+              </p>
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5 leading-tight">
+                {language === 'bn' ? 'ESP32 কানেক্ট হলে এখানে দেখাবে' : 'Will appear once ESP32 connects'}
+              </p>
+            </div>
+          </div>
+          <div className="w-[96px] sm:w-[112px] shrink-0" aria-hidden />
+        </div>
       </motion.div>
     );
   }
