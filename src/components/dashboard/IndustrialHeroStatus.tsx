@@ -163,6 +163,19 @@ export function IndustrialHeroStatus() {
 
     const manualOnLabel = { bn: 'আপনি চালু করেছেন', en: 'You turned ON' };
     const manualOffLabel = { bn: 'আপনি বন্ধ রেখেছেন', en: 'You kept OFF' };
+    const offlineLabel = { bn: 'অজানা — ESP32 অফলাইন', en: 'Unknown — ESP32 offline' };
+
+    // ESP32 offline → we cannot trust any relay state. Show all as unknown/off.
+    if (!hasRealData) {
+      return [
+        { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: false, reason: offlineLabel },
+        { icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' }, isOn: false, reason: offlineLabel },
+        { icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: false, reason: offlineLabel },
+        { icon: Lightbulb, label: { bn: 'লাইট', en: 'Light' }, isOn: false, reason: offlineLabel },
+        { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: false, reason: offlineLabel },
+        { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: false, reason: offlineLabel },
+      ];
+    }
 
     // Fan reason
     let fanReason: { bn: string; en: string };
@@ -238,7 +251,7 @@ export function IndustrialHeroStatus() {
       { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
       { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler, reason: sprinklerReason },
     ];
-  }, [deviceStatus, sensorData, hsiResult, isManualMode]);
+  }, [deviceStatus, sensorData, hsiResult, isManualMode, hasRealData]);
 
   const Icon = currentStatus.icon;
   const isEmergency = currentStatus.id === 'emergency';
