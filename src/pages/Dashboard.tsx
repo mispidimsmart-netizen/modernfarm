@@ -73,6 +73,7 @@ import { AlertSummaryBanner } from '@/components/alerts';
 import { EmergencyProtectionBanner } from '@/components/emergency/EmergencyProtectionBanner';
 import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
+import { TabLoadingWrapper } from '@/components/dashboard/TabLoadingWrapper';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
