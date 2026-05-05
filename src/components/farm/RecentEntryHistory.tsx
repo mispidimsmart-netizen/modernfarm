@@ -118,6 +118,26 @@ export function RecentEntryHistory() {
           : `💰 Expense: ৳${Number(e.amount).toLocaleString()}`,
       raw: { amount: Number(e.amount), description: e.description },
     })) ?? []),
+    ...((isBroiler ? broilerFeedRecords : [])?.slice(0, 3).map((f: any) => ({
+      id: f.id,
+      type: 'broiler-feed' as const,
+      date: f.feed_date,
+      label:
+        language === 'bn'
+          ? `🌾 ফিড: ${Number(f.quantity_kg).toLocaleString('bn-BD')} কেজি`
+          : `🌾 Feed: ${Number(f.quantity_kg).toLocaleString()} kg`,
+      raw: { quantity_kg: Number(f.quantity_kg) },
+    })) ?? []),
+    ...((isBroiler ? broilerWeightRecords : [])?.slice(0, 2).map((w: any) => ({
+      id: w.id,
+      type: 'broiler-weight' as const,
+      date: w.record_date,
+      label:
+        language === 'bn'
+          ? `⚖️ ওজন: ${Number(w.average_weight_grams).toLocaleString('bn-BD')} গ্রাম`
+          : `⚖️ Weight: ${Number(w.average_weight_grams).toLocaleString()} g`,
+      raw: { average_weight_grams: Number(w.average_weight_grams) },
+    })) ?? []),
   ]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5);
