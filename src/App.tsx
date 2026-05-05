@@ -125,6 +125,7 @@ const ProtectedRoute = memo(function ProtectedRoute({ children }: { children: Re
 function GlobalBatchEditQueue() {
   useBatchEditQueue();
   useFarmDataRealtime();
+  useDeviceOnlineToasts();
   return null;
 }
 
