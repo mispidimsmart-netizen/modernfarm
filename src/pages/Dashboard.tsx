@@ -313,6 +313,15 @@ export function Dashboard() {
                     : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
+                  {systemStatusFetching > 0 ? (
+                    <SystemStatusCardsSkeleton
+                      showHeatStress={!isManualMode}
+                      showAutomation={!isManualMode}
+                      showBroiler={isBroiler}
+                      showFanSpeed={isLayer && !isManualMode}
+                    />
+                  ) : (
+                    <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {!isManualMode && (
                       <div className="min-w-0">
@@ -353,6 +362,8 @@ export function Dashboard() {
                     <div className="min-w-0">
                       <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                     </div>
+                  )}
+                    </>
                   )}
                 </div>
               </section>
