@@ -36,10 +36,10 @@ import {
 } from '@/components/ui/dialog';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
-import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
+import { useActiveBatch as useActiveBroilerBatch, useBatchFeed, useBatchWeights } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 
-type EntryType = 'egg' | 'mortality' | 'expense';
+type EntryType = 'egg' | 'mortality' | 'expense' | 'broiler-feed' | 'broiler-weight';
 
 interface RecentEntry {
   id: string;
@@ -52,6 +52,8 @@ interface RecentEntry {
     count?: number;
     amount?: number;
     description?: string | null;
+    quantity_kg?: number;
+    average_weight_grams?: number;
   };
 }
 
