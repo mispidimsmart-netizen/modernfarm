@@ -157,32 +157,85 @@ export function useRealtimeDeviceStatus() {
   const { user } = useAuth();
   const { data: initialStatus, isLoading } = useDeviceStatus();
   const queryClient = useQueryClient();
+  const browserOnline = useBrowserOnline();
+
+  // Tick every 15s so `ageMs`/`isDeviceOnline` recompute and the UI flips
+  // from "অফলাইন" → "লাইভ" (or vice-versa) automatically as time passes,
+  // even without any new realtime event.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => (n + 1) % 1_000_000), 15_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Helper: force a fresh fetch of device_status (used on reconnect / focus)
+  const refreshDeviceStatus = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['device_status'] });
+  }, [queryClient]);
 
   useEffect(() => {
     if (!user?.id) return;
 
-    // Subscribe to device status changes
+    // Subscribe to device_status changes (ESP32 heartbeat / relay updates)
+    // AND to sensor_readings INSERTs — when the device wakes up the FIRST
+    // signal is usually a new sensor row, which should immediately re-pull
+    // device_status so the UI flips back to live.
     const channel = supabase
       .channel(`device_status_${user.id}`)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'device_status',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
-          // Invalidate the query to refetch
-          queryClient.invalidateQueries({ queryKey: ['device_status'] });
-        }
+        () => refreshDeviceStatus()
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sensor_readings',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => refreshDeviceStatus()
+      )
+      .subscribe((status) => {
+        // When realtime (re)connects after a drop, refetch immediately so
+        // we don't keep showing stale "offline" data.
+        if (status === 'SUBSCRIBED') {
+          refreshDeviceStatus();
+        }
+      });
+
+    // Browser-level recovery: tab regains focus, network comes back, or
+    // the page becomes visible → re-poll once. Cheap and catches every
+    // case Supabase realtime might miss (laptop wake, mobile resume, etc.)
+    const onFocus = () => refreshDeviceStatus();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshDeviceStatus();
+    };
+    const onOnline = () => refreshDeviceStatus();
+
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [user?.id, queryClient]);
+  }, [user?.id, refreshDeviceStatus]);
+
+  // When the browser flips back to "online", also force a refetch (covers
+  // the case where the listener above mounted while already offline).
+  useEffect(() => {
+    if (browserOnline) refreshDeviceStatus();
+  }, [browserOnline, refreshDeviceStatus]);
 
   // ── Online/offline detection ──
   // Prefer `last_device_ack_at` (set by ESP32 heartbeat) and fall back to
