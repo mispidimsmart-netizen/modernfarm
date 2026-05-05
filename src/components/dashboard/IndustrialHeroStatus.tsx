@@ -166,7 +166,7 @@ export function IndustrialHeroStatus() {
     const offlineLabel = { bn: 'অজানা — ESP32 অফলাইন', en: 'Unknown — ESP32 offline' };
 
     // ESP32 offline → we cannot trust any relay state. Show all as unknown/off.
-    if (!hasRealData) {
+    if (!hasRealData || !isDeviceOnline) {
       return [
         { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: false, reason: offlineLabel },
         { icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' }, isOn: false, reason: offlineLabel },
