@@ -214,6 +214,80 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Edit dialog */}
+        <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{t.edit[language]}</DialogTitle></DialogHeader>
+            {editEntry && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.date[language]}</Label>
+                  <SmartDatePicker
+                    value={editEntry.production_date}
+                    onChange={(iso) => setEditEntry({ ...editEntry, production_date: iso })}
+                    disableFuture
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.gradeA[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.grade_a}
+                      onChange={(e) => setEditEntry({ ...editEntry, grade_a: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.gradeB[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.grade_b}
+                      onChange={(e) => setEditEntry({ ...editEntry, grade_b: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.gradeC[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.grade_c}
+                      onChange={(e) => setEditEntry({ ...editEntry, grade_c: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.broken[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.broken}
+                      onChange={(e) => setEditEntry({ ...editEntry, broken: parseInt(e.target.value) || 0 })} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditEntry(null)}>{t.cancel[language]}</Button>
+              <Button onClick={() => {
+                if (editEntry) {
+                  const total = editEntry.grade_a + editEntry.grade_b + editEntry.grade_c + editEntry.broken;
+                  updateEgg.mutate({
+                    id: editEntry.id,
+                    production_date: editEntry.production_date,
+                    grade_a: editEntry.grade_a,
+                    grade_b: editEntry.grade_b,
+                    grade_c: editEntry.grade_c,
+                    broken: editEntry.broken,
+                    total_eggs: total,
+                  }, { onSuccess: () => setEditEntry(null) });
+                }
+              }}>{t.update[language]}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete confirm */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t.confirmDelete[language]}</AlertDialogTitle>
+              <AlertDialogDescription>{t.confirmDeleteDesc[language]}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t.cancel[language]}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (deleteId) deleteEgg.mutate(deleteId); setDeleteId(null); }}>
+                {t.delete[language]}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );
