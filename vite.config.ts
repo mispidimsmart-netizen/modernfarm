@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "FarmEye - খামার থাকবে সবসময় নজরে",
         short_name: "FarmEye",
-        description: "স্মার্ট পোল্ট্রি ফার্ম মনিটরিং - Smart Monitoring for Smart Farmers",
+        description: "স্মার্ট পোল্ট্রি ফার্ম মনিটরিং - একটি Nexiot Labs পণ্য",
         theme_color: "#1F7A63",
         background_color: "#f0f7f5",
         display: "standalone",
