@@ -9,7 +9,7 @@ const handleDownloadPDF = () => {
   if (!printWindow) return;
 
   printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-    <title>FarmEye Technical Architecture v8.0.0</title>
+    <title>FarmEye Technical Architecture v8.0.0 — Nexiot Labs</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap');
       * { margin: 0; padding: 0; box-sizing: border-box; }

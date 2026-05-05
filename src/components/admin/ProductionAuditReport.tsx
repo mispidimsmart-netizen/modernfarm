@@ -17,7 +17,7 @@ const handleDownloadPDF = () => {
     <html>
     <head>
       <meta charset="utf-8">
-      <title>FarmEye Production Audit Report</title>
+      <title>FarmEye Production Audit Report — Nexiot Labs</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
