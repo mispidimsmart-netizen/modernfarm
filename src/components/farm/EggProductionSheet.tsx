@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { Egg, Plus, Calendar } from 'lucide-react';
+import { Egg, Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useEggProduction, useAddEggProduction } from '@/hooks/useFarmManagement';
+import { useEggProduction, useAddEggProduction, useUpdateEggProduction, useDeleteEggProduction, type EggProduction } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface EggProductionSheetProps {
   open: boolean;
@@ -21,6 +23,10 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
   const { language } = useAuth();
   const { data: eggData, isLoading } = useEggProduction();
   const addEggProduction = useAddEggProduction();
+  const updateEgg = useUpdateEggProduction();
+  const deleteEgg = useDeleteEggProduction();
+  const [editEntry, setEditEntry] = useState<EggProduction | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     production_date: format(new Date(), 'yyyy-MM-dd'),
@@ -45,6 +51,12 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
     notes: { bn: 'নোট', en: 'Notes' },
     save: { bn: 'সংরক্ষণ করুন', en: 'Save' },
     noData: { bn: 'কোনো ডেটা নেই', en: 'No data' },
+    edit: { bn: '✏️ ডিম এন্ট্রি এডিট', en: '✏️ Edit Egg Entry' },
+    delete: { bn: 'মুছুন', en: 'Delete' },
+    cancel: { bn: 'বাতিল', en: 'Cancel' },
+    update: { bn: 'আপডেট', en: 'Update' },
+    confirmDelete: { bn: 'এই এন্ট্রি মুছবেন?', en: 'Delete this entry?' },
+    confirmDeleteDesc: { bn: 'এই ডিম এন্ট্রি স্থায়ীভাবে মুছে যাবে।', en: 'This egg entry will be permanently deleted.' },
   };
 
   const handleSubmit = () => {
@@ -167,20 +179,28 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
               <div className="space-y-2">
                 {eggData.map((entry) => (
                   <Card key={entry.id}>
-                    <CardContent className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {format(new Date(entry.production_date), 'dd MMM', { 
-                            locale: language === 'bn' ? bn : enUS 
-                          })}
-                        </span>
+                    <CardContent className="flex items-center justify-between gap-2 p-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-sm">
+                            {format(new Date(entry.production_date), 'dd MMM', {
+                              locale: language === 'bn' ? bn : enUS
+                            })}
+                          </span>
+                          <p className="text-xs text-muted-foreground">
+                            A:{entry.grade_a} B:{entry.grade_b} C:{entry.grade_c}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{entry.total_eggs} টি</p>
-                        <p className="text-xs text-muted-foreground">
-                          A:{entry.grade_a} B:{entry.grade_b} C:{entry.grade_c}
-                        </p>
+                      <p className="font-semibold shrink-0">{entry.total_eggs} টি</p>
+                      <div className="flex shrink-0 gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditEntry(entry)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(entry.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -194,6 +214,80 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Edit dialog */}
+        <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{t.edit[language]}</DialogTitle></DialogHeader>
+            {editEntry && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.date[language]}</Label>
+                  <SmartDatePicker
+                    value={editEntry.production_date}
+                    onChange={(iso) => setEditEntry({ ...editEntry, production_date: iso })}
+                    disableFuture
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.gradeA[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.grade_a}
+                      onChange={(e) => setEditEntry({ ...editEntry, grade_a: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.gradeB[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.grade_b}
+                      onChange={(e) => setEditEntry({ ...editEntry, grade_b: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.gradeC[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.grade_c}
+                      onChange={(e) => setEditEntry({ ...editEntry, grade_c: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.broken[language]}</Label>
+                    <Input type="number" min="0" value={editEntry.broken}
+                      onChange={(e) => setEditEntry({ ...editEntry, broken: parseInt(e.target.value) || 0 })} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditEntry(null)}>{t.cancel[language]}</Button>
+              <Button onClick={() => {
+                if (editEntry) {
+                  const total = editEntry.grade_a + editEntry.grade_b + editEntry.grade_c + editEntry.broken;
+                  updateEgg.mutate({
+                    id: editEntry.id,
+                    production_date: editEntry.production_date,
+                    grade_a: editEntry.grade_a,
+                    grade_b: editEntry.grade_b,
+                    grade_c: editEntry.grade_c,
+                    broken: editEntry.broken,
+                    total_eggs: total,
+                  }, { onSuccess: () => setEditEntry(null) });
+                }
+              }}>{t.update[language]}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete confirm */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t.confirmDelete[language]}</AlertDialogTitle>
+              <AlertDialogDescription>{t.confirmDeleteDesc[language]}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t.cancel[language]}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (deleteId) deleteEgg.mutate(deleteId); setDeleteId(null); }}>
+                {t.delete[language]}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

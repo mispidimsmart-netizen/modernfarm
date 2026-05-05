@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3, Egg } from 'lucide-react';
+import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3, Egg, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction } from '@/hooks/useFarmManagement';
+import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction, useUpdateExpense, useDeleteExpense, useUpdateIncome, useDeleteIncome, type Expense, type Income } from '@/hooks/useFarmManagement';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -17,6 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface FinanceSheetProps {
   open: boolean;
@@ -48,6 +50,13 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { data: eggProduction } = useEggProduction(60);
   const addExpense = useAddExpense();
   const addIncome = useAddIncome();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
+  const updateIncome = useUpdateIncome();
+  const deleteIncome = useDeleteIncome();
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [editIncome, setEditIncome] = useState<Income | null>(null);
+  const [deleteTx, setDeleteTx] = useState<{ id: string; type: 'expense' | 'income' } | null>(null);
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeLayerBatch } = useActiveLayerBatch();
   const { data: activeBroilerBatch } = useActiveBroilerBatch();
@@ -213,31 +222,39 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             {/* Recent Transactions */}
             <div className="max-h-[300px] space-y-2 overflow-y-auto">
               {allTransactions.slice(0, 20).map((tx) => (
-                <Card key={tx.id}>
-                  <CardContent className="flex items-center justify-between p-3">
-                    <div className="flex items-center gap-3">
+                <Card key={`${tx.type}-${tx.id}`}>
+                  <CardContent className="flex items-center justify-between gap-2 p-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       {tx.type === 'income' ? (
-                        <ArrowUpCircle className="h-5 w-5 text-green-500" />
+                        <ArrowUpCircle className="h-5 w-5 text-green-500 shrink-0" />
                       ) : (
-                        <ArrowDownCircle className="h-5 w-5 text-red-500" />
+                        <ArrowDownCircle className="h-5 w-5 text-red-500 shrink-0" />
                       )}
-                      <div>
-                        <p className="text-sm font-medium">
-                          {tx.type === 'income' 
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {tx.type === 'income'
                             ? INCOME_CATEGORIES.find(c => c.value === tx.category)?.[language]
                             : EXPENSE_CATEGORIES.find(c => c.value === tx.category)?.[language]
                           }
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {format(new Date(tx.date), 'dd MMM', { 
-                            locale: language === 'bn' ? bn : enUS 
-                          })}
+                          {format(new Date(tx.date), 'dd MMM', { locale: language === 'bn' ? bn : enUS })}
                         </p>
                       </div>
                     </div>
-                    <span className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-semibold shrink-0 ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {tx.type === 'income' ? '+' : '-'}{t.taka[language]}{Number(tx.amount).toLocaleString()}
                     </span>
+                    <div className="flex shrink-0 gap-1">
+                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                        onClick={() => tx.type === 'expense' ? setEditExpense(tx as any) : setEditIncome(tx as any)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteTx({ id: tx.id, type: tx.type })}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -425,6 +442,142 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             </Button>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Expense */}
+        <Dialog open={!!editExpense} onOpenChange={(o) => !o && setEditExpense(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{language === 'bn' ? '✏️ খরচ এডিট' : '✏️ Edit Expense'}</DialogTitle></DialogHeader>
+            {editExpense && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.category[language]}</Label>
+                  <Select value={editExpense.category}
+                    onValueChange={(v) => setEditExpense({ ...editExpense, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXPENSE_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c[language]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.amount[language]}</Label>
+                    <Input type="number" min="0" value={Number(editExpense.amount)}
+                      onChange={(e) => setEditExpense({ ...editExpense, amount: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.date[language]}</Label>
+                    <SmartDatePicker value={editExpense.expense_date}
+                      onChange={(iso) => setEditExpense({ ...editExpense, expense_date: iso })} disableFuture />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.description[language]}</Label>
+                  <Input value={editExpense.description ?? ''}
+                    onChange={(e) => setEditExpense({ ...editExpense, description: e.target.value })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditExpense(null)}>{language === 'bn' ? 'বাতিল' : 'Cancel'}</Button>
+              <Button onClick={() => {
+                if (editExpense) updateExpense.mutate({
+                  id: editExpense.id,
+                  amount: Number(editExpense.amount),
+                  category: editExpense.category,
+                  description: editExpense.description,
+                  expense_date: editExpense.expense_date,
+                }, { onSuccess: () => setEditExpense(null) });
+              }}>{language === 'bn' ? 'আপডেট' : 'Update'}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Income */}
+        <Dialog open={!!editIncome} onOpenChange={(o) => !o && setEditIncome(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{language === 'bn' ? '✏️ আয় এডিট' : '✏️ Edit Income'}</DialogTitle></DialogHeader>
+            {editIncome && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.category[language]}</Label>
+                  <Select value={editIncome.category}
+                    onValueChange={(v) => setEditIncome({ ...editIncome, category: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {INCOME_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c[language]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.amount[language]}</Label>
+                    <Input type="number" min="0" value={Number(editIncome.amount)}
+                      onChange={(e) => setEditIncome({ ...editIncome, amount: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.date[language]}</Label>
+                    <SmartDatePicker value={editIncome.income_date}
+                      onChange={(iso) => setEditIncome({ ...editIncome, income_date: iso })} disableFuture />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.quantity[language]}</Label>
+                    <Input type="number" min="0" value={Number(editIncome.quantity ?? 0)}
+                      onChange={(e) => setEditIncome({ ...editIncome, quantity: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.unitPrice[language]}</Label>
+                    <Input type="number" min="0" step="0.01" value={Number(editIncome.unit_price ?? 0)}
+                      onChange={(e) => setEditIncome({ ...editIncome, unit_price: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.description[language]}</Label>
+                  <Input value={editIncome.description ?? ''}
+                    onChange={(e) => setEditIncome({ ...editIncome, description: e.target.value })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditIncome(null)}>{language === 'bn' ? 'বাতিল' : 'Cancel'}</Button>
+              <Button onClick={() => {
+                if (editIncome) updateIncome.mutate({
+                  id: editIncome.id,
+                  amount: Number(editIncome.amount),
+                  category: editIncome.category,
+                  description: editIncome.description,
+                  income_date: editIncome.income_date,
+                  quantity: editIncome.quantity ?? null,
+                  unit_price: editIncome.unit_price ?? null,
+                }, { onSuccess: () => setEditIncome(null) });
+              }}>{language === 'bn' ? 'আপডেট' : 'Update'}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete confirm */}
+        <AlertDialog open={!!deleteTx} onOpenChange={(o) => !o && setDeleteTx(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{language === 'bn' ? 'এই এন্ট্রি মুছবেন?' : 'Delete this entry?'}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {language === 'bn' ? 'এই লেনদেন স্থায়ীভাবে মুছে যাবে।' : 'This transaction will be permanently removed.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{language === 'bn' ? 'বাতিল' : 'Cancel'}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (deleteTx) {
+                  if (deleteTx.type === 'expense') deleteExpense.mutate(deleteTx.id);
+                  else deleteIncome.mutate(deleteTx.id);
+                }
+                setDeleteTx(null);
+              }}>{language === 'bn' ? 'মুছুন' : 'Delete'}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

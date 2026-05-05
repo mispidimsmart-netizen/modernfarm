@@ -424,3 +424,77 @@ export function useBatchStats(batchId: string | undefined) {
     mortalityPercent,
   };
 }
+
+// Update / Delete weight
+export function useUpdateWeight() {
+  const queryClient = useQueryClient();
+  const { language } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, batch_id, ...patch }: { id: string; batch_id?: string } & Partial<BroilerWeight>) => {
+      const { error } = await supabase.from('broiler_weights').update(patch).eq('id', id);
+      if (error) throw error;
+      return { batch_id };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['broiler-weights', res?.batch_id] });
+      toast({ title: language === 'bn' ? 'আপডেট সফল' : 'Updated' });
+    },
+    onError: (e: any) => toast({ title: language === 'bn' ? 'ত্রুটি' : 'Error', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useDeleteWeight() {
+  const queryClient = useQueryClient();
+  const { language } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, batch_id }: { id: string; batch_id?: string }) => {
+      const { error } = await supabase.from('broiler_weights').delete().eq('id', id);
+      if (error) throw error;
+      return { batch_id };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['broiler-weights', res?.batch_id] });
+      toast({ title: language === 'bn' ? 'মুছে ফেলা হয়েছে' : 'Deleted' });
+    },
+    onError: (e: any) => toast({ title: language === 'bn' ? 'ত্রুটি' : 'Error', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+// Update / Delete feed
+export function useUpdateFeed() {
+  const queryClient = useQueryClient();
+  const { language } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, batch_id, ...patch }: { id: string; batch_id?: string } & Partial<BroilerFeed>) => {
+      const { error } = await supabase.from('broiler_feed').update(patch).eq('id', id);
+      if (error) throw error;
+      return { batch_id };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['broiler-feed', res?.batch_id] });
+      toast({ title: language === 'bn' ? 'আপডেট সফল' : 'Updated' });
+    },
+    onError: (e: any) => toast({ title: language === 'bn' ? 'ত্রুটি' : 'Error', description: e?.message, variant: 'destructive' }),
+  });
+}
+
+export function useDeleteFeed() {
+  const queryClient = useQueryClient();
+  const { language } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, batch_id }: { id: string; batch_id?: string }) => {
+      const { error } = await supabase.from('broiler_feed').delete().eq('id', id);
+      if (error) throw error;
+      return { batch_id };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['broiler-feed', res?.batch_id] });
+      toast({ title: language === 'bn' ? 'মুছে ফেলা হয়েছে' : 'Deleted' });
+    },
+    onError: (e: any) => toast({ title: language === 'bn' ? 'ত্রুটি' : 'Error', description: e?.message, variant: 'destructive' }),
+  });
+}

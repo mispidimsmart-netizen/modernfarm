@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Utensils, Plus, Package } from 'lucide-react';
+import { Utensils, Plus, Package, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useActiveBatch, useAddFeed, useBatchFeed } from '@/hooks/useBroilerData';
+import { useActiveBatch, useAddFeed, useBatchFeed, useUpdateFeed, useDeleteFeed, type BroilerFeed } from '@/hooks/useBroilerData';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface BroilerFeedSheetProps {
   open: boolean;
@@ -21,6 +23,10 @@ export function BroilerFeedSheet({ open, onOpenChange }: BroilerFeedSheetProps) 
   const { data: batch } = useActiveBatch();
   const { data: feedRecords } = useBatchFeed(batch?.id);
   const addFeed = useAddFeed();
+  const updateFeed = useUpdateFeed();
+  const deleteFeed = useDeleteFeed();
+  const [editEntry, setEditEntry] = useState<BroilerFeed | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     quantity_kg: '',
@@ -180,21 +186,29 @@ export function BroilerFeedSheet({ open, onOpenChange }: BroilerFeedSheetProps) 
                     const typeLabel = feedTypes.find(t => t.id === f.feed_type)?.[language] || f.feed_type;
                     
                     return (
-                      <div key={f.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                        <div className="flex items-center gap-2">
-                          <Utensils className="h-4 w-4 text-muted-foreground" />
-                          <div>
+                      <div key={f.id} className="flex items-center justify-between gap-2 py-2 border-b last:border-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Utensils className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
                             <span className="text-sm">{f.feed_date}</span>
                             <span className="text-xs text-muted-foreground ml-2">({typeLabel})</span>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <span className="font-medium">{Number(f.quantity_kg).toFixed(1)} kg</span>
                           {Number(f.cost_per_kg) > 0 && (
                             <p className="text-xs text-muted-foreground">
                               ৳{(Number(f.quantity_kg) * Number(f.cost_per_kg)).toLocaleString()}
                             </p>
                           )}
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditEntry(f)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(f.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     );
@@ -204,6 +218,75 @@ export function BroilerFeedSheet({ open, onOpenChange }: BroilerFeedSheetProps) 
             </Card>
           )}
         </div>
+
+        {/* Edit dialog */}
+        <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{language === 'bn' ? '✏️ খাদ্য এডিট' : '✏️ Edit Feed'}</DialogTitle></DialogHeader>
+            {editEntry && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{language === 'bn' ? 'তারিখ' : 'Date'}</Label>
+                  <Input type="date" value={editEntry.feed_date}
+                    onChange={(e) => setEditEntry({ ...editEntry, feed_date: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.quantity[language]}</Label>
+                    <Input type="number" value={editEntry.quantity_kg}
+                      onChange={(e) => setEditEntry({ ...editEntry, quantity_kg: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.costPerKg[language]}</Label>
+                    <Input type="number" value={editEntry.cost_per_kg}
+                      onChange={(e) => setEditEntry({ ...editEntry, cost_per_kg: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.type[language]}</Label>
+                  <Select value={editEntry.feed_type}
+                    onValueChange={(v) => setEditEntry({ ...editEntry, feed_type: v as BroilerFeed['feed_type'] })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {feedTypes.map(ft => <SelectItem key={ft.id} value={ft.id}>{ft[language]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditEntry(null)}>{language === 'bn' ? 'বাতিল' : 'Cancel'}</Button>
+              <Button onClick={() => {
+                if (editEntry) updateFeed.mutate({
+                  id: editEntry.id,
+                  batch_id: editEntry.batch_id,
+                  feed_date: editEntry.feed_date,
+                  quantity_kg: editEntry.quantity_kg,
+                  cost_per_kg: editEntry.cost_per_kg,
+                  feed_type: editEntry.feed_type,
+                }, { onSuccess: () => setEditEntry(null) });
+              }}>{language === 'bn' ? 'আপডেট' : 'Update'}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{language === 'bn' ? 'এই রেকর্ড মুছবেন?' : 'Delete this record?'}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {language === 'bn' ? 'খাদ্য রেকর্ড স্থায়ীভাবে মুছে যাবে।' : 'Feed record will be permanently deleted.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{language === 'bn' ? 'বাতিল' : 'Cancel'}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (deleteId) deleteFeed.mutate({ id: deleteId, batch_id: batch?.id });
+                setDeleteId(null);
+              }}>{language === 'bn' ? 'মুছুন' : 'Delete'}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );
