@@ -246,7 +246,11 @@ export function Dashboard() {
 
             {/* TAB 2: 🌡️ পরিবেশ */}
             <TabsContent value="environment" className="mt-3 space-y-3">
-              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.environment}>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.environment}
+                skeleton={<EnvironmentTabSkeleton />}
+                loadingHint={{ bn: 'সেন্সর ও পরিবেশ ডেটা লোড হচ্ছে…', en: 'Loading environment data…' }}
+              >
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
