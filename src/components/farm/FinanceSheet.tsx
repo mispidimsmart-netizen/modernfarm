@@ -50,6 +50,13 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { data: eggProduction } = useEggProduction(60);
   const addExpense = useAddExpense();
   const addIncome = useAddIncome();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
+  const updateIncome = useUpdateIncome();
+  const deleteIncome = useDeleteIncome();
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [editIncome, setEditIncome] = useState<Income | null>(null);
+  const [deleteTx, setDeleteTx] = useState<{ id: string; type: 'expense' | 'income' } | null>(null);
   const { isLayer, isBroiler } = useFarmType();
   const { data: activeLayerBatch } = useActiveLayerBatch();
   const { data: activeBroilerBatch } = useActiveBroilerBatch();
