@@ -74,6 +74,12 @@ import { EmergencyProtectionBanner } from '@/components/emergency/EmergencyProte
 import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
 import { TabLoadingWrapper } from '@/components/dashboard/TabLoadingWrapper';
+import {
+  SummaryTabSkeleton,
+  EnvironmentTabSkeleton,
+  ControlTabSkeleton,
+  FlockTabSkeleton,
+} from '@/components/dashboard/TabSkeletons';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
