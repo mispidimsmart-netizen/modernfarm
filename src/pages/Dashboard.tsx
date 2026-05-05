@@ -1,3 +1,5 @@
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 
 import { useAutomationMode } from '@/hooks/useAutomationMode';
@@ -82,7 +84,25 @@ export function Dashboard() {
   const { data: deviceHealth } = useAllDeviceHealth();
   const { selectedShedId } = useSelectedShed();
   const { isLayer, isBroiler } = useFarmType();
-  
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<string>('summary');
+
+  // Tab → query keys map: refetch relevant data when user switches tabs
+  const TAB_QUERY_KEYS: Record<string, string[]> = {
+    summary: ['device_health', 'today-summary', 'farm-health-score', 'weather_cache', 'flock-info'],
+    environment: ['sensor_history', 'weather_cache', 'inside_outside_delta', 'heat-risk', 'ammonia-trend'],
+    control: ['device_health', 'automation-status', 'safety_status', 'light-status', 'light-action-history', 'power-outages', 'sensor-health'],
+    flock: ['today-summary', 'layer-batch-active', 'layer-batches', 'broiler-batch-active', 'broiler-batches', 'water-anomaly', 'flock-info'],
+  };
+
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    const keys = TAB_QUERY_KEYS[value] || [];
+    keys.forEach((key) => {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    });
+  }, [queryClient]);
+
   // Subscribe to realtime alerts
   useRealtimeAlerts();
   
@@ -162,7 +182,7 @@ export function Dashboard() {
 
         {/* ============ 🗂️ MAIN TABS (4 sections) ============ */}
         <div className="mb-5">
-          <Tabs defaultValue="summary" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="sticky top-[calc(env(safe-area-inset-top)+56px)] z-30 -mx-4 px-4 py-2.5 bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-md border-b border-border/40 shadow-sm">
             <TabsList className="w-full grid grid-cols-4 h-12 rounded-2xl bg-muted/50 p-1 border border-border/50 gap-1">
               <TabsTrigger 
