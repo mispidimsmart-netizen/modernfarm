@@ -194,6 +194,7 @@ export function Dashboard() {
                 <span className="leading-none">{language === 'bn' ? 'ফ্লক' : 'Flock'}</span>
               </TabsTrigger>
             </TabsList>
+            </div>
 
             {/* TAB 1: 🏠 সারসংক্ষেপ */}
             <TabsContent value="summary" className="mt-3 space-y-3">
