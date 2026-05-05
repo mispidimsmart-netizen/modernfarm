@@ -54,9 +54,10 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
     edit: { bn: '✏️ ডিম এন্ট্রি এডিট', en: '✏️ Edit Egg Entry' },
     delete: { bn: 'মুছুন', en: 'Delete' },
     cancel: { bn: 'বাতিল', en: 'Cancel' },
-    save:2: { bn: 'আপডেট', en: 'Update' },
+    update: { bn: 'আপডেট', en: 'Update' },
     confirmDelete: { bn: 'এই এন্ট্রি মুছবেন?', en: 'Delete this entry?' },
     confirmDeleteDesc: { bn: 'এই ডিম এন্ট্রি স্থায়ীভাবে মুছে যাবে।', en: 'This egg entry will be permanently deleted.' },
+  };
 
   const handleSubmit = () => {
     addEggProduction.mutate({
