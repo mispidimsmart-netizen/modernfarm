@@ -107,7 +107,7 @@ export function QuickSensorDisplay() {
         className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tempStatus.bgGradient}`}
       />
 
-      <div className="relative flex items-stretch gap-3 p-3.5">
+      <div className="relative flex items-stretch gap-2 p-2.5 sm:gap-3 sm:p-3.5">
         {/* HERO: Temperature */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
@@ -138,16 +138,16 @@ export function QuickSensorDisplay() {
         <div className="w-px bg-border/60 self-stretch" />
 
         {/* Secondary metrics stack */}
-        <div className="flex flex-col justify-between gap-2 w-[112px] shrink-0">
+        <div className="flex flex-col justify-between gap-1.5 w-[96px] sm:w-[112px] sm:gap-2 shrink-0">
           {/* Humidity */}
           <motion.div
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1.5 sm:gap-2"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-              <Droplets className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-blue-500/10 shrink-0">
+              <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="min-w-0">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
@@ -165,10 +165,10 @@ export function QuickSensorDisplay() {
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15 }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1.5 sm:gap-2"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-              <Wind className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-purple-500/10 shrink-0">
+              <Wind className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="min-w-0">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold leading-none flex items-center gap-1">
