@@ -7,7 +7,7 @@ import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
-type FarmState = 'normal' | 'adjusting' | 'cooling' | 'emergency' | 'sensor_fail' | 'purge';
+type FarmState = 'normal' | 'adjusting' | 'cooling' | 'cooling_needed' | 'emergency' | 'emergency_no_action' | 'sensor_fail' | 'purge';
 
 interface StateConfig {
   id: FarmState;
@@ -39,10 +39,18 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
     id: 'cooling',
     icon: Wind,
     explanation: { bn: 'গরম বেশি — ঠান্ডা করা হচ্ছে', en: 'Too hot — cooling in progress' },
-    systemLabel: 'WARNING',
+    systemLabel: 'COOLING',
     gradient: 'from-orange-600 via-amber-500 to-orange-600',
     borderColor: 'border-orange-400/50',
   },
+  cooling_needed: {
+    id: 'cooling_needed' as FarmState,
+    icon: AlertTriangle,
+    explanation: { bn: '⚠️ গরম বেশি — কিন্তু কোনো কুলিং ডিভাইস চলছে না', en: '⚠️ Too hot — but no cooling device is running' },
+    systemLabel: 'COOLING_NEEDED',
+    gradient: 'from-orange-700 via-red-500 to-orange-700',
+    borderColor: 'border-red-400/50',
+  } as StateConfig,
   emergency: {
     id: 'emergency',
     icon: AlertTriangle,
@@ -51,6 +59,14 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
     gradient: 'from-red-600 via-red-500 to-rose-600',
     borderColor: 'border-red-400/50',
   },
+  emergency_no_action: {
+    id: 'emergency_no_action' as FarmState,
+    icon: AlertTriangle,
+    explanation: { bn: '🚨 জরুরি অবস্থা — কোনো ডিভাইস কাজ করছে না! এখনই দেখুন', en: '🚨 Emergency — NO device is responding! Check now' },
+    systemLabel: 'EMERGENCY_NO_ACTION',
+    gradient: 'from-red-700 via-red-600 to-rose-700',
+    borderColor: 'border-red-300',
+  } as StateConfig,
   sensor_fail: {
     id: 'sensor_fail',
     icon: Wrench,
@@ -72,9 +88,10 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
 export function StateExplanationHeader() {
   const { language } = useAuth();
   const { sensorData, hasRealData } = useRealtimeSensorData();
+  const { status: deviceStatus, isDeviceOnline } = useRealtimeDeviceStatus();
   const { selectedShedId } = useSelectedShed();
   const { data: deviceHealth } = useAllDeviceHealth();
-  
+
   const isAnyDeviceOnline = (deviceHealth || []).some((d) => {
     if (!d.is_online || !d.last_seen_at) return false;
     return Date.now() - new Date(d.last_seen_at).getTime() < 2 * 60 * 1000;
@@ -102,11 +119,27 @@ export function StateExplanationHeader() {
     const ammonia = sensorData.ammonia;
     const hsi = hsiResult?.index || 0;
 
-    if (temp > 38 || ammonia > 25 || hsi > 85) return STATE_MAP.emergency;
-    if (temp > 32 || hsi > 70) return STATE_MAP.cooling;
+    // Are any cooling/ventilation devices actually running RIGHT NOW?
+    // Only trust the relay flags when the device is online.
+    const coolingActive = isDeviceOnline && (
+      deviceStatus.fan ||
+      deviceStatus.ceilingFan ||
+      deviceStatus.fogger ||
+      deviceStatus.sprinkler ||
+      deviceStatus.circulation_fan
+    );
+
+    // Emergency conditions
+    if (temp > 38 || ammonia > 25 || hsi > 85) {
+      return coolingActive ? STATE_MAP.emergency : STATE_MAP.emergency_no_action;
+    }
+    // Cooling-needed conditions
+    if (temp > 32 || hsi > 70) {
+      return coolingActive ? STATE_MAP.cooling : STATE_MAP.cooling_needed;
+    }
     if (temp < 18) return STATE_MAP.adjusting;
     return STATE_MAP.normal;
-  }, [sensorData, hsiResult, hasRealData]);
+  }, [sensorData, hsiResult, hasRealData, deviceStatus, isDeviceOnline]);
 
   const Icon = currentState.icon;
   const isEmergency = currentState.id === 'emergency';
