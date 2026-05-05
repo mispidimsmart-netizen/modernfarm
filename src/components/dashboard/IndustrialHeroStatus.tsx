@@ -251,7 +251,7 @@ export function IndustrialHeroStatus() {
       { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
       { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler, reason: sprinklerReason },
     ];
-  }, [deviceStatus, sensorData, hsiResult, isManualMode]);
+  }, [deviceStatus, sensorData, hsiResult, isManualMode, hasRealData]);
 
   const Icon = currentStatus.icon;
   const isEmergency = currentStatus.id === 'emergency';
