@@ -32,20 +32,32 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 interface FeedManagementSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 'layer' (default) or 'broiler' — controls default feed-type list & default selection */
+  mode?: 'layer' | 'broiler';
 }
 
-const FEED_TYPES = [
+const LAYER_FEED_TYPES = [
   { value: 'layer_feed', bn: 'লেয়ার ফিড', en: 'Layer Feed' },
   { value: 'pre_layer', bn: 'প্রি-লেয়ার', en: 'Pre-Layer' },
   { value: 'starter', bn: 'স্টার্টার', en: 'Starter' },
   { value: 'grower', bn: 'গ্রোয়ার', en: 'Grower' },
 ];
 
-function feedLabel(value: string, lang: 'bn' | 'en') {
-  return FEED_TYPES.find((f) => f.value === value)?.[lang] ?? value;
-}
+const BROILER_FEED_TYPES = [
+  { value: 'pre_starter', bn: 'প্রি-স্টার্টার', en: 'Pre-Starter' },
+  { value: 'starter', bn: 'স্টার্টার', en: 'Starter' },
+  { value: 'grower', bn: 'গ্রোয়ার', en: 'Grower' },
+  { value: 'finisher', bn: 'ফিনিশার', en: 'Finisher' },
+];
 
-export function FeedManagementSheet({ open, onOpenChange }: FeedManagementSheetProps) {
+export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: FeedManagementSheetProps) {
+  const FEED_TYPES = mode === 'broiler' ? BROILER_FEED_TYPES : LAYER_FEED_TYPES;
+  const defaultFeedType = FEED_TYPES[0].value;
+
+  function feedLabel(value: string, lang: 'bn' | 'en') {
+    return FEED_TYPES.find((f) => f.value === value)?.[lang] ?? value;
+  }
+
   const { language } = useAuth();
   const { data: inventory } = useFeedInventory();
   const { data: consumption } = useFeedConsumption();
@@ -58,7 +70,7 @@ export function FeedManagementSheet({ open, onOpenChange }: FeedManagementSheetP
 
   const [activeTab, setActiveTab] = useState('stock');
   const [stockForm, setStockForm] = useState({
-    feed_type: 'layer_feed',
+    feed_type: defaultFeedType,
     quantity_kg: 0,
     unit_price: 0,
     purchase_date: format(new Date(), 'yyyy-MM-dd'),
@@ -66,7 +78,7 @@ export function FeedManagementSheet({ open, onOpenChange }: FeedManagementSheetP
     notes: '',
   });
   const [usageForm, setUsageForm] = useState({
-    feed_type: 'layer_feed',
+    feed_type: defaultFeedType,
     quantity_kg: 0,
     consumption_date: format(new Date(), 'yyyy-MM-dd'),
     notes: '',
