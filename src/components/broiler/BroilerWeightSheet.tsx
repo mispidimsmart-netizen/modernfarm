@@ -216,12 +216,12 @@ export function BroilerWeightSheet({ open, onOpenChange }: BroilerWeightSheetPro
                     const change = prevWeight ? w.average_weight_grams - prevWeight : 0;
                     
                     return (
-                      <div key={w.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                        <div className="flex items-center gap-2">
-                          <Scale className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{w.record_date}</span>
+                      <div key={w.id} className="flex items-center justify-between gap-2 py-2 border-b last:border-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Scale className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate">{w.record_date}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <span className="font-medium">{w.average_weight_grams.toLocaleString()}g</span>
                           {change !== 0 && (
                             <span className={`text-xs flex items-center ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -229,6 +229,12 @@ export function BroilerWeightSheet({ open, onOpenChange }: BroilerWeightSheetPro
                               {change > 0 ? '+' : ''}{change}g
                             </span>
                           )}
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditEntry(w)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => setDeleteId(w.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     );
@@ -238,6 +244,77 @@ export function BroilerWeightSheet({ open, onOpenChange }: BroilerWeightSheetPro
             </Card>
           )}
         </div>
+
+        {/* Edit dialog */}
+        <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{language === 'bn' ? '✏️ ওজন এডিট' : '✏️ Edit Weight'}</DialogTitle></DialogHeader>
+            {editEntry && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">{language === 'bn' ? 'তারিখ' : 'Date'}</Label>
+                  <Input type="date" value={editEntry.record_date}
+                    onChange={(e) => setEditEntry({ ...editEntry, record_date: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.avgWeight[language]}</Label>
+                    <Input type="number" value={editEntry.average_weight_grams}
+                      onChange={(e) => setEditEntry({ ...editEntry, average_weight_grams: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.sampleCount[language]}</Label>
+                    <Input type="number" value={editEntry.sample_count}
+                      onChange={(e) => setEditEntry({ ...editEntry, sample_count: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.minWeight[language]}</Label>
+                    <Input type="number" value={editEntry.min_weight_grams ?? ''}
+                      onChange={(e) => setEditEntry({ ...editEntry, min_weight_grams: e.target.value ? parseInt(e.target.value) : null })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.maxWeight[language]}</Label>
+                    <Input type="number" value={editEntry.max_weight_grams ?? ''}
+                      onChange={(e) => setEditEntry({ ...editEntry, max_weight_grams: e.target.value ? parseInt(e.target.value) : null })} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditEntry(null)}>{language === 'bn' ? 'বাতিল' : 'Cancel'}</Button>
+              <Button onClick={() => {
+                if (editEntry) updateWeight.mutate({
+                  id: editEntry.id,
+                  batch_id: editEntry.batch_id,
+                  record_date: editEntry.record_date,
+                  average_weight_grams: editEntry.average_weight_grams,
+                  sample_count: editEntry.sample_count,
+                  min_weight_grams: editEntry.min_weight_grams,
+                  max_weight_grams: editEntry.max_weight_grams,
+                }, { onSuccess: () => setEditEntry(null) });
+              }}>{language === 'bn' ? 'আপডেট' : 'Update'}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete confirm */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{language === 'bn' ? 'এই রেকর্ড মুছবেন?' : 'Delete this record?'}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {language === 'bn' ? 'ওজন রেকর্ড স্থায়ীভাবে মুছে যাবে।' : 'Weight record will be permanently deleted.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{language === 'bn' ? 'বাতিল' : 'Cancel'}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => {
+                if (deleteId) deleteWeight.mutate({ id: deleteId, batch_id: batch?.id });
+                setDeleteId(null);
+              }}>{language === 'bn' ? 'মুছুন' : 'Delete'}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );
