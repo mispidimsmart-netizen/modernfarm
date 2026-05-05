@@ -383,6 +383,8 @@ export function Dashboard() {
                   bn: 'একটি লেয়ার বা ব্রয়লার ব্যাচ যোগ করলে এখানে তথ্য দেখা যাবে',
                   en: 'Add a layer or broiler batch to see flock data here',
                 }}
+                skeleton={<FlockTabSkeleton />}
+                loadingHint={{ bn: 'ব্যাচ ও ফ্লক তথ্য লোড হচ্ছে…', en: 'Loading flock & batch info…' }}
               >
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
