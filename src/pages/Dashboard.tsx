@@ -73,6 +73,7 @@ import { AlertSummaryBanner } from '@/components/alerts';
 import { EmergencyProtectionBanner } from '@/components/emergency/EmergencyProtectionBanner';
 import { SetupReminderBanner } from '@/components/setup/SetupReminderBanner';
 import { ManualModeWarningBanner } from '@/components/dashboard/ManualModeWarningBanner';
+import { TabLoadingWrapper } from '@/components/dashboard/TabLoadingWrapper';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
@@ -218,59 +219,64 @@ export function Dashboard() {
 
             {/* TAB 1: 🏠 সারসংক্ষেপ */}
             <TabsContent value="summary" className="mt-3 space-y-3">
-              <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-              <EspConnectionBanner />
-              <IndustrialHeroStatus />
-              <ComfortIndicators />
-              <div>
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
-                </p>
-                <WeatherCard />
-              </div>
-              <TodayReadableSummary />
+              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.summary}>
+                <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                <EspConnectionBanner />
+                <IndustrialHeroStatus />
+                <ComfortIndicators />
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
+                  </p>
+                  <WeatherCard />
+                </div>
+                <TodayReadableSummary />
+              </TabLoadingWrapper>
             </TabsContent>
 
             {/* TAB 2: 🌡️ পরিবেশ */}
             <TabsContent value="environment" className="mt-3 space-y-3">
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
-                  </p>
-                  <SensorFreshnessBadge timestamp={sensorData.timestamp} compact />
+              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.environment}>
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
+                    </p>
+                    <SensorFreshnessBadge timestamp={sensorData.timestamp} compact />
+                  </div>
+                  {hasRealData ? (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
+                      <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
+                      <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
+                      <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
+                      <p className="text-sm font-medium text-muted-foreground mb-1">
+                        📡 {language === 'bn' ? 'কোনো লাইভ সেন্সর ডেটা নেই' : 'No live sensor data'}
+                      </p>
+                      <p className="text-xs text-muted-foreground/80">
+                        {language === 'bn'
+                          ? 'ESP32 ডিভাইস কানেক্ট হলে এখানে রিয়েল-টাইম ডেটা দেখানো হবে'
+                          : 'Real-time data will appear here once your ESP32 connects'}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                {hasRealData ? (
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
-                    <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
-                    <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
-                    <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
-                    <p className="text-sm font-medium text-muted-foreground mb-1">
-                      📡 {language === 'bn' ? 'কোনো লাইভ সেন্সর ডেটা নেই' : 'No live sensor data'}
-                    </p>
-                    <p className="text-xs text-muted-foreground/80">
-                      {language === 'bn'
-                        ? 'ESP32 ডিভাইস কানেক্ট হলে এখানে রিয়েল-টাইম ডেটা দেখানো হবে'
-                        : 'Real-time data will appear here once your ESP32 connects'}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <CoreMetricsRow />
-              <InsideOutsideDeltaCard />
-              <SensorCharts />
-              <HourlyForecastCard />
-              <AmmoniaTrendCard result={ammoniaTrendResult} />
-              <CoolingEfficiencyCard result={coolingEfficiencyResult} />
-              {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
+                <CoreMetricsRow />
+                <InsideOutsideDeltaCard />
+                <SensorCharts />
+                <HourlyForecastCard />
+                <AmmoniaTrendCard result={ammoniaTrendResult} />
+                <CoolingEfficiencyCard result={coolingEfficiencyResult} />
+                {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
+              </TabLoadingWrapper>
             </TabsContent>
 
             {/* TAB 3: ⚡ নিয়ন্ত্রণ ও অটোমেশন */}
             <TabsContent value="control" className="mt-3 space-y-3">
+              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.control} skeletonRows={4}>
               <div className="grid grid-cols-2 gap-3">
                 <CurrentActionPanel />
                 <AdvisoryAssistant />
@@ -345,31 +351,43 @@ export function Dashboard() {
                   }
                 </p>
               </div>
+              </TabLoadingWrapper>
             </TabsContent>
 
             {/* TAB 4: 🐔 ফ্লক / ব্যাচ */}
             <TabsContent value="flock" className="mt-3 space-y-3">
-              <div>
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
-                </p>
-                <SystemActivityCard />
-              </div>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.flock}
+                isEmpty={!isLayer && !isBroiler}
+                emptyIcon="🐔"
+                emptyTitle={{ bn: 'কোনো সক্রিয় ব্যাচ নেই', en: 'No active batch' }}
+                emptyHint={{
+                  bn: 'একটি লেয়ার বা ব্রয়লার ব্যাচ যোগ করলে এখানে তথ্য দেখা যাবে',
+                  en: 'Add a layer or broiler batch to see flock data here',
+                }}
+              >
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
+                  </p>
+                  <SystemActivityCard />
+                </div>
 
-              {isLayer && <LayerBatchCard />}
-              {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
+                {isLayer && <LayerBatchCard />}
+                {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
 
-              {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
-              {isBroiler && broilerWaterResult && (
-                <WaterAnomalyCard result={{
-                  todayUsage: broilerWaterResult.currentUsage,
-                  last3DaysAvg: broilerWaterResult.avgLast6Hours,
-                  percentChange: broilerWaterResult.percentChange,
-                  isAnomaly: broilerWaterResult.isAnomaly,
-                  threshold: broilerWaterResult.threshold,
-                  message: broilerWaterResult.message,
-                }} />
-              )}
+                {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
+                {isBroiler && broilerWaterResult && (
+                  <WaterAnomalyCard result={{
+                    todayUsage: broilerWaterResult.currentUsage,
+                    last3DaysAvg: broilerWaterResult.avgLast6Hours,
+                    percentChange: broilerWaterResult.percentChange,
+                    isAnomaly: broilerWaterResult.isAnomaly,
+                    threshold: broilerWaterResult.threshold,
+                    message: broilerWaterResult.message,
+                  }} />
+                )}
+              </TabLoadingWrapper>
             </TabsContent>
           </Tabs>
         </div>
