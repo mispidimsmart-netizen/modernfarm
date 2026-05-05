@@ -158,7 +158,7 @@ export const translations = {
     inactive: { bn: 'নিষ্ক্রিয়', en: 'Inactive' },
   },
 
-  // Device Management
+  // Device Management + device labels (used by status pill-badges, device cards, etc.)
   devices: {
     title: { bn: 'ডিভাইস ম্যানেজমেন্ট', en: 'Device Management' },
     addNew: { bn: 'নতুন ডিভাইস যোগ করুন', en: 'Add New Device' },
@@ -167,6 +167,15 @@ export const translations = {
     signal: { bn: 'সিগনাল', en: 'Signal' },
     uptime: { bn: 'আপটাইম', en: 'Uptime' },
     token: { bn: 'টোকেন', en: 'Token' },
+    fan: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
+    exhaustFan: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
+    ceilingFan: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+    circulationFan: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
+    fogger: { bn: 'ফগার', en: 'Fogger' },
+    sprinkler: { bn: 'স্প্রিংকলার', en: 'Sprinkler' },
+    heater: { bn: 'হিটার', en: 'Heater' },
+    light: { bn: 'লাইট', en: 'Light' },
+    alarm: { bn: 'অ্যালার্ম', en: 'Alarm' },
   },
 
   // Offline Mode
