@@ -138,7 +138,7 @@ export function QuickSensorDisplay() {
         <div className="w-px bg-border/60 self-stretch" />
 
         {/* Secondary metrics stack */}
-        <div className="flex flex-col justify-between gap-2 w-[112px] shrink-0">
+        <div className="flex flex-col justify-between gap-1.5 w-[96px] sm:w-[112px] sm:gap-2 shrink-0">
           {/* Humidity */}
           <motion.div
             initial={{ opacity: 0, x: 8 }}
