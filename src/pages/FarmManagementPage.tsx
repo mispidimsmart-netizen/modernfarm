@@ -417,10 +417,7 @@ export function FarmManagementPage() {
         open={activeSheet === 'weight'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
-      <BroilerFeedSheet 
-        open={activeSheet === 'broiler-feed'} 
-        onOpenChange={(open) => !open && setActiveSheet(null)} 
-      />
+      {/* Broiler feed now uses unified FeedManagementSheet (above) with mode='broiler' */}
     </div>
   );
 }
