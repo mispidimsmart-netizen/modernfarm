@@ -351,6 +351,7 @@ export function Dashboard() {
                   }
                 </p>
               </div>
+              </TabLoadingWrapper>
             </TabsContent>
 
             {/* TAB 4: 🐔 ফ্লক / ব্যাচ */}
