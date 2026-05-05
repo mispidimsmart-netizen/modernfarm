@@ -193,13 +193,13 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
               <div className="space-y-2">
                 {records.map((entry) => (
                   <Card key={entry.id}>
-                    <CardContent className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                    <CardContent className="flex items-center justify-between gap-2 p-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
                           <span className="text-sm">
-                            {format(new Date(entry.record_date), 'dd MMM', { 
-                              locale: language === 'bn' ? bn : enUS 
+                            {format(new Date(entry.record_date), 'dd MMM', {
+                              locale: language === 'bn' ? bn : enUS
                             })}
                           </span>
                           <p className="text-xs text-muted-foreground">
@@ -207,9 +207,17 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
                           </p>
                         </div>
                       </div>
-                      <p className="font-semibold text-red-600">
+                      <p className="font-semibold text-red-600 shrink-0">
                         {entry.count} {t.birds[language]}
                       </p>
+                      <div className="flex shrink-0 gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditEntry(entry)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(entry.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -222,6 +230,74 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Edit dialog */}
+        <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{t.edit[language]}</DialogTitle></DialogHeader>
+            {editEntry && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.date[language]}</Label>
+                    <SmartDatePicker value={editEntry.record_date}
+                      onChange={(iso) => setEditEntry({ ...editEntry, record_date: iso })} disableFuture />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t.count[language]}</Label>
+                    <Input type="number" min="1" value={editEntry.count}
+                      onChange={(e) => setEditEntry({ ...editEntry, count: parseInt(e.target.value) || 1 })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.cause[language]}</Label>
+                  <Select value={editEntry.cause}
+                    onValueChange={(v) => setEditEntry({ ...editEntry, cause: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CAUSES.map(c => <SelectItem key={c.value} value={c.value}>{c[language]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t.notes[language]}</Label>
+                  <Input value={editEntry.notes ?? ''}
+                    onChange={(e) => setEditEntry({ ...editEntry, notes: e.target.value })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditEntry(null)}>{t.cancel[language]}</Button>
+              <Button onClick={() => {
+                if (editEntry) {
+                  updateRecord.mutate({
+                    id: editEntry.id,
+                    count: editEntry.count,
+                    cause: editEntry.cause,
+                    record_date: editEntry.record_date,
+                    notes: editEntry.notes,
+                  }, { onSuccess: () => setEditEntry(null) });
+                }
+              }}>{t.update[language]}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete confirm */}
+        <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t.confirmDelete[language]}</AlertDialogTitle>
+              <AlertDialogDescription>{t.confirmDeleteDesc[language]}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t.cancel[language]}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { if (deleteId) deleteRecord.mutate(deleteId); setDeleteId(null); }}>
+                {t.delete[language]}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );
