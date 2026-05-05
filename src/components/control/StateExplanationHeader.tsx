@@ -7,7 +7,7 @@ import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
-type FarmState = 'normal' | 'adjusting' | 'cooling' | 'emergency' | 'sensor_fail' | 'purge';
+type FarmState = 'normal' | 'adjusting' | 'cooling' | 'cooling_needed' | 'emergency' | 'emergency_no_action' | 'sensor_fail' | 'purge';
 
 interface StateConfig {
   id: FarmState;
