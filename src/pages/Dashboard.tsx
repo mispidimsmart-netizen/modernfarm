@@ -112,6 +112,22 @@ export function Dashboard() {
     });
   }, [queryClient]);
 
+  // Track fetching state for System Status section cards (consistent skeleton on update)
+  const systemStatusFetching = useIsFetching({
+    predicate: (q) => {
+      const k = q.queryKey?.[0];
+      return typeof k === 'string' && [
+        'automation-status',
+        'safety_status',
+        'device_health',
+        'broiler-batch-active',
+        'broiler-environment',
+        'heat-stress',
+        'fan-speed',
+      ].includes(k);
+    },
+  });
+
   // Subscribe to realtime alerts
   useRealtimeAlerts();
   
