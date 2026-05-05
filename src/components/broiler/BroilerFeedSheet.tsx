@@ -23,6 +23,10 @@ export function BroilerFeedSheet({ open, onOpenChange }: BroilerFeedSheetProps) 
   const { data: batch } = useActiveBatch();
   const { data: feedRecords } = useBatchFeed(batch?.id);
   const addFeed = useAddFeed();
+  const updateFeed = useUpdateFeed();
+  const deleteFeed = useDeleteFeed();
+  const [editEntry, setEditEntry] = useState<BroilerFeed | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     quantity_kg: '',
