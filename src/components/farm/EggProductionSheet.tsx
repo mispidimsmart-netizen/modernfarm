@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
-import { Egg, Plus, Calendar } from 'lucide-react';
+import { Egg, Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useEggProduction, useAddEggProduction } from '@/hooks/useFarmManagement';
+import { useEggProduction, useAddEggProduction, useUpdateEggProduction, useDeleteEggProduction, type EggProduction } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface EggProductionSheetProps {
   open: boolean;
