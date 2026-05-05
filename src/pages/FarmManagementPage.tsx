@@ -38,7 +38,7 @@ import { ReportRangePicker, type ReportRangeValue } from '@/components/farm/Repo
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 import { BroilerBatchSheet } from '@/components/broiler/BroilerBatchSheet';
 import { BroilerWeightSheet } from '@/components/broiler/BroilerWeightSheet';
-import { BroilerFeedSheet } from '@/components/broiler/BroilerFeedSheet';
+// BroilerFeedSheet replaced by unified FeedManagementSheet (mode='broiler')
 
 export function FarmManagementPage() {
   const { language } = useAuth();
@@ -391,8 +391,9 @@ export function FarmManagementPage() {
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
       <FeedManagementSheet 
-        open={activeSheet === 'feed'} 
+        open={activeSheet === 'feed' || activeSheet === 'broiler-feed'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
+        mode={isBroiler ? 'broiler' : 'layer'}
       />
       <HealthSheet 
         open={activeSheet === 'mortality' || activeSheet === 'medicine'} 
@@ -416,10 +417,7 @@ export function FarmManagementPage() {
         open={activeSheet === 'weight'} 
         onOpenChange={(open) => !open && setActiveSheet(null)} 
       />
-      <BroilerFeedSheet 
-        open={activeSheet === 'broiler-feed'} 
-        onOpenChange={(open) => !open && setActiveSheet(null)} 
-      />
+      {/* Broiler feed now uses unified FeedManagementSheet (above) with mode='broiler' */}
     </div>
   );
 }
