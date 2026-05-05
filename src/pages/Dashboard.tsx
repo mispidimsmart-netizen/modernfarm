@@ -356,27 +356,38 @@ export function Dashboard() {
 
             {/* TAB 4: 🐔 ফ্লক / ব্যাচ */}
             <TabsContent value="flock" className="mt-3 space-y-3">
-              <div>
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
-                </p>
-                <SystemActivityCard />
-              </div>
+              <TabLoadingWrapper
+                queryKeys={TAB_QUERY_KEYS.flock}
+                isEmpty={!isLayer && !isBroiler}
+                emptyIcon="🐔"
+                emptyTitle={{ bn: 'কোনো সক্রিয় ব্যাচ নেই', en: 'No active batch' }}
+                emptyHint={{
+                  bn: 'একটি লেয়ার বা ব্রয়লার ব্যাচ যোগ করলে এখানে তথ্য দেখা যাবে',
+                  en: 'Add a layer or broiler batch to see flock data here',
+                }}
+              >
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
+                  </p>
+                  <SystemActivityCard />
+                </div>
 
-              {isLayer && <LayerBatchCard />}
-              {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
+                {isLayer && <LayerBatchCard />}
+                {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
 
-              {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
-              {isBroiler && broilerWaterResult && (
-                <WaterAnomalyCard result={{
-                  todayUsage: broilerWaterResult.currentUsage,
-                  last3DaysAvg: broilerWaterResult.avgLast6Hours,
-                  percentChange: broilerWaterResult.percentChange,
-                  isAnomaly: broilerWaterResult.isAnomaly,
-                  threshold: broilerWaterResult.threshold,
-                  message: broilerWaterResult.message,
-                }} />
-              )}
+                {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
+                {isBroiler && broilerWaterResult && (
+                  <WaterAnomalyCard result={{
+                    todayUsage: broilerWaterResult.currentUsage,
+                    last3DaysAvg: broilerWaterResult.avgLast6Hours,
+                    percentChange: broilerWaterResult.percentChange,
+                    isAnomaly: broilerWaterResult.isAnomaly,
+                    threshold: broilerWaterResult.threshold,
+                    message: broilerWaterResult.message,
+                  }} />
+                )}
+              </TabLoadingWrapper>
             </TabsContent>
           </Tabs>
         </div>
