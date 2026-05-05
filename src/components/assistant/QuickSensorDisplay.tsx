@@ -107,7 +107,7 @@ export function QuickSensorDisplay() {
         className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tempStatus.bgGradient}`}
       />
 
-      <div className="relative flex items-stretch gap-3 p-3.5">
+      <div className="relative flex items-stretch gap-2 p-2.5 sm:gap-3 sm:p-3.5">
         {/* HERO: Temperature */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
