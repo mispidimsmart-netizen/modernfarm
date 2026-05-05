@@ -184,6 +184,36 @@ export function StateExplanationHeader() {
           {currentState.explanation[language]}
         </h1>
 
+        {/* Active cooling devices — show which relays are ON for cooling/emergency */}
+        {(currentState.id === 'cooling' || currentState.id === 'emergency') && isDeviceOnline && (() => {
+          const activeDevices: { icon: React.ElementType; label: { bn: string; en: string } }[] = [];
+          if (deviceStatus.fan) activeDevices.push({ icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' } });
+          if (deviceStatus.ceilingFan) activeDevices.push({ icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' } });
+          if (deviceStatus.circulation_fan) activeDevices.push({ icon: Fan, label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' } });
+          if (deviceStatus.fogger) activeDevices.push({ icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' } });
+          if (deviceStatus.sprinkler) activeDevices.push({ icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' } });
+
+          if (activeDevices.length === 0) return null;
+
+          return (
+            <div className="flex flex-wrap items-center justify-center gap-1.5 mb-2">
+              {activeDevices.map((d, i) => {
+                const DIcon = d.icon;
+                return (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded-full bg-white/25 backdrop-blur-sm px-2 py-0.5 text-[11px] font-semibold text-white"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                    <DIcon className="h-3 w-3" />
+                    {d.label[language]}
+                  </span>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* Technical state — SECONDARY small line */}
         <p className="text-[10px] text-white/50 font-mono">
           System State: {currentState.systemLabel}
