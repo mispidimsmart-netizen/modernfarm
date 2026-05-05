@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DeviceCommandLogTab } from '@/components/audit/DeviceCommandLogTab';
+import { TroubleshootingTips, getTroubleshootingKey } from '@/components/audit/TroubleshootingTips';
 
 const categoryConfig: Record<string, { icon: typeof Shield; label: string; labelBn: string; color: string }> = {
   settings: { icon: Settings, label: 'Settings', labelBn: 'সেটিংস', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
