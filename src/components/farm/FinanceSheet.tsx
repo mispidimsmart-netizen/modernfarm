@@ -222,31 +222,39 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             {/* Recent Transactions */}
             <div className="max-h-[300px] space-y-2 overflow-y-auto">
               {allTransactions.slice(0, 20).map((tx) => (
-                <Card key={tx.id}>
-                  <CardContent className="flex items-center justify-between p-3">
-                    <div className="flex items-center gap-3">
+                <Card key={`${tx.type}-${tx.id}`}>
+                  <CardContent className="flex items-center justify-between gap-2 p-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       {tx.type === 'income' ? (
-                        <ArrowUpCircle className="h-5 w-5 text-green-500" />
+                        <ArrowUpCircle className="h-5 w-5 text-green-500 shrink-0" />
                       ) : (
-                        <ArrowDownCircle className="h-5 w-5 text-red-500" />
+                        <ArrowDownCircle className="h-5 w-5 text-red-500 shrink-0" />
                       )}
-                      <div>
-                        <p className="text-sm font-medium">
-                          {tx.type === 'income' 
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {tx.type === 'income'
                             ? INCOME_CATEGORIES.find(c => c.value === tx.category)?.[language]
                             : EXPENSE_CATEGORIES.find(c => c.value === tx.category)?.[language]
                           }
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {format(new Date(tx.date), 'dd MMM', { 
-                            locale: language === 'bn' ? bn : enUS 
-                          })}
+                          {format(new Date(tx.date), 'dd MMM', { locale: language === 'bn' ? bn : enUS })}
                         </p>
                       </div>
                     </div>
-                    <span className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-semibold shrink-0 ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {tx.type === 'income' ? '+' : '-'}{t.taka[language]}{Number(tx.amount).toLocaleString()}
                     </span>
+                    <div className="flex shrink-0 gap-1">
+                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                        onClick={() => tx.type === 'expense' ? setEditExpense(tx as any) : setEditIncome(tx as any)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteTx({ id: tx.id, type: tx.type })}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
