@@ -73,6 +73,44 @@ export function ControlTabSkeleton() {
   );
 }
 
+/** ⚙️ System Status grid — heat stress + system mode + automation + broiler cards */
+export function SystemStatusCardsSkeleton({
+  showHeatStress = true,
+  showAutomation = true,
+  showBroiler = false,
+  showFanSpeed = false,
+}: {
+  showHeatStress?: boolean;
+  showAutomation?: boolean;
+  showBroiler?: boolean;
+  showFanSpeed?: boolean;
+}) {
+  return (
+    <div className="space-y-3 animate-in fade-in duration-200">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {showHeatStress && (
+          <Skeleton className="h-32 rounded-2xl bg-muted/60 min-w-0" />
+        )}
+        <Skeleton className="h-32 rounded-2xl bg-muted/60 min-w-0" />
+      </div>
+      {showAutomation && (
+        <Skeleton className="h-24 w-full rounded-2xl bg-muted/60" />
+      )}
+      {showBroiler && (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full rounded-2xl bg-muted/60" />
+          <Skeleton className="h-28 w-full rounded-2xl bg-muted/60" />
+          <Skeleton className="h-32 w-full rounded-2xl bg-muted/60" />
+        </div>
+      )}
+      {showFanSpeed && (
+        <Skeleton className="h-24 w-full rounded-2xl bg-muted/60" />
+      )}
+      <LoadingHint bn="সিস্টেম স্ট্যাটাস আপডেট হচ্ছে…" en="Updating system status…" />
+    </div>
+  );
+}
+
 /** 🐔 ফ্লক — activity + batch widget */
 export function FlockTabSkeleton() {
   return (
