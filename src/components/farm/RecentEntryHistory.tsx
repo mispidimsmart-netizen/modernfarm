@@ -235,26 +235,31 @@ export function RecentEntryHistory() {
                     : format(parseISO(entry.date), 'dd MMM')}
                 </span>
                 <div className="flex items-center gap-0.5 shrink-0">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-primary"
-                    onClick={() => openEdit(entry)}
-                    aria-label={language === 'bn' ? 'এডিট' : 'Edit'}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => setConfirmDelete(entry)}
-                    aria-label={language === 'bn' ? 'ডিলিট' : 'Delete'}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {/* Broiler feed/weight entries are managed from their own sheets */}
+                  {entry.type !== 'broiler-feed' && entry.type !== 'broiler-weight' && (
+                    <>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-primary"
+                        onClick={() => openEdit(entry)}
+                        aria-label={language === 'bn' ? 'এডিট' : 'Edit'}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setConfirmDelete(entry)}
+                        aria-label={language === 'bn' ? 'ডিলিট' : 'Delete'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
