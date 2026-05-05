@@ -219,17 +219,19 @@ export function Dashboard() {
 
             {/* TAB 1: 🏠 সারসংক্ষেপ */}
             <TabsContent value="summary" className="mt-3 space-y-3">
-              <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-              <EspConnectionBanner />
-              <IndustrialHeroStatus />
-              <ComfortIndicators />
-              <div>
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
-                </p>
-                <WeatherCard />
-              </div>
-              <TodayReadableSummary />
+              <TabLoadingWrapper queryKeys={TAB_QUERY_KEYS.summary}>
+                <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                <EspConnectionBanner />
+                <IndustrialHeroStatus />
+                <ComfortIndicators />
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
+                  </p>
+                  <WeatherCard />
+                </div>
+                <TodayReadableSummary />
+              </TabLoadingWrapper>
             </TabsContent>
 
             {/* TAB 2: 🌡️ পরিবেশ */}
