@@ -4760,6 +4760,10 @@ export type Database = {
       cleanup_old_security_audit: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
+      get_feed_avg_price: {
+        Args: { _farm_id: string; _feed_type: string }
+        Returns: number
+      }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       has_min_role: {
         Args: { _required_role: string; _user_id: string }
