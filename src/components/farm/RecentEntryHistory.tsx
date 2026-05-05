@@ -70,6 +70,8 @@ export function RecentEntryHistory() {
     : isBroiler
       ? activeBroilerBatch?.id ?? null
       : null;
+  const { data: broilerFeedRecords } = useBatchFeed(isBroiler ? activeBatchId ?? undefined : undefined);
+  const { data: broilerWeightRecords } = useBatchWeights(isBroiler ? activeBatchId ?? undefined : undefined);
   const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: null };
 
   const deleteEgg = useDeleteEggProduction();
