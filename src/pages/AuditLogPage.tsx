@@ -197,7 +197,40 @@ export function AuditLogPage() {
               </Select>
             </div>
 
-            {/* Date range */}
+            {/* Date range presets */}
+            <div className="flex gap-1.5 flex-wrap">
+              {DATE_PRESETS.map(p => {
+                const from = format(startOfDay(subDays(new Date(), p.days)), 'yyyy-MM-dd');
+                const to = format(endOfDay(new Date()), 'yyyy-MM-dd');
+                const active = filters.dateFrom === from && filters.dateTo === to;
+                return (
+                  <Button
+                    key={p.key}
+                    type="button"
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    className="h-7 px-2.5 text-[11px]"
+                    onClick={() => setFilters(f => ({ ...f, dateFrom: from, dateTo: to }))}
+                  >
+                    {isBn ? p.bn : p.en}
+                  </Button>
+                );
+              })}
+              {(filters.dateFrom || filters.dateTo) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setFilters(f => ({ ...f, dateFrom: undefined, dateTo: undefined }))}
+                >
+                  <X size={12} className="mr-1" />
+                  {isBn ? 'সব সময়' : 'All time'}
+                </Button>
+              )}
+            </div>
+
+            {/* Date range custom */}
             <div className="flex gap-2">
               <SmartDatePicker
                 value={filters.dateFrom || null}
@@ -213,6 +246,47 @@ export function AuditLogPage() {
                 className="flex-1"
                 disableFuture
               />
+            </div>
+
+            {/* Quick incident pickers */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5 text-[11px] text-muted-foreground">
+                <AlertTriangle size={12} />
+                <span>{isBn ? 'দ্রুত ঘটনা ফিল্টার:' : 'Quick incident filter:'}</span>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {INCIDENT_QUICK_PICKS.map(p => {
+                  const active = filters.actionType === p.key;
+                  return (
+                    <Button
+                      key={p.key}
+                      type="button"
+                      size="sm"
+                      variant={active ? 'default' : 'outline'}
+                      className="h-7 px-2 text-[11px] gap-1"
+                      onClick={() => setFilters(f => ({
+                        ...f,
+                        actionType: active ? undefined : p.key,
+                      }))}
+                    >
+                      <span>{p.emoji}</span>
+                      <span>{isBn ? p.bn : p.en}</span>
+                    </Button>
+                  );
+                })}
+                {filters.actionType && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => setFilters(f => ({ ...f, actionType: undefined }))}
+                  >
+                    <X size={12} className="mr-1" />
+                    {isBn ? 'মুছুন' : 'Clear'}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
