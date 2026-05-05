@@ -34,6 +34,10 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
   const { data: records, isLoading } = useMortalityRecords();
   const { data: flockInfo } = useFlockInfo();
   const addRecord = useAddMortalityRecord();
+  const updateRecord = useUpdateMortalityRecord();
+  const deleteRecord = useDeleteMortalityRecord();
+  const [editEntry, setEditEntry] = useState<MortalityRecord | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     record_date: format(new Date(), 'yyyy-MM-dd'),
