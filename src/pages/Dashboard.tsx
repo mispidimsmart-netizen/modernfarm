@@ -79,7 +79,9 @@ import {
   EnvironmentTabSkeleton,
   ControlTabSkeleton,
   FlockTabSkeleton,
+  SystemStatusCardsSkeleton,
 } from '@/components/dashboard/TabSkeletons';
+import { useIsFetching } from '@tanstack/react-query';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
