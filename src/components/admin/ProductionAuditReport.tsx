@@ -183,7 +183,7 @@ const handleDownloadPDF = () => {
       </ul>
 
       <div class="footer">
-        <p>© ${new Date().getFullYear()} FarmEye — Smart Poultry Farm Automation System | Developed by MonirIoT</p>
+        <p>© ${new Date().getFullYear()} Nexiot Labs · FarmEye Automation Platform — Smart Poultry Farm Automation System</p>
         <p>Report Version: ${REPORT_VERSION} | Auto-generated</p>
       </div>
     </body>

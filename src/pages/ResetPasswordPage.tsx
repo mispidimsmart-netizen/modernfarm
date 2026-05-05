@@ -153,7 +153,7 @@ export default function ResetPasswordPage() {
           </div>
         </form>
 
-        <p className="mt-8 text-center text-xs text-muted-foreground/60">© 2026 FarmEye Automation Platform</p>
+        <p className="mt-8 text-center text-xs text-muted-foreground/60">© 2026 Nexiot Labs · FarmEye Automation Platform</p>
       </motion.div>
     </div>
   );
