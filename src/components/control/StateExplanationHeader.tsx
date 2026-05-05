@@ -186,12 +186,12 @@ export function StateExplanationHeader() {
 
         {/* Active cooling devices — show which relays are ON for cooling/emergency */}
         {(currentState.id === 'cooling' || currentState.id === 'emergency') && isDeviceOnline && (() => {
-          const activeDevices: { icon: React.ElementType; label: { bn: string; en: string } }[] = [];
-          if (deviceStatus.fan) activeDevices.push({ icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' } });
-          if (deviceStatus.ceilingFan) activeDevices.push({ icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' } });
-          if (deviceStatus.circulation_fan) activeDevices.push({ icon: Fan, label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' } });
-          if (deviceStatus.fogger) activeDevices.push({ icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' } });
-          if (deviceStatus.sprinkler) activeDevices.push({ icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' } });
+          const activeDevices: { icon: React.ElementType; key: string }[] = [];
+          if (deviceStatus.fan) activeDevices.push({ icon: Fan, key: 'exhaustFan' });
+          if (deviceStatus.ceilingFan) activeDevices.push({ icon: Fan, key: 'ceilingFan' });
+          if (deviceStatus.circulation_fan) activeDevices.push({ icon: Fan, key: 'circulationFan' });
+          if (deviceStatus.fogger) activeDevices.push({ icon: Droplets, key: 'fogger' });
+          if (deviceStatus.sprinkler) activeDevices.push({ icon: ArrowUpFromDot, key: 'sprinkler' });
 
           if (activeDevices.length === 0) return null;
 
@@ -206,7 +206,7 @@ export function StateExplanationHeader() {
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
                     <DIcon className="h-3 w-3" />
-                    {d.label[language]}
+                    {t('devices', d.key, language)}
                   </span>
                 );
               })}
