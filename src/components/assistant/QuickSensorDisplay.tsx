@@ -117,7 +117,7 @@ export function QuickSensorDisplay() {
             </span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className={`text-[44px] font-bold leading-none tracking-tight tabular-nums ${tempStatus.text}`}>
+            <span className={`text-[36px] sm:text-[40px] lg:text-[44px] font-bold leading-none tracking-tight tabular-nums ${tempStatus.text}`}>
               <AnimatedNumber value={sensorData.temperature} decimals={1} />
             </span>
             <span className={`text-lg font-semibold ${tempStatus.text}/80`}>°C</span>
