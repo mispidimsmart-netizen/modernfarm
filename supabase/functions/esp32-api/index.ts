@@ -1758,10 +1758,10 @@ async function handleBufferSync(body: BufferSyncPayload, supabase: any, userId: 
       );
     }
 
-    // Get device token ID
+    // Get device token ID + farm_id (multi-tenant isolation guard)
     const { data: deviceInfo } = await supabase
       .from('device_tokens')
-      .select('id, shed_id')
+      .select('id, shed_id, farm_id')
       .eq('token', deviceToken)
       .single();
 
@@ -1772,7 +1772,17 @@ async function handleBufferSync(body: BufferSyncPayload, supabase: any, userId: 
       );
     }
 
+    // GUARD: reject if device token has no farm_id bound (would create orphan rows)
+    if (!deviceInfo.farm_id) {
+      console.error(`🚫 Buffer sync rejected: device token has NULL farm_id`);
+      return new Response(
+        JSON.stringify({ error: 'Device not bound to a farm', code: 'NO_FARM_BOUND' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const shedId = body.shed_id || deviceInfo.shed_id;
+    const farmId = deviceInfo.farm_id;
     const records = body.records.slice(0, 50); // Max 50 records per sync
 
     // Insert buffered records into sensor_buffer table
@@ -1805,6 +1815,7 @@ async function handleBufferSync(body: BufferSyncPayload, supabase: any, userId: 
     // Also insert into main sensor_readings for analytics
     const sensorRecords = records.map(record => ({
       user_id: userId,
+      farm_id: farmId,
       shed_id: shedId,
       temperature: record.temperature,
       humidity: record.humidity,
@@ -3292,10 +3303,10 @@ async function handleFailsafeSync(
   try {
     const now = new Date().toISOString();
     
-    // Get device info
+    // Get device info (incl. farm_id for multi-tenant guard)
     const { data: device } = await supabase
       .from('device_tokens')
-      .select('id, shed_id, device_name')
+      .select('id, shed_id, farm_id, device_name')
       .eq('token', deviceToken)
       .single();
 
@@ -3306,10 +3317,20 @@ async function handleFailsafeSync(
       );
     }
 
+    // GUARD: reject if device token has no farm_id bound
+    if (!device.farm_id) {
+      console.error(`🚫 Failsafe sync rejected: device token has NULL farm_id`);
+      return new Response(
+        JSON.stringify({ error: 'Device not bound to a farm', code: 'NO_FARM_BOUND' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 1. Save sensor data if provided
     if (body.temperature !== undefined && body.humidity !== undefined) {
       await supabase.from('sensor_readings').insert({
         user_id: userId,
+        farm_id: device.farm_id,
         shed_id: device.shed_id,
         temperature: body.temperature,
         humidity: body.humidity,
