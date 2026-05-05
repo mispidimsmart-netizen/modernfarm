@@ -76,67 +76,57 @@ export function QuickSensorDisplay() {
     return { text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' };
   })();
 
-  if (!hasRealData) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-dashed border-border bg-muted/30 p-2.5 sm:p-3.5"
-      >
-        <div className="flex items-center gap-2 sm:gap-3 min-h-[88px]">
-          <div className="flex-1 min-w-0 flex items-center gap-2">
-            <Thermometer className="h-5 w-5 text-muted-foreground/60 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-muted-foreground leading-tight">
-                {language === 'bn' ? 'সেন্সর ডেটার অপেক্ষায়...' : 'Waiting for sensor data...'}
-              </p>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5 leading-tight">
-                {language === 'bn' ? 'ESP32 কানেক্ট হলে এখানে দেখাবে' : 'Will appear once ESP32 connects'}
-              </p>
-            </div>
-          </div>
-          <div className="w-[96px] sm:w-[112px] shrink-0" aria-hidden />
-        </div>
-      </motion.div>
-    );
-  }
+  // Placeholder dash for missing values — preserves layout/typography
+  const dash = '--';
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className={`relative overflow-hidden rounded-2xl border bg-card ring-1 ${tempStatus.ring} ${tempStatus.glow} transition-shadow`}
+      className={`relative overflow-hidden rounded-2xl border bg-card ring-1 transition-shadow ${
+        hasRealData
+          ? `${tempStatus.ring} ${tempStatus.glow}`
+          : 'border-dashed ring-border/40'
+      }`}
     >
       {/* Ambient gradient backdrop */}
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tempStatus.bgGradient}`}
-      />
+      {hasRealData && (
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tempStatus.bgGradient}`}
+        />
+      )}
 
       <div className="relative flex items-stretch gap-2 p-2.5 sm:gap-3 sm:p-3.5">
         {/* HERO: Temperature */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <Thermometer className={`h-3.5 w-3.5 ${tempStatus.text}`} />
+            <Thermometer className={`h-3.5 w-3.5 ${hasRealData ? tempStatus.text : 'text-muted-foreground/60'}`} />
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {language === 'bn' ? 'ঘরের তাপমাত্রা' : 'Temperature'}
             </span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className={`text-[36px] sm:text-[40px] lg:text-[44px] font-bold leading-none tracking-tight tabular-nums ${tempStatus.text}`}>
-              <AnimatedNumber value={sensorData.temperature} decimals={1} />
+            <span className={`text-[36px] sm:text-[40px] lg:text-[44px] font-bold leading-none tracking-tight tabular-nums ${hasRealData ? tempStatus.text : 'text-muted-foreground/50'}`}>
+              {hasRealData ? <AnimatedNumber value={sensorData.temperature} decimals={1} /> : dash}
             </span>
-            <span className={`text-lg font-semibold ${tempStatus.text}/80`}>°C</span>
+            <span className={`text-lg font-semibold ${hasRealData ? `${tempStatus.text}/80` : 'text-muted-foreground/50'}`}>°C</span>
           </div>
           <div className="mt-1 flex items-center gap-1.5">
-            <motion.span
-              animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className={`h-1.5 w-1.5 rounded-full ${tempStatus.text.replace('text', 'bg')}`}
-            />
-            <span className={`text-[11px] font-semibold ${tempStatus.text}`}>
-              {tempStatus.label[language]}
+            {hasRealData ? (
+              <motion.span
+                animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className={`h-1.5 w-1.5 rounded-full ${tempStatus.text.replace('text', 'bg')}`}
+              />
+            ) : (
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+            )}
+            <span className={`text-[11px] font-semibold ${hasRealData ? tempStatus.text : 'text-muted-foreground/70'}`}>
+              {hasRealData
+                ? tempStatus.label[language]
+                : language === 'bn' ? 'সেন্সর ডেটার অপেক্ষায়...' : 'Waiting for sensor data...'}
             </span>
           </div>
         </div>
@@ -153,15 +143,15 @@ export function QuickSensorDisplay() {
             transition={{ delay: 0.1 }}
             className="flex items-center gap-1.5 sm:gap-2"
           >
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-blue-500/10 shrink-0">
-              <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
+            <div className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shrink-0 ${hasRealData ? 'bg-blue-500/10' : 'bg-muted/60'}`}>
+              <Droplets className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${hasRealData ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground/50'}`} />
             </div>
             <div className="min-w-0">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
                 {language === 'bn' ? 'আর্দ্রতা' : 'Humidity'}
               </p>
-              <p className="text-base font-bold tabular-nums text-foreground leading-tight">
-                <AnimatedNumber value={sensorData.humidity} />
+              <p className={`text-base font-bold tabular-nums leading-tight ${hasRealData ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                {hasRealData ? <AnimatedNumber value={sensorData.humidity} /> : dash}
                 <span className="text-xs font-semibold text-muted-foreground">%</span>
               </p>
             </div>
@@ -174,16 +164,16 @@ export function QuickSensorDisplay() {
             transition={{ delay: 0.15 }}
             className="flex items-center gap-1.5 sm:gap-2"
           >
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-purple-500/10 shrink-0">
-              <Wind className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
+            <div className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg shrink-0 ${hasRealData ? 'bg-purple-500/10' : 'bg-muted/60'}`}>
+              <Wind className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${hasRealData ? 'text-purple-600 dark:text-purple-400' : 'text-muted-foreground/50'}`} />
             </div>
             <div className="min-w-0">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold leading-none flex items-center gap-1">
                 {language === 'bn' ? 'গ্যাস' : 'Ammonia'}
-                <span className={`h-1 w-1 rounded-full ${ammoniaPill.dot}`} />
+                {hasRealData && <span className={`h-1 w-1 rounded-full ${ammoniaPill.dot}`} />}
               </p>
-              <p className={`text-base font-bold tabular-nums leading-tight ${ammoniaPill.text}`}>
-                <AnimatedNumber value={sensorData.ammonia} />
+              <p className={`text-base font-bold tabular-nums leading-tight ${hasRealData ? ammoniaPill.text : 'text-muted-foreground/50'}`}>
+                {hasRealData ? <AnimatedNumber value={sensorData.ammonia} /> : dash}
                 <span className="text-[10px] font-semibold ml-0.5">ppm</span>
               </p>
             </div>
