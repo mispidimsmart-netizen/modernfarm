@@ -11,6 +11,10 @@ interface TabLoadingWrapperProps {
   emptyHint?: { bn: string; en: string };
   children: ReactNode;
   skeletonRows?: number;
+  /** Optional custom skeleton matching the tab's actual layout */
+  skeleton?: ReactNode;
+  /** Optional custom loading hint text */
+  loadingHint?: { bn: string; en: string };
 }
 
 /**
