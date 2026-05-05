@@ -295,7 +295,7 @@ export function Dashboard() {
                 skeleton={<ControlTabSkeleton />}
                 loadingHint={{ bn: 'নিয়ন্ত্রণ ও অটোমেশন স্ট্যাটাস লোড হচ্ছে…', en: 'Loading controls & automation…' }}
               >
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <CurrentActionPanel />
                 <AdvisoryAssistant />
               </div>
