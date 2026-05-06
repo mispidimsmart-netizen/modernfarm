@@ -2960,6 +2960,14 @@ void fetchConfig() {
       if (doc.containsKey("hsi_severe_threshold")) rules.hsiEmergency = doc["hsi_severe_threshold"];
       if (doc.containsKey("hsi_emergency_threshold")) rules.hsiCritical = doc["hsi_emergency_threshold"];
       updateHysteresisThresholds();
+      if (doc.containsKey("safety_engine_enabled")) {
+        bool newVal = doc["safety_engine_enabled"] | true;
+        if (newVal != safetyEngineEnabled) {
+          safetyEngineEnabled = newVal;
+          Serial.printf("🛡️ Safety Engine %s (from cloud config)\n",
+            safetyEngineEnabled ? "ENABLED" : "DISABLED — only Hard Floor (>42°C) active");
+        }
+      }
       configSynced = true;
     }
   }
