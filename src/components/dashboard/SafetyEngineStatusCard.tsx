@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ShieldCheck, ShieldAlert, Cpu, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
@@ -7,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * Compact dashboard tile showing:
@@ -22,8 +25,26 @@ export function SafetyEngineStatusCard() {
   const { selectedFarmId } = useFarmContext();
   const { data: settings } = useFarmSettings();
   const { data: healthList } = useAllDeviceHealth();
+  const queryClient = useQueryClient();
 
   const enabled = ((settings as any)?.safety_engine_enabled ?? true) as boolean;
+
+  // Realtime: refresh dashboard the moment Safety Engine is toggled (cloud, ESP32, or another tab)
+  useEffect(() => {
+    if (!selectedFarmId) return;
+    const channel = supabase
+      .channel(`safety-engine-${selectedFarmId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'farm_settings', filter: `farm_id=eq.${selectedFarmId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['farm_settings'] });
+          queryClient.invalidateQueries({ queryKey: ['safety_engine_audit_log', selectedFarmId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedFarmId, queryClient]);
 
   // Pick the most recently-seen device for the current farm
   const farmHealth = (healthList ?? [])
