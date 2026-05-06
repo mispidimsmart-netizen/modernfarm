@@ -129,6 +129,10 @@ export function IndustrialHeroStatus() {
 
     // Emergency: extreme values (same in both modes — safety is always active)
     if (temp > 38 || ammonia > 25 || hsi > 85) {
+      // ডিভাইস না চললে আলাদা সতর্কবার্তা — মিথ্যা আশ্বাস দেবে না
+      if (!anyDeviceActive) {
+        return (STATUS_MAP as any).emergency_no_action as StatusConfig;
+      }
       return STATUS_MAP.emergency;
     }
 
