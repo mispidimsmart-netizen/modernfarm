@@ -308,11 +308,13 @@ Deno.serve(async (req) => {
 
     if (deviceError || !device) {
       console.error('Device token validation failed:', deviceError);
-      await supabase.rpc('log_security_event', {
-        _event_type: 'device_auth_failure',
-        _success: false,
-        _details: { reason: 'invalid_token', token_prefix: deviceToken.substring(0, 8) },
-      }).catch(() => {});
+      try {
+        await supabase.rpc('log_security_event', {
+          _event_type: 'device_auth_failure',
+          _success: false,
+          _details: { reason: 'invalid_token', token_prefix: deviceToken.substring(0, 8) },
+        });
+      } catch { /* swallow */ }
       return new Response(
         JSON.stringify({ error: 'Invalid device token', code: 'INVALID_TOKEN' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
