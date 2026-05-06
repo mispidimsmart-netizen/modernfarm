@@ -60,6 +60,7 @@ import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchite
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
+import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
 
 const t = {
   bn: {
@@ -100,6 +101,7 @@ const t = {
     tabArchitecture: 'টেকনিক্যাল আর্কিটেকচার',
     tabFirmware: 'ফার্মওয়্যার',
     tabSecurity: 'সিকিউরিটি লগ',
+    tabCommands: 'কমান্ড ডেলিভারি',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
@@ -148,6 +150,7 @@ const t = {
     tabArchitecture: 'Technical Architecture',
     tabFirmware: 'Firmware',
     tabSecurity: 'Security Logs',
+    tabCommands: 'Command Delivery',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
@@ -429,6 +432,10 @@ export default function AdminPage() {
               <Shield className="w-4 h-4 mr-2" />
               {labels.tabSecurity}
             </TabsTrigger>
+            <TabsTrigger value="commands" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Activity className="w-4 h-4 mr-2" />
+              {labels.tabCommands}
+            </TabsTrigger>
             <TabsTrigger value="isolation" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <Shield className="w-4 h-4 mr-2" />
               আইসোলেশন
@@ -679,6 +686,10 @@ export default function AdminPage() {
 
           <TabsContent value="security" className="mt-4">
             <SecurityAuditLogPanel />
+          </TabsContent>
+
+          <TabsContent value="commands" className="mt-4">
+            <AdminCommandDeliveryPanel />
           </TabsContent>
         </Tabs>
       </div>
