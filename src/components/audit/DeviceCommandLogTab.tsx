@@ -92,6 +92,7 @@ export function DeviceCommandLogTab() {
 
   const { data: logs, isLoading, refetch, isFetching } = useDeviceCommandLog(filters);
   const { data: deviceNames } = useDeviceCommandDevices(filters.farmId);
+  const { data: sheds = [] } = useSheds();
 
   const stats = useMemo(() => {
     if (!logs) return { total: 0, executed: 0, expired: 0, failed: 0, pending: 0 };
