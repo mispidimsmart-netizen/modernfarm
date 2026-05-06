@@ -97,10 +97,18 @@ const char* FIRMWARE_VERSION = "8.1.0-safety-toggle";
 // ALWAYS-ON HARD FLOOR (cannot be disabled): T > HARD_FLOOR_TEMP_C
 //   → Fan HIGH + Alarm ON. This is firmware self-protection for livestock.
 // ═══════════════════════════════════════════════════════════════════════
-bool safetyEngineEnabled = true;            // default ON, set by /config
+bool safetyEngineEnabled = true;            // default ON, set by /config (cached in NVS)
 #define HARD_FLOOR_TEMP_C   42.0f           // never disabled — protects livestock
 #define HARD_FLOOR_HYST_C    2.0f           // turn off fan only after dropping 2°C below floor
 bool hardFloorActive = false;
+// Cached config persistence — survives WiFi outage & reboot
+#define NVS_SAFETY_NS         "safety_cfg"
+#define NVS_SAFETY_KEY        "se_enabled"
+#define NVS_SAFETY_TS_KEY     "se_synced_at" // unix-ish (millis-since-epoch unknown offline → use uptime sec)
+unsigned long lastConfigSyncMs = 0;          // millis() of last successful /config 200
+unsigned long lastConfigSyncEpoch = 0;       // saved alongside cached value (0 if never)
+uint16_t configFetchFailStreak = 0;          // consecutive failures (HTTP error / no WiFi)
+bool safetyCachedFromNvs = false;            // true if current value came from NVS, not live cloud
 
 // --- Pin Definitions (8-Channel Relay v2.0) ---
 #define DHT_PIN              4
