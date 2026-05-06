@@ -5,6 +5,7 @@ export type CommandLogStatus = 'pending' | 'sent' | 'acked' | 'failed' | 'expire
 
 export interface DeviceCommandLogFilters {
   farmId?: string;
+  shedId?: string;
   deviceName?: string;
   status?: CommandLogStatus | 'all';
   searchQuery?: string;
