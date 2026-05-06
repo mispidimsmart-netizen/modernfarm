@@ -25,8 +25,26 @@ export function SafetyEngineStatusCard() {
   const { selectedFarmId } = useFarmContext();
   const { data: settings } = useFarmSettings();
   const { data: healthList } = useAllDeviceHealth();
+  const queryClient = useQueryClient();
 
   const enabled = ((settings as any)?.safety_engine_enabled ?? true) as boolean;
+
+  // Realtime: refresh dashboard the moment Safety Engine is toggled (cloud, ESP32, or another tab)
+  useEffect(() => {
+    if (!selectedFarmId) return;
+    const channel = supabase
+      .channel(`safety-engine-${selectedFarmId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'farm_settings', filter: `farm_id=eq.${selectedFarmId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['farm_settings'] });
+          queryClient.invalidateQueries({ queryKey: ['safety_engine_audit_log', selectedFarmId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [selectedFarmId, queryClient]);
 
   // Pick the most recently-seen device for the current farm
   const farmHealth = (healthList ?? [])
