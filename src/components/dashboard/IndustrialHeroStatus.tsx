@@ -57,6 +57,14 @@ const STATUS_MAP: Record<string, StatusConfig> = {
     borderColor: 'border-red-400/50',
     dotColor: 'bg-red-400',
   },
+  emergency_no_action: {
+    id: 'emergency',
+    icon: AlertTriangle,
+    title: { bn: '🚨 বিপদ! ডিভাইস চলছে না — এখনই দেখুন', en: '🚨 DANGER! No device running — Check now' },
+    gradient: 'from-red-700 via-rose-600 to-red-700',
+    borderColor: 'border-red-500',
+    dotColor: 'bg-red-500',
+  },
   sensor_fail: {
     id: 'sensor_fail',
     icon: Wrench,
@@ -121,6 +129,10 @@ export function IndustrialHeroStatus() {
 
     // Emergency: extreme values (same in both modes — safety is always active)
     if (temp > 38 || ammonia > 25 || hsi > 85) {
+      // ডিভাইস না চললে আলাদা সতর্কবার্তা — মিথ্যা আশ্বাস দেবে না
+      if (!anyDeviceActive) {
+        return (STATUS_MAP as any).emergency_no_action as StatusConfig;
+      }
       return STATUS_MAP.emergency;
     }
 
