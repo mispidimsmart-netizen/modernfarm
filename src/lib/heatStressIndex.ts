@@ -52,8 +52,23 @@ export function calculateHSI(
   humidity: number,
   thresholds: HSIThresholds = DEFAULT_HSI_THRESHOLDS
 ): HeatStressResult {
+  // Defensive: invalid sensor reads must NOT trigger emergency
+  const t = typeof temperature === 'number' ? temperature : NaN;
+  const h = typeof humidity === 'number' ? humidity : NaN;
+  if (!Number.isFinite(t) || !Number.isFinite(h)) {
+    return {
+      index: 0,
+      level: 'normal',
+      shouldActivateFan: false,
+      shouldAlert: false,
+      alertSeverity: null,
+      message: { bn: 'সেন্সর ডেটা নেই', en: 'No sensor data' },
+    };
+  }
+  // Clamp humidity to physical range
+  const humClamped = Math.max(0, Math.min(100, h));
   // THI formula for poultry
-  const hsi = 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
+  const hsi = 0.8 * t + (humClamped / 100) * (t - 14.4) + 46.4;
   
   // Round to 1 decimal place
   const roundedHSI = Math.round(hsi * 10) / 10;
