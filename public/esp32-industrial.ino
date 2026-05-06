@@ -84,11 +84,23 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.0.3-svl-manual-fix";
+const char* FIRMWARE_VERSION = "8.1.0-safety-toggle";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
 #define RELAY_BOOT_SELF_TEST_ENABLED false
+
+// ═══════════════════════════════════════════════════════════════════════
+// SAFETY ENGINE TOGGLE (runtime, controlled from cloud /config)
+// When false: SVL filtering, Arbiter, Hysteresis emergency bypass,
+//             HSI auto-trigger, ESM force-on, Heater interlock are SKIPPED.
+// ALWAYS-ON HARD FLOOR (cannot be disabled): T > HARD_FLOOR_TEMP_C
+//   → Fan HIGH + Alarm ON. This is firmware self-protection for livestock.
+// ═══════════════════════════════════════════════════════════════════════
+bool safetyEngineEnabled = true;            // default ON, set by /config
+#define HARD_FLOOR_TEMP_C   42.0f           // never disabled — protects livestock
+#define HARD_FLOOR_HYST_C    2.0f           // turn off fan only after dropping 2°C below floor
+bool hardFloorActive = false;
 
 // --- Pin Definitions (8-Channel Relay v2.0) ---
 #define DHT_PIN              4
@@ -1562,7 +1574,9 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
   // EMERGENCY BYPASS: In DANGER+ states, hysteresis timing protection
   // is SKIPPED. Relays respond instantly to save lives.
   // ═══════════════════════════════════════════════════════════════
-  bool emergencyBypass = (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode);
+  // Hard floor always counts as emergency. Other emergency bypass requires safety engine ON.
+  bool emergencyBypass = hardFloorActive ||
+    (safetyEngineEnabled && (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode));
   
   for (int i = 0; i < ch.stageCount; i++) {
     HystStage &s = ch.stages[i];
@@ -1696,16 +1710,35 @@ void automationEngineTick() {
     return;  // সম্পূর্ণ ম্যানুয়াল — কোনো অটোমেশন বা সেফটি ওভাররাইড নেই
   }
 
-  // AUTO mode: safety arbiter runs normally
-  if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
-  if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
-  if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+  // ════ ALWAYS-ON HARD FLOOR (works even when safety engine OFF) ════
+  // If actual temperature exceeds HARD_FLOOR_TEMP_C, force fan + alarm ON.
+  // This is the minimum livestock-protection guarantee in every firmware build.
+  float hfTemp = dht2Available ? max(temperature, temperature2) : temperature;
+  if (hfTemp >= HARD_FLOOR_TEMP_C) {
+    if (!hardFloorActive) {
+      hardFloorActive = true;
+      Serial.printf("🔥 HARD FLOOR ENGAGED: T=%.1f°C ≥ %.1f°C → Fan+Alarm forced ON\n", hfTemp, HARD_FLOOR_TEMP_C);
+    }
+    requestFan(true, "HIGH");
+    requestAlarm(true);
+  } else if (hardFloorActive && hfTemp <= (HARD_FLOOR_TEMP_C - HARD_FLOOR_HYST_C)) {
+    hardFloorActive = false;
+    Serial.printf("✅ HARD FLOOR RELEASED: T=%.1f°C\n", hfTemp);
+  }
 
-  // Emergency Survival overrides everything
-  if (emergencySurvivalMode) {
+  // AUTO mode: safety arbiter outputs (only when safety engine enabled)
+  if (safetyEngineEnabled) {
+    if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
+    if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
+    if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+  }
+
+  // Emergency Survival overrides everything (only when safety engine enabled)
+  if (safetyEngineEnabled && emergencySurvivalMode) {
     runEmergencySurvivalCycles();
     return;
   }
+
 
   // Power Recovery Purge overrides normal automation
   // During purge: ALL sensor readings are ignored, no state evaluation occurs
@@ -2927,6 +2960,14 @@ void fetchConfig() {
       if (doc.containsKey("hsi_severe_threshold")) rules.hsiEmergency = doc["hsi_severe_threshold"];
       if (doc.containsKey("hsi_emergency_threshold")) rules.hsiCritical = doc["hsi_emergency_threshold"];
       updateHysteresisThresholds();
+      if (doc.containsKey("safety_engine_enabled")) {
+        bool newVal = doc["safety_engine_enabled"] | true;
+        if (newVal != safetyEngineEnabled) {
+          safetyEngineEnabled = newVal;
+          Serial.printf("🛡️ Safety Engine %s (from cloud config)\n",
+            safetyEngineEnabled ? "ENABLED" : "DISABLED — only Hard Floor (>42°C) active");
+        }
+      }
       configSynced = true;
     }
   }
@@ -4044,7 +4085,7 @@ void loop() {
   // In full MANUAL mode, arbiter is intentionally skipped so
   // relays stay exactly as the operator commands.
   // ═══════════════════════════════════════════════════════════════
-  if (!localManualOverride) {
+  if (!localManualOverride && safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia, 
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
   }
@@ -4065,8 +4106,8 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (AUTO mode only) ---
-  if (!localManualOverride) {
+  // --- Safety Arbiter AGAIN after all processing (AUTO mode only, when enabled) ---
+  if (!localManualOverride && safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia,
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
   }

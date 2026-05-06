@@ -1183,8 +1183,10 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
-      // Auto-enable fan HIGH + alarm for THIS SHED
-      await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
+      // Auto-enable fan HIGH + alarm for THIS SHED (skip if farmer disabled safety engine)
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
+      }
       
     } else if (hsi >= 80) {
       const alertData: Record<string, any> = {
@@ -1197,15 +1199,21 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
-      // Auto-enable fan HIGH for THIS SHED
-      await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
+      // Auto-enable fan HIGH for THIS SHED (skip if disabled)
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
+      }
       
     } else if (hsi >= 75) {
       // Mild stress - fan LOW (no alert needed, just automation)
-      await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
+      }
     } else {
       // Normal - can turn off fan if no other issues
-      await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
+      }
     }
 
     // Legacy temperature-only alerts (for backward compatibility)
@@ -4319,6 +4327,11 @@ async function getDeviceConfig(supabase: any, userId: string, shedId: string | n
       currentHour: now.getUTCHours() + 6, // Bangladesh = UTC+6
       currentMinute: now.getMinutes(),
       timestamp: now.toISOString(),
+
+      // === Safety Engine Toggle ===
+      // When false: ESP32 disables Arbiter, ESM, HSI auto, hysteresis bypass.
+      // Hard floor (>42°C) always remains active in firmware.
+      safety_engine_enabled: settings?.safety_engine_enabled ?? true,
 
       // === Metadata ===
       configVersion: Date.now(),
