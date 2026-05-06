@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ShieldCheck, ShieldAlert, Cpu, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings } from '@/hooks/useFarmData';
@@ -7,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 /**
  * Compact dashboard tile showing:
