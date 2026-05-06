@@ -425,9 +425,9 @@ unsigned long lastWaterPulse = 0;
 bool waterFailureMode = false;
 
 // --- SVL Channels ---
-SVLChannel svlTemp     = {{0},0,0,25.0f,0,0,true,false};
-SVLChannel svlHumidity = {{0},0,0,60.0f,0,0,true,false};
-SVLChannel svlAmmonia  = {{0},0,0,0.0f,0,0,true,false};
+SVLChannel svlTemp     = {{0},0,0,25.0f,25.0f,0,0,true,false};
+SVLChannel svlHumidity = {{0},0,0,60.0f,60.0f,0,0,true,false};
+SVLChannel svlAmmonia  = {{0},0,0,0.0f,0.0f,0,0,true,false};
 bool nh3ThresholdBreached = false;
 unsigned long nh3ThresholdBreachStart = 0;
 bool nh3VentilationConfirmed = false;
