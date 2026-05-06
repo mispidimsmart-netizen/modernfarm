@@ -1710,16 +1710,35 @@ void automationEngineTick() {
     return;  // সম্পূর্ণ ম্যানুয়াল — কোনো অটোমেশন বা সেফটি ওভাররাইড নেই
   }
 
-  // AUTO mode: safety arbiter runs normally
-  if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
-  if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
-  if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+  // ════ ALWAYS-ON HARD FLOOR (works even when safety engine OFF) ════
+  // If actual temperature exceeds HARD_FLOOR_TEMP_C, force fan + alarm ON.
+  // This is the minimum livestock-protection guarantee in every firmware build.
+  float hfTemp = dht2Available ? max(temperature, temperature2) : temperature;
+  if (hfTemp >= HARD_FLOOR_TEMP_C) {
+    if (!hardFloorActive) {
+      hardFloorActive = true;
+      Serial.printf("🔥 HARD FLOOR ENGAGED: T=%.1f°C ≥ %.1f°C → Fan+Alarm forced ON\n", hfTemp, HARD_FLOOR_TEMP_C);
+    }
+    requestFan(true, "HIGH");
+    requestAlarm(true);
+  } else if (hardFloorActive && hfTemp <= (HARD_FLOOR_TEMP_C - HARD_FLOOR_HYST_C)) {
+    hardFloorActive = false;
+    Serial.printf("✅ HARD FLOOR RELEASED: T=%.1f°C\n", hfTemp);
+  }
 
-  // Emergency Survival overrides everything
-  if (emergencySurvivalMode) {
+  // AUTO mode: safety arbiter outputs (only when safety engine enabled)
+  if (safetyEngineEnabled) {
+    if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
+    if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
+    if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+  }
+
+  // Emergency Survival overrides everything (only when safety engine enabled)
+  if (safetyEngineEnabled && emergencySurvivalMode) {
     runEmergencySurvivalCycles();
     return;
   }
+
 
   // Power Recovery Purge overrides normal automation
   // During purge: ALL sensor readings are ignored, no state evaluation occurs
