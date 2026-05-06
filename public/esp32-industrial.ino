@@ -84,7 +84,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.0.0";
+const char* FIRMWARE_VERSION = "8.0.3-svl-manual-fix";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -3602,6 +3602,7 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\n╔═══════════════════════════════════════════════════════════════╗");
   Serial.printf("║    Smart Farm - Industrial Controller v%s                   ║\n", FIRMWARE_VERSION);
+  Serial.println("║    PATCH: SVL downward-safe + manual GPIO direct apply        ║");
   Serial.println("║    State Machine Architecture | Single Authority Relays        ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
 
