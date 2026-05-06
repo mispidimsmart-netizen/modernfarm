@@ -87,14 +87,16 @@ export function useBoundedOverride() {
     if (!user) return;
 
     try {
-      // Update ALL device_status rows for this user
-      await supabase
+      // Update device_status for the SELECTED farm only (multi-tenancy safety)
+      let upd = supabase
         .from('device_status')
         .update({
-          manual_override: false,
+          desired_manual_override: false,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
+      if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      await upd;
 
       toast.success(
         language === 'bn' ? '✅ অটো মোডে ফিরে এসেছে' : '✅ Returned to AUTO mode'
