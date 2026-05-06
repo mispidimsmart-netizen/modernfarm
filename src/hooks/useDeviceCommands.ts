@@ -209,6 +209,18 @@ export function useSendDeviceCommand() {
               : `✅ ${name.en} ${state ? 'ON' : 'OFF'} confirmed by device`,
             { id: ackToastId }
           );
+          // Mark the pending log row as acked
+          if (commandId) {
+            try {
+              await supabase
+                .from('device_command_log')
+                .update({ status: 'acked', acked_at: new Date().toISOString() })
+                .eq('command_id', commandId);
+              queryClient.invalidateQueries({ queryKey: ['device-command-log'] });
+            } catch (e) {
+              console.warn('[useDeviceCommands] failed to mark acked', e);
+            }
+          }
           queryClient.invalidateQueries({ queryKey: ['device_status'] });
           return;
         }
