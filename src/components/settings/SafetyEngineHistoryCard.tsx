@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { History, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useFarm } from '@/context/FarmContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
