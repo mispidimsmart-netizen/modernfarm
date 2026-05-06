@@ -86,6 +86,10 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 // --- Firmware ---
 const char* FIRMWARE_VERSION = "8.0.0";
 
+// Production safety: never energize AC relays during boot.
+// Use a separate bench-test sketch for relay/channel verification.
+#define RELAY_BOOT_SELF_TEST_ENABLED false
+
 // --- Pin Definitions (8-Channel Relay v2.0) ---
 #define DHT_PIN              4
 #define DHT2_PIN             16     // Moved from 15 to avoid relay conflict
@@ -3635,14 +3639,19 @@ void setup() {
   // --- Safety Engine Init (must have GPIO pins for direct relay control) ---
   safetyEngine.begin(FAN_RELAY_PIN, HEATER_RELAY_PIN, ALARM_RELAY_PIN);
 
-  // --- Gradual Relay Test (non-blocking wait) — 8 channels ---
-  Serial.println("🔌 Relay test sequence (8-ch)...");
-  const int relayPins[] = {FAN_RELAY_PIN, CEILING_FAN_RELAY_PIN, LIGHT_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN, ALARM_RELAY_PIN, SPRINKLER_RELAY_PIN, CIRCULATION_RELAY_PIN};
-  for (int i = 0; i < 8; i++) {
-    digitalWrite(relayPins[i], LOW);   // ON
-    unsigned long w = millis(); while(millis()-w < 800) { esp_task_wdt_reset(); yield(); }
-    digitalWrite(relayPins[i], HIGH);  // OFF
-    w = millis(); while(millis()-w < 400) yield();
+  // --- Relay boot self-test disabled in production ---
+  // AC loads must stay OFF at boot; never pulse fan/light/heater on live farm wiring.
+  if (RELAY_BOOT_SELF_TEST_ENABLED) {
+    Serial.println("🔌 Relay test sequence (8-ch)...");
+    const int relayPins[] = {FAN_RELAY_PIN, CEILING_FAN_RELAY_PIN, LIGHT_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN, ALARM_RELAY_PIN, SPRINKLER_RELAY_PIN, CIRCULATION_RELAY_PIN};
+    for (int i = 0; i < 8; i++) {
+      digitalWrite(relayPins[i], LOW);   // ON
+      unsigned long w = millis(); while(millis()-w < 800) { esp_task_wdt_reset(); yield(); }
+      digitalWrite(relayPins[i], HIGH);  // OFF
+      w = millis(); while(millis()-w < 400) yield();
+    }
+  } else {
+    Serial.println("🔌 Relay boot self-test skipped — all AC relays held OFF");
   }
 
   // --- Input Pins ---
