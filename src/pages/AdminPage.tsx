@@ -60,6 +60,7 @@ import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchite
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
+import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
 
 const t = {
   bn: {
