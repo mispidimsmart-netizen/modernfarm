@@ -86,6 +86,10 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 // --- Firmware ---
 const char* FIRMWARE_VERSION = "8.0.0";
 
+// Production safety: never energize AC relays during boot.
+// Use a separate bench-test sketch for relay/channel verification.
+#define RELAY_BOOT_SELF_TEST_ENABLED false
+
 // --- Pin Definitions (8-Channel Relay v2.0) ---
 #define DHT_PIN              4
 #define DHT2_PIN             16     // Moved from 15 to avoid relay conflict
@@ -659,6 +663,7 @@ void requestCirculationFan(bool on);
 void requestCeilingFan(bool on);
 void requestSprinkler(bool on);
 void requestLight(int brightness);
+void forceApplyManualRelay(String type, bool value);
 
 // Automation Engine
 void automationEngineTick();
@@ -1492,6 +1497,40 @@ void updateLightingWithFade() {
     digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
     Serial.println(lightOn ? "💡 Light relay ON" : "🌑 Light relay OFF");
   }
+}
+
+void forceApplyManualRelay(String type, bool value) {
+  if (type == "fan" || type == "exhaust_fan") {
+    relayTarget.fan = value; relayTarget.fanSpeed = value ? "HIGH" : "OFF";
+    fanOn = value; fanSpeed = relayTarget.fanSpeed;
+    digitalWrite(FAN_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "light") {
+    relayTarget.light = value;
+    targetBrightness = value ? 100 : 0;
+    lightBrightness = targetBrightness;
+    lightOn = value;
+    digitalWrite(LIGHT_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "heater") {
+    relayTarget.heater = value; heaterOn = value;
+    digitalWrite(HEATER_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "fogger") {
+    relayTarget.fogger = value; foggerOn = value;
+    digitalWrite(FOGGER_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "alarm") {
+    relayTarget.alarm = value; alarmOn = value;
+    digitalWrite(ALARM_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "circulation_fan") {
+    relayTarget.circulationFan = value; circulationFanOn = value;
+    digitalWrite(CIRCULATION_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "ceiling_fan") {
+    relayTarget.ceilingFan = value; ceilingFanOn = value;
+    digitalWrite(CEILING_FAN_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "sprinkler") {
+    relayTarget.sprinkler = value; sprinklerOn = value;
+    digitalWrite(SPRINKLER_RELAY_PIN, value ? LOW : HIGH);
+  }
+  lastRelayChangeTime = millis();
+  manualCommandPending = false;
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
@@ -2920,37 +2959,36 @@ void checkCommands() {
         if (type == "exhaust_fan" || type == "fan") {
           fanManualOverride = true; fanManualTime = millis();
           requestFan(value, value ? "HIGH" : "OFF");
+          forceApplyManualRelay("fan", value);
         } else if (type == "heater") {
           heaterManualOverride = true; heaterManualTime = millis();
           requestHeater(value);
+          forceApplyManualRelay("heater", value);
         } else if (type == "light") {
           lightSchedule.manualOverride = true;
           lightManualOverrideTime = millis();
           fadeInProgress = false;
-          targetBrightness = value ? 100 : 0;
-          fadeStartBrightness = targetBrightness;
-          lightBrightness = targetBrightness;
-          bool nextLightOn = value;
-          if (nextLightOn != lightOn) {
-            lightOn = nextLightOn;
-            digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
-            Serial.println(lightOn ? "💡 Light relay ON (manual immediate)" : "🌑 Light relay OFF (manual immediate)");
-          }
-          manualCommandPending = false;
+          forceApplyManualRelay("light", value);
+          Serial.println(lightOn ? "💡 Light relay ON (manual immediate)" : "🌑 Light relay OFF (manual immediate)");
         } else if (type == "alarm") {
           requestAlarm(value);
+          forceApplyManualRelay("alarm", value);
         } else if (type == "fogger") {
           foggerManualOverride = true; foggerManualTime = millis();
           requestFogger(value);
+          forceApplyManualRelay("fogger", value);
         } else if (type == "circulation_fan") {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
+          forceApplyManualRelay("circulation_fan", value);
         } else if (type == "ceiling_fan") {
           ceilingFanManualOverride = true; ceilingFanManualTime = millis();
           requestCeilingFan(value);
+          forceApplyManualRelay("ceiling_fan", value);
         } else if (type == "sprinkler") {
           sprinklerManualOverride = true; sprinklerManualTime = millis();
           requestSprinkler(value);
+          forceApplyManualRelay("sprinkler", value);
         } else if (type == "stop_automation") {
           // Full manual mode: disable automation + safety arbiter entirely until AUTO resumes
           localManualOverride = value;
@@ -3635,14 +3673,19 @@ void setup() {
   // --- Safety Engine Init (must have GPIO pins for direct relay control) ---
   safetyEngine.begin(FAN_RELAY_PIN, HEATER_RELAY_PIN, ALARM_RELAY_PIN);
 
-  // --- Gradual Relay Test (non-blocking wait) — 8 channels ---
-  Serial.println("🔌 Relay test sequence (8-ch)...");
-  const int relayPins[] = {FAN_RELAY_PIN, CEILING_FAN_RELAY_PIN, LIGHT_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN, ALARM_RELAY_PIN, SPRINKLER_RELAY_PIN, CIRCULATION_RELAY_PIN};
-  for (int i = 0; i < 8; i++) {
-    digitalWrite(relayPins[i], LOW);   // ON
-    unsigned long w = millis(); while(millis()-w < 800) { esp_task_wdt_reset(); yield(); }
-    digitalWrite(relayPins[i], HIGH);  // OFF
-    w = millis(); while(millis()-w < 400) yield();
+  // --- Relay boot self-test disabled in production ---
+  // AC loads must stay OFF at boot; never pulse fan/light/heater on live farm wiring.
+  if (RELAY_BOOT_SELF_TEST_ENABLED) {
+    Serial.println("🔌 Relay test sequence (8-ch)...");
+    const int relayPins[] = {FAN_RELAY_PIN, CEILING_FAN_RELAY_PIN, LIGHT_RELAY_PIN, HEATER_RELAY_PIN, FOGGER_RELAY_PIN, ALARM_RELAY_PIN, SPRINKLER_RELAY_PIN, CIRCULATION_RELAY_PIN};
+    for (int i = 0; i < 8; i++) {
+      digitalWrite(relayPins[i], LOW);   // ON
+      unsigned long w = millis(); while(millis()-w < 800) { esp_task_wdt_reset(); yield(); }
+      digitalWrite(relayPins[i], HIGH);  // OFF
+      w = millis(); while(millis()-w < 400) yield();
+    }
+  } else {
+    Serial.println("🔌 Relay boot self-test skipped — all AC relays held OFF");
   }
 
   // --- Input Pins ---
