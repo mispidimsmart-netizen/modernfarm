@@ -117,7 +117,27 @@ export function useSendDeviceCommand() {
         await query;
       }
 
-      return { commandId: cmdRow?.id as string | undefined, ackActualCol, shedId };
+      // Log this command in device_command_log as 'pending' so EVERY command
+      // appears in the in-app history (success + failure).
+      const commandId = cmdRow?.id as string | undefined;
+      try {
+        await supabase.from('device_command_log').insert({
+          user_id: user.id,
+          farm_id: selectedFarmId ?? null,
+          shed_id: shedId ?? null,
+          command_id: commandId ?? `client-${Date.now()}`,
+          device_name: deviceName,
+          command_type: commandType,
+          command_value: commandValue,
+          status: 'pending',
+          source: 'app',
+          sent_at: new Date().toISOString(),
+        });
+      } catch (logErr) {
+        console.warn('[useDeviceCommands] failed to log pending command', logErr);
+      }
+
+      return { commandId, ackActualCol, shedId };
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['device_status'] });
