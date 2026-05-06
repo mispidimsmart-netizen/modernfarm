@@ -29,6 +29,7 @@ import { SensorCharts } from '@/components/dashboard/SensorCharts';
 
 import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
 import { SystemModeCard } from '@/components/dashboard/SystemModeCard';
+import { SafetyEngineStatusCard } from '@/components/dashboard/SafetyEngineStatusCard';
 import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
