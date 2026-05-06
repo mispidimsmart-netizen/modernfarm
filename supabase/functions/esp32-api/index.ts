@@ -322,14 +322,16 @@ Deno.serve(async (req) => {
     }
 
     if (!device.is_active) {
-      await supabase.rpc('log_security_event', {
-        _event_type: 'device_auth_failure',
-        _user_id: device.user_id,
-        _farm_id: device.farm_id,
-        _device_token_id: device.id,
-        _success: false,
-        _details: { reason: 'device_inactive' },
-      }).catch(() => {});
+      try {
+        await supabase.rpc('log_security_event', {
+          _event_type: 'device_auth_failure',
+          _user_id: device.user_id,
+          _farm_id: device.farm_id,
+          _device_token_id: device.id,
+          _success: false,
+          _details: { reason: 'device_inactive' },
+        });
+      } catch { /* swallow */ }
       return new Response(
         JSON.stringify({ error: 'Device is deactivated', code: 'DEVICE_INACTIVE' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
