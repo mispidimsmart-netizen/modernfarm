@@ -2914,16 +2914,6 @@ void handleCloudResponse(String response) {
   }
 }
 
-void fetchConfig() {
-  if (!wifiConnected) return;
-  HTTPClient http;
-  String url = String(API_URL) + "/config";
-  http.begin(url);
-  http.addHeader("x-device-token", activeDeviceToken.c_str());
-  http.setTimeout(5000);
-  esp_task_wdt_reset();
-  int code = http.GET();
-  esp_task_wdt_reset();
 // ─── Cached safety toggle helpers ───
 // Goal: even if WiFi/cloud is unreachable for hours, ESP32 keeps using the
 // last-known safety_engine_enabled value (loaded at boot from NVS). The
