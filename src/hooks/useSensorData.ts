@@ -160,36 +160,27 @@ export function useDeviceControl(shedId?: string | null) {
     // (fan_on, heater_on, etc.) — those belong to the ESP32 (Hardware-as-Source-of-Truth).
     // Instead, mirror the user intent into desired_* so the switch reflects immediately
     // and useDeviceCommands has already enqueued the device_commands row.
+    // Hardware-as-Source-of-Truth: cloud writes ONLY desired_* columns.
+    // The ESP32 reads desired_* and updates actual fan_on/heater_on/etc.
+    // This applies in BOTH auto and manual mode — never overwrite hardware truth.
     const updateData: Record<string, boolean | null> = {};
-    if (isManualMode) {
-      if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
-      if (newStatus.fan !== undefined) updateData.desired_fan_on = newStatus.fan;
-      if (newStatus.light !== undefined) updateData.desired_light_on = newStatus.light;
-      if (newStatus.alarm !== undefined) updateData.desired_alarm_on = newStatus.alarm;
-      if (newStatus.heater !== undefined) updateData.desired_heater_on = newStatus.heater;
-      if (newStatus.circulation_fan !== undefined) updateData.desired_circulation_fan_on = newStatus.circulation_fan;
-      if (newStatus.fogger !== undefined) updateData.desired_fogger_on = newStatus.fogger;
-      if (newStatus.ceilingFan !== undefined) updateData.desired_ceiling_fan_on = newStatus.ceilingFan;
-      if (newStatus.ceiling_fan !== undefined) updateData.desired_ceiling_fan_on = newStatus.ceiling_fan;
-      if (newStatus.sprinkler !== undefined) updateData.desired_sprinkler_on = newStatus.sprinkler;
-    } else {
-      if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
-      if (newStatus.fan !== undefined) updateData.fan_on = newStatus.fan;
-      if (newStatus.light !== undefined) updateData.light_on = newStatus.light;
-      if (newStatus.alarm !== undefined) updateData.alarm_on = newStatus.alarm;
-      if (newStatus.heater !== undefined) updateData.heater_on = newStatus.heater;
-      if (newStatus.circulation_fan !== undefined) updateData.circulation_fan_on = newStatus.circulation_fan;
-      if (newStatus.fogger !== undefined) updateData.fogger_on = newStatus.fogger;
-      if (newStatus.ceilingFan !== undefined) updateData.ceiling_fan_on = newStatus.ceilingFan;
-      if (newStatus.ceiling_fan !== undefined) updateData.ceiling_fan_on = newStatus.ceiling_fan;
-      if (newStatus.sprinkler !== undefined) updateData.sprinkler_on = newStatus.sprinkler;
-    }
+    if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
+    if (newStatus.fan !== undefined) updateData.desired_fan_on = newStatus.fan;
+    if (newStatus.light !== undefined) updateData.desired_light_on = newStatus.light;
+    if (newStatus.alarm !== undefined) updateData.desired_alarm_on = newStatus.alarm;
+    if (newStatus.heater !== undefined) updateData.desired_heater_on = newStatus.heater;
+    if (newStatus.circulation_fan !== undefined) updateData.desired_circulation_fan_on = newStatus.circulation_fan;
+    if (newStatus.fogger !== undefined) updateData.desired_fogger_on = newStatus.fogger;
+    if (newStatus.ceilingFan !== undefined) updateData.desired_ceiling_fan_on = newStatus.ceilingFan;
+    if (newStatus.ceiling_fan !== undefined) updateData.desired_ceiling_fan_on = newStatus.ceiling_fan;
+    if (newStatus.sprinkler !== undefined) updateData.desired_sprinkler_on = newStatus.sprinkler;
 
     updateMutation.mutate(updateData as any);
-  }, [updateMutation, isManualMode]);
+  }, [updateMutation]);
 
   const setManualOverride = useCallback((override: boolean) => {
-    updateMutation.mutate({ manual_override: override } as any);
+    // Write desired_manual_override; ESP32 mirrors it into manual_override.
+    updateMutation.mutate({ desired_manual_override: override } as any);
   }, [updateMutation]);
 
   return {
