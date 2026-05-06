@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
 import { AutomationModeCard } from '@/components/settings/AutomationModeCard';
+import { SafetyEngineToggleCard } from '@/components/settings/SafetyEngineToggleCard';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
