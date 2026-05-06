@@ -339,8 +339,18 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
         );
       }
 
+      // Toggle default safety engine state baked into firmware
+      // (cloud /config can later override at runtime)
+      if (!includeSafetyEngine) {
+        firmwareCode = firmwareCode.replace(
+          /bool\s+safetyEngineEnabled\s*=\s*true\s*;[^\n]*/,
+          'bool safetyEngineEnabled = false;          // ⚠️ DISABLED at build time (Hard Floor 42°C still active)'
+        );
+      }
+
       // Add a header comment showing the configuration
       const modeLabel = firmwareMode === 'ota' ? 'OTA-READY (NVS Mode)' : 'HARDCODED (First-time Setup)';
+      const safetyLabel = includeSafetyEngine ? 'FULL SAFETY ENGINE' : 'LITE (Hard Floor only — 42°C)';
       const configHeader = `
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
