@@ -31,6 +31,7 @@ struct SVLChannel {
   float medianBuffer[SVL_MEDIAN_SIZE_H];
   int bufferIndex, sampleCount;
   float lastStableValue;
+  float lastAcceptedRaw;
   unsigned long lastValidTime;
   unsigned long lastStableTime;
   bool isValid, isOffline;
