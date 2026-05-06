@@ -286,11 +286,13 @@ Deno.serve(async (req) => {
     
     if (!deviceToken) {
       // Audit log: missing token
-      await supabase.rpc('log_security_event', {
-        _event_type: 'device_auth_failure',
-        _success: false,
-        _details: { reason: 'missing_token', path: req.url },
-      }).catch(() => {});
+      try {
+        await supabase.rpc('log_security_event', {
+          _event_type: 'device_auth_failure',
+          _success: false,
+          _details: { reason: 'missing_token', path: req.url },
+        });
+      } catch { /* never let logging break the request */ }
       return new Response(
         JSON.stringify({ error: 'Missing device token or device_id', code: 'MISSING_TOKEN' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
