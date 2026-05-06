@@ -1574,7 +1574,9 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
   // EMERGENCY BYPASS: In DANGER+ states, hysteresis timing protection
   // is SKIPPED. Relays respond instantly to save lives.
   // ═══════════════════════════════════════════════════════════════
-  bool emergencyBypass = (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode);
+  // Hard floor always counts as emergency. Other emergency bypass requires safety engine ON.
+  bool emergencyBypass = hardFloorActive ||
+    (safetyEngineEnabled && (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode));
   
   for (int i = 0; i < ch.stageCount; i++) {
     HystStage &s = ch.stages[i];
