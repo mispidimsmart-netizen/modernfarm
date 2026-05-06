@@ -4171,9 +4171,21 @@ void loop() {
     wifiConnected = false;
     if (intervalPassed(now, lastWifiAttempt, WIFI_RECONNECT_INTERVAL)) {
       lastWifiAttempt = now; connectWiFi();
+      // On successful (re)connect, force an immediate /config fetch so the
+      // latest safety_engine_enabled from cloud overrides the NVS cache —
+      // do NOT wait the full CONFIG_FETCH_INTERVAL (up to 60s of stale state).
+      if (wifiConnected) {
+        Serial.println("🔄 WiFi reconnected → forcing immediate /config sync (safety_engine_enabled)");
+        fetchConfig();
+        lastConfigFetch = millis();
+      }
     }
   } else if (!wifiConnected) {
+    // Edge: link came back without our reconnect attempt (autoReconnect)
     wifiConnected = true;
+    Serial.println("🔄 WiFi link restored (auto) → forcing immediate /config sync");
+    fetchConfig();
+    lastConfigFetch = millis();
   }
 
   // ═══════════════════════════════════════════════════════════════
