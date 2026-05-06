@@ -729,7 +729,31 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           </div>
         </div>
 
-        {/* Step 5: Download */}
+        {/* Safety Engine inclusion (Layer + Broiler) */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">!</span>
+            {language === 'bn' ? 'সেফটি ইঞ্জিন' : 'Safety Engine'}
+          </div>
+          <div className={`pl-7`}>
+            <div className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${includeSafetyEngine ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}`}>
+              <div className="flex-1">
+                <p className="text-sm font-medium">
+                  {includeSafetyEngine
+                    ? (language === 'bn' ? '🛡️ সম্পূর্ণ সেফটি ইঞ্জিন সহ' : '🛡️ Include Full Safety Engine')
+                    : (language === 'bn' ? '⚠️ সেফটি ইঞ্জিন ছাড়া (Lite)' : '⚠️ Without Safety Engine (Lite)')}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {language === 'bn'
+                    ? 'বন্ধ করলেও ৪২°C+ এ ফ্যান+অ্যালার্ম auto চালু হবে (Hard Floor)'
+                    : 'Even when off, fan + alarm auto-trigger at 42°C+ (Hard Floor stays active)'}
+                </p>
+              </div>
+              <Switch checked={includeSafetyEngine} onCheckedChange={setIncludeSafetyEngine} />
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">{firmwareMode === 'hardcoded' ? '5' : '3'}</span>
