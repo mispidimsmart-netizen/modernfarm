@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSafetyStatus } from './useSafetyStatus';
 import { useSelectedShed } from './useSheds';
+import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
 
 const BIO_TEMP_MIN = 26;
