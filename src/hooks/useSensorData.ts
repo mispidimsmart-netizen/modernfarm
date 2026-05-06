@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
 import { useFarmSettings, useDeviceStatus, useUpdateDeviceStatus } from './useFarmData';
+import { useAutomationMode } from './useAutomationMode';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
