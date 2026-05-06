@@ -150,6 +150,7 @@ const t = {
     tabArchitecture: 'Technical Architecture',
     tabFirmware: 'Firmware',
     tabSecurity: 'Security Logs',
+    tabCommands: 'Command Delivery',
     userName: 'Name',
     email: 'Email',
     farmType: 'Farm Type',
