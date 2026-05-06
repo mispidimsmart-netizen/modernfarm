@@ -354,6 +354,9 @@ export function Dashboard() {
                     <div className="min-w-0">
                       <SystemModeCard />
                     </div>
+                    <div className="min-w-0">
+                      <SafetyEngineStatusCard />
+                    </div>
                   </div>
                   {!isManualMode && (
                     <div className="min-w-0">
