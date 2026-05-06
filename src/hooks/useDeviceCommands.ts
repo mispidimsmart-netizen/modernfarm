@@ -234,6 +234,32 @@ export function useSendDeviceCommand() {
             // ignore — fallback to generic message
           }
 
+          // Log failure to device_command_log so it shows up in the in-app history.
+          const failureStatus = isOffline ? 'expired' : 'failed';
+          const errMsg = isOffline
+            ? 'Device offline — command not delivered (no ack within 12s)'
+            : safetyLocked
+              ? 'Blocked by Safety Engine'
+              : 'No device acknowledgement within 12s';
+          try {
+            await supabase.from('device_command_log').insert({
+              user_id: user.id,
+              farm_id: selectedFarmId ?? null,
+              shed_id: variables.shedId ?? null,
+              command_id: commandId ?? `client-${Date.now()}`,
+              device_name: variables.deviceName ?? 'Shed A',
+              command_type: variables.commandType,
+              command_value: variables.commandValue,
+              status: failureStatus,
+              source: 'app',
+              error_message: errMsg,
+              expired_at: isOffline ? new Date().toISOString() : null,
+            });
+            queryClient.invalidateQueries({ queryKey: ['device-command-log'] });
+          } catch (logErr) {
+            console.warn('[useDeviceCommands] failed to log command failure', logErr);
+          }
+
           if (isOffline) {
             toast.error(
               isBn
