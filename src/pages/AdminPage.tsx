@@ -687,6 +687,10 @@ export default function AdminPage() {
           <TabsContent value="security" className="mt-4">
             <SecurityAuditLogPanel />
           </TabsContent>
+
+          <TabsContent value="commands" className="mt-4">
+            <AdminCommandDeliveryPanel />
+          </TabsContent>
         </Tabs>
       </div>
 
