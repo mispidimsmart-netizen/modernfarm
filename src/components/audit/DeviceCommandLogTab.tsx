@@ -95,13 +95,14 @@ export function DeviceCommandLogTab() {
   const { data: sheds = [] } = useSheds();
 
   const stats = useMemo(() => {
-    if (!logs) return { total: 0, executed: 0, expired: 0, failed: 0, pending: 0 };
+    if (!logs) return { total: 0, acked: 0, sent: 0, pending: 0, expired: 0, failed: 0 };
     return {
       total: logs.length,
-      executed: logs.filter(l => l.status === 'acked').length,
+      acked: logs.filter(l => l.status === 'acked').length,
+      sent: logs.filter(l => l.status === 'sent').length,
+      pending: logs.filter(l => l.status === 'pending').length,
       expired: logs.filter(l => l.status === 'expired').length,
       failed: logs.filter(l => l.status === 'failed').length,
-      pending: logs.filter(l => l.status === 'pending' || l.status === 'sent').length,
     };
   }, [logs]);
 
