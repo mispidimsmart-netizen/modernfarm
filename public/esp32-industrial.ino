@@ -2959,37 +2959,36 @@ void checkCommands() {
         if (type == "exhaust_fan" || type == "fan") {
           fanManualOverride = true; fanManualTime = millis();
           requestFan(value, value ? "HIGH" : "OFF");
+          forceApplyManualRelay("fan", value);
         } else if (type == "heater") {
           heaterManualOverride = true; heaterManualTime = millis();
           requestHeater(value);
+          forceApplyManualRelay("heater", value);
         } else if (type == "light") {
           lightSchedule.manualOverride = true;
           lightManualOverrideTime = millis();
           fadeInProgress = false;
-          targetBrightness = value ? 100 : 0;
-          fadeStartBrightness = targetBrightness;
-          lightBrightness = targetBrightness;
-          bool nextLightOn = value;
-          if (nextLightOn != lightOn) {
-            lightOn = nextLightOn;
-            digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
-            Serial.println(lightOn ? "💡 Light relay ON (manual immediate)" : "🌑 Light relay OFF (manual immediate)");
-          }
-          manualCommandPending = false;
+          forceApplyManualRelay("light", value);
+          Serial.println(lightOn ? "💡 Light relay ON (manual immediate)" : "🌑 Light relay OFF (manual immediate)");
         } else if (type == "alarm") {
           requestAlarm(value);
+          forceApplyManualRelay("alarm", value);
         } else if (type == "fogger") {
           foggerManualOverride = true; foggerManualTime = millis();
           requestFogger(value);
+          forceApplyManualRelay("fogger", value);
         } else if (type == "circulation_fan") {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
+          forceApplyManualRelay("circulation_fan", value);
         } else if (type == "ceiling_fan") {
           ceilingFanManualOverride = true; ceilingFanManualTime = millis();
           requestCeilingFan(value);
+          forceApplyManualRelay("ceiling_fan", value);
         } else if (type == "sprinkler") {
           sprinklerManualOverride = true; sprinklerManualTime = millis();
           requestSprinkler(value);
+          forceApplyManualRelay("sprinkler", value);
         } else if (type == "stop_automation") {
           // Full manual mode: disable automation + safety arbiter entirely until AUTO resumes
           localManualOverride = value;
