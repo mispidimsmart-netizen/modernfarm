@@ -3863,9 +3863,19 @@ void setup() {
   if (isBroiler()) { loadAgeTickTime(); lastAgeIncreaseMillis = millis(); }
   if (isLayer()) loadLayerRules(); else loadBroilerRules();
 
+  // --- Safety Engine cached state (offline-resilient) ---
+  // Restore last-known safety_engine_enabled from NVS BEFORE WiFi.
+  // This guarantees that even if cloud is unreachable, the engine respects
+  // the farmer's last choice. Hard Floor (>42°C) is hardcoded and unaffected.
+  loadCachedSafetyEngine();
+
   // --- WiFi ---
   connectWiFi();
   if (wifiConnected) { syncWithCloud(); fetchConfig(); }
+  else {
+    Serial.printf("📴 Boot offline — safety=%s (cached), Hard Floor (>%.0f°C) armed\n",
+      safetyEngineEnabled ? "ON" : "OFF", HARD_FLOOR_TEMP_C);
+  }
 
   // --- GSM ---
   gsmInit();
