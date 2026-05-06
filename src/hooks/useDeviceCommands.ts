@@ -28,7 +28,7 @@ export function useSendDeviceCommand() {
     mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      const { data: cmdRow, error } = await supabase
         .from('device_commands')
         .insert({
           user_id: user.id,
@@ -37,14 +37,26 @@ export function useSendDeviceCommand() {
           command_value: commandValue,
           executed: false,
           farm_id: selectedFarmId,
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
       // Update desired_state columns only (cloud never sets actual state)
-      // ESP32 is the single source of truth for actual_state
       const desiredUpdate: Record<string, any> = {
         updated_at: new Date().toISOString(),
+      };
+      // Map command → actual_col for ack-verification
+      const ackActualCol: Partial<Record<CommandType, string>> = {
+        fan: 'fan_on',
+        light: 'light_on',
+        alarm: 'alarm_on',
+        heater: 'heater_on',
+        circulation_fan: 'circulation_fan_on',
+        fogger: 'fogger_on',
+        ceiling_fan: 'ceiling_fan_on',
+        sprinkler: 'sprinkler_on',
       };
       switch (commandType) {
         case 'fan':
@@ -94,9 +106,6 @@ export function useSendDeviceCommand() {
           .update(desiredUpdate)
           .eq('user_id', user.id);
 
-        // Multi-farm safety: scope update to the active farm only.
-        // Without this filter, a user with multiple farms would have
-        // desired_* columns overwritten across ALL their farms.
         if (selectedFarmId) {
           query = query.eq('farm_id', selectedFarmId);
         }
@@ -107,6 +116,8 @@ export function useSendDeviceCommand() {
 
         await query;
       }
+
+      return { commandId: cmdRow?.id as string | undefined, ackActualCol, shedId };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['device_status'] });
