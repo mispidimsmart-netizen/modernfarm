@@ -120,7 +120,8 @@ export function AuditLogPage() {
           </TabsList>
 
           <TabsContent value="general" className="mt-4 space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <ExportLogButton source="audit" />
               <Button
                 variant="outline"
                 size="sm"
