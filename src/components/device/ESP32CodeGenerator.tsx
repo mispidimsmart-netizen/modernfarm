@@ -60,6 +60,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState('');
+  const [includeSafetyEngine, setIncludeSafetyEngine] = useState(true);
 
   // Fetch all farms for admin selector
   useEffect(() => {
