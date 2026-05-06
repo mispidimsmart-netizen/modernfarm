@@ -12,6 +12,7 @@ import { useFarmType, getBroilerTempRangeByDays } from '@/hooks/useFarmType';
 import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
+import { useDeviceStateModel } from '@/hooks/useDeviceStateModel';
 
 type StatusId = 'normal' | 'adjusting' | 'cooling' | 'emergency' | 'sensor_fail' | 'purge';
 
