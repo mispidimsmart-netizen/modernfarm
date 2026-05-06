@@ -721,6 +721,8 @@ unsigned long nvsReadOutageDuration();
 void connectWiFi();
 void syncWithCloud();
 void fetchConfig();
+void loadCachedSafetyEngine();
+void saveCachedSafetyEngine(bool val);
 void checkCommands();
 void handleCloudResponse(String response);
 
