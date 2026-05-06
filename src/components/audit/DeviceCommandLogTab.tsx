@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
+import { useSheds } from '@/hooks/useSheds';
 import {
   useDeviceCommandLog,
   useDeviceCommandDevices,
@@ -91,6 +92,7 @@ export function DeviceCommandLogTab() {
 
   const { data: logs, isLoading, refetch, isFetching } = useDeviceCommandLog(filters);
   const { data: deviceNames } = useDeviceCommandDevices(filters.farmId);
+  const { data: sheds = [] } = useSheds();
 
   const stats = useMemo(() => {
     if (!logs) return { total: 0, executed: 0, expired: 0, failed: 0, pending: 0 };
@@ -213,6 +215,26 @@ export function DeviceCommandLogTab() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Shed */}
+            {sheds.length > 0 && (
+              <Select
+                value={filters.shedId || 'all'}
+                onValueChange={v => updateFilter('shedId', v === 'all' ? undefined : v)}
+              >
+                <SelectTrigger className="h-9 flex-1 min-w-[140px]">
+                  <SelectValue placeholder={isBn ? 'শেড' : 'Shed'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{isBn ? 'সব শেড' : 'All sheds'}</SelectItem>
+                  {sheds.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {isBn ? s.name : s.name_en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Status */}
             <Select
