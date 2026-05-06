@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSafetyStatus } from './useSafetyStatus';
 import { useSelectedShed } from './useSheds';
+import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
 
 const BIO_TEMP_MIN = 26;
@@ -36,6 +37,7 @@ export function useBoundedOverride() {
   const { user, language } = useAuth();
   const safety = useSafetyStatus();
   const { selectedShedId } = useSelectedShed();
+  const { selectedFarmId } = useFarmContext();
 
   const isWithinBioLimits = useCallback((temp: number) => {
     return temp >= BIO_TEMP_MIN && temp <= BIO_TEMP_MAX;
@@ -46,14 +48,16 @@ export function useBoundedOverride() {
     if (!user) return;
 
     try {
-      // Update ALL device_status rows for this user (shed_id may be null or set)
-      await supabase
+      // Update device_status for the SELECTED farm only (multi-tenancy safety)
+      let upd = supabase
         .from('device_status')
         .update({
-          manual_override: true,
+          desired_manual_override: true,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
+      if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      await upd;
 
       // Log override intent
       await (supabase.from('farm_audit_logs') as any).insert({
@@ -83,14 +87,16 @@ export function useBoundedOverride() {
     if (!user) return;
 
     try {
-      // Update ALL device_status rows for this user
-      await supabase
+      // Update device_status for the SELECTED farm only (multi-tenancy safety)
+      let upd = supabase
         .from('device_status')
         .update({
-          manual_override: false,
+          desired_manual_override: false,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
+      if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      await upd;
 
       toast.success(
         language === 'bn' ? '✅ অটো মোডে ফিরে এসেছে' : '✅ Returned to AUTO mode'
