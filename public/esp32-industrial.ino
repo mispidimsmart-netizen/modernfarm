@@ -3077,10 +3077,12 @@ void checkCommands() {
           fanManualOverride = true; fanManualTime = millis();
           requestFan(value, value ? "HIGH" : "OFF");
           forceApplyManualRelay("fan", value);
+          Serial.println(value ? "🌀 Fan relay ON (manual immediate)" : "⏹️ Fan relay OFF (manual immediate)");
         } else if (type == "heater") {
           heaterManualOverride = true; heaterManualTime = millis();
           requestHeater(value);
           forceApplyManualRelay("heater", value);
+          Serial.println(value ? "🔥 Heater relay ON (manual immediate)" : "❄️ Heater relay OFF (manual immediate)");
         } else if (type == "light") {
           lightSchedule.manualOverride = true;
           lightManualOverrideTime = millis();
@@ -3090,22 +3092,27 @@ void checkCommands() {
         } else if (type == "alarm") {
           requestAlarm(value);
           forceApplyManualRelay("alarm", value);
+          Serial.println(value ? "🚨 Alarm relay ON (manual immediate)" : "🔕 Alarm relay OFF (manual immediate)");
         } else if (type == "fogger") {
           foggerManualOverride = true; foggerManualTime = millis();
           requestFogger(value);
           forceApplyManualRelay("fogger", value);
+          Serial.println(value ? "💧 Fogger relay ON (manual immediate)" : "⏹️ Fogger relay OFF (manual immediate)");
         } else if (type == "circulation_fan") {
           circulationFanManualOverride = true; circulationFanManualTime = millis();
           requestCirculationFan(value);
           forceApplyManualRelay("circulation_fan", value);
+          Serial.println(value ? "🔄 Circulation Fan relay ON (manual immediate)" : "⏹️ Circulation Fan relay OFF (manual immediate)");
         } else if (type == "ceiling_fan") {
           ceilingFanManualOverride = true; ceilingFanManualTime = millis();
           requestCeilingFan(value);
           forceApplyManualRelay("ceiling_fan", value);
+          Serial.println(value ? "🌬️ Ceiling Fan relay ON (manual immediate)" : "⏹️ Ceiling Fan relay OFF (manual immediate)");
         } else if (type == "sprinkler") {
           sprinklerManualOverride = true; sprinklerManualTime = millis();
           requestSprinkler(value);
           forceApplyManualRelay("sprinkler", value);
+          Serial.println(value ? "🚿 Sprinkler relay ON (manual immediate)" : "⏹️ Sprinkler relay OFF (manual immediate)");
         } else if (type == "stop_automation") {
           // Full manual mode: disable automation + safety arbiter entirely until AUTO resumes
           localManualOverride = value;
