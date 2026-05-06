@@ -287,6 +287,9 @@ export function OperationPreferencesTab() {
       {/* ====== Dual Mode Switch (TOP) ====== */}
       <AutomationModeCard />
 
+      {/* ====== Safety Engine Opt-Out (Layer + Broiler) ====== */}
+      <SafetyEngineToggleCard />
+
       {/* Header with Mode Badge */}
       <div className={`text-center ${isManualMode ? 'opacity-50' : ''}`}>
         <div className="flex items-center justify-center gap-2 mb-2">
