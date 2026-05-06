@@ -136,22 +136,35 @@ export function DeviceCommandLogTab() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-5 gap-2">
-        {[
-          { label: isBn ? 'মোট' : 'Total', value: stats.total, color: 'text-foreground' },
-          { label: isBn ? 'সম্পন্ন' : 'Executed', value: stats.executed, color: 'text-emerald-600' },
-          { label: isBn ? 'অপেক্ষায়' : 'Pending', value: stats.pending, color: 'text-amber-600' },
-          { label: isBn ? 'মেয়াদোত্তীর্ণ' : 'Expired', value: stats.expired, color: 'text-muted-foreground' },
-          { label: isBn ? 'ব্যর্থ' : 'Failed', value: stats.failed, color: 'text-destructive' },
-        ].map(s => (
-          <Card key={s.label} className="border-0 shadow-sm">
-            <CardContent className="p-2 text-center">
+      {/* Stats — clickable status filters */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {([
+          { key: 'all', label: isBn ? 'মোট' : 'Total', value: stats.total, color: 'text-foreground' },
+          { key: 'acked', label: isBn ? 'সম্পন্ন' : 'Executed', value: stats.acked, color: 'text-emerald-600' },
+          { key: 'sent', label: isBn ? 'প্রেরিত' : 'Sent', value: stats.sent, color: 'text-blue-600' },
+          { key: 'pending', label: isBn ? 'অপেক্ষায়' : 'Pending', value: stats.pending, color: 'text-amber-600' },
+          { key: 'expired', label: isBn ? 'মেয়াদোত্তীর্ণ' : 'Expired', value: stats.expired, color: 'text-muted-foreground' },
+          { key: 'failed', label: isBn ? 'ব্যর্থ' : 'Failed', value: stats.failed, color: 'text-destructive' },
+        ] as const).map(s => {
+          const active =
+            (s.key === 'all' && (!filters.status || filters.status === 'all')) ||
+            filters.status === s.key;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() =>
+                updateFilter('status', s.key === 'all' ? 'all' : (s.key as CommandLogStatus))
+              }
+              className={`rounded-xl border bg-card p-2 text-center transition-all hover:shadow-md ${
+                active ? 'border-primary ring-2 ring-primary/30' : 'border-transparent shadow-sm'
+              }`}
+            >
               <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
               <p className="text-[10px] text-muted-foreground">{s.label}</p>
-            </CardContent>
-          </Card>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
