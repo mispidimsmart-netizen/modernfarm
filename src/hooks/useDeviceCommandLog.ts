@@ -46,6 +46,7 @@ export function useDeviceCommandLog(filters: DeviceCommandLogFilters = {}) {
         .limit(PAGE_SIZE);
 
       if (filters.farmId) query = query.eq('farm_id', filters.farmId);
+      if (filters.shedId) query = query.eq('shed_id', filters.shedId);
       if (filters.deviceName) query = query.eq('device_name', filters.deviceName);
       if (filters.status && filters.status !== 'all') query = query.eq('status', filters.status);
       if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom);
