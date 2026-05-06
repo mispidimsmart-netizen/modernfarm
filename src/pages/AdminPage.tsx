@@ -101,6 +101,7 @@ const t = {
     tabArchitecture: 'টেকনিক্যাল আর্কিটেকচার',
     tabFirmware: 'ফার্মওয়্যার',
     tabSecurity: 'সিকিউরিটি লগ',
+    tabCommands: 'কমান্ড ডেলিভারি',
     userName: 'নাম',
     email: 'ইমেইল',
     farmType: 'ফার্মের ধরণ',
