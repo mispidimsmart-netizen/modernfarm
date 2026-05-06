@@ -12,6 +12,7 @@ import { useFarmType, getBroilerTempRangeByDays } from '@/hooks/useFarmType';
 import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
+import { useDeviceStateModel } from '@/hooks/useDeviceStateModel';
 
 type StatusId = 'normal' | 'adjusting' | 'cooling' | 'emergency' | 'sensor_fail' | 'purge';
 
@@ -107,7 +108,9 @@ export function IndustrialHeroStatus() {
   const { data: activeBatch } = useActiveBatch();
   const batchStats = useBatchStats(activeBatch?.id);
   const { data: automationMode } = useAutomationMode();
+  const { data: deviceStateModel } = useDeviceStateModel();
   const isManualMode = automationMode === 'MANUAL';
+  const isSafetyOverride = !!deviceStateModel?.safety_override;
 
   const hsiResult = useHeatStressAutomation({
     temperature: sensorData.temperature,
@@ -167,17 +170,18 @@ export function IndustrialHeroStatus() {
     return STATUS_MAP.normal;
   }, [sensorData, hsiResult, isBroiler, batchStats, deviceStatus, isManualMode, hasRealData]);
 
-  // Build device status list with reasons
+  // Build device status list with source-tagged reasons
+  // Source priority: safety > manual > auto > idle/unknown
+  // No "চলছে" message is shown unless an actual rule matches the device's state.
   const deviceItems = useMemo((): DeviceItem[] => {
     const temp = sensorData.temperature;
     const ammonia = sensorData.ammonia;
+    const hum = sensorData.humidity;
     const hsi = hsiResult?.index || 0;
 
-    const manualOnLabel = { bn: 'আপনি চালু করেছেন', en: 'You turned ON' };
-    const manualOffLabel = { bn: 'আপনি বন্ধ রেখেছেন', en: 'You kept OFF' };
-    const offlineLabel = { bn: 'অজানা — ESP32 অফলাইন', en: 'Unknown — ESP32 offline' };
+    const offlineLabel = { bn: '⚠️ অজানা — ESP32 অফলাইন', en: '⚠️ Unknown — ESP32 offline' };
 
-    // ESP32 offline → we cannot trust any relay state. Show all as unknown/off.
+    // ESP32 offline → cannot trust relay state. Show all as unknown.
     if (!hasRealData || !isDeviceOnline) {
       return [
         { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: false, reason: offlineLabel },
@@ -189,81 +193,118 @@ export function IndustrialHeroStatus() {
       ];
     }
 
-    // Fan reason
-    let fanReason: { bn: string; en: string };
-    if (isManualMode) {
-      fanReason = deviceStatus.fan ? manualOnLabel : manualOffLabel;
-    } else if (!deviceStatus.fan) {
-      fanReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
-    } else if (ammonia > 25) {
-      fanReason = { bn: `NH₃ ${ammonia.toFixed(0)} ppm — গ্যাস বের করা হচ্ছে`, en: `NH₃ ${ammonia.toFixed(0)} ppm — Exhausting gas` };
+    // Helper: build a source-tagged reason for one device
+    // - autoOn: would automation want this device ON now?
+    // - autoReason: what automation would say if it had turned it ON (only used when autoOn=true AND device is ON)
+    const buildReason = (
+      isOn: boolean,
+      autoOn: boolean,
+      autoReason: { bn: string; en: string } | null,
+      idleReason: { bn: string; en: string },
+    ): { bn: string; en: string } => {
+      // Safety override wins (only meaningful if device is ON and condition matches safety rule)
+      if (isOn && isSafetyOverride && autoOn) {
+        return {
+          bn: `🛡️ সেফটি: ${autoReason?.bn ?? 'নিরাপত্তা নিয়ম'}`,
+          en: `🛡️ Safety: ${autoReason?.en ?? 'safety rule'}`,
+        };
+      }
+      // Manual mode → user is the source of truth
+      if (isManualMode) {
+        return isOn
+          ? { bn: '✋ আপনি চালু করেছেন', en: '✋ You turned ON' }
+          : { bn: '✋ আপনি বন্ধ রেখেছেন', en: '✋ You kept OFF' };
+      }
+      // Auto mode
+      if (isOn && autoOn && autoReason) {
+        return { bn: `🤖 অটো: ${autoReason.bn}`, en: `🤖 Auto: ${autoReason.en}` };
+      }
+      // Device ON but no automation rule matches → don't fabricate a reason
+      if (isOn && !autoOn) {
+        return { bn: '⚠️ চালু — কারণ অজানা', en: '⚠️ ON — reason unknown' };
+      }
+      // Device OFF but automation wants it ON → real warning, not "not needed"
+      if (!isOn && autoOn) {
+        return { bn: '⚠️ প্রয়োজন কিন্তু বন্ধ', en: '⚠️ Needed but OFF' };
+      }
+      // OFF and idle
+      return idleReason;
+    };
+
+    // === Per-device: compute autoOn condition + autoReason ===
+
+    // Exhaust Fan: NH3>25 OR temp>38 OR temp>32 OR HSI>70
+    let fanAutoOn = false;
+    let fanAutoReason: { bn: string; en: string } | null = null;
+    if (ammonia > 25) {
+      fanAutoOn = true;
+      fanAutoReason = { bn: `NH₃ ${ammonia.toFixed(0)} ppm — গ্যাস বের করা`, en: `NH₃ ${ammonia.toFixed(0)} ppm — Exhausting gas` };
     } else if (temp > 38) {
-      fanReason = { bn: `${temp.toFixed(1)}°C — ইমার্জেন্সি কুলিং`, en: `${temp.toFixed(1)}°C — Emergency cooling` };
+      fanAutoOn = true;
+      fanAutoReason = { bn: `${temp.toFixed(1)}°C — ইমার্জেন্সি কুলিং`, en: `${temp.toFixed(1)}°C — Emergency cooling` };
     } else if (temp > 32 || hsi > 70) {
-      fanReason = { bn: `${temp.toFixed(1)}°C — গরম কমানো হচ্ছে`, en: `${temp.toFixed(1)}°C — Reducing heat` };
-    } else {
-      fanReason = { bn: 'তাজা বাতাস দেওয়া হচ্ছে', en: 'Fresh air circulation' };
+      fanAutoOn = true;
+      fanAutoReason = { bn: `${temp.toFixed(1)}°C — গরম কমানো`, en: `${temp.toFixed(1)}°C — Reducing heat` };
     }
 
-    // Heater reason
-    let heaterReason: { bn: string; en: string };
-    if (isManualMode) {
-      heaterReason = deviceStatus.heater ? manualOnLabel : manualOffLabel;
-    } else if (!deviceStatus.heater) {
-      heaterReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
-    } else {
-      heaterReason = { bn: `${temp.toFixed(1)}°C — তাপমাত্রা বাড়ানো হচ্ছে`, en: `${temp.toFixed(1)}°C — Heating active` };
+    // Heater: temp below safe range
+    let heaterAutoOn = false;
+    let heaterAutoReason: { bn: string; en: string } | null = null;
+    const heaterMinTemp = isBroiler && batchStats ? getBroilerTempRangeByDays(batchStats.ageDays).minTemp : 18;
+    if (temp < heaterMinTemp) {
+      heaterAutoOn = true;
+      heaterAutoReason = { bn: `${temp.toFixed(1)}°C — তাপমাত্রা বাড়ানো`, en: `${temp.toFixed(1)}°C — Heating active` };
     }
 
-    // Fogger reason
-    let foggerReason: { bn: string; en: string };
-    if (isManualMode) {
-      foggerReason = deviceStatus.fogger ? manualOnLabel : manualOffLabel;
-    } else if (!deviceStatus.fogger) {
-      foggerReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
-    } else {
-      foggerReason = { bn: `${temp.toFixed(1)}°C H:${sensorData.humidity.toFixed(0)}% — কুলিং`, en: `${temp.toFixed(1)}°C H:${sensorData.humidity.toFixed(0)}% — Cooling` };
+    // Fogger: high temp + low humidity
+    let foggerAutoOn = false;
+    let foggerAutoReason: { bn: string; en: string } | null = null;
+    if (temp > 32 && hum < 70) {
+      foggerAutoOn = true;
+      foggerAutoReason = { bn: `${temp.toFixed(1)}°C H:${hum.toFixed(0)}% — কুলিং`, en: `${temp.toFixed(1)}°C H:${hum.toFixed(0)}% — Cooling` };
     }
 
-    // Light reason
-    let lightReason: { bn: string; en: string };
-    if (isManualMode) {
-      lightReason = deviceStatus.light ? manualOnLabel : manualOffLabel;
-    } else if (!deviceStatus.light) {
-      lightReason = { bn: 'বন্ধ — শিডিউল অনুযায়ী', en: 'OFF — Per schedule' };
-    } else {
-      lightReason = { bn: 'চালু — শিডিউল অনুযায়ী', en: 'ON — Per schedule' };
+    // Ceiling fan: temp > 28
+    let ceilingFanAutoOn = false;
+    let ceilingFanAutoReason: { bn: string; en: string } | null = null;
+    if (temp > 28) {
+      ceilingFanAutoOn = true;
+      ceilingFanAutoReason = { bn: `${temp.toFixed(1)}°C — বাতাস সঞ্চালন`, en: `${temp.toFixed(1)}°C — Air circulation` };
     }
 
-    // Ceiling Fan reason
-    let ceilingFanReason: { bn: string; en: string };
-    if (isManualMode) {
-      ceilingFanReason = deviceStatus.ceilingFan ? manualOnLabel : manualOffLabel;
-    } else if (!deviceStatus.ceilingFan) {
-      ceilingFanReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
-    } else {
-      ceilingFanReason = { bn: `${temp.toFixed(1)}°C — বাতাস সঞ্চালন`, en: `${temp.toFixed(1)}°C — Air circulation` };
+    // Sprinkler: HSI > 75 (roof cooling)
+    let sprinklerAutoOn = false;
+    let sprinklerAutoReason: { bn: string; en: string } | null = null;
+    if (hsi > 75) {
+      sprinklerAutoOn = true;
+      sprinklerAutoReason = { bn: `HSI ${hsi.toFixed(0)} — ছাদ কুলিং`, en: `HSI ${hsi.toFixed(0)} — Roof cooling` };
     }
 
-    // Sprinkler reason
-    let sprinklerReason: { bn: string; en: string };
-    if (isManualMode) {
-      sprinklerReason = deviceStatus.sprinkler ? manualOnLabel : manualOffLabel;
-    } else if (!deviceStatus.sprinkler) {
-      sprinklerReason = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
-    } else {
-      sprinklerReason = { bn: `HSI ${hsi.toFixed(0)} — ছাদ কুলিং`, en: `HSI ${hsi.toFixed(0)} — Roof cooling` };
-    }
+    // Light: schedule-based (we don't compute schedule here, just label as schedule source)
+    const lightReason = isManualMode
+      ? (deviceStatus.light
+          ? { bn: '✋ আপনি চালু করেছেন', en: '✋ You turned ON' }
+          : { bn: '✋ আপনি বন্ধ রেখেছেন', en: '✋ You kept OFF' })
+      : (deviceStatus.light
+          ? { bn: '🤖 অটো: শিডিউল অনুযায়ী চালু', en: '🤖 Auto: ON per schedule' }
+          : { bn: '🤖 অটো: শিডিউল অনুযায়ী বন্ধ', en: '🤖 Auto: OFF per schedule' });
+
+    const idleOff = { bn: 'বন্ধ — এখন প্রয়োজন নেই', en: 'OFF — Not needed now' };
 
     return [
-      { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: !!deviceStatus.fan, reason: fanReason },
-      { icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' }, isOn: !!deviceStatus.ceilingFan, reason: ceilingFanReason },
-      { icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: !!deviceStatus.heater, reason: heaterReason },
+      { icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: !!deviceStatus.fan,
+        reason: buildReason(!!deviceStatus.fan, fanAutoOn, fanAutoReason, idleOff) },
+      { icon: Fan, label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' }, isOn: !!deviceStatus.ceilingFan,
+        reason: buildReason(!!deviceStatus.ceilingFan, ceilingFanAutoOn, ceilingFanAutoReason, idleOff) },
+      { icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: !!deviceStatus.heater,
+        reason: buildReason(!!deviceStatus.heater, heaterAutoOn, heaterAutoReason, idleOff) },
       { icon: Lightbulb, label: { bn: 'লাইট', en: 'Light' }, isOn: !!deviceStatus.light, reason: lightReason },
-      { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger, reason: foggerReason },
-      { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler, reason: sprinklerReason },
+      { icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: !!deviceStatus.fogger,
+        reason: buildReason(!!deviceStatus.fogger, foggerAutoOn, foggerAutoReason, idleOff) },
+      { icon: ArrowUpFromDot, label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' }, isOn: !!deviceStatus.sprinkler,
+        reason: buildReason(!!deviceStatus.sprinkler, sprinklerAutoOn, sprinklerAutoReason, idleOff) },
     ];
-  }, [deviceStatus, sensorData, hsiResult, isManualMode, hasRealData, isDeviceOnline]);
+  }, [deviceStatus, sensorData, hsiResult, isManualMode, hasRealData, isDeviceOnline, isSafetyOverride, isBroiler, batchStats]);
 
   const Icon = currentStatus.icon;
   const isEmergency = currentStatus.id === 'emergency';
