@@ -1144,7 +1144,8 @@ bool svlIsSpikeRejected(SVLChannel &ch, float raw) {
   float upwardDelta = raw - currentMedian;
   if (upwardDelta <= SVL_SPIKE_ABS_DELTA) return false;
   unsigned long now = millis();
-  float elapsedSec = (ch.lastValidTime > 0) ? max((now - ch.lastValidTime) / 1000.0f, 1.0f) : 1.0f;
+  float elapsedSec = (ch.lastValidTime > 0) ? ((now - ch.lastValidTime) / 1000.0f) : 1.0f;
+  if (elapsedSec < 1.0f) elapsedSec = 1.0f;
   float rate = (raw - ch.lastAcceptedRaw) / elapsedSec;
   float pct = upwardDelta / currentMedian * 100.0f;
   return (pct > SVL_SPIKE_PERCENT && rate > SVL_GRADUAL_RATE_PER_SEC);
