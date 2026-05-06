@@ -663,6 +663,7 @@ void requestCirculationFan(bool on);
 void requestCeilingFan(bool on);
 void requestSprinkler(bool on);
 void requestLight(int brightness);
+void forceApplyManualRelay(String type, bool value);
 
 // Automation Engine
 void automationEngineTick();
@@ -1496,6 +1497,40 @@ void updateLightingWithFade() {
     digitalWrite(LIGHT_RELAY_PIN, lightOn ? LOW : HIGH);
     Serial.println(lightOn ? "💡 Light relay ON" : "🌑 Light relay OFF");
   }
+}
+
+void forceApplyManualRelay(String type, bool value) {
+  if (type == "fan" || type == "exhaust_fan") {
+    relayTarget.fan = value; relayTarget.fanSpeed = value ? "HIGH" : "OFF";
+    fanOn = value; fanSpeed = relayTarget.fanSpeed;
+    digitalWrite(FAN_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "light") {
+    relayTarget.light = value;
+    targetBrightness = value ? 100 : 0;
+    lightBrightness = targetBrightness;
+    lightOn = value;
+    digitalWrite(LIGHT_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "heater") {
+    relayTarget.heater = value; heaterOn = value;
+    digitalWrite(HEATER_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "fogger") {
+    relayTarget.fogger = value; foggerOn = value;
+    digitalWrite(FOGGER_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "alarm") {
+    relayTarget.alarm = value; alarmOn = value;
+    digitalWrite(ALARM_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "circulation_fan") {
+    relayTarget.circulationFan = value; circulationFanOn = value;
+    digitalWrite(CIRCULATION_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "ceiling_fan") {
+    relayTarget.ceilingFan = value; ceilingFanOn = value;
+    digitalWrite(CEILING_FAN_RELAY_PIN, value ? LOW : HIGH);
+  } else if (type == "sprinkler") {
+    relayTarget.sprinkler = value; sprinklerOn = value;
+    digitalWrite(SPRINKLER_RELAY_PIN, value ? LOW : HIGH);
+  }
+  lastRelayChangeTime = millis();
+  manualCommandPending = false;
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
