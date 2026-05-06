@@ -290,6 +290,7 @@ export function OperationPreferencesTab() {
 
       {/* ====== Safety Engine Opt-Out (Layer + Broiler) ====== */}
       <SafetyEngineToggleCard />
+      <SafetyEngineHistoryCard />
 
       {/* Header with Mode Badge */}
       <div className={`text-center ${isManualMode ? 'opacity-50' : ''}`}>
