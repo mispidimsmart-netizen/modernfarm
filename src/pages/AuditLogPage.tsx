@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { DeviceCommandLogTab } from '@/components/audit/DeviceCommandLogTab';
 import { TroubleshootingTips, getTroubleshootingKey } from '@/components/audit/TroubleshootingTips';
+import { ExportLogButton } from '@/components/audit/ExportLogButton';
 
 const categoryConfig: Record<string, { icon: typeof Shield; label: string; labelBn: string; color: string }> = {
   settings: { icon: Settings, label: 'Settings', labelBn: 'সেটিংস', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -119,7 +120,8 @@ export function AuditLogPage() {
           </TabsList>
 
           <TabsContent value="general" className="mt-4 space-y-4">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <ExportLogButton source="audit" />
               <Button
                 variant="outline"
                 size="sm"
