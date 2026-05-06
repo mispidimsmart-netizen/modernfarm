@@ -3636,6 +3636,47 @@ export type Database = {
         }
         Relationships: []
       }
+      safety_engine_audit_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          enabled: boolean
+          farm_id: string
+          id: string
+          note: string | null
+          previous_enabled: boolean | null
+          source: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled: boolean
+          farm_id: string
+          id?: string
+          note?: string | null
+          previous_enabled?: boolean | null
+          source?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          enabled?: boolean
+          farm_id?: string
+          id?: string
+          note?: string | null
+          previous_enabled?: boolean | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_engine_audit_log_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_status: {
         Row: {
           actuator_effect_failure: boolean | null
