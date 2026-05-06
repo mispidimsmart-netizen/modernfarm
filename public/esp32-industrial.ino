@@ -1853,12 +1853,22 @@ void foggerControl() {
       foggerManualOverride = false; foggerManualTime = 0;
     } else return;
   }
-  if (temperature < foggerSettings.stopTemp || humidity >= foggerSettings.stopHumidity) {
+  if (sensorErrorMode || emergencySurvivalMode || currentState == STATE_SENSOR_FAIL) {
+    if (foggerActive || foggerOn) { requestFogger(false); foggerActive = false; foggerInSpray = false; }
+    return;
+  }
+
+  float foggerTemp = dht2Available ? worstCaseMaxTemp : temperature;
+  float foggerHSI = dht2Available ? calculateHSI(worstCaseMaxTemp, humidity) : currentHSI;
+  bool heatStressOn = (foggerHSI >= SPRINKLER_HSI_ON && humidity < foggerSettings.startHumidityMax);
+  bool heatStressOff = (foggerHSI <= SPRINKLER_HSI_OFF || humidity >= foggerSettings.stopHumidity);
+
+  if ((foggerTemp <= foggerSettings.stopTemp && heatStressOff) || humidity >= foggerSettings.stopHumidity) {
     if (foggerActive) { requestFogger(false); foggerActive = false; foggerInSpray = false; }
     return;
   }
   unsigned long now = millis();
-  if (!foggerActive && temperature >= foggerSettings.startTemp && humidity < foggerSettings.startHumidityMax) {
+  if (!foggerActive && ((foggerTemp >= foggerSettings.startTemp && humidity < foggerSettings.startHumidityMax) || heatStressOn)) {
     foggerActive = true; foggerCycleCount = 0;
     requestFogger(true); foggerInSpray = true; foggerSprayStart = now;
     requestFan(true, "HIGH"); // Exhaust MUST run during fogger
@@ -1868,7 +1878,7 @@ void foggerControl() {
       requestFogger(false); foggerInSpray = false; foggerPauseStart = now; foggerCycleCount++;
     }
     if (!foggerInSpray && (now - foggerPauseStart >= (unsigned long)foggerSettings.pauseSeconds * 1000UL)) {
-      if (temperature >= foggerSettings.startTemp && humidity < foggerSettings.startHumidityMax) {
+      if ((foggerTemp >= foggerSettings.startTemp && humidity < foggerSettings.startHumidityMax) || heatStressOn) {
         requestFogger(true); foggerInSpray = true; foggerSprayStart = now;
       } else { requestFogger(false); foggerActive = false; }
     }
