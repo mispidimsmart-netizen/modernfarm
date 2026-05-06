@@ -118,16 +118,19 @@ export function DeviceCommandLogTab() {
         <h2 className="text-base font-semibold text-foreground">
           {isBn ? '🧰 ডিভাইস কমান্ড লগ' : '🧰 Device Command Log'}
         </h2>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="gap-2"
-        >
-          <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-          {isBn ? 'রিফ্রেশ' : 'Refresh'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportLogButton source="device-commands" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2"
+          >
+            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+            {isBn ? 'রিফ্রেশ' : 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
