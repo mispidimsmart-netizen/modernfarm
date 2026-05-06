@@ -33,6 +33,7 @@ import {
   Send,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ExportLogButton } from '@/components/audit/ExportLogButton';
 
 const statusConfig: Record<
   string,
