@@ -108,7 +108,9 @@ export function IndustrialHeroStatus() {
   const { data: activeBatch } = useActiveBatch();
   const batchStats = useBatchStats(activeBatch?.id);
   const { data: automationMode } = useAutomationMode();
+  const { data: deviceStateModel } = useDeviceStateModel();
   const isManualMode = automationMode === 'MANUAL';
+  const isSafetyOverride = !!deviceStateModel?.safety_override;
 
   const hsiResult = useHeatStressAutomation({
     temperature: sensorData.temperature,
