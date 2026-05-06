@@ -2922,64 +2922,140 @@ void fetchConfig() {
   esp_task_wdt_reset();
   int code = http.GET();
   esp_task_wdt_reset();
-  if (code == 200) {
-    String resp = http.getString();
-    DynamicJsonDocument doc(2048);
-    if (deserializeJson(doc, resp) == DeserializationError::Ok) {
-      // Mode from /config is a secondary source — /sync automation_mode is primary
-      // Only apply if /sync hasn't already set the mode this cycle
-      if (doc.containsKey("mode")) {
-        String cloudMode = doc["mode"] | "AUTO";
-        bool shouldBeManual = (cloudMode == "MANUAL");
-        if (shouldBeManual != localManualOverride) {
-          bool wasManual = localManualOverride;
-          localManualOverride = shouldBeManual;
-          if (localManualOverride) {
-            Serial.println("☁️ [CONFIG] Cloud mode=MANUAL → local MANUAL enforced");
-          } else {
-            Serial.println("☁️ [CONFIG] Cloud mode=AUTO → local AUTO restored");
-            if (wasManual) {
-              fanManualOverride = false; fanManualTime = 0;
-              heaterManualOverride = false; heaterManualTime = 0;
-              foggerManualOverride = false; foggerManualTime = 0;
-              circulationFanManualOverride = false; circulationFanManualTime = 0;
-              ceilingFanManualOverride = false; ceilingFanManualTime = 0;
-              sprinklerManualOverride = false; sprinklerManualTime = 0;
-              lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
-              fadeInProgress = false;
-            }
-          }
+// ─── Cached safety toggle helpers ───
+// Goal: even if WiFi/cloud is unreachable for hours, ESP32 keeps using the
+// last-known safety_engine_enabled value (loaded at boot from NVS). The
+// HARD FLOOR (>42°C → fan+alarm) is hard-coded in firmware and runs
+// regardless of cache, cloud, or WiFi state.
+void loadCachedSafetyEngine() {
+  preferences.begin(NVS_SAFETY_NS, true);
+  bool hasKey = preferences.isKey(NVS_SAFETY_KEY);
+  bool cached = preferences.getBool(NVS_SAFETY_KEY, true);
+  unsigned long syncedAt = preferences.getULong(NVS_SAFETY_TS_KEY, 0);
+  preferences.end();
+  if (hasKey) {
+    safetyEngineEnabled = cached;
+    safetyCachedFromNvs = true;
+    lastConfigSyncEpoch = syncedAt;
+    Serial.printf("🛡️ Safety Engine restored from NVS cache: %s (last sync uptime=%lus ago)\n",
+      safetyEngineEnabled ? "ENABLED" : "DISABLED",
+      syncedAt);
+  } else {
+    Serial.println("🛡️ Safety Engine: no NVS cache, defaulting to ENABLED until /config reachable");
+  }
+}
+
+void saveCachedSafetyEngine(bool val) {
+  preferences.begin(NVS_SAFETY_NS, false);
+  preferences.putBool(NVS_SAFETY_KEY, val);
+  preferences.putULong(NVS_SAFETY_TS_KEY, (unsigned long)(millis() / 1000UL));
+  preferences.end();
+}
+
+void fetchConfig() {
+  // Offline path: keep using cached safetyEngineEnabled. Hard Floor stays armed.
+  if (!wifiConnected) {
+    configFetchFailStreak++;
+    if (configFetchFailStreak == 1 || (configFetchFailStreak % 30) == 0) {
+      Serial.printf("⚠️ /config skipped: WiFi down (streak=%u). "
+                    "Using cached safety=%s. Hard Floor (>42°C) remains active.\n",
+        configFetchFailStreak, safetyEngineEnabled ? "ON" : "OFF");
+    }
+    return;
+  }
+
+  HTTPClient http;
+  String url = String(API_URL) + "/config";
+  if (!http.begin(url)) {
+    configFetchFailStreak++;
+    Serial.println("⚠️ /config: http.begin() failed — keeping cached safety state");
+    return;
+  }
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
+  http.setTimeout(5000);
+  esp_task_wdt_reset();
+  int code = http.GET();
+  esp_task_wdt_reset();
+
+  if (code != 200) {
+    configFetchFailStreak++;
+    if (configFetchFailStreak == 1 || (configFetchFailStreak % 10) == 0) {
+      Serial.printf("⚠️ /config HTTP %d (streak=%u) — keeping cached safety=%s, Hard Floor active\n",
+        code, configFetchFailStreak, safetyEngineEnabled ? "ON" : "OFF");
+    }
+    http.end();
+    return;
+  }
+
+  String resp = http.getString();
+  http.end();
+  DynamicJsonDocument doc(2048);
+  DeserializationError jerr = deserializeJson(doc, resp);
+  if (jerr) {
+    configFetchFailStreak++;
+    Serial.printf("⚠️ /config JSON parse failed (%s) — keeping cached safety state\n", jerr.c_str());
+    return;
+  }
+
+  // ── SUCCESS: reset failure streak, mark live ──
+  configFetchFailStreak = 0;
+  lastConfigSyncMs = millis();
+
+  // Mode from /config is a secondary source — /sync automation_mode is primary
+  if (doc.containsKey("mode")) {
+    String cloudMode = doc["mode"] | "AUTO";
+    bool shouldBeManual = (cloudMode == "MANUAL");
+    if (shouldBeManual != localManualOverride) {
+      bool wasManual = localManualOverride;
+      localManualOverride = shouldBeManual;
+      if (localManualOverride) {
+        Serial.println("☁️ [CONFIG] Cloud mode=MANUAL → local MANUAL enforced");
+      } else {
+        Serial.println("☁️ [CONFIG] Cloud mode=AUTO → local AUTO restored");
+        if (wasManual) {
+          fanManualOverride = false; fanManualTime = 0;
+          heaterManualOverride = false; heaterManualTime = 0;
+          foggerManualOverride = false; foggerManualTime = 0;
+          circulationFanManualOverride = false; circulationFanManualTime = 0;
+          ceilingFanManualOverride = false; ceilingFanManualTime = 0;
+          sprinklerManualOverride = false; sprinklerManualTime = 0;
+          lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+          fadeInProgress = false;
         }
       }
-      if (doc.containsKey("farm_type")) {
-        String ft = doc["farm_type"] | "LAYER";
-        int newType = (ft == "BROILER") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
-        if (newType != farmConfig.farmType) {
-          farmConfig.farmType = newType; saveFarmProfile();
-          if (isLayer()) loadLayerRules(); else loadBroilerRules();
-        }
-      }
-      if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
-      if (doc.containsKey("temperature_min")) rules.tempMin = doc["temperature_min"];
-      if (doc.containsKey("temperature_max")) rules.tempMax = doc["temperature_max"];
-      if (doc.containsKey("ammonia_max")) rules.ammoniaAlarm = doc["ammonia_max"];
-      if (doc.containsKey("hsi_mild_threshold")) rules.hsiFanLow = doc["hsi_mild_threshold"];
-      if (doc.containsKey("hsi_moderate_threshold")) rules.hsiFanHigh = doc["hsi_moderate_threshold"];
-      if (doc.containsKey("hsi_severe_threshold")) rules.hsiEmergency = doc["hsi_severe_threshold"];
-      if (doc.containsKey("hsi_emergency_threshold")) rules.hsiCritical = doc["hsi_emergency_threshold"];
-      updateHysteresisThresholds();
-      if (doc.containsKey("safety_engine_enabled")) {
-        bool newVal = doc["safety_engine_enabled"] | true;
-        if (newVal != safetyEngineEnabled) {
-          safetyEngineEnabled = newVal;
-          Serial.printf("🛡️ Safety Engine %s (from cloud config)\n",
-            safetyEngineEnabled ? "ENABLED" : "DISABLED — only Hard Floor (>42°C) active");
-        }
-      }
-      configSynced = true;
     }
   }
-  http.end();
+  if (doc.containsKey("farm_type")) {
+    String ft = doc["farm_type"] | "LAYER";
+    int newType = (ft == "BROILER") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
+    if (newType != farmConfig.farmType) {
+      farmConfig.farmType = newType; saveFarmProfile();
+      if (isLayer()) loadLayerRules(); else loadBroilerRules();
+    }
+  }
+  if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
+  if (doc.containsKey("temperature_min")) rules.tempMin = doc["temperature_min"];
+  if (doc.containsKey("temperature_max")) rules.tempMax = doc["temperature_max"];
+  if (doc.containsKey("ammonia_max")) rules.ammoniaAlarm = doc["ammonia_max"];
+  if (doc.containsKey("hsi_mild_threshold")) rules.hsiFanLow = doc["hsi_mild_threshold"];
+  if (doc.containsKey("hsi_moderate_threshold")) rules.hsiFanHigh = doc["hsi_moderate_threshold"];
+  if (doc.containsKey("hsi_severe_threshold")) rules.hsiEmergency = doc["hsi_severe_threshold"];
+  if (doc.containsKey("hsi_emergency_threshold")) rules.hsiCritical = doc["hsi_emergency_threshold"];
+  updateHysteresisThresholds();
+
+  if (doc.containsKey("safety_engine_enabled")) {
+    bool newVal = doc["safety_engine_enabled"] | true;
+    if (newVal != safetyEngineEnabled || safetyCachedFromNvs) {
+      safetyEngineEnabled = newVal;
+      safetyCachedFromNvs = false;
+      saveCachedSafetyEngine(newVal);
+      Serial.printf("🛡️ Safety Engine %s (live from cloud, cached to NVS). "
+                    "Hard Floor (>%.0f°C) ALWAYS active.\n",
+        safetyEngineEnabled ? "ENABLED" : "DISABLED — only Hard Floor active",
+        HARD_FLOOR_TEMP_C);
+    }
+  }
+  configSynced = true;
 }
 
 void checkCommands() {
