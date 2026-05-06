@@ -1199,15 +1199,21 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
-      // Auto-enable fan HIGH for THIS SHED
-      await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
+      // Auto-enable fan HIGH for THIS SHED (skip if disabled)
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
+      }
       
     } else if (hsi >= 75) {
       // Mild stress - fan LOW (no alert needed, just automation)
-      await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
+      }
     } else {
       // Normal - can turn off fan if no other issues
-      await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
+      }
     }
 
     // Legacy temperature-only alerts (for backward compatibility)
