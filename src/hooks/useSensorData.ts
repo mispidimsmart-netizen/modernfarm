@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
 import { useFarmSettings, useDeviceStatus, useUpdateDeviceStatus } from './useFarmData';
+import { useAutomationMode } from './useAutomationMode';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
@@ -113,7 +114,15 @@ export function useDeviceControl(shedId?: string | null) {
   const { data: deviceStatus, isLoading } = useDeviceStatus(shedId);
   const updateMutation = useUpdateDeviceStatus(shedId);
 
-  const isManualMode = deviceStatus?.desired_manual_override || deviceStatus?.manual_override || false;
+  const { data: automationMode } = useAutomationMode();
+
+  // Manual mode is authoritative from farm_settings; fall back to device_status flags
+  // so the UI stays consistent before realtime catches up.
+  const isManualMode =
+    automationMode === 'MANUAL' ||
+    deviceStatus?.desired_manual_override ||
+    deviceStatus?.manual_override ||
+    false;
 
   const resolveState = (actual: boolean, desired: boolean | null | undefined) => {
     if (isManualMode && desired !== null && desired !== undefined) {
@@ -147,23 +156,40 @@ export function useDeviceControl(shedId?: string | null) {
   const manualOverride = isManualMode;
 
   const setDeviceStatus = useCallback((newStatus: Partial<DeviceStatus> & Record<string, any>) => {
-    const updateData: Record<string, boolean> = {};
-    if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
-    if (newStatus.fan !== undefined) updateData.fan_on = newStatus.fan;
-    if (newStatus.light !== undefined) updateData.light_on = newStatus.light;
-    if (newStatus.alarm !== undefined) updateData.alarm_on = newStatus.alarm;
-    if (newStatus.heater !== undefined) updateData.heater_on = newStatus.heater;
-    if (newStatus.circulation_fan !== undefined) updateData.circulation_fan_on = newStatus.circulation_fan;
-    if (newStatus.fogger !== undefined) updateData.fogger_on = newStatus.fogger;
-    if (newStatus.ceilingFan !== undefined) updateData.ceiling_fan_on = newStatus.ceilingFan;
-    if (newStatus.ceiling_fan !== undefined) updateData.ceiling_fan_on = newStatus.ceiling_fan;
-    if (newStatus.sprinkler !== undefined) updateData.sprinkler_on = newStatus.sprinkler;
-    
-    updateMutation.mutate(updateData);
-  }, [updateMutation]);
+    // CRITICAL: In manual mode the cloud must NEVER write actual_state columns
+    // (fan_on, heater_on, etc.) — those belong to the ESP32 (Hardware-as-Source-of-Truth).
+    // Instead, mirror the user intent into desired_* so the switch reflects immediately
+    // and useDeviceCommands has already enqueued the device_commands row.
+    const updateData: Record<string, boolean | null> = {};
+    if (isManualMode) {
+      if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
+      if (newStatus.fan !== undefined) updateData.desired_fan_on = newStatus.fan;
+      if (newStatus.light !== undefined) updateData.desired_light_on = newStatus.light;
+      if (newStatus.alarm !== undefined) updateData.desired_alarm_on = newStatus.alarm;
+      if (newStatus.heater !== undefined) updateData.desired_heater_on = newStatus.heater;
+      if (newStatus.circulation_fan !== undefined) updateData.desired_circulation_fan_on = newStatus.circulation_fan;
+      if (newStatus.fogger !== undefined) updateData.desired_fogger_on = newStatus.fogger;
+      if (newStatus.ceilingFan !== undefined) updateData.desired_ceiling_fan_on = newStatus.ceilingFan;
+      if (newStatus.ceiling_fan !== undefined) updateData.desired_ceiling_fan_on = newStatus.ceiling_fan;
+      if (newStatus.sprinkler !== undefined) updateData.desired_sprinkler_on = newStatus.sprinkler;
+    } else {
+      if (newStatus.power !== undefined) updateData.power_on = newStatus.power;
+      if (newStatus.fan !== undefined) updateData.fan_on = newStatus.fan;
+      if (newStatus.light !== undefined) updateData.light_on = newStatus.light;
+      if (newStatus.alarm !== undefined) updateData.alarm_on = newStatus.alarm;
+      if (newStatus.heater !== undefined) updateData.heater_on = newStatus.heater;
+      if (newStatus.circulation_fan !== undefined) updateData.circulation_fan_on = newStatus.circulation_fan;
+      if (newStatus.fogger !== undefined) updateData.fogger_on = newStatus.fogger;
+      if (newStatus.ceilingFan !== undefined) updateData.ceiling_fan_on = newStatus.ceilingFan;
+      if (newStatus.ceiling_fan !== undefined) updateData.ceiling_fan_on = newStatus.ceiling_fan;
+      if (newStatus.sprinkler !== undefined) updateData.sprinkler_on = newStatus.sprinkler;
+    }
+
+    updateMutation.mutate(updateData as any);
+  }, [updateMutation, isManualMode]);
 
   const setManualOverride = useCallback((override: boolean) => {
-    updateMutation.mutate({ manual_override: override });
+    updateMutation.mutate({ manual_override: override } as any);
   }, [updateMutation]);
 
   return {
