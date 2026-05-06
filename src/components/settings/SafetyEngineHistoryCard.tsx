@@ -29,7 +29,7 @@ interface AuditRow {
  */
 export function SafetyEngineHistoryCard() {
   const { language } = useAuth();
-  const { selectedFarmId } = useFarm();
+  const { selectedFarmId } = useFarmContext();
 
   const { data, isLoading } = useQuery({
     queryKey: ['safety-engine-audit', selectedFarmId],
