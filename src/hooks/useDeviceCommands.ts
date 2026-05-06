@@ -119,10 +119,10 @@ export function useSendDeviceCommand() {
 
       return { commandId: cmdRow?.id as string | undefined, ackActualCol, shedId };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['device_status'] });
       queryClient.invalidateQueries({ queryKey: ['device_commands'] });
-      
+
       const commandNames: Record<CommandType, { en: string; bn: string }> = {
         fan: { en: 'Fan', bn: 'ফ্যান' },
         light: { en: 'Light', bn: 'লাইট' },
@@ -138,12 +138,74 @@ export function useSendDeviceCommand() {
 
       const name = commandNames[variables.commandType];
       const state = variables.commandValue;
-      
+      const isBn = language === 'bn';
+
       toast.success(
-        language === 'bn'
+        isBn
           ? `📡 ${name.bn} ${state ? 'চালু' : 'বন্ধ'} কমান্ড পাঠানো হয়েছে`
           : `📡 ${name.en} ${state ? 'ON' : 'OFF'} command sent`
       );
+
+      // === ACK / READ-BACK VERIFICATION ===
+      // After sending, poll device_status until ESP32 reports matching actual_state
+      // OR the command row is marked executed=true. If neither happens within ~12s,
+      // warn the farmer (relay stuck, ESP32 offline, safety override, etc.)
+      const actualCol = result?.ackActualCol?.[variables.commandType];
+      const commandId = result?.commandId;
+      if (!actualCol || !user) return;
+
+      const ackToastId = `ack-${variables.commandType}-${state}`;
+      const startedAt = Date.now();
+      const timeoutMs = 12000;
+      const pollMs = 1500;
+      let cancelled = false;
+
+      const poll = async () => {
+        if (cancelled) return;
+
+        let executed = false;
+        if (commandId) {
+          const { data: cmd } = await supabase
+            .from('device_commands')
+            .select('executed')
+            .eq('id', commandId)
+            .maybeSingle();
+          executed = !!cmd?.executed;
+        }
+
+        let actual: boolean | null = null;
+        let q: any = supabase.from('device_status').select(actualCol).eq('user_id', user.id);
+        if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+        if (variables.shedId) q = q.eq('shed_id', variables.shedId);
+        const { data: ds } = await q.order('updated_at', { ascending: false }).limit(1).maybeSingle();
+        if (ds && (ds as any)[actualCol] !== undefined && (ds as any)[actualCol] !== null) {
+          actual = !!(ds as any)[actualCol];
+        }
+
+        if (actual === state || executed) {
+          toast.success(
+            isBn
+              ? `✅ ${name.bn} ${state ? 'চালু' : 'বন্ধ'} নিশ্চিত হয়েছে`
+              : `✅ ${name.en} ${state ? 'ON' : 'OFF'} confirmed by device`,
+            { id: ackToastId }
+          );
+          queryClient.invalidateQueries({ queryKey: ['device_status'] });
+          return;
+        }
+
+        if (Date.now() - startedAt < timeoutMs) {
+          setTimeout(poll, pollMs);
+        } else {
+          toast.warning(
+            isBn
+              ? `⚠️ ${name.bn}: ডিভাইস থেকে নিশ্চিতকরণ আসেনি। অফলাইন বা সেফটি লক হতে পারে।`
+              : `⚠️ ${name.en}: no device acknowledgement. Device may be offline or safety-locked.`,
+            { id: ackToastId, duration: 8000 }
+          );
+        }
+      };
+
+      setTimeout(poll, 2000);
     },
     onError: (error) => {
       console.error('Failed to send command:', error);
