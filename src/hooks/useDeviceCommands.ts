@@ -196,12 +196,66 @@ export function useSendDeviceCommand() {
         if (Date.now() - startedAt < timeoutMs) {
           setTimeout(poll, pollMs);
         } else {
-          toast.warning(
-            isBn
-              ? `⚠️ ${name.bn}: ডিভাইস থেকে নিশ্চিতকরণ আসেনি। অফলাইন বা সেফটি লক হতে পারে।`
-              : `⚠️ ${name.en}: no device acknowledgement. Device may be offline or safety-locked.`,
-            { id: ackToastId, duration: 8000 }
-          );
+          // Distinguish: offline device vs safety lock vs generic no-ack
+          let isOffline = false;
+          let safetyLocked = false;
+          try {
+            let hq: any = supabase
+              .from('device_health')
+              .select('is_online,last_seen_at')
+              .eq('user_id', user.id);
+            if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
+            const { data: dh } = await hq
+              .order('last_seen_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (dh) {
+              const lastSeen = dh.last_seen_at ? new Date(dh.last_seen_at).getTime() : 0;
+              const stale = Date.now() - lastSeen > 90 * 1000; // >90s = offline
+              isOffline = dh.is_online === false || stale;
+            } else {
+              isOffline = true;
+            }
+
+            if (!isOffline) {
+              let sq: any = supabase
+                .from('device_status')
+                .select('safety_override,safety_override_reason')
+                .eq('user_id', user.id);
+              if (selectedFarmId) sq = sq.eq('farm_id', selectedFarmId);
+              if (variables.shedId) sq = sq.eq('shed_id', variables.shedId);
+              const { data: ss } = await sq
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (ss?.safety_override) safetyLocked = true;
+            }
+          } catch {
+            // ignore — fallback to generic message
+          }
+
+          if (isOffline) {
+            toast.error(
+              isBn
+                ? `📡 ${name.bn}: ডিভাইস অফলাইন — কমান্ড পৌঁছায়নি। WiFi/পাওয়ার চেক করুন।`
+                : `📡 ${name.en}: device offline — command not delivered. Check WiFi/power.`,
+              { id: ackToastId, duration: 10000 }
+            );
+          } else if (safetyLocked) {
+            toast.warning(
+              isBn
+                ? `🛡️ ${name.bn}: সেফটি ইঞ্জিন কমান্ড ব্লক করেছে (নিরাপত্তার জন্য)।`
+                : `🛡️ ${name.en}: blocked by Safety Engine for protection.`,
+              { id: ackToastId, duration: 10000 }
+            );
+          } else {
+            toast.warning(
+              isBn
+                ? `⚠️ ${name.bn}: ডিভাইস থেকে নিশ্চিতকরণ আসেনি, আবার চেষ্টা করুন।`
+                : `⚠️ ${name.en}: no device acknowledgement, please retry.`,
+              { id: ackToastId, duration: 8000 }
+            );
+          }
         }
       };
 
