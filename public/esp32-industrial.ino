@@ -84,11 +84,23 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.0.3-svl-manual-fix";
+const char* FIRMWARE_VERSION = "8.1.0-safety-toggle";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
 #define RELAY_BOOT_SELF_TEST_ENABLED false
+
+// ═══════════════════════════════════════════════════════════════════════
+// SAFETY ENGINE TOGGLE (runtime, controlled from cloud /config)
+// When false: SVL filtering, Arbiter, Hysteresis emergency bypass,
+//             HSI auto-trigger, ESM force-on, Heater interlock are SKIPPED.
+// ALWAYS-ON HARD FLOOR (cannot be disabled): T > HARD_FLOOR_TEMP_C
+//   → Fan HIGH + Alarm ON. This is firmware self-protection for livestock.
+// ═══════════════════════════════════════════════════════════════════════
+bool safetyEngineEnabled = true;            // default ON, set by /config
+#define HARD_FLOOR_TEMP_C   42.0f           // never disabled — protects livestock
+#define HARD_FLOOR_HYST_C    2.0f           // turn off fan only after dropping 2°C below floor
+bool hardFloorActive = false;
 
 // --- Pin Definitions (8-Channel Relay v2.0) ---
 #define DHT_PIN              4
