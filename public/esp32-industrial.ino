@@ -1924,6 +1924,14 @@ void sprinklerControl() {
     return;
   }
 
+  // Fogger and roof sprinkler must never run together: both add moisture load.
+  if (foggerActive || foggerOn) {
+    sprinklerCycleActive = false;
+    sprinklerSprayPhase = false;
+    requestSprinkler(false);
+    return;
+  }
+
   float sprinklerHSI = dht2Available ? calculateHSI(worstCaseMaxTemp, humidity) : currentHSI;
   const unsigned long sprinklerMaxDailyMs = (unsigned long)SPRINKLER_MAX_DAILY_MIN * 60000UL;
 
