@@ -4077,7 +4077,7 @@ void loop() {
   // In full MANUAL mode, arbiter is intentionally skipped so
   // relays stay exactly as the operator commands.
   // ═══════════════════════════════════════════════════════════════
-  if (!localManualOverride) {
+  if (!localManualOverride && safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia, 
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
   }
