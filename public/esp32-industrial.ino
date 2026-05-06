@@ -1135,17 +1135,22 @@ float svlGetMedian(SVLChannel &ch) {
   return (c%2==0) ? (sorted[c/2-1]+sorted[c/2])/2.0f : sorted[c/2];
 }
 
-// Spike rejection: compare new value against MEDIAN (not previous raw)
-// This prevents slow drift from corrupting the reference point
+// Spike rejection: reject only sudden upward impulses.
+// Downward changes and slow ramps are accepted so sensors can recover from a stale median.
 bool svlIsSpikeRejected(SVLChannel &ch, float raw) {
   if (ch.sampleCount < 2) return false;
   float currentMedian = svlGetMedian(ch);
-  if (currentMedian == 0) return false;
-  float pct = abs(raw - currentMedian) / abs(currentMedian) * 100.0f;
-  return pct > SVL_SPIKE_PERCENT;
+  if (currentMedian <= 0) return false;
+  float upwardDelta = raw - currentMedian;
+  if (upwardDelta <= SVL_SPIKE_ABS_DELTA) return false;
+  unsigned long now = millis();
+  float elapsedSec = (ch.lastValidTime > 0) ? max((now - ch.lastValidTime) / 1000.0f, 1.0f) : 1.0f;
+  float rate = (raw - ch.lastAcceptedRaw) / elapsedSec;
+  float pct = upwardDelta / currentMedian * 100.0f;
+  return (pct > SVL_SPIKE_PERCENT && rate > SVL_GRADUAL_RATE_PER_SEC);
 }
 
-// Correct pipeline: Raw → Store → Median → Spike compare vs median → Accept/Reject
+// Correct pipeline: Raw → Spike compare vs previous accepted median → Store if accepted → Median → Use
 float svlProcessReading(SVLChannel &ch, float raw) {
   unsigned long now = millis();
   
@@ -1172,6 +1177,7 @@ float svlProcessReading(SVLChannel &ch, float raw) {
     ch.sampleCount = SVL_MEDIAN_SIZE;
     ch.bufferIndex = 0;
     ch.lastStableValue = raw;
+    ch.lastAcceptedRaw = raw;
     ch.lastStableTime = now;
     ch.lastValidTime = now;
     ch.isValid = true;
@@ -1180,7 +1186,15 @@ float svlProcessReading(SVLChannel &ch, float raw) {
     return raw;
   }
   
-  // Step 1: Store raw into median buffer FIRST
+  if (svlIsSpikeRejected(ch, raw)) {
+    float refMedian = svlGetMedian(ch);
+    float pct = (refMedian > 0) ? (raw - refMedian) / refMedian * 100.0f : 0.0f;
+    Serial.printf("⚠️ SVL: Spike rejected (%.1f vs median %.1f, %.0f%%)\n", raw, refMedian, pct);
+    ch.lastValidTime = now; // sensor is alive; only this impulse is ignored
+    return ch.lastStableValue;
+  }
+
+  // Step 1: Store accepted raw into median buffer
   ch.medianBuffer[ch.bufferIndex] = raw;
   ch.bufferIndex = (ch.bufferIndex + 1) % SVL_MEDIAN_SIZE;
   if (ch.sampleCount < SVL_MEDIAN_SIZE) ch.sampleCount++;
@@ -1188,25 +1202,9 @@ float svlProcessReading(SVLChannel &ch, float raw) {
   // Step 2: Calculate median from buffer (includes new sample)
   float median = svlGetMedian(ch);
   
-  // Step 3: Spike compare against MEDIAN (not previous raw)
-  // If the new value deviates >20% from the median, reject it
-  if (ch.sampleCount > 2) {
-    float refMedian = ch.lastStableValue;  // Previous accepted median
-    if (refMedian != 0) {
-      float pct = abs(raw - refMedian) / abs(refMedian) * 100.0f;
-      if (pct > SVL_SPIKE_PERCENT) {
-        // Spike detected: undo the buffer insertion
-        ch.bufferIndex = (ch.bufferIndex - 1 + SVL_MEDIAN_SIZE) % SVL_MEDIAN_SIZE;
-        ch.medianBuffer[ch.bufferIndex] = ch.lastStableValue; // restore
-        if (ch.sampleCount > SVL_MEDIAN_SIZE) ch.sampleCount = SVL_MEDIAN_SIZE;
-        Serial.printf("⚠️ SVL: Spike rejected (%.1f vs median %.1f, %.0f%%)\n", raw, refMedian, pct);
-        return ch.lastStableValue;
-      }
-    }
-  }
-  
-  // Step 4: Reading accepted → update stable value with timestamp
+  // Step 3: Reading accepted → update stable value with timestamp
   ch.lastStableValue = median;
+  ch.lastAcceptedRaw = raw;
   ch.lastStableTime = now;
   ch.lastValidTime = now;
   ch.isValid = true;
