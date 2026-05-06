@@ -1975,6 +1975,7 @@ export type Database = {
           id: string
           manual_mode_since: string | null
           profile_override: string | null
+          safety_engine_enabled: boolean
           season_override: string | null
           temperature_max: number
           temperature_min: number
@@ -2003,6 +2004,7 @@ export type Database = {
           id?: string
           manual_mode_since?: string | null
           profile_override?: string | null
+          safety_engine_enabled?: boolean
           season_override?: string | null
           temperature_max?: number
           temperature_min?: number
@@ -2031,6 +2033,7 @@ export type Database = {
           id?: string
           manual_mode_since?: string | null
           profile_override?: string | null
+          safety_engine_enabled?: boolean
           season_override?: string | null
           temperature_max?: number
           temperature_min?: number
