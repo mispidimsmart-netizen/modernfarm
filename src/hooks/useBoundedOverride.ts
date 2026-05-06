@@ -37,6 +37,7 @@ export function useBoundedOverride() {
   const { user, language } = useAuth();
   const safety = useSafetyStatus();
   const { selectedShedId } = useSelectedShed();
+  const { selectedFarmId } = useFarmContext();
 
   const isWithinBioLimits = useCallback((temp: number) => {
     return temp >= BIO_TEMP_MIN && temp <= BIO_TEMP_MAX;
