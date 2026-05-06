@@ -432,6 +432,10 @@ export default function AdminPage() {
               <Shield className="w-4 h-4 mr-2" />
               {labels.tabSecurity}
             </TabsTrigger>
+            <TabsTrigger value="commands" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Activity className="w-4 h-4 mr-2" />
+              {labels.tabCommands}
+            </TabsTrigger>
             <TabsTrigger value="isolation" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               <Shield className="w-4 h-4 mr-2" />
               আইসোলেশন
