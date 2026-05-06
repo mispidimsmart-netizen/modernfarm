@@ -73,7 +73,9 @@ export function useDeviceCommandLog(filters: DeviceCommandLogFilters = {}) {
 
       return rows;
     },
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 }
 
