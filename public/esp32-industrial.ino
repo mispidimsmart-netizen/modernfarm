@@ -4098,8 +4098,8 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (AUTO mode only) ---
-  if (!localManualOverride) {
+  // --- Safety Arbiter AGAIN after all processing (AUTO mode only, when enabled) ---
+  if (!localManualOverride && safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia,
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
   }
