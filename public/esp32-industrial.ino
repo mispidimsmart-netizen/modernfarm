@@ -155,11 +155,13 @@ const char* FIRMWARE_VERSION = "8.0.0";
 // --- Sensor Validation Layer (Module J) ---
 // ALL automation uses SVL-validated values ONLY. Raw sensor data NEVER controls relays.
 // Pipeline: Raw → Store in buffer → Compute median → Spike compare vs median → Accept/Reject → Use
-// Spike rejection: >20% deviation from MEDIAN (not previous raw)
+// Spike rejection: upward impulse only; gradual NH3 changes are accepted so the median can follow.
 // NH3 confirmation: must breach threshold for 45s continuously before ANY state escalation
 // Sensor timeout: 90s invalid → SENSOR_FAIL; 3min no valid → lastStableValue expires
 #define SVL_MEDIAN_SIZE          5
-#define SVL_SPIKE_PERCENT        20.0f
+#define SVL_SPIKE_PERCENT        500.0f       // reject only extreme upward impulses vs median
+#define SVL_SPIKE_ABS_DELTA      8.0f         // ppm/°C/% minimum delta before spike logic applies
+#define SVL_GRADUAL_RATE_PER_SEC 5.0f         // changes at/below this rate are treated as real drift
 #define SVL_NH3_SUSTAIN_MS       45000UL
 #define SVL_SENSOR_OFFLINE_MS    90000UL     // 90 sec → SENSOR_FAIL
 #define SVL_LAST_GOOD_EXPIRE_MS  180000UL    // 3 min → lastStableValue expires → SENSOR_FAIL
@@ -308,7 +310,7 @@ HeaterSettings heaterSettings = { true, 20.0f, 24.0f, 0.7f, 34.0f };
 struct FoggerSettings {
   bool enabled; float startTemp, startHumidityMax, stopTemp, stopHumidity; int onSeconds, pauseSeconds;
 };
-FoggerSettings foggerSettings = { false, 32.0f, 85.0f, 30.0f, 90.0f, 40, 120 };
+FoggerSettings foggerSettings = { true, 31.0f, 80.0f, 29.5f, 85.0f, 40, 120 };
 
 struct AirflowSettings {
   bool enabled; int earlyAgeDays, midAgeDays, midOnSeconds, midIntervalMinutes, nightOnSeconds, nightIntervalMinutes;
