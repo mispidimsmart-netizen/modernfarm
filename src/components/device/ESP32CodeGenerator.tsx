@@ -363,6 +363,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
  * ║  Shed: ${(shedName || 'Default Shed').padEnd(58)}║` : `
  * ║  📦 Credentials will be loaded from NVS storage                       ║
  * ║  ⚠️ Device must be first provisioned with hardcoded firmware          ║`}
+ * ║  Safety: ${safetyLabel.padEnd(55)}║
  * ║  Generated: ${new Date().toISOString().padEnd(53)}║
  * ╠═══════════════════════════════════════════════════════════════════════╣${firmwareMode === 'ota' ? `
  * ║  📋 OTA INSTRUCTIONS:                                                 ║
