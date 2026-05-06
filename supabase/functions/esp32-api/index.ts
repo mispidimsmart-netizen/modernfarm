@@ -1183,8 +1183,10 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
-      // Auto-enable fan HIGH + alarm for THIS SHED
-      await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
+      // Auto-enable fan HIGH + alarm for THIS SHED (skip if farmer disabled safety engine)
+      if (settings?.safety_engine_enabled !== false) {
+        await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
+      }
       
     } else if (hsi >= 80) {
       const alertData: Record<string, any> = {
