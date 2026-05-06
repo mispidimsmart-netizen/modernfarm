@@ -4320,6 +4320,11 @@ async function getDeviceConfig(supabase: any, userId: string, shedId: string | n
       currentMinute: now.getMinutes(),
       timestamp: now.toISOString(),
 
+      // === Safety Engine Toggle ===
+      // When false: ESP32 disables Arbiter, ESM, HSI auto, hysteresis bypass.
+      // Hard floor (>42°C) always remains active in firmware.
+      safety_engine_enabled: settings?.safety_engine_enabled ?? true,
+
       // === Metadata ===
       configVersion: Date.now(),
       architecture: 'INDUSTRIAL_SAFETY',
