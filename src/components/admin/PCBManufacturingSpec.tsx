@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, FileText, Cpu, Zap, Shield, Box, CircuitBoard, Loader2, Plug, FileArchive } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  HeadingLevel, AlignmentType, WidthType, BorderStyle, ShadingType,
+  PageOrientation, LevelFormat,
+} from 'docx';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
@@ -304,355 +307,251 @@ const CONNECTOR_MAP: ConnGroup[] = [
 ];
 
 // ===========================================================================
-// PDF GENERATOR — main spec
+
+// ===========================================================================
+// DOCX GENERATORS — Word output (Bengali-safe, fonts never break)
 // ===========================================================================
 
+const BRAND = '1F7A3E';
+const BRAND_LIGHT = 'F0F8F4';
 
-function generatePDF() {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 14;
+const cellBorder = { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC' };
+const cellBorders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
 
-  // ---- Cover ----
-  doc.setFillColor(31, 122, 62); // brand teal
-  doc.rect(0, 0, pageW, 55, 'F');
-  doc.setTextColor(255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.text(PROJECT.name, margin, 25);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text('PCB & Enclosure — Manufacturing Specification', margin, 34);
-  doc.setFontSize(10);
-  doc.text(`${PROJECT.version}   |   Product Code: ${PROJECT.productCode}`, margin, 42);
-  doc.text(`Vendor: ${PROJECT.vendor}`, margin, 48);
-
-  doc.setTextColor(0);
-  let y = 70;
-
-  const section = (title: string) => {
-    if (y > 260) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setFillColor(240, 248, 244);
-    doc.rect(margin - 2, y - 5, pageW - 2 * margin + 4, 8, 'F');
-    doc.setTextColor(31, 122, 62);
-    doc.text(title, margin, y);
-    doc.setTextColor(0);
-    y += 10;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-  };
-
-  const para = (text: string) => {
-    const lines = doc.splitTextToSize(text, pageW - 2 * margin);
-    if (y + lines.length * 5 > 285) { doc.addPage(); y = 20; }
-    doc.text(lines, margin, y);
-    y += lines.length * 5 + 2;
-  };
-
-  // ---- 1. Overview ----
-  section('1. Project Overview');
-  para(
-    `${PROJECT.name} is a single-board IoT controller for poultry farms. It drives 8 mains-rated outputs (fans, heater, light, fogger, sprinkler, alarm, circulation), reads 6 sensor inputs, and falls back to 2G GSM (SIM800L) when Wi-Fi is unavailable. All safety and automation logic runs on-device — the cloud only stores rules.`
-  );
-  para(
-    `Enclosure: ${PROJECT.enclosure}. The PCB is to be designed as a 2-layer board, FR-4 1.6 mm, ENIG finish preferred, minimum trace width 0.3 mm for signals and 2.0 mm (or copper-pour pad) for mains current paths.`
-  );
-
-  // ---- 2. Block diagram (text) ----
-  section('2. Power Distribution Tree');
-  POWER_TREE.forEach((line) => para('•  ' + line));
-
-  // ---- 3. GPIO map ----
-  if (y > 230) { doc.addPage(); y = 20; }
-  section('3. ESP32-WROOM-32 GPIO Assignment');
-  autoTable(doc, {
-    startY: y,
-    head: [['GPIO', 'Function', 'Dir', 'Notes']],
-    body: GPIO_MAP,
-    theme: 'grid',
-    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 8.5 },
-    columnStyles: { 0: { cellWidth: 35, fontStyle: 'bold' }, 2: { cellWidth: 16 } },
-    margin: { left: margin, right: margin },
+function txt(text: string, opts: { bold?: boolean; size?: number; color?: string; font?: string } = {}) {
+  return new TextRun({
+    text,
+    bold: opts.bold,
+    size: opts.size ?? 20, // half-points → 10pt default
+    color: opts.color,
+    font: opts.font ?? 'Nirmala UI', // Bengali-safe font
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+}
 
-  // ---- 4. BOM ----
-  doc.addPage(); y = 20;
-  section('4. Bill of Materials (BOM)');
-  autoTable(doc, {
-    startY: y,
-    head: [['Ref', 'Qty', 'Part', 'Specification', 'Package', 'Notes']],
-    body: BOM.map((b) => [b.ref, String(b.qty), b.part, b.spec, b.package, b.notes]),
-    theme: 'striped',
-    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 7.8, valign: 'top' },
-    columnStyles: {
-      0: { cellWidth: 14, fontStyle: 'bold' },
-      1: { cellWidth: 8, halign: 'center' },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 40 },
-      4: { cellWidth: 25 },
-      5: { cellWidth: 'auto' },
-    },
-    margin: { left: margin, right: margin },
+function p(text: string, opts: { bold?: boolean; size?: number; color?: string; bullet?: boolean; spacing?: number } = {}) {
+  return new Paragraph({
+    children: [txt(text, { bold: opts.bold, size: opts.size, color: opts.color })],
+    bullet: opts.bullet ? { level: 0 } : undefined,
+    spacing: { after: opts.spacing ?? 80 },
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+}
 
-  // ---- 5. Layout zones ----
-  if (y > 230) { doc.addPage(); y = 20; }
-  section('5. PCB Layout Zoning (top view)');
-  para('The PCB must be partitioned into clearly separated zones:');
-  para('  ┌──────────────────────────────────────────────────────┐');
-  para('  │  ZONE A  ── 230 VAC MAINS  (red silkscreen)          │');
-  para('  │  Fuse F1, MOV1, terminal J1, contactor KM1           │');
-  para('  │  ────── 6 mm slot / isolation barrier ──────         │');
-  para('  │  ZONE B  ── Relay board K1 (8-ch) + per-ch fuses     │');
-  para('  │  Output terminals J2 × 8                             │');
-  para('  │  ────── 6 mm slot / isolation barrier ──────         │');
-  para('  │  ZONE C  ── Low-voltage logic                        │');
-  para('  │  PS1 SMPS, PS2 buck, PS3 SIM supply, ESP32 socket    │');
-  para('  │  Sensor connectors J3 × 6, status LEDs, buzzer       │');
-  para('  └──────────────────────────────────────────────────────┘');
-  para('Cable glands enter from the bottom (PG1 × 6). Antenna cable exits via top SMA bulkhead.');
+function heading(text: string, level: 1 | 2 = 2) {
+  return new Paragraph({
+    heading: level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+    spacing: { before: 240, after: 120 },
+    shading: { fill: BRAND_LIGHT, type: ShadingType.CLEAR, color: 'auto' },
+    children: [txt(text, { bold: true, size: level === 1 ? 28 : 24, color: BRAND })],
+  });
+}
 
-  // ---- 6. Safety ----
-  if (y > 230) { doc.addPage(); y = 20; }
-  section('6. Safety & Compliance Requirements');
-  SAFETY_NOTES.forEach((n) => para('•  ' + n));
+function coverTitle(text: string, sub: string, version: string, code: string, vendor: string) {
+  return [
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      shading: { fill: BRAND, type: ShadingType.CLEAR, color: 'auto' },
+      spacing: { before: 0, after: 0 },
+      children: [txt(text, { bold: true, size: 44, color: 'FFFFFF' })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      shading: { fill: BRAND, type: ShadingType.CLEAR, color: 'auto' },
+      spacing: { after: 0 },
+      children: [txt(sub, { size: 22, color: 'FFFFFF' })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      shading: { fill: BRAND, type: ShadingType.CLEAR, color: 'auto' },
+      spacing: { after: 240 },
+      children: [txt(`${version}   |   ${code}   |   ${vendor}`, { size: 18, color: 'FFFFFF' })],
+    }),
+  ];
+}
 
-  // ---- 7. Test ----
-  if (y > 230) { doc.addPage(); y = 20; }
-  section('7. Factory Test Checklist');
-  TEST_CHECKLIST.forEach((n, i) => para(`${i + 1}.  ${n}`));
+function buildTable(head: string[], rows: string[][], colWidths: number[]) {
+  const totalW = colWidths.reduce((a, b) => a + b, 0);
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: head.map((h, i) => new TableCell({
+      borders: cellBorders,
+      width: { size: colWidths[i], type: WidthType.DXA },
+      shading: { fill: BRAND, type: ShadingType.CLEAR, color: 'auto' },
+      margins: { top: 80, bottom: 80, left: 120, right: 120 },
+      children: [new Paragraph({ children: [txt(h, { bold: true, color: 'FFFFFF', size: 18 })] })],
+    })),
+  });
+  const bodyRows = rows.map((row, idx) => new TableRow({
+    children: row.map((cell, i) => new TableCell({
+      borders: cellBorders,
+      width: { size: colWidths[i], type: WidthType.DXA },
+      shading: idx % 2 === 0
+        ? { fill: 'FAFAFA', type: ShadingType.CLEAR, color: 'auto' }
+        : { fill: 'FFFFFF', type: ShadingType.CLEAR, color: 'auto' },
+      margins: { top: 60, bottom: 60, left: 100, right: 100 },
+      children: [new Paragraph({ children: [txt(cell, { size: 16 })] })],
+    })),
+  }));
+  return new Table({
+    width: { size: totalW, type: WidthType.DXA },
+    columnWidths: colWidths,
+    rows: [headerRow, ...bodyRows],
+  });
+}
 
-  // ---- 8. Deliverables ----
-  if (y > 230) { doc.addPage(); y = 20; }
-  section('8. Deliverables Required from Manufacturer');
+async function generateDocx() {
+  const { saveAs } = await import('file-saver');
+
+  const children: (Paragraph | Table)[] = [];
+  children.push(...coverTitle(PROJECT.name, 'PCB & Enclosure — Manufacturing Specification', PROJECT.version, PROJECT.productCode, PROJECT.vendor));
+
+  // 1. Overview
+  children.push(heading('1. Project Overview'));
+  children.push(p(`${PROJECT.name} is a single-board IoT controller for poultry farms. It drives 8 mains-rated outputs (fans, heater, light, fogger, sprinkler, alarm, circulation), reads 6 sensor inputs, and falls back to 2G GSM (SIM800L) when Wi-Fi is unavailable. All safety and automation logic runs on-device — the cloud only stores rules.`));
+  children.push(p(`Enclosure: ${PROJECT.enclosure}. The PCB is to be designed as a 2-layer board, FR-4 1.6 mm, ENIG finish preferred, minimum trace width 0.3 mm for signals and 2.0 mm (or copper-pour pad) for mains current paths.`));
+
+  // 2. Power tree
+  children.push(heading('2. Power Distribution Tree'));
+  POWER_TREE.forEach((line) => children.push(p(line, { bullet: true })));
+
+  // 3. GPIO map
+  children.push(heading('3. ESP32-WROOM-32 (38-pin) GPIO Assignment'));
+  children.push(buildTable(
+    ['GPIO', 'Function', 'Dir', 'Notes'],
+    GPIO_MAP.map(g => g.map(String)),
+    [1400, 3200, 800, 3960],
+  ));
+
+  // 4. BOM
+  children.push(heading('4. Bill of Materials (BOM)'));
+  children.push(buildTable(
+    ['Ref', 'Qty', 'Part', 'Specification', 'Package', 'Notes'],
+    BOM.map(b => [b.ref, String(b.qty), b.part, b.spec, b.package, b.notes]),
+    [900, 600, 2200, 2400, 1500, 1760],
+  ));
+
+  // 5. Layout zones
+  children.push(heading('5. PCB Layout Zoning'));
+  ['ZONE A — 230 VAC MAINS (red silkscreen): Fuse F1, GDT1, MOV1, terminal J1, contactor KM1',
+   '── 6 mm slot / isolation barrier ──',
+   'ZONE B — Relay board K1 (8-ch) + per-channel fuses F2-F9 + RC snubbers SN1-SN8 + output terminals J2 × 8',
+   '── 6 mm slot / isolation barrier ──',
+   'ZONE C — Low-voltage logic: PS1 SMPS, PS2 buck + L1/C12 LC filter, PS3 SIM supply, ESP32 38-pin socket, sensor connectors J3 × 6, status LEDs, buzzer, FAN1, TC1',
+   'Cable glands enter from the bottom (PG1 × 6). Antenna cable exits via top SMA bulkhead.',
+  ].forEach(t => children.push(p(t, { bullet: true })));
+
+  // 6. Safety
+  children.push(heading('6. Safety & Compliance Requirements'));
+  SAFETY_NOTES.forEach((n) => children.push(p(n, { bullet: true })));
+
+  // 7. Test
+  children.push(heading('7. Factory Test Checklist'));
+  TEST_CHECKLIST.forEach((n, i) => children.push(p(`${i + 1}. ${n}`)));
+
+  // 8. Deliverables
+  children.push(heading('8. Deliverables Required from Manufacturer'));
   [
     'Gerber (RS-274X) + drill files for the 2-layer PCB.',
     'Pick-and-place + BOM in CSV.',
     '3D STEP file of the assembled board.',
     'Hi-Pot and continuity test report per board (serialised).',
     'CE / EMC pre-compliance test report (radiated emissions class B).',
+    'Conformal coating (HumiSeal 1B73 or equivalent) applied to entire PCB.',
     'User-replaceable fuses clearly labelled on silkscreen and enclosure label.',
     'Each unit shipped with: 12 V SMPS, 6 sensor cables (DHT × 2, MQ × 1, YF × 1, ZMPT × 1, LDR × 1), GSM antenna, mounting screws, printed quick-start sheet.',
-  ].forEach((n) => para('•  ' + n));
+  ].forEach(t => children.push(p(t, { bullet: true })));
 
-  // ---- Footer on every page ----
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-    doc.text(
-      `${PROJECT.vendor}  •  ${PROJECT.name}  •  ${PROJECT.version}`,
-      margin,
-      290,
-    );
-    doc.text(`Page ${i} / ${total}`, pageW - margin, 290, { align: 'right' });
-  }
+  const doc = new Document({
+    styles: {
+      default: { document: { run: { font: 'Nirmala UI', size: 20 } } },
+    },
+    sections: [{
+      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
+      children,
+    }],
+  });
 
-  doc.save(`FarmEye_PCB_Manufacturing_Spec_${PROJECT.productCode}.pdf`);
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `FarmEye_PCB_Manufacturing_Spec_${PROJECT.productCode}.docx`);
 }
 
 // ===========================================================================
-// PDF GENERATOR — terminal wiring diagram
+// DOCX GENERATOR — terminal wiring diagram (landscape)
 // ===========================================================================
 
-function generateWiringPDF() {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 12;
+async function generateWiringDocx() {
+  const { saveAs } = await import('file-saver');
 
-  doc.setFillColor(31, 122, 62);
-  doc.rect(0, 0, pageW, 22, 'F');
-  doc.setTextColor(255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('FarmEye — Terminal Wiring Diagram', margin, 11);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(`L / N / PE input  +  COM / NO / NC outputs   |   ${PROJECT.productCode}   |   ${PROJECT.version}`, margin, 17);
+  const children: (Paragraph | Table)[] = [];
+  children.push(...coverTitle('FarmEye — Terminal Wiring Diagram', `L / N / PE input  +  COM / NO / NC outputs`, PROJECT.version, PROJECT.productCode, PROJECT.vendor));
 
-  doc.setTextColor(0);
-  let y = 30;
+  // 1. Mains
+  children.push(heading('1. Mains Input Terminal Block (J1, 3-pos 5.08mm, 16A)'));
+  children.push(buildTable(
+    ['Pin', 'Label', 'Wire Colour (IEC 60446)', 'Cable', 'Connects To'],
+    MAINS_TERMINALS.map(t => [t.pin, t.label, t.color, t.wire, t.notes]),
+    [1000, 2800, 3200, 2000, 5000],
+  ));
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(31, 122, 62);
-  doc.text('1.  Mains Input Terminal Block  (J1, 3-pos 5.08mm, 16A)', margin, y);
-  doc.setTextColor(0);
-  y += 4;
+  // 2. Relay outputs
+  children.push(heading('2. Relay Output Terminal Blocks (J2 × 8 — COM / NO / NC)'));
+  children.push(buildTable(
+    ['CH', 'GPIO', 'Load', 'COM', 'NO', 'NC', 'Fuse'],
+    RELAY_OUTPUTS.map(r => [r.ch, r.gpio, r.load, r.com, r.no, r.nc, r.fuse]),
+    [700, 1100, 2200, 2800, 2800, 2200, 2200],
+  ));
 
-  autoTable(doc, {
-    startY: y,
-    head: [['Pin', 'Label', 'Wire Colour (IEC 60446)', 'Cable', 'Connects To']],
-    body: MAINS_TERMINALS.map((t) => [t.pin, t.label, t.color, t.wire, t.notes]),
-    theme: 'grid',
-    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    columnStyles: {
-      0: { cellWidth: 18, fontStyle: 'bold', halign: 'center' },
-      1: { cellWidth: 50, fontStyle: 'bold' },
-      2: { cellWidth: 55 },
-      3: { cellWidth: 35 },
-      4: { cellWidth: 'auto' },
-    },
-    margin: { left: margin, right: margin },
-  });
-  y = (doc as any).lastAutoTable.finalY + 8;
+  // 3. Schematic
+  children.push(heading('3. Single-Channel Wiring Schematic (typical AC load)'));
+  [
+    '230 VAC L → [F1 10A] → [GDT1] → [MOV1] → RELAY COM → [F2..F9 5A per ch] → NO → LOAD → N',
+    'PE → Enclosure / DIN rail / Load chassis (mandatory)',
+    'NC = unused (leave open)',
+    'ESP32 GPIO → [opto-isolator on K1 board] → Relay coil (active LOW)',
+    'Each relay NO-COM has RC snubber (SN1-SN8: 100Ω + 100nF X2) for arc suppression.',
+  ].forEach(t => children.push(p(t, { bullet: true })));
 
-  if (y > pageH - 80) { doc.addPage(); y = 20; }
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(31, 122, 62);
-  doc.text('2.  Relay Output Terminal Blocks  (J2 x 8, 3-pos 5.08mm, 10A — COM / NO / NC)', margin, y);
-  doc.setTextColor(0);
-  y += 4;
+  // 4. Wiring rules
+  children.push(heading('4. Wiring Rules & Safety'));
+  WIRING_RULES.forEach((r, i) => children.push(p(`${i + 1}. ${r}`)));
 
-  autoTable(doc, {
-    startY: y,
-    head: [['CH', 'GPIO', 'Load', 'COM (terminal A)', 'NO (terminal B)', 'NC (terminal C)', 'Fuse / Notes']],
-    body: RELAY_OUTPUTS.map((r) => [r.ch, r.gpio, r.load, r.com, r.no, r.nc, r.fuse]),
-    theme: 'grid',
-    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 8.5 },
-    columnStyles: {
-      0: { cellWidth: 14, fontStyle: 'bold', halign: 'center' },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 35, fontStyle: 'bold' },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 50 },
-      5: { cellWidth: 25, halign: 'center', textColor: 120 },
-      6: { cellWidth: 'auto' },
-    },
-    margin: { left: margin, right: margin },
-  });
-  y = (doc as any).lastAutoTable.finalY + 8;
-
-  doc.addPage();
-  y = 20;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(31, 122, 62);
-  doc.text('3.  Single-Channel Wiring Schematic  (typical AC load)', margin, y);
-  doc.setTextColor(0);
-  y += 8;
-  doc.setFont('courier', 'normal');
-  doc.setFontSize(9);
-  const schematic = [
-    '   230 VAC                 +-------+        +-----------+        +----------+   ',
-    '   L  o-----[ F1 10A ]----| MOV1  |---o----| RELAY COM |        |   LOAD   |   ',
-    '                           +-------+   |    |           |        | (Fan /   |   ',
-    '                                       |    |   NO o----+--------+ Heater)  |   ',
-    '                                  [F2..F9 5A per ch]   |        |          |   ',
-    '                                                       |        |          |   ',
-    '   N  o------------------------------------------------|--------+--+ N     |   ',
-    '                                                       |           |       |   ',
-    '   PE o---[ Enclosure / DIN rail / Load chassis ]------|-----------+ PE    |   ',
-    '                                                       |           +-------+   ',
-    '                                              NC = (not used, leave open)      ',
-    '                                                                               ',
-    '   ESP32 GPIO --[ opto-isolator on K1 board ]--> Relay coil (active LOW)       ',
-  ];
-  schematic.forEach((line) => { doc.text(line, margin, y); y += 4; });
-
-  y += 4;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(31, 122, 62);
-  doc.text('4.  Wiring Rules & Safety', margin, y);
-  doc.setTextColor(0);
-  y += 6;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  WIRING_RULES.forEach((r, i) => {
-    const lines = doc.splitTextToSize(`${i + 1}.  ${r}`, pageW - 2 * margin);
-    if (y + lines.length * 5 > pageH - 15) { doc.addPage(); y = 20; }
-    doc.text(lines, margin, y);
-    y += lines.length * 5 + 1;
-  });
-
-  // ---- Section 5: Connector & wire-colour map ----
-  doc.addPage();
-  y = 20;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(31, 122, 62);
-  doc.text('5.  Connector & Wire-Colour Map  (every plug, pin-by-pin)', margin, y);
-  doc.setTextColor(0);
-  y += 6;
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(9);
-  doc.text('Wire colours follow IEC 60446 for AC power. DC and signal colours are recommended Nexiot Labs convention.', margin, y);
-  y += 8;
+  // 5. Connector map
+  children.push(heading('5. Connector & Wire-Colour Map (every plug, pin-by-pin)'));
+  children.push(p('Wire colours follow IEC 60446 for AC power. DC and signal colours are recommended Nexiot Labs convention.'));
 
   CONNECTOR_MAP.forEach((g) => {
-    if (y > pageH - 40) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.setTextColor(31, 122, 62);
-    doc.text(`${g.id}  ·  ${g.title}`, margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(90);
-    doc.text(`${g.subtitle}   —   ${g.pitch}`, margin, y + 4);
-    doc.setTextColor(0);
-    y += 7;
-
-    autoTable(doc, {
-      startY: y,
-      head: [['Pin', 'Signal', '', 'Wire Colour', 'Gauge', 'Notes']],
-      body: g.rows.map((r) => [r.pin, r.signal, '', r.colorName, r.awg, r.notes]),
-      theme: 'grid',
-      headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 8.5 },
-      bodyStyles: { fontSize: 8.5, valign: 'middle', minCellHeight: 6 },
-      columnStyles: {
-        0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
-        1: { cellWidth: 45, fontStyle: 'bold' },
-        2: { cellWidth: 10, halign: 'center' },
-        3: { cellWidth: 45 },
-        4: { cellWidth: 28 },
-        5: { cellWidth: 'auto' },
-      },
-      didDrawCell: (data) => {
-        // Paint the colour swatch in column index 2
-        if (data.section === 'body' && data.column.index === 2) {
-          const row = g.rows[data.row.index];
-          if (row && row.colorHex) {
-            const hex = row.colorHex.replace('#', '');
-            const r = parseInt(hex.substring(0, 2), 16);
-            const gC = parseInt(hex.substring(2, 4), 16);
-            const b = parseInt(hex.substring(4, 6), 16);
-            const cx = data.cell.x + data.cell.width / 2;
-            const cy = data.cell.y + data.cell.height / 2;
-            doc.setFillColor(r, gC, b);
-            doc.setDrawColor(80);
-            doc.setLineWidth(0.2);
-            doc.circle(cx, cy, 2.2, 'FD');
-          }
-        }
-      },
-      margin: { left: margin, right: margin },
-    });
-    y = (doc as any).lastAutoTable.finalY + 6;
+    children.push(new Paragraph({
+      spacing: { before: 200, after: 80 },
+      children: [
+        txt(`${g.id}  ·  ${g.title}`, { bold: true, size: 22, color: BRAND }),
+        txt(`     ${g.subtitle} — ${g.pitch}`, { size: 16, color: '707070' }),
+      ],
+    }));
+    children.push(buildTable(
+      ['Pin', 'Signal', 'Wire Colour', 'AWG', 'Notes'],
+      g.rows.map(r => [r.pin, r.signal, r.colorName, r.awg, r.notes]),
+      [800, 3000, 3200, 1800, 5200],
+    ));
   });
 
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-    doc.text(`${PROJECT.vendor}  •  Terminal Wiring  •  ${PROJECT.version}`, margin, pageH - 6);
-    doc.text(`Page ${i} / ${total}`, pageW - margin, pageH - 6, { align: 'right' });
-  }
+  const doc = new Document({
+    styles: {
+      default: { document: { run: { font: 'Nirmala UI', size: 20 } } },
+    },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838, orientation: PageOrientation.LANDSCAPE },
+          margin: { top: 720, right: 720, bottom: 720, left: 720 },
+        },
+      },
+      children,
+    }],
+  });
 
-  doc.save(`FarmEye_Terminal_Wiring_${PROJECT.productCode}.pdf`);
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `FarmEye_Terminal_Wiring_${PROJECT.productCode}.docx`);
 }
+
 
 // ===========================================================================
 // GERBER / DRILL EXCHANGE PACKAGE  (ZIP for the PCB manufacturer)
@@ -878,11 +777,11 @@ export function PCBManufacturingSpec() {
   const handleDownload = async () => {
     try {
       setBusy(true);
-      generatePDF();
-      toast.success('PDF ডাউনলোড হয়েছে — ম্যানুফ্যাকচারারকে দিন');
+      await generateDocx();
+      toast.success('Word ফাইল ডাউনলোড হয়েছে — ম্যানুফ্যাকচারারকে দিন');
     } catch (e) {
       console.error(e);
-      toast.error('PDF তৈরিতে সমস্যা হয়েছে');
+      toast.error('Word ফাইল তৈরিতে সমস্যা হয়েছে');
     } finally {
       setBusy(false);
     }
@@ -891,11 +790,11 @@ export function PCBManufacturingSpec() {
   const handleDownloadWiring = async () => {
     try {
       setBusyWiring(true);
-      generateWiringPDF();
-      toast.success('ওয়্যারিং ডায়াগ্রাম PDF ডাউনলোড হয়েছে');
+      await generateWiringDocx();
+      toast.success('ওয়্যারিং ডায়াগ্রাম Word ফাইল ডাউনলোড হয়েছে');
     } catch (e) {
       console.error(e);
-      toast.error('PDF তৈরিতে সমস্যা হয়েছে');
+      toast.error('Word ফাইল তৈরিতে সমস্যা হয়েছে');
     } finally {
       setBusyWiring(false);
     }
@@ -970,7 +869,7 @@ export function PCBManufacturingSpec() {
                 {PROJECT.name} — {PROJECT.version}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                সম্পূর্ণ BOM, GPIO ম্যাপ, লে-আউট জোন, সেফটি ও টেস্ট চেকলিস্ট সহ একটি প্রোডাকশন-রেডি PDF — সরাসরি ম্যানুফ্যাকচারারকে দিন।
+                সম্পূর্ণ BOM, GPIO ম্যাপ, লে-আউট জোন, সেফটি ও টেস্ট চেকলিস্ট সহ একটি প্রোডাকশন-রেডি Word ফাইল — সরাসরি ম্যানুফ্যাকচারারকে দিন। (বাংলা ফন্ট নিরাপদ)
               </p>
             </div>
           </div>
@@ -982,7 +881,7 @@ export function PCBManufacturingSpec() {
               className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-0 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/30"
             >
               {busy ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
-              PDF ডাউনলোড
+              Word ডাউনলোড (.docx)
             </Button>
             <Button
               size="lg"
@@ -1180,7 +1079,7 @@ export function PCBManufacturingSpec() {
                 <h2 className="text-xl font-bold text-white">টার্মিনাল ওয়্যারিং ডায়াগ্রাম</h2>
                 <p className="text-sm text-amber-200/80 mt-1">L / N / PE input  ·  COM / NO / NC outputs (8 channels)</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  ইলেকট্রিশিয়ান বা ম্যানুফ্যাকচারারের জন্য আলাদা PDF — wire color, fuse, contactor সহ পূর্ণ schematic।
+                  ইলেকট্রিশিয়ান বা ম্যানুফ্যাকচারারের জন্য আলাদা Word ফাইল — wire color, fuse, contactor সহ পূর্ণ schematic।
                 </p>
               </div>
             </div>
@@ -1191,7 +1090,7 @@ export function PCBManufacturingSpec() {
               className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30 shrink-0"
             >
               {busyWiring ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
-              ওয়্যারিং PDF
+              ওয়্যারিং Word (.docx)
             </Button>
           </CardContent>
         </Card>
