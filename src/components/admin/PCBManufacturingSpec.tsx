@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Download, FileText, Cpu, Zap, Shield, Box, CircuitBoard, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Download, FileText, Cpu, Zap, Shield, Box, CircuitBoard, Loader2, Plug } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
@@ -123,9 +124,45 @@ const TEST_CHECKLIST = [
   'Soak test: 48 h continuous run with simulated load cycling every 5 min.',
 ];
 
+// ---------------------------------------------------------------------------
+// TERMINAL WIRING (L / N / PE  +  COM / NO / NC)
+// ---------------------------------------------------------------------------
+
+// Mains input terminal block J1 (3-pos, 5.08mm, 16A)
+const MAINS_TERMINALS: Array<{ pin: string; label: string; color: string; wire: string; notes: string }> = [
+  { pin: 'J1-1', label: 'L  (Live / Phase)',    color: 'বাদামী (Brown) / লাল',  wire: '1.5 mm² stranded', notes: '10A fuse F1 + MOV1 → SMPS L, Relay COM bus' },
+  { pin: 'J1-2', label: 'N  (Neutral)',          color: 'নীল (Blue) / কালো',     wire: '1.5 mm² stranded', notes: 'Direct → SMPS N, Load N return bus' },
+  { pin: 'J1-3', label: 'PE (Protective Earth)', color: 'সবুজ-হলুদ (Green/Yellow)', wire: '1.5 mm² stranded', notes: 'Enclosure metal, DIN rail, every load chassis — MANDATORY' },
+];
+
+// Per-relay output terminal block J2 (3-pos per channel, 10A)
+const RELAY_OUTPUTS: Array<{ ch: string; gpio: string; load: string; com: string; no: string; nc: string; fuse: string }> = [
+  { ch: 'CH1', gpio: 'GPIO 25', load: 'Exhaust Fan',     com: 'L (via F2 5A)', no: 'Fan L-in',     nc: '— (খালি)', fuse: 'F2' },
+  { ch: 'CH2', gpio: 'GPIO 26', load: 'Ceiling Fan',     com: 'L (via F3 5A)', no: 'Fan L-in',     nc: '— (খালি)', fuse: 'F3' },
+  { ch: 'CH3', gpio: 'GPIO 27', load: 'Light',           com: 'L (via F4 5A)', no: 'Light L-in',   nc: '— (খালি)', fuse: 'F4' },
+  { ch: 'CH4', gpio: 'GPIO 14', load: 'Heater (>1kW)',   com: 'L (via F5 5A) → KM1 coil A1', no: 'KM1 A2 / Heater L (small)', nc: '— (খালি)', fuse: 'F5  +  CJX2-1210 contactor' },
+  { ch: 'CH5', gpio: 'GPIO 12', load: 'Fogger Pump',     com: 'L (via F6 5A)', no: 'Fogger L-in',  nc: '— (খালি)', fuse: 'F6' },
+  { ch: 'CH6', gpio: 'GPIO 13', load: 'Alarm / Siren',   com: '12V+ (DC)',     no: 'Buzzer/Siren +', nc: '— (খালি)', fuse: '— (DC, fuse on 12V rail)' },
+  { ch: 'CH7', gpio: 'GPIO 15', load: 'Sprinkler Valve', com: 'L (via F8 5A)', no: 'Valve L-in',   nc: '— (খালি)', fuse: 'F8' },
+  { ch: 'CH8', gpio: 'GPIO 33', load: 'Circulation Fan', com: 'L (via F9 5A)', no: 'Fan L-in',     nc: '— (খালি)', fuse: 'F9' },
+];
+
+const WIRING_RULES = [
+  'প্রত্যেক লোডের NEUTRAL সরাসরি J1-2 (N) bus-bar এ যাবে — relay দিয়ে কখনো N switch করবেন না।',
+  'প্রত্যেক লোডের EARTH (PE) সরাসরি J1-3 bus-bar এ — metal chassis, motor body, contactor frame সব।',
+  'Relay শুধু LIVE (L) line switch করে: L → fuse → COM → NO → Load।',
+  'NC (Normally Closed) terminal এই ডিজাইনে ব্যবহার হয় না — খালি রাখুন (false-trigger এড়াতে)।',
+  'Heater (CH4) 1 kW এর বেশি হলে relay সরাসরি load চালাবে না — CJX2-1210 contactor coil এ যাবে, contactor main contact heater চালাবে।',
+  'Alarm (CH6) DC buzzer, তাই COM = 12V+, NO = buzzer +; buzzer − সরাসরি GND এ।',
+  'প্রত্যেক wire ferrule দিয়ে crimp করুন — bare strand কখনো terminal এ ঢুকাবেন না।',
+  'Mains cable IP66 cable gland (PG-13.5) দিয়ে enclosure এ ঢুকবে; sensor cable PG-9 দিয়ে।',
+  'Wire color code IEC 60446 মেনে চলুন: L=বাদামী, N=নীল, PE=সবুজ-হলুদ। অন্য রঙ ব্যবহার করবেন না।',
+];
+
 // ===========================================================================
-// PDF GENERATOR
+// PDF GENERATOR — main spec
 // ===========================================================================
+
 
 function generatePDF() {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -278,11 +315,143 @@ function generatePDF() {
 }
 
 // ===========================================================================
+// PDF GENERATOR — terminal wiring diagram
+// ===========================================================================
+
+function generateWiringPDF() {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 12;
+
+  doc.setFillColor(31, 122, 62);
+  doc.rect(0, 0, pageW, 22, 'F');
+  doc.setTextColor(255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('FarmEye — Terminal Wiring Diagram', margin, 11);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`L / N / PE input  +  COM / NO / NC outputs   |   ${PROJECT.productCode}   |   ${PROJECT.version}`, margin, 17);
+
+  doc.setTextColor(0);
+  let y = 30;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('1.  Mains Input Terminal Block  (J1, 3-pos 5.08mm, 16A)', margin, y);
+  doc.setTextColor(0);
+  y += 4;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Pin', 'Label', 'Wire Colour (IEC 60446)', 'Cable', 'Connects To']],
+    body: MAINS_TERMINALS.map((t) => [t.pin, t.label, t.color, t.wire, t.notes]),
+    theme: 'grid',
+    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 18, fontStyle: 'bold', halign: 'center' },
+      1: { cellWidth: 50, fontStyle: 'bold' },
+      2: { cellWidth: 55 },
+      3: { cellWidth: 35 },
+      4: { cellWidth: 'auto' },
+    },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  if (y > pageH - 80) { doc.addPage(); y = 20; }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('2.  Relay Output Terminal Blocks  (J2 x 8, 3-pos 5.08mm, 10A — COM / NO / NC)', margin, y);
+  doc.setTextColor(0);
+  y += 4;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['CH', 'GPIO', 'Load', 'COM (terminal A)', 'NO (terminal B)', 'NC (terminal C)', 'Fuse / Notes']],
+    body: RELAY_OUTPUTS.map((r) => [r.ch, r.gpio, r.load, r.com, r.no, r.nc, r.fuse]),
+    theme: 'grid',
+    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 8.5 },
+    columnStyles: {
+      0: { cellWidth: 14, fontStyle: 'bold', halign: 'center' },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 35, fontStyle: 'bold' },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 25, halign: 'center', textColor: 120 },
+      6: { cellWidth: 'auto' },
+    },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  doc.addPage();
+  y = 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('3.  Single-Channel Wiring Schematic  (typical AC load)', margin, y);
+  doc.setTextColor(0);
+  y += 8;
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(9);
+  const schematic = [
+    '   230 VAC                 +-------+        +-----------+        +----------+   ',
+    '   L  o-----[ F1 10A ]----| MOV1  |---o----| RELAY COM |        |   LOAD   |   ',
+    '                           +-------+   |    |           |        | (Fan /   |   ',
+    '                                       |    |   NO o----+--------+ Heater)  |   ',
+    '                                  [F2..F9 5A per ch]   |        |          |   ',
+    '                                                       |        |          |   ',
+    '   N  o------------------------------------------------|--------+--+ N     |   ',
+    '                                                       |           |       |   ',
+    '   PE o---[ Enclosure / DIN rail / Load chassis ]------|-----------+ PE    |   ',
+    '                                                       |           +-------+   ',
+    '                                              NC = (not used, leave open)      ',
+    '                                                                               ',
+    '   ESP32 GPIO --[ opto-isolator on K1 board ]--> Relay coil (active LOW)       ',
+  ];
+  schematic.forEach((line) => { doc.text(line, margin, y); y += 4; });
+
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('4.  Wiring Rules & Safety', margin, y);
+  doc.setTextColor(0);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  WIRING_RULES.forEach((r, i) => {
+    const lines = doc.splitTextToSize(`${i + 1}.  ${r}`, pageW - 2 * margin);
+    if (y + lines.length * 5 > pageH - 15) { doc.addPage(); y = 20; }
+    doc.text(lines, margin, y);
+    y += lines.length * 5 + 1;
+  });
+
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`${PROJECT.vendor}  •  Terminal Wiring  •  ${PROJECT.version}`, margin, pageH - 6);
+    doc.text(`Page ${i} / ${total}`, pageW - margin, pageH - 6, { align: 'right' });
+  }
+
+  doc.save(`FarmEye_Terminal_Wiring_${PROJECT.productCode}.pdf`);
+}
+
+// ===========================================================================
 // COMPONENT
 // ===========================================================================
 
 export function PCBManufacturingSpec() {
   const [busy, setBusy] = useState(false);
+  const [busyWiring, setBusyWiring] = useState(false);
 
   const handleDownload = async () => {
     try {
@@ -297,8 +466,28 @@ export function PCBManufacturingSpec() {
     }
   };
 
+  const handleDownloadWiring = async () => {
+    try {
+      setBusyWiring(true);
+      generateWiringPDF();
+      toast.success('ওয়্যারিং ডায়াগ্রাম PDF ডাউনলোড হয়েছে');
+    } catch (e) {
+      console.error(e);
+      toast.error('PDF তৈরিতে সমস্যা হয়েছে');
+    } finally {
+      setBusyWiring(false);
+    }
+  };
+
+
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="spec" className="space-y-4">
+      <TabsList className="grid grid-cols-2 w-full max-w-md">
+        <TabsTrigger value="spec" className="gap-2"><CircuitBoard className="w-4 h-4" />PCB স্পেসিফিকেশন</TabsTrigger>
+        <TabsTrigger value="wiring" className="gap-2"><Plug className="w-4 h-4" />টার্মিনাল ওয়্যারিং</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="spec" className="space-y-4 mt-0">
       {/* Hero / download card */}
       <Card className="bg-gradient-to-br from-emerald-900/40 to-teal-900/30 border-emerald-500/30">
         <CardContent className="pt-6 pb-6 flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
@@ -456,7 +645,133 @@ export function PCBManufacturingSpec() {
           </ScrollArea>
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      {/* ===================== TERMINAL WIRING TAB ===================== */}
+      <TabsContent value="wiring" className="space-y-4 mt-0">
+        <Card className="bg-gradient-to-br from-amber-900/40 to-orange-900/30 border-amber-500/30">
+          <CardContent className="pt-6 pb-6 flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
+                <Plug className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">টার্মিনাল ওয়্যারিং ডায়াগ্রাম</h2>
+                <p className="text-sm text-amber-200/80 mt-1">L / N / PE input  ·  COM / NO / NC outputs (8 channels)</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  ইলেকট্রিশিয়ান বা ম্যানুফ্যাকচারারের জন্য আলাদা PDF — wire color, fuse, contactor সহ পূর্ণ schematic।
+                </p>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              onClick={handleDownloadWiring}
+              disabled={busyWiring}
+              className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30 shrink-0"
+            >
+              {busyWiring ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
+              ওয়্যারিং PDF
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900/80 border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2 text-base">
+              <Plug className="w-5 h-5 text-amber-400" /> ওয়্যারিং প্রিভিউ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[600px] pr-3">
+              {/* Mains input */}
+              <SpecSection icon={<Zap className="w-4 h-4" />} title="১. মেইনস ইনপুট টার্মিনাল  J1  (L / N / PE)">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-amber-300 border-b border-white/10">
+                        <th className="py-2 pr-3">Pin</th>
+                        <th className="py-2 pr-3">Label</th>
+                        <th className="py-2 pr-3">Wire Colour</th>
+                        <th className="py-2 pr-3">Cable</th>
+                        <th className="py-2">Connects To</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-300">
+                      {MAINS_TERMINALS.map((t, i) => (
+                        <tr key={i} className="border-b border-white/5 align-top">
+                          <td className="py-1.5 pr-3 font-mono text-amber-200 font-bold">{t.pin}</td>
+                          <td className="py-1.5 pr-3 font-semibold">{t.label}</td>
+                          <td className="py-1.5 pr-3">{t.color}</td>
+                          <td className="py-1.5 pr-3 text-slate-400">{t.wire}</td>
+                          <td className="py-1.5 text-slate-400">{t.notes}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SpecSection>
+
+              {/* Relay outputs */}
+              <SpecSection icon={<CircuitBoard className="w-4 h-4" />} title="২. রিলে আউটপুট টার্মিনাল  J2 × 8  (COM / NO / NC)">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-amber-300 border-b border-white/10">
+                        <th className="py-2 pr-2">CH</th>
+                        <th className="py-2 pr-2">GPIO</th>
+                        <th className="py-2 pr-2">Load</th>
+                        <th className="py-2 pr-2">COM</th>
+                        <th className="py-2 pr-2">NO</th>
+                        <th className="py-2 pr-2">NC</th>
+                        <th className="py-2">Fuse</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-300">
+                      {RELAY_OUTPUTS.map((r, i) => (
+                        <tr key={i} className="border-b border-white/5 align-top">
+                          <td className="py-1.5 pr-2 font-mono text-amber-200 font-bold">{r.ch}</td>
+                          <td className="py-1.5 pr-2 font-mono text-emerald-200">{r.gpio}</td>
+                          <td className="py-1.5 pr-2 font-semibold">{r.load}</td>
+                          <td className="py-1.5 pr-2 text-slate-300">{r.com}</td>
+                          <td className="py-1.5 pr-2 text-slate-300">{r.no}</td>
+                          <td className="py-1.5 pr-2 text-slate-500">{r.nc}</td>
+                          <td className="py-1.5 text-slate-400">{r.fuse}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SpecSection>
+
+              {/* Schematic */}
+              <SpecSection icon={<Zap className="w-4 h-4" />} title="৩. সিঙ্গেল-চ্যানেল ওয়্যারিং স্কিম্যাটিক">
+                <pre className="text-[11px] text-slate-300 bg-slate-950/60 p-3 rounded-lg border border-white/10 overflow-x-auto leading-snug">
+{`   230 VAC                +-------+         +-----------+        +----------+
+   L  o----[ F1 10A ]----| MOV1  |---o-----| RELAY COM |        |   LOAD   |
+                          +-------+   |     |           |        | (Fan /   |
+                                      |     |    NO o---+--------+ Heater)  |
+                                 [F2..F9 5A per ch]    |        |          |
+   N  o-----------------------------------------------+--------+--+ N      |
+                                                       |          |        |
+   PE o--[ Enclosure / DIN rail / Load chassis ]------+----------+ PE      |
+                                                                  +--------+
+
+   NC = (not used, leave open)
+   ESP32 GPIO --[ opto-isolator on K1 board ]--> Relay coil (active LOW)`}
+                </pre>
+              </SpecSection>
+
+              {/* Rules */}
+              <SpecSection icon={<Shield className="w-4 h-4" />} title="৪. ওয়্যারিং নিয়ম ও সেফটি">
+                <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside">
+                  {WIRING_RULES.map((n, i) => <li key={i}>{n}</li>)}
+                </ol>
+              </SpecSection>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }
 
