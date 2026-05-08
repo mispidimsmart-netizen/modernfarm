@@ -901,15 +901,27 @@ export function PCBManufacturingSpec() {
               </p>
             </div>
           </div>
-          <Button
-            size="lg"
-            onClick={handleDownload}
-            disabled={busy}
-            className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-0 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/30 shrink-0"
-          >
-            {busy ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
-            PDF ডাউনলোড
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <Button
+              size="lg"
+              onClick={handleDownload}
+              disabled={busy}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-0 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/30"
+            >
+              {busy ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
+              PDF ডাউনলোড
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={handleDownloadZip}
+              disabled={busyZip}
+              className="border-emerald-500/40 bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/60 hover:text-white"
+            >
+              {busyZip ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <FileArchive className="w-5 h-5 mr-2" />}
+              Gerber/Drill ZIP
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
