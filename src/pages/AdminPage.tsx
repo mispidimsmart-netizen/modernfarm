@@ -61,6 +61,7 @@ import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab'
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
+import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
 
 const t = {
   bn: {
@@ -440,6 +441,10 @@ export default function AdminPage() {
               <Shield className="w-4 h-4 mr-2" />
               আইসোলেশন
             </TabsTrigger>
+            <TabsTrigger value="pcb" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Cpu className="w-4 h-4 mr-2" />
+              PCB ম্যানুফ্যাকচারিং
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="isolation" className="mt-4">
@@ -690,6 +695,10 @@ export default function AdminPage() {
 
           <TabsContent value="commands" className="mt-4">
             <AdminCommandDeliveryPanel />
+          </TabsContent>
+
+          <TabsContent value="pcb" className="mt-4">
+            <PCBManufacturingSpec />
           </TabsContent>
         </Tabs>
       </div>
