@@ -935,7 +935,56 @@ export function PCBManufacturingSpec() {
                   {WIRING_RULES.map((n, i) => <li key={i}>{n}</li>)}
                 </ol>
               </SpecSection>
-            </ScrollArea>
+
+              {/* 5. Connector & wire-colour map */}
+              <SpecSection icon={<Plug className="w-4 h-4" />} title="৫. কানেক্টর ও তারের রঙ ম্যাপিং (প্রতিটি প্লাগ, পিন-বাই-পিন)">
+                <p className="text-[11px] text-slate-400 mb-3">
+                  AC পাওয়ারে IEC 60446 রঙ-কোড। DC ও সিগন্যাল লাইনে Nexiot Labs convention — ফিল্ডে এই রঙ মেনে চললে troubleshooting দ্রুত হয়।
+                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {CONNECTOR_MAP.map((g) => (
+                    <div key={g.id} className="rounded-lg border border-white/10 bg-slate-950/50 overflow-hidden">
+                      <div className="px-3 py-2 bg-gradient-to-r from-amber-900/30 to-transparent border-b border-white/10">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-mono text-amber-300 font-bold text-xs">{g.id}</span>
+                          <span className="text-[10px] text-slate-500">{g.pitch}</span>
+                        </div>
+                        <div className="text-xs text-slate-200 font-semibold mt-0.5">{g.title}</div>
+                        <div className="text-[10px] text-slate-400">{g.subtitle}</div>
+                      </div>
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="text-left text-slate-500 border-b border-white/5">
+                            <th className="px-2 py-1 w-8 text-center">Pin</th>
+                            <th className="px-2 py-1">Signal</th>
+                            <th className="px-2 py-1 w-6"></th>
+                            <th className="px-2 py-1">Wire</th>
+                            <th className="px-2 py-1 w-16">AWG</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-slate-300">
+                          {g.rows.map((r, i) => (
+                            <tr key={i} className="border-b border-white/5 last:border-0 align-middle">
+                              <td className="px-2 py-1.5 text-center font-mono text-amber-200 font-bold">{r.pin}</td>
+                              <td className="px-2 py-1.5 font-semibold">{r.signal}</td>
+                              <td className="px-2 py-1.5">
+                                <span
+                                  className="inline-block w-3.5 h-3.5 rounded-full border border-white/30 shadow-inner"
+                                  style={{ backgroundColor: r.colorHex }}
+                                  title={r.colorName}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5 text-slate-300">{r.colorName}</td>
+                              <td className="px-2 py-1.5 text-slate-400 font-mono text-[10px]">{r.awg}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </SpecSection>
+
           </CardContent>
         </Card>
       </TabsContent>
