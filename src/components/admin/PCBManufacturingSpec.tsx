@@ -1079,7 +1079,7 @@ export function PCBManufacturingSpec() {
                 <h2 className="text-xl font-bold text-white">টার্মিনাল ওয়্যারিং ডায়াগ্রাম</h2>
                 <p className="text-sm text-amber-200/80 mt-1">L / N / PE input  ·  COM / NO / NC outputs (8 channels)</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  ইলেকট্রিশিয়ান বা ম্যানুফ্যাকচারারের জন্য আলাদা PDF — wire color, fuse, contactor সহ পূর্ণ schematic।
+                  ইলেকট্রিশিয়ান বা ম্যানুফ্যাকচারারের জন্য আলাদা Word ফাইল — wire color, fuse, contactor সহ পূর্ণ schematic।
                 </p>
               </div>
             </div>
@@ -1090,7 +1090,7 @@ export function PCBManufacturingSpec() {
               className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30 shrink-0"
             >
               {busyWiring ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
-              ওয়্যারিং PDF
+              ওয়্যারিং Word (.docx)
             </Button>
           </CardContent>
         </Card>
