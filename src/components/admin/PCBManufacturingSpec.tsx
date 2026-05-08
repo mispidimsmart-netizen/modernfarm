@@ -959,6 +959,46 @@ export function PCBManufacturingSpec() {
         </CardContent>
       </Card>
 
+      {/* Individual document downloads */}
+      <Card className="bg-slate-900/80 border-white/10">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2 text-base">
+            <Download className="w-5 h-5 text-emerald-400" />
+            পৃথক ডকুমেন্টস ডাউনলোড
+          </CardTitle>
+          <p className="text-xs text-slate-400 mt-1">
+            ম্যানুফ্যাকচারারকে আলাদাভাবে নির্দিষ্ট ফাইল পাঠাতে চাইলে এখান থেকে ডাউনলোড করুন। সম্পূর্ণ প্যাকেজের জন্য উপরের PDF / ZIP ব্যবহার করুন।
+          </p>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {docDownloads.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => {
+                try {
+                  downloadText(d.filename, d.build(), d.mime);
+                  toast.success(`${d.label} ডাউনলোড হয়েছে`);
+                } catch (e) {
+                  console.error(e);
+                  toast.error('ফাইল তৈরিতে সমস্যা হয়েছে');
+                }
+              }}
+              className="text-left rounded-xl border border-emerald-500/20 bg-emerald-950/20 hover:bg-emerald-900/40 hover:border-emerald-500/50 transition-colors p-4 group"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 text-emerald-300">
+                  {d.icon}
+                  <span className="text-sm font-semibold text-white">{d.label}</span>
+                </div>
+                <Download className="w-4 h-4 text-emerald-400 opacity-60 group-hover:opacity-100 shrink-0" />
+              </div>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">{d.desc}</p>
+              <p className="text-[10px] text-emerald-500/70 mt-2 font-mono truncate">{d.filename}</p>
+            </button>
+          ))}
+        </CardContent>
+      </Card>
+
       {/* On-screen preview */}
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader>
