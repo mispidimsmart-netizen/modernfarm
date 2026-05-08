@@ -645,7 +645,133 @@ export function PCBManufacturingSpec() {
           </ScrollArea>
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+
+      {/* ===================== TERMINAL WIRING TAB ===================== */}
+      <TabsContent value="wiring" className="space-y-4 mt-0">
+        <Card className="bg-gradient-to-br from-amber-900/40 to-orange-900/30 border-amber-500/30">
+          <CardContent className="pt-6 pb-6 flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
+                <Plug className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">টার্মিনাল ওয়্যারিং ডায়াগ্রাম</h2>
+                <p className="text-sm text-amber-200/80 mt-1">L / N / PE input  ·  COM / NO / NC outputs (8 channels)</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  ইলেকট্রিশিয়ান বা ম্যানুফ্যাকচারারের জন্য আলাদা PDF — wire color, fuse, contactor সহ পূর্ণ schematic।
+                </p>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              onClick={handleDownloadWiring}
+              disabled={busyWiring}
+              className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30 shrink-0"
+            >
+              {busyWiring ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
+              ওয়্যারিং PDF
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900/80 border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2 text-base">
+              <Plug className="w-5 h-5 text-amber-400" /> ওয়্যারিং প্রিভিউ
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[600px] pr-3">
+              {/* Mains input */}
+              <SpecSection icon={<Zap className="w-4 h-4" />} title="১. মেইনস ইনপুট টার্মিনাল  J1  (L / N / PE)">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-amber-300 border-b border-white/10">
+                        <th className="py-2 pr-3">Pin</th>
+                        <th className="py-2 pr-3">Label</th>
+                        <th className="py-2 pr-3">Wire Colour</th>
+                        <th className="py-2 pr-3">Cable</th>
+                        <th className="py-2">Connects To</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-300">
+                      {MAINS_TERMINALS.map((t, i) => (
+                        <tr key={i} className="border-b border-white/5 align-top">
+                          <td className="py-1.5 pr-3 font-mono text-amber-200 font-bold">{t.pin}</td>
+                          <td className="py-1.5 pr-3 font-semibold">{t.label}</td>
+                          <td className="py-1.5 pr-3">{t.color}</td>
+                          <td className="py-1.5 pr-3 text-slate-400">{t.wire}</td>
+                          <td className="py-1.5 text-slate-400">{t.notes}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SpecSection>
+
+              {/* Relay outputs */}
+              <SpecSection icon={<CircuitBoard className="w-4 h-4" />} title="২. রিলে আউটপুট টার্মিনাল  J2 × 8  (COM / NO / NC)">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-amber-300 border-b border-white/10">
+                        <th className="py-2 pr-2">CH</th>
+                        <th className="py-2 pr-2">GPIO</th>
+                        <th className="py-2 pr-2">Load</th>
+                        <th className="py-2 pr-2">COM</th>
+                        <th className="py-2 pr-2">NO</th>
+                        <th className="py-2 pr-2">NC</th>
+                        <th className="py-2">Fuse</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-slate-300">
+                      {RELAY_OUTPUTS.map((r, i) => (
+                        <tr key={i} className="border-b border-white/5 align-top">
+                          <td className="py-1.5 pr-2 font-mono text-amber-200 font-bold">{r.ch}</td>
+                          <td className="py-1.5 pr-2 font-mono text-emerald-200">{r.gpio}</td>
+                          <td className="py-1.5 pr-2 font-semibold">{r.load}</td>
+                          <td className="py-1.5 pr-2 text-slate-300">{r.com}</td>
+                          <td className="py-1.5 pr-2 text-slate-300">{r.no}</td>
+                          <td className="py-1.5 pr-2 text-slate-500">{r.nc}</td>
+                          <td className="py-1.5 text-slate-400">{r.fuse}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SpecSection>
+
+              {/* Schematic */}
+              <SpecSection icon={<Zap className="w-4 h-4" />} title="৩. সিঙ্গেল-চ্যানেল ওয়্যারিং স্কিম্যাটিক">
+                <pre className="text-[11px] text-slate-300 bg-slate-950/60 p-3 rounded-lg border border-white/10 overflow-x-auto leading-snug">
+{`   230 VAC                +-------+         +-----------+        +----------+
+   L  o----[ F1 10A ]----| MOV1  |---o-----| RELAY COM |        |   LOAD   |
+                          +-------+   |     |           |        | (Fan /   |
+                                      |     |    NO o---+--------+ Heater)  |
+                                 [F2..F9 5A per ch]    |        |          |
+   N  o-----------------------------------------------+--------+--+ N      |
+                                                       |          |        |
+   PE o--[ Enclosure / DIN rail / Load chassis ]------+----------+ PE      |
+                                                                  +--------+
+
+   NC = (not used, leave open)
+   ESP32 GPIO --[ opto-isolator on K1 board ]--> Relay coil (active LOW)`}
+                </pre>
+              </SpecSection>
+
+              {/* Rules */}
+              <SpecSection icon={<Shield className="w-4 h-4" />} title="৪. ওয়্যারিং নিয়ম ও সেফটি">
+                <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside">
+                  {WIRING_RULES.map((n, i) => <li key={i}>{n}</li>)}
+                </ol>
+              </SpecSection>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }
 
