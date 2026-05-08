@@ -984,7 +984,7 @@ export function PCBManufacturingSpec() {
                   ))}
                 </div>
               </SpecSection>
-
+            </ScrollArea>
           </CardContent>
         </Card>
       </TabsContent>
