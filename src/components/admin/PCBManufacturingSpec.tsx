@@ -481,7 +481,13 @@ export function PCBManufacturingSpec() {
 
 
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="spec" className="space-y-4">
+      <TabsList className="grid grid-cols-2 w-full max-w-md">
+        <TabsTrigger value="spec" className="gap-2"><CircuitBoard className="w-4 h-4" />PCB স্পেসিফিকেশন</TabsTrigger>
+        <TabsTrigger value="wiring" className="gap-2"><Plug className="w-4 h-4" />টার্মিনাল ওয়্যারিং</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="spec" className="space-y-4 mt-0">
       {/* Hero / download card */}
       <Card className="bg-gradient-to-br from-emerald-900/40 to-teal-900/30 border-emerald-500/30">
         <CardContent className="pt-6 pb-6 flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
