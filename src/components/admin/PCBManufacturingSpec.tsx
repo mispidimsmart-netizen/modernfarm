@@ -777,11 +777,11 @@ export function PCBManufacturingSpec() {
   const handleDownload = async () => {
     try {
       setBusy(true);
-      generatePDF();
-      toast.success('PDF ডাউনলোড হয়েছে — ম্যানুফ্যাকচারারকে দিন');
+      await generateDocx();
+      toast.success('Word ফাইল ডাউনলোড হয়েছে — ম্যানুফ্যাকচারারকে দিন');
     } catch (e) {
       console.error(e);
-      toast.error('PDF তৈরিতে সমস্যা হয়েছে');
+      toast.error('Word ফাইল তৈরিতে সমস্যা হয়েছে');
     } finally {
       setBusy(false);
     }
@@ -790,11 +790,11 @@ export function PCBManufacturingSpec() {
   const handleDownloadWiring = async () => {
     try {
       setBusyWiring(true);
-      generateWiringPDF();
-      toast.success('ওয়্যারিং ডায়াগ্রাম PDF ডাউনলোড হয়েছে');
+      await generateWiringDocx();
+      toast.success('ওয়্যারিং ডায়াগ্রাম Word ফাইল ডাউনলোড হয়েছে');
     } catch (e) {
       console.error(e);
-      toast.error('PDF তৈরিতে সমস্যা হয়েছে');
+      toast.error('Word ফাইল তৈরিতে সমস্যা হয়েছে');
     } finally {
       setBusyWiring(false);
     }
