@@ -536,7 +536,71 @@ function generateWiringPDF() {
     y += lines.length * 5 + 1;
   });
 
-  const total = doc.getNumberOfPages();
+  // ---- Section 5: Connector & wire-colour map ----
+  doc.addPage();
+  y = 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(31, 122, 62);
+  doc.text('5.  Connector & Wire-Colour Map  (every plug, pin-by-pin)', margin, y);
+  doc.setTextColor(0);
+  y += 6;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.text('Wire colours follow IEC 60446 for AC power. DC and signal colours are recommended Nexiot Labs convention.', margin, y);
+  y += 8;
+
+  CONNECTOR_MAP.forEach((g) => {
+    if (y > pageH - 40) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(31, 122, 62);
+    doc.text(`${g.id}  ·  ${g.title}`, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(90);
+    doc.text(`${g.subtitle}   —   ${g.pitch}`, margin, y + 4);
+    doc.setTextColor(0);
+    y += 7;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Pin', 'Signal', '', 'Wire Colour', 'Gauge', 'Notes']],
+      body: g.rows.map((r) => [r.pin, r.signal, '', r.colorName, r.awg, r.notes]),
+      theme: 'grid',
+      headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 8.5 },
+      bodyStyles: { fontSize: 8.5, valign: 'middle', minCellHeight: 6 },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+        1: { cellWidth: 45, fontStyle: 'bold' },
+        2: { cellWidth: 10, halign: 'center' },
+        3: { cellWidth: 45 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 'auto' },
+      },
+      didDrawCell: (data) => {
+        // Paint the colour swatch in column index 2
+        if (data.section === 'body' && data.column.index === 2) {
+          const row = g.rows[data.row.index];
+          if (row && row.colorHex) {
+            const hex = row.colorHex.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const gC = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            const cx = data.cell.x + data.cell.width / 2;
+            const cy = data.cell.y + data.cell.height / 2;
+            doc.setFillColor(r, gC, b);
+            doc.setDrawColor(80);
+            doc.setLineWidth(0.2);
+            doc.circle(cx, cy, 2.2, 'FD');
+          }
+        }
+      },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 6;
+  });
+
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
