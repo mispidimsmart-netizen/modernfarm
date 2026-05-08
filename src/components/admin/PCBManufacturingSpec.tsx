@@ -834,6 +834,7 @@ async function generateGerberZip() {
 export function PCBManufacturingSpec() {
   const [busy, setBusy] = useState(false);
   const [busyWiring, setBusyWiring] = useState(false);
+  const [busyZip, setBusyZip] = useState(false);
 
   const handleDownload = async () => {
     try {
@@ -858,6 +859,19 @@ export function PCBManufacturingSpec() {
       toast.error('PDF তৈরিতে সমস্যা হয়েছে');
     } finally {
       setBusyWiring(false);
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    try {
+      setBusyZip(true);
+      await generateGerberZip();
+      toast.success('Gerber/Drill ZIP ডাউনলোড হয়েছে — ম্যানুফ্যাকচারারকে দিন');
+    } catch (e) {
+      console.error(e);
+      toast.error('ZIP তৈরিতে সমস্যা হয়েছে');
+    } finally {
+      setBusyZip(false);
     }
   };
 
