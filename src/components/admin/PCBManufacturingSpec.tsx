@@ -159,6 +159,109 @@ const WIRING_RULES = [
   'Wire color code IEC 60446 মেনে চলুন: L=বাদামী, N=নীল, PE=সবুজ-হলুদ। অন্য রঙ ব্যবহার করবেন না।',
 ];
 
+// ---------------------------------------------------------------------------
+// CONNECTOR & WIRE-COLOUR MAP  (every plug on the PCB, pin-by-pin, with
+// recommended jacket / core colour for the field cable)
+// ---------------------------------------------------------------------------
+
+type ConnRow = { pin: string; signal: string; colorHex: string; colorName: string; awg: string; notes: string };
+type ConnGroup = { id: string; title: string; subtitle: string; pitch: string; rows: ConnRow[] };
+
+const CONNECTOR_MAP: ConnGroup[] = [
+  {
+    id: 'J1', title: 'J1 — Mains Input', subtitle: '3-pos screw terminal, 16A',
+    pitch: '5.08 mm pitch · PCB-mount · cage-clamp',
+    rows: [
+      { pin: '1', signal: 'L  (Live)',     colorHex: '#8B4513', colorName: 'বাদামী Brown',         awg: '1.5 mm² (16 AWG)', notes: 'IEC 60446 — phase' },
+      { pin: '2', signal: 'N  (Neutral)',  colorHex: '#1E40AF', colorName: 'নীল Blue',              awg: '1.5 mm² (16 AWG)', notes: 'Never switched' },
+      { pin: '3', signal: 'PE (Earth)',    colorHex: '#16A34A', colorName: 'সবুজ-হলুদ Green/Yellow', awg: '1.5 mm² (16 AWG)', notes: 'Mandatory · stripe pattern' },
+    ],
+  },
+  {
+    id: 'J2', title: 'J2 × 8 — Relay Outputs', subtitle: '3-pos per channel, 10A',
+    pitch: '5.08 mm pitch · COM / NO / NC',
+    rows: [
+      { pin: 'A', signal: 'COM',  colorHex: '#000000', colorName: 'কালো Black',     awg: '1.0 mm² (18 AWG)', notes: 'From per-channel fuse (L)' },
+      { pin: 'B', signal: 'NO',   colorHex: '#DC2626', colorName: 'লাল Red',         awg: '1.0 mm² (18 AWG)', notes: 'To load Live-in' },
+      { pin: 'C', signal: 'NC',   colorHex: '#6B7280', colorName: '— খালি Empty',   awg: '—',                 notes: 'Not used in this design' },
+    ],
+  },
+  {
+    id: 'J3-DHT', title: 'J3a / J3b — DHT22 Sensors', subtitle: 'JST-XH 4-pin, keyed',
+    pitch: '2.54 mm pitch · shielded cable, max 1 m',
+    rows: [
+      { pin: '1', signal: 'VCC 3V3', colorHex: '#DC2626', colorName: 'লাল Red',     awg: '24 AWG',  notes: 'Decouple 100 nF at sensor' },
+      { pin: '2', signal: 'DATA',    colorHex: '#FACC15', colorName: 'হলুদ Yellow',  awg: '24 AWG',  notes: '4.7k pull-up to 3V3' },
+      { pin: '3', signal: 'NC',      colorHex: '#6B7280', colorName: '—',            awg: '—',       notes: 'Leave open' },
+      { pin: '4', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',   awg: '24 AWG',  notes: 'Tie to logic GND' },
+    ],
+  },
+  {
+    id: 'J3-MQ', title: 'J3c — MQ-137 Ammonia', subtitle: 'JST-XH 4-pin',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'VCC 5V',  colorHex: '#DC2626', colorName: 'লাল Red',     awg: '22 AWG', notes: 'Heater needs ~150 mA' },
+      { pin: '2', signal: 'AOUT',    colorHex: '#FFFFFF', colorName: 'সাদা White',  awg: '24 AWG', notes: 'To GPIO 34 via TVS' },
+      { pin: '3', signal: 'DOUT',    colorHex: '#6B7280', colorName: '—',           awg: '—',      notes: 'Not connected' },
+      { pin: '4', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',  awg: '22 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J3-YF', title: 'J3d — YF-S201 Water Flow', subtitle: 'JST-XH 3-pin',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'VCC 5V',  colorHex: '#DC2626', colorName: 'লাল Red',      awg: '22 AWG', notes: 'Hall sensor supply' },
+      { pin: '2', signal: 'PULSE',   colorHex: '#FACC15', colorName: 'হলুদ Yellow',  awg: '24 AWG', notes: 'GPIO 18 ISR · 10k pull-up' },
+      { pin: '3', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',   awg: '22 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J3-ZMPT', title: 'J3e — ZMPT101B AC Voltage', subtitle: 'JST-XH 3-pin',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'VCC 5V',  colorHex: '#DC2626', colorName: 'লাল Red',     awg: '24 AWG', notes: '' },
+      { pin: '2', signal: 'AOUT',    colorHex: '#FFFFFF', colorName: 'সাদা White',  awg: '24 AWG', notes: 'GPIO 35 via TVS' },
+      { pin: '3', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',  awg: '24 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J3-LDR', title: 'J3f — LDR (Light)', subtitle: 'JST-XH 2-pin (optional)',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'AOUT',    colorHex: '#FACC15', colorName: 'হলুদ Yellow', awg: '24 AWG', notes: 'GPIO 36 (VP) · 10k divider' },
+      { pin: '2', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',  awg: '24 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J4', title: 'J4 — SIM800L GSM Module', subtitle: '6-pin Dupont header',
+    pitch: '2.54 mm pitch · separate 4.2 V supply',
+    rows: [
+      { pin: '1', signal: 'VBAT 4.2V', colorHex: '#DC2626', colorName: 'লাল Red',         awg: '20 AWG', notes: 'From PS3 + 470 µF C2' },
+      { pin: '2', signal: 'GND',       colorHex: '#000000', colorName: 'কালো Black',      awg: '20 AWG', notes: 'Star-ground to PS3' },
+      { pin: '3', signal: 'TXD → ESP RX', colorHex: '#FACC15', colorName: 'হলুদ Yellow',  awg: '24 AWG', notes: 'To GPIO 23' },
+      { pin: '4', signal: 'RXD ← ESP TX', colorHex: '#FFFFFF', colorName: 'সাদা White',   awg: '24 AWG', notes: 'From GPIO 19 via 1k+2k divider' },
+      { pin: '5', signal: 'RST',       colorHex: '#FB923C', colorName: 'কমলা Orange',     awg: '24 AWG', notes: 'GPIO 5 · active LOW' },
+      { pin: '6', signal: 'NET LED',   colorHex: '#16A34A', colorName: 'সবুজ Green',      awg: '24 AWG', notes: 'Optional — panel LED' },
+    ],
+  },
+  {
+    id: 'J5', title: 'J5 — Manual Override Button', subtitle: '2-pin screw terminal',
+    pitch: '3.5 mm pitch · panel-mount switch',
+    rows: [
+      { pin: '1', signal: 'BTN → GPIO 32', colorHex: '#DC2626', colorName: 'লাল Red',    awg: '24 AWG', notes: 'Through OK1 opto-isolator' },
+      { pin: '2', signal: 'GND',           colorHex: '#000000', colorName: 'কালো Black', awg: '24 AWG', notes: 'Internal pull-up · 50 ms debounce' },
+    ],
+  },
+  {
+    id: 'J6', title: 'J6 — 12 V DC Power Input', subtitle: '2-pin screw terminal, 5A',
+    pitch: '5.08 mm pitch · from PS1 SMPS',
+    rows: [
+      { pin: '1', signal: '+12 V',  colorHex: '#DC2626', colorName: 'লাল Red',    awg: '18 AWG', notes: 'Feeds JD-VCC + PS2 buck' },
+      { pin: '2', signal: 'GND',    colorHex: '#000000', colorName: 'কালো Black', awg: '18 AWG', notes: 'Common DC ground' },
+    ],
+  },
+];
+
 // ===========================================================================
 // PDF GENERATOR — main spec
 // ===========================================================================
@@ -431,6 +534,71 @@ function generateWiringPDF() {
     if (y + lines.length * 5 > pageH - 15) { doc.addPage(); y = 20; }
     doc.text(lines, margin, y);
     y += lines.length * 5 + 1;
+  });
+
+  // ---- Section 5: Connector & wire-colour map ----
+  doc.addPage();
+  y = 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(31, 122, 62);
+  doc.text('5.  Connector & Wire-Colour Map  (every plug, pin-by-pin)', margin, y);
+  doc.setTextColor(0);
+  y += 6;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.text('Wire colours follow IEC 60446 for AC power. DC and signal colours are recommended Nexiot Labs convention.', margin, y);
+  y += 8;
+
+  CONNECTOR_MAP.forEach((g) => {
+    if (y > pageH - 40) { doc.addPage(); y = 20; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(31, 122, 62);
+    doc.text(`${g.id}  ·  ${g.title}`, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(90);
+    doc.text(`${g.subtitle}   —   ${g.pitch}`, margin, y + 4);
+    doc.setTextColor(0);
+    y += 7;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Pin', 'Signal', '', 'Wire Colour', 'Gauge', 'Notes']],
+      body: g.rows.map((r) => [r.pin, r.signal, '', r.colorName, r.awg, r.notes]),
+      theme: 'grid',
+      headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 8.5 },
+      bodyStyles: { fontSize: 8.5, valign: 'middle', minCellHeight: 6 },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' },
+        1: { cellWidth: 45, fontStyle: 'bold' },
+        2: { cellWidth: 10, halign: 'center' },
+        3: { cellWidth: 45 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 'auto' },
+      },
+      didDrawCell: (data) => {
+        // Paint the colour swatch in column index 2
+        if (data.section === 'body' && data.column.index === 2) {
+          const row = g.rows[data.row.index];
+          if (row && row.colorHex) {
+            const hex = row.colorHex.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const gC = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            const cx = data.cell.x + data.cell.width / 2;
+            const cy = data.cell.y + data.cell.height / 2;
+            doc.setFillColor(r, gC, b);
+            doc.setDrawColor(80);
+            doc.setLineWidth(0.2);
+            doc.circle(cx, cy, 2.2, 'FD');
+          }
+        }
+      },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 6;
   });
 
   const total = doc.getNumberOfPages();
@@ -766,6 +934,55 @@ export function PCBManufacturingSpec() {
                 <ol className="text-xs text-slate-300 space-y-1.5 list-decimal list-inside">
                   {WIRING_RULES.map((n, i) => <li key={i}>{n}</li>)}
                 </ol>
+              </SpecSection>
+
+              {/* 5. Connector & wire-colour map */}
+              <SpecSection icon={<Plug className="w-4 h-4" />} title="৫. কানেক্টর ও তারের রঙ ম্যাপিং (প্রতিটি প্লাগ, পিন-বাই-পিন)">
+                <p className="text-[11px] text-slate-400 mb-3">
+                  AC পাওয়ারে IEC 60446 রঙ-কোড। DC ও সিগন্যাল লাইনে Nexiot Labs convention — ফিল্ডে এই রঙ মেনে চললে troubleshooting দ্রুত হয়।
+                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {CONNECTOR_MAP.map((g) => (
+                    <div key={g.id} className="rounded-lg border border-white/10 bg-slate-950/50 overflow-hidden">
+                      <div className="px-3 py-2 bg-gradient-to-r from-amber-900/30 to-transparent border-b border-white/10">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-mono text-amber-300 font-bold text-xs">{g.id}</span>
+                          <span className="text-[10px] text-slate-500">{g.pitch}</span>
+                        </div>
+                        <div className="text-xs text-slate-200 font-semibold mt-0.5">{g.title}</div>
+                        <div className="text-[10px] text-slate-400">{g.subtitle}</div>
+                      </div>
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="text-left text-slate-500 border-b border-white/5">
+                            <th className="px-2 py-1 w-8 text-center">Pin</th>
+                            <th className="px-2 py-1">Signal</th>
+                            <th className="px-2 py-1 w-6"></th>
+                            <th className="px-2 py-1">Wire</th>
+                            <th className="px-2 py-1 w-16">AWG</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-slate-300">
+                          {g.rows.map((r, i) => (
+                            <tr key={i} className="border-b border-white/5 last:border-0 align-middle">
+                              <td className="px-2 py-1.5 text-center font-mono text-amber-200 font-bold">{r.pin}</td>
+                              <td className="px-2 py-1.5 font-semibold">{r.signal}</td>
+                              <td className="px-2 py-1.5">
+                                <span
+                                  className="inline-block w-3.5 h-3.5 rounded-full border border-white/30 shadow-inner"
+                                  style={{ backgroundColor: r.colorHex }}
+                                  title={r.colorName}
+                                />
+                              </td>
+                              <td className="px-2 py-1.5 text-slate-300">{r.colorName}</td>
+                              <td className="px-2 py-1.5 text-slate-400 font-mono text-[10px]">{r.awg}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
               </SpecSection>
             </ScrollArea>
           </CardContent>
