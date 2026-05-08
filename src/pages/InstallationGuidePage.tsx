@@ -62,7 +62,7 @@ const partsList = [
     category: 'মূল কন্ট্রোলার',
     categoryEn: 'Main Controller',
     items: [
-      { name: 'ESP32 DevKit V1 (30-pin)', nameEn: 'ESP32 DevKit V1 (30-pin)', quantity: 1, price: '৳৫৫০-৭৫০', priceRange: [550, 750], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: true },
+      { name: 'ESP32-WROOM-32 DevKit V1 (38-pin) — স্ট্যান্ডার্ড', nameEn: 'ESP32-WROOM-32 DevKit V1 (38-pin)', quantity: 1, price: '৳৬০০-৮০০', priceRange: [600, 800], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: true },
       { name: 'USB কেবল (Micro USB / Type-C)', nameEn: 'USB Cable (Micro USB / Type-C)', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'যেকোনো ইলেকট্রনিক্স দোকান', essential: true },
     ]
   },
