@@ -61,6 +61,7 @@ import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab'
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
+import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
 
 const t = {
   bn: {
