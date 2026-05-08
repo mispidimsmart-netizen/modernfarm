@@ -124,9 +124,45 @@ const TEST_CHECKLIST = [
   'Soak test: 48 h continuous run with simulated load cycling every 5 min.',
 ];
 
+// ---------------------------------------------------------------------------
+// TERMINAL WIRING (L / N / PE  +  COM / NO / NC)
+// ---------------------------------------------------------------------------
+
+// Mains input terminal block J1 (3-pos, 5.08mm, 16A)
+const MAINS_TERMINALS: Array<{ pin: string; label: string; color: string; wire: string; notes: string }> = [
+  { pin: 'J1-1', label: 'L  (Live / Phase)',    color: 'বাদামী (Brown) / লাল',  wire: '1.5 mm² stranded', notes: '10A fuse F1 + MOV1 → SMPS L, Relay COM bus' },
+  { pin: 'J1-2', label: 'N  (Neutral)',          color: 'নীল (Blue) / কালো',     wire: '1.5 mm² stranded', notes: 'Direct → SMPS N, Load N return bus' },
+  { pin: 'J1-3', label: 'PE (Protective Earth)', color: 'সবুজ-হলুদ (Green/Yellow)', wire: '1.5 mm² stranded', notes: 'Enclosure metal, DIN rail, every load chassis — MANDATORY' },
+];
+
+// Per-relay output terminal block J2 (3-pos per channel, 10A)
+const RELAY_OUTPUTS: Array<{ ch: string; gpio: string; load: string; com: string; no: string; nc: string; fuse: string }> = [
+  { ch: 'CH1', gpio: 'GPIO 25', load: 'Exhaust Fan',     com: 'L (via F2 5A)', no: 'Fan L-in',     nc: '— (খালি)', fuse: 'F2' },
+  { ch: 'CH2', gpio: 'GPIO 26', load: 'Ceiling Fan',     com: 'L (via F3 5A)', no: 'Fan L-in',     nc: '— (খালি)', fuse: 'F3' },
+  { ch: 'CH3', gpio: 'GPIO 27', load: 'Light',           com: 'L (via F4 5A)', no: 'Light L-in',   nc: '— (খালি)', fuse: 'F4' },
+  { ch: 'CH4', gpio: 'GPIO 14', load: 'Heater (>1kW)',   com: 'L (via F5 5A) → KM1 coil A1', no: 'KM1 A2 / Heater L (small)', nc: '— (খালি)', fuse: 'F5  +  CJX2-1210 contactor' },
+  { ch: 'CH5', gpio: 'GPIO 12', load: 'Fogger Pump',     com: 'L (via F6 5A)', no: 'Fogger L-in',  nc: '— (খালি)', fuse: 'F6' },
+  { ch: 'CH6', gpio: 'GPIO 13', load: 'Alarm / Siren',   com: '12V+ (DC)',     no: 'Buzzer/Siren +', nc: '— (খালি)', fuse: '— (DC, fuse on 12V rail)' },
+  { ch: 'CH7', gpio: 'GPIO 15', load: 'Sprinkler Valve', com: 'L (via F8 5A)', no: 'Valve L-in',   nc: '— (খালি)', fuse: 'F8' },
+  { ch: 'CH8', gpio: 'GPIO 33', load: 'Circulation Fan', com: 'L (via F9 5A)', no: 'Fan L-in',     nc: '— (খালি)', fuse: 'F9' },
+];
+
+const WIRING_RULES = [
+  'প্রত্যেক লোডের NEUTRAL সরাসরি J1-2 (N) bus-bar এ যাবে — relay দিয়ে কখনো N switch করবেন না।',
+  'প্রত্যেক লোডের EARTH (PE) সরাসরি J1-3 bus-bar এ — metal chassis, motor body, contactor frame সব।',
+  'Relay শুধু LIVE (L) line switch করে: L → fuse → COM → NO → Load।',
+  'NC (Normally Closed) terminal এই ডিজাইনে ব্যবহার হয় না — খালি রাখুন (false-trigger এড়াতে)।',
+  'Heater (CH4) 1 kW এর বেশি হলে relay সরাসরি load চালাবে না — CJX2-1210 contactor coil এ যাবে, contactor main contact heater চালাবে।',
+  'Alarm (CH6) DC buzzer, তাই COM = 12V+, NO = buzzer +; buzzer − সরাসরি GND এ।',
+  'প্রত্যেক wire ferrule দিয়ে crimp করুন — bare strand কখনো terminal এ ঢুকাবেন না।',
+  'Mains cable IP66 cable gland (PG-13.5) দিয়ে enclosure এ ঢুকবে; sensor cable PG-9 দিয়ে।',
+  'Wire color code IEC 60446 মেনে চলুন: L=বাদামী, N=নীল, PE=সবুজ-হলুদ। অন্য রঙ ব্যবহার করবেন না।',
+];
+
 // ===========================================================================
-// PDF GENERATOR
+// PDF GENERATOR — main spec
 // ===========================================================================
+
 
 function generatePDF() {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
