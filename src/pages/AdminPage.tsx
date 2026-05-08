@@ -696,6 +696,10 @@ export default function AdminPage() {
           <TabsContent value="commands" className="mt-4">
             <AdminCommandDeliveryPanel />
           </TabsContent>
+
+          <TabsContent value="pcb" className="mt-4">
+            <PCBManufacturingSpec />
+          </TabsContent>
         </Tabs>
       </div>
 
