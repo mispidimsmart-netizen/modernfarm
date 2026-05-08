@@ -159,6 +159,109 @@ const WIRING_RULES = [
   'Wire color code IEC 60446 মেনে চলুন: L=বাদামী, N=নীল, PE=সবুজ-হলুদ। অন্য রঙ ব্যবহার করবেন না।',
 ];
 
+// ---------------------------------------------------------------------------
+// CONNECTOR & WIRE-COLOUR MAP  (every plug on the PCB, pin-by-pin, with
+// recommended jacket / core colour for the field cable)
+// ---------------------------------------------------------------------------
+
+type ConnRow = { pin: string; signal: string; colorHex: string; colorName: string; awg: string; notes: string };
+type ConnGroup = { id: string; title: string; subtitle: string; pitch: string; rows: ConnRow[] };
+
+const CONNECTOR_MAP: ConnGroup[] = [
+  {
+    id: 'J1', title: 'J1 — Mains Input', subtitle: '3-pos screw terminal, 16A',
+    pitch: '5.08 mm pitch · PCB-mount · cage-clamp',
+    rows: [
+      { pin: '1', signal: 'L  (Live)',     colorHex: '#8B4513', colorName: 'বাদামী Brown',         awg: '1.5 mm² (16 AWG)', notes: 'IEC 60446 — phase' },
+      { pin: '2', signal: 'N  (Neutral)',  colorHex: '#1E40AF', colorName: 'নীল Blue',              awg: '1.5 mm² (16 AWG)', notes: 'Never switched' },
+      { pin: '3', signal: 'PE (Earth)',    colorHex: '#16A34A', colorName: 'সবুজ-হলুদ Green/Yellow', awg: '1.5 mm² (16 AWG)', notes: 'Mandatory · stripe pattern' },
+    ],
+  },
+  {
+    id: 'J2', title: 'J2 × 8 — Relay Outputs', subtitle: '3-pos per channel, 10A',
+    pitch: '5.08 mm pitch · COM / NO / NC',
+    rows: [
+      { pin: 'A', signal: 'COM',  colorHex: '#000000', colorName: 'কালো Black',     awg: '1.0 mm² (18 AWG)', notes: 'From per-channel fuse (L)' },
+      { pin: 'B', signal: 'NO',   colorHex: '#DC2626', colorName: 'লাল Red',         awg: '1.0 mm² (18 AWG)', notes: 'To load Live-in' },
+      { pin: 'C', signal: 'NC',   colorHex: '#6B7280', colorName: '— খালি Empty',   awg: '—',                 notes: 'Not used in this design' },
+    ],
+  },
+  {
+    id: 'J3-DHT', title: 'J3a / J3b — DHT22 Sensors', subtitle: 'JST-XH 4-pin, keyed',
+    pitch: '2.54 mm pitch · shielded cable, max 1 m',
+    rows: [
+      { pin: '1', signal: 'VCC 3V3', colorHex: '#DC2626', colorName: 'লাল Red',     awg: '24 AWG',  notes: 'Decouple 100 nF at sensor' },
+      { pin: '2', signal: 'DATA',    colorHex: '#FACC15', colorName: 'হলুদ Yellow',  awg: '24 AWG',  notes: '4.7k pull-up to 3V3' },
+      { pin: '3', signal: 'NC',      colorHex: '#6B7280', colorName: '—',            awg: '—',       notes: 'Leave open' },
+      { pin: '4', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',   awg: '24 AWG',  notes: 'Tie to logic GND' },
+    ],
+  },
+  {
+    id: 'J3-MQ', title: 'J3c — MQ-137 Ammonia', subtitle: 'JST-XH 4-pin',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'VCC 5V',  colorHex: '#DC2626', colorName: 'লাল Red',     awg: '22 AWG', notes: 'Heater needs ~150 mA' },
+      { pin: '2', signal: 'AOUT',    colorHex: '#FFFFFF', colorName: 'সাদা White',  awg: '24 AWG', notes: 'To GPIO 34 via TVS' },
+      { pin: '3', signal: 'DOUT',    colorHex: '#6B7280', colorName: '—',           awg: '—',      notes: 'Not connected' },
+      { pin: '4', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',  awg: '22 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J3-YF', title: 'J3d — YF-S201 Water Flow', subtitle: 'JST-XH 3-pin',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'VCC 5V',  colorHex: '#DC2626', colorName: 'লাল Red',      awg: '22 AWG', notes: 'Hall sensor supply' },
+      { pin: '2', signal: 'PULSE',   colorHex: '#FACC15', colorName: 'হলুদ Yellow',  awg: '24 AWG', notes: 'GPIO 18 ISR · 10k pull-up' },
+      { pin: '3', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',   awg: '22 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J3-ZMPT', title: 'J3e — ZMPT101B AC Voltage', subtitle: 'JST-XH 3-pin',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'VCC 5V',  colorHex: '#DC2626', colorName: 'লাল Red',     awg: '24 AWG', notes: '' },
+      { pin: '2', signal: 'AOUT',    colorHex: '#FFFFFF', colorName: 'সাদা White',  awg: '24 AWG', notes: 'GPIO 35 via TVS' },
+      { pin: '3', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',  awg: '24 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J3-LDR', title: 'J3f — LDR (Light)', subtitle: 'JST-XH 2-pin (optional)',
+    pitch: '2.54 mm pitch',
+    rows: [
+      { pin: '1', signal: 'AOUT',    colorHex: '#FACC15', colorName: 'হলুদ Yellow', awg: '24 AWG', notes: 'GPIO 36 (VP) · 10k divider' },
+      { pin: '2', signal: 'GND',     colorHex: '#000000', colorName: 'কালো Black',  awg: '24 AWG', notes: '' },
+    ],
+  },
+  {
+    id: 'J4', title: 'J4 — SIM800L GSM Module', subtitle: '6-pin Dupont header',
+    pitch: '2.54 mm pitch · separate 4.2 V supply',
+    rows: [
+      { pin: '1', signal: 'VBAT 4.2V', colorHex: '#DC2626', colorName: 'লাল Red',         awg: '20 AWG', notes: 'From PS3 + 470 µF C2' },
+      { pin: '2', signal: 'GND',       colorHex: '#000000', colorName: 'কালো Black',      awg: '20 AWG', notes: 'Star-ground to PS3' },
+      { pin: '3', signal: 'TXD → ESP RX', colorHex: '#FACC15', colorName: 'হলুদ Yellow',  awg: '24 AWG', notes: 'To GPIO 23' },
+      { pin: '4', signal: 'RXD ← ESP TX', colorHex: '#FFFFFF', colorName: 'সাদা White',   awg: '24 AWG', notes: 'From GPIO 19 via 1k+2k divider' },
+      { pin: '5', signal: 'RST',       colorHex: '#FB923C', colorName: 'কমলা Orange',     awg: '24 AWG', notes: 'GPIO 5 · active LOW' },
+      { pin: '6', signal: 'NET LED',   colorHex: '#16A34A', colorName: 'সবুজ Green',      awg: '24 AWG', notes: 'Optional — panel LED' },
+    ],
+  },
+  {
+    id: 'J5', title: 'J5 — Manual Override Button', subtitle: '2-pin screw terminal',
+    pitch: '3.5 mm pitch · panel-mount switch',
+    rows: [
+      { pin: '1', signal: 'BTN → GPIO 32', colorHex: '#DC2626', colorName: 'লাল Red',    awg: '24 AWG', notes: 'Through OK1 opto-isolator' },
+      { pin: '2', signal: 'GND',           colorHex: '#000000', colorName: 'কালো Black', awg: '24 AWG', notes: 'Internal pull-up · 50 ms debounce' },
+    ],
+  },
+  {
+    id: 'J6', title: 'J6 — 12 V DC Power Input', subtitle: '2-pin screw terminal, 5A',
+    pitch: '5.08 mm pitch · from PS1 SMPS',
+    rows: [
+      { pin: '1', signal: '+12 V',  colorHex: '#DC2626', colorName: 'লাল Red',    awg: '18 AWG', notes: 'Feeds JD-VCC + PS2 buck' },
+      { pin: '2', signal: 'GND',    colorHex: '#000000', colorName: 'কালো Black', awg: '18 AWG', notes: 'Common DC ground' },
+    ],
+  },
+];
+
 // ===========================================================================
 // PDF GENERATOR — main spec
 // ===========================================================================
