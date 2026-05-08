@@ -315,11 +315,143 @@ function generatePDF() {
 }
 
 // ===========================================================================
+// PDF GENERATOR — terminal wiring diagram
+// ===========================================================================
+
+function generateWiringPDF() {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 12;
+
+  doc.setFillColor(31, 122, 62);
+  doc.rect(0, 0, pageW, 22, 'F');
+  doc.setTextColor(255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('FarmEye — Terminal Wiring Diagram', margin, 11);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`L / N / PE input  +  COM / NO / NC outputs   |   ${PROJECT.productCode}   |   ${PROJECT.version}`, margin, 17);
+
+  doc.setTextColor(0);
+  let y = 30;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('1.  Mains Input Terminal Block  (J1, 3-pos 5.08mm, 16A)', margin, y);
+  doc.setTextColor(0);
+  y += 4;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Pin', 'Label', 'Wire Colour (IEC 60446)', 'Cable', 'Connects To']],
+    body: MAINS_TERMINALS.map((t) => [t.pin, t.label, t.color, t.wire, t.notes]),
+    theme: 'grid',
+    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 18, fontStyle: 'bold', halign: 'center' },
+      1: { cellWidth: 50, fontStyle: 'bold' },
+      2: { cellWidth: 55 },
+      3: { cellWidth: 35 },
+      4: { cellWidth: 'auto' },
+    },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  if (y > pageH - 80) { doc.addPage(); y = 20; }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('2.  Relay Output Terminal Blocks  (J2 x 8, 3-pos 5.08mm, 10A — COM / NO / NC)', margin, y);
+  doc.setTextColor(0);
+  y += 4;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['CH', 'GPIO', 'Load', 'COM (terminal A)', 'NO (terminal B)', 'NC (terminal C)', 'Fuse / Notes']],
+    body: RELAY_OUTPUTS.map((r) => [r.ch, r.gpio, r.load, r.com, r.no, r.nc, r.fuse]),
+    theme: 'grid',
+    headStyles: { fillColor: [31, 122, 62], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 8.5 },
+    columnStyles: {
+      0: { cellWidth: 14, fontStyle: 'bold', halign: 'center' },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 35, fontStyle: 'bold' },
+      3: { cellWidth: 50 },
+      4: { cellWidth: 50 },
+      5: { cellWidth: 25, halign: 'center', textColor: 120 },
+      6: { cellWidth: 'auto' },
+    },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  doc.addPage();
+  y = 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('3.  Single-Channel Wiring Schematic  (typical AC load)', margin, y);
+  doc.setTextColor(0);
+  y += 8;
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(9);
+  const schematic = [
+    '   230 VAC                 +-------+        +-----------+        +----------+   ',
+    '   L  o-----[ F1 10A ]----| MOV1  |---o----| RELAY COM |        |   LOAD   |   ',
+    '                           +-------+   |    |           |        | (Fan /   |   ',
+    '                                       |    |   NO o----+--------+ Heater)  |   ',
+    '                                  [F2..F9 5A per ch]   |        |          |   ',
+    '                                                       |        |          |   ',
+    '   N  o------------------------------------------------|--------+--+ N     |   ',
+    '                                                       |           |       |   ',
+    '   PE o---[ Enclosure / DIN rail / Load chassis ]------|-----------+ PE    |   ',
+    '                                                       |           +-------+   ',
+    '                                              NC = (not used, leave open)      ',
+    '                                                                               ',
+    '   ESP32 GPIO --[ opto-isolator on K1 board ]--> Relay coil (active LOW)       ',
+  ];
+  schematic.forEach((line) => { doc.text(line, margin, y); y += 4; });
+
+  y += 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(31, 122, 62);
+  doc.text('4.  Wiring Rules & Safety', margin, y);
+  doc.setTextColor(0);
+  y += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  WIRING_RULES.forEach((r, i) => {
+    const lines = doc.splitTextToSize(`${i + 1}.  ${r}`, pageW - 2 * margin);
+    if (y + lines.length * 5 > pageH - 15) { doc.addPage(); y = 20; }
+    doc.text(lines, margin, y);
+    y += lines.length * 5 + 1;
+  });
+
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`${PROJECT.vendor}  •  Terminal Wiring  •  ${PROJECT.version}`, margin, pageH - 6);
+    doc.text(`Page ${i} / ${total}`, pageW - margin, pageH - 6, { align: 'right' });
+  }
+
+  doc.save(`FarmEye_Terminal_Wiring_${PROJECT.productCode}.pdf`);
+}
+
+// ===========================================================================
 // COMPONENT
 // ===========================================================================
 
 export function PCBManufacturingSpec() {
   const [busy, setBusy] = useState(false);
+  const [busyWiring, setBusyWiring] = useState(false);
 
   const handleDownload = async () => {
     try {
@@ -333,6 +465,20 @@ export function PCBManufacturingSpec() {
       setBusy(false);
     }
   };
+
+  const handleDownloadWiring = async () => {
+    try {
+      setBusyWiring(true);
+      generateWiringPDF();
+      toast.success('ওয়্যারিং ডায়াগ্রাম PDF ডাউনলোড হয়েছে');
+    } catch (e) {
+      console.error(e);
+      toast.error('PDF তৈরিতে সমস্যা হয়েছে');
+    } finally {
+      setBusyWiring(false);
+    }
+  };
+
 
   return (
     <div className="space-y-4">
