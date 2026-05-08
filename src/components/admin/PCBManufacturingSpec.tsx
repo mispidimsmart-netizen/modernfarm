@@ -875,6 +875,40 @@ export function PCBManufacturingSpec() {
     }
   };
 
+  const downloadText = (filename: string, content: string, mime: string) => {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    saveAs(blob, filename);
+  };
+
+  const docDownloads = [
+    {
+      key: 'bom',
+      label: 'BOM (Bill of Materials)',
+      desc: 'সম্পূর্ণ পার্টস তালিকা — ম্যানুফ্যাকচারারের কেনাকাটার জন্য',
+      filename: `FarmEye_BOM_${PROJECT.productCode}.csv`,
+      mime: 'text/csv',
+      build: buildBomCsv,
+      icon: <FileText className="w-4 h-4" />,
+    },
+    {
+      key: 'gpio',
+      label: 'GPIO Map (পিন অ্যাসাইনমেন্ট)',
+      desc: 'ESP32-WROOM-32 38-pin সব পিনের ফাংশন ও সংযোগ',
+      filename: `FarmEye_GPIO_MAP_${PROJECT.productCode}.csv`,
+      mime: 'text/csv',
+      build: buildGpioCsv,
+      icon: <Cpu className="w-4 h-4" />,
+    },
+    {
+      key: 'conn',
+      label: 'Connector Map (তারের রঙ)',
+      desc: 'প্রতিটি কানেক্টরের পিন, সিগন্যাল, ও তারের রঙ',
+      filename: `FarmEye_CONNECTORS_${PROJECT.productCode}.csv`,
+      mime: 'text/csv',
+      build: buildConnectorCsv,
+      icon: <Plug className="w-4 h-4" />,
+    },
+  ];
 
   return (
     <Tabs defaultValue="spec" className="space-y-4">
