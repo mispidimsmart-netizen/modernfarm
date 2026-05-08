@@ -601,6 +601,7 @@ function generateWiringPDF() {
     y = (doc as any).lastAutoTable.finalY + 6;
   });
 
+  const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
