@@ -869,7 +869,7 @@ export function PCBManufacturingSpec() {
                 {PROJECT.name} — {PROJECT.version}
               </p>
               <p className="text-xs text-slate-400 mt-1">
-                সম্পূর্ণ BOM, GPIO ম্যাপ, লে-আউট জোন, সেফটি ও টেস্ট চেকলিস্ট সহ একটি প্রোডাকশন-রেডি PDF — সরাসরি ম্যানুফ্যাকচারারকে দিন।
+                সম্পূর্ণ BOM, GPIO ম্যাপ, লে-আউট জোন, সেফটি ও টেস্ট চেকলিস্ট সহ একটি প্রোডাকশন-রেডি Word ফাইল — সরাসরি ম্যানুফ্যাকচারারকে দিন। (বাংলা ফন্ট নিরাপদ)
               </p>
             </div>
           </div>
@@ -881,7 +881,7 @@ export function PCBManufacturingSpec() {
               className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-0 hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/30"
             >
               {busy ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
-              PDF ডাউনলোড
+              Word ডাউনলোড (.docx)
             </Button>
             <Button
               size="lg"
