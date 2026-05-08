@@ -88,6 +88,25 @@ const BOM: Array<{ ref: string; qty: number; part: string; spec: string; package
   { ref: 'ENC1', qty: 1, part: 'Enclosure', spec: 'IP66 ABS, 300 × 200 × 130 mm, transparent lid, vent grilles with mesh', package: '—', notes: 'Wall-mount with 4× M4 standoffs for PCB' },
   { ref: 'DIN1', qty: 1, part: 'DIN rail (35 mm) inside enclosure', spec: '150 mm length', package: '—', notes: 'For contactor & SMPS' },
   { ref: 'PG1', qty: 6, part: 'Cable glands PG-9 / PG-13.5', spec: 'IP68', package: '—', notes: 'For sensor + load cables' },
+  // ---- Sensor accuracy & EMI filtering ----
+  { ref: 'FB1-FB2', qty: 2, part: 'Ferrite bead', spec: '600Ω @ 100 MHz, 1A', package: 'Through-hole / clip-on', notes: 'On each DHT22 DATA line — kills EMI from long shielded cable' },
+  { ref: 'NTC1', qty: 1, part: 'NTC inrush thermistor', spec: '5Ω 1A (B57236S)', package: 'Radial', notes: 'Series with MQ-137 heater VCC — limits 5V rail spike at heater turn-on' },
+  { ref: 'RC1-RC2', qty: 2, part: 'RC low-pass filter (10kΩ + 100nF)', spec: 'fc ≈ 160 Hz', package: '0805 / through-hole', notes: 'Between MQ-137 AOUT→GPIO34 and ZMPT→GPIO35 — smooths ADC, reduces false alarms' },
+  // ---- ESP32 brown-out / restart prevention ----
+  { ref: 'C11', qty: 1, part: 'Tantalum capacitor', spec: '100 µF / 10V, low-ESR', package: 'SMD-D / radial', notes: 'Parallel to C1 near ESP VIN — fast transient response (electrolytics are slow)' },
+  { ref: 'L1', qty: 1, part: 'Power inductor', spec: '10 µH 2A, shielded', package: 'Through-hole', notes: 'LC filter on PS2 5V output: PS2 → L1 → C12 → ESP — kills buck converter ripple' },
+  { ref: 'C12', qty: 1, part: 'Electrolytic capacitor', spec: '470 µF / 10V low-ESR', package: 'Radial 8×12', notes: 'After L1 — final 5V smoothing before ESP' },
+  // ---- Voltage fault & power quality ----
+  { ref: 'GDT1', qty: 1, part: 'Gas Discharge Tube', spec: '350V, 3-electrode, 5kA', package: 'Radial', notes: 'BEFORE MOV1 on L-N-PE — first stage lightning protection (handles 5kA, MOV handles aftermath)' },
+  { ref: 'SC1', qty: 1, part: 'Supercapacitor + diode', spec: '1F 5.5V + 1N5817 schottky', package: 'Radial', notes: 'Across ESP VIN via diode — gives 3-5s ride-through on power loss for safe state save' },
+  { ref: 'RD1', qty: 1, part: '12V rail voltage divider', spec: '100kΩ + 33kΩ, 1% metal-film', package: '0805 / through-hole', notes: '12V → GPIO 39 (ADC) — firmware monitors rail health, alerts on droop <11V' },
+  { ref: 'Q1', qty: 1, part: 'Reverse-polarity protection', spec: 'IRF4905 P-MOSFET OR SS54 schottky 5A', package: 'TO-220 / SMA', notes: 'In series with 12V input — prevents damage if installer swaps + and −' },
+  // ---- EMC / Relay arcing suppression ----
+  { ref: 'SN1-SN8', qty: 8, part: 'RC snubber network', spec: '100Ω 1W + 100nF X2 275VAC', package: 'Through-hole', notes: 'Across each relay NO-COM contact — suppresses arc, extends contact life 5×, kills EMI from inductive loads (motors/contactors)' },
+  // ---- Thermal management ----
+  { ref: 'FAN1', qty: 1, part: 'Enclosure cooling fan', spec: '40×40×10 mm, 12V, ball-bearing, ≥6000h MTBF', package: 'Panel-mount with grille+filter', notes: 'Mounted on enclosure side with intake filter; runs continuously OR thermostat-controlled' },
+  { ref: 'TC1', qty: 1, part: 'Thermal cutout switch', spec: '75°C NC bimetallic, 10A', package: 'KSD9700 surface-mount', notes: 'Inside enclosure on heatsink — opens main 12V if box overheats (last-resort safety)' },
+  { ref: 'CC1', qty: 1, part: 'Conformal coating spray', spec: 'HumiSeal 1B73 acrylic OR MG Chemicals 422B', package: '340g aerosol', notes: 'Spray entire PCB after assembly — protects from poultry shed humidity, ammonia (NH3), dust' },
 ];
 
 const POWER_TREE = [
