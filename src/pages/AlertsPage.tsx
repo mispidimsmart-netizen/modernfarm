@@ -1,6 +1,8 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useAcknowledgeAlert } from '@/hooks/useFarmData';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
@@ -36,6 +38,22 @@ export function AlertsPage() {
   const { language } = useAuth();
   const { activeAlerts, resolvedAlerts, isQuietHours } = useSmartAlerts();
   const acknowledgeAlert = useAcknowledgeAlert();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle ?ack=<id> from push notification action
+  useEffect(() => {
+    const ackId = searchParams.get('ack');
+    if (!ackId) return;
+    acknowledgeAlert.mutate(ackId, {
+      onSuccess: () => toast.success(language === 'bn' ? 'সতর্কতা স্বীকৃত' : 'Alert acknowledged'),
+      onError: (e: any) =>
+        toast.error(language === 'bn' ? 'স্বীকৃতি ব্যর্থ' : 'Acknowledge failed', { description: e?.message }),
+    });
+    const next = new URLSearchParams(searchParams);
+    next.delete('ack');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Locally dismissed synthetic / grouped alerts (no DB row to acknowledge)
   const [localDismissed, setLocalDismissed] = useState<Set<string>>(new Set());
