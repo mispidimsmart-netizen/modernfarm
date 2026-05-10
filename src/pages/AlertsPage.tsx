@@ -116,7 +116,7 @@ export function AlertsPage() {
           )}
 
           <Tabs defaultValue="active" className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-2">
+            <TabsList className="mb-4 grid w-full grid-cols-3">
               <TabsTrigger value="active" className="flex items-center gap-2">
                 <Bell size={16} />
                 {language === 'bn' ? 'নতুন' : 'Active'}
@@ -129,6 +129,10 @@ export function AlertsPage() {
               <TabsTrigger value="history" className="flex items-center gap-2">
                 <History size={16} />
                 {language === 'bn' ? 'ইতিহাস' : 'History'}
+              </TabsTrigger>
+              <TabsTrigger value="delivery" className="flex items-center gap-2">
+                <Send size={16} />
+                {language === 'bn' ? 'ডেলিভারি' : 'Delivery'}
               </TabsTrigger>
             </TabsList>
 
