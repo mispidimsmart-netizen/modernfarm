@@ -169,6 +169,7 @@ export function FirmwareManagementTab({ language }: Props) {
       setVersion("");
       setChangelog("");
       setChangelogBn("");
+      setSignatureB64("");
       qc.invalidateQueries({ queryKey: ["firmware-registry"] });
     } catch (e) {
       toast.error((e as Error).message);
