@@ -54,6 +54,7 @@ import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { SensorFreshnessBadge } from '@/components/dashboard/SensorFreshnessBadge';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
+import { ConnectionQualityCard } from '@/components/control/ConnectionQualityCard';
 import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
 import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 
