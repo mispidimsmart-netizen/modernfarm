@@ -3905,6 +3905,36 @@ export type Database = {
           },
         ]
       }
+      notification_digest_state: {
+        Row: {
+          channel: string
+          created_at: string
+          farm_id: string
+          id: string
+          last_digest_alert_count: number
+          last_digest_at: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          farm_id: string
+          id?: string
+          last_digest_alert_count?: number
+          last_digest_at?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          farm_id?: string
+          id?: string
+          last_digest_alert_count?: number
+          last_digest_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_escalation_config: {
         Row: {
           created_at: string
