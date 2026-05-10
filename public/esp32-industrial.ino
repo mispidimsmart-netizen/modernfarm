@@ -2857,6 +2857,15 @@ void syncWithCloud() {
   doc["dht2_available"] = dht2Available;
   doc["relay_count"] = 8;
   if (dht2Available) { doc["temperature2"] = temperature2; doc["humidity2"] = humidity2; }
+  // Phase 3: reliability metrics
+  doc["consecutive_failed_syncs"] = consecutiveFailedSyncs;
+  {
+    int rssi = WiFi.RSSI();
+    int rssiScore = constrain(map(rssi, -90, -50, 0, 60), 0, 60);
+    int failPenalty = min(40, (int)consecutiveFailedSyncs * 8);
+    int qScore = constrain(40 + rssiScore - failPenalty, 0, 100);
+    doc["connection_quality_score"] = qScore;
+  }
 
   String payload;
   serializeJson(doc, payload);
