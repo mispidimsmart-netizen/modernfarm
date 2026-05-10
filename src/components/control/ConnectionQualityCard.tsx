@@ -18,9 +18,9 @@ function bn(n: number | string, lang: string) {
 
 export function ConnectionQualityCard() {
   const { language } = useAuth();
-  const { currentFarm } = useFarm();
-  const { data: devices } = useDeviceHealth();
-  const { data: metrics } = useFarmDeviceMetrics24h(currentFarm?.id);
+  const { selectedFarmId } = useFarmContext();
+  const { data: devices } = useAllDeviceHealth();
+  const { data: metrics } = useFarmDeviceMetrics24h(selectedFarmId);
   const [open, setOpen] = useState(false);
 
   const summary = useMemo(() => {
