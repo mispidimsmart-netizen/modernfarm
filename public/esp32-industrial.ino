@@ -66,6 +66,7 @@
 #include <esp_ota_ops.h>
 #include <HardwareSerial.h>
 #include "esp32-safety-engine.h"
+#include "mbedtls/md.h"
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 1: CONFIGURATION & CONSTANTS                                 ║
@@ -247,6 +248,10 @@ const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
 const char* API_URL        = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api";
 const char* DEVICE_TOKEN   = "YOUR_DEVICE_TOKEN";
+// Phase 1 Security: HMAC secret from /provision-device claim or /rotate-device-secret.
+// Leave empty for legacy devices (secret_version=0) — signing skipped, server logs warning.
+const char* DEVICE_SECRET  = "";
+const int   SECRET_VERSION = 0;
 const char* SHED_ID        = "YOUR_SHED_ID";
 const char* SHED_NAME      = "Shed A";
 const char* FARM_ID        = "YOUR_FARM_ID";
@@ -594,6 +599,8 @@ bool configLoaded = false;
 
 // --- Credentials (NVS) ---
 String activeDeviceToken = "", activeWifiSSID = "", activeWifiPassword = "";
+String activeDeviceSecret = "";
+int    activeSecretVersion = 0;
 String activeShedId = "", activeShedName = "", activeFarmId = "";
 bool nvsProvisioned = false;
 
@@ -3257,6 +3264,8 @@ bool isNVSProvisioned() {
 void loadCredentialsFromNVS() {
   preferences.begin(NVS_NAMESPACE, true);
   activeDeviceToken = preferences.getString("device_token", "");
+  activeDeviceSecret = preferences.getString("device_secret", "");
+  activeSecretVersion = preferences.getInt("secret_ver", 0);
   activeWifiSSID = preferences.getString("wifi_ssid", "");
   activeWifiPassword = preferences.getString("wifi_pass", "");
   activeShedId = preferences.getString("shed_id", "");
@@ -3269,6 +3278,8 @@ void loadCredentialsFromNVS() {
 void saveCredentialsToNVS() {
   preferences.begin(NVS_NAMESPACE, false);
   preferences.putString("device_token", activeDeviceToken);
+  preferences.putString("device_secret", activeDeviceSecret);
+  preferences.putInt("secret_ver", activeSecretVersion);
   preferences.putString("wifi_ssid", activeWifiSSID);
   preferences.putString("wifi_pass", activeWifiPassword);
   preferences.putString("shed_id", activeShedId);
@@ -3281,6 +3292,8 @@ void saveCredentialsToNVS() {
 
 void provisionFromHardcoded() {
   activeDeviceToken = String(DEVICE_TOKEN);
+  activeDeviceSecret = String(DEVICE_SECRET);
+  activeSecretVersion = SECRET_VERSION;
   activeWifiSSID = String(WIFI_SSID);
   activeWifiPassword = String(WIFI_PASSWORD);
   activeShedId = String(SHED_ID);
