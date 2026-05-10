@@ -30,6 +30,19 @@ export function ReportsDataTab() {
         </p>
       </div>
 
+      {/* Phase 6: AI-powered analytics dashboard */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            {language === 'bn' ? 'বিশ্লেষণ ও AI Anomaly' : 'Analytics & AI Anomaly'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnalyticsDashboard />
+        </CardContent>
+      </Card>
+
       {/* Embedded Reports Analytics: Overview, Performance, Costs */}
       <Card>
         <CardHeader className="pb-3">
