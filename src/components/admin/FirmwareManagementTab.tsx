@@ -535,6 +535,7 @@ export function FirmwareManagementTab({ language }: Props) {
             </p>
           </div>
 
+          <Button
             onClick={handleUpload}
             disabled={uploading || !file}
             className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
