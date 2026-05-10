@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.twilio-inbound]
 verify_jwt = false
+
+[functions.weekly-farm-report]
+verify_jwt = false
