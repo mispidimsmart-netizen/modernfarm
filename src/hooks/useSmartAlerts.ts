@@ -472,10 +472,25 @@ export function useSmartAlerts() {
     lastNotified.current.set(alert.type, now);
   }, [playDangerAlarm, playWarningSound]);
 
-  // Process and update alerts
+  // Process and update alerts — guard against ref-only changes that would loop
   useEffect(() => {
     const processed = processAlerts();
-    setSmartAlerts(processed);
+    setSmartAlerts((prev) => {
+      // Shallow-equality on id+acknowledged+level avoids resetting state when
+      // upstream queries hand us a new array with identical content.
+      if (
+        prev.length === processed.length &&
+        prev.every((p, i) =>
+          p.id === processed[i].id &&
+          p.acknowledged === processed[i].acknowledged &&
+          p.level === processed[i].level &&
+          p.messageBn === processed[i].messageBn,
+        )
+      ) {
+        return prev;
+      }
+      return processed;
+    });
 
     // Notify for unacknowledged alerts
     processed.forEach(alert => {
