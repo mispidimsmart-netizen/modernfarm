@@ -5608,10 +5608,21 @@ export type Database = {
           secret_version: number
         }[]
       }
+      get_farm_dashboard_snapshot: { Args: { _farm_id: string }; Returns: Json }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_feed_avg_price: {
         Args: { _farm_id: string; _feed_type: string }
         Returns: number
+      }
+      get_sensor_history: {
+        Args: { _farm_id: string; _hours?: number }
+        Returns: {
+          avg_ammonia: number
+          avg_hsi: number
+          avg_humidity: number
+          avg_temp: number
+          bucket: string
+        }[]
       }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       has_min_role: {
