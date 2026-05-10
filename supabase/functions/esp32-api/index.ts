@@ -782,14 +782,13 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('ESP32 API error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', code: 'INTERNAL_ERROR' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});
+  } // end inner block (errors propagate to outer Deno.serve wrapper)
+  // Unreachable: every endpoint above returns explicitly.
+  return new Response(
+    JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
+    { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🐔 SET FARM PROFILE HANDLER
