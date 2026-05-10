@@ -1,82 +1,155 @@
+# Phase 2 — Observability
 
-# Phase 1 — Security & Device Trust
+**লক্ষ্য:** "কী ভাঙছে, কেন ভাঙছে, কোথায় ভাঙছে" — ৩০ সেকেন্ডে উত্তর। বর্তমানে একটি device "চুপ" হয়ে গেলে farmer/admin জানে না কেন। edge function fail করলে আলাদা আলাদা log scattered। আমরা একটা **unified observability layer** বানাবো।
 
-বর্তমানে `esp32-api` edge function `verify_jwt = false` দিয়ে চলছে এবং শুধু `device_token` (plaintext) দিয়ে authenticate করে। যেকেউ token পেলেই sensor data পাঠাতে/পড়তে পারবে। Phase 1 এই দুর্বলতাগুলো বন্ধ করবে — backward compatible (পুরাতন firmware হঠাৎ মরবে না, gradual cutover)।
+---
 
 ## কী কী Ship হবে
 
-### 1. Per-device HMAC Secret + Request Signing
-- প্রতি `device_tokens` row-এ নতুন column: `device_secret_hash` (bcrypt) + `secret_version` + `secret_rotated_at`
-- ESP32 প্রতিটি POST-এ পাঠাবে: `X-Device-Token`, `X-Timestamp`, `X-Nonce`, `X-Signature` (HMAC-SHA256 over `timestamp.nonce.body`)
-- Edge function signature verify করবে; mismatch → 401 + audit log
+### 1. Structured Request Log (সব edge function)
+এক central table `edge_request_log`:
+- `function_name`, `path`, `method`, `status_code`
+- `duration_ms`, `device_token_id` (যদি থাকে), `farm_id`, `user_id`
+- `request_id` (UUID), `error_code`, `error_message`
+- `payload_size_bytes`, `response_size_bytes`
+- Auto-pruned 30 days
 
-### 2. Replay Protection
-- নতুন table `device_request_nonces (device_token_id, nonce, used_at)` — 5 min TTL
-- Timestamp ±300s window check
-- Duplicate nonce → 409 + audit log
-- Cleanup function (cron) পুরাতন nonce মুছবে
+প্রতিটি edge function-এ একটা ছোট `withObservability()` wrapper — শুরু/শেষে log করবে।
 
-### 3. Per-device Rate Limiting
-- নতুন table `device_rate_limit (device_token_id, window_start, request_count)`
-- Default: 60 req/min per device → 429 above
-- DB function `check_device_rate_limit()`
+### 2. Device Heartbeat Health Metrics
+নতুন table `device_health_metrics` (rolling 24h):
+- `device_token_id`, `bucket_hour`
+- `sync_count`, `signature_failures`, `nonce_reuse_count`, `rate_limited_count`
+- `avg_latency_ms`, `p95_latency_ms`
+- `sensor_gap_seconds_max` (longest silence in that hour)
+- `restart_count`
 
-### 4. Device Provisioning Flow (QR Pairing)
-- নতুন edge function `provision-device` (verify_jwt=true) — farmer QR scan/manual code → device claim → secret issue (one-time return)
-- Provisioning code expires in 10 min
-- নতুন table `device_provisioning_codes`
+`esp32-api` রিকোয়েস্ট আসলে aggregate করে এখানে upsert।
 
-### 5. Secret Rotation
-- নতুন edge function `rotate-device-secret` (admin/farmer)
-- Old secret 24h grace period (`previous_secret_hash` column)
-- UI: Settings → Devices → "Rotate Secret" button + confirmation
+### 3. Command Lifecycle Trace
+`device_commands` row-এ ইতিমধ্যে আছে: created → queued → delivered → acked। নতুন কী যোগ:
+- `dispatched_at` (cloud → device fetch হওয়ার মুহূর্ত)
+- `latency_to_device_ms`, `latency_to_ack_ms`
+- View `command_trace_summary` — গড় latency per farm/per device
 
-### 6. Security Audit Log Expansion
-- নতুন event types: `signature_invalid`, `nonce_reuse`, `timestamp_drift`, `rate_limited`, `secret_rotated`, `device_provisioned`
-- Existing `security_audit_log` table reused
+### 4. SLO Dashboard (Admin)
+নতুন tab `Admin → Observability`:
+- **Live Status:** কতগুলো device online/offline/degraded (last 5 min sync)
+- **Error Rate:** ৪০৪/৫০০/auth-fail per function (last 1h, 24h, 7d charts)
+- **Latency:** p50/p95/p99 per endpoint
+- **Top Failing Devices:** signature failure / rate limit hit
+- **Sensor Gaps:** কোন device-এর data missing > 5 min
+- **Command Backlog:** unacked commands > 60 sec
 
-### 7. Backward Compatibility
-- `device_tokens` row-এ `secret_version = 0` মানে legacy mode (signing skipped, warning logged)
-- নতুন device → version 1 (signature required)
-- Admin UI dashboard: কোন device legacy mode-এ আছে → migrate prompt
+Recharts ব্যবহার করে।
 
-## Database Changes
+### 5. Farmer-facing "Connection Quality" Card
+Dashboard-এ ছোট badge:
+- 🟢 চমৎকার (last sync < 30s, no errors)
+- 🟡 ধীর (sync 30-120s OR mild error)
+- 🔴 সমস্যা (no sync > 5 min OR repeated auth fail)
+- ক্লিক করলে detail sheet — last 1h timeline
+
+### 6. Anomaly Alerts (Background)
+নতুন edge function `observability-anomaly-detector` (cron, every 5 min):
+- Device offline > 10 min → push notification + audit log
+- Signature failure spike (>5 in 5 min) → admin alert (potential attack)
+- Sensor reading frozen (same value 30+ min) → farmer alert
+- Latency p95 > 3s sustained → admin alert
+
+Reuses existing `useSmartAlerts` notification pipeline।
+
+### 7. Health Self-Check Endpoint
+`esp32-api/health` (GET, public, light auth):
+- Returns `{ ok, db_latency_ms, version, time }`
+- ESP32 অপশনালি ১০ মিনিটে একবার ping করে নিজের connectivity verify করতে পারে
+
+---
+
+## Database Migrations
+
 ```text
-device_tokens:
-  + device_secret_hash      text       (nullable, bcrypt)
-  + previous_secret_hash    text       (nullable, 24h grace)
-  + secret_version          int        default 0
-  + secret_rotated_at       timestamptz
-  + last_signature_at       timestamptz
+edge_request_log (new):
+  id, function_name, path, method, status_code, duration_ms,
+  device_token_id, farm_id, user_id, request_id, error_code,
+  error_message, payload_size_bytes, response_size_bytes, created_at
 
-device_request_nonces (new):
-  device_token_id, nonce, used_at, expires_at
-  unique (device_token_id, nonce)
+device_health_metrics (new):
+  device_token_id, farm_id, bucket_hour,
+  sync_count, signature_failures, nonce_reuse_count, rate_limited_count,
+  avg_latency_ms, p95_latency_ms, sensor_gap_seconds_max,
+  restart_count, updated_at
+  PRIMARY KEY (device_token_id, bucket_hour)
 
-device_rate_limit (new):
-  device_token_id, window_start, request_count
+device_commands:
+  + dispatched_at        timestamptz
+  + latency_to_device_ms int
+  + latency_to_ack_ms    int
 
-device_provisioning_codes (new):
-  code, farm_id, shed_id, created_by, expires_at, used_at, device_token_id
+VIEW command_trace_summary (read-only, RLS via underlying table)
+
+Cron jobs (pg_cron):
+  - cleanup_edge_request_log()       hourly  (>30 days)
+  - cleanup_device_health_metrics()  daily   (>90 days)
+  - observability-anomaly-detector   */5 *   (HTTP call to edge fn)
 ```
 
+RLS:
+- `edge_request_log`: super_admin select; service_role insert
+- `device_health_metrics`: farm members select via `user_can_access_farm`; service_role write
+
+---
+
 ## Code Changes
-- `supabase/functions/esp32-api/index.ts` — signature verify middleware (top of POST handlers)
-- `supabase/functions/provision-device/index.ts` (new)
-- `supabase/functions/rotate-device-secret/index.ts` (new)
-- `src/components/device/DeviceSecuritySheet.tsx` (new) — rotate, view security status
-- `src/components/admin/SecurityAuditLogPanel.tsx` — show new event types
-- `public/esp32-unified.ino` — add HMAC signing helper + nonce gen (firmware update guide)
+
+```text
+NEW edge functions:
+  supabase/functions/observability-anomaly-detector/index.ts
+  supabase/functions/_shared/observability.ts   (withObservability wrapper)
+
+EDIT edge functions (add wrapper):
+  esp32-api, provision-device, rotate-device-secret,
+  safety-engine, automation-engine, device-monitor
+
+NEW UI:
+  src/components/admin/ObservabilityDashboard.tsx
+  src/components/admin/ObservabilityCharts.tsx
+  src/components/control/ConnectionQualityCard.tsx
+  src/hooks/useDeviceHealthMetrics.ts
+  src/hooks/useEdgeFunctionMetrics.ts
+
+EDIT:
+  src/pages/AdminPage.tsx               (new "Observability" tab)
+  src/pages/Dashboard.tsx               (mount ConnectionQualityCard)
+  supabase/functions/esp32-api/index.ts (latency capture + heartbeat metrics)
+```
+
+---
 
 ## Rollout Order
-1. Migration (DB columns + tables + functions) — safe additive
-2. Edge function: signature verify in **opt-in mode** (only if `secret_version >= 1`)
-3. Provisioning + rotation endpoints + UI
-4. Firmware update with signing
-5. Admin dashboard — legacy device tracker
-6. (Future) Force `secret_version >= 1` after fleet migration
 
-## Phase 1 Out-of-Scope (Phase 2+)
-- mTLS / cert-based auth
-- HSM-backed key storage
-- Per-endpoint scoped tokens
+1. **Migrations** (additive, safe)
+2. **`_shared/observability.ts`** wrapper + apply to `esp32-api` first
+3. **device_health_metrics** aggregation logic in `esp32-api`
+4. **Admin Observability Dashboard** (read-only, no impact)
+5. **ConnectionQualityCard** on farmer dashboard
+6. **Anomaly detector** edge function + pg_cron schedule
+7. **Apply wrapper to remaining edge functions** (gradual)
+8. **Health self-check endpoint** + optional ESP32 ping
+
+প্রতিটি step আলাদা ship — কেউ break হলেও কেবল observability UI গায়েব হবে, hardware/automation অক্ষত।
+
+---
+
+## Phase 2 Out-of-Scope (Phase 3+)
+
+- Full distributed tracing (OpenTelemetry) — overkill এখন
+- External APM (Datadog/Sentry) integration
+- Real-time WebSocket log stream for farmers
+- Per-tenant observability quotas/billing
+
+---
+
+## অনুমোদনের পর
+
+Migration ফাইল লিখব → অনুমোদন → শেষে শুধু code changes (single message)। সব phase 2 mvp ship হতে আনুমানিক **৩-৪টা commit batch**।
