@@ -104,12 +104,21 @@ export function AnalyticsDashboard() {
     if (!selectedFarmId) return;
     setForecasting(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        `ai-forecast?farm_id=${selectedFarmId}`,
-        { method: "POST" },
-      );
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("লগইন প্রয়োজন");
+      const url = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/ai-forecast?farm_id=${selectedFarmId}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.error) {
+        const msg = json?.error === "insufficient_history"
+          ? `পর্যাপ্ত ইতিহাস নেই (অন্তত ${json.need_at_least_hours ?? 12} ঘন্টা ডেটা লাগবে)`
+          : (json?.error ?? `HTTP ${res.status}`);
+        throw new Error(msg);
+      }
       toast.success("পূর্বাভাস তৈরি হয়েছে");
       forecastQ.refetch();
     } catch (e: any) {
