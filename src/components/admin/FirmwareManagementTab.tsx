@@ -15,6 +15,7 @@ import {
   Download, AlertCircle, Globe,
 } from "lucide-react";
 import { format } from "date-fns";
+import { SigningKeysCard } from "./SigningKeysCard";
 
 interface Props {
   language: "bn" | "en";
