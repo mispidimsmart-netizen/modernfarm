@@ -2072,6 +2072,7 @@ export type Database = {
           farm_id: string | null
           id: string
           is_active: boolean
+          last_installed_version_code: number | null
           last_seen_at: string | null
           last_signature_at: string | null
           mesh_group_id: string | null
@@ -2096,6 +2097,7 @@ export type Database = {
           farm_id?: string | null
           id?: string
           is_active?: boolean
+          last_installed_version_code?: number | null
           last_seen_at?: string | null
           last_signature_at?: string | null
           mesh_group_id?: string | null
@@ -2120,6 +2122,7 @@ export type Database = {
           farm_id?: string | null
           id?: string
           is_active?: boolean
+          last_installed_version_code?: number | null
           last_seen_at?: string | null
           last_signature_at?: string | null
           mesh_group_id?: string | null
@@ -3066,7 +3069,9 @@ export type Database = {
           is_active: boolean
           max_hardware: Json
           min_hardware: Json
+          min_version_code_required: number | null
           release_channel: string
+          require_signature: boolean
           sha256_hex: string | null
           signature_alg: string | null
           signature_b64: string | null
@@ -3093,7 +3098,9 @@ export type Database = {
           is_active?: boolean
           max_hardware?: Json
           min_hardware?: Json
+          min_version_code_required?: number | null
           release_channel?: string
+          require_signature?: boolean
           sha256_hex?: string | null
           signature_alg?: string | null
           signature_b64?: string | null
@@ -3120,7 +3127,9 @@ export type Database = {
           is_active?: boolean
           max_hardware?: Json
           min_hardware?: Json
+          min_version_code_required?: number | null
           release_channel?: string
+          require_signature?: boolean
           sha256_hex?: string | null
           signature_alg?: string | null
           signature_b64?: string | null
@@ -4522,6 +4531,50 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      ota_gate_log: {
+        Row: {
+          created_at: string
+          details: Json | null
+          device_token_id: string | null
+          farm_id: string | null
+          firmware_id: string | null
+          gate: string
+          id: string
+          passed: boolean
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          device_token_id?: string | null
+          farm_id?: string | null
+          firmware_id?: string | null
+          gate: string
+          id?: string
+          passed: boolean
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          device_token_id?: string | null
+          farm_id?: string | null
+          firmware_id?: string | null
+          gate?: string
+          id?: string
+          passed?: boolean
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ota_gate_log_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ota_update_history: {
         Row: {
@@ -7237,6 +7290,10 @@ export type Database = {
       }
       ensure_future_sensor_partitions: { Args: never; Returns: undefined }
       evaluate_alert_rules: { Args: { _farm_id: string }; Returns: number }
+      evaluate_ota_safety_gates: {
+        Args: { _device_token_id: string; _firmware_id: string }
+        Returns: Json
+      }
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
         Returns: Json
@@ -7373,6 +7430,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      ota_hardening_summary: { Args: never; Returns: Json }
       record_device_metric: {
         Args: {
           _device_token_id: string
