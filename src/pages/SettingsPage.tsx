@@ -25,6 +25,7 @@ import { NotificationSoundCard } from '@/components/settings/NotificationSoundCa
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
+import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { 
   FarmSetupTab, 
@@ -402,6 +403,9 @@ export function SettingsPage() {
 
                   {/* SMS Alerts - Owner only */}
                   {isOwner && <SmsAlertSettingsCard />}
+
+                  {/* Phase 4: Advanced alert rules */}
+                  <AlertRulesCard />
                 </CardContent>
               </CollapsibleContent>
             </Card>

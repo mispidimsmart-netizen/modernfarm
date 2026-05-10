@@ -194,41 +194,228 @@ export type Database = {
           },
         ]
       }
+      alert_channel_config: {
+        Row: {
+          created_at: string
+          critical_bypass_quiet_hours: boolean
+          escalation_minutes: number
+          escalation_phone_e164: string | null
+          farm_id: string
+          id: string
+          phone_e164: string | null
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          sms_enabled: boolean
+          updated_at: string
+          whatsapp_enabled: boolean
+        }
+        Insert: {
+          created_at?: string
+          critical_bypass_quiet_hours?: boolean
+          escalation_minutes?: number
+          escalation_phone_e164?: string | null
+          farm_id: string
+          id?: string
+          phone_e164?: string | null
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          updated_at?: string
+          whatsapp_enabled?: boolean
+        }
+        Update: {
+          created_at?: string
+          critical_bypass_quiet_hours?: boolean
+          escalation_minutes?: number
+          escalation_phone_e164?: string | null
+          farm_id?: string
+          id?: string
+          phone_e164?: string | null
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          updated_at?: string
+          whatsapp_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_channel_config_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: true
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_deliveries: {
+        Row: {
+          alert_id: string
+          channel: string
+          created_at: string
+          error_message: string | null
+          farm_id: string | null
+          id: string
+          is_escalation: boolean
+          provider_message_id: string | null
+          recipient: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          alert_id: string
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          farm_id?: string | null
+          id?: string
+          is_escalation?: boolean
+          provider_message_id?: string | null
+          recipient?: string | null
+          sent_at?: string | null
+          status: string
+        }
+        Update: {
+          alert_id?: string
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          farm_id?: string | null
+          id?: string
+          is_escalation?: boolean
+          provider_message_id?: string | null
+          recipient?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_deliveries_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_deliveries_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_rules: {
+        Row: {
+          channels: Json
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          duration_seconds: number
+          enabled: boolean
+          farm_id: string
+          id: string
+          metric: string
+          name: string
+          operator: string
+          severity: string
+          threshold_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          channels?: Json
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          enabled?: boolean
+          farm_id: string
+          id?: string
+          metric: string
+          name: string
+          operator?: string
+          severity?: string
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          channels?: Json
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number
+          enabled?: boolean
+          farm_id?: string
+          id?: string
+          metric?: string
+          name?: string
+          operator?: string
+          severity?: string
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_rules_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alerts: {
         Row: {
           acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at: string
+          escalated_at: string | null
           farm_id: string | null
           id: string
           message: string
           message_bn: string
+          rule_id: string | null
           severity: Database["public"]["Enums"]["alert_severity"]
           shed_id: string | null
+          sustained_since: string | null
           user_id: string
         }
         Insert: {
           acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at?: string
+          escalated_at?: string | null
           farm_id?: string | null
           id?: string
           message: string
           message_bn: string
+          rule_id?: string | null
           severity: Database["public"]["Enums"]["alert_severity"]
           shed_id?: string | null
+          sustained_since?: string | null
           user_id: string
         }
         Update: {
           acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
           alert_type?: Database["public"]["Enums"]["alert_type"]
           created_at?: string
+          escalated_at?: string | null
           farm_id?: string | null
           id?: string
           message?: string
           message_bn?: string
+          rule_id?: string | null
           severity?: Database["public"]["Enums"]["alert_severity"]
           shed_id?: string | null
+          sustained_since?: string | null
           user_id?: string
         }
         Relationships: [
@@ -237,6 +424,13 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alerts_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
             referencedColumns: ["id"]
           },
           {
@@ -5104,6 +5298,7 @@ export type Database = {
         }
         Returns: Json
       }
+      acknowledge_alert: { Args: { _alert_id: string }; Returns: boolean }
       assign_user_role: {
         Args: {
           _assigner_id: string
@@ -5132,6 +5327,7 @@ export type Database = {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
       }
+      evaluate_alert_rules: { Args: { _farm_id: string }; Returns: number }
       get_device_secret: {
         Args: { _device_token_id: string }
         Returns: {
