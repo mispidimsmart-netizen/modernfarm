@@ -1337,6 +1337,99 @@ export type Database = {
           },
         ]
       }
+      device_provisioning_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          device_name: string | null
+          device_token_id: string | null
+          expires_at: string
+          farm_id: string
+          id: string
+          shed_id: string | null
+          used_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          device_name?: string | null
+          device_token_id?: string | null
+          expires_at?: string
+          farm_id: string
+          id?: string
+          shed_id?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          device_name?: string | null
+          device_token_id?: string | null
+          expires_at?: string
+          farm_id?: string
+          id?: string
+          shed_id?: string | null
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_provisioning_codes_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_provisioning_codes_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_provisioning_codes_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_request_nonces: {
+        Row: {
+          device_token_id: string
+          expires_at: string
+          id: string
+          nonce: string
+          used_at: string
+        }
+        Insert: {
+          device_token_id: string
+          expires_at?: string
+          id?: string
+          nonce: string
+          used_at?: string
+        }
+        Update: {
+          device_token_id?: string
+          expires_at?: string
+          id?: string
+          nonce?: string
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_request_nonces_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_restart_log: {
         Row: {
           created_at: string
@@ -1530,33 +1623,60 @@ export type Database = {
         Row: {
           created_at: string
           device_name: string
+          device_secret: string | null
+          device_secret_hash: string | null
           farm_id: string | null
           id: string
           is_active: boolean
           last_seen_at: string | null
+          last_signature_at: string | null
+          previous_device_secret: string | null
+          previous_secret_expires_at: string | null
+          previous_secret_hash: string | null
+          secret_rotated_at: string | null
+          secret_version: number
           shed_id: string | null
+          signature_failure_count: number
           token: string
           user_id: string
         }
         Insert: {
           created_at?: string
           device_name?: string
+          device_secret?: string | null
+          device_secret_hash?: string | null
           farm_id?: string | null
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
+          last_signature_at?: string | null
+          previous_device_secret?: string | null
+          previous_secret_expires_at?: string | null
+          previous_secret_hash?: string | null
+          secret_rotated_at?: string | null
+          secret_version?: number
           shed_id?: string | null
+          signature_failure_count?: number
           token: string
           user_id: string
         }
         Update: {
           created_at?: string
           device_name?: string
+          device_secret?: string | null
+          device_secret_hash?: string | null
           farm_id?: string | null
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
+          last_signature_at?: string | null
+          previous_device_secret?: string | null
+          previous_secret_expires_at?: string | null
+          previous_secret_hash?: string | null
+          secret_rotated_at?: string | null
+          secret_version?: number
           shed_id?: string | null
+          signature_failure_count?: number
           token?: string
           user_id?: string
         }
@@ -4799,10 +4919,24 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      cleanup_device_security_artifacts: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_restart_logs: { Args: never; Returns: undefined }
       cleanup_old_security_audit: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
+      consume_device_nonce: {
+        Args: { _device_token_id: string; _nonce: string }
+        Returns: boolean
+      }
+      get_device_secret: {
+        Args: { _device_token_id: string }
+        Returns: {
+          device_secret: string
+          previous_device_secret: string
+          previous_expires: string
+          secret_version: number
+        }[]
+      }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_feed_avg_price: {
         Args: { _farm_id: string; _feed_type: string }

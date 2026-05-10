@@ -39,6 +39,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
+import { DeviceSecuritySheet } from '@/components/device/DeviceSecuritySheet';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
 import { OTAFirmwareTab } from './OTAFirmwareTab';
@@ -95,6 +96,7 @@ export function DeviceSystemTab() {
   const deviceHealth = deviceHealthList?.[0]; // Get first device health
 
   const [newDeviceName, setNewDeviceName] = useState('');
+  const [securityDevice, setSecurityDevice] = useState<{ id: string; name: string; version: number } | null>(null);
   const [selectedShedForDevice, setSelectedShedForDevice] = useState<string>('');
   const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
   const [debugMode, setDebugMode] = useState(() => {
@@ -502,17 +504,39 @@ export function DeviceSystemTab() {
 
           {/* Device List */}
           <div className="space-y-2">
-            {deviceTokens?.map((device) => (
+            {deviceTokens?.map((device: any) => (
               <div key={device.id} className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
                 <Cpu className="h-5 w-5 text-primary" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{device.device_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{device.device_name}</p>
+                    {(device.secret_version ?? 0) >= 1 ? (
+                      <Badge className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
+                        <Shield className="h-2.5 w-2.5 mr-0.5" />HMAC v{device.secret_version}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-600/40">
+                        Legacy
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground font-mono truncate">
                     {device.token.substring(0, 16)}...
                   </p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => copyToClipboard(device.token)}>
                   <Copy size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary"
+                  title={language === 'bn' ? 'সিকিউরিটি' : 'Security'}
+                  onClick={() => setSecurityDevice({
+                    id: device.id, name: device.device_name, version: device.secret_version ?? 0,
+                  })}
+                >
+                  <Shield size={14} />
                 </Button>
                 <Button 
                   variant="ghost" 
@@ -892,6 +916,14 @@ export function DeviceSystemTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DeviceSecuritySheet
+        open={!!securityDevice}
+        onOpenChange={(o) => !o && setSecurityDevice(null)}
+        deviceTokenId={securityDevice?.id}
+        deviceName={securityDevice?.name}
+        secretVersion={securityDevice?.version}
+      />
     </div>
   );
 }
