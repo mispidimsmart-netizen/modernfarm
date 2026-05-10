@@ -4,8 +4,8 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF + autotable are loaded dynamically inside the PDF branches to keep
+// them out of the main bundle (~250 KB combined gzip).
 
 export type ExportRange = '7d' | '30d';
 export type ExportFormat = 'csv' | 'pdf';
@@ -71,6 +71,10 @@ export async function exportDeviceCommandLog(args: ExportArgs) {
     });
     downloadBlob(blob, `${base}.csv`);
   } else {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(14);
     doc.text(title, 14, 14);
@@ -139,6 +143,10 @@ export async function exportAuditLog(args: ExportArgs) {
     });
     downloadBlob(blob, `${base}.csv`);
   } else {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(14);
     doc.text(title, 14, 14);

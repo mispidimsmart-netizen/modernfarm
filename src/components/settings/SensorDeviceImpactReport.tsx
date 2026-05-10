@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import * as XLSX from 'xlsx';
+// xlsx is loaded dynamically inside handleExportExcel to keep it out of the main bundle
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, Cell,
@@ -323,6 +323,8 @@ export function SensorDeviceImpactReport() {
     setIsExporting(true);
     try {
       if (!user) throw new Error('Not authenticated');
+      // Lazy-load xlsx (heavy lib) only when user clicks export.
+      const XLSX = await import('xlsx');
 
       const farmFilter = (q: any) => (selectedFarmId ? q.eq('farm_id', selectedFarmId) : q);
 
