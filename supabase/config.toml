@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.device-monitor]
 verify_jwt = false
+
+[functions.provision-device]
+verify_jwt = false
+
+[functions.rotate-device-secret]
+verify_jwt = false
