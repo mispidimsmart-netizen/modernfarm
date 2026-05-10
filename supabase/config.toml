@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.mqtt-ingest]
 verify_jwt = false
+
+[functions.anomaly-detector]
+verify_jwt = false
