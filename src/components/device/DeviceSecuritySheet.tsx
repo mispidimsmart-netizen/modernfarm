@@ -47,11 +47,11 @@ export function DeviceSecuritySheet({ open, onOpenChange, deviceTokenId, deviceN
   };
 
   const generatePairingCode = async () => {
-    if (!activeFarm?.id) return;
+    if (!currentFarm?.id) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('provision-device/create', {
-        body: { farm_id: activeFarm.id, device_name: deviceName || 'ESP32 Controller' },
+        body: { farm_id: currentFarm.id, device_name: deviceName || 'ESP32 Controller' },
       });
       if (error) throw error;
       setPairingCode((data as any).code);
