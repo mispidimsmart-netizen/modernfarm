@@ -109,11 +109,11 @@ export function AlertRulesCard() {
     const { error } = await supabase.from('alerts').insert({
       farm_id: selectedFarmId,
       user_id: (await supabase.auth.getUser()).data.user?.id!,
-      alert_type: 'system_error',
-      severity: 'warning',
+      alert_type: 'temperature' as any,
+      severity: 'warning' as any,
       message: 'Test alert from FarmEye',
       message_bn: '🧪 পরীক্ষামূলক সতর্কতা — সিস্টেম ঠিক কাজ করছে',
-    });
+    } as any);
     if (error) toast.error(error.message);
     else toast.success(t('পরীক্ষামূলক সতর্কতা পাঠানো হয়েছে', 'Test alert queued'));
   }
