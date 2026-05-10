@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon } from 'lucide-react';
+import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAcknowledgeAlert } from '@/hooks/useFarmData';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { IndustrialAlertCard } from '@/components/alerts/IndustrialAlertCard';
 import { AlertTimeline } from '@/components/alerts/AlertTimeline';
+import { AlertDeliveryHistoryTab } from '@/components/alerts/AlertDeliveryHistoryTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SmartAlert } from '@/hooks/useSmartAlerts';
 
