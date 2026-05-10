@@ -121,6 +121,7 @@ export function FirmwareManagementTab({ language }: Props) {
       const versionClean = version.startsWith("v") ? version : `v${version}`;
       const buffer = await file.arrayBuffer();
       const crc = await crc32Hex(buffer);
+      const sha = await sha256Hex(buffer);
       const path = `${channel}/${versionClean}-${Date.now()}.bin`;
 
       // Upload to storage
@@ -143,6 +144,14 @@ export function FirmwareManagementTab({ language }: Props) {
         file_url: pub.publicUrl,
         file_size_bytes: file.size,
         crc32_checksum: crc,
+        sha256_hex: sha,
+        signature_b64: signatureB64.trim() || null,
+        signing_key_id: signingKeyId === "none" ? null : signingKeyId,
+        signature_alg: "ed25519",
+        update_window_enabled: windowEnabled,
+        update_window_start_hour: parseInt(windowStart) || 2,
+        update_window_end_hour: parseInt(windowEnd) || 4,
+        health_gate_min_success_pct: parseFloat(healthMinPct) || 95,
         changelog: changelog || null,
         changelog_bn: changelogBn || null,
         is_active: true,
