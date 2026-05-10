@@ -86,6 +86,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-1">
+          <AlertBell />
           <ThemeToggle />
           
           <Button
