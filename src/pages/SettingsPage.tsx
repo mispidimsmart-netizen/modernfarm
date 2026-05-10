@@ -400,6 +400,9 @@ export function SettingsPage() {
                   {/* Priority & Escalation */}
                   <NotificationPriorityCard />
 
+                  {/* Phase 7: Quiet hours + Snooze */}
+                  <QuietHoursAndSnoozeCard />
+
                   {/* Notification Sounds */}
                   <NotificationSoundCard />
 
