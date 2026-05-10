@@ -1,94 +1,81 @@
-# Phase 5 — Multi-Device Mesh & GSM Fallback
+# Phase 6: Scalability & Performance
 
-## লক্ষ্য
+**লক্ষ্য**: Dashboard load <1s, sensor query <200ms, 10k+ readings/farm/day স্কেল করা। সম্পূর্ণ additive — কোনো existing table/API ভাঙা হবে না।
 
-একটি farm-এ একাধিক ESP32 (multi-shed) একসাথে কাজ করবে। যখন WiFi/Internet down, তখন GSM (SIM800L/A7670) দিয়ে SMS-based command + critical alert পাঠানো-গ্রহণ করা যাবে। কোনো বিদ্যমান table/API overwrite হবে না — সব additive।
+## 1. Database Optimization
 
-## ১. Multi-Device Mesh
+### a. `sensor_readings` Partitioning (monthly)
+- নতুন parent table `sensor_readings_partitioned` (RANGE on `recorded_at`)
+- প্রতি মাসের জন্য child partition auto-create (pg_cron monthly)
+- Existing `sensor_readings` অক্ষত — নতুন writes dual-write trigger দিয়ে partitioned-এ যাবে (১ মাস পর cutover)
+- পুরোনো partition (>6 মাস) auto-detach + archive
 
-### Database (additive)
-- **`device_mesh_peers`** — কোন ESP32 কোন ESP32-এর peer
-  - `farm_id, primary_device_token_id, peer_device_token_id, role` (master/slave/backup)
-  - `last_handshake_at, link_quality` (0-100, RSSI ভিত্তিক)
-- **`mesh_sync_log`** — peer-to-peer sync events
-  - `from_device_id, to_device_id, payload_type` (sensor/command/safety_state), `bytes`, `latency_ms`
-- **`device_tokens` additive columns**: `mesh_role` (independent/master/slave), `mesh_group_id`
+### b. Composite Indexes (additive)
+- `sensor_readings (farm_id, recorded_at DESC)` — dashboard query
+- `sensor_readings (shed_id, recorded_at DESC)` — shed view
+- `alerts (farm_id, acknowledged, created_at DESC)` — alerts page
+- `device_commands (device_token_id, executed_at) WHERE executed_at IS NULL` — pending commands
+- `expenses (farm_id, expense_date DESC)`, `income (farm_id, income_date DESC)` — finance reports
 
-### ESP32 Firmware
-- **ESP-NOW protocol** (built-in, no extra hardware) — 250-byte packets, ~200m line-of-sight
-- Master ESP32 internet-connected → relays cloud commands to slaves
-- Slave ESP32 sends sensor data → master → cloud (single uplink saves bandwidth)
-- Auto-elect new master যদি current master offline >2 min
-- Each ESP32 broadcasts safety_status — যদি one shed এ heat emergency, neighbor shed-এ cooling pre-warm
+### c. Materialized Views
+- `farm_daily_rollup_mv` — দৈনিক avg/min/max temp, humidity, ammonia, mortality, feed
+- `farm_health_score_mv` — সর্বশেষ HSI + 24h trend
+- pg_cron দিয়ে প্রতি ১৫ মিনিটে refresh
+- Dashboard প্রথমে MV থেকে পড়বে → instant load
 
-### UI (Bengali)
-- **`/settings/mesh`** — mesh group setup wizard
-  - "এই কন্ট্রোলারের সাথে অন্য কোন কন্ট্রোলার যুক্ত করুন"
-  - Pairing code (6-digit) প্রতি ১ মিনিটে refresh
-  - Live link quality bar per peer
-- **Farm dashboard**: multi-shed grid view — প্রতিটা shed এর mesh status badge
+### d. Query Functions
+- `get_farm_dashboard_snapshot(_farm_id)` — single RPC, সব dashboard data এক call-এ
+- `get_sensor_history(_farm_id, _hours)` — pre-aggregated buckets (1h/6h/24h)
 
-## ২. GSM Fallback (Mature)
+## 2. Edge Caching & API
 
-### Hardware Support
-- SIM800L (2G GSM) বা A7670 (4G LTE) — UART2 (GPIO 16/17) connection
-- Already wired in `esp32-gsm-sms.ino` — এখন production-grade করব
+### a. Edge Function: `dashboard-snapshot`
+- `Cache-Control: public, max-age=30` headers
+- Stale-while-revalidate ৩০s
+- Returns: latest sensor + alerts count + device status + flock_info → ১ network call
 
-### Database (additive)
-- **`gsm_inbound_sms`** — SMS commands received by ESP32
-  - `device_token_id, from_phone, body, parsed_command, executed_at, response_sent`
-- **`gsm_outbound_sms`** — alerts sent via GSM
-  - `device_token_id, to_phone, body, alert_id, delivered_at, retry_count`
-- **`farm_settings` additive**: `gsm_enabled, authorized_phones jsonb` (whitelist for SMS commands)
+### b. React Query Tuning
+- `staleTime` increase: dashboard 30s, history 5m, settings 10m
+- `gcTime` 30m (memory)
+- Prefetch on hover for navigation
+- Suspense boundaries প্রতি page-এ
 
-### ESP32 Firmware (`esp32-gsm-sms.ino` mature version)
-- **Auto-detect Internet down** → switch to GSM mode
-- **Inbound SMS commands** (only from authorized_phones):
-  - `STATUS` → reply with temp/hum/relay state
-  - `FAN ON 30` → run fan 30 min
-  - `EMERGENCY` → trigger ESM
-  - `RESTART` → reboot
-- **Outbound critical alerts** (when offline + critical alert):
-  - Temperature >40°C, power loss >10 min, ammonia >50ppm
-  - Sends to `farm_settings.authorized_phones[0]` (owner)
-  - Retry 3x with exponential backoff
-- **Cost guard**: max 20 SMS/day per device
+## 3. Frontend Performance
 
-### Edge Functions
-- **`gsm-sms-relay`** — when ESP32 reconnects, sync inbound/outbound SMS log to cloud
+### a. Code Splitting
+- Route-level `React.lazy` (Auth, Settings, Reports, Admin pages)
+- Recharts → dynamic import (heavy ~200KB)
+- Date-fns → modular imports
 
-### UI (Bengali)
-- **`/settings/gsm`** — 
-  - Enable/disable GSM fallback
-  - Authorized phone numbers (max 3) — ESP32 শুধু এদের SMS গ্রহণ করবে
-  - Daily SMS counter + cost estimate
-  - Test "STATUS" button
+### b. Component Optimization
+- `React.memo` for SensorCard, AlertCard, ShedCard
+- `useMemo` for chart data transforms
+- Virtual scrolling (`@tanstack/react-virtual`) for AlertsPage list (>50 rows)
 
-## ৩. Out-of-scope (Phase 6+)
-- LoRaWAN (long-range mesh, requires extra module)
-- Voice command via GSM (DTMF)
-- Mesh self-healing across multiple farms
-- Satellite fallback
+### c. Bundle Audit
+- Vite build analyzer report → `/mnt/documents/bundle-report.html`
+- Tree-shake unused shadcn components
+
+## 4. Realtime Throttling
+- Dashboard subscription debounce: 2s (currently instant → repaints)
+- Sensor channel: only subscribe to current farm's shed
+- Disconnect on tab hidden (`visibilitychange`)
+
+## 5. Monitoring (additive)
+- New table `performance_metrics` — page load times, query duration (sampled 5%)
+- Edge function `record-perf-metric` (fire-and-forget)
+- Admin dashboard: p50/p95/p99 latency per route
+
+## Out-of-scope (Phase 7+)
+- Read replicas, CDN for assets, service worker offline cache, WebAssembly chart rendering
 
 ## Rollout Order
-1. DB migration: `device_mesh_peers`, `mesh_sync_log`, `gsm_inbound_sms`, `gsm_outbound_sms` + additive columns
-2. ESP-NOW master/slave logic in unified ESP32 firmware
-3. `/settings/mesh` UI + pairing wizard
-4. GSM mature firmware: inbound parser + auto-fallback + cost guard
-5. `/settings/gsm` UI + authorized phones
-6. `gsm-sms-relay` edge function (sync log when reconnect)
-7. End-to-end test: kill master WiFi → slave promotes → critical alert → GSM SMS to owner
+1. Composite indexes (immediate win, zero risk)
+2. Materialized views + cron refresh
+3. `get_farm_dashboard_snapshot` RPC + dashboard refactor
+4. React Query tuning + route-level lazy loading
+5. Realtime throttling
+6. Partitioning (last — needs careful cutover)
+7. Performance monitoring table
 
----
-
-## Phase 5 — Status (May 2026)
-
-✅ **DB**: `device_mesh_peers`, `mesh_sync_log`, `gsm_inbound_sms`, `gsm_outbound_sms` + additive columns shipped
-✅ **UI**: `MeshNetworkCard` (pairing code wizard), `GsmFallbackCard` (authorized phones, daily limit) integrated into SettingsPage
-✅ **Edge function**: `gsm-sms-relay` for ESP32 to bulk-sync inbound/outbound SMS + mesh logs after reconnect
-✅ **RPC**: `generate_mesh_pairing_code(device_id)` — 6-digit, 1-min TTL
-
-⏳ **Pending firmware work** (next iteration):
-- ESP-NOW master/slave protocol in unified `esp32-industrial.ino`
-- Mature `esp32-gsm-sms.ino` with: auto-fallback, command parser, cost guard, retry-with-backoff
-- ESP32 → `gsm-sms-relay` POST sync routine
+প্রতিটি step-এ before/after metrics নেব। Approve করলে step 1-3 (DB layer) দিয়ে শুরু করব।
