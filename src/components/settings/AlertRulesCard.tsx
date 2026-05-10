@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { AlertRulesWizard } from './AlertRulesWizard';
 
 const METRICS = [
   { v: 'temperature', label_bn: 'তাপমাত্রা (°C)', label_en: 'Temperature (°C)' },
