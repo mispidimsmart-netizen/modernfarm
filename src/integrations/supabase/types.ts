@@ -5553,6 +5553,23 @@ export type Database = {
         }
         Relationships: []
       }
+      farm_daily_rollup_mv: {
+        Row: {
+          avg_ammonia: number | null
+          avg_hsi: number | null
+          avg_humidity: number | null
+          avg_temp: number | null
+          day: string | null
+          farm_id: string | null
+          max_temp: number | null
+          min_temp: number | null
+          sensor_samples: number | null
+          shed_id: string | null
+          total_eggs: number | null
+          total_feed_kg: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_sensor_batch: {
@@ -5607,6 +5624,29 @@ export type Database = {
           previous_expires: string
           secret_version: number
         }[]
+      }
+      get_farm_daily_rollup: {
+        Args: { _days?: number; _farm_id: string }
+        Returns: {
+          avg_ammonia: number | null
+          avg_hsi: number | null
+          avg_humidity: number | null
+          avg_temp: number | null
+          day: string | null
+          farm_id: string | null
+          max_temp: number | null
+          min_temp: number | null
+          sensor_samples: number | null
+          shed_id: string | null
+          total_eggs: number | null
+          total_feed_kg: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "farm_daily_rollup_mv"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_farm_dashboard_snapshot: { Args: { _farm_id: string }; Returns: Json }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
@@ -5682,6 +5722,7 @@ export type Database = {
         Returns: undefined
       }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
+      refresh_farm_daily_rollup: { Args: never; Returns: undefined }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
         Returns: boolean
