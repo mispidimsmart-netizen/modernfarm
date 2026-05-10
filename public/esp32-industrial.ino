@@ -3256,6 +3256,8 @@ void checkCommands() {
           ack.POST(ap);
           ack.end();
           esp_task_wdt_reset();
+          // Phase 3: record applied command for idempotency
+          recordAppliedCommand(cri);
         }
       }
     }
