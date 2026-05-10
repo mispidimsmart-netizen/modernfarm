@@ -371,22 +371,25 @@ Deno.serve(async (req) => {
     // For POST requests, try to get device token from body first, then header
     let deviceToken = req.headers.get('x-device-token') || '';
     let bodyData: any = null;
+    let rawBody = '';
 
     if (req.method === 'POST') {
-      bodyData = await req.json();
-      // Support device_id or device_token in body as alternative to header
+      rawBody = await req.text();
+      try {
+        bodyData = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body', code: 'BAD_JSON' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       if (!deviceToken && bodyData.device_id) {
-        // Look up token by device_id (device_name)
         const { data: deviceByName } = await supabase
           .from('device_tokens')
           .select('token')
           .eq('device_name', bodyData.device_id)
           .eq('is_active', true)
           .single();
-        
-        if (deviceByName) {
-          deviceToken = deviceByName.token;
-        }
+        if (deviceByName) deviceToken = deviceByName.token;
       }
       if (!deviceToken && bodyData.device_token) {
         deviceToken = bodyData.device_token;
