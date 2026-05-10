@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
 import { ReportsAnalyticsView } from '@/components/reports/ReportsAnalyticsView';
+import { DataExportCard } from '@/components/settings/DataExportCard';
 
 export function ReportsDataTab() {
   const { language } = useAuth();
@@ -42,6 +43,9 @@ export function ReportsDataTab() {
 
       {/* Sensor ↔ Device ↔ Impact correlation + full Excel export */}
       <SensorDeviceImpactReport />
+
+      {/* Universal CSV exporter (any data type, any date range) */}
+      <DataExportCard />
 
       {/* Quick Actions */}
       <Card>
