@@ -27,9 +27,9 @@ interface MeshPeer {
 }
 
 export function MeshNetworkCard() {
-  const { selectedFarm } = useFarmContext();
+  const { selectedFarmId } = useFarmContext();
   const { language } = useAuth();
-  const farmId = selectedFarm?.id;
+  const farmId = selectedFarmId;
   const [devices, setDevices] = useState<DeviceToken[]>([]);
   const [peers, setPeers] = useState<MeshPeer[]>([]);
   const [loading, setLoading] = useState(false);
