@@ -59,6 +59,27 @@ export function FirmwareManagementTab({ language }: Props) {
   const [minRelays, setMinRelays] = useState("8");
   const [uploading, setUploading] = useState(false);
 
+  // Phase 5 hardening fields
+  const [signatureB64, setSignatureB64] = useState("");
+  const [signingKeyId, setSigningKeyId] = useState<string>("none");
+  const [windowEnabled, setWindowEnabled] = useState(true);
+  const [windowStart, setWindowStart] = useState("2");
+  const [windowEnd, setWindowEnd] = useState("4");
+  const [healthMinPct, setHealthMinPct] = useState("95");
+
+  const { data: signingKeys } = useQuery({
+    queryKey: ["firmware-signing-keys"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("firmware_signing_keys")
+        .select("id, key_name, algorithm, is_active")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: firmwares, isLoading } = useQuery({
     queryKey: ["firmware-registry"],
     queryFn: async () => {
