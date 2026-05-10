@@ -2869,9 +2869,18 @@ void syncWithCloud() {
     handleCloudResponse(response);
     cloudConnected = true;
     lastCloudSync = millis();
-    if (failsafeMode && cloudConnected) { failsafeMode = false; }
+    consecutiveFailedSyncs = 0;
+    if (consecutiveSuccessfulSyncs < 65535) consecutiveSuccessfulSyncs++;
+    // Phase 3: Failsafe auto-recovery — exit after 3 successful syncs IF no recent invariant breach (last 5 min)
+    if (failsafeMode && consecutiveSuccessfulSyncs >= 3 &&
+        (lastInvariantBreachAt == 0 || millis() - lastInvariantBreachAt > 300000UL)) {
+      failsafeMode = false;
+      Serial.println("✅ [FAILSAFE] Auto-recovered after 3 successful syncs (no recent invariant breach)");
+    }
     if (offlineBufCount > 0) offlineBufferSync();
   } else {
+    consecutiveSuccessfulSyncs = 0;
+    if (consecutiveFailedSyncs < 65535) consecutiveFailedSyncs++;
     if (millis() - lastCloudSync > CLOUD_TIMEOUT) {
       failsafeMode = true; cloudConnected = false;
     }
