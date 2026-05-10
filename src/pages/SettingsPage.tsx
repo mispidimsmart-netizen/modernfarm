@@ -26,6 +26,8 @@ import { PushNotificationHelpDialog } from '@/components/settings/PushNotificati
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
+import { MeshNetworkCard } from '@/components/settings/MeshNetworkCard';
+import { GsmFallbackCard } from '@/components/settings/GsmFallbackCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { 
   FarmSetupTab, 
@@ -406,6 +408,12 @@ export function SettingsPage() {
 
                   {/* Phase 4: Advanced alert rules */}
                   <AlertRulesCard />
+
+                  {/* Phase 5: Multi-Device Mesh */}
+                  <MeshNetworkCard />
+
+                  {/* Phase 5: GSM Fallback */}
+                  {isOwner && <GsmFallbackCard />}
                 </CardContent>
               </CollapsibleContent>
             </Card>

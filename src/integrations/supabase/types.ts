@@ -1609,6 +1609,70 @@ export type Database = {
         }
         Relationships: []
       }
+      device_mesh_peers: {
+        Row: {
+          created_at: string
+          farm_id: string
+          id: string
+          last_handshake_at: string | null
+          link_quality: number
+          pairing_code: string | null
+          pairing_code_expires_at: string | null
+          peer_device_token_id: string
+          primary_device_token_id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          farm_id: string
+          id?: string
+          last_handshake_at?: string | null
+          link_quality?: number
+          pairing_code?: string | null
+          pairing_code_expires_at?: string | null
+          peer_device_token_id: string
+          primary_device_token_id: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          farm_id?: string
+          id?: string
+          last_handshake_at?: string | null
+          link_quality?: number
+          pairing_code?: string | null
+          pairing_code_expires_at?: string | null
+          peer_device_token_id?: string
+          primary_device_token_id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_mesh_peers_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_mesh_peers_peer_device_token_id_fkey"
+            columns: ["peer_device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_mesh_peers_primary_device_token_id_fkey"
+            columns: ["primary_device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_offline_buffer_log: {
         Row: {
           accepted_count: number
@@ -1938,6 +2002,8 @@ export type Database = {
           is_active: boolean
           last_seen_at: string | null
           last_signature_at: string | null
+          mesh_group_id: string | null
+          mesh_role: string
           previous_device_secret: string | null
           previous_secret_expires_at: string | null
           previous_secret_hash: string | null
@@ -1958,6 +2024,8 @@ export type Database = {
           is_active?: boolean
           last_seen_at?: string | null
           last_signature_at?: string | null
+          mesh_group_id?: string | null
+          mesh_role?: string
           previous_device_secret?: string | null
           previous_secret_expires_at?: string | null
           previous_secret_hash?: string | null
@@ -1978,6 +2046,8 @@ export type Database = {
           is_active?: boolean
           last_seen_at?: string | null
           last_signature_at?: string | null
+          mesh_group_id?: string | null
+          mesh_role?: string
           previous_device_secret?: string | null
           previous_secret_expires_at?: string | null
           previous_secret_hash?: string | null
@@ -2438,6 +2508,7 @@ export type Database = {
       farm_settings: {
         Row: {
           ammonia_max: number
+          authorized_phones: Json
           automation_mode: string
           created_at: string
           fan_high_temp_min: number
@@ -2447,6 +2518,8 @@ export type Database = {
           fan_medium_temp_min: number
           farm_id: string | null
           farm_size: string | null
+          gsm_daily_sms_limit: number
+          gsm_enabled: boolean
           hsi_automation_enabled: boolean
           hsi_emergency_threshold: number
           hsi_mild_threshold: number
@@ -2467,6 +2540,7 @@ export type Database = {
         }
         Insert: {
           ammonia_max?: number
+          authorized_phones?: Json
           automation_mode?: string
           created_at?: string
           fan_high_temp_min?: number
@@ -2476,6 +2550,8 @@ export type Database = {
           fan_medium_temp_min?: number
           farm_id?: string | null
           farm_size?: string | null
+          gsm_daily_sms_limit?: number
+          gsm_enabled?: boolean
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -2496,6 +2572,7 @@ export type Database = {
         }
         Update: {
           ammonia_max?: number
+          authorized_phones?: Json
           automation_mode?: string
           created_at?: string
           fan_high_temp_min?: number
@@ -2505,6 +2582,8 @@ export type Database = {
           fan_medium_temp_min?: number
           farm_id?: string | null
           farm_size?: string | null
+          gsm_daily_sms_limit?: number
+          gsm_enabled?: boolean
           hsi_automation_enabled?: boolean
           hsi_emergency_threshold?: number
           hsi_mild_threshold?: number
@@ -2999,6 +3078,133 @@ export type Database = {
           },
         ]
       }
+      gsm_inbound_sms: {
+        Row: {
+          authorized: boolean
+          body: string
+          created_at: string
+          device_token_id: string
+          executed_at: string | null
+          farm_id: string
+          from_phone: string
+          id: string
+          parsed_args: Json | null
+          parsed_command: string | null
+          received_at: string
+          response_body: string | null
+          response_sent: boolean
+        }
+        Insert: {
+          authorized?: boolean
+          body: string
+          created_at?: string
+          device_token_id: string
+          executed_at?: string | null
+          farm_id: string
+          from_phone: string
+          id?: string
+          parsed_args?: Json | null
+          parsed_command?: string | null
+          received_at?: string
+          response_body?: string | null
+          response_sent?: boolean
+        }
+        Update: {
+          authorized?: boolean
+          body?: string
+          created_at?: string
+          device_token_id?: string
+          executed_at?: string | null
+          farm_id?: string
+          from_phone?: string
+          id?: string
+          parsed_args?: Json | null
+          parsed_command?: string | null
+          received_at?: string
+          response_body?: string | null
+          response_sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gsm_inbound_sms_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gsm_inbound_sms_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gsm_outbound_sms: {
+        Row: {
+          alert_id: string | null
+          body: string
+          created_at: string
+          delivered_at: string | null
+          device_token_id: string
+          error_message: string | null
+          farm_id: string
+          id: string
+          retry_count: number
+          status: string
+          to_phone: string
+        }
+        Insert: {
+          alert_id?: string | null
+          body: string
+          created_at?: string
+          delivered_at?: string | null
+          device_token_id: string
+          error_message?: string | null
+          farm_id: string
+          id?: string
+          retry_count?: number
+          status?: string
+          to_phone: string
+        }
+        Update: {
+          alert_id?: string | null
+          body?: string
+          created_at?: string
+          delivered_at?: string | null
+          device_token_id?: string
+          error_message?: string | null
+          farm_id?: string
+          id?: string
+          retry_count?: number
+          status?: string
+          to_phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gsm_outbound_sms_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gsm_outbound_sms_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gsm_outbound_sms_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       income: {
         Row: {
           amount: number
@@ -3404,6 +3610,67 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      mesh_sync_log: {
+        Row: {
+          bytes: number
+          created_at: string
+          error_message: string | null
+          farm_id: string | null
+          from_device_id: string | null
+          id: string
+          latency_ms: number | null
+          payload_type: string
+          success: boolean
+          to_device_id: string | null
+        }
+        Insert: {
+          bytes?: number
+          created_at?: string
+          error_message?: string | null
+          farm_id?: string | null
+          from_device_id?: string | null
+          id?: string
+          latency_ms?: number | null
+          payload_type: string
+          success?: boolean
+          to_device_id?: string | null
+        }
+        Update: {
+          bytes?: number
+          created_at?: string
+          error_message?: string | null
+          farm_id?: string | null
+          from_device_id?: string | null
+          id?: string
+          latency_ms?: number | null
+          payload_type?: string
+          success?: boolean
+          to_device_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesh_sync_log_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesh_sync_log_from_device_id_fkey"
+            columns: ["from_device_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mesh_sync_log_to_device_id_fkey"
+            columns: ["to_device_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mode_profiles: {
         Row: {
@@ -5328,6 +5595,10 @@ export type Database = {
         Returns: boolean
       }
       evaluate_alert_rules: { Args: { _farm_id: string }; Returns: number }
+      generate_mesh_pairing_code: {
+        Args: { _primary_device_token_id: string }
+        Returns: Json
+      }
       get_device_secret: {
         Args: { _device_token_id: string }
         Returns: {
