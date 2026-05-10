@@ -29,6 +29,7 @@ import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { MeshNetworkCard } from '@/components/settings/MeshNetworkCard';
 import { GsmFallbackCard } from '@/components/settings/GsmFallbackCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
+import { QuietHoursAndSnoozeCard } from '@/components/settings/QuietHoursAndSnoozeCard';
 import { 
   FarmSetupTab, 
   OperationPreferencesTab, 
