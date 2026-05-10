@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Cpu, Plus, Copy, Trash2, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Cpu, Plus, Copy, Trash2, RefreshCw, Radio } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function DeviceManagementSheet() {
@@ -77,6 +78,19 @@ export function DeviceManagementSheet() {
       toast.success(language === 'bn' ? 'শেড অ্যাসাইন হয়েছে' : 'Shed assigned');
     } catch (error) {
       toast.error(language === 'bn' ? 'সমস্যা হয়েছে' : 'Error assigning shed');
+    }
+  };
+
+  const handleToggleMqtt = async (deviceId: string, enabled: boolean) => {
+    try {
+      await updateDevice.mutateAsync({ id: deviceId, mqtt_enabled: enabled } as never);
+      toast.success(
+        language === 'bn'
+          ? enabled ? 'MQTT সক্রিয় হয়েছে' : 'MQTT বন্ধ হয়েছে'
+          : enabled ? 'MQTT enabled' : 'MQTT disabled'
+      );
+    } catch {
+      toast.error(language === 'bn' ? 'সমস্যা হয়েছে' : 'Error');
     }
   };
 
@@ -226,6 +240,38 @@ export function DeviceManagementSheet() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      {/* MQTT Toggle */}
+                      <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+                        <div className="flex items-center gap-2">
+                          <Radio className={`h-4 w-4 ${(device as { mqtt_enabled?: boolean }).mqtt_enabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <div>
+                            <p className="text-sm font-medium">
+                              {language === 'bn' ? 'MQTT সক্রিয় করুন' : 'Enable MQTT'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {language === 'bn'
+                                ? 'কমান্ড <১ সেকেন্ডে পাঠান (HiveMQ Cloud)'
+                                : 'Commands in <1s via HiveMQ Cloud'}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={(device as { mqtt_enabled?: boolean }).mqtt_enabled ?? false}
+                          onCheckedChange={(v) => handleToggleMqtt(device.id, v)}
+                        />
+                      </div>
+
+                      {(device as { mqtt_enabled?: boolean }).mqtt_enabled && (device as { mqtt_topic_prefix?: string }).mqtt_topic_prefix && (
+                        <div className="mt-2 rounded-lg bg-muted p-2">
+                          <p className="text-[10px] text-muted-foreground">
+                            {language === 'bn' ? 'MQTT টপিক:' : 'MQTT Topic:'}
+                          </p>
+                          <code className="mt-0.5 block truncate text-[10px]">
+                            {(device as { mqtt_topic_prefix?: string }).mqtt_topic_prefix}/cmd
+                          </code>
+                        </div>
+                      )}
                     </div>
 
                     {/* Health Card */}
