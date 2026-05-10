@@ -677,3 +677,47 @@ async function handleLegacyProgress(req: Request, supabase: any) {
 
   return jsonResponse({ success: true });
 }
+
+// ─────────────────────────────────────────────
+// POST /firmware/boot-report — ESP32 reports boot success/failure
+// ─────────────────────────────────────────────
+async function handleBootReport(req: Request, supabase: any) {
+  const deviceToken = req.headers.get('x-device-token');
+  if (!deviceToken) return jsonResponse({ error: 'Missing device token' }, 401);
+
+  const { data: device } = await supabase
+    .from('device_tokens').select('id').eq('token', deviceToken).eq('is_active', true).single();
+  if (!device) return jsonResponse({ error: 'Invalid device token' }, 401);
+
+  const body = await req.json();
+  const { firmware_id, boot_success, from_version, signature_validated } = body;
+  if (!firmware_id) return jsonResponse({ error: 'firmware_id required' }, 400);
+
+  if (boot_success === true) {
+    // Boot OK → mark complete
+    await supabase.from('firmware_install_logs').update({
+      status: 'completed',
+      boot_succeeded: true,
+      last_boot_at: new Date().toISOString(),
+      signature_validated: signature_validated === true,
+      completed_at: new Date().toISOString(),
+    }).eq('device_token_id', device.id).eq('firmware_id', firmware_id);
+
+    await updateRolloutCounters(supabase, firmware_id, 'completed');
+    return jsonResponse({ success: true, should_rollback: false });
+  }
+
+  // Boot fail → increment counter, possibly rollback
+  const { data: result } = await supabase.rpc('report_boot_failure', {
+    _device_token_id: device.id,
+    _firmware_id: firmware_id,
+    _from_version: from_version || null,
+  });
+
+  if (result?.should_rollback) {
+    await updateRolloutCounters(supabase, firmware_id, 'failed');
+    console.log(`[OTA] Auto-rollback triggered for device ${device.id} firmware ${firmware_id}`);
+  }
+
+  return jsonResponse({ success: true, ...result });
+}
