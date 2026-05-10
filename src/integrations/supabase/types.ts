@@ -958,6 +958,7 @@ export type Database = {
       }
       device_commands: {
         Row: {
+          client_request_id: string | null
           command_type: string
           command_value: boolean
           created_at: string
@@ -969,9 +970,11 @@ export type Database = {
           id: string
           latency_to_ack_ms: number | null
           latency_to_device_ms: number | null
+          retry_count: number
           user_id: string
         }
         Insert: {
+          client_request_id?: string | null
           command_type: string
           command_value?: boolean
           created_at?: string
@@ -983,9 +986,11 @@ export type Database = {
           id?: string
           latency_to_ack_ms?: number | null
           latency_to_device_ms?: number | null
+          retry_count?: number
           user_id: string
         }
         Update: {
+          client_request_id?: string | null
           command_type?: string
           command_value?: boolean
           created_at?: string
@@ -997,6 +1002,7 @@ export type Database = {
           id?: string
           latency_to_ack_ms?: number | null
           latency_to_device_ms?: number | null
+          retry_count?: number
           user_id?: string
         }
         Relationships: [
@@ -1113,6 +1119,8 @@ export type Database = {
           cached_settings_version: number | null
           ceiling_fan_total_runtime_seconds: number | null
           circulation_fan_last_cycle_at: string | null
+          connection_quality_score: number | null
+          consecutive_failed_syncs: number
           consecutive_high_ammonia: number | null
           cpu_temperature: number | null
           created_at: string
@@ -1121,6 +1129,7 @@ export type Database = {
           error_count: number | null
           failsafe_activated_at: string | null
           failsafe_mode: boolean | null
+          failsafe_recovery_attempts: number
           farm_id: string | null
           firmware_version: string | null
           fogger_last_cycle_at: string | null
@@ -1134,6 +1143,7 @@ export type Database = {
           last_age_sync_at: string | null
           last_cloud_sync_at: string | null
           last_error_message: string | null
+          last_offline_buffer_flush: string | null
           last_power_event_at: string | null
           last_power_outage_id: string | null
           last_restart_at: string | null
@@ -1183,6 +1193,8 @@ export type Database = {
           cached_settings_version?: number | null
           ceiling_fan_total_runtime_seconds?: number | null
           circulation_fan_last_cycle_at?: string | null
+          connection_quality_score?: number | null
+          consecutive_failed_syncs?: number
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
           created_at?: string
@@ -1191,6 +1203,7 @@ export type Database = {
           error_count?: number | null
           failsafe_activated_at?: string | null
           failsafe_mode?: boolean | null
+          failsafe_recovery_attempts?: number
           farm_id?: string | null
           firmware_version?: string | null
           fogger_last_cycle_at?: string | null
@@ -1204,6 +1217,7 @@ export type Database = {
           last_age_sync_at?: string | null
           last_cloud_sync_at?: string | null
           last_error_message?: string | null
+          last_offline_buffer_flush?: string | null
           last_power_event_at?: string | null
           last_power_outage_id?: string | null
           last_restart_at?: string | null
@@ -1253,6 +1267,8 @@ export type Database = {
           cached_settings_version?: number | null
           ceiling_fan_total_runtime_seconds?: number | null
           circulation_fan_last_cycle_at?: string | null
+          connection_quality_score?: number | null
+          consecutive_failed_syncs?: number
           consecutive_high_ammonia?: number | null
           cpu_temperature?: number | null
           created_at?: string
@@ -1261,6 +1277,7 @@ export type Database = {
           error_count?: number | null
           failsafe_activated_at?: string | null
           failsafe_mode?: boolean | null
+          failsafe_recovery_attempts?: number
           farm_id?: string | null
           firmware_version?: string | null
           fogger_last_cycle_at?: string | null
@@ -1274,6 +1291,7 @@ export type Database = {
           last_age_sync_at?: string | null
           last_cloud_sync_at?: string | null
           last_error_message?: string | null
+          last_offline_buffer_flush?: string | null
           last_power_event_at?: string | null
           last_power_outage_id?: string | null
           last_restart_at?: string | null
@@ -1394,6 +1412,42 @@ export type Database = {
           sync_count?: number
           total_latency_ms?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      device_offline_buffer_log: {
+        Row: {
+          accepted_count: number
+          batch_size: number
+          device_token_id: string
+          farm_id: string | null
+          flushed_at: string
+          id: string
+          newest_ts: string | null
+          oldest_ts: string | null
+          rejected_count: number
+        }
+        Insert: {
+          accepted_count?: number
+          batch_size: number
+          device_token_id: string
+          farm_id?: string | null
+          flushed_at?: string
+          id?: string
+          newest_ts?: string | null
+          oldest_ts?: string | null
+          rejected_count?: number
+        }
+        Update: {
+          accepted_count?: number
+          batch_size?: number
+          device_token_id?: string
+          farm_id?: string | null
+          flushed_at?: string
+          id?: string
+          newest_ts?: string | null
+          oldest_ts?: string | null
+          rejected_count?: number
         }
         Relationships: []
       }
@@ -5040,6 +5094,16 @@ export type Database = {
       }
     }
     Functions: {
+      accept_sensor_batch: {
+        Args: {
+          _device_token_id: string
+          _farm_id: string
+          _readings: Json
+          _shed_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       assign_user_role: {
         Args: {
           _assigner_id: string

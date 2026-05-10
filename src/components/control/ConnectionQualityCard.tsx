@@ -25,14 +25,18 @@ export function ConnectionQualityCard() {
 
   const summary = useMemo(() => {
     const list = devices || [];
-    if (list.length === 0) return { quality: 'unknown' as Quality, lastSyncMs: null as number | null, errorRate: 0, avgLatency: 0, totalSync: 0 };
+    if (list.length === 0) return { quality: 'unknown' as Quality, lastSyncMs: null as number | null, errorRate: 0, avgLatency: 0, totalSync: 0, score: null as number | null };
 
     let lastSyncMs: number | null = null;
+    let bestScore: number | null = null;
     list.forEach((d) => {
       if (d.last_seen_at) {
         const diff = Date.now() - new Date(d.last_seen_at).getTime();
         if (lastSyncMs === null || diff < lastSyncMs) lastSyncMs = diff;
       }
+      // Phase 3: ESP32-reported quality score (0-100), prefer the highest of any device
+      const s = (d as any).connection_quality_score as number | null | undefined;
+      if (typeof s === 'number' && (bestScore === null || s > bestScore)) bestScore = s;
     });
 
     const m = metrics || [];
@@ -42,11 +46,14 @@ export function ConnectionQualityCard() {
     const errorRate = totalSync > 0 ? (totalErr / totalSync) * 100 : 0;
     const avgLatency = totalSync > 0 ? totalLat / totalSync : 0;
 
-    let quality: Quality = 'excellent';
-    if (lastSyncMs === null || lastSyncMs > 5 * 60_000 || errorRate > 5) quality = 'poor';
+    let quality: Quality;
+    if (bestScore !== null) {
+      quality = bestScore >= 80 ? 'excellent' : bestScore >= 50 ? 'fair' : 'poor';
+    } else if (lastSyncMs === null || lastSyncMs > 5 * 60_000 || errorRate > 5) quality = 'poor';
     else if (lastSyncMs > 2 * 60_000 || errorRate > 1 || avgLatency > 1500) quality = 'fair';
+    else quality = 'excellent';
 
-    return { quality, lastSyncMs, errorRate, avgLatency, totalSync };
+    return { quality, lastSyncMs, errorRate, avgLatency, totalSync, score: bestScore };
   }, [devices, metrics]);
 
   const config = {
@@ -106,6 +113,7 @@ export function ConnectionQualityCard() {
             <div className="min-w-0 flex-1">
               <p className={`text-sm font-semibold ${c.color}`}>{c.label[language]}</p>
               <p className="text-[11px] text-muted-foreground">
+                {summary.score !== null && `${language === 'bn' ? 'মান' : 'Score'} ${bn(summary.score, language)}/${bn(100, language)} · `}
                 {language === 'bn' ? 'শেষ সিঙ্ক:' : 'Last sync:'} {lastSyncText}
                 {summary.totalSync > 0 && ` · ${language === 'bn' ? 'ত্রুটি' : 'err'} ${bn(summary.errorRate.toFixed(1), language)}%`}
               </p>

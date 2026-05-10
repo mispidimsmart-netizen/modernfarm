@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { FarmProvider } from "./context/FarmContext";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { OfflineMutationBadge } from "./components/OfflineMutationBadge";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { RoleProtectedRoute } from "./components/auth";
 import { useBatchEditQueue } from "./hooks/useBatchEditQueue";
@@ -283,6 +284,9 @@ const App = () => {
               <Toaster />
               <Sonner />
               <OfflineIndicator />
+              <div className="fixed right-3 top-3 z-[60]">
+                <OfflineMutationBadge />
+              </div>
               <PWAUpdateBanner />
               <GlobalBatchEditQueue />
               <BrowserRouter>

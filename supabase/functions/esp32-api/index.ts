@@ -704,10 +704,23 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     // ===== OFFLINE BUFFER SYNC ENDPOINT =====
-    // POST /buffer-sync - Upload buffered offline sensor data
+    // POST /buffer-sync - Upload buffered offline sensor data (legacy)
     if (req.method === 'POST' && path === 'buffer-sync') {
       return await handleBufferSync(bodyData, supabase, userId, deviceToken);
     }
+
+    // ===== PHASE 3: SENSOR BATCH (offline buffer flush via RPC, audited) =====
+    // POST /sensor-batch  body: { readings: [{ temperature, humidity, ammonia, recorded_at }, ...] }
+    if (req.method === 'POST' && path === 'sensor-batch') {
+      return await handleSensorBatch(bodyData, supabase, userId, deviceToken);
+    }
+
+    // ===== PHASE 3: CONNECTION QUALITY UPDATE =====
+    // POST /quality-update  body: { wifi_rssi, consecutive_failed_syncs, last_sync_gap_seconds }
+    if (req.method === 'POST' && path === 'quality-update') {
+      return await handleQualityUpdate(bodyData, supabase, userId, deviceToken);
+    }
+
 
     // ===== GET DEVICE STATE ENDPOINT =====
     // Get current state for a specific device/shed
@@ -2358,7 +2371,7 @@ async function getDeviceCommands(supabase: any, userId: string, deviceName: stri
   // Get pending (unexecuted) commands for this device — only fresh ones
   let query = supabase
     .from('device_commands')
-    .select('id, command_type, command_value, created_at')
+    .select('id, command_type, command_value, created_at, client_request_id, dispatched_at, retry_count')
     .eq('user_id', userId)
     .eq('executed', false)
     .gte('created_at', freshCutoff)
@@ -2376,6 +2389,27 @@ async function getDeviceCommands(supabase: any, userId: string, deviceName: stri
       JSON.stringify({ error: 'Failed to get commands', code: 'FETCH_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  }
+
+  // Phase 3 idempotency: ensure each fetched command has a client_request_id
+  // (so ESP32 can echo it back in ack to dedupe), and track dispatch lifecycle.
+  const nowIso = new Date().toISOString();
+  if (data && data.length > 0) {
+    for (const cmd of data) {
+      const updates: any = {};
+      if (!cmd.client_request_id) {
+        cmd.client_request_id = cmd.id;          // reuse row id as idempotency key
+        updates.client_request_id = cmd.id;
+      }
+      if (!cmd.dispatched_at) {
+        updates.dispatched_at = nowIso;
+      } else {
+        updates.retry_count = (cmd.retry_count || 0) + 1;
+      }
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('device_commands').update(updates).eq('id', cmd.id);
+      }
+    }
   }
 
   // Also fetch matching command_ids from device_command_log for ACK protocol
@@ -4540,6 +4574,133 @@ async function getDeviceConfig(supabase: any, userId: string, shedId: string | n
     console.error('Get device config error:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to get config', code: 'CONFIG_ERROR' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 PHASE 3: SENSOR BATCH (offline buffer flush via RPC + audit)
+// ═══════════════════════════════════════════════════════════════════════════
+async function handleSensorBatch(body: any, supabase: any, userId: string, deviceToken: string) {
+  try {
+    const readings = Array.isArray(body?.readings) ? body.readings : null;
+    if (!readings || readings.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'readings array required', code: 'EMPTY_BATCH' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (readings.length > 200) {
+      return new Response(
+        JSON.stringify({ error: 'max 200 readings per batch', code: 'BATCH_TOO_LARGE' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: deviceInfo } = await supabase
+      .from('device_tokens')
+      .select('id, shed_id, farm_id')
+      .eq('token', deviceToken)
+      .single();
+
+    if (!deviceInfo || !deviceInfo.farm_id) {
+      return new Response(
+        JSON.stringify({ error: 'Device not bound to a farm', code: 'NO_FARM_BOUND' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('accept_sensor_batch', {
+      _device_token_id: deviceInfo.id,
+      _user_id: userId,
+      _farm_id: deviceInfo.farm_id,
+      _shed_id: deviceInfo.shed_id,
+      _readings: readings,
+    });
+
+    if (rpcError) {
+      console.error('sensor-batch RPC error:', rpcError);
+      return new Response(
+        JSON.stringify({ error: 'RPC failed', code: 'RPC_ERROR', details: rpcError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, ...rpcResult }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('sensor-batch error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to ingest batch', code: 'BATCH_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🆕 PHASE 3: CONNECTION QUALITY UPDATE
+// ═══════════════════════════════════════════════════════════════════════════
+function computeQualityScore(rssi: number | null, gapSec: number, failedSyncs: number): number {
+  let score = 100;
+  // RSSI penalty (best ~ -50, weak ~ -85)
+  if (rssi != null) {
+    if (rssi <= -85) score -= 40;
+    else if (rssi <= -75) score -= 25;
+    else if (rssi <= -65) score -= 10;
+  }
+  // Gap penalty (>60s starts hurting)
+  if (gapSec > 300) score -= 30;
+  else if (gapSec > 120) score -= 15;
+  else if (gapSec > 60) score -= 5;
+  // Failure streak
+  if (failedSyncs >= 5) score -= 30;
+  else if (failedSyncs >= 2) score -= 15;
+  return Math.max(0, Math.min(100, score));
+}
+
+async function handleQualityUpdate(body: any, supabase: any, userId: string, deviceToken: string) {
+  try {
+    const rssi = typeof body?.wifi_rssi === 'number' ? body.wifi_rssi : null;
+    const gapSec = typeof body?.last_sync_gap_seconds === 'number' ? body.last_sync_gap_seconds : 0;
+    const failed = typeof body?.consecutive_failed_syncs === 'number' ? body.consecutive_failed_syncs : 0;
+
+    const { data: deviceInfo } = await supabase
+      .from('device_tokens')
+      .select('id, farm_id')
+      .eq('token', deviceToken)
+      .single();
+    if (!deviceInfo) {
+      return new Response(
+        JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const score = computeQualityScore(rssi, gapSec, failed);
+
+    await supabase
+      .from('device_health')
+      .update({
+        connection_quality_score: score,
+        consecutive_failed_syncs: failed,
+        wifi_signal_strength: rssi,
+        last_seen_at: new Date().toISOString(),
+        is_online: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('device_token_id', deviceInfo.id);
+
+    return new Response(
+      JSON.stringify({ success: true, connection_quality_score: score }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('quality-update error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to update quality', code: 'QUALITY_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
