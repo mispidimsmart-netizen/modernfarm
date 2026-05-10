@@ -66,6 +66,40 @@ Deno.serve(async (req) => {
       const alertCount = (alerts.data ?? []).length;
       const criticalAlerts = (alerts.data ?? []).filter((a: any) => a.severity === "critical").length;
 
+      // Phase 7: AI Bengali summary
+      let aiSummary = "";
+      try {
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (LOVABLE_API_KEY) {
+          const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [{
+                role: "user",
+                content: `নিচের ১ সপ্তাহের পোল্ট্রি ফার্ম ডেটা থেকে কৃষকের জন্য সংক্ষিপ্ত (৫-৭ লাইন) বাংলা সারাংশ + সুপারিশ লেখো:
+গড় তাপমাত্রা: ${avg("temperature").toFixed(1)}°C
+গড় আর্দ্রতা: ${avg("humidity").toFixed(1)}%
+গড় অ্যামোনিয়া: ${avg("ammonia").toFixed(1)} ppm
+মোট ডিম: ${totalEggs}
+মোট খাদ্য: ${totalFeed.toFixed(1)} কেজি
+মোট অ্যালার্ট: ${alertCount} (জরুরি: ${criticalAlerts})`,
+              }],
+            }),
+          });
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            aiSummary = aiData?.choices?.[0]?.message?.content ?? "";
+          }
+        }
+      } catch (e) {
+        console.error("ai summary failed", e);
+      }
+
       const csvRows: string[] = [];
       csvRows.push("=== সাপ্তাহিক খামার সারাংশ ===");
       csvRows.push(`সময়কাল,${dateStart} থেকে ${dateEnd}`);
@@ -80,6 +114,14 @@ Deno.serve(async (req) => {
       csvRows.push(`মোট অ্যালার্ট,${alertCount}`);
       csvRows.push(`জরুরি অ্যালার্ট,${criticalAlerts}`);
       csvRows.push("");
+      csvRows.push("");
+      if (aiSummary) {
+        csvRows.push("=== 🤖 AI সারাংশ ও সুপারিশ ===");
+        for (const line of aiSummary.split("\n")) {
+          csvRows.push(`"${line.replace(/"/g, '""')}"`);
+        }
+        csvRows.push("");
+      }
       csvRows.push("=== দৈনিক সারাংশ ===");
       csvRows.push("তারিখ,স্বাস্থ্য স্কোর,গড় তাপমাত্রা,গড় আর্দ্রতা,মোট ডিম,অ্যালার্ট");
       for (const d of summary.data ?? []) {
