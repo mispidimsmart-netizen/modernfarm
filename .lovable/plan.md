@@ -1,78 +1,80 @@
-# Phase 4 — Advanced Alerting & Notifications
+# Phase 5 — Multi-Device Mesh & GSM Fallback
 
 ## লক্ষ্য
 
-বিদ্যমান `alerts` table-কে farmer-friendly multi-channel notification system-এ রূপান্তর। কৃষক নিজে threshold, channel, quiet-hours, escalation rules সেট করতে পারবেন। বিদ্যমান table/column overwrite হবে না — সব additive।
+একটি farm-এ একাধিক ESP32 (multi-shed) একসাথে কাজ করবে। যখন WiFi/Internet down, তখন GSM (SIM800L/A7670) দিয়ে SMS-based command + critical alert পাঠানো-গ্রহণ করা যাবে। কোনো বিদ্যমান table/API overwrite হবে না — সব additive।
 
-## ১. Database (additive only)
+## ১. Multi-Device Mesh
 
-নতুন tables:
-- `alert_rules` — farmer-configurable rule set
-  - `farm_id, metric` (temperature/humidity/ammonia/water/power/offline/safety_breach)
-  - `operator` (>, <, =), `threshold_value`, `duration_seconds` (sustained breach)
-  - `severity` (info/warning/critical), `enabled`
-  - `channels` (jsonb: `{push, sms, whatsapp, in_app}`)
-  - `cooldown_minutes` (default 30 — same alert বারবার পাঠাবে না)
-- `alert_channel_config` — farm-level channel preferences
-  - `farm_id, push_enabled, sms_enabled, whatsapp_enabled`
-  - `phone_e164` (SMS/WhatsApp destination)
-  - `quiet_hours_start, quiet_hours_end` (HH:MM, only critical bypasses)
-  - `escalation_minutes` (unack alert → escalate to next channel)
-  - `escalation_phone_e164` (manager/owner backup)
-- `alert_deliveries` — audit log per channel attempt
-  - `alert_id, channel, status` (queued/sent/failed/skipped_quiet/skipped_cooldown)
-  - `provider_message_id, error_message, sent_at`
-- `alerts`-এ additive columns:
-  - `acknowledged_at, acknowledged_by, escalated_at, rule_id, sustained_since`
+### Database (additive)
+- **`device_mesh_peers`** — কোন ESP32 কোন ESP32-এর peer
+  - `farm_id, primary_device_token_id, peer_device_token_id, role` (master/slave/backup)
+  - `last_handshake_at, link_quality` (0-100, RSSI ভিত্তিক)
+- **`mesh_sync_log`** — peer-to-peer sync events
+  - `from_device_id, to_device_id, payload_type` (sensor/command/safety_state), `bytes`, `latency_ms`
+- **`device_tokens` additive columns**: `mesh_role` (independent/master/slave), `mesh_group_id`
 
-RLS: সব farm-scoped, `user_can_access_farm()` দিয়ে।
+### ESP32 Firmware
+- **ESP-NOW protocol** (built-in, no extra hardware) — 250-byte packets, ~200m line-of-sight
+- Master ESP32 internet-connected → relays cloud commands to slaves
+- Slave ESP32 sends sensor data → master → cloud (single uplink saves bandwidth)
+- Auto-elect new master যদি current master offline >2 min
+- Each ESP32 broadcasts safety_status — যদি one shed এ heat emergency, neighbor shed-এ cooling pre-warm
 
-DB function: `evaluate_alert_rules(farm_id)` — sensor_readings + device_status থেকে latest মেট্রিক নিয়ে rules check করবে, cooldown/quiet-hours respect করবে, alert তৈরি করবে।
+### UI (Bengali)
+- **`/settings/mesh`** — mesh group setup wizard
+  - "এই কন্ট্রোলারের সাথে অন্য কোন কন্ট্রোলার যুক্ত করুন"
+  - Pairing code (6-digit) প্রতি ১ মিনিটে refresh
+  - Live link quality bar per peer
+- **Farm dashboard**: multi-shed grid view — প্রতিটা shed এর mesh status badge
 
-## ২. Edge Functions
+## ২. GSM Fallback (Mature)
 
-- **`alert-dispatcher`** (cron: প্রতি ১ মিনিট):
-  - সব farm-এর জন্য `evaluate_alert_rules` চালাবে
-  - Unsent alerts নিয়ে channel-অনুযায়ী dispatch
-  - Quiet hours: শুধু `critical` alert পাঠাবে
-  - Cooldown check (একই rule_id-এর শেষ delivery × cooldown_minutes)
-  - Push (Web Push API + VAPID), SMS/WhatsApp (Twilio gateway)
-  - প্রতিটা attempt `alert_deliveries`-এ লগ
-- **`alert-escalator`** (cron: প্রতি ৫ মিনিট):
-  - `severity=critical AND acknowledged_at IS NULL AND created_at < now() - escalation_minutes`
-  - Escalation phone-এ SMS পাঠাবে, `escalated_at` সেট করবে
-- **`alert-acknowledge`** (user-invoked):
-  - Auth-protected, `acknowledged_at/by` সেট করবে; escalation থামাবে
+### Hardware Support
+- SIM800L (2G GSM) বা A7670 (4G LTE) — UART2 (GPIO 16/17) connection
+- Already wired in `esp32-gsm-sms.ino` — এখন production-grade করব
 
-## ৩. Frontend (Bengali UI)
+### Database (additive)
+- **`gsm_inbound_sms`** — SMS commands received by ESP32
+  - `device_token_id, from_phone, body, parsed_command, executed_at, response_sent`
+- **`gsm_outbound_sms`** — alerts sent via GSM
+  - `device_token_id, to_phone, body, alert_id, delivered_at, retry_count`
+- **`farm_settings` additive**: `gsm_enabled, authorized_phones jsonb` (whitelist for SMS commands)
 
-- **`/alerts` page redesign**: tabs — সক্রিয়/স্বীকৃত/আর্কাইভ। প্রতিটা alert card-এ "স্বীকার করুন" বাটন।
-- **`/settings/alerts`**:
-  - Channel toggle cards (পুশ/SMS/WhatsApp)
-  - Phone number input + verify
-  - Quiet hours TimePicker (শান্ত সময়)
-  - Threshold list — প্রতিটা metric-এর জন্য slider + duration + severity + cooldown
-  - Test button per channel ("পরীক্ষামূলক বার্তা পাঠান")
-- **AlertBell** header component: unread count badge, dropdown preview
-- **Realtime**: `alerts` table-এ supabase realtime subscribe → instant toast
+### ESP32 Firmware (`esp32-gsm-sms.ino` mature version)
+- **Auto-detect Internet down** → switch to GSM mode
+- **Inbound SMS commands** (only from authorized_phones):
+  - `STATUS` → reply with temp/hum/relay state
+  - `FAN ON 30` → run fan 30 min
+  - `EMERGENCY` → trigger ESM
+  - `RESTART` → reboot
+- **Outbound critical alerts** (when offline + critical alert):
+  - Temperature >40°C, power loss >10 min, ammonia >50ppm
+  - Sends to `farm_settings.authorized_phones[0]` (owner)
+  - Retry 3x with exponential backoff
+- **Cost guard**: max 20 SMS/day per device
 
-## ৪. Twilio Connection
+### Edge Functions
+- **`gsm-sms-relay`** — when ESP32 reconnects, sync inbound/outbound SMS log to cloud
 
-User-কে Twilio connector-এ connect করতে বলব (`standard_connectors--connect twilio`)। SMS phone number: BD format (+880…)। WhatsApp জন্য Twilio sandbox/approved sender number লাগবে।
+### UI (Bengali)
+- **`/settings/gsm`** — 
+  - Enable/disable GSM fallback
+  - Authorized phone numbers (max 3) — ESP32 শুধু এদের SMS গ্রহণ করবে
+  - Daily SMS counter + cost estimate
+  - Test "STATUS" button
 
-## ৫. Out-of-scope (Phase 5+)
-
-- Voice call escalation
-- Multi-language alert templates (শুধু বাংলা এখন)
-- AI-summarized daily digest
-- Slack/Telegram channels (পরে যোগ করা সহজ)
+## ৩. Out-of-scope (Phase 6+)
+- LoRaWAN (long-range mesh, requires extra module)
+- Voice command via GSM (DTMF)
+- Mesh self-healing across multiple farms
+- Satellite fallback
 
 ## Rollout Order
-
-1. DB migration (tables + RLS + `evaluate_alert_rules` RPC)
-2. `alert-dispatcher` edge function + cron
-3. `/settings/alerts` UI + threshold defaults seed
-4. Twilio connect + SMS path test
-5. `alert-escalator` + acknowledge flow
-6. AlertBell + realtime toast
-7. End-to-end test (temp >38°C → push + SMS → ack)
+1. DB migration: `device_mesh_peers`, `mesh_sync_log`, `gsm_inbound_sms`, `gsm_outbound_sms` + additive columns
+2. ESP-NOW master/slave logic in unified ESP32 firmware
+3. `/settings/mesh` UI + pairing wizard
+4. GSM mature firmware: inbound parser + auto-fallback + cost guard
+5. `/settings/gsm` UI + authorized phones
+6. `gsm-sms-relay` edge function (sync log when reconnect)
+7. End-to-end test: kill master WiFi → slave promotes → critical alert → GSM SMS to owner
