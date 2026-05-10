@@ -186,12 +186,28 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
 
     console.log(`[OTA] Registry update available for device ${device.id}: ${currentVersion} → ${registryFirmware.version} (${releaseChannel})`);
 
+    // ─── Fetch signing public key (if signed) ───
+    let signingKey: any = null;
+    if (registryFirmware.signing_key_id) {
+      const { data: keyData } = await supabase
+        .from('firmware_signing_keys')
+        .select('key_name, algorithm, public_key')
+        .eq('id', registryFirmware.signing_key_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      signingKey = keyData;
+    }
+
     return jsonResponse({
       update_available: true,
       version: registryFirmware.version,
       url: registryFirmware.file_url,
       size: registryFirmware.file_size_bytes,
       crc32: registryFirmware.crc32_checksum,
+      sha256: registryFirmware.sha256_hex,
+      signature: registryFirmware.signature_b64,
+      signature_alg: registryFirmware.signature_alg,
+      signing_key: signingKey,
       release_channel: registryFirmware.release_channel,
       release_notes: registryFirmware.changelog,
       firmware_id: registryFirmware.id,
