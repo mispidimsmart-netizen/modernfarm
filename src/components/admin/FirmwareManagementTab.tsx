@@ -27,7 +27,6 @@ function parseVersionCode(v: string): number {
 }
 
 async function crc32Hex(buffer: ArrayBuffer): Promise<string> {
-  // Lightweight CRC32 (used as integrity check for OTA)
   const table = new Uint32Array(256);
   for (let i = 0; i < 256; i++) {
     let c = i;
@@ -38,6 +37,13 @@ async function crc32Hex(buffer: ArrayBuffer): Promise<string> {
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bytes.length; i++) crc = table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
   return ((crc ^ 0xffffffff) >>> 0).toString(16).padStart(8, "0");
+}
+
+async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export function FirmwareManagementTab({ language }: Props) {
@@ -52,6 +58,27 @@ export function FirmwareManagementTab({ language }: Props) {
   const [boardType, setBoardType] = useState("esp32_devkit_v1");
   const [minRelays, setMinRelays] = useState("8");
   const [uploading, setUploading] = useState(false);
+
+  // Phase 5 hardening fields
+  const [signatureB64, setSignatureB64] = useState("");
+  const [signingKeyId, setSigningKeyId] = useState<string>("none");
+  const [windowEnabled, setWindowEnabled] = useState(true);
+  const [windowStart, setWindowStart] = useState("2");
+  const [windowEnd, setWindowEnd] = useState("4");
+  const [healthMinPct, setHealthMinPct] = useState("95");
+
+  const { data: signingKeys } = useQuery({
+    queryKey: ["firmware-signing-keys"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("firmware_signing_keys")
+        .select("id, key_name, algorithm, is_active")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: firmwares, isLoading } = useQuery({
     queryKey: ["firmware-registry"],
@@ -94,6 +121,7 @@ export function FirmwareManagementTab({ language }: Props) {
       const versionClean = version.startsWith("v") ? version : `v${version}`;
       const buffer = await file.arrayBuffer();
       const crc = await crc32Hex(buffer);
+      const sha = await sha256Hex(buffer);
       const path = `${channel}/${versionClean}-${Date.now()}.bin`;
 
       // Upload to storage
@@ -116,6 +144,14 @@ export function FirmwareManagementTab({ language }: Props) {
         file_url: pub.publicUrl,
         file_size_bytes: file.size,
         crc32_checksum: crc,
+        sha256_hex: sha,
+        signature_b64: signatureB64.trim() || null,
+        signing_key_id: signingKeyId === "none" ? null : signingKeyId,
+        signature_alg: "ed25519",
+        update_window_enabled: windowEnabled,
+        update_window_start_hour: parseInt(windowStart) || 2,
+        update_window_end_hour: parseInt(windowEnd) || 4,
+        health_gate_min_success_pct: parseFloat(healthMinPct) || 95,
         changelog: changelog || null,
         changelog_bn: changelogBn || null,
         is_active: true,
@@ -133,6 +169,7 @@ export function FirmwareManagementTab({ language }: Props) {
       setVersion("");
       setChangelog("");
       setChangelogBn("");
+      setSignatureB64("");
       qc.invalidateQueries({ queryKey: ["firmware-registry"] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -411,6 +448,93 @@ export function FirmwareManagementTab({ language }: Props) {
             )}
           </div>
 
+          {/* ─── Phase 5 Hardening fields ─── */}
+          <div className="rounded-lg border-2 border-amber-500/30 bg-amber-500/5 p-4 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-amber-300">
+              🔐 {t("সিকিউরিটি ও রোলআউট হার্ডেনিং (Phase 5)", "Security & Rollout Hardening (Phase 5)")}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-slate-300 text-xs">
+                  {t("সাইনিং কী (Ed25519)", "Signing Key (Ed25519)")}
+                </Label>
+                <Select value={signingKeyId} onValueChange={setSigningKeyId}>
+                  <SelectTrigger className="bg-slate-800/80 border-amber-500/20 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("কোনোটি না (signed না)", "None (unsigned)")}</SelectItem>
+                    {signingKeys?.map((k) => (
+                      <SelectItem key={k.id} value={k.id}>{k.key_name} ({k.algorithm})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">
+                  {t("সিগনেচার (Base64)", "Signature (Base64)")}
+                </Label>
+                <Input
+                  value={signatureB64}
+                  onChange={(e) => setSignatureB64(e.target.value)}
+                  placeholder="ed25519 sig of SHA-256(firmware)"
+                  className="bg-slate-800/80 border-amber-500/20 text-white font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="col-span-2 md:col-span-1">
+                <Label className="text-slate-300 text-xs flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={windowEnabled}
+                    onChange={(e) => setWindowEnabled(e.target.checked)}
+                  />
+                  {t("আপডেট উইন্ডো", "Update Window")}
+                </Label>
+                <p className="text-[10px] text-slate-500 mt-1">{t("Asia/Dhaka সময়", "Asia/Dhaka time")}</p>
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">{t("শুরু (ঘণ্টা)", "Start (hour)")}</Label>
+                <Input
+                  type="number" min="0" max="23"
+                  value={windowStart}
+                  onChange={(e) => setWindowStart(e.target.value)}
+                  disabled={!windowEnabled}
+                  className="bg-slate-800/80 border-amber-500/20 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">{t("শেষ (ঘণ্টা)", "End (hour)")}</Label>
+                <Input
+                  type="number" min="0" max="23"
+                  value={windowEnd}
+                  onChange={(e) => setWindowEnd(e.target.value)}
+                  disabled={!windowEnabled}
+                  className="bg-slate-800/80 border-amber-500/20 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">{t("Health Gate %", "Health Gate %")}</Label>
+                <Input
+                  type="number" min="50" max="100" step="0.5"
+                  value={healthMinPct}
+                  onChange={(e) => setHealthMinPct(e.target.value)}
+                  className="bg-slate-800/80 border-amber-500/20 text-white"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              {t(
+                "সিগনেচার দিলে ESP32 boot এর আগে verify করবে। উইন্ডোর বাইরে firmware push হবে না। Health gate fail হলে rollout auto-pause।",
+                "Signed firmware is verified by ESP32 before flashing. Pushes are blocked outside the window. Health-gate failure auto-pauses the rollout.",
+              )}
+            </p>
+          </div>
+
           <Button
             onClick={handleUpload}
             disabled={uploading || !file}
@@ -481,6 +605,22 @@ export function FirmwareManagementTab({ language }: Props) {
                           {(fw.min_hardware as any)?.min_relay_count ? ` • ${(fw.min_hardware as any).min_relay_count}-ch relay` : ''}
                         </p>
                       )}
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {(fw as any).signature_b64 ? (
+                          <Badge className="text-[10px] bg-emerald-500/15 text-emerald-300 border-emerald-500/40">
+                            🔐 {t("সাইনড", "Signed")}
+                          </Badge>
+                        ) : (
+                          <Badge className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30">
+                            ⚠️ {t("সাইন করা হয়নি", "Unsigned")}
+                          </Badge>
+                        )}
+                        {(fw as any).update_window_enabled && (
+                          <Badge className="text-[10px] bg-blue-500/15 text-blue-300 border-blue-500/40">
+                            ⏰ {(fw as any).update_window_start_hour}:00–{(fw as any).update_window_end_hour}:00
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <Button
