@@ -11,7 +11,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid, AreaChart, Area,
 } from "recharts";
 import {
-  Activity, AlertTriangle, Brain, Download, RefreshCw, CheckCircle2,
+  Activity, AlertTriangle, Brain, Download, RefreshCw, CheckCircle2, TrendingUp,
 } from "lucide-react";
 
 type RollupRow = {
