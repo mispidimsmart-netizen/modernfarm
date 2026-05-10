@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
 import { ReportsAnalyticsView } from '@/components/reports/ReportsAnalyticsView';
 import { DataExportCard } from '@/components/settings/DataExportCard';
+import { WeeklyReportCard } from '@/components/settings/WeeklyReportCard';
 
 export function ReportsDataTab() {
   const { language } = useAuth();
