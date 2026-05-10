@@ -8,9 +8,31 @@ interface SyncQueueItem {
   operation: 'INSERT' | 'UPDATE' | 'DELETE';
   record_data: Record<string, unknown>;
   created_at: string;
+  retry_count?: number;
+  max_age_minutes?: number;
 }
 
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
+const DEFAULT_MAX_AGE_MIN = 24 * 60; // 24h TTL — Phase 3
+const MAX_RETRY_COUNT = 5;
+
+/** Phase 3: drop items older than max_age_minutes or with too many failed retries */
+function pruneExpired(queue: SyncQueueItem[]): { kept: SyncQueueItem[]; dropped: number } {
+  const now = Date.now();
+  const kept: SyncQueueItem[] = [];
+  let dropped = 0;
+  for (const item of queue) {
+    const ageMin = (now - new Date(item.created_at).getTime()) / 60_000;
+    const ttl = item.max_age_minutes ?? DEFAULT_MAX_AGE_MIN;
+    if (ageMin > ttl || (item.retry_count ?? 0) >= MAX_RETRY_COUNT) {
+      dropped += 1;
+      continue;
+    }
+    kept.push(item);
+  }
+  return { kept, dropped };
+}
+
 
 export function useOfflineSync() {
   const { user } = useAuth();
