@@ -503,6 +503,11 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     const userId = device.user_id;
     const deviceFarmId = device.farm_id;
     const deviceShedId = device.shed_id;
+    // Phase 2 — populate observability context for tail logging
+    obs.device_token_id = device.id;
+    obs.user_id = userId;
+    obs.farm_id = deviceFarmId;
+    obs.payload_size_bytes = rawBody?.length ?? null;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔒 MULTI-TENANT ISOLATION MIDDLEWARE
