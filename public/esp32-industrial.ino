@@ -3744,12 +3744,98 @@ void offlineBufferRestore() {
 }
 
 void offlineBufferSync() {
-  // Clear buffer on cloud reconnect (data already in sync payload)
+  // Phase 3: Real bulk flush via /sensor-batch (max 50 per request).
+  if (!wifiConnected || offlineBufCount == 0) {
+    offlineBufCount = 0; offlineBufHead = 0;
+    preferences.begin("offline_buf", false);
+    preferences.putUInt("count", 0);
+    preferences.putUInt("head", 0);
+    preferences.end();
+    return;
+  }
+
+  // Compute oldest index in ring
+  int start = (offlineBufHead - offlineBufCount + OFFLINE_BUFFER_SIZE) % OFFLINE_BUFFER_SIZE;
+  int total = offlineBufCount;
+  int sent = 0;
+
+  while (sent < total) {
+    int batch = min(50, total - sent);
+    HTTPClient http;
+    String url = String(API_URL) + "/sensor-batch";
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-device-token", activeDeviceToken.c_str());
+    http.setTimeout(8000);
+
+    DynamicJsonDocument doc(8192);
+    JsonArray arr = doc.createNestedArray("readings");
+    for (int i = 0; i < batch; i++) {
+      int idx = (start + sent + i) % OFFLINE_BUFFER_SIZE;
+      OfflineRecord &r = offlineBuffer[idx];
+      JsonObject o = arr.createNestedObject();
+      o["t_offset_ms"] = (long)(millis() - r.timestamp);
+      o["temperature"] = r.temp;
+      o["humidity"] = r.hum;
+      o["ammonia"] = r.nh3;
+      o["water_usage"] = r.water;
+      o["hsi"] = r.hsi;
+      o["power_on"] = r.power;
+      o["fan_speed"] = r.fanSpd;
+      o["state"] = r.state;
+    }
+    String payload; serializeJson(doc, payload);
+    attachSignature(http, payload);
+    int code = http.POST(payload);
+    http.end();
+    esp_task_wdt_reset();
+
+    if (code != 200) {
+      Serial.printf("[OFFLINE] batch flush failed code=%d, will retry later\n", code);
+      return; // keep buffer for next attempt
+    }
+    sent += batch;
+    Serial.printf("[OFFLINE] flushed %d/%d readings\n", sent, total);
+  }
+
   offlineBufCount = 0; offlineBufHead = 0;
-  // Clear NVS saved state
   preferences.begin("offline_buf", false);
   preferences.putUInt("count", 0);
   preferences.putUInt("head", 0);
+  preferences.end();
+}
+
+// --- Phase 3: Command idempotency cache ---
+void loadCmdHistory() {
+  if (cmdHistoryLoaded) return;
+  preferences.begin("cmd_hist", true);
+  cmdHistoryHead = preferences.getInt("head", 0);
+  for (int i = 0; i < CMD_HISTORY_SIZE; i++) {
+    char k[8]; snprintf(k, sizeof(k), "c%d", i);
+    cmdHistory[i] = preferences.getString(k, "");
+  }
+  preferences.end();
+  cmdHistoryLoaded = true;
+}
+
+bool isCommandAlreadyApplied(const String &id) {
+  if (id.length() == 0) return false;
+  loadCmdHistory();
+  for (int i = 0; i < CMD_HISTORY_SIZE; i++) {
+    if (cmdHistory[i] == id) return true;
+  }
+  return false;
+}
+
+void recordAppliedCommand(const String &id) {
+  if (id.length() == 0) return;
+  loadCmdHistory();
+  cmdHistory[cmdHistoryHead] = id;
+  preferences.begin("cmd_hist", false);
+  char k[8]; snprintf(k, sizeof(k), "c%d", cmdHistoryHead);
+  preferences.putString(k, id);
+  cmdHistoryHead = (cmdHistoryHead + 1) % CMD_HISTORY_SIZE;
+  preferences.putInt("head", cmdHistoryHead);
   preferences.end();
 }
 
