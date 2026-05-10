@@ -171,7 +171,7 @@ Deno.test("Phase 9 — Tier 1+2+3 telemetry persists precise sensor columns", as
     if (device.farm_id) {
       const inv = await db.queryObject<{ sensor_model: string }>`
         SELECT sensor_model FROM device_sensor_inventory
-        WHERE device_id = ${device.device_id}::uuid
+        WHERE device_id = ${device.device_name}
           AND last_seen_at > now() - interval '5 minutes'
       `;
       const models = new Set(inv.rows.map((r) => r.sensor_model));
