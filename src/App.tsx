@@ -55,6 +55,9 @@ const NotFound = lazyRetry(() => import("./pages/NotFound"));
 const FarmSetupWizardPage = lazyRetry(() => import("./pages/FarmSetupWizardPage"));
 const ResetPasswordPage = lazyRetry(() => import("./pages/ResetPasswordPage"));
 const FinanceReportPage = lazyRetry(() => import("./pages/FinanceReportPage"));
+const TrainingVideosPage = lazyRetry(() => import("./pages/TrainingVideosPage"));
+const CommunityPage = lazyRetry(() => import("./pages/CommunityPage"));
+import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
 // Optimized QueryClient with better caching
@@ -267,6 +270,8 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route path="/training" element={<ProtectedRoute><TrainingVideosPage /></ProtectedRoute>} />
+        <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
@@ -315,7 +320,16 @@ const App = () => {
               <InstallPromptCard />
               <GlobalBatchEditQueue />
               <BrowserRouter>
-                <AppWithRoutes />
+                <a
+                  href="#main-content"
+                  className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:px-3 focus:py-2 focus:rounded-md"
+                >
+                  মূল কন্টেন্টে যান
+                </a>
+                <div id="main-content">
+                  <AppWithRoutes />
+                </div>
+                <VoiceCommandFAB />
               </BrowserRouter>
             </ShedProvider>
           </FarmProvider>
