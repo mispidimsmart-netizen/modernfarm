@@ -473,5 +473,6 @@ export function Dashboard() {
 
       <BottomNav />
     </div>
+    </DashboardSnapshotProvider>
   );
 }
