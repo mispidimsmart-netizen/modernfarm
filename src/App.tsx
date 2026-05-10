@@ -79,6 +79,16 @@ const queryClient = new QueryClient({
   },
 });
 
+// Persist React Query cache to localStorage so dashboards open instantly when
+// offline (or on flaky networks). Cache survives reloads up to 24h.
+const queryPersister = typeof window !== 'undefined'
+  ? createSyncStoragePersister({
+      storage: window.localStorage,
+      key: 'farmeye-query-cache-v1',
+      throttleTime: 1000,
+    })
+  : undefined;
+
 
 // Loading spinner component - memoized
 const LoadingSpinner = memo(function LoadingSpinner() {
