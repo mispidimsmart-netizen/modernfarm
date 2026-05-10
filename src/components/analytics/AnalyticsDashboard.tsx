@@ -84,7 +84,41 @@ export function AnalyticsDashboard() {
     refetchInterval: 60_000,
   });
 
-  const runScan = async () => {
+  const forecastQ = useQuery({
+    queryKey: ["latest-forecast", selectedFarmId],
+    enabled: !!selectedFarmId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("farm_forecasts")
+        .select("id, generated_at, risk_level, summary_bn, recommendation_bn, forecast_json")
+        .eq("farm_id", selectedFarmId!)
+        .order("generated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const runForecast = async () => {
+    if (!selectedFarmId) return;
+    setForecasting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        `ai-forecast?farm_id=${selectedFarmId}`,
+        { method: "POST" },
+      );
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("পূর্বাভাস তৈরি হয়েছে");
+      forecastQ.refetch();
+    } catch (e: any) {
+      toast.error("পূর্বাভাস ব্যর্থ: " + (e.message ?? "unknown"));
+    } finally {
+      setForecasting(false);
+    }
+  };
+
     if (!selectedFarmId) return;
     setScanning(true);
     try {
