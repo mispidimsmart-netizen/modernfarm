@@ -962,10 +962,13 @@ export type Database = {
           command_value: boolean
           created_at: string
           device_name: string
+          dispatched_at: string | null
           executed: boolean
           executed_at: string | null
           farm_id: string | null
           id: string
+          latency_to_ack_ms: number | null
+          latency_to_device_ms: number | null
           user_id: string
         }
         Insert: {
@@ -973,10 +976,13 @@ export type Database = {
           command_value?: boolean
           created_at?: string
           device_name?: string
+          dispatched_at?: string | null
           executed?: boolean
           executed_at?: string | null
           farm_id?: string | null
           id?: string
+          latency_to_ack_ms?: number | null
+          latency_to_device_ms?: number | null
           user_id: string
         }
         Update: {
@@ -984,10 +990,13 @@ export type Database = {
           command_value?: boolean
           created_at?: string
           device_name?: string
+          dispatched_at?: string | null
           executed?: boolean
           executed_at?: string | null
           farm_id?: string | null
           id?: string
+          latency_to_ack_ms?: number | null
+          latency_to_device_ms?: number | null
           user_id?: string
         }
         Relationships: [
@@ -1336,6 +1345,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      device_health_metrics: {
+        Row: {
+          bucket_hour: string
+          device_token_id: string
+          error_count: number
+          farm_id: string | null
+          last_sync_at: string | null
+          max_latency_ms: number
+          nonce_reuse_count: number
+          rate_limited_count: number
+          restart_count: number
+          sensor_gap_seconds_max: number
+          signature_failures: number
+          sync_count: number
+          total_latency_ms: number
+          updated_at: string
+        }
+        Insert: {
+          bucket_hour: string
+          device_token_id: string
+          error_count?: number
+          farm_id?: string | null
+          last_sync_at?: string | null
+          max_latency_ms?: number
+          nonce_reuse_count?: number
+          rate_limited_count?: number
+          restart_count?: number
+          sensor_gap_seconds_max?: number
+          signature_failures?: number
+          sync_count?: number
+          total_latency_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          bucket_hour?: string
+          device_token_id?: string
+          error_count?: number
+          farm_id?: string | null
+          last_sync_at?: string | null
+          max_latency_ms?: number
+          nonce_reuse_count?: number
+          rate_limited_count?: number
+          restart_count?: number
+          sensor_gap_seconds_max?: number
+          signature_failures?: number
+          sync_count?: number
+          total_latency_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       device_provisioning_codes: {
         Row: {
@@ -1696,6 +1756,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      edge_request_log: {
+        Row: {
+          created_at: string
+          device_token_id: string | null
+          duration_ms: number | null
+          error_code: string | null
+          error_message: string | null
+          farm_id: string | null
+          function_name: string
+          id: string
+          method: string | null
+          path: string | null
+          payload_size_bytes: number | null
+          request_id: string | null
+          response_size_bytes: number | null
+          status_code: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_token_id?: string | null
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          farm_id?: string | null
+          function_name: string
+          id?: string
+          method?: string | null
+          path?: string | null
+          payload_size_bytes?: number | null
+          request_id?: string | null
+          response_size_bytes?: number | null
+          status_code?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_token_id?: string | null
+          duration_ms?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          farm_id?: string | null
+          function_name?: string
+          id?: string
+          method?: string | null
+          path?: string | null
+          payload_size_bytes?: number | null
+          request_id?: string | null
+          response_size_bytes?: number | null
+          status_code?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       egg_production: {
         Row: {
@@ -4899,7 +5013,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      edge_function_stats_1h: {
+        Row: {
+          error_4xx: number | null
+          error_5xx: number | null
+          function_name: string | null
+          max_ms: number | null
+          p50_ms: number | null
+          p95_ms: number | null
+          p99_ms: number | null
+          rate_limited: number | null
+          request_count: number | null
+          unauthorized: number | null
+        }
+        Relationships: []
+      }
+      edge_function_stats_24h: {
+        Row: {
+          error_4xx: number | null
+          error_5xx: number | null
+          function_name: string | null
+          p95_ms: number | null
+          request_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       assign_user_role: {
@@ -4919,7 +5057,9 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      cleanup_device_health_metrics: { Args: never; Returns: undefined }
       cleanup_device_security_artifacts: { Args: never; Returns: undefined }
+      cleanup_edge_request_log: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_restart_logs: { Args: never; Returns: undefined }
       cleanup_old_security_audit: { Args: never; Returns: undefined }
@@ -4963,6 +5103,38 @@ export type Database = {
           _event_type: string
           _farm_id?: string
           _success?: boolean
+          _user_id?: string
+        }
+        Returns: undefined
+      }
+      record_device_metric: {
+        Args: {
+          _device_token_id: string
+          _farm_id: string
+          _is_error?: boolean
+          _is_nonce_reuse?: boolean
+          _is_rate_limited?: boolean
+          _is_restart?: boolean
+          _is_signature_failure?: boolean
+          _latency_ms: number
+          _sensor_gap_seconds?: number
+        }
+        Returns: undefined
+      }
+      record_edge_request: {
+        Args: {
+          _device_token_id?: string
+          _duration_ms: number
+          _error_code?: string
+          _error_message?: string
+          _farm_id?: string
+          _function_name: string
+          _method: string
+          _path: string
+          _payload_size_bytes?: number
+          _request_id?: string
+          _response_size_bytes?: number
+          _status_code: number
           _user_id?: string
         }
         Returns: undefined
