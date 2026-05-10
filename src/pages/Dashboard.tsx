@@ -256,6 +256,7 @@ export function Dashboard() {
                 loadingHint={{ bn: 'সারসংক্ষেপ লোড হচ্ছে…', en: 'Loading summary…' }}
               >
                 <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                <ConnectionQualityCard />
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
                 <ComfortIndicators />
