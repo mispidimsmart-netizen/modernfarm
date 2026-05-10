@@ -705,6 +705,10 @@ export default function AdminPage() {
           <TabsContent value="pcb" className="mt-4">
             <PCBManufacturingSpec />
           </TabsContent>
+
+          <TabsContent value="observability" className="mt-4">
+            <ObservabilityDashboard language={language} />
+          </TabsContent>
         </Tabs>
       </div>
 
