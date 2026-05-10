@@ -55,6 +55,9 @@ const NotFound = lazyRetry(() => import("./pages/NotFound"));
 const FarmSetupWizardPage = lazyRetry(() => import("./pages/FarmSetupWizardPage"));
 const ResetPasswordPage = lazyRetry(() => import("./pages/ResetPasswordPage"));
 const FinanceReportPage = lazyRetry(() => import("./pages/FinanceReportPage"));
+const TrainingVideosPage = lazyRetry(() => import("./pages/TrainingVideosPage"));
+const CommunityPage = lazyRetry(() => import("./pages/CommunityPage"));
+import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
 // Optimized QueryClient with better caching
