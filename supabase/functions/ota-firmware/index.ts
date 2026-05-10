@@ -52,6 +52,18 @@ serve(async (req) => {
       return await handleRollback(req, supabase);
     }
 
+    // ─── POST /firmware/boot-report (device → cloud after boot) ───
+    if (action === 'boot-report' && req.method === 'POST') {
+      return await handleBootReport(req, supabase);
+    }
+
+    // ─── POST /firmware/auto-advance (cron only) ───
+    if (action === 'auto-advance' && req.method === 'POST') {
+      const { data, error } = await supabase.rpc('auto_advance_rollout');
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ success: true, result: data });
+    }
+
     // ─── Admin: push update ───
     if (action === 'push' && req.method === 'POST') {
       return await handlePush(req, supabase);
