@@ -194,6 +194,36 @@ export function AlertRulesCard() {
                       <Label className="text-xs">{t('এসকালেশন সময় (মিনিট)', 'Escalate after (min)')}</Label>
                       <Input type="number" value={cfg.escalation_minutes ?? 15} onChange={(e) => setCfg({ ...cfg, escalation_minutes: parseInt(e.target.value) || 15 })} />
                     </div>
+
+                    {/* Digest mode */}
+                    <div className="rounded-lg border border-dashed p-3 space-y-2">
+                      <Label className="text-xs font-medium">
+                        {t('📊 ডাইজেস্ট মোড — কম গুরুত্বের সতর্কতা একত্রে পাঠাও', '📊 Digest mode — bundle low-priority alerts')}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Select value={cfg.digest_mode ?? 'instant'} onValueChange={(v) => setCfg({ ...cfg, digest_mode: v })}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="instant">{t('তাৎক্ষণিক', 'Instant')}</SelectItem>
+                            <SelectItem value="hourly">{t('ঘণ্টায় ১বার', 'Hourly')}</SelectItem>
+                            <SelectItem value="daily">{t('দিনে ১বার', 'Daily')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={cfg.digest_min_severity ?? 'low'} onValueChange={(v) => setCfg({ ...cfg, digest_min_severity: v })}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">{t('সর্বনিম্ন: কম', 'Min: Low')}</SelectItem>
+                            <SelectItem value="medium">{t('সর্বনিম্ন: মাঝারি', 'Min: Medium')}</SelectItem>
+                            <SelectItem value="high">{t('সর্বনিম্ন: বেশি', 'Min: High')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t('জরুরি সতর্কতা সবসময় সঙ্গে সঙ্গে যাবে — শুধু কম গুরুত্বের একত্রে।',
+                          'Critical alerts are always sent instantly — only lower-severity ones are bundled.')}
+                      </p>
+                    </div>
+
                     <div className="flex gap-2">
                       <Button onClick={saveCfg} className="flex-1">{t('সংরক্ষণ', 'Save')}</Button>
                       <Button variant="outline" onClick={sendTestAlert}>
