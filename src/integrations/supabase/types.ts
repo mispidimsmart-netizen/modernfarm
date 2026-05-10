@@ -4197,6 +4197,42 @@ export type Database = {
           },
         ]
       }
+      performance_metrics: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          farm_id: string | null
+          id: string
+          label: string | null
+          meta: Json | null
+          metric_type: string
+          route: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms: number
+          farm_id?: string | null
+          id?: string
+          label?: string | null
+          meta?: Json | null
+          metric_type: string
+          route?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          farm_id?: string | null
+          id?: string
+          label?: string | null
+          meta?: Json | null
+          metric_type?: string
+          route?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       power_outage_logs: {
         Row: {
           actions_taken: string | null
@@ -5606,6 +5642,7 @@ export type Database = {
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_restart_logs: { Args: never; Returns: undefined }
       cleanup_old_security_audit: { Args: never; Returns: undefined }
+      cleanup_performance_metrics: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
       consume_device_nonce: {
         Args: { _device_token_id: string; _nonce: string }
@@ -5653,6 +5690,18 @@ export type Database = {
       get_feed_avg_price: {
         Args: { _farm_id: string; _feed_type: string }
         Returns: number
+      }
+      get_performance_summary: {
+        Args: { _hours?: number }
+        Returns: {
+          max_ms: number
+          metric_type: string
+          p50_ms: number
+          p95_ms: number
+          p99_ms: number
+          route: string
+          sample_count: number
+        }[]
       }
       get_sensor_history: {
         Args: { _farm_id: string; _hours?: number }
