@@ -38,6 +38,22 @@ export function AlertsPage() {
   const { language } = useAuth();
   const { activeAlerts, resolvedAlerts, isQuietHours } = useSmartAlerts();
   const acknowledgeAlert = useAcknowledgeAlert();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle ?ack=<id> from push notification action
+  useEffect(() => {
+    const ackId = searchParams.get('ack');
+    if (!ackId) return;
+    acknowledgeAlert.mutate(ackId, {
+      onSuccess: () => toast.success(language === 'bn' ? 'সতর্কতা স্বীকৃত' : 'Alert acknowledged'),
+      onError: (e: any) =>
+        toast.error(language === 'bn' ? 'স্বীকৃতি ব্যর্থ' : 'Acknowledge failed', { description: e?.message }),
+    });
+    const next = new URLSearchParams(searchParams);
+    next.delete('ack');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Locally dismissed synthetic / grouped alerts (no DB row to acknowledge)
   const [localDismissed, setLocalDismissed] = useState<Set<string>>(new Set());
