@@ -9,6 +9,7 @@ import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpa
 import { ReportsAnalyticsView } from '@/components/reports/ReportsAnalyticsView';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { WeeklyReportCard } from '@/components/settings/WeeklyReportCard';
+import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 
 export function ReportsDataTab() {
   const { language } = useAuth();
@@ -28,6 +29,19 @@ export function ReportsDataTab() {
             : 'Farm performance analytics & data export'}
         </p>
       </div>
+
+      {/* Phase 6: AI-powered analytics dashboard */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            {language === 'bn' ? 'বিশ্লেষণ ও AI Anomaly' : 'Analytics & AI Anomaly'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AnalyticsDashboard />
+        </CardContent>
+      </Card>
 
       {/* Embedded Reports Analytics: Overview, Performance, Costs */}
       <Card>

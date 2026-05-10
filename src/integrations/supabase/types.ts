@@ -451,6 +451,69 @@ export type Database = {
           },
         ]
       }
+      anomaly_detections: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          confidence: number
+          created_at: string
+          data_snapshot: Json | null
+          description_bn: string | null
+          detected_at: string
+          farm_id: string
+          id: string
+          metric: string
+          reasoning: string | null
+          recommendation_bn: string | null
+          severity: string
+          shed_id: string | null
+          title_bn: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          confidence?: number
+          created_at?: string
+          data_snapshot?: Json | null
+          description_bn?: string | null
+          detected_at?: string
+          farm_id: string
+          id?: string
+          metric: string
+          reasoning?: string | null
+          recommendation_bn?: string | null
+          severity: string
+          shed_id?: string | null
+          title_bn: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          confidence?: number
+          created_at?: string
+          data_snapshot?: Json | null
+          description_bn?: string | null
+          detected_at?: string
+          farm_id?: string
+          id?: string
+          metric?: string
+          reasoning?: string | null
+          recommendation_bn?: string | null
+          severity?: string
+          shed_id?: string | null
+          title_bn?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       automation_rules: {
         Row: {
           action_device: Database["public"]["Enums"]["device_type"]
@@ -7045,6 +7108,41 @@ export type Database = {
         }
         Relationships: []
       }
+      sensor_hourly_rollup_mv: {
+        Row: {
+          avg_ammonia: number | null
+          avg_hsi: number | null
+          avg_humidity: number | null
+          avg_temp: number | null
+          avg_water: number | null
+          farm_id: string | null
+          hour: string | null
+          max_ammonia: number | null
+          max_hsi: number | null
+          max_humidity: number | null
+          max_temp: number | null
+          min_humidity: number | null
+          min_temp: number | null
+          sample_count: number | null
+          shed_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensor_readings_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensor_readings_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_sensor_batch: {
@@ -7058,6 +7156,7 @@ export type Database = {
         Returns: Json
       }
       acknowledge_alert: { Args: { _alert_id: string }; Returns: boolean }
+      acknowledge_anomaly: { Args: { _id: string }; Returns: boolean }
       assign_user_role: {
         Args: {
           _assigner_id: string
@@ -7163,6 +7262,32 @@ export type Database = {
           bucket: string
         }[]
       }
+      get_sensor_hourly_rollup: {
+        Args: { _farm_id: string; _hours?: number }
+        Returns: {
+          avg_ammonia: number | null
+          avg_hsi: number | null
+          avg_humidity: number | null
+          avg_temp: number | null
+          avg_water: number | null
+          farm_id: string | null
+          hour: string | null
+          max_ammonia: number | null
+          max_hsi: number | null
+          max_humidity: number | null
+          max_temp: number | null
+          min_humidity: number | null
+          min_temp: number | null
+          sample_count: number | null
+          shed_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "sensor_hourly_rollup_mv"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       has_min_role: {
         Args: { _required_role: string; _user_id: string }
@@ -7226,6 +7351,7 @@ export type Database = {
       }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       refresh_farm_daily_rollup: { Args: never; Returns: undefined }
+      refresh_sensor_hourly_rollup: { Args: never; Returns: undefined }
       report_boot_failure: {
         Args: {
           _device_token_id: string
