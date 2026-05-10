@@ -2,7 +2,9 @@ import { lazy, Suspense, memo, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
@@ -10,6 +12,7 @@ import { FarmProvider } from "./context/FarmContext";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { OfflineMutationBadge } from "./components/OfflineMutationBadge";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
+import { InstallPromptCard } from "./components/pwa/InstallPromptCard";
 import { RoleProtectedRoute } from "./components/auth";
 import { useBatchEditQueue } from "./hooks/useBatchEditQueue";
 import { useFarmDataRealtime } from "./hooks/useFarmDataRealtime";
@@ -76,6 +79,16 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Persist React Query cache to localStorage so dashboards open instantly when
+// offline (or on flaky networks). Cache survives reloads up to 24h.
+const queryPersister = typeof window !== 'undefined'
+  ? createSyncStoragePersister({
+      storage: window.localStorage,
+      key: 'farmeye-query-cache-v1',
+      throttleTime: 1000,
+    })
+  : undefined;
 
 
 // Loading spinner component - memoized
@@ -276,7 +289,18 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister!,
+        maxAge: 1000 * 60 * 60 * 24, // 24h
+        buster: 'v1',
+        dehydrateOptions: {
+          // Don't persist mutations or queries that are still pending/erroring
+          shouldDehydrateQuery: (q) => q.state.status === 'success',
+        },
+      }}
+    >
       <TooltipProvider>
         <AuthProvider>
           <FarmProvider>
@@ -288,6 +312,7 @@ const App = () => {
                 <OfflineMutationBadge />
               </div>
               <PWAUpdateBanner />
+              <InstallPromptCard />
               <GlobalBatchEditQueue />
               <BrowserRouter>
                 <AppWithRoutes />
@@ -296,7 +321,7 @@ const App = () => {
           </FarmProvider>
         </AuthProvider>
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 };
 
