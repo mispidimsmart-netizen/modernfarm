@@ -916,6 +916,14 @@ export function DeviceSystemTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <DeviceSecuritySheet
+        open={!!securityDevice}
+        onOpenChange={(o) => !o && setSecurityDevice(null)}
+        deviceTokenId={securityDevice?.id}
+        deviceName={securityDevice?.name}
+        secretVersion={securityDevice?.version}
+      />
     </div>
   );
 }
