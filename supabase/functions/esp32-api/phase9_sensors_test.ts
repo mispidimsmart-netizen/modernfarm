@@ -149,7 +149,7 @@ Deno.test("Phase 9 — Tier 1+2+3 telemetry persists precise sensor columns", as
              sensor_source
       FROM sensor_readings
       WHERE user_id = ${device.user_id}::uuid
-      ORDER BY created_at DESC
+      ORDER BY recorded_at DESC
       LIMIT 1
     `;
     assertEquals(rd.rows.length, 1, "no sensor_readings row written");
