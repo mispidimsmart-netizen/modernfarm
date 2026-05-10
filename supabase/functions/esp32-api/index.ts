@@ -355,23 +355,37 @@ async function proxySafetyEngine(
   });
 }
 
+// ───── Phase 2: Observability wrapper ─────
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-
-  // ───── Phase 2: Observability tail ─────
-  const _obsStart = Date.now();
-  const _obs: ObsCtx = newObsCtx();
-  let _obsSupabase: any = null;
-  let _response: Response;
-
+  const start = Date.now();
+  const obs: ObsCtx & { supabase?: any } = newObsCtx();
+  let response: Response;
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    _obsSupabase = supabase;
+    response = await handleEsp32Request(req, obs);
+  } catch (error) {
+    console.error('ESP32 API error:', error);
+    obs.error_code = 'INTERNAL_ERROR';
+    obs.error_message = String((error as Error)?.message ?? error);
+    response = new Response(
+      JSON.stringify({ error: 'Internal server error', code: 'INTERNAL_ERROR' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  if (obs.supabase) {
+    recordObservability(obs.supabase, 'esp32-api', req, response, Date.now() - start, obs);
+  }
+  return response;
+});
+
+async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }): Promise<Response> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  obs.supabase = supabase;
+  {
 
     const url = new URL(req.url);
     const path = url.pathname.split('/').pop();
