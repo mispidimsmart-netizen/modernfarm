@@ -3157,10 +3157,30 @@ void checkCommands() {
         String type = cmd["command_type"] | "";
         bool value = cmd["command_value"] | false;
         String id = cmd["id"] | "";
-        
+        String cri = cmd["client_request_id"] | "";
+
+        // Phase 3: idempotency — if already applied, skip execution but still ACK
+        if (cri.length() > 0 && isCommandAlreadyApplied(cri)) {
+          Serial.printf("⏭️  [IDEMPOTENT] Skip already-applied cmd %s\n", cri.c_str());
+          if (id.length() > 0) {
+            HTTPClient ack;
+            String ackUrl = String(API_URL) + "/commands-ack";
+            ack.begin(ackUrl);
+            ack.addHeader("Content-Type", "application/json");
+            ack.addHeader("x-device-token", activeDeviceToken.c_str());
+            ack.setTimeout(3000);
+            StaticJsonDocument<256> adoc;
+            adoc["command_ids"][0] = id;
+            String ap; serializeJson(adoc, ap);
+            attachSignature(ack, ap);
+            ack.POST(ap); ack.end();
+          }
+          continue;
+        }
+
         // ═══ All manual commands set bypass flag ═══
         manualCommandPending = true;
-        
+
         if (type == "exhaust_fan" || type == "fan") {
           fanManualOverride = true; fanManualTime = millis();
           requestFan(value, value ? "HIGH" : "OFF");
