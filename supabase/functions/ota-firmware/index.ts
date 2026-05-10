@@ -143,6 +143,24 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
       return jsonResponse({ update_available: false, current_version: currentVersion });
     }
 
+    // ─── Update window check (Asia/Dhaka) ───
+    const { data: inWindow } = await supabase.rpc('is_within_update_window', { _firmware_id: registryFirmware.id });
+    if (inWindow === false) {
+      await supabase.from('device_health')
+        .update({ ota_last_check_at: new Date().toISOString() })
+        .eq('device_token_id', device.id);
+      return jsonResponse({
+        update_available: false,
+        message: 'Outside update window',
+        next_check_after_seconds: 1800,
+        update_window: {
+          start_hour: registryFirmware.update_window_start_hour,
+          end_hour: registryFirmware.update_window_end_hour,
+          tz: 'Asia/Dhaka',
+        },
+      });
+    }
+
     // ─── Hardware compatibility check via firmware_registry ───
     const { data: compatResult } = await supabase
       .rpc('check_firmware_compatibility', {
