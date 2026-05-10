@@ -52,6 +52,7 @@ import { EspConnectionBanner } from '@/components/dashboard/EspConnectionBanner'
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
+import { AirQualityCard } from '@/components/dashboard/AirQualityCard';
 import { SensorFreshnessBadge } from '@/components/dashboard/SensorFreshnessBadge';
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 import { ConnectionQualityCard } from '@/components/control/ConnectionQualityCard';
@@ -332,6 +333,7 @@ export function Dashboard() {
               <LightStatusPanel />
               <LightActionHistory />
               <LightSensorCard />
+              <AirQualityCard />
 
               <section className="min-w-0">
                 <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">

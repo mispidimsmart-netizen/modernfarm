@@ -194,6 +194,51 @@ export type Database = {
           },
         ]
       }
+      air_quality_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          farm_id: string
+          id: string
+          measured_value: number
+          resolved_at: string | null
+          severity: string
+          shed_id: string | null
+          threshold_value: number
+          triggered_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          farm_id: string
+          id?: string
+          measured_value: number
+          resolved_at?: string | null
+          severity?: string
+          shed_id?: string | null
+          threshold_value: number
+          triggered_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          farm_id?: string
+          id?: string
+          measured_value?: number
+          resolved_at?: string | null
+          severity?: string
+          shed_id?: string | null
+          threshold_value?: number
+          triggered_at?: string
+        }
+        Relationships: []
+      }
       alert_channel_config: {
         Row: {
           created_at: string
@@ -1916,6 +1961,51 @@ export type Database = {
           uptime_before_restart_seconds?: number | null
           user_id?: string
           wifi_signal_strength?: number | null
+        }
+        Relationships: []
+      }
+      device_sensor_inventory: {
+        Row: {
+          calibration_offset: number | null
+          created_at: string
+          detected_at: string
+          device_id: string
+          farm_id: string
+          id: string
+          is_active: boolean
+          last_seen_at: string
+          notes: string | null
+          sensor_model: string
+          sensor_type: string
+          updated_at: string
+        }
+        Insert: {
+          calibration_offset?: number | null
+          created_at?: string
+          detected_at?: string
+          device_id: string
+          farm_id: string
+          id?: string
+          is_active?: boolean
+          last_seen_at?: string
+          notes?: string | null
+          sensor_model: string
+          sensor_type: string
+          updated_at?: string
+        }
+        Update: {
+          calibration_offset?: number | null
+          created_at?: string
+          detected_at?: string
+          device_id?: string
+          farm_id?: string
+          id?: string
+          is_active?: boolean
+          last_seen_at?: string
+          notes?: string | null
+          sensor_model?: string
+          sensor_type?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -5616,42 +5706,66 @@ export type Database = {
       sensor_readings: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5676,42 +5790,66 @@ export type Database = {
       sensor_readings_default: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5721,42 +5859,66 @@ export type Database = {
       sensor_readings_y2026m02: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5766,42 +5928,66 @@ export type Database = {
       sensor_readings_y2026m03: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5811,42 +5997,66 @@ export type Database = {
       sensor_readings_y2026m04: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5856,42 +6066,66 @@ export type Database = {
       sensor_readings_y2026m05: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5901,42 +6135,66 @@ export type Database = {
       sensor_readings_y2026m06: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5946,42 +6204,66 @@ export type Database = {
       sensor_readings_y2026m07: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -5991,42 +6273,66 @@ export type Database = {
       sensor_readings_y2026m08: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6036,42 +6342,66 @@ export type Database = {
       sensor_readings_y2026m09: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6081,42 +6411,66 @@ export type Database = {
       sensor_readings_y2026m10: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6126,42 +6480,66 @@ export type Database = {
       sensor_readings_y2026m11: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6171,42 +6549,66 @@ export type Database = {
       sensor_readings_y2026m12: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6216,42 +6618,66 @@ export type Database = {
       sensor_readings_y2027m01: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6261,42 +6687,66 @@ export type Database = {
       sensor_readings_y2027m02: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6306,42 +6756,66 @@ export type Database = {
       sensor_readings_y2027m03: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6351,42 +6825,66 @@ export type Database = {
       sensor_readings_y2027m04: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6396,42 +6894,66 @@ export type Database = {
       sensor_readings_y2027m05: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6441,42 +6963,66 @@ export type Database = {
       sensor_readings_y2027m06: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6486,42 +7032,66 @@ export type Database = {
       sensor_readings_y2027m07: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6531,42 +7101,66 @@ export type Database = {
       sensor_readings_y2027m08: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6576,42 +7170,66 @@ export type Database = {
       sensor_readings_y2027m09: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6621,42 +7239,66 @@ export type Database = {
       sensor_readings_y2027m10: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6666,42 +7308,66 @@ export type Database = {
       sensor_readings_y2027m11: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -6711,42 +7377,66 @@ export type Database = {
       sensor_readings_y2027m12: {
         Row: {
           ammonia: number
+          co2_ppm: number | null
           device_id: string | null
           farm_id: string | null
           hsi: number | null
           humidity: number
+          humidity_precise: number | null
           id: string
           light_lux: number | null
+          lux_precise: number | null
+          nh3_ppm_precise: number | null
+          pm10_ugm3: number | null
+          pm25_ugm3: number | null
           recorded_at: string
+          sensor_source: Json | null
           shed_id: string | null
+          temp_precise: number | null
           temperature: number
           user_id: string
           water_usage: number
         }
         Insert: {
           ammonia: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature: number
           user_id: string
           water_usage?: number
         }
         Update: {
           ammonia?: number
+          co2_ppm?: number | null
           device_id?: string | null
           farm_id?: string | null
           hsi?: number | null
           humidity?: number
+          humidity_precise?: number | null
           id?: string
           light_lux?: number | null
+          lux_precise?: number | null
+          nh3_ppm_precise?: number | null
+          pm10_ugm3?: number | null
+          pm25_ugm3?: number | null
           recorded_at?: string
+          sensor_source?: Json | null
           shed_id?: string | null
+          temp_precise?: number | null
           temperature?: number
           user_id?: string
           water_usage?: number
@@ -7311,6 +8001,17 @@ export type Database = {
         Args: { _owner_id: string; _user_id: string }
         Returns: boolean
       }
+      check_air_quality_thresholds: {
+        Args: {
+          p_co2?: number
+          p_farm_id: string
+          p_nh3?: number
+          p_pm10?: number
+          p_pm25?: number
+          p_shed_id: string
+        }
+        Returns: Json
+      }
       check_firmware_compatibility: {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
@@ -7345,6 +8046,20 @@ export type Database = {
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
         Returns: Json
+      }
+      get_best_sensor_reading: {
+        Args: { p_farm_id: string; p_shed_id?: string }
+        Returns: {
+          ammonia: number
+          co2: number
+          humidity: number
+          light_lux: number
+          pm10: number
+          pm25: number
+          recorded_at: string
+          source: Json
+          temperature: number
+        }[]
       }
       get_device_secret: {
         Args: { _device_token_id: string }
@@ -7448,6 +8163,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_sensor_upgrade_summary: {
+        Args: { p_farm_id?: string }
+        Returns: Json
       }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       has_min_role: {
