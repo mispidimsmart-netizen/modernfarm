@@ -81,6 +81,19 @@ export function DeviceManagementSheet() {
     }
   };
 
+  const handleToggleMqtt = async (deviceId: string, enabled: boolean) => {
+    try {
+      await updateDevice.mutateAsync({ id: deviceId, mqtt_enabled: enabled } as never);
+      toast.success(
+        language === 'bn'
+          ? enabled ? 'MQTT সক্রিয় হয়েছে' : 'MQTT বন্ধ হয়েছে'
+          : enabled ? 'MQTT enabled' : 'MQTT disabled'
+      );
+    } catch {
+      toast.error(language === 'bn' ? 'সমস্যা হয়েছে' : 'Error');
+    }
+  };
+
   const getDeviceHealth = (deviceId: string) => {
     return deviceHealth?.find(h => h.device_token_id === deviceId);
   };
