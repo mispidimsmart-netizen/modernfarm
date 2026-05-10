@@ -25,6 +25,7 @@ import { NotificationSoundCard } from '@/components/settings/NotificationSoundCa
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
+import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { 
   FarmSetupTab, 
