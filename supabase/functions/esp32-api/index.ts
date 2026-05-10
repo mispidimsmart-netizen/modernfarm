@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { newObsCtx, recordObservability, type ObsCtx } from "./observability.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
