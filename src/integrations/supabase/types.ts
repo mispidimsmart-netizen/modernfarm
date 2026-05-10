@@ -3721,6 +3721,54 @@ export type Database = {
           },
         ]
       }
+      load_test_runs: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          error_rate_pct: number
+          id: string
+          max_ms: number | null
+          notes: string | null
+          p50_ms: number | null
+          p95_ms: number | null
+          p99_ms: number | null
+          ran_by: string | null
+          scenario: string
+          target_vus: number
+          total_requests: number
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds: number
+          error_rate_pct?: number
+          id?: string
+          max_ms?: number | null
+          notes?: string | null
+          p50_ms?: number | null
+          p95_ms?: number | null
+          p99_ms?: number | null
+          ran_by?: string | null
+          scenario: string
+          target_vus: number
+          total_requests?: number
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          error_rate_pct?: number
+          id?: string
+          max_ms?: number | null
+          notes?: string | null
+          p50_ms?: number | null
+          p95_ms?: number | null
+          p99_ms?: number | null
+          ran_by?: string | null
+          scenario?: string
+          target_vus?: number
+          total_requests?: number
+        }
+        Relationships: []
+      }
       medicine_inventory: {
         Row: {
           batch_id: string | null
@@ -7474,6 +7522,7 @@ export type Database = {
         }
         Returns: Json
       }
+      scale_readiness_summary: { Args: never; Returns: Json }
       should_deliver_notification: {
         Args: {
           _channel: string
