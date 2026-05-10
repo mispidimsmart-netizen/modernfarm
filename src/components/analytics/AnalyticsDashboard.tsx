@@ -119,6 +119,7 @@ export function AnalyticsDashboard() {
     }
   };
 
+  const runScan = async () => {
     if (!selectedFarmId) return;
     setScanning(true);
     try {
