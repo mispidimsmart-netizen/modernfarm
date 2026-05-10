@@ -284,6 +284,9 @@ const App = () => {
               <Toaster />
               <Sonner />
               <OfflineIndicator />
+              <div className="fixed right-3 top-3 z-[60]">
+                <OfflineMutationBadge />
+              </div>
               <PWAUpdateBanner />
               <GlobalBatchEditQueue />
               <BrowserRouter>
