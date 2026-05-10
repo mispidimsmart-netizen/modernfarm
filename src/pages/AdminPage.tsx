@@ -641,6 +641,7 @@ export default function AdminPage() {
             <SystemHealthCard language={language} />
             <AdminDeviceHealthPanel language={language} />
             <MqttHealthCard />
+            <OTAHardeningCard />
             <ForensicTimelineCard />
             {/* Calibration Wizard Card */}
             <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
