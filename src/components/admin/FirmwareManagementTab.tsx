@@ -448,7 +448,93 @@ export function FirmwareManagementTab({ language }: Props) {
             )}
           </div>
 
-          <Button
+          {/* ─── Phase 5 Hardening fields ─── */}
+          <div className="rounded-lg border-2 border-amber-500/30 bg-amber-500/5 p-4 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-amber-300">
+              🔐 {t("সিকিউরিটি ও রোলআউট হার্ডেনিং (Phase 5)", "Security & Rollout Hardening (Phase 5)")}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-slate-300 text-xs">
+                  {t("সাইনিং কী (Ed25519)", "Signing Key (Ed25519)")}
+                </Label>
+                <Select value={signingKeyId} onValueChange={setSigningKeyId}>
+                  <SelectTrigger className="bg-slate-800/80 border-amber-500/20 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("কোনোটি না (signed না)", "None (unsigned)")}</SelectItem>
+                    {signingKeys?.map((k) => (
+                      <SelectItem key={k.id} value={k.id}>{k.key_name} ({k.algorithm})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">
+                  {t("সিগনেচার (Base64)", "Signature (Base64)")}
+                </Label>
+                <Input
+                  value={signatureB64}
+                  onChange={(e) => setSignatureB64(e.target.value)}
+                  placeholder="ed25519 sig of SHA-256(firmware)"
+                  className="bg-slate-800/80 border-amber-500/20 text-white font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="col-span-2 md:col-span-1">
+                <Label className="text-slate-300 text-xs flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={windowEnabled}
+                    onChange={(e) => setWindowEnabled(e.target.checked)}
+                  />
+                  {t("আপডেট উইন্ডো", "Update Window")}
+                </Label>
+                <p className="text-[10px] text-slate-500 mt-1">{t("Asia/Dhaka সময়", "Asia/Dhaka time")}</p>
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">{t("শুরু (ঘণ্টা)", "Start (hour)")}</Label>
+                <Input
+                  type="number" min="0" max="23"
+                  value={windowStart}
+                  onChange={(e) => setWindowStart(e.target.value)}
+                  disabled={!windowEnabled}
+                  className="bg-slate-800/80 border-amber-500/20 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">{t("শেষ (ঘণ্টা)", "End (hour)")}</Label>
+                <Input
+                  type="number" min="0" max="23"
+                  value={windowEnd}
+                  onChange={(e) => setWindowEnd(e.target.value)}
+                  disabled={!windowEnabled}
+                  className="bg-slate-800/80 border-amber-500/20 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300 text-xs">{t("Health Gate %", "Health Gate %")}</Label>
+                <Input
+                  type="number" min="50" max="100" step="0.5"
+                  value={healthMinPct}
+                  onChange={(e) => setHealthMinPct(e.target.value)}
+                  className="bg-slate-800/80 border-amber-500/20 text-white"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              {t(
+                "সিগনেচার দিলে ESP32 boot এর আগে verify করবে। উইন্ডোর বাইরে firmware push হবে না। Health gate fail হলে rollout auto-pause।",
+                "Signed firmware is verified by ESP32 before flashing. Pushes are blocked outside the window. Health-gate failure auto-pauses the rollout.",
+              )}
+            </p>
+          </div>
+
             onClick={handleUpload}
             disabled={uploading || !file}
             className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
