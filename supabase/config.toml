@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.mqtt-publish]
 verify_jwt = false
+
+[functions.mqtt-ingest]
+verify_jwt = false
