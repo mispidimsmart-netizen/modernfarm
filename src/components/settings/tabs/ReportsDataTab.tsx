@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpactReport';
 import { ReportsAnalyticsView } from '@/components/reports/ReportsAnalyticsView';
+import { DataExportCard } from '@/components/settings/DataExportCard';
 
 export function ReportsDataTab() {
   const { language } = useAuth();
