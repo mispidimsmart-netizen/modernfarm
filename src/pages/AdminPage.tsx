@@ -58,6 +58,7 @@ import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
+import { MqttHealthCard } from '@/components/admin/MqttHealthCard';
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
