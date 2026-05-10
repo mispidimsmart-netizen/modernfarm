@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useFarm } from '@/context/FarmContext';
+import { useFarmContext } from '@/context/FarmContext';
+
+const useFarm = () => {
+  const { selectedFarmId } = useFarmContext();
+  return { activeFarmId: selectedFarmId };
+};
 
 export interface BestSensorReading {
   temperature: number | null;
