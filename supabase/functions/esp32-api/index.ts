@@ -1348,7 +1348,7 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
     if (hasAirQuality) {
       try {
         const { data: farmRow } = await supabase
-          .from('farms').select('id').eq('user_id', userId).limit(1).maybeSingle();
+          .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
         if (farmRow?.id) {
           await supabase.rpc('check_air_quality_thresholds', {
             p_farm_id: farmRow.id,
@@ -1368,7 +1368,7 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
     if (body.sensor_source && body.device_id) {
       try {
         const { data: farmRow } = await supabase
-          .from('farms').select('id').eq('user_id', userId).limit(1).maybeSingle();
+          .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
         if (farmRow?.id) {
           const SENSOR_TYPE_MAP: Record<string, string> = {
             temp: 'temp_humidity', humidity: 'temp_humidity',
