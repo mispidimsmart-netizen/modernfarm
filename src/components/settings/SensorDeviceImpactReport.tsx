@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import * as XLSX from 'xlsx';
+// xlsx is loaded dynamically inside handleExportExcel to keep it out of the main bundle
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, Cell,
