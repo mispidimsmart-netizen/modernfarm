@@ -231,7 +231,7 @@ Deno.test("Phase 9 — Tier 1 only (SHT31+BH1750) ingests cleanly, no AQ alert",
     const r = await db.queryObject<{ co2_ppm: number | null; pm25_ugm3: number | null }>`
       SELECT co2_ppm, pm25_ugm3 FROM sensor_readings
       WHERE user_id = ${device.user_id}::uuid
-      ORDER BY created_at DESC LIMIT 1
+      ORDER BY recorded_at DESC LIMIT 1
     `;
     assertEquals(r.rows[0]?.co2_ppm, null, "co2 should be null on Tier 1");
     assertEquals(r.rows[0]?.pm25_ugm3, null, "pm25 should be null on Tier 1");
@@ -259,7 +259,7 @@ Deno.test("Phase 9 — legacy-only payload (DHT22/MQ-135) still works", async ()
     const r = await db.queryObject<{ temperature: number; temp_precise: number | null }>`
       SELECT temperature, temp_precise FROM sensor_readings
       WHERE user_id = ${device.user_id}::uuid
-      ORDER BY created_at DESC LIMIT 1
+      ORDER BY recorded_at DESC LIMIT 1
     `;
     assert((r.rows[0]?.temperature ?? 0) > 24, "legacy temperature missing");
     assertEquals(
