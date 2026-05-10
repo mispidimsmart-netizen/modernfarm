@@ -143,6 +143,10 @@ export async function exportAuditLog(args: ExportArgs) {
     });
     downloadBlob(blob, `${base}.csv`);
   } else {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(14);
     doc.text(title, 14, 14);
