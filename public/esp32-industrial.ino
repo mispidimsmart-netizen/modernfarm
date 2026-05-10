@@ -504,6 +504,17 @@ unsigned long lightManualOverrideTime = 0;
 bool wifiConnected = false, cloudConnected = false, failsafeMode = false;
 unsigned long lastCloudSync = 0, lastWifiAttempt = 0;
 
+// --- Phase 3: Reliability counters ---
+uint16_t consecutiveFailedSyncs = 0;       // Increments on /sync failure, resets on success
+uint16_t consecutiveSuccessfulSyncs = 0;   // Used for failsafe auto-recovery (need >=3)
+unsigned long lastInvariantBreachAt = 0;   // millis() of last hardware safety breach (>38°C, NH3>50, etc.)
+
+// --- Phase 3: Command idempotency cache (NVS-backed ring) ---
+#define CMD_HISTORY_SIZE 50
+String cmdHistory[CMD_HISTORY_SIZE];
+int cmdHistoryHead = 0;
+bool cmdHistoryLoaded = false;
+
 // --- Boot/Safe Mode ---
 bool stabilizingMode = true;
 unsigned long stabilizingEndTime = 0;
