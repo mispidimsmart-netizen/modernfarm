@@ -402,6 +402,9 @@ export function SettingsPage() {
 
                   {/* SMS Alerts - Owner only */}
                   {isOwner && <SmsAlertSettingsCard />}
+
+                  {/* Phase 4: Advanced alert rules */}
+                  <AlertRulesCard />
                 </CardContent>
               </CollapsibleContent>
             </Card>
