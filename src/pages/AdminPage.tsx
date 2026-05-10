@@ -450,7 +450,15 @@ export default function AdminPage() {
               <Activity className="w-4 h-4 mr-2" />
               পর্যবেক্ষণ
             </TabsTrigger>
+            <TabsTrigger value="performance" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-fuchsia-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              পারফরম্যান্স
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="performance" className="mt-4">
+            <PerformanceDashboardTab />
+          </TabsContent>
 
           <TabsContent value="isolation" className="mt-4">
             <TenantIsolationAuditTab />
