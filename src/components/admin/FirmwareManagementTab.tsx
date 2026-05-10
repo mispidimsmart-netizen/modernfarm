@@ -15,6 +15,7 @@ import {
   Download, AlertCircle, Globe,
 } from "lucide-react";
 import { format } from "date-fns";
+import { SigningKeysCard } from "./SigningKeysCard";
 
 interface Props {
   language: "bn" | "en";
@@ -357,6 +358,8 @@ export function FirmwareManagementTab({ language }: Props) {
           </div>
         </details>
       </Card>
+
+      <SigningKeysCard language={language} />
 
       <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20">
         <CardHeader>
