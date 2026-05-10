@@ -77,8 +77,8 @@ export const useNotificationSound = () => {
     oscillator.stop(startTime + duration / 1000);
   }, []);
 
-  // Play notification sound based on type
-  const playSound = useCallback(async (type: SoundType = 'info') => {
+  // Play notification sound based on type. Critical (danger) repeats 3x for emphasis.
+  const playSound = useCallback(async (type: SoundType = 'info', loops?: number) => {
     // Prevent overlapping sounds
     if (isPlayingRef.current) return;
     isPlayingRef.current = true;
@@ -86,22 +86,28 @@ export const useNotificationSound = () => {
     try {
       const context = initAudioContext();
       const config = SOUND_CONFIGS[type];
-      
+      const repeatCount = loops ?? (type === 'danger' ? 3 : 1);
+
       let currentTime = context.currentTime;
-      
-      for (let i = 0; i < config.frequencies.length; i++) {
-        playTone(
-          context,
-          config.frequencies[i],
-          config.durations[i],
-          config.volume,
-          currentTime
-        );
-        currentTime += config.durations[i] / 1000;
+      const singleDuration = config.durations.reduce((a, b) => a + b, 0);
+      const gapBetweenLoops = type === 'danger' ? 350 : 200;
+
+      for (let r = 0; r < repeatCount; r++) {
+        for (let i = 0; i < config.frequencies.length; i++) {
+          playTone(
+            context,
+            config.frequencies[i],
+            config.durations[i],
+            config.volume,
+            currentTime
+          );
+          currentTime += config.durations[i] / 1000;
+        }
+        if (r < repeatCount - 1) currentTime += gapBetweenLoops / 1000;
       }
 
-      // Reset playing flag after sound completes
-      const totalDuration = config.durations.reduce((a, b) => a + b, 0);
+      // Reset playing flag after the whole pattern completes
+      const totalDuration = singleDuration * repeatCount + gapBetweenLoops * (repeatCount - 1);
       setTimeout(() => {
         isPlayingRef.current = false;
       }, totalDuration + 100);
