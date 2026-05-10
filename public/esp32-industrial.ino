@@ -85,7 +85,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.1.0-safety-toggle";
+const char* FIRMWARE_VERSION = "8.2.0-reliability-phase3";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -504,6 +504,17 @@ unsigned long lightManualOverrideTime = 0;
 bool wifiConnected = false, cloudConnected = false, failsafeMode = false;
 unsigned long lastCloudSync = 0, lastWifiAttempt = 0;
 
+// --- Phase 3: Reliability counters ---
+uint16_t consecutiveFailedSyncs = 0;       // Increments on /sync failure, resets on success
+uint16_t consecutiveSuccessfulSyncs = 0;   // Used for failsafe auto-recovery (need >=3)
+unsigned long lastInvariantBreachAt = 0;   // millis() of last hardware safety breach (>38°C, NH3>50, etc.)
+
+// --- Phase 3: Command idempotency cache (NVS-backed ring) ---
+#define CMD_HISTORY_SIZE 50
+String cmdHistory[CMD_HISTORY_SIZE];
+int cmdHistoryHead = 0;
+bool cmdHistoryLoaded = false;
+
 // --- Boot/Safe Mode ---
 bool stabilizingMode = true;
 unsigned long stabilizingEndTime = 0;
@@ -767,6 +778,11 @@ void saveSmsSettings();
 // Offline Buffer
 void offlineBufferStore();
 void offlineBufferSync();
+
+// Phase 3: Idempotency
+void loadCmdHistory();
+bool isCommandAlreadyApplied(const String &id);
+void recordAppliedCommand(const String &id);
 
 // Water
 void waterFlowTick();
@@ -2846,6 +2862,15 @@ void syncWithCloud() {
   doc["dht2_available"] = dht2Available;
   doc["relay_count"] = 8;
   if (dht2Available) { doc["temperature2"] = temperature2; doc["humidity2"] = humidity2; }
+  // Phase 3: reliability metrics
+  doc["consecutive_failed_syncs"] = consecutiveFailedSyncs;
+  {
+    int rssi = WiFi.RSSI();
+    int rssiScore = constrain(map(rssi, -90, -50, 0, 60), 0, 60);
+    int failPenalty = min(40, (int)consecutiveFailedSyncs * 8);
+    int qScore = constrain(40 + rssiScore - failPenalty, 0, 100);
+    doc["connection_quality_score"] = qScore;
+  }
 
   String payload;
   serializeJson(doc, payload);
@@ -2858,9 +2883,18 @@ void syncWithCloud() {
     handleCloudResponse(response);
     cloudConnected = true;
     lastCloudSync = millis();
-    if (failsafeMode && cloudConnected) { failsafeMode = false; }
+    consecutiveFailedSyncs = 0;
+    if (consecutiveSuccessfulSyncs < 65535) consecutiveSuccessfulSyncs++;
+    // Phase 3: Failsafe auto-recovery — exit after 3 successful syncs IF no recent invariant breach (last 5 min)
+    if (failsafeMode && consecutiveSuccessfulSyncs >= 3 &&
+        (lastInvariantBreachAt == 0 || millis() - lastInvariantBreachAt > 300000UL)) {
+      failsafeMode = false;
+      Serial.println("✅ [FAILSAFE] Auto-recovered after 3 successful syncs (no recent invariant breach)");
+    }
     if (offlineBufCount > 0) offlineBufferSync();
   } else {
+    consecutiveSuccessfulSyncs = 0;
+    if (consecutiveFailedSyncs < 65535) consecutiveFailedSyncs++;
     if (millis() - lastCloudSync > CLOUD_TIMEOUT) {
       failsafeMode = true; cloudConnected = false;
     }
@@ -3128,10 +3162,30 @@ void checkCommands() {
         String type = cmd["command_type"] | "";
         bool value = cmd["command_value"] | false;
         String id = cmd["id"] | "";
-        
+        String cri = cmd["client_request_id"] | "";
+
+        // Phase 3: idempotency — if already applied, skip execution but still ACK
+        if (cri.length() > 0 && isCommandAlreadyApplied(cri)) {
+          Serial.printf("⏭️  [IDEMPOTENT] Skip already-applied cmd %s\n", cri.c_str());
+          if (id.length() > 0) {
+            HTTPClient ack;
+            String ackUrl = String(API_URL) + "/commands-ack";
+            ack.begin(ackUrl);
+            ack.addHeader("Content-Type", "application/json");
+            ack.addHeader("x-device-token", activeDeviceToken.c_str());
+            ack.setTimeout(3000);
+            StaticJsonDocument<256> adoc;
+            adoc["command_ids"][0] = id;
+            String ap; serializeJson(adoc, ap);
+            attachSignature(ack, ap);
+            ack.POST(ap); ack.end();
+          }
+          continue;
+        }
+
         // ═══ All manual commands set bypass flag ═══
         manualCommandPending = true;
-        
+
         if (type == "exhaust_fan" || type == "fan") {
           fanManualOverride = true; fanManualTime = millis();
           requestFan(value, value ? "HIGH" : "OFF");
@@ -3207,6 +3261,8 @@ void checkCommands() {
           ack.POST(ap);
           ack.end();
           esp_task_wdt_reset();
+          // Phase 3: record applied command for idempotency
+          recordAppliedCommand(cri);
         }
       }
     }
@@ -3733,12 +3789,98 @@ void offlineBufferRestore() {
 }
 
 void offlineBufferSync() {
-  // Clear buffer on cloud reconnect (data already in sync payload)
+  // Phase 3: Real bulk flush via /sensor-batch (max 50 per request).
+  if (!wifiConnected || offlineBufCount == 0) {
+    offlineBufCount = 0; offlineBufHead = 0;
+    preferences.begin("offline_buf", false);
+    preferences.putUInt("count", 0);
+    preferences.putUInt("head", 0);
+    preferences.end();
+    return;
+  }
+
+  // Compute oldest index in ring
+  int start = (offlineBufHead - offlineBufCount + OFFLINE_BUFFER_SIZE) % OFFLINE_BUFFER_SIZE;
+  int total = offlineBufCount;
+  int sent = 0;
+
+  while (sent < total) {
+    int batch = min(50, total - sent);
+    HTTPClient http;
+    String url = String(API_URL) + "/sensor-batch";
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("x-device-token", activeDeviceToken.c_str());
+    http.setTimeout(8000);
+
+    DynamicJsonDocument doc(8192);
+    JsonArray arr = doc.createNestedArray("readings");
+    for (int i = 0; i < batch; i++) {
+      int idx = (start + sent + i) % OFFLINE_BUFFER_SIZE;
+      OfflineRecord &r = offlineBuffer[idx];
+      JsonObject o = arr.createNestedObject();
+      o["t_offset_ms"] = (long)(millis() - r.timestamp);
+      o["temperature"] = r.temp;
+      o["humidity"] = r.hum;
+      o["ammonia"] = r.nh3;
+      o["water_usage"] = r.water;
+      o["hsi"] = r.hsi;
+      o["power_on"] = r.power;
+      o["fan_speed"] = r.fanSpd;
+      o["state"] = r.state;
+    }
+    String payload; serializeJson(doc, payload);
+    attachSignature(http, payload);
+    int code = http.POST(payload);
+    http.end();
+    esp_task_wdt_reset();
+
+    if (code != 200) {
+      Serial.printf("[OFFLINE] batch flush failed code=%d, will retry later\n", code);
+      return; // keep buffer for next attempt
+    }
+    sent += batch;
+    Serial.printf("[OFFLINE] flushed %d/%d readings\n", sent, total);
+  }
+
   offlineBufCount = 0; offlineBufHead = 0;
-  // Clear NVS saved state
   preferences.begin("offline_buf", false);
   preferences.putUInt("count", 0);
   preferences.putUInt("head", 0);
+  preferences.end();
+}
+
+// --- Phase 3: Command idempotency cache ---
+void loadCmdHistory() {
+  if (cmdHistoryLoaded) return;
+  preferences.begin("cmd_hist", true);
+  cmdHistoryHead = preferences.getInt("head", 0);
+  for (int i = 0; i < CMD_HISTORY_SIZE; i++) {
+    char k[8]; snprintf(k, sizeof(k), "c%d", i);
+    cmdHistory[i] = preferences.getString(k, "");
+  }
+  preferences.end();
+  cmdHistoryLoaded = true;
+}
+
+bool isCommandAlreadyApplied(const String &id) {
+  if (id.length() == 0) return false;
+  loadCmdHistory();
+  for (int i = 0; i < CMD_HISTORY_SIZE; i++) {
+    if (cmdHistory[i] == id) return true;
+  }
+  return false;
+}
+
+void recordAppliedCommand(const String &id) {
+  if (id.length() == 0) return;
+  loadCmdHistory();
+  cmdHistory[cmdHistoryHead] = id;
+  preferences.begin("cmd_hist", false);
+  char k[8]; snprintf(k, sizeof(k), "c%d", cmdHistoryHead);
+  preferences.putString(k, id);
+  cmdHistoryHead = (cmdHistoryHead + 1) % CMD_HISTORY_SIZE;
+  preferences.putInt("head", cmdHistoryHead);
   preferences.end();
 }
 
