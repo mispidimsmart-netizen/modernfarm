@@ -261,6 +261,17 @@ interface SensorPayload {
   light_lux?: number;
   power_status?: string;
   timestamp?: string;
+  // Phase 9 — precise/industrial sensors (all optional)
+  temp_precise?: number;       // SHT31
+  humidity_precise?: number;   // SHT31
+  lux_precise?: number;        // BH1750
+  nh3_ppm_precise?: number;    // ZE03-NH3
+  co2_ppm?: number;            // SCD41
+  pm25_ugm3?: number;          // PMS5003
+  pm10_ugm3?: number;          // PMS5003
+  sensor_source?: Record<string, string>;
+  device_id?: string;
+  shed_id?: string;
 }
 
 interface DeviceStatusPayload {
@@ -1301,6 +1312,18 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
     // Optional ambient light from LDR (only if device has it connected)
     if (typeof body.light_lux === 'number' && body.light_lux >= 0) {
       sensorInsertData.light_lux = body.light_lux;
+    }
+
+    // Phase 9 — industrial-grade sensor values (optional, additive)
+    if (typeof body.temp_precise === 'number') sensorInsertData.temp_precise = body.temp_precise;
+    if (typeof body.humidity_precise === 'number') sensorInsertData.humidity_precise = body.humidity_precise;
+    if (typeof body.lux_precise === 'number') sensorInsertData.lux_precise = body.lux_precise;
+    if (typeof body.nh3_ppm_precise === 'number') sensorInsertData.nh3_ppm_precise = body.nh3_ppm_precise;
+    if (typeof body.co2_ppm === 'number') sensorInsertData.co2_ppm = Math.round(body.co2_ppm);
+    if (typeof body.pm25_ugm3 === 'number') sensorInsertData.pm25_ugm3 = body.pm25_ugm3;
+    if (typeof body.pm10_ugm3 === 'number') sensorInsertData.pm10_ugm3 = body.pm10_ugm3;
+    if (body.sensor_source && typeof body.sensor_source === 'object') {
+      sensorInsertData.sensor_source = body.sensor_source;
     }
 
     if (shedId) {
