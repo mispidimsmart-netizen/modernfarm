@@ -238,6 +238,10 @@ export function AlertsPage() {
                 </p>
               </div>
             </TabsContent>
+
+            <TabsContent value="delivery">
+              <AlertDeliveryHistoryTab />
+            </TabsContent>
           </Tabs>
         </motion.div>
       </main>
