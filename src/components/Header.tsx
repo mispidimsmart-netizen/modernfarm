@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AlertBell } from '@/components/AlertBell';
 
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
 
