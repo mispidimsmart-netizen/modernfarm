@@ -79,6 +79,18 @@ serve(async (req) => {
       return await handleAdvanceRollout(req, supabase);
     }
 
+    // ─── Admin: hardening summary (Phase 5) ───
+    if (action === 'hardening-summary') {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
+      const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await userClient.rpc('ota_hardening_summary');
+      if (error) return jsonResponse({ error: error.message }, 403);
+      return jsonResponse(data);
+    }
+
     // ─── Admin: list firmware ───
     if (action === 'list') {
       const { data, error } = await supabase
