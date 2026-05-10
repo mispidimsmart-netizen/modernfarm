@@ -1,155 +1,168 @@
-# Phase 2 — Observability
+# Phase 3 — Reliability & Offline-first
 
-**লক্ষ্য:** "কী ভাঙছে, কেন ভাঙছে, কোথায় ভাঙছে" — ৩০ সেকেন্ডে উত্তর। বর্তমানে একটি device "চুপ" হয়ে গেলে farmer/admin জানে না কেন। edge function fail করলে আলাদা আলাদা log scattered। আমরা একটা **unified observability layer** বানাবো।
+**লক্ষ্য:** ইন্টারনেট ১ ঘণ্টা গেলেও farm অক্ষত। ESP32 কখনো command miss করবে না, কখনো duplicate apply করবে না। PWA-তে farmer যা কিছু পরিবর্তন করেন (manual override, schedule, batch entry) — অফলাইনে queue হয়, online এলে auto-sync।
 
 ---
 
-## কী কী Ship হবে
+## যা Ship হবে (৭টি কম্পোনেন্ট)
 
-### 1. Structured Request Log (সব edge function)
-এক central table `edge_request_log`:
-- `function_name`, `path`, `method`, `status_code`
-- `duration_ms`, `device_token_id` (যদি থাকে), `farm_id`, `user_id`
-- `request_id` (UUID), `error_code`, `error_message`
-- `payload_size_bytes`, `response_size_bytes`
-- Auto-pruned 30 days
+### 1. Command Idempotency (সবচেয়ে জরুরি)
+সমস্যা: এখন যদি ESP32 command apply করে কিন্তু ack TCP-এ হারায়, cloud আবার পাঠায় → relay দুইবার toggle। সমাধান:
+- `device_commands.client_request_id` (uuid) যোগ — ESP32 ack করার সময় পাঠায়
+- ESP32-side: প্রতি command-এর `id` (uuid) NVS-এ সর্বশেষ ৫০টি save → already-applied হলে শুধু ack পাঠায়, action skip
+- Cloud-side: ack আসলে status=`acked` সেট, future fetch থেকে বাদ
 
-প্রতিটি edge function-এ একটা ছোট `withObservability()` wrapper — শুরু/শেষে log করবে।
+### 2. ESP32 Offline Sensor Buffer
+সমস্যা: WiFi গেলে ১০ মিনিটের sensor data হারায়। সমাধান:
+- ESP32 NVS-এ ring buffer (১২০ entries × ~৩০ bytes = 4 KB) → প্রতি ৫ সেকেন্ডে temperature/humidity/ammonia push
+- WiFi এলে `/sensor-batch` endpoint-এ একসাথে flush (max 50/request)
+- Cloud `esp32-api/sensor-batch` (নতুন) — array গ্রহণ, `recorded_at` original timestamp ব্যবহার
 
-### 2. Device Heartbeat Health Metrics
-নতুন table `device_health_metrics` (rolling 24h):
-- `device_token_id`, `bucket_hour`
-- `sync_count`, `signature_failures`, `nonce_reuse_count`, `rate_limited_count`
-- `avg_latency_ms`, `p95_latency_ms`
-- `sensor_gap_seconds_max` (longest silence in that hour)
-- `restart_count`
+### 3. PWA Offline Mutation Queue (extend `useOfflineSync`)
+ইতিমধ্যে আছে: read cache। নতুন:
+- `useOfflineMutationQueue` — IndexedDB-তে pending writes (manual_override, schedule edit, batch entry, expense)
+- প্রতিটি mutation-এ: `id` (uuid), `endpoint`, `payload`, `created_at`, `retry_count`, `max_age_minutes`
+- Online ফিরলে FIFO replay; conflict হলে user-facing toast: "৩টি পরিবর্তন server-এ পাঠানো হয়েছে / ১টি ব্যর্থ"
+- TTL: ২৪ ঘণ্টার পর expire (stale override ব্লক)
 
-`esp32-api` রিকোয়েস্ট আসলে aggregate করে এখানে upsert।
+### 4. Edge Function Retry Wrapper
+সমস্যা: cloud transient errors → user-facing failure। সমাধান:
+- Frontend: শুধুমাত্র safe (idempotent) edge function call-এ exponential backoff (200ms → 400 → 800, max 3)
+- Conditions: 502/503/504/network-error → retry; 4xx → no retry; mutation-with-no-idempotency-key → no retry
 
-### 3. Command Lifecycle Trace
-`device_commands` row-এ ইতিমধ্যে আছে: created → queued → delivered → acked। নতুন কী যোগ:
-- `dispatched_at` (cloud → device fetch হওয়ার মুহূর্ত)
-- `latency_to_device_ms`, `latency_to_ack_ms`
-- View `command_trace_summary` — গড় latency per farm/per device
+### 5. Heartbeat Quality Score
+device_health_metrics-এ ইতিমধ্যে আছে। নতুন `connection_quality_score` (0-100):
+- ESP32 প্রতি sync-এ পাঠাবে: `wifi_rssi`, `consecutive_failed_syncs`, `last_sync_gap_seconds`
+- Cloud calculates: rssi >= -65 + gap < 60s + zero failures = 100; এ থেকে কমে গেলে penalize
+- ConnectionQualityCard-এ ১-১০০ score show + 🔥 উন্নতির পরামর্শ
 
-### 4. SLO Dashboard (Admin)
-নতুন tab `Admin → Observability`:
-- **Live Status:** কতগুলো device online/offline/degraded (last 5 min sync)
-- **Error Rate:** ৪০৪/৫০০/auth-fail per function (last 1h, 24h, 7d charts)
-- **Latency:** p50/p95/p99 per endpoint
-- **Top Failing Devices:** signature failure / rate limit hit
-- **Sensor Gaps:** কোন device-এর data missing > 5 min
-- **Command Backlog:** unacked commands > 60 sec
+### 6. Failsafe Mode Auto-Recovery
+সমস্যা: ESP32 ফেইলসেফে গেলে cloud reconnect-এর পরও farmer manually exit করতে হয়। সমাধান:
+- `device_health.failsafe_recovery_attempts` (int)
+- ESP32: cloud sync ৩ বার সফল হলে auto-exit failsafe (cached_settings_version match হলে)
+- কিন্তু: যদি sensor reading সাম্প্রতিক invariant violate করে → failsafe maintain (safety > convenience)
 
-Recharts ব্যবহার করে।
-
-### 5. Farmer-facing "Connection Quality" Card
-Dashboard-এ ছোট badge:
-- 🟢 চমৎকার (last sync < 30s, no errors)
-- 🟡 ধীর (sync 30-120s OR mild error)
-- 🔴 সমস্যা (no sync > 5 min OR repeated auth fail)
-- ক্লিক করলে detail sheet — last 1h timeline
-
-### 6. Anomaly Alerts (Background)
-নতুন edge function `observability-anomaly-detector` (cron, every 5 min):
-- Device offline > 10 min → push notification + audit log
-- Signature failure spike (>5 in 5 min) → admin alert (potential attack)
-- Sensor reading frozen (same value 30+ min) → farmer alert
-- Latency p95 > 3s sustained → admin alert
-
-Reuses existing `useSmartAlerts` notification pipeline।
-
-### 7. Health Self-Check Endpoint
-`esp32-api/health` (GET, public, light auth):
-- Returns `{ ok, db_latency_ms, version, time }`
-- ESP32 অপশনালি ১০ মিনিটে একবার ping করে নিজের connectivity verify করতে পারে
+### 7. "Last Known Good" Cache (PWA)
+সমস্যা: pure offline-এ Dashboard খালি দেখায়। সমাধান:
+- React-query persistor ইতিমধ্যে আছে (useOfflineSensorCache) — extend to: device_health, alerts, schedules, batches
+- Stale data-তে subtle "📡 অফলাইন (শেষ আপডেট: ২ মি আগে)" ribbon
+- Mutation gated: offline-এ লেখা যাবে কিন্তু button-এ "queued" badge
 
 ---
 
 ## Database Migrations
 
 ```text
-edge_request_log (new):
-  id, function_name, path, method, status_code, duration_ms,
-  device_token_id, farm_id, user_id, request_id, error_code,
-  error_message, payload_size_bytes, response_size_bytes, created_at
-
-device_health_metrics (new):
-  device_token_id, farm_id, bucket_hour,
-  sync_count, signature_failures, nonce_reuse_count, rate_limited_count,
-  avg_latency_ms, p95_latency_ms, sensor_gap_seconds_max,
-  restart_count, updated_at
-  PRIMARY KEY (device_token_id, bucket_hour)
-
 device_commands:
-  + dispatched_at        timestamptz
-  + latency_to_device_ms int
-  + latency_to_ack_ms    int
+  + client_request_id  uuid     -- ESP32 echoes back for ack matching
+  + retry_count        int      -- how many times cloud re-served this
+  CREATE UNIQUE INDEX ON device_commands (client_request_id) WHERE client_request_id IS NOT NULL
 
-VIEW command_trace_summary (read-only, RLS via underlying table)
+device_health:
+  + connection_quality_score    int CHECK (0..100)
+  + failsafe_recovery_attempts  int DEFAULT 0
+  + last_offline_buffer_flush   timestamptz
 
-Cron jobs (pg_cron):
-  - cleanup_edge_request_log()       hourly  (>30 days)
-  - cleanup_device_health_metrics()  daily   (>90 days)
-  - observability-anomaly-detector   */5 *   (HTTP call to edge fn)
+NEW TABLE device_offline_buffer_log (audit, optional):
+  id, device_token_id, farm_id, batch_size, oldest_ts, newest_ts,
+  flushed_at, accepted_count, rejected_count
+
+NEW RPC accept_sensor_batch(_device_token_id, _readings jsonb)
+  - Bulk-insert sensor_readings with ON CONFLICT (device_token_id, recorded_at) DO NOTHING
+  - Returns accepted_count
 ```
-
-RLS:
-- `edge_request_log`: super_admin select; service_role insert
-- `device_health_metrics`: farm members select via `user_can_access_farm`; service_role write
 
 ---
 
-## Code Changes
+## Edge Function Changes
 
 ```text
-NEW edge functions:
-  supabase/functions/observability-anomaly-detector/index.ts
-  supabase/functions/_shared/observability.ts   (withObservability wrapper)
+NEW:
+  esp32-api/sensor-batch   (POST array of readings, signed)
+  
+EDIT:
+  esp32-api/commands fetch:
+    + return commands with status='pending' AND id NOT IN (last_acked_ids)
+    + on ack: match by client_request_id OR command_id
+  
+  esp32-api/sync (existing):
+    + accept consecutive_failed_syncs, last_sync_gap_seconds
+    + compute connection_quality_score, write to device_health
+```
 
-EDIT edge functions (add wrapper):
-  esp32-api, provision-device, rotate-device-secret,
-  safety-engine, automation-engine, device-monitor
+---
 
-NEW UI:
-  src/components/admin/ObservabilityDashboard.tsx
-  src/components/admin/ObservabilityCharts.tsx
-  src/components/control/ConnectionQualityCard.tsx
-  src/hooks/useDeviceHealthMetrics.ts
-  src/hooks/useEdgeFunctionMetrics.ts
+## ESP32 Firmware Changes (`public/esp32-industrial.ino`)
+
+```text
+NEW NVS keys:
+  cmd_history (last 50 applied command UUIDs)
+  sensor_buffer_v2 (ring buffer of structs)
+  consecutive_failed_syncs (int)
+  
+NEW functions:
+  bool isCommandAlreadyApplied(uuid)
+  void recordAppliedCommand(uuid)
+  void bufferSensorReading(temp, hum, nh3, ts)
+  void flushSensorBuffer()  -- on successful WiFi reconnect
+
+LOOP changes:
+  - failed sync increments consecutive counter
+  - successful sync: if counter >= 3 AND failsafe_mode AND no recent invariant breach → exit failsafe
+  - sensor buffer flush trigger: WiFi reconnect OR buffer >= 50
+```
+
+---
+
+## UI Changes
+
+```text
+NEW:
+  src/hooks/useOfflineMutationQueue.ts
+  src/components/OfflineMutationBadge.tsx   (header pill: "৩টি queued")
 
 EDIT:
-  src/pages/AdminPage.tsx               (new "Observability" tab)
-  src/pages/Dashboard.tsx               (mount ConnectionQualityCard)
-  supabase/functions/esp32-api/index.ts (latency capture + heartbeat metrics)
+  src/hooks/useOfflineSync.ts               (extend to mutation queue API)
+  src/components/control/ConnectionQualityCard.tsx
+    + show connection_quality_score (0-100) ring + improvement tips
+  src/lib/esp32Api.ts
+    + retry wrapper for safe GETs (status, sync)
+  src/components/OfflineIndicator.tsx
+    + "Last sync 2m ago" stale ribbon when prolonged offline
 ```
 
 ---
 
 ## Rollout Order
 
-1. **Migrations** (additive, safe)
-2. **`_shared/observability.ts`** wrapper + apply to `esp32-api` first
-3. **device_health_metrics** aggregation logic in `esp32-api`
-4. **Admin Observability Dashboard** (read-only, no impact)
-5. **ConnectionQualityCard** on farmer dashboard
-6. **Anomaly detector** edge function + pg_cron schedule
-7. **Apply wrapper to remaining edge functions** (gradual)
-8. **Health self-check endpoint** + optional ESP32 ping
-
-প্রতিটি step আলাদা ship — কেউ break হলেও কেবল observability UI গায়েব হবে, hardware/automation অক্ষত।
+1. **DB migration** — additive columns + new RPC + new table
+2. **`esp32-api/sensor-batch`** endpoint + idempotent commands fetch
+3. **Firmware patch** (`esp32-industrial.ino`) — buffer + idempotency + auto-recovery
+4. **PWA mutation queue** (`useOfflineMutationQueue`)
+5. **UI:** ConnectionQualityCard score + OfflineMutationBadge
+6. **Retry wrapper** in `esp32Api.ts`
+7. **Test + verify** — কেউ break হলে previous phase-গুলো অক্ষত
 
 ---
 
-## Phase 2 Out-of-Scope (Phase 3+)
+## Phase 3 Out-of-Scope
 
-- Full distributed tracing (OpenTelemetry) — overkill এখন
-- External APM (Datadog/Sentry) integration
-- Real-time WebSocket log stream for farmers
-- Per-tenant observability quotas/billing
+- Multi-region failover (Phase 4+)
+- ESP32 mesh / fallback radios
+- Cellular fallback automation (manual SMS already works)
+- Conflict resolution UI for divergent offline edits (auto-prefer server-wins)
+
+---
+
+## Test Strategy
+
+- ESP32 simulator: 5 min WiFi off → reconnect → verify all sensor readings present
+- Browser: DevTools Offline → toggle relay → confirm queued → online → applied
+- Idempotency: send same command 3× → only 1 relay action
+- Failsafe recovery: trigger failsafe, restore network → auto-exit within 30s
 
 ---
 
 ## অনুমোদনের পর
 
-Migration ফাইল লিখব → অনুমোদন → শেষে শুধু code changes (single message)। সব phase 2 mvp ship হতে আনুমানিক **৩-৪টা commit batch**।
+আগের ফেজগুলোর মতো একই pattern: migration → অনুমোদন → তারপর single batch-এ code changes ship। আনুমানিক **৩-৪টা commit batch**।
