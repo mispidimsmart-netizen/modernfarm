@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon } from 'lucide-react';
+import { Bell, CheckCircle, History, ShieldCheck, Eye, AlertCircle, Moon, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAcknowledgeAlert } from '@/hooks/useFarmData';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import { IndustrialAlertCard } from '@/components/alerts/IndustrialAlertCard';
 import { AlertTimeline } from '@/components/alerts/AlertTimeline';
+import { AlertDeliveryHistoryTab } from '@/components/alerts/AlertDeliveryHistoryTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SmartAlert } from '@/hooks/useSmartAlerts';
 
@@ -115,7 +116,7 @@ export function AlertsPage() {
           )}
 
           <Tabs defaultValue="active" className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-2">
+            <TabsList className="mb-4 grid w-full grid-cols-3">
               <TabsTrigger value="active" className="flex items-center gap-2">
                 <Bell size={16} />
                 {language === 'bn' ? 'নতুন' : 'Active'}
@@ -128,6 +129,10 @@ export function AlertsPage() {
               <TabsTrigger value="history" className="flex items-center gap-2">
                 <History size={16} />
                 {language === 'bn' ? 'ইতিহাস' : 'History'}
+              </TabsTrigger>
+              <TabsTrigger value="delivery" className="flex items-center gap-2">
+                <Send size={16} />
+                {language === 'bn' ? 'ডেলিভারি' : 'Delivery'}
               </TabsTrigger>
             </TabsList>
 
@@ -232,6 +237,10 @@ export function AlertsPage() {
                     : '🛡️ Most issues are auto-resolved by the system'}
                 </p>
               </div>
+            </TabsContent>
+
+            <TabsContent value="delivery">
+              <AlertDeliveryHistoryTab />
             </TabsContent>
           </Tabs>
         </motion.div>

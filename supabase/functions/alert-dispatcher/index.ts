@@ -116,34 +116,57 @@ Deno.serve(async (req) => {
   const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
   const startedAt = Date.now();
 
-  // 1. Evaluate rules for every farm that has rules enabled
-  const { data: farms } = await supa
-    .from("alert_rules")
-    .select("farm_id")
-    .eq("enabled", true);
-  const farmIds = Array.from(new Set((farms ?? []).map((r: any) => r.farm_id)));
-  let evalCount = 0;
-  for (const fid of farmIds) {
-    const { data, error } = await supa.rpc("evaluate_alert_rules", { _farm_id: fid });
-    if (!error && typeof data === "number") evalCount += data;
+  // Resend mode: { alert_id } in body bypasses evaluation + dedupe for that alert.
+  let resendAlertId: string | null = null;
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      if (body && typeof body.alert_id === "string") resendAlertId = body.alert_id;
+    } catch (_) { /* no body — cron call */ }
   }
 
-  // 2. Pick alerts that have NO delivery rows yet (treat as freshly created)
-  const { data: pending } = await supa
-    .from("alerts")
-    .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type")
-    .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
-    .order("created_at", { ascending: true })
-    .limit(100);
+  let evalCount = 0;
+  let pending: any[] = [];
+
+  if (resendAlertId) {
+    const { data } = await supa
+      .from("alerts")
+      .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type")
+      .eq("id", resendAlertId)
+      .maybeSingle();
+    if (data) pending = [data];
+  } else {
+    // 1. Evaluate rules for every farm that has rules enabled
+    const { data: farms } = await supa
+      .from("alert_rules")
+      .select("farm_id")
+      .eq("enabled", true);
+    const farmIds = Array.from(new Set((farms ?? []).map((r: any) => r.farm_id)));
+    for (const fid of farmIds) {
+      const { data, error } = await supa.rpc("evaluate_alert_rules", { _farm_id: fid });
+      if (!error && typeof data === "number") evalCount += data;
+    }
+
+    // 2. Pick alerts that have NO delivery rows yet (treat as freshly created)
+    const { data: p } = await supa
+      .from("alerts")
+      .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type")
+      .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
+      .order("created_at", { ascending: true })
+      .limit(100);
+    pending = p ?? [];
+  }
 
   let dispatched = 0;
-  for (const a of pending ?? []) {
-    // Skip if any delivery already attempted for this alert
-    const { count } = await supa
-      .from("alert_deliveries")
-      .select("id", { count: "exact", head: true })
-      .eq("alert_id", a.id);
-    if ((count ?? 0) > 0) continue;
+  for (const a of pending) {
+    if (!resendAlertId) {
+      // Skip if any delivery already attempted for this alert
+      const { count } = await supa
+        .from("alert_deliveries")
+        .select("id", { count: "exact", head: true })
+        .eq("alert_id", a.id);
+      if ((count ?? 0) > 0) continue;
+    }
 
     // Load rule + config
     const { data: rule } = a.rule_id
