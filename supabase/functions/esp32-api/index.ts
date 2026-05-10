@@ -2371,7 +2371,7 @@ async function getDeviceCommands(supabase: any, userId: string, deviceName: stri
   // Get pending (unexecuted) commands for this device — only fresh ones
   let query = supabase
     .from('device_commands')
-    .select('id, command_type, command_value, created_at')
+    .select('id, command_type, command_value, created_at, client_request_id, dispatched_at, retry_count')
     .eq('user_id', userId)
     .eq('executed', false)
     .gte('created_at', freshCutoff)
@@ -2389,6 +2389,27 @@ async function getDeviceCommands(supabase: any, userId: string, deviceName: stri
       JSON.stringify({ error: 'Failed to get commands', code: 'FETCH_FAILED' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+  }
+
+  // Phase 3 idempotency: ensure each fetched command has a client_request_id
+  // (so ESP32 can echo it back in ack to dedupe), and track dispatch lifecycle.
+  const nowIso = new Date().toISOString();
+  if (data && data.length > 0) {
+    for (const cmd of data) {
+      const updates: any = {};
+      if (!cmd.client_request_id) {
+        cmd.client_request_id = cmd.id;          // reuse row id as idempotency key
+        updates.client_request_id = cmd.id;
+      }
+      if (!cmd.dispatched_at) {
+        updates.dispatched_at = nowIso;
+      } else {
+        updates.retry_count = (cmd.retry_count || 0) + 1;
+      }
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('device_commands').update(updates).eq('id', cmd.id);
+      }
+    }
   }
 
   // Also fetch matching command_ids from device_command_log for ACK protocol
