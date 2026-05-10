@@ -198,6 +198,8 @@ export type Database = {
         Row: {
           created_at: string
           critical_bypass_quiet_hours: boolean
+          digest_min_severity: string
+          digest_mode: string
           escalation_minutes: number
           escalation_phone_e164: string | null
           farm_id: string
@@ -209,10 +211,13 @@ export type Database = {
           sms_enabled: boolean
           updated_at: string
           whatsapp_enabled: boolean
+          whatsapp_number: string | null
         }
         Insert: {
           created_at?: string
           critical_bypass_quiet_hours?: boolean
+          digest_min_severity?: string
+          digest_mode?: string
           escalation_minutes?: number
           escalation_phone_e164?: string | null
           farm_id: string
@@ -224,10 +229,13 @@ export type Database = {
           sms_enabled?: boolean
           updated_at?: string
           whatsapp_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Update: {
           created_at?: string
           critical_bypass_quiet_hours?: boolean
+          digest_min_severity?: string
+          digest_mode?: string
           escalation_minutes?: number
           escalation_phone_e164?: string | null
           farm_id?: string
@@ -239,6 +247,7 @@ export type Database = {
           sms_enabled?: boolean
           updated_at?: string
           whatsapp_enabled?: boolean
+          whatsapp_number?: string | null
         }
         Relationships: [
           {
@@ -4035,6 +4044,68 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          critical_bypass_quiet_hours: boolean
+          digest_mode: string
+          farm_id: string | null
+          id: string
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          severity_min_for_push: string
+          severity_min_for_sms: string
+          severity_min_for_whatsapp: string
+          snooze_until: string | null
+          sound_enabled: boolean
+          updated_at: string
+          user_id: string
+          vibration_enabled: boolean
+        }
+        Insert: {
+          created_at?: string
+          critical_bypass_quiet_hours?: boolean
+          digest_mode?: string
+          farm_id?: string | null
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          severity_min_for_push?: string
+          severity_min_for_sms?: string
+          severity_min_for_whatsapp?: string
+          snooze_until?: string | null
+          sound_enabled?: boolean
+          updated_at?: string
+          user_id: string
+          vibration_enabled?: boolean
+        }
+        Update: {
+          created_at?: string
+          critical_bypass_quiet_hours?: boolean
+          digest_mode?: string
+          farm_id?: string | null
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          severity_min_for_push?: string
+          severity_min_for_sms?: string
+          severity_min_for_whatsapp?: string
+          snooze_until?: string | null
+          sound_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+          vibration_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offline_sync_queue: {
         Row: {
           created_at: string
@@ -6861,6 +6932,19 @@ export type Database = {
       }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       refresh_farm_daily_rollup: { Args: never; Returns: undefined }
+      should_deliver_notification: {
+        Args: {
+          _channel: string
+          _farm_id: string
+          _severity: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      snooze_notifications: {
+        Args: { _farm_id?: string; _minutes: number }
+        Returns: Json
+      }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
         Returns: boolean
