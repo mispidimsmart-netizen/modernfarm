@@ -2546,6 +2546,8 @@ export type Database = {
           updated_at: string
           user_id: string
           water_anomaly_threshold: number
+          weekly_report_email: string | null
+          weekly_report_enabled: boolean
         }
         Insert: {
           ammonia_max?: number
@@ -2578,6 +2580,8 @@ export type Database = {
           updated_at?: string
           user_id: string
           water_anomaly_threshold?: number
+          weekly_report_email?: string | null
+          weekly_report_enabled?: boolean
         }
         Update: {
           ammonia_max?: number
@@ -2610,6 +2614,8 @@ export type Database = {
           updated_at?: string
           user_id?: string
           water_anomaly_threshold?: number
+          weekly_report_email?: string | null
+          weekly_report_enabled?: boolean
         }
         Relationships: [
           {
@@ -6754,6 +6760,48 @@ export type Database = {
           location_name?: string | null
           rain_alert_enabled?: boolean
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      weekly_report_log: {
+        Row: {
+          email_sent: boolean
+          error: string | null
+          farm_id: string | null
+          file_path: string | null
+          generated_at: string
+          id: string
+          period_end: string
+          period_start: string
+          signed_url: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          email_sent?: boolean
+          error?: string | null
+          farm_id?: string | null
+          file_path?: string | null
+          generated_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          signed_url?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          email_sent?: boolean
+          error?: string | null
+          farm_id?: string | null
+          file_path?: string | null
+          generated_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          signed_url?: string | null
+          status?: string
           user_id?: string
         }
         Relationships: []
