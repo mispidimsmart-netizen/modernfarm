@@ -207,9 +207,12 @@ export function AlertRulesCard() {
                 <Card>
                   <CardHeader className="pb-3 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm">{t('নিয়মাবলী', 'Rules')}</CardTitle>
-                    <Button size="sm" variant="outline" onClick={addRule}>
-                      <Plus className="h-4 w-4 mr-1" />{t('নতুন', 'Add')}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <AlertRulesWizard onCreated={load} />
+                      <Button size="sm" variant="outline" onClick={addRule}>
+                        <Plus className="h-4 w-4 mr-1" />{t('খালি', 'Blank')}
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {rules.length === 0 && (
