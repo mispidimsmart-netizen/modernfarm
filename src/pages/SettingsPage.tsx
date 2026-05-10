@@ -26,6 +26,8 @@ import { PushNotificationHelpDialog } from '@/components/settings/PushNotificati
 import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
 import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
+import { MeshNetworkCard } from '@/components/settings/MeshNetworkCard';
+import { GsmFallbackCard } from '@/components/settings/GsmFallbackCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { 
   FarmSetupTab, 
