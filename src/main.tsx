@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initPagePerfTracking } from "./lib/perf";
+
+initPagePerfTracking();
 
 // In Lovable preview / iframe contexts, ensure no stale service workers keep
 // running (they break HMR and React's hook queue via virtual:pwa-register).
