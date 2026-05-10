@@ -52,6 +52,18 @@ serve(async (req) => {
       return await handleRollback(req, supabase);
     }
 
+    // ─── POST /firmware/boot-report (device → cloud after boot) ───
+    if (action === 'boot-report' && req.method === 'POST') {
+      return await handleBootReport(req, supabase);
+    }
+
+    // ─── POST /firmware/auto-advance (cron only) ───
+    if (action === 'auto-advance' && req.method === 'POST') {
+      const { data, error } = await supabase.rpc('auto_advance_rollout');
+      if (error) return jsonResponse({ error: error.message }, 500);
+      return jsonResponse({ success: true, result: data });
+    }
+
     // ─── Admin: push update ───
     if (action === 'push' && req.method === 'POST') {
       return await handlePush(req, supabase);
@@ -131,6 +143,24 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
       return jsonResponse({ update_available: false, current_version: currentVersion });
     }
 
+    // ─── Update window check (Asia/Dhaka) ───
+    const { data: inWindow } = await supabase.rpc('is_within_update_window', { _firmware_id: registryFirmware.id });
+    if (inWindow === false) {
+      await supabase.from('device_health')
+        .update({ ota_last_check_at: new Date().toISOString() })
+        .eq('device_token_id', device.id);
+      return jsonResponse({
+        update_available: false,
+        message: 'Outside update window',
+        next_check_after_seconds: 1800,
+        update_window: {
+          start_hour: registryFirmware.update_window_start_hour,
+          end_hour: registryFirmware.update_window_end_hour,
+          tz: 'Asia/Dhaka',
+        },
+      });
+    }
+
     // ─── Hardware compatibility check via firmware_registry ───
     const { data: compatResult } = await supabase
       .rpc('check_firmware_compatibility', {
@@ -156,12 +186,28 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
 
     console.log(`[OTA] Registry update available for device ${device.id}: ${currentVersion} → ${registryFirmware.version} (${releaseChannel})`);
 
+    // ─── Fetch signing public key (if signed) ───
+    let signingKey: any = null;
+    if (registryFirmware.signing_key_id) {
+      const { data: keyData } = await supabase
+        .from('firmware_signing_keys')
+        .select('key_name, algorithm, public_key')
+        .eq('id', registryFirmware.signing_key_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      signingKey = keyData;
+    }
+
     return jsonResponse({
       update_available: true,
       version: registryFirmware.version,
       url: registryFirmware.file_url,
       size: registryFirmware.file_size_bytes,
       crc32: registryFirmware.crc32_checksum,
+      sha256: registryFirmware.sha256_hex,
+      signature: registryFirmware.signature_b64,
+      signature_alg: registryFirmware.signature_alg,
+      signing_key: signingKey,
       release_channel: registryFirmware.release_channel,
       release_notes: registryFirmware.changelog,
       firmware_id: registryFirmware.id,
@@ -630,4 +676,48 @@ async function handleLegacyProgress(req: Request, supabase: any) {
   }).eq('device_token_id', device.id);
 
   return jsonResponse({ success: true });
+}
+
+// ─────────────────────────────────────────────
+// POST /firmware/boot-report — ESP32 reports boot success/failure
+// ─────────────────────────────────────────────
+async function handleBootReport(req: Request, supabase: any) {
+  const deviceToken = req.headers.get('x-device-token');
+  if (!deviceToken) return jsonResponse({ error: 'Missing device token' }, 401);
+
+  const { data: device } = await supabase
+    .from('device_tokens').select('id').eq('token', deviceToken).eq('is_active', true).single();
+  if (!device) return jsonResponse({ error: 'Invalid device token' }, 401);
+
+  const body = await req.json();
+  const { firmware_id, boot_success, from_version, signature_validated } = body;
+  if (!firmware_id) return jsonResponse({ error: 'firmware_id required' }, 400);
+
+  if (boot_success === true) {
+    // Boot OK → mark complete
+    await supabase.from('firmware_install_logs').update({
+      status: 'completed',
+      boot_succeeded: true,
+      last_boot_at: new Date().toISOString(),
+      signature_validated: signature_validated === true,
+      completed_at: new Date().toISOString(),
+    }).eq('device_token_id', device.id).eq('firmware_id', firmware_id);
+
+    await updateRolloutCounters(supabase, firmware_id, 'completed');
+    return jsonResponse({ success: true, should_rollback: false });
+  }
+
+  // Boot fail → increment counter, possibly rollback
+  const { data: result } = await supabase.rpc('report_boot_failure', {
+    _device_token_id: device.id,
+    _firmware_id: firmware_id,
+    _from_version: from_version || null,
+  });
+
+  if (result?.should_rollback) {
+    await updateRolloutCounters(supabase, firmware_id, 'failed');
+    console.log(`[OTA] Auto-rollback triggered for device ${device.id} firmware ${firmware_id}`);
+  }
+
+  return jsonResponse({ success: true, ...result });
 }
