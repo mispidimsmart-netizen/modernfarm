@@ -157,6 +157,18 @@ Deno.serve(async (req) => {
     const isCritical = a.severity === "critical";
     const bypassQuiet = isCritical && (cfg?.critical_bypass_quiet_hours ?? true);
 
+    // Per-user preference helper
+    const checkUserPref = async (channel: "push" | "sms" | "whatsapp"): Promise<boolean> => {
+      const { data, error } = await supa.rpc("should_deliver_notification", {
+        _user_id: a.user_id,
+        _farm_id: a.farm_id,
+        _severity: a.severity,
+        _channel: channel,
+      });
+      if (error) return true; // fail-open: don't lose alerts on RPC error
+      return data === true;
+    };
+
     // in_app is implicit (alert row exists → realtime delivers)
     await logDelivery(supa, a.id, a.farm_id, "in_app", "sent");
 
@@ -164,6 +176,8 @@ Deno.serve(async (req) => {
     if (channels.push && (cfg?.push_enabled ?? true)) {
       if (quiet && !bypassQuiet) {
         await logDelivery(supa, a.id, a.farm_id, "push", "skipped_quiet");
+      } else if (!(await checkUserPref("push"))) {
+        await logDelivery(supa, a.id, a.farm_id, "push", "skipped_disabled");
       } else {
         const r = await sendPush(supa, a.user_id, a.id,
           isCritical ? "🚨 জরুরি সতর্কতা" : "⚠️ সতর্কতা",
@@ -177,6 +191,8 @@ Deno.serve(async (req) => {
     if (channels.sms && cfg?.sms_enabled && cfg?.phone_e164) {
       if (quiet && !bypassQuiet) {
         await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_quiet", cfg.phone_e164);
+      } else if (!(await checkUserPref("sms"))) {
+        await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_disabled", cfg.phone_e164);
       } else {
         const r = await sendTwilio(cfg.phone_e164, a.message_bn || a.message, TWILIO_FROM_SMS, false);
         await logDelivery(supa, a.id, a.farm_id, "sms",
@@ -184,14 +200,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // WhatsApp
-    if (channels.whatsapp && cfg?.whatsapp_enabled && cfg?.phone_e164) {
+    // WhatsApp — prefer dedicated whatsapp_number, fall back to phone_e164
+    const waNumber = cfg?.whatsapp_number || cfg?.phone_e164;
+    if (channels.whatsapp && cfg?.whatsapp_enabled && waNumber) {
       if (quiet && !bypassQuiet) {
-        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_quiet", cfg.phone_e164);
+        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_quiet", waNumber);
+      } else if (!(await checkUserPref("whatsapp"))) {
+        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_disabled", waNumber);
       } else {
-        const r = await sendTwilio(cfg.phone_e164, a.message_bn || a.message, TWILIO_FROM_WHATSAPP, true);
+        const r = await sendTwilio(waNumber, a.message_bn || a.message, TWILIO_FROM_WHATSAPP, true);
         await logDelivery(supa, a.id, a.farm_id, "whatsapp",
-          r.ok ? "sent" : "failed", cfg.phone_e164, r.sid ?? null, r.error ?? null);
+          r.ok ? "sent" : "failed", waNumber, r.sid ?? null, r.error ?? null);
       }
     }
     dispatched++;
