@@ -2013,6 +2013,8 @@ export type Database = {
           last_signature_at: string | null
           mesh_group_id: string | null
           mesh_role: string
+          mqtt_enabled: boolean
+          mqtt_topic_prefix: string | null
           previous_device_secret: string | null
           previous_secret_expires_at: string | null
           previous_secret_hash: string | null
@@ -2035,6 +2037,8 @@ export type Database = {
           last_signature_at?: string | null
           mesh_group_id?: string | null
           mesh_role?: string
+          mqtt_enabled?: boolean
+          mqtt_topic_prefix?: string | null
           previous_device_secret?: string | null
           previous_secret_expires_at?: string | null
           previous_secret_hash?: string | null
@@ -2057,6 +2061,8 @@ export type Database = {
           last_signature_at?: string | null
           mesh_group_id?: string | null
           mesh_role?: string
+          mqtt_enabled?: boolean
+          mqtt_topic_prefix?: string | null
           previous_device_secret?: string | null
           previous_secret_expires_at?: string | null
           previous_secret_hash?: string | null
@@ -3826,6 +3832,70 @@ export type Database = {
             columns: ["shed_id"]
             isOneToOne: false
             referencedRelation: "sheds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mqtt_message_log: {
+        Row: {
+          command_id: string | null
+          created_at: string
+          device_token_id: string | null
+          direction: string
+          error: string | null
+          farm_id: string | null
+          id: string
+          payload: Json | null
+          qos: number | null
+          status: string
+          topic: string
+        }
+        Insert: {
+          command_id?: string | null
+          created_at?: string
+          device_token_id?: string | null
+          direction: string
+          error?: string | null
+          farm_id?: string | null
+          id?: string
+          payload?: Json | null
+          qos?: number | null
+          status?: string
+          topic: string
+        }
+        Update: {
+          command_id?: string | null
+          created_at?: string
+          device_token_id?: string | null
+          direction?: string
+          error?: string | null
+          farm_id?: string | null
+          id?: string
+          payload?: Json | null
+          qos?: number | null
+          status?: string
+          topic?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mqtt_message_log_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "device_commands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mqtt_message_log_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mqtt_message_log_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
             referencedColumns: ["id"]
           },
         ]
@@ -6916,6 +6986,7 @@ export type Database = {
       cleanup_device_health_metrics: { Args: never; Returns: undefined }
       cleanup_device_security_artifacts: { Args: never; Returns: undefined }
       cleanup_edge_request_log: { Args: never; Returns: undefined }
+      cleanup_mqtt_log: { Args: never; Returns: undefined }
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_restart_logs: { Args: never; Returns: undefined }
       cleanup_old_security_audit: { Args: never; Returns: undefined }
