@@ -2735,6 +2735,55 @@ void connectWiFi() {
   }
 }
 
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  Phase 1 Security: HMAC-SHA256 request signing                         ║
+// ║  Signature = HMAC( secret, "<ts>.<nonce>.<rawBody>" )                  ║
+// ║  Headers added: X-Timestamp, X-Nonce, X-Signature, X-Secret-Version    ║
+// ║  No-op when activeSecretVersion < 1 (legacy devices keep working).     ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+static String makeNonce() {
+  // 16 hex chars: ts + counter + random — collision-safe per-device per-5min
+  static uint32_t counter = 0;
+  counter++;
+  char buf[40];
+  snprintf(buf, sizeof(buf), "%08lx%08lx%08lx",
+           (unsigned long)(millis() & 0xFFFFFFFF),
+           (unsigned long)counter,
+           (unsigned long)esp_random());
+  return String(buf);
+}
+
+static String hmacSha256Hex(const String& key, const String& msg) {
+  uint8_t out[32];
+  const mbedtls_md_info_t* info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, info, 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char*)msg.c_str(), msg.length());
+  mbedtls_md_hmac_finish(&ctx, out);
+  mbedtls_md_free(&ctx);
+  char hex[65];
+  for (int i = 0; i < 32; i++) snprintf(hex + i*2, 3, "%02x", out[i]);
+  hex[64] = 0;
+  return String(hex);
+}
+
+// Attach signing headers. Call AFTER addHeader() but BEFORE http.POST/GET.
+// `body` should be the exact payload string for POSTs, or "" for GETs.
+static void attachSignature(HTTPClient& http, const String& body) {
+  if (activeSecretVersion < 1 || activeDeviceSecret.length() == 0) return; // legacy
+  String ts = String((unsigned long)(time(nullptr)));
+  if (ts == "0") ts = String((unsigned long)(millis() / 1000)); // fallback if NTP not synced
+  String nonce = makeNonce();
+  String msg = ts + "." + nonce + "." + body;
+  String sig = hmacSha256Hex(activeDeviceSecret, msg);
+  http.addHeader("X-Timestamp", ts);
+  http.addHeader("X-Nonce", nonce);
+  http.addHeader("X-Signature", sig);
+  http.addHeader("X-Secret-Version", String(activeSecretVersion));
+}
+
 void syncWithCloud() {
   if (!wifiConnected) return;
   HTTPClient http;
