@@ -27,7 +27,6 @@ function parseVersionCode(v: string): number {
 }
 
 async function crc32Hex(buffer: ArrayBuffer): Promise<string> {
-  // Lightweight CRC32 (used as integrity check for OTA)
   const table = new Uint32Array(256);
   for (let i = 0; i < 256; i++) {
     let c = i;
@@ -38,6 +37,13 @@ async function crc32Hex(buffer: ArrayBuffer): Promise<string> {
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bytes.length; i++) crc = table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
   return ((crc ^ 0xffffffff) >>> 0).toString(16).padStart(8, "0");
+}
+
+async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export function FirmwareManagementTab({ language }: Props) {
