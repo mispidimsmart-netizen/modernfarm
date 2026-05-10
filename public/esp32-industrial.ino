@@ -779,6 +779,11 @@ void saveSmsSettings();
 void offlineBufferStore();
 void offlineBufferSync();
 
+// Phase 3: Idempotency
+void loadCmdHistory();
+bool isCommandAlreadyApplied(const String &id);
+void recordAppliedCommand(const String &id);
+
 // Water
 void waterFlowTick();
 void checkWaterAnomaly();
