@@ -188,13 +188,13 @@ export function useSuperAdmin() {
     queryFn: async () => {
       // Get latest sensor readings per user
       const { data: sensorLogs, error } = await supabase
-        .from('sensor_logs')
-        .select('user_id, temperature, humidity, ammonia, timestamp')
-        .order('timestamp', { ascending: false })
+        .from('sensor_readings')
+        .select('user_id, temperature, humidity, ammonia, recorded_at')
+        .order('recorded_at', { ascending: false })
         .limit(100);
 
       if (error) {
-        console.error('Error fetching sensor logs:', error);
+        console.error('Error fetching sensor readings:', error);
         return {};
       }
 
@@ -206,7 +206,7 @@ export function useSuperAdmin() {
             temperature: log.temperature,
             humidity: log.humidity,
             ammonia: log.ammonia,
-            recorded_at: log.timestamp,
+            recorded_at: log.recorded_at,
           };
         }
       });
