@@ -158,7 +158,7 @@ openssl dgst -sha256 -binary firmware.bin | \\
               <Input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder={t("যেমন: প্রোডাকশন কী, ২০২৬ rotation", "e.g., Production key, 2026 rotation")}
+                placeholder={t("যেমন: প্রোডাকশন কী, 2026 rotation", "e.g., Production key, 2026 rotation")}
                 className="bg-slate-800/80 border-purple-500/20 text-white"
               />
             </div>
