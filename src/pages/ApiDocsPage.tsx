@@ -127,7 +127,7 @@ export function ApiDocsPage() {
   "temperature": 28.5,
   "humidity": 65.0,
   "ammonia": 12.5,
-  "water_flow": 45.2,
+  "water_usage": 45.2,
   "power_status": "ON"
 }`}
                   />
