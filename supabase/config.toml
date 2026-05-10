@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.observability-anomaly-detector]
 verify_jwt = false
+
+[functions.twilio-inbound]
+verify_jwt = false
