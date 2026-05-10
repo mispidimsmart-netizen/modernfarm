@@ -252,11 +252,11 @@ function calculateDailyTrends(
     
     // Filter logs for this day
     const dayLogs = sensorLogs?.filter(log => 
-      log.timestamp.startsWith(dateStr)
+      (log.recorded_at ?? '').startsWith(dateStr)
     ) ?? [];
     
     // Calculate daily water
-    const dailyWater = dayLogs.reduce((sum, log) => sum + Number(log.water_flow || 0) * 5, 0);
+    const dailyWater = dayLogs.reduce((sum, log) => sum + Number(log.water_usage || 0) * 5, 0);
     
     // Get egg production for this day
     const dayEggs = eggProduction?.find(e => e.production_date === dateStr);
