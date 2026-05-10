@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.rotate-device-secret]
 verify_jwt = false
+
+[functions.observability-anomaly-detector]
+verify_jwt = false
