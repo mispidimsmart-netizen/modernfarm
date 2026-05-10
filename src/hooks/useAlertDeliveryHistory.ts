@@ -34,7 +34,7 @@ export interface HistoryFilters {
 }
 
 export function useAlertDeliveryHistory(filters: HistoryFilters = {}) {
-  const { activeFarmId } = useFarmContext();
+  const { selectedFarmId: activeFarmId } = useFarmContext();
   const hours = filters.hours ?? 168; // 7 days default
 
   return useQuery({
