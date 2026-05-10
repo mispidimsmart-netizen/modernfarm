@@ -361,10 +361,17 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // ───── Phase 2: Observability tail ─────
+  const _obsStart = Date.now();
+  const _obs: ObsCtx = newObsCtx();
+  let _obsSupabase: any = null;
+  let _response: Response;
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    _obsSupabase = supabase;
 
     const url = new URL(req.url);
     const path = url.pathname.split('/').pop();
