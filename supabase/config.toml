@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.weekly-farm-report]
 verify_jwt = false
+
+[functions.mqtt-publish]
+verify_jwt = false
