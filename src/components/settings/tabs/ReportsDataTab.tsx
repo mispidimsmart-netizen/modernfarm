@@ -9,6 +9,7 @@ import { SensorDeviceImpactReport } from '@/components/settings/SensorDeviceImpa
 import { ReportsAnalyticsView } from '@/components/reports/ReportsAnalyticsView';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { WeeklyReportCard } from '@/components/settings/WeeklyReportCard';
+import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 
 export function ReportsDataTab() {
   const { language } = useAuth();
