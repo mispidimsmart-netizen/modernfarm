@@ -47,6 +47,7 @@ export function AnalyticsDashboard() {
   const { selectedFarmId } = useFarmContext();
   const [days, setDays] = useState(7);
   const [scanning, setScanning] = useState(false);
+  const [forecasting, setForecasting] = useState(false);
 
   const rollupQ = useQuery({
     queryKey: ["sensor-hourly-rollup", selectedFarmId, days],
