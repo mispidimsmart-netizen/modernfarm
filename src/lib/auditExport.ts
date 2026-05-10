@@ -4,8 +4,8 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF + autotable are loaded dynamically inside the PDF branches to keep
+// them out of the main bundle (~250 KB combined gzip).
 
 export type ExportRange = '7d' | '30d';
 export type ExportFormat = 'csv' | 'pdf';
