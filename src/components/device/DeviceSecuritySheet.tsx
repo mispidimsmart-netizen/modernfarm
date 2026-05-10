@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useFarm } from '@/context/FarmContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { Shield, KeyRound, Copy, Check, AlertTriangle, RefreshCw, QrCode } from 'lucide-react';
 
 interface Props {
