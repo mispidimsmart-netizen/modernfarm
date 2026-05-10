@@ -323,6 +323,8 @@ export function SensorDeviceImpactReport() {
     setIsExporting(true);
     try {
       if (!user) throw new Error('Not authenticated');
+      // Lazy-load xlsx (heavy lib) only when user clicks export.
+      const XLSX = await import('xlsx');
 
       const farmFilter = (q: any) => (selectedFarmId ? q.eq('farm_id', selectedFarmId) : q);
 
