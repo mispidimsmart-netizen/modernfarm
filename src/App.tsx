@@ -312,6 +312,7 @@ const App = () => {
                 <OfflineMutationBadge />
               </div>
               <PWAUpdateBanner />
+              <InstallPromptCard />
               <GlobalBatchEditQueue />
               <BrowserRouter>
                 <AppWithRoutes />
