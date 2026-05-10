@@ -44,6 +44,9 @@ export function ReportsDataTab() {
       {/* Sensor ↔ Device ↔ Impact correlation + full Excel export */}
       <SensorDeviceImpactReport />
 
+      {/* Universal CSV exporter (any data type, any date range) */}
+      <DataExportCard />
+
       {/* Quick Actions */}
       <Card>
         <CardHeader className="pb-3">
