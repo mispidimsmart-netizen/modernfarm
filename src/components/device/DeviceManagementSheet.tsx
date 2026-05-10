@@ -240,6 +240,38 @@ export function DeviceManagementSheet() {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      {/* MQTT Toggle */}
+                      <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+                        <div className="flex items-center gap-2">
+                          <Radio className={`h-4 w-4 ${(device as { mqtt_enabled?: boolean }).mqtt_enabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <div>
+                            <p className="text-sm font-medium">
+                              {language === 'bn' ? 'MQTT সক্রিয় করুন' : 'Enable MQTT'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {language === 'bn'
+                                ? 'কমান্ড <১ সেকেন্ডে পাঠান (HiveMQ Cloud)'
+                                : 'Commands in <1s via HiveMQ Cloud'}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={(device as { mqtt_enabled?: boolean }).mqtt_enabled ?? false}
+                          onCheckedChange={(v) => handleToggleMqtt(device.id, v)}
+                        />
+                      </div>
+
+                      {(device as { mqtt_enabled?: boolean }).mqtt_enabled && (device as { mqtt_topic_prefix?: string }).mqtt_topic_prefix && (
+                        <div className="mt-2 rounded-lg bg-muted p-2">
+                          <p className="text-[10px] text-muted-foreground">
+                            {language === 'bn' ? 'MQTT টপিক:' : 'MQTT Topic:'}
+                          </p>
+                          <code className="mt-0.5 block truncate text-[10px]">
+                            {(device as { mqtt_topic_prefix?: string }).mqtt_topic_prefix}/cmd
+                          </code>
+                        </div>
+                      )}
                     </div>
 
                     {/* Health Card */}
