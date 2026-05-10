@@ -63,6 +63,7 @@ import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel'
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
 import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
 import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboard';
+import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 
 const t = {
   bn: {
