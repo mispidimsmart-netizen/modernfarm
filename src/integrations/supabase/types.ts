@@ -1623,12 +1623,14 @@ export type Database = {
         Row: {
           created_at: string
           device_name: string
+          device_secret: string | null
           device_secret_hash: string | null
           farm_id: string | null
           id: string
           is_active: boolean
           last_seen_at: string | null
           last_signature_at: string | null
+          previous_device_secret: string | null
           previous_secret_expires_at: string | null
           previous_secret_hash: string | null
           secret_rotated_at: string | null
@@ -1641,12 +1643,14 @@ export type Database = {
         Insert: {
           created_at?: string
           device_name?: string
+          device_secret?: string | null
           device_secret_hash?: string | null
           farm_id?: string | null
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
           last_signature_at?: string | null
+          previous_device_secret?: string | null
           previous_secret_expires_at?: string | null
           previous_secret_hash?: string | null
           secret_rotated_at?: string | null
@@ -1659,12 +1663,14 @@ export type Database = {
         Update: {
           created_at?: string
           device_name?: string
+          device_secret?: string | null
           device_secret_hash?: string | null
           farm_id?: string | null
           id?: string
           is_active?: boolean
           last_seen_at?: string | null
           last_signature_at?: string | null
+          previous_device_secret?: string | null
           previous_secret_expires_at?: string | null
           previous_secret_hash?: string | null
           secret_rotated_at?: string | null
@@ -4921,6 +4927,15 @@ export type Database = {
       consume_device_nonce: {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
+      }
+      get_device_secret: {
+        Args: { _device_token_id: string }
+        Returns: {
+          device_secret: string
+          previous_device_secret: string
+          previous_expires: string
+          secret_version: number
+        }[]
       }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_feed_avg_price: {
