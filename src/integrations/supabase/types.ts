@@ -5156,7 +5156,7 @@ export type Database = {
           shed_id?: string | null
           temperature: number
           user_id: string
-          water_usage: number
+          water_usage?: number
         }
         Update: {
           ammonia?: number
@@ -5188,6 +5188,1086 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sensor_readings_default: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m02: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m03: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m04: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m05: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m06: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m07: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m08: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m09: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m10: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m11: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2026m12: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m01: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m02: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m03: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m04: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m05: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m06: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m07: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m08: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m09: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m10: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m11: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
+      }
+      sensor_readings_y2027m12: {
+        Row: {
+          ammonia: number
+          device_id: string | null
+          farm_id: string | null
+          hsi: number | null
+          humidity: number
+          id: string
+          light_lux: number | null
+          recorded_at: string
+          shed_id: string | null
+          temperature: number
+          user_id: string
+          water_usage: number
+        }
+        Insert: {
+          ammonia: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature: number
+          user_id: string
+          water_usage?: number
+        }
+        Update: {
+          ammonia?: number
+          device_id?: string | null
+          farm_id?: string | null
+          hsi?: number | null
+          humidity?: number
+          id?: string
+          light_lux?: number | null
+          recorded_at?: string
+          shed_id?: string | null
+          temperature?: number
+          user_id?: string
+          water_usage?: number
+        }
+        Relationships: []
       }
       sheds: {
         Row: {
@@ -5642,12 +6722,21 @@ export type Database = {
       cleanup_old_audit_logs: { Args: never; Returns: undefined }
       cleanup_old_restart_logs: { Args: never; Returns: undefined }
       cleanup_old_security_audit: { Args: never; Returns: undefined }
+      cleanup_old_sensor_partitions: {
+        Args: { _months_to_keep?: number }
+        Returns: Json
+      }
       cleanup_performance_metrics: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
       consume_device_nonce: {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
       }
+      create_sensor_partition_for_month: {
+        Args: { _month: string }
+        Returns: string
+      }
+      ensure_future_sensor_partitions: { Args: never; Returns: undefined }
       evaluate_alert_rules: { Args: { _farm_id: string }; Returns: number }
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
