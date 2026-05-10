@@ -467,6 +467,17 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ───── Phase 1: HMAC signature verification (only if secret_version >= 1) ─────
+    if (req.method === 'POST') {
+      const sigCheck = await verifyDeviceSignature(supabase, device, rawBody, req.headers);
+      if (!sigCheck.ok) {
+        return new Response(
+          JSON.stringify({ error: sigCheck.error, code: sigCheck.code }),
+          { status: sigCheck.status || 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const userId = device.user_id;
     const deviceFarmId = device.farm_id;
     const deviceShedId = device.shed_id;
