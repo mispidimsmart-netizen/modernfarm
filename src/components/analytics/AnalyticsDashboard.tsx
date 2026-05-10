@@ -197,6 +197,10 @@ export function AnalyticsDashboard() {
             <Brain className={`h-4 w-4 mr-1 ${scanning ? "animate-pulse" : ""}`} />
             AI স্ক্যান
           </Button>
+          <Button size="sm" variant="outline" onClick={runForecast} disabled={forecasting}>
+            <TrendingUp className={`h-4 w-4 mr-1 ${forecasting ? "animate-pulse" : ""}`} />
+            ২৪ঘ পূর্বাভাস
+          </Button>
           <Button size="sm" variant="outline" onClick={() => downloadCsv("sensors")}>
             <Download className="h-4 w-4 mr-1" /> সেন্সর CSV
           </Button>
@@ -205,6 +209,47 @@ export function AnalyticsDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Phase 7: Forecast card */}
+      {forecastQ.data && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              ২৪ ঘন্টার পূর্বাভাস
+              <Badge variant="outline" className={sevColor[forecastQ.data.risk_level as string] || ""}>
+                {forecastQ.data.risk_level}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-xs text-muted-foreground">
+              তৈরি: {new Date(forecastQ.data.generated_at).toLocaleString("bn-BD")}
+            </div>
+            <div className="text-sm">{forecastQ.data.summary_bn}</div>
+            {forecastQ.data.recommendation_bn && (
+              <div className="text-sm p-2 bg-muted/50 rounded">
+                💡 {forecastQ.data.recommendation_bn}
+              </div>
+            )}
+            {Array.isArray((forecastQ.data.forecast_json as any)?.hours) && (
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={(forecastQ.data.forecast_json as any).hours}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="hour_offset" tick={{ fontSize: 10 }} label={{ value: "ঘন্টা পরে", position: "insideBottom", offset: -2, fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="predicted_temp" name="তাপমাত্রা" stroke="hsl(var(--primary))" dot={false} />
+                    <Line type="monotone" dataKey="predicted_hsi" name="HSI" stroke="#dc2626" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Temperature chart */}
       <Card>
