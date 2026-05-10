@@ -2849,6 +2849,7 @@ void syncWithCloud() {
 
   String payload;
   serializeJson(doc, payload);
+  attachSignature(http, payload);
   int httpCode = http.POST(payload);
   esp_task_wdt_reset();
 
@@ -3200,6 +3201,7 @@ void checkCommands() {
           StaticJsonDocument<256> adoc;
           adoc["command_ids"][0] = id;
           String ap; serializeJson(adoc, ap);
+          attachSignature(ack, ap);
           ack.POST(ap);
           ack.end();
           esp_task_wdt_reset();
@@ -4058,6 +4060,7 @@ void callBackendSafetyEngine() {
 
   String payload;
   serializeJson(doc, payload);
+  attachSignature(http, payload);
   int code = http.POST(payload);
   esp_task_wdt_reset();
 
@@ -4170,6 +4173,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
 
   String payload;
   serializeJson(doc, payload);
+  attachSignature(http, payload);
   int code = http.POST(payload);
   esp_task_wdt_reset();
 
