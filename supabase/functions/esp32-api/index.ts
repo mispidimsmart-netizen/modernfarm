@@ -1342,6 +1342,59 @@ async function handleSensorData(body: SensorPayload, supabase: any, userId: stri
       );
     }
 
+    // Phase 9 — auto air-quality threshold check (fire-and-forget)
+    const hasAirQuality = body.co2_ppm != null || body.pm25_ugm3 != null ||
+                          body.pm10_ugm3 != null || body.nh3_ppm_precise != null;
+    if (hasAirQuality) {
+      try {
+        const { data: farmRow } = await supabase
+          .from('farms').select('id').eq('user_id', userId).limit(1).maybeSingle();
+        if (farmRow?.id) {
+          await supabase.rpc('check_air_quality_thresholds', {
+            p_farm_id: farmRow.id,
+            p_shed_id: shedId,
+            p_co2: body.co2_ppm ?? null,
+            p_pm25: body.pm25_ugm3 ?? null,
+            p_pm10: body.pm10_ugm3 ?? null,
+            p_nh3: body.nh3_ppm_precise ?? null,
+          });
+        }
+      } catch (e) {
+        console.warn('Air quality threshold check failed:', e);
+      }
+    }
+
+    // Phase 9 — sensor inventory heartbeat (track which sensors active)
+    if (body.sensor_source && body.device_id) {
+      try {
+        const { data: farmRow } = await supabase
+          .from('farms').select('id').eq('user_id', userId).limit(1).maybeSingle();
+        if (farmRow?.id) {
+          const SENSOR_TYPE_MAP: Record<string, string> = {
+            temp: 'temp_humidity', humidity: 'temp_humidity',
+            nh3: 'ammonia', light: 'light',
+            co2: 'co2', pm25: 'particulate', pm10: 'particulate',
+          };
+          const seen = new Set<string>();
+          for (const [meas, model] of Object.entries(body.sensor_source)) {
+            const sType = SENSOR_TYPE_MAP[meas];
+            if (!sType || seen.has(`${sType}|${model}`)) continue;
+            seen.add(`${sType}|${model}`);
+            await supabase.from('device_sensor_inventory').upsert({
+              device_id: body.device_id,
+              farm_id: farmRow.id,
+              sensor_type: sType,
+              sensor_model: String(model),
+              is_active: true,
+              last_seen_at: new Date().toISOString(),
+            }, { onConflict: 'device_id,sensor_type,sensor_model' });
+          }
+        }
+      } catch (e) {
+        console.warn('Sensor inventory heartbeat failed:', e);
+      }
+    }
+
     // Handle power_status if provided - update for specific shed
     if (body.power_status) {
       const powerOn = body.power_status.toUpperCase() === 'ON';
