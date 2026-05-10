@@ -177,6 +177,20 @@ async function handleCheck(req: Request, url: URL, supabase: any) {
       });
     }
 
+    // ─── Phase 5 OTA Hardening: anti-rollback / signature / emergency-mode gates ───
+    const { data: gateResult } = await supabase.rpc('evaluate_ota_safety_gates', {
+      _device_token_id: device.id,
+      _firmware_id: registryFirmware.id,
+    });
+    if (gateResult && gateResult.passed === false) {
+      console.log(`[OTA] Hardening gate blocked device ${device.id}: ${JSON.stringify(gateResult.failures)}`);
+      return jsonResponse({
+        update_available: false,
+        message: 'OTA blocked by safety hardening gate',
+        gate_failures: gateResult.failures,
+      });
+    }
+
     // Update device health
     await supabase.from('device_health').update({
       ota_last_check_at: new Date().toISOString(),
