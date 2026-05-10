@@ -138,14 +138,14 @@ async function drainMessages(
           });
           result.sensor++;
         } else if (kind === "status") {
-          // Update device_health if columns exist; otherwise just log
+          // Update device_health
           const online = data.online !== false;
           await supabase
             .from("device_health")
             .update({
-              last_heartbeat: new Date().toISOString(),
-              wifi_rssi: num(data.wifi_rssi),
-              free_heap: num(data.free_heap),
+              last_seen_at: new Date().toISOString(),
+              wifi_signal_strength: num(data.wifi_rssi),
+              free_memory_bytes: num(data.free_heap),
               uptime_seconds: num(data.uptime_s),
               is_online: online,
               updated_at: new Date().toISOString(),
