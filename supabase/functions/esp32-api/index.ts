@@ -704,10 +704,23 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     // ===== OFFLINE BUFFER SYNC ENDPOINT =====
-    // POST /buffer-sync - Upload buffered offline sensor data
+    // POST /buffer-sync - Upload buffered offline sensor data (legacy)
     if (req.method === 'POST' && path === 'buffer-sync') {
       return await handleBufferSync(bodyData, supabase, userId, deviceToken);
     }
+
+    // ===== PHASE 3: SENSOR BATCH (offline buffer flush via RPC, audited) =====
+    // POST /sensor-batch  body: { readings: [{ temperature, humidity, ammonia, recorded_at }, ...] }
+    if (req.method === 'POST' && path === 'sensor-batch') {
+      return await handleSensorBatch(bodyData, supabase, userId, deviceToken);
+    }
+
+    // ===== PHASE 3: CONNECTION QUALITY UPDATE =====
+    // POST /quality-update  body: { wifi_rssi, consecutive_failed_syncs, last_sync_gap_seconds }
+    if (req.method === 'POST' && path === 'quality-update') {
+      return await handleQualityUpdate(bodyData, supabase, userId, deviceToken);
+    }
+
 
     // ===== GET DEVICE STATE ENDPOINT =====
     // Get current state for a specific device/shed
