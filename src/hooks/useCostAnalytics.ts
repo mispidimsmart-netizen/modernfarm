@@ -178,7 +178,7 @@ function calculateWaterUsage(sensorLogs: any[] | undefined, days: number) {
   }
   
   // Sum up water flow readings (assuming L/min and 5-min intervals)
-  const totalWaterFlow = sensorLogs.reduce((sum, log) => sum + Number(log.water_flow || 0), 0);
+  const totalWaterFlow = sensorLogs.reduce((sum, log) => sum + Number(log.water_usage || 0), 0);
   const samplingIntervalMinutes = 5;
   const totalLiters = Math.round(totalWaterFlow * samplingIntervalMinutes);
   
