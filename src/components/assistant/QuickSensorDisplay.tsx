@@ -3,6 +3,7 @@ import { Thermometer, Droplets, Wind } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
+import { useSnapshotSensorFallback } from '@/context/DashboardSnapshotContext';
 
 /**
  * Animated number that counts up smoothly to the target value.
@@ -64,7 +65,11 @@ function getTempStatus(temp: number): TempStatus {
 
 export function QuickSensorDisplay() {
   const { language } = useAuth();
-  const { sensorData, hasRealData } = useRealtimeSensorData();
+  const { sensorData: liveSensor, hasRealData } = useRealtimeSensorData();
+  const fallback = useSnapshotSensorFallback();
+  // Use live realtime data if it's fresh; otherwise fall back to the
+  // dashboard snapshot RPC (Phase 6) so the strip paints instantly on mount.
+  const sensorData = hasRealData ? liveSensor : (fallback ?? liveSensor);
 
   const tempStatus = getTempStatus(sensorData.temperature);
 
