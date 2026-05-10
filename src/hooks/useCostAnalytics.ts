@@ -86,10 +86,10 @@ export function useCostAnalytics(days: number = 30) {
       startDate.setDate(startDate.getDate() - days);
       
       const { data, error } = await supabase
-        .from('sensor_logs')
-        .select('timestamp, device_id')
-        .gte('timestamp', startDate.toISOString())
-        .order('timestamp', { ascending: true });
+        .from('sensor_readings')
+        .select('recorded_at, device_id')
+        .gte('recorded_at', startDate.toISOString())
+        .order('recorded_at', { ascending: true });
       
       if (error) throw error;
       return data;
