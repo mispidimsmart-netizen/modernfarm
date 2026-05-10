@@ -3023,6 +3023,7 @@ void fetchConfig() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   esp_task_wdt_reset();
+  attachSignature(http, "");
   int code = http.GET();
   esp_task_wdt_reset();
 
@@ -3115,6 +3116,7 @@ void checkCommands() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   esp_task_wdt_reset();
+  attachSignature(http, "");
   int code = http.GET();
   esp_task_wdt_reset();
   if (code == 200) {
@@ -3476,6 +3478,7 @@ void checkOTAUpdate() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
   esp_task_wdt_reset();
+  attachSignature(http, "");
   int code = http.GET();
   if (code == 200) {
     String resp = http.getString();
