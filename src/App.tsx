@@ -288,7 +288,18 @@ const App = () => {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister!,
+        maxAge: 1000 * 60 * 60 * 24, // 24h
+        buster: 'v1',
+        dehydrateOptions: {
+          // Don't persist mutations or queries that are still pending/erroring
+          shouldDehydrateQuery: (q) => q.state.status === 'success',
+        },
+      }}
+    >
       <TooltipProvider>
         <AuthProvider>
           <FarmProvider>
@@ -308,7 +319,7 @@ const App = () => {
           </FarmProvider>
         </AuthProvider>
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 };
 
