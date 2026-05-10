@@ -60,6 +60,7 @@ import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchite
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 import { MqttHealthCard } from '@/components/admin/MqttHealthCard';
 import { OTAHardeningCard } from '@/components/admin/OTAHardeningCard';
+import { ScaleReadinessCard } from '@/components/admin/ScaleReadinessCard';
 import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPanel';
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
@@ -642,6 +643,7 @@ export default function AdminPage() {
             <AdminDeviceHealthPanel language={language} />
             <MqttHealthCard />
             <OTAHardeningCard />
+            <ScaleReadinessCard />
             <ForensicTimelineCard />
             {/* Calibration Wizard Card */}
             <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
