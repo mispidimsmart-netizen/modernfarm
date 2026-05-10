@@ -605,6 +605,22 @@ export function FirmwareManagementTab({ language }: Props) {
                           {(fw.min_hardware as any)?.min_relay_count ? ` • ${(fw.min_hardware as any).min_relay_count}-ch relay` : ''}
                         </p>
                       )}
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {(fw as any).signature_b64 ? (
+                          <Badge className="text-[10px] bg-emerald-500/15 text-emerald-300 border-emerald-500/40">
+                            🔐 {t("সাইনড", "Signed")}
+                          </Badge>
+                        ) : (
+                          <Badge className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30">
+                            ⚠️ {t("সাইন করা হয়নি", "Unsigned")}
+                          </Badge>
+                        )}
+                        {(fw as any).update_window_enabled && (
+                          <Badge className="text-[10px] bg-blue-500/15 text-blue-300 border-blue-500/40">
+                            ⏰ {(fw as any).update_window_start_hour}:00–{(fw as any).update_window_end_hour}:00
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <Button
