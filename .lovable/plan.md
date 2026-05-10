@@ -78,3 +78,17 @@
 5. `/settings/gsm` UI + authorized phones
 6. `gsm-sms-relay` edge function (sync log when reconnect)
 7. End-to-end test: kill master WiFi → slave promotes → critical alert → GSM SMS to owner
+
+---
+
+## Phase 5 — Status (May 2026)
+
+✅ **DB**: `device_mesh_peers`, `mesh_sync_log`, `gsm_inbound_sms`, `gsm_outbound_sms` + additive columns shipped
+✅ **UI**: `MeshNetworkCard` (pairing code wizard), `GsmFallbackCard` (authorized phones, daily limit) integrated into SettingsPage
+✅ **Edge function**: `gsm-sms-relay` for ESP32 to bulk-sync inbound/outbound SMS + mesh logs after reconnect
+✅ **RPC**: `generate_mesh_pairing_code(device_id)` — 6-digit, 1-min TTL
+
+⏳ **Pending firmware work** (next iteration):
+- ESP-NOW master/slave protocol in unified `esp32-industrial.ino`
+- Mature `esp32-gsm-sms.ino` with: auto-fallback, command parser, cost guard, retry-with-backoff
+- ESP32 → `gsm-sms-relay` POST sync routine
