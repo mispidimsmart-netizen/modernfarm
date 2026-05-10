@@ -62,6 +62,7 @@ import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPane
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
 import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
+import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboard';
 
 const t = {
   bn: {
