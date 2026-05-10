@@ -33,7 +33,7 @@ interface RotateResult {
 
 export function DeviceSecuritySheet({ open, onOpenChange, deviceTokenId, deviceName, secretVersion }: Props) {
   const { toast } = useToast();
-  const { activeFarm } = useFarm();
+  const { currentFarm } = useFarmContext();
   const [loading, setLoading] = useState(false);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairingExpires, setPairingExpires] = useState<string | null>(null);
