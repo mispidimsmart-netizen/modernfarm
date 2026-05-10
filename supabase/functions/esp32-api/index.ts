@@ -390,6 +390,24 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     const url = new URL(req.url);
     const path = url.pathname.split('/').pop();
 
+    // Phase 2 — public health self-check (no auth, super lightweight)
+    if (path === 'health' && req.method === 'GET') {
+      const t0 = Date.now();
+      let dbOk = true;
+      try {
+        await supabase.from('device_tokens').select('id', { count: 'exact', head: true }).limit(1);
+      } catch { dbOk = false; }
+      return new Response(
+        JSON.stringify({
+          ok: dbOk,
+          db_latency_ms: Date.now() - t0,
+          time: new Date().toISOString(),
+          version: 'esp32-api-v2',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // For POST requests, try to get device token from body first, then header
     let deviceToken = req.headers.get('x-device-token') || '';
     let bodyData: any = null;
