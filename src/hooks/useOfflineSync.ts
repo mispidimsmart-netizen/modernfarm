@@ -79,24 +79,35 @@ export function useOfflineSync() {
     }
   }, [getLocalQueue, saveLocalQueue]);
 
-  // Sync queue with server
+  // Sync queue with server (Phase 3: TTL prune + retry counter)
   const syncQueue = useCallback(async () => {
     if (!user || isSyncing) return;
-    
-    const queue = getLocalQueue();
-    if (queue.length === 0) return;
+
+    const rawQueue = getLocalQueue();
+    if (rawQueue.length === 0) return;
+
+    const { kept: queue, dropped } = pruneExpired(rawQueue);
+    if (dropped > 0) {
+      console.warn(`[offline-sync] dropped ${dropped} expired/exhausted mutations`);
+    }
+    if (queue.length === 0) {
+      saveLocalQueue([]);
+      return;
+    }
 
     setIsSyncing(true);
     const successfulIds: string[] = [];
+    const failed: SyncQueueItem[] = [];
 
     for (const item of queue) {
       try {
+        let ok = false;
         switch (item.operation) {
           case 'INSERT': {
             const { error } = await supabase
               .from(item.table_name as 'egg_production')
               .insert({ ...item.record_data, user_id: user.id });
-            if (!error) successfulIds.push(item.id);
+            ok = !error;
             break;
           }
           case 'UPDATE': {
@@ -105,7 +116,7 @@ export function useOfflineSync() {
               .from(item.table_name as 'egg_production')
               .update(updateData)
               .eq('id', recordId as string);
-            if (!error) successfulIds.push(item.id);
+            ok = !error;
             break;
           }
           case 'DELETE': {
@@ -113,18 +124,20 @@ export function useOfflineSync() {
               .from(item.table_name as 'egg_production')
               .delete()
               .eq('id', item.record_data.id as string);
-            if (!error) successfulIds.push(item.id);
+            ok = !error;
             break;
           }
         }
+        if (ok) successfulIds.push(item.id);
+        else failed.push({ ...item, retry_count: (item.retry_count ?? 0) + 1 });
       } catch (error) {
         console.error('Sync error for item:', item.id, error);
+        failed.push({ ...item, retry_count: (item.retry_count ?? 0) + 1 });
       }
     }
 
-    // Remove successful items from queue
-    const remainingQueue = queue.filter(item => !successfulIds.includes(item.id));
-    saveLocalQueue(remainingQueue);
+    // Keep failed items (with bumped retry_count) for the next attempt
+    saveLocalQueue(failed);
     setIsSyncing(false);
   }, [user, isSyncing, getLocalQueue, saveLocalQueue]);
 
