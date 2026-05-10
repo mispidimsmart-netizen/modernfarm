@@ -66,6 +66,7 @@
 #include <esp_ota_ops.h>
 #include <HardwareSerial.h>
 #include "esp32-safety-engine.h"
+#include "mbedtls/md.h"
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 1: CONFIGURATION & CONSTANTS                                 ║
@@ -247,6 +248,10 @@ const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
 const char* API_URL        = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api";
 const char* DEVICE_TOKEN   = "YOUR_DEVICE_TOKEN";
+// Phase 1 Security: HMAC secret from /provision-device claim or /rotate-device-secret.
+// Leave empty for legacy devices (secret_version=0) — signing skipped, server logs warning.
+const char* DEVICE_SECRET  = "";
+const int   SECRET_VERSION = 0;
 const char* SHED_ID        = "YOUR_SHED_ID";
 const char* SHED_NAME      = "Shed A";
 const char* FARM_ID        = "YOUR_FARM_ID";
@@ -594,6 +599,8 @@ bool configLoaded = false;
 
 // --- Credentials (NVS) ---
 String activeDeviceToken = "", activeWifiSSID = "", activeWifiPassword = "";
+String activeDeviceSecret = "";
+int    activeSecretVersion = 0;
 String activeShedId = "", activeShedName = "", activeFarmId = "";
 bool nvsProvisioned = false;
 
@@ -2728,6 +2735,55 @@ void connectWiFi() {
   }
 }
 
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  Phase 1 Security: HMAC-SHA256 request signing                         ║
+// ║  Signature = HMAC( secret, "<ts>.<nonce>.<rawBody>" )                  ║
+// ║  Headers added: X-Timestamp, X-Nonce, X-Signature, X-Secret-Version    ║
+// ║  No-op when activeSecretVersion < 1 (legacy devices keep working).     ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+static String makeNonce() {
+  // 16 hex chars: ts + counter + random — collision-safe per-device per-5min
+  static uint32_t counter = 0;
+  counter++;
+  char buf[40];
+  snprintf(buf, sizeof(buf), "%08lx%08lx%08lx",
+           (unsigned long)(millis() & 0xFFFFFFFF),
+           (unsigned long)counter,
+           (unsigned long)esp_random());
+  return String(buf);
+}
+
+static String hmacSha256Hex(const String& key, const String& msg) {
+  uint8_t out[32];
+  const mbedtls_md_info_t* info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, info, 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char*)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const unsigned char*)msg.c_str(), msg.length());
+  mbedtls_md_hmac_finish(&ctx, out);
+  mbedtls_md_free(&ctx);
+  char hex[65];
+  for (int i = 0; i < 32; i++) snprintf(hex + i*2, 3, "%02x", out[i]);
+  hex[64] = 0;
+  return String(hex);
+}
+
+// Attach signing headers. Call AFTER addHeader() but BEFORE http.POST/GET.
+// `body` should be the exact payload string for POSTs, or "" for GETs.
+static void attachSignature(HTTPClient& http, const String& body) {
+  if (activeSecretVersion < 1 || activeDeviceSecret.length() == 0) return; // legacy
+  String ts = String((unsigned long)(time(nullptr)));
+  if (ts == "0") ts = String((unsigned long)(millis() / 1000)); // fallback if NTP not synced
+  String nonce = makeNonce();
+  String msg = ts + "." + nonce + "." + body;
+  String sig = hmacSha256Hex(activeDeviceSecret, msg);
+  http.addHeader("X-Timestamp", ts);
+  http.addHeader("X-Nonce", nonce);
+  http.addHeader("X-Signature", sig);
+  http.addHeader("X-Secret-Version", String(activeSecretVersion));
+}
+
 void syncWithCloud() {
   if (!wifiConnected) return;
   HTTPClient http;
@@ -2793,6 +2849,7 @@ void syncWithCloud() {
 
   String payload;
   serializeJson(doc, payload);
+  attachSignature(http, payload);
   int httpCode = http.POST(payload);
   esp_task_wdt_reset();
 
@@ -2966,6 +3023,7 @@ void fetchConfig() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   esp_task_wdt_reset();
+  attachSignature(http, "");
   int code = http.GET();
   esp_task_wdt_reset();
 
@@ -3058,6 +3116,7 @@ void checkCommands() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(5000);
   esp_task_wdt_reset();
+  attachSignature(http, "");
   int code = http.GET();
   esp_task_wdt_reset();
   if (code == 200) {
@@ -3144,6 +3203,7 @@ void checkCommands() {
           StaticJsonDocument<256> adoc;
           adoc["command_ids"][0] = id;
           String ap; serializeJson(adoc, ap);
+          attachSignature(ack, ap);
           ack.POST(ap);
           ack.end();
           esp_task_wdt_reset();
@@ -3257,6 +3317,8 @@ bool isNVSProvisioned() {
 void loadCredentialsFromNVS() {
   preferences.begin(NVS_NAMESPACE, true);
   activeDeviceToken = preferences.getString("device_token", "");
+  activeDeviceSecret = preferences.getString("device_secret", "");
+  activeSecretVersion = preferences.getInt("secret_ver", 0);
   activeWifiSSID = preferences.getString("wifi_ssid", "");
   activeWifiPassword = preferences.getString("wifi_pass", "");
   activeShedId = preferences.getString("shed_id", "");
@@ -3269,6 +3331,8 @@ void loadCredentialsFromNVS() {
 void saveCredentialsToNVS() {
   preferences.begin(NVS_NAMESPACE, false);
   preferences.putString("device_token", activeDeviceToken);
+  preferences.putString("device_secret", activeDeviceSecret);
+  preferences.putInt("secret_ver", activeSecretVersion);
   preferences.putString("wifi_ssid", activeWifiSSID);
   preferences.putString("wifi_pass", activeWifiPassword);
   preferences.putString("shed_id", activeShedId);
@@ -3281,6 +3345,8 @@ void saveCredentialsToNVS() {
 
 void provisionFromHardcoded() {
   activeDeviceToken = String(DEVICE_TOKEN);
+  activeDeviceSecret = String(DEVICE_SECRET);
+  activeSecretVersion = SECRET_VERSION;
   activeWifiSSID = String(WIFI_SSID);
   activeWifiPassword = String(WIFI_PASSWORD);
   activeShedId = String(SHED_ID);
@@ -3412,6 +3478,7 @@ void checkOTAUpdate() {
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
   esp_task_wdt_reset();
+  attachSignature(http, "");
   int code = http.GET();
   if (code == 200) {
     String resp = http.getString();
@@ -3996,6 +4063,7 @@ void callBackendSafetyEngine() {
 
   String payload;
   serializeJson(doc, payload);
+  attachSignature(http, payload);
   int code = http.POST(payload);
   esp_task_wdt_reset();
 
@@ -4108,6 +4176,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
 
   String payload;
   serializeJson(doc, payload);
+  attachSignature(http, payload);
   int code = http.POST(payload);
   esp_task_wdt_reset();
 
