@@ -2548,6 +2548,45 @@ export type Database = {
           },
         ]
       }
+      farm_forecasts: {
+        Row: {
+          created_at: string
+          farm_id: string
+          forecast_json: Json
+          generated_at: string
+          horizon_hours: number
+          id: string
+          model: string | null
+          recommendation_bn: string | null
+          risk_level: string
+          summary_bn: string | null
+        }
+        Insert: {
+          created_at?: string
+          farm_id: string
+          forecast_json: Json
+          generated_at?: string
+          horizon_hours?: number
+          id?: string
+          model?: string | null
+          recommendation_bn?: string | null
+          risk_level: string
+          summary_bn?: string | null
+        }
+        Update: {
+          created_at?: string
+          farm_id?: string
+          forecast_json?: Json
+          generated_at?: string
+          horizon_hours?: number
+          id?: string
+          model?: string | null
+          recommendation_bn?: string | null
+          risk_level?: string
+          summary_bn?: string | null
+        }
+        Relationships: []
+      }
       farm_members: {
         Row: {
           created_at: string
@@ -7209,6 +7248,23 @@ export type Database = {
           previous_device_secret: string
           previous_expires: string
           secret_version: number
+        }[]
+      }
+      get_farm_benchmark: {
+        Args: { _days?: number }
+        Returns: {
+          avg_ammonia: number
+          avg_hsi: number
+          avg_humidity: number
+          avg_temp: number
+          critical_alerts: number
+          farm_id: string
+          farm_name: string
+          total_alerts: number
+          total_anomalies: number
+          total_birds: number
+          total_eggs: number
+          total_mortality: number
         }[]
       }
       get_farm_daily_rollup: {

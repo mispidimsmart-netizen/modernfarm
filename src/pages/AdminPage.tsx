@@ -64,6 +64,7 @@ import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDelive
 import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
 import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboard';
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
+import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
 
 const t = {
   bn: {
@@ -455,7 +456,15 @@ export default function AdminPage() {
               <TrendingUp className="w-4 h-4 mr-2" />
               পারফরম্যান্স
             </TabsTrigger>
+            <TabsTrigger value="benchmark" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              বেঞ্চমার্ক
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="benchmark" className="mt-4">
+            <FarmBenchmarkingTab />
+          </TabsContent>
 
           <TabsContent value="performance" className="mt-4">
             <PerformanceDashboardTab />
