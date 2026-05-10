@@ -216,8 +216,11 @@ Deno.serve(async (req) => {
         await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_quiet", cfg.phone_e164);
       } else if (!(await checkUserPref("sms"))) {
         await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_disabled", cfg.phone_e164);
+      } else if (cfg?.sms_optin_status === "opted_out") {
+        await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_optout", cfg.phone_e164);
       } else {
-        const r = await sendTwilio(cfg.phone_e164, a.message_bn || a.message, TWILIO_FROM_SMS, false);
+        const smsBody = `${a.message_bn || a.message}\n\nবন্ধ: STOP | স্বীকার: ACK`;
+        const r = await sendTwilio(cfg.phone_e164, smsBody, TWILIO_FROM_SMS, false);
         await logDelivery(supa, a.id, a.farm_id, "sms",
           r.ok ? "sent" : "failed", cfg.phone_e164, r.sid ?? null, r.error ?? null);
       }
@@ -230,8 +233,12 @@ Deno.serve(async (req) => {
         await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_quiet", waNumber);
       } else if (!(await checkUserPref("whatsapp"))) {
         await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_disabled", waNumber);
+      } else if (cfg?.whatsapp_optin_status === "opted_out") {
+        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_optout", waNumber);
       } else {
-        const r = await sendTwilio(waNumber, a.message_bn || a.message, TWILIO_FROM_WHATSAPP, true);
+        const sevIcon = isCritical ? "🚨" : a.severity === "high" ? "⚠️" : "ℹ️";
+        const waBody = `${sevIcon} *Farmeye সতর্কতা*\n\n${a.message_bn || a.message}\n\n_স্বীকার করতে ACK, বন্ধ করতে STOP লিখে পাঠান।_`;
+        const r = await sendTwilio(waNumber, waBody, TWILIO_FROM_WHATSAPP, true);
         await logDelivery(supa, a.id, a.farm_id, "whatsapp",
           r.ok ? "sent" : "failed", waNumber, r.sid ?? null, r.error ?? null);
       }
