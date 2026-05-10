@@ -39,6 +39,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
+import { DeviceSecuritySheet } from '@/components/device/DeviceSecuritySheet';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
 import { OTAFirmwareTab } from './OTAFirmwareTab';
