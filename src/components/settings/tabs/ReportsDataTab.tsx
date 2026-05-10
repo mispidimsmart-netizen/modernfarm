@@ -48,6 +48,9 @@ export function ReportsDataTab() {
       {/* Universal CSV exporter (any data type, any date range) */}
       <DataExportCard />
 
+      {/* Weekly scheduled email summary report */}
+      <WeeklyReportCard />
+
       {/* Quick Actions */}
       <Card>
         <CardHeader className="pb-3">
