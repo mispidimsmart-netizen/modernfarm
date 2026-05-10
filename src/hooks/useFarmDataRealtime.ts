@@ -76,18 +76,29 @@ export function useFarmDataRealtime() {
       )
       .subscribe();
 
-    // Safety net: refetch every 60s in case realtime drops
-    const pollId = window.setInterval(invalidateAll, 60_000);
+    // Safety net: refetch every 60s, but ONLY when tab is visible (saves battery + cloud egress)
+    let pollId: number | null = null;
+    const startPoll = () => {
+      if (pollId == null) pollId = window.setInterval(invalidateAll, 60_000);
+    };
+    const stopPoll = () => {
+      if (pollId != null) { window.clearInterval(pollId); pollId = null; }
+    };
+    if (document.visibilityState === 'visible') startPoll();
 
-    // When tab becomes visible again, refresh immediately
     const onVis = () => {
-      if (document.visibilityState === 'visible') invalidateAll();
+      if (document.visibilityState === 'visible') {
+        invalidateAll();
+        startPoll();
+      } else {
+        stopPoll();
+      }
     };
     document.addEventListener('visibilitychange', onVis);
 
     return () => {
       supabase.removeChannel(channel);
-      window.clearInterval(pollId);
+      stopPoll();
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [user, selectedFarmId, queryClient]);

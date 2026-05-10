@@ -58,8 +58,8 @@ const FinanceReportPage = lazyRetry(() => import("./pages/FinanceReportPage"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 minutes
-      gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+      staleTime: 1000 * 60 * 5, // 5 minutes — fewer refetches, snappier nav
+      gcTime: 1000 * 60 * 30, // 30 minutes — keep cache warm across pages
       // Never trigger a hard reload on focus — too noisy on mobile.
       refetchOnWindowFocus: false,
       // On reconnect: silently refresh in the background. Cached data stays
