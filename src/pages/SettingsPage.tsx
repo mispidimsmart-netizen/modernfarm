@@ -405,6 +405,9 @@ export function SettingsPage() {
                   {/* Phase 7: Quiet hours + Snooze */}
                   <QuietHoursAndSnoozeCard />
 
+                  {/* Phase 7: Test notification button */}
+                  <TestNotificationCard />
+
                   {/* Notification Sounds */}
                   <NotificationSoundCard />
 
