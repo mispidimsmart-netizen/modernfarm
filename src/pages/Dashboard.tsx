@@ -84,6 +84,7 @@ import {
   SystemStatusCardsSkeleton,
 } from '@/components/dashboard/TabSkeletons';
 import { useIsFetching } from '@tanstack/react-query';
+import { DashboardSnapshotProvider } from '@/context/DashboardSnapshotContext';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
@@ -188,6 +189,7 @@ export function Dashboard() {
   });
 
   return (
+    <DashboardSnapshotProvider>
     <div className="min-h-screen bg-background">
       <Header />
 
