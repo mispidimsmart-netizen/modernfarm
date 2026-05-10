@@ -2842,7 +2842,10 @@ export type Database = {
       }
       firmware_install_logs: {
         Row: {
+          auto_rolled_back: boolean | null
           board_type: string | null
+          boot_attempts: number | null
+          boot_succeeded: boolean | null
           completed_at: string | null
           crc_validated: boolean | null
           created_at: string
@@ -2854,15 +2857,20 @@ export type Database = {
           from_version: string | null
           id: string
           install_started_at: string | null
+          last_boot_at: string | null
           partition_used: string | null
           rollback_triggered: boolean | null
           rollout_batch_id: string | null
+          signature_validated: boolean | null
           status: string
           to_version: string
           user_id: string
         }
         Insert: {
+          auto_rolled_back?: boolean | null
           board_type?: string | null
+          boot_attempts?: number | null
+          boot_succeeded?: boolean | null
           completed_at?: string | null
           crc_validated?: boolean | null
           created_at?: string
@@ -2874,15 +2882,20 @@ export type Database = {
           from_version?: string | null
           id?: string
           install_started_at?: string | null
+          last_boot_at?: string | null
           partition_used?: string | null
           rollback_triggered?: boolean | null
           rollout_batch_id?: string | null
+          signature_validated?: boolean | null
           status?: string
           to_version: string
           user_id: string
         }
         Update: {
+          auto_rolled_back?: boolean | null
           board_type?: string | null
+          boot_attempts?: number | null
+          boot_succeeded?: boolean | null
           completed_at?: string | null
           crc_validated?: boolean | null
           created_at?: string
@@ -2894,9 +2907,11 @@ export type Database = {
           from_version?: string | null
           id?: string
           install_started_at?: string | null
+          last_boot_at?: string | null
           partition_used?: string | null
           rollback_triggered?: boolean | null
           rollout_batch_id?: string | null
+          signature_validated?: boolean | null
           status?: string
           to_version?: string
           user_id?: string
@@ -2942,11 +2957,21 @@ export type Database = {
           created_by: string | null
           file_size_bytes: number | null
           file_url: string | null
+          health_gate_dwell_minutes: number | null
+          health_gate_min_samples: number | null
+          health_gate_min_success_pct: number | null
           id: string
           is_active: boolean
           max_hardware: Json
           min_hardware: Json
           release_channel: string
+          sha256_hex: string | null
+          signature_alg: string | null
+          signature_b64: string | null
+          signing_key_id: string | null
+          update_window_enabled: boolean | null
+          update_window_end_hour: number | null
+          update_window_start_hour: number | null
           version: string
           version_code: number
         }
@@ -2959,11 +2984,21 @@ export type Database = {
           created_by?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
+          health_gate_dwell_minutes?: number | null
+          health_gate_min_samples?: number | null
+          health_gate_min_success_pct?: number | null
           id?: string
           is_active?: boolean
           max_hardware?: Json
           min_hardware?: Json
           release_channel?: string
+          sha256_hex?: string | null
+          signature_alg?: string | null
+          signature_b64?: string | null
+          signing_key_id?: string | null
+          update_window_enabled?: boolean | null
+          update_window_end_hour?: number | null
+          update_window_start_hour?: number | null
           version: string
           version_code: number
         }
@@ -2976,19 +3011,38 @@ export type Database = {
           created_by?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
+          health_gate_dwell_minutes?: number | null
+          health_gate_min_samples?: number | null
+          health_gate_min_success_pct?: number | null
           id?: string
           is_active?: boolean
           max_hardware?: Json
           min_hardware?: Json
           release_channel?: string
+          sha256_hex?: string | null
+          signature_alg?: string | null
+          signature_b64?: string | null
+          signing_key_id?: string | null
+          update_window_enabled?: boolean | null
+          update_window_end_hour?: number | null
+          update_window_start_hour?: number | null
           version?: string
           version_code?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "firmware_registry_signing_key_id_fkey"
+            columns: ["signing_key_id"]
+            isOneToOne: false
+            referencedRelation: "firmware_signing_keys"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       firmware_rollout_batches: {
         Row: {
           abort_reason: string | null
+          auto_advance_enabled: boolean | null
           batch_number: number
           completed_at: string | null
           created_at: string
@@ -2996,6 +3050,7 @@ export type Database = {
           fail_count: number
           firmware_id: string
           id: string
+          last_health_check_at: string | null
           started_at: string | null
           status: string
           success_count: number
@@ -3004,6 +3059,7 @@ export type Database = {
         }
         Insert: {
           abort_reason?: string | null
+          auto_advance_enabled?: boolean | null
           batch_number?: number
           completed_at?: string | null
           created_at?: string
@@ -3011,6 +3067,7 @@ export type Database = {
           fail_count?: number
           firmware_id: string
           id?: string
+          last_health_check_at?: string | null
           started_at?: string | null
           status?: string
           success_count?: number
@@ -3019,6 +3076,7 @@ export type Database = {
         }
         Update: {
           abort_reason?: string | null
+          auto_advance_enabled?: boolean | null
           batch_number?: number
           completed_at?: string | null
           created_at?: string
@@ -3026,6 +3084,7 @@ export type Database = {
           fail_count?: number
           firmware_id?: string
           id?: string
+          last_health_check_at?: string | null
           started_at?: string | null
           status?: string
           success_count?: number
@@ -3041,6 +3100,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      firmware_signing_keys: {
+        Row: {
+          algorithm: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          key_name: string
+          notes: string | null
+          public_key: string
+        }
+        Insert: {
+          algorithm?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_name: string
+          notes?: string | null
+          public_key: string
+        }
+        Update: {
+          algorithm?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_name?: string
+          notes?: string | null
+          public_key?: string
+        }
+        Relationships: []
       }
       flock_info: {
         Row: {
@@ -6975,6 +7067,7 @@ export type Database = {
         Returns: boolean
       }
       audit_tenant_isolation: { Args: never; Returns: Json }
+      auto_advance_rollout: { Args: never; Returns: Json }
       can_access_farm: {
         Args: { _owner_id: string; _user_id: string }
         Returns: boolean
@@ -7084,6 +7177,10 @@ export type Database = {
       }
       is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_within_update_window: {
+        Args: { _firmware_id: string }
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           _details?: Json
@@ -7129,6 +7226,14 @@ export type Database = {
       }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       refresh_farm_daily_rollup: { Args: never; Returns: undefined }
+      report_boot_failure: {
+        Args: {
+          _device_token_id: string
+          _firmware_id: string
+          _from_version?: string
+        }
+        Returns: Json
+      }
       should_deliver_notification: {
         Args: {
           _channel: string
