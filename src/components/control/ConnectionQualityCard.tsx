@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, CheckCircle2, AlertTriangle, XCircle, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useFarm } from '@/context/FarmContext';
-import { useDeviceHealth } from '@/hooks/useDeviceHealth';
+import { useFarmContext } from '@/context/FarmContext';
+import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useFarmDeviceMetrics24h } from '@/hooks/useEdgeFunctionMetrics';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
