@@ -320,7 +320,38 @@ async function handleReport(req: Request, supabase: any) {
     firmware_id, status, version, error_message,
     crc_validated, board_type, partition_used,
     rollback_triggered, from_version,
+    signature_validated,
   } = body;
+
+  let effectiveStatus: string = status;
+  let effectiveError: string | null = error_message || null;
+
+  // ─── Phase 5 Hardening: refuse silent unsigned completion ───
+  if (status === 'completed' && firmware_id) {
+    const { data: fw } = await supabase
+      .from('firmware_registry')
+      .select('require_signature, signature_b64, version_code')
+      .eq('id', firmware_id)
+      .maybeSingle();
+    if (fw?.require_signature && fw.signature_b64 && signature_validated !== true) {
+      effectiveStatus = 'failed';
+      effectiveError = 'signature_validation_required_but_not_reported';
+      await supabase.from('ota_gate_log').insert({
+        device_token_id: device.id,
+        firmware_id,
+        gate: 'signature_required',
+        passed: false,
+        reason: effectiveError,
+      });
+      console.log(`[OTA] Rejected unsigned completion for device ${device.id} firmware ${firmware_id}`);
+    } else if (fw?.version_code) {
+      // Track installed version_code for anti-rollback
+      await supabase
+        .from('device_tokens')
+        .update({ last_installed_version_code: fw.version_code })
+        .eq('id', device.id);
+    }
+  }
 
   // Upsert install log
   const logData: Record<string, unknown> = {
@@ -329,19 +360,19 @@ async function handleReport(req: Request, supabase: any) {
     user_id: device.user_id,
     to_version: version,
     from_version: from_version || 'unknown',
-    status,
+    status: effectiveStatus,
     crc_validated: crc_validated || false,
     board_type: board_type || 'esp32',
     partition_used: partition_used || null,
     rollback_triggered: rollback_triggered || false,
-    error_message: error_message || null,
+    error_message: effectiveError,
+    signature_validated: signature_validated === true,
   };
 
-  if (status === 'downloading') logData.download_started_at = new Date().toISOString();
-  if (status === 'installing') logData.install_started_at = new Date().toISOString();
-  if (status === 'completed' || status === 'failed') logData.completed_at = new Date().toISOString();
+  if (effectiveStatus === 'downloading') logData.download_started_at = new Date().toISOString();
+  if (effectiveStatus === 'installing') logData.install_started_at = new Date().toISOString();
+  if (effectiveStatus === 'completed' || effectiveStatus === 'failed') logData.completed_at = new Date().toISOString();
 
-  // Check for existing log for this device+firmware
   const { data: existing } = await supabase
     .from('firmware_install_logs')
     .select('id')
@@ -352,26 +383,26 @@ async function handleReport(req: Request, supabase: any) {
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('firmware_install_logs')
-      .update(logData)
-      .eq('id', existing.id);
+    await supabase.from('firmware_install_logs').update(logData).eq('id', existing.id);
   } else {
     await supabase.from('firmware_install_logs').insert(logData);
   }
 
-  // Update device health
-  const healthUpdate: Record<string, unknown> = { ota_status: status };
-  if (status === 'completed') healthUpdate.firmware_version = version;
+  const healthUpdate: Record<string, unknown> = { ota_status: effectiveStatus };
+  if (effectiveStatus === 'completed') healthUpdate.firmware_version = version;
   await supabase.from('device_health').update(healthUpdate).eq('device_token_id', device.id);
 
-  // Update rollout batch counters
-  if (firmware_id && (status === 'completed' || status === 'failed')) {
-    await updateRolloutCounters(supabase, firmware_id, status);
+  if (firmware_id && (effectiveStatus === 'completed' || effectiveStatus === 'failed')) {
+    await updateRolloutCounters(supabase, firmware_id, effectiveStatus);
   }
 
-  console.log(`[OTA] Report: device=${device.id} status=${status} version=${version}`);
+  console.log(`[OTA] Report: device=${device.id} status=${effectiveStatus} version=${version}`);
 
-  return jsonResponse({ success: true });
+  return jsonResponse({
+    success: true,
+    accepted_status: effectiveStatus,
+    ...(effectiveError ? { warning: effectiveError } : {}),
+  });
 }
 
 // ─────────────────────────────────────────────
