@@ -4086,11 +4086,15 @@ export type Database = {
           severity_min_for_push: string
           severity_min_for_sms: string
           severity_min_for_whatsapp: string
+          sms_optin_at: string | null
+          sms_optin_status: string
           snooze_until: string | null
           sound_enabled: boolean
           updated_at: string
           user_id: string
           vibration_enabled: boolean
+          whatsapp_optin_at: string | null
+          whatsapp_optin_status: string
         }
         Insert: {
           created_at?: string
@@ -4103,11 +4107,15 @@ export type Database = {
           severity_min_for_push?: string
           severity_min_for_sms?: string
           severity_min_for_whatsapp?: string
+          sms_optin_at?: string | null
+          sms_optin_status?: string
           snooze_until?: string | null
           sound_enabled?: boolean
           updated_at?: string
           user_id: string
           vibration_enabled?: boolean
+          whatsapp_optin_at?: string | null
+          whatsapp_optin_status?: string
         }
         Update: {
           created_at?: string
@@ -4120,11 +4128,15 @@ export type Database = {
           severity_min_for_push?: string
           severity_min_for_sms?: string
           severity_min_for_whatsapp?: string
+          sms_optin_at?: string | null
+          sms_optin_status?: string
           snooze_until?: string | null
           sound_enabled?: boolean
           updated_at?: string
           user_id?: string
           vibration_enabled?: boolean
+          whatsapp_optin_at?: string | null
+          whatsapp_optin_status?: string
         }
         Relationships: [
           {
@@ -6549,6 +6561,42 @@ export type Database = {
           created_by?: string | null
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      twilio_inbound_log: {
+        Row: {
+          action: string | null
+          body: string | null
+          channel: string
+          created_at: string
+          from_number: string
+          id: string
+          matched_user_id: string | null
+          message_sid: string | null
+          to_number: string | null
+        }
+        Insert: {
+          action?: string | null
+          body?: string | null
+          channel: string
+          created_at?: string
+          from_number: string
+          id?: string
+          matched_user_id?: string | null
+          message_sid?: string | null
+          to_number?: string | null
+        }
+        Update: {
+          action?: string | null
+          body?: string | null
+          channel?: string
+          created_at?: string
+          from_number?: string
+          id?: string
+          matched_user_id?: string | null
+          message_sid?: string | null
+          to_number?: string | null
         }
         Relationships: []
       }

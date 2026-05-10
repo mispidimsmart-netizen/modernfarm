@@ -168,6 +168,12 @@ export function AlertRulesCard() {
                       <Label>WhatsApp</Label>
                       <Switch checked={!!cfg.whatsapp_enabled} onCheckedChange={(v) => setCfg({ ...cfg, whatsapp_enabled: v })} />
                     </div>
+                    {cfg.whatsapp_enabled && (
+                      <p className="text-xs text-muted-foreground -mt-2 pl-1">
+                        {t('প্রথমবার আমাদের WhatsApp নম্বরে "START" পাঠিয়ে অপ্ট-ইন করুন। বন্ধ করতে STOP, সতর্কতা স্বীকার করতে ACK পাঠান।',
+                          'First-time: send "START" to our WhatsApp to opt in. Reply STOP to unsubscribe, ACK to acknowledge an alert.')}
+                      </p>
+                    )}
                     <div>
                       <Label className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" />{t('ফোন (+8801…)', 'Phone (+8801…)')}</Label>
                       <Input value={cfg.phone_e164 ?? ''} onChange={(e) => setCfg({ ...cfg, phone_e164: e.target.value })} placeholder="+8801XXXXXXXXX" />
