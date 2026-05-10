@@ -1,12 +1,9 @@
-// MQTT Publish Bridge - Cloud → ESP32 commands via HiveMQ Cloud REST API
-// Called by:
-//   1. DB trigger (auto-publish device_commands)
-//   2. Direct invoke from frontend (test / ad-hoc publish)
+// MQTT Publish Bridge - Cloud → ESP32 commands via HiveMQ Cloud
+// Uses MQTT over secure WebSocket (port 8884) — works with HiveMQ Serverless Free tier
 //
-// HiveMQ Cloud REST API: https://docs.hivemq.com/hivemq-cloud/rest-api.html
-//   POST https://<cluster>/api/v1/mqtt/publish
-//   Auth: Basic <username:password>
+// Connect → publish → disconnect per call (serverless-friendly).
 
+import mqtt from "npm:mqtt@5.10.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -17,7 +14,7 @@ const corsHeaders = {
 
 interface PublishRequest {
   device_token_id?: string;
-  topic?: string; // override (optional)
+  topic?: string;
   payload: Record<string, unknown> | string;
   qos?: 0 | 1 | 2;
   retain?: boolean;
@@ -37,12 +34,12 @@ Deno.serve(async (req) => {
     return json({ error: "MQTT broker not configured" }, 500);
   }
 
-  // Strip protocol/port if user pasted full URL
   const host = broker
     .replace(/^mqtts?:\/\//, "")
+    .replace(/^wss?:\/\//, "")
     .replace(/^https?:\/\//, "")
     .replace(/:\d+$/, "")
-    .replace(/\/$/, "");
+    .replace(/\/.*$/, "");
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -60,10 +57,9 @@ Deno.serve(async (req) => {
     return json({ error: "payload required" }, 400);
   }
 
-  // Resolve topic
   let topic = body.topic;
   let farm_id: string | null = null;
-  let device_token_id = body.device_token_id ?? null;
+  const device_token_id = body.device_token_id ?? null;
 
   if (!topic && device_token_id) {
     const { data: tok } = await supabase
@@ -85,7 +81,6 @@ Deno.serve(async (req) => {
       ? body.payload
       : JSON.stringify(body.payload);
 
-  // Insert log entry (pending)
   const { data: logRow } = await supabase
     .from("mqtt_message_log")
     .insert({
@@ -101,53 +96,68 @@ Deno.serve(async (req) => {
     .select("id")
     .single();
 
-  // Publish via HiveMQ Cloud REST API
-  // Note: HiveMQ Cloud Serverless free tier exposes REST on port 8443
-  const restUrl = `https://${host}:8443/api/v1/mqtt/publish`;
-  const auth = btoa(`${username}:${password}`);
+  // Connect via secure WebSocket on port 8884 (HiveMQ Cloud Serverless)
+  const wsUrl = `wss://${host}:8884/mqtt`;
 
-  let mqttResp: Response;
   try {
-    mqttResp = await fetch(restUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
-      },
-      body: JSON.stringify({
-        topic,
-        payload: payloadStr,
-        qos: body.qos ?? 1,
-        retain: body.retain ?? false,
-      }),
-    });
+    await publishOnce(wsUrl, username, password, topic, payloadStr, body.qos ?? 1, body.retain ?? false);
+    await supabase
+      .from("mqtt_message_log")
+      .update({ status: "sent" })
+      .eq("id", logRow?.id);
+    return json({ success: true, topic, log_id: logRow?.id });
   } catch (e) {
+    const errMsg = e instanceof Error ? e.message : String(e);
     await supabase
       .from("mqtt_message_log")
-      .update({ status: "failed", error: String(e) })
+      .update({ status: "failed", error: errMsg })
       .eq("id", logRow?.id);
-    return json({ error: "Broker unreachable", detail: String(e) }, 502);
+    return json({ error: "Publish failed", detail: errMsg }, 502);
   }
-
-  if (!mqttResp.ok) {
-    const errText = await mqttResp.text();
-    await supabase
-      .from("mqtt_message_log")
-      .update({ status: "failed", error: `${mqttResp.status} ${errText}` })
-      .eq("id", logRow?.id);
-    return json(
-      { error: "Publish failed", status: mqttResp.status, detail: errText },
-      502,
-    );
-  }
-
-  await supabase
-    .from("mqtt_message_log")
-    .update({ status: "sent" })
-    .eq("id", logRow?.id);
-
-  return json({ success: true, topic, log_id: logRow?.id });
 });
+
+function publishOnce(
+  url: string,
+  username: string,
+  password: string,
+  topic: string,
+  payload: string,
+  qos: 0 | 1 | 2,
+  retain: boolean,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const client = mqtt.connect(url, {
+      username,
+      password,
+      clientId: `farmeye-bridge-${Math.random().toString(16).slice(2, 10)}`,
+      connectTimeout: 8000,
+      reconnectPeriod: 0,
+      clean: true,
+      protocolVersion: 5,
+    });
+
+    const timer = setTimeout(() => {
+      client.end(true);
+      reject(new Error("MQTT connect timeout (8s)"));
+    }, 9000);
+
+    client.on("connect", () => {
+      client.publish(topic, payload, { qos, retain }, (err) => {
+        clearTimeout(timer);
+        client.end(true, {}, () => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    });
+
+    client.on("error", (err) => {
+      clearTimeout(timer);
+      client.end(true);
+      reject(err);
+    });
+  });
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
