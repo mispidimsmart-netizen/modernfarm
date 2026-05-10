@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { newObsCtx, recordObservability, type ObsCtx } from "./observability.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -354,16 +355,37 @@ async function proxySafetyEngine(
   });
 }
 
+// ───── Phase 2: Observability wrapper ─────
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-
+  const start = Date.now();
+  const obs: ObsCtx & { supabase?: any } = newObsCtx();
+  let response: Response;
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    response = await handleEsp32Request(req, obs);
+  } catch (error) {
+    console.error('ESP32 API error:', error);
+    obs.error_code = 'INTERNAL_ERROR';
+    obs.error_message = String((error as Error)?.message ?? error);
+    response = new Response(
+      JSON.stringify({ error: 'Internal server error', code: 'INTERNAL_ERROR' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  if (obs.supabase) {
+    recordObservability(obs.supabase, 'esp32-api', req, response, Date.now() - start, obs);
+  }
+  return response;
+});
+
+async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }): Promise<Response> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  obs.supabase = supabase;
+  {
 
     const url = new URL(req.url);
     const path = url.pathname.split('/').pop();
@@ -481,6 +503,11 @@ Deno.serve(async (req) => {
     const userId = device.user_id;
     const deviceFarmId = device.farm_id;
     const deviceShedId = device.shed_id;
+    // Phase 2 — populate observability context for tail logging
+    obs.device_token_id = device.id;
+    obs.user_id = userId;
+    obs.farm_id = deviceFarmId;
+    obs.payload_size_bytes = rawBody?.length ?? null;
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔒 MULTI-TENANT ISOLATION MIDDLEWARE
@@ -760,14 +787,13 @@ Deno.serve(async (req) => {
       { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
-    console.error('ESP32 API error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', code: 'INTERNAL_ERROR' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});
+  } // end inner block (errors propagate to outer Deno.serve wrapper)
+  // Unreachable: every endpoint above returns explicitly.
+  return new Response(
+    JSON.stringify({ error: 'Not found', code: 'NOT_FOUND' }),
+    { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🐔 SET FARM PROFILE HANDLER
