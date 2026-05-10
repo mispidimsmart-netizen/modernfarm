@@ -95,6 +95,7 @@ export function DeviceSystemTab() {
   const deviceHealth = deviceHealthList?.[0]; // Get first device health
 
   const [newDeviceName, setNewDeviceName] = useState('');
+  const [securityDevice, setSecurityDevice] = useState<{ id: string; name: string; version: number } | null>(null);
   const [selectedShedForDevice, setSelectedShedForDevice] = useState<string>('');
   const [showFactoryResetDialog, setShowFactoryResetDialog] = useState(false);
   const [debugMode, setDebugMode] = useState(() => {
