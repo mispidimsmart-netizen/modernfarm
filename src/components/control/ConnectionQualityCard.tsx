@@ -113,6 +113,7 @@ export function ConnectionQualityCard() {
             <div className="min-w-0 flex-1">
               <p className={`text-sm font-semibold ${c.color}`}>{c.label[language]}</p>
               <p className="text-[11px] text-muted-foreground">
+                {summary.score !== null && `${language === 'bn' ? 'মান' : 'Score'} ${bn(summary.score, language)}/${bn(100, language)} · `}
                 {language === 'bn' ? 'শেষ সিঙ্ক:' : 'Last sync:'} {lastSyncText}
                 {summary.totalSync > 0 && ` · ${language === 'bn' ? 'ত্রুটি' : 'err'} ${bn(summary.errorRate.toFixed(1), language)}%`}
               </p>
