@@ -408,6 +408,12 @@ export function SettingsPage() {
 
                   {/* Phase 4: Advanced alert rules */}
                   <AlertRulesCard />
+
+                  {/* Phase 5: Multi-Device Mesh */}
+                  <MeshNetworkCard />
+
+                  {/* Phase 5: GSM Fallback */}
+                  {isOwner && <GsmFallbackCard />}
                 </CardContent>
               </CollapsibleContent>
             </Card>
