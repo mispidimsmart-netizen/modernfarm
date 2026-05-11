@@ -68,6 +68,7 @@ export function OrganizationsPanel() {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [licenseOpen, setLicenseOpen] = useState(false);
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ['admin_organizations'],
