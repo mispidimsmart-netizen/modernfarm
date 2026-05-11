@@ -8536,6 +8536,10 @@ export type Database = {
           old_license_type: string
         }[]
       }
+      get_org_usage_analytics: {
+        Args: { _days?: number; _organization_id: string }
+        Returns: Json
+      }
       get_performance_summary: {
         Args: { _hours?: number }
         Returns: {
