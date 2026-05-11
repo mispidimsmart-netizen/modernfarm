@@ -1281,6 +1281,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
 
           {/* Parts List Tab */}
           <TabsContent value="parts" className="mt-4 space-y-4">
+            <InstallationV10PartsNotice />
             {partsList.map((category, idx) => (
               <Card key={idx}>
                 <CardHeader className="pb-2">
