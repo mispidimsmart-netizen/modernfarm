@@ -68,7 +68,30 @@ export function Header() {
             <h1 className="text-sm font-medium text-foreground truncate">
               {profile?.farm_name || (language === 'bn' ? 'আমার খামার' : 'My Farm')}
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {primaryOrg && (
+                <button
+                  type="button"
+                  onClick={() => orgClickable && navigate('/org-admin')}
+                  disabled={!orgClickable}
+                  className={cn(
+                    'flex items-center gap-1 rounded-full border px-1.5 py-0 text-[10px] font-medium leading-none h-[18px] transition-colors',
+                    'border-primary/30 bg-primary/10 text-primary',
+                    orgClickable && 'hover:bg-primary/20 cursor-pointer',
+                    !orgClickable && 'cursor-default opacity-90'
+                  )}
+                  title={primaryOrg.name}
+                >
+                  {primaryOrg.my_role === 'org_owner' ? (
+                    <Crown size={10} />
+                  ) : primaryOrg.my_role === 'org_admin' ? (
+                    <Shield size={10} />
+                  ) : (
+                    <Building2 size={10} />
+                  )}
+                  <span className="max-w-[110px] truncate">{primaryOrg.name}</span>
+                </button>
+              )}
               {userRole?.role === 'worker' && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   {language === 'bn' ? 'কর্মী' : 'Worker'}
