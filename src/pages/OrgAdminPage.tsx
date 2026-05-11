@@ -20,6 +20,7 @@ import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
 import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
 import { LicenseExpiryBanner } from '@/components/billing/LicenseExpiryBanner';
+import { TrialStatusBanner } from '@/components/billing/TrialStatusBanner';
 import { OrgActivityAuditLog } from '@/components/admin/OrgActivityAuditLog';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
@@ -343,7 +344,15 @@ export default function OrgAdminPage() {
               </Card>
             </div>
 
-            {/* License expiry alerts */}
+            {/* Trial status (when on trial license) */}
+            {selected && (
+              <TrialStatusBanner
+                licenseType={selected.license_type}
+                licenseExpiresAt={selected.license_expires_at}
+              />
+            )}
+
+            {/* License expiry alerts (threshold-based notifications) */}
             {activeId && <LicenseExpiryBanner orgId={activeId} />}
 
             {/* Usage analytics */}
