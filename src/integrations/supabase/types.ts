@@ -4727,6 +4727,53 @@ export type Database = {
         }
         Relationships: []
       }
+      org_activity_audit: {
+        Row: {
+          action_type: string
+          actor_user_id: string | null
+          after: Json | null
+          before: Json | null
+          changed_at: string
+          changed_fields: string[] | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          organization_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_user_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_at?: string
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          organization_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_user_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          changed_at?: string
+          changed_fields?: string[] | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_activity_audit_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_invitations: {
         Row: {
           created_at: string
@@ -8575,6 +8622,32 @@ export type Database = {
           org_name: string
           organization_id: string
           role: Database["public"]["Enums"]["org_role"]
+        }[]
+      }
+      get_org_activity_audit: {
+        Args: {
+          _action_type?: string
+          _actor?: string
+          _entity_type?: string
+          _from?: string
+          _limit?: number
+          _offset?: number
+          _org_id: string
+          _search?: string
+          _to?: string
+        }
+        Returns: {
+          action_type: string
+          actor_email: string
+          actor_name: string
+          actor_user_id: string
+          after: Json
+          before: Json
+          changed_at: string
+          changed_fields: string[]
+          entity_id: string
+          entity_type: string
+          id: string
         }[]
       }
       get_org_license_audit: {
