@@ -183,8 +183,13 @@ export function OrganizationsPanel() {
                       {licenseLabel[o.license_type]}
                     </Badge>
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">
-                    সর্বোচ্চ ফার্ম: {o.max_farms} · ইউজার: {o.max_users}
+                  <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                    <span>সর্বোচ্চ ফার্ম: {o.max_farms} · ইউজার: {o.max_users}</span>
+                    {o.license_expires_at && (
+                      <span className="text-amber-300/80">
+                        মেয়াদ: {new Date(o.license_expires_at).toLocaleDateString('bn-BD')}
+                      </span>
+                    )}
                   </div>
                 </button>
               ))}
