@@ -259,6 +259,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/org-admin"
+          element={
+            <ProtectedRoute>
+              <OrgAdminPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/installation-guide"
