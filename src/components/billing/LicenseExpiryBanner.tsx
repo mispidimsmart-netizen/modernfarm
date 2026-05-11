@@ -36,7 +36,7 @@ const severityIcon = (s: Notif['severity']) => {
   return <BellRing className="h-5 w-5 text-primary" />;
 };
 
-export function LicenseExpiryBanner({ orgId }: Props) {
+export function LicenseExpiryBanner({ orgId, onRenew }: Props) {
   const qc = useQueryClient();
 
   const { data } = useQuery({
