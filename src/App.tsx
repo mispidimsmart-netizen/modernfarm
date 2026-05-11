@@ -59,6 +59,8 @@ const TrainingVideosPage = lazyRetry(() => import("./pages/TrainingVideosPage"))
 const CommunityPage = lazyRetry(() => import("./pages/CommunityPage"));
 const Phase9ReportPage = lazyRetry(() => import("./pages/Phase9ReportPage"));
 const BenchmarkPage = lazyRetry(() => import("./pages/BenchmarkPage"));
+const StatusPage = lazyRetry(() => import("./pages/StatusPage"));
+const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"));
 import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
@@ -163,10 +165,10 @@ function AppRoutes() {
           path="/login" 
           element={user ? <Navigate to="/" replace /> : <LoginPage />} 
         />
-        <Route 
-          path="/reset-password" 
-          element={<ResetPasswordPage />} 
-        />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {/* Public transparency pages — no auth required */}
+        <Route path="/status" element={<StatusPage />} />
+        <Route path="/security" element={<SecurityReportPage />} />
         <Route
           path="/"
           element={

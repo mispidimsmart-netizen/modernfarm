@@ -194,6 +194,71 @@ export type Database = {
           },
         ]
       }
+      ai_prediction_log: {
+        Row: {
+          actual_label: string | null
+          actual_value: number | null
+          confidence: number | null
+          created_at: string
+          error_abs: number | null
+          error_pct: number | null
+          farm_id: string
+          id: string
+          model: string
+          payload: Json | null
+          predicted_label: string | null
+          predicted_value: number | null
+          prediction_type: string
+          reconciled_at: string | null
+          target_date: string
+          user_id: string | null
+        }
+        Insert: {
+          actual_label?: string | null
+          actual_value?: number | null
+          confidence?: number | null
+          created_at?: string
+          error_abs?: number | null
+          error_pct?: number | null
+          farm_id: string
+          id?: string
+          model?: string
+          payload?: Json | null
+          predicted_label?: string | null
+          predicted_value?: number | null
+          prediction_type: string
+          reconciled_at?: string | null
+          target_date: string
+          user_id?: string | null
+        }
+        Update: {
+          actual_label?: string | null
+          actual_value?: number | null
+          confidence?: number | null
+          created_at?: string
+          error_abs?: number | null
+          error_pct?: number | null
+          farm_id?: string
+          id?: string
+          model?: string
+          payload?: Json | null
+          predicted_label?: string | null
+          predicted_value?: number | null
+          prediction_type?: string
+          reconciled_at?: string | null
+          target_date?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_prediction_log_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       air_quality_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -8046,6 +8111,16 @@ export type Database = {
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
         Returns: Json
+      }
+      get_ai_accuracy_summary: {
+        Args: { _days?: number; _farm_id: string }
+        Returns: {
+          accuracy_pct: number
+          avg_error_pct: number
+          prediction_type: string
+          reconciled: number
+          total: number
+        }[]
       }
       get_anonymized_benchmark: {
         Args: { _days?: number }
