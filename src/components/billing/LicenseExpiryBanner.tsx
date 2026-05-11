@@ -95,6 +95,7 @@ export function LicenseExpiryBanner({ orgId, onRenew }: Props) {
               <Button
                 size="sm"
                 onClick={() => {
+                  if (onRenew) return onRenew();
                   document.getElementById('payment-request-panel')?.scrollIntoView({
                     behavior: 'smooth', block: 'start',
                   });
