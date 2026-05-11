@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Building2, Crown, Shield, UserPlus, Trash2, Tractor, Users, Calendar } from 'lucide-react';
+import { Building2, Crown, Shield, UserPlus, Trash2, Tractor, Users, Calendar, Mail, X, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
@@ -142,6 +142,32 @@ export default function OrgAdminPage() {
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
   });
+
+  const { data: invitations = [] } = useQuery({
+    queryKey: ['org_invitations', activeId],
+    enabled: !!activeId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('org_admin_list_invitations' as any, { _org_id: activeId });
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string; invited_email: string | null; invited_phone: string | null;
+        role: OrgRole; status: string; expires_at: string; created_at: string;
+      }>;
+    },
+  });
+
+  const cancelInvite = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('org_admin_cancel_invitation' as any, { _invitation_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org_invitations', activeId] });
+      toast({ title: 'আমন্ত্রণ বাতিল হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
 
   if (isLoading) {
     return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">লোড হচ্ছে...</div>;
@@ -298,6 +324,7 @@ export default function OrgAdminPage() {
                         onAdded={() => {
                           setAddOpen(false);
                           qc.invalidateQueries({ queryKey: ['org_members', activeId] });
+                          qc.invalidateQueries({ queryKey: ['org_invitations', activeId] });
                           qc.invalidateQueries({ queryKey: ['my_organizations'] });
                         }}
                       />
@@ -357,6 +384,72 @@ export default function OrgAdminPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Pending Invitations */}
+            <Card className="bg-slate-900/80 border-white/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-sky-400" /> আমন্ত্রণ ({invitations.filter(i => i.status === 'pending').length} টি বাকি)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {invitations.length === 0 ? (
+                  <p className="text-sm text-slate-400">কোনো আমন্ত্রণ পাঠানো হয়নি।</p>
+                ) : (
+                  <ScrollArea className="max-h-[280px] pr-2">
+                    <div className="space-y-2">
+                      {invitations.map(inv => {
+                        const isPending = inv.status === 'pending';
+                        const statusColor = isPending ? 'text-sky-300 border-sky-400/40'
+                          : inv.status === 'accepted' ? 'text-emerald-300 border-emerald-400/40'
+                          : inv.status === 'declined' ? 'text-rose-300 border-rose-400/40'
+                          : 'text-slate-400 border-slate-500/40';
+                        const statusLabel: Record<string, string> = {
+                          pending: 'অপেক্ষমান', accepted: 'গৃহীত', declined: 'প্রত্যাখ্যাত',
+                          expired: 'মেয়াদোত্তীর্ণ', cancelled: 'বাতিল',
+                        };
+                        return (
+                          <div key={inv.id} className="p-3 rounded-lg bg-slate-800/50 border border-white/5 flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm flex items-center gap-2">
+                                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="truncate">{inv.invited_email || inv.invited_phone}</span>
+                              </div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                <span>রোল: {roleLabel[inv.role]}</span>
+                                {isPending && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {new Date(inv.expires_at).toLocaleDateString('bn-BD')} পর্যন্ত
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className={`text-[10px] ${statusColor}`}>
+                              {statusLabel[inv.status] || inv.status}
+                            </Badge>
+                            {isPending && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
+                                onClick={() => {
+                                  if (confirm('এই আমন্ত্রণ বাতিল করতে চান?')) {
+                                    cancelInvite.mutate(inv.id);
+                                  }
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
@@ -371,13 +464,13 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
 
   const add = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc('org_admin_add_member' as any, {
-        _org_id: orgId, _identifier: identifier.trim(), _role: role,
+      const { error } = await supabase.rpc('org_admin_create_invitation' as any, {
+        _org_id: orgId, _identifier: identifier.trim(), _role: role, _expires_days: 14,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'সদস্য যোগ হয়েছে' });
+      toast({ title: 'আমন্ত্রণ পাঠানো হয়েছে', description: 'ব্যবহারকারী লগইন করলে গ্রহণ/প্রত্যাখ্যান করতে পারবেন।' });
       onAdded();
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
@@ -386,13 +479,13 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
   return (
     <DialogContent className="max-w-md">
       <DialogHeader>
-        <DialogTitle>সদস্য যোগ করুন</DialogTitle>
+        <DialogTitle>সদস্য আমন্ত্রণ পাঠান</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
         <div>
           <Label>ফোন বা ইমেইল</Label>
-          <Input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="01700000000" />
-          <p className="text-[11px] text-slate-500 mt-1">ব্যবহারকারীর অ্যাকাউন্ট অবশ্যই আগে থেকে থাকতে হবে।</p>
+          <Input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="01700000000 বা user@example.com" />
+          <p className="text-[11px] text-slate-500 mt-1">আমন্ত্রণ ১৪ দিনের জন্য বৈধ থাকবে।</p>
         </div>
         <div>
           <Label>রোল</Label>
@@ -412,7 +505,7 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
           disabled={!identifier || add.isPending}
           className="bg-amber-600 hover:bg-amber-700"
         >
-          {add.isPending ? 'যোগ হচ্ছে...' : 'যোগ করুন'}
+          {add.isPending ? 'পাঠানো হচ্ছে...' : 'আমন্ত্রণ পাঠান'}
         </Button>
       </DialogFooter>
     </DialogContent>

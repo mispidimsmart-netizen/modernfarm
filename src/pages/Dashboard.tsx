@@ -19,6 +19,7 @@ import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { Header } from '@/components/Header';
+import { PendingInvitationsBanner } from '@/components/PendingInvitationsBanner';
 import { BottomNav } from '@/components/BottomNav';
 import { ShedSelector } from '@/components/shed/ShedSelector';
 import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
@@ -205,6 +206,8 @@ export function Dashboard() {
 
         {/* ============ 🔝 STICKY CRITICAL ZONE (always visible) ============ */}
         <div className="mb-3 space-y-2">
+          {/* Org invitations awaiting response */}
+          <PendingInvitationsBanner />
           {/* Setup / Manual / Emergency / Alert banners */}
           <SetupReminderBanner />
           <ManualModeWarningBanner />
