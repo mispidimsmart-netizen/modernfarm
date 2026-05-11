@@ -8298,6 +8298,10 @@ export type Database = {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
       }
+      create_organization_trial: {
+        Args: { _name: string; _name_en: string; _slug: string }
+        Returns: Json
+      }
       create_sensor_partition_for_month: {
         Args: { _month: string }
         Returns: string
