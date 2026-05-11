@@ -8353,6 +8353,7 @@ export type Database = {
         }
       }
       get_farm_dashboard_snapshot: { Args: { _farm_id: string }; Returns: Json }
+      get_farm_organization_id: { Args: { _farm_id: string }; Returns: string }
       get_farm_owner_id: { Args: { _user_id: string }; Returns: string }
       get_feed_avg_price: {
         Args: { _farm_id: string; _feed_type: string }
@@ -8544,6 +8545,10 @@ export type Database = {
         Returns: boolean
       }
       user_can_access_farm: {
+        Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_access_farm_v2: {
         Args: { _farm_id: string; _user_id: string }
         Returns: boolean
       }
