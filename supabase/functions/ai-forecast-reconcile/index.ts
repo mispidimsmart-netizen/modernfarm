@@ -70,19 +70,19 @@ Deno.serve(async (req) => {
       // Mortality (broiler_mortality)
       const { data: mort } = await admin
         .from("broiler_mortality")
-        .select("death_date, dead_count")
+        .select("record_date, count")
         .eq("farm_id", farmId)
-        .gte("death_date", minDate)
-        .lte("death_date", maxDate);
+        .gte("record_date", minDate)
+        .lte("record_date", maxDate);
 
       // Active broiler batch for mortality % base
       const { data: batch } = await admin
         .from("broiler_batches")
-        .select("initial_count")
+        .select("initial_bird_count")
         .eq("farm_id", farmId)
         .eq("status", "active")
         .maybeSingle();
-      const initialCount = batch?.initial_count ?? 0;
+      const initialCount = batch?.initial_bird_count ?? 0;
 
       for (const date of dates) {
         const dayStartMs = new Date(date + "T00:00:00Z").getTime();
@@ -101,8 +101,8 @@ Deno.serve(async (req) => {
           .reduce((s: number, f: any) => s + Number(f.quantity_kg || 0), 0);
 
         const dead = (mort || [])
-          .filter((m: any) => m.death_date === date)
-          .reduce((s: number, m: any) => s + Number(m.dead_count || 0), 0);
+          .filter((m: any) => m.record_date === date)
+          .reduce((s: number, m: any) => s + Number(m.count || 0), 0);
         const mortalityPct = initialCount > 0 ? (dead / initialCount) * 100 : null;
 
         actuals.set(`${farmId}|${date}`, {
