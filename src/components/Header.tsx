@@ -1,10 +1,11 @@
-import { Wifi, WifiOff, LogOut, Globe, ArrowLeft } from 'lucide-react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield } from 'lucide-react';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
