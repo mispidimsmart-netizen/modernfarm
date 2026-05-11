@@ -344,7 +344,15 @@ export default function OrgAdminPage() {
               </Card>
             </div>
 
-            {/* License expiry alerts */}
+            {/* Trial status (when on trial license) */}
+            {selected && (
+              <TrialStatusBanner
+                licenseType={selected.license_type}
+                licenseExpiresAt={selected.license_expires_at}
+              />
+            )}
+
+            {/* License expiry alerts (threshold-based notifications) */}
             {activeId && <LicenseExpiryBanner orgId={activeId} />}
 
             {/* Usage analytics */}
