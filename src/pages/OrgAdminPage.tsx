@@ -235,9 +235,14 @@ export default function OrgAdminPage() {
             <Building2 className="w-12 h-12 mx-auto text-slate-500" />
             <h2 className="text-xl font-bold">কোনো অর্গানাইজেশন পাওয়া যায়নি</h2>
             <p className="text-sm text-slate-400">
-              আপনি কোনো কোম্পানির মালিক বা অ্যাডমিন নন। সাহায্যের জন্য Nexiot Labs টিমের সাথে যোগাযোগ করুন।
+              আপনি এখনো কোনো কোম্পানির মালিক বা অ্যাডমিন নন। নিজের কোম্পানি তৈরি করে ১৪ দিনের ফ্রি ট্রায়াল শুরু করুন।
             </p>
-            <Button asChild variant="outline"><Link to="/">ড্যাশবোর্ডে ফিরুন</Link></Button>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                <Link to="/org-signup">নতুন কোম্পানি তৈরি করুন</Link>
+              </Button>
+              <Button asChild variant="outline"><Link to="/">ড্যাশবোর্ডে ফিরুন</Link></Button>
+            </div>
           </CardContent>
         </Card>
       </div>
