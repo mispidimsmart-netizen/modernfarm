@@ -17,6 +17,7 @@ import {
 import { Building2, Crown, Shield, UserPlus, Trash2, Tractor, Users, Calendar, Mail, X, Clock, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
+import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -338,6 +339,9 @@ export default function OrgAdminPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Payment & license renewal */}
+            {activeId && <PaymentRequestPanel orgId={activeId} />}
 
             {/* License audit history */}
             {activeId && <LicenseAuditLog orgId={activeId} />}
