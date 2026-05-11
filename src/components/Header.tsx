@@ -21,6 +21,9 @@ export function Header() {
   const { data: deviceStatus } = useDeviceStatus();
   const { data: deviceHealth } = useAllDeviceHealth();
   const { data: userRole } = useUserRole();
+  const { data: platformRole } = usePlatformRole();
+  const primaryOrg = platformRole?.orgs?.[0];
+  const orgClickable = !!primaryOrg && (primaryOrg.my_role === 'org_owner' || primaryOrg.my_role === 'org_admin');
   const location = useLocation();
   const navigate = useNavigate();
 
