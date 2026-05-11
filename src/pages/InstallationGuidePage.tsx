@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  InstallationV10PartsNotice,
+  InstallationV10WiringNotice,
+  InstallationV10SetupNotice,
+} from '@/components/installation/InstallationV10Updates';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { toast } from 'sonner';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
@@ -1276,6 +1281,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
 
           {/* Parts List Tab */}
           <TabsContent value="parts" className="mt-4 space-y-4">
+            <InstallationV10PartsNotice />
             {partsList.map((category, idx) => (
               <Card key={idx}>
                 <CardHeader className="pb-2">
@@ -1339,6 +1345,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
 
           {/* Wiring Tab */}
           <TabsContent value="wiring" className="mt-4 space-y-4">
+            <InstallationV10WiringNotice />
             {/* Wire Color Legend */}
             <Card className="bg-gradient-to-r from-muted/50 to-muted/30">
               <CardHeader className="pb-2">
@@ -3277,6 +3284,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
 
           {/* Setup Tab */}
           <TabsContent value="setup" className="mt-4 space-y-4">
+            <InstallationV10SetupNotice />
             {/* ESP32 Code Generator - Interactive */}
             <ESP32CodeGenerator language="bn" />
 
