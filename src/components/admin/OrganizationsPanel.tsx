@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield } from 'lucide-react';
+import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound } from 'lucide-react';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -68,6 +68,7 @@ export function OrganizationsPanel() {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [licenseOpen, setLicenseOpen] = useState(false);
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ['admin_organizations'],
@@ -182,8 +183,13 @@ export function OrganizationsPanel() {
                       {licenseLabel[o.license_type]}
                     </Badge>
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">
-                    সর্বোচ্চ ফার্ম: {o.max_farms} · ইউজার: {o.max_users}
+                  <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                    <span>সর্বোচ্চ ফার্ম: {o.max_farms} · ইউজার: {o.max_users}</span>
+                    {o.license_expires_at && (
+                      <span className="text-amber-300/80">
+                        মেয়াদ: {new Date(o.license_expires_at).toLocaleDateString('bn-BD')}
+                      </span>
+                    )}
                   </div>
                 </button>
               ))}
@@ -200,20 +206,36 @@ export function OrganizationsPanel() {
             সদস্য {selectedOrg ? `· ${selectedOrg.name}` : ''}
           </CardTitle>
           {selectedOrg && (
-            <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                  <UserPlus className="w-4 h-4 mr-1" /> যোগ করুন
-                </Button>
-              </DialogTrigger>
-              <AddMemberDialog
-                orgId={selectedOrg.id}
-                onAdded={() => {
-                  setAddMemberOpen(false);
-                  qc.invalidateQueries({ queryKey: ['admin_org_members', selectedOrg.id] });
-                }}
-              />
-            </Dialog>
+            <div className="flex gap-2">
+              <Dialog open={licenseOpen} onOpenChange={setLicenseOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10">
+                    <KeyRound className="w-4 h-4 mr-1" /> লাইসেন্স
+                  </Button>
+                </DialogTrigger>
+                <LicenseDialog
+                  org={selectedOrg}
+                  onSaved={() => {
+                    setLicenseOpen(false);
+                    qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+                  }}
+                />
+              </Dialog>
+              <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                    <UserPlus className="w-4 h-4 mr-1" /> যোগ করুন
+                  </Button>
+                </DialogTrigger>
+                <AddMemberDialog
+                  orgId={selectedOrg.id}
+                  onAdded={() => {
+                    setAddMemberOpen(false);
+                    qc.invalidateQueries({ queryKey: ['admin_org_members', selectedOrg.id] });
+                  }}
+                />
+              </Dialog>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -483,6 +505,95 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
           className="bg-amber-600 hover:bg-amber-700"
         >
           {add.isPending ? 'যোগ হচ্ছে...' : 'যোগ করুন'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+/* ---------------- License Dialog ---------------- */
+
+function LicenseDialog({ org, onSaved }: { org: Org; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [license, setLicense] = useState<LicenseType>(org.license_type);
+  const [expiresAt, setExpiresAt] = useState<string>(
+    org.license_expires_at ? org.license_expires_at.slice(0, 10) : ''
+  );
+  const [maxFarms, setMaxFarms] = useState(org.max_farms);
+  const [maxUsers, setMaxUsers] = useState(org.max_users);
+  const [notes, setNotes] = useState(org.notes || '');
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('super_admin_update_organization_license' as any, {
+        _org_id: org.id,
+        _license_type: license,
+        _license_expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+        _max_farms: maxFarms,
+        _max_users: maxUsers,
+        _notes: notes || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'লাইসেন্স আপডেট হয়েছে' });
+      onSaved();
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader>
+        <DialogTitle>লাইসেন্স — {org.name}</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label>লাইসেন্স টাইপ</Label>
+          <Select value={license} onValueChange={(v: LicenseType) => setLicense(v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="trial">ট্রায়াল</SelectItem>
+              <SelectItem value="lifetime">লাইফটাইম</SelectItem>
+              <SelectItem value="subscription">সাবস্ক্রিপশন</SelectItem>
+              <SelectItem value="suspended">স্থগিত</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {(license === 'trial' || license === 'subscription') && (
+          <div>
+            <Label>মেয়াদ শেষ</Label>
+            <Input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
+            <p className="text-[11px] text-slate-500 mt-1">লাইফটাইমের জন্য প্রযোজ্য নয়।</p>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Max Farms</Label>
+            <Input type="number" min={1} value={maxFarms} onChange={e => setMaxFarms(+e.target.value || 1)} />
+          </div>
+          <div>
+            <Label>Max Users</Label>
+            <Input type="number" min={1} value={maxUsers} onChange={e => setMaxUsers(+e.target.value || 1)} />
+          </div>
+        </div>
+        <div>
+          <Label>নোট (অভ্যন্তরীণ)</Label>
+          <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="যেমন: ২০২৬ চুক্তি, paid 50k" />
+        </div>
+        {license === 'suspended' && (
+          <p className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded p-2">
+            ⚠ স্থগিত করলে এই কোম্পানির সব ইউজার তাদের ফার্ম এক্সেস হারাবে।
+          </p>
+        )}
+      </div>
+      <DialogFooter>
+        <Button
+          onClick={() => save.mutate()}
+          disabled={save.isPending}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          {save.isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
         </Button>
       </DialogFooter>
     </DialogContent>
