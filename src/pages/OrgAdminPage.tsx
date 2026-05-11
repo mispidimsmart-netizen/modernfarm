@@ -20,6 +20,7 @@ import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
 import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
 import { LicenseExpiryBanner } from '@/components/billing/LicenseExpiryBanner';
+import { OrgActivityAuditLog } from '@/components/admin/OrgActivityAuditLog';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -357,6 +358,9 @@ export default function OrgAdminPage() {
 
             {/* License audit history */}
             {activeId && <LicenseAuditLog orgId={activeId} />}
+
+            {/* Org & member activity audit with filters + CSV */}
+            {activeId && <OrgActivityAuditLog orgId={activeId} />}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Farms */}
