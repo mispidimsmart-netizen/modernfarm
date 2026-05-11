@@ -246,6 +246,28 @@ export function SettingsPage() {
             )}
           </div>
 
+          {/* Org Admin Dashboard — visible to org owners/admins */}
+          {isOrgAdmin && (
+            <motion.a
+              href="/org-admin"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-4 shadow-sm transition-colors hover:from-emerald-700 hover:to-emerald-800 text-primary-foreground"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground/20">
+                <Building2 size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{language === 'bn' ? 'আমার কোম্পানি' : 'My Organization'}</p>
+                <p className="text-xs text-emerald-100 truncate">
+                  {myOrgs.length === 1
+                    ? myOrgs[0].name
+                    : (language === 'bn' ? `${myOrgs.length} টি কোম্পানি` : `${myOrgs.length} organizations`)}
+                </p>
+              </div>
+            </motion.a>
+          )}
+
           {/* Quick Actions */}
           {isAdmin && (
             <motion.a
