@@ -185,6 +185,35 @@ REQUIREMENTS:
     }
     const forecast = JSON.parse(call.function.arguments);
 
+    // Phase B: log predictions for ML feedback loop
+    try {
+      const today = new Date();
+      const rows: any[] = [];
+      for (const d of (forecast.days || [])) {
+        const target = new Date(today);
+        target.setDate(today.getDate() + (d.day_offset || 0));
+        const targetDate = target.toISOString().slice(0, 10);
+        const base = { farm_id: farmId, user_id: user.id, target_date: targetDate, model: "google/gemini-2.5-flash", payload: d };
+        if (typeof d.mortality_risk_pct === "number") {
+          rows.push({ ...base, prediction_type: "mortality_risk_7d", predicted_value: d.mortality_risk_pct });
+        }
+        if (typeof d.expected_feed_kg === "number") {
+          rows.push({ ...base, prediction_type: "feed_consumption_kg", predicted_value: d.expected_feed_kg });
+        }
+        if (typeof d.expected_water_l === "number") {
+          rows.push({ ...base, prediction_type: "water_consumption_l", predicted_value: d.expected_water_l });
+        }
+        if (typeof d.hsi_avg === "number") {
+          rows.push({ ...base, prediction_type: "hsi_avg", predicted_value: d.hsi_avg });
+        }
+      }
+      if (rows.length > 0) {
+        await admin.from("ai_prediction_log").insert(rows);
+      }
+    } catch (logErr) {
+      console.error("ai-forecast-7day prediction-log error:", logErr);
+    }
+
     return new Response(JSON.stringify({ forecast, generated_at: new Date().toISOString() }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
