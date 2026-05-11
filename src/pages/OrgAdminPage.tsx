@@ -371,13 +371,13 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
 
   const add = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc('org_admin_add_member' as any, {
-        _org_id: orgId, _identifier: identifier.trim(), _role: role,
+      const { error } = await supabase.rpc('org_admin_create_invitation' as any, {
+        _org_id: orgId, _identifier: identifier.trim(), _role: role, _expires_days: 14,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'সদস্য যোগ হয়েছে' });
+      toast({ title: 'আমন্ত্রণ পাঠানো হয়েছে', description: 'ব্যবহারকারী লগইন করলে গ্রহণ/প্রত্যাখ্যান করতে পারবেন।' });
       onAdded();
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
@@ -386,13 +386,13 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
   return (
     <DialogContent className="max-w-md">
       <DialogHeader>
-        <DialogTitle>সদস্য যোগ করুন</DialogTitle>
+        <DialogTitle>সদস্য আমন্ত্রণ পাঠান</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
         <div>
           <Label>ফোন বা ইমেইল</Label>
-          <Input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="01700000000" />
-          <p className="text-[11px] text-slate-500 mt-1">ব্যবহারকারীর অ্যাকাউন্ট অবশ্যই আগে থেকে থাকতে হবে।</p>
+          <Input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="01700000000 বা user@example.com" />
+          <p className="text-[11px] text-slate-500 mt-1">আমন্ত্রণ ১৪ দিনের জন্য বৈধ থাকবে।</p>
         </div>
         <div>
           <Label>রোল</Label>
