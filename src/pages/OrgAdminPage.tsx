@@ -172,7 +172,35 @@ export default function OrgAdminPage() {
       toast({ title: 'আমন্ত্রণ বাতিল হয়েছে' });
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
-  });
+
+
+  // Search + pagination for farms
+  const filteredFarms = useMemo(() => {
+    const q = farmSearch.trim().toLowerCase();
+    if (!q) return farms;
+    return farms.filter(f =>
+      (f.name || '').toLowerCase().includes(q) ||
+      (f.name_en || '').toLowerCase().includes(q)
+    );
+  }, [farms, farmSearch]);
+  const farmTotalPages = Math.max(1, Math.ceil(filteredFarms.length / PAGE_SIZE));
+  const farmCurPage = Math.min(farmPage, farmTotalPages);
+  const pagedFarms = filteredFarms.slice((farmCurPage - 1) * PAGE_SIZE, farmCurPage * PAGE_SIZE);
+
+  // Search + pagination for members
+  const filteredMembers = useMemo(() => {
+    const q = memberSearch.trim().toLowerCase();
+    if (!q) return members;
+    return members.filter(m =>
+      (m.profile?.user_name || '').toLowerCase().includes(q) ||
+      (m.profile?.phone || '').toLowerCase().includes(q) ||
+      (m.profile?.email || '').toLowerCase().includes(q) ||
+      (roleLabel[m.role] || '').toLowerCase().includes(q)
+    );
+  }, [members, memberSearch]);
+  const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const memberCurPage = Math.min(memberPage, memberTotalPages);
+  const pagedMembers = filteredMembers.slice((memberCurPage - 1) * PAGE_SIZE, memberCurPage * PAGE_SIZE);
 
 
   if (isLoading) {
