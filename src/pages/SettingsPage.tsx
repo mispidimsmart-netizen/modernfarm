@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
@@ -50,19 +51,12 @@ export function SettingsPage() {
   const { data: userRole } = useUserRole();
   const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
   const isOwner = userRole?.role === 'owner';
-  const isAdmin = permissions?.role === 'admin';
   const canEditSettings = permissions?.canEditFarmSettings ?? false;
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
-  const { data: myOrgs = [] } = useQuery({
-    queryKey: ['my_organizations_settings', user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_my_organizations' as any);
-      if (error) return [];
-      return (data || []) as Array<{ id: string; name: string; my_role: string }>;
-    },
-  });
-  const isOrgAdmin = myOrgs.length > 0;
+  const { data: platformRole } = usePlatformRole();
+  const isSuperAdmin = !!platformRole?.isSuperAdmin;
+  const isOrgAdmin = !!(platformRole?.isOrgOwner || platformRole?.isOrgAdmin);
+  const myOrgs = platformRole?.orgs || [];
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
@@ -197,7 +191,7 @@ export function SettingsPage() {
                     )}
                     <Badge 
                       className={`text-xs shrink-0 ${
-                        isAdmin 
+                        isSuperAdmin 
                           ? 'bg-purple-500/20 text-purple-100 border-purple-400/30'
                           : isOwner 
                             ? 'bg-green-500/20 text-green-100 border-green-400/30' 
@@ -205,7 +199,7 @@ export function SettingsPage() {
                       }`}
                     >
                       <Shield className="h-3 w-3 mr-1" />
-                      {isAdmin 
+                      {isSuperAdmin 
                         ? (language === 'bn' ? 'অ্যাডমিন' : 'Admin')
                         : isOwner 
                           ? t.owner[language] 
@@ -269,7 +263,7 @@ export function SettingsPage() {
           )}
 
           {/* Quick Actions */}
-          {isAdmin && (
+          {isSuperAdmin && (
             <motion.a
               href="/admin"
               whileHover={{ scale: 1.02 }}
