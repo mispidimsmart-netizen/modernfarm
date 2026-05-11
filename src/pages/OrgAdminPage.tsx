@@ -412,7 +412,7 @@ function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => voi
           disabled={!identifier || add.isPending}
           className="bg-amber-600 hover:bg-amber-700"
         >
-          {add.isPending ? 'যোগ হচ্ছে...' : 'যোগ করুন'}
+          {add.isPending ? 'পাঠানো হচ্ছে...' : 'আমন্ত্রণ পাঠান'}
         </Button>
       </DialogFooter>
     </DialogContent>
