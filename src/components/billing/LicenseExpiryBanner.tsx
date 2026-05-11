@@ -19,6 +19,7 @@ interface Notif {
 
 interface Props {
   orgId: string;
+  onRenew?: () => void;
 }
 
 const severityStyles: Record<Notif['severity'], string> = {
@@ -35,7 +36,7 @@ const severityIcon = (s: Notif['severity']) => {
   return <BellRing className="h-5 w-5 text-primary" />;
 };
 
-export function LicenseExpiryBanner({ orgId }: Props) {
+export function LicenseExpiryBanner({ orgId, onRenew }: Props) {
   const qc = useQueryClient();
 
   const { data } = useQuery({
@@ -94,6 +95,7 @@ export function LicenseExpiryBanner({ orgId }: Props) {
               <Button
                 size="sm"
                 onClick={() => {
+                  if (onRenew) return onRenew();
                   document.getElementById('payment-request-panel')?.scrollIntoView({
                     behavior: 'smooth', block: 'start',
                   });

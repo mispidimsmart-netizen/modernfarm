@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Building2, Crown, Shield, UserPlus, Trash2, Tractor, Users, Calendar, Mail, X, Clock, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
 import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
@@ -93,6 +93,42 @@ export default function OrgAdminPage() {
 
   const selected = orgs.find(o => o.id === selectedId) || orgs[0];
   const activeId = selected?.id || null;
+
+  // Deeplink support: ?section=billing[&action=upgrade][&org=<id>]
+  const [searchParams, setSearchParams] = useSearchParams();
+  const section = searchParams.get('section');
+  const action = searchParams.get('action');
+  const orgParam = searchParams.get('org');
+  const billingRef = useRef<HTMLDivElement | null>(null);
+  const [autoOpenUpgrade, setAutoOpenUpgrade] = useState(false);
+
+  // Apply ?org= preselection
+  useEffect(() => {
+    if (orgParam && orgs.some(o => o.id === orgParam) && selectedId !== orgParam) {
+      setSelectedId(orgParam);
+    }
+  }, [orgParam, orgs, selectedId]);
+
+  // Scroll to billing section + auto-open dialog when ?action=upgrade
+  useEffect(() => {
+    if (!activeId) return;
+    if (section === 'billing' || action === 'upgrade') {
+      requestAnimationFrame(() => {
+        billingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    if (action === 'upgrade') {
+      setAutoOpenUpgrade(true);
+    }
+  }, [section, action, activeId]);
+
+  const goToBilling = (opts?: { upgrade?: boolean }) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('section', 'billing');
+    if (opts?.upgrade) next.set('action', 'upgrade');
+    if (activeId) next.set('org', activeId);
+    setSearchParams(next, { replace: false });
+  };
 
   const { data: members = [] } = useQuery({
     queryKey: ['org_members', activeId],
@@ -349,19 +385,34 @@ export default function OrgAdminPage() {
               <TrialStatusBanner
                 licenseType={selected.license_type}
                 licenseExpiresAt={selected.license_expires_at}
+                onUpgrade={() => goToBilling({ upgrade: true })}
               />
             )}
 
             {/* License expiry alerts (threshold-based notifications) */}
-            {activeId && <LicenseExpiryBanner orgId={activeId} />}
+            {activeId && (
+              <LicenseExpiryBanner
+                orgId={activeId}
+                onRenew={() => goToBilling({ upgrade: true })}
+              />
+            )}
 
             {/* Usage analytics */}
             {activeId && <OrgUsageAnalytics orgId={activeId} />}
 
             {/* Payment & license renewal */}
             {activeId && (
-              <div id="payment-request-panel">
-                <PaymentRequestPanel orgId={activeId} />
+              <div id="payment-request-panel" ref={billingRef}>
+                <PaymentRequestPanel
+                  orgId={activeId}
+                  autoOpen={autoOpenUpgrade}
+                  onAutoOpenConsumed={() => {
+                    setAutoOpenUpgrade(false);
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('action');
+                    setSearchParams(next, { replace: true });
+                  }}
+                />
               </div>
             )}
 

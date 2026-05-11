@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -66,10 +66,18 @@ const MERCHANT_INFO: Record<Method, string> = {
   other: '—',
 };
 
-export function PaymentRequestPanel({ orgId }: { orgId: string }) {
+export function PaymentRequestPanel({ orgId, autoOpen = false, onAutoOpenConsumed }: { orgId: string; autoOpen?: boolean; onAutoOpenConsumed?: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (autoOpen) {
+      setOpen(true);
+      onAutoOpenConsumed?.();
+    }
+  }, [autoOpen, onAutoOpenConsumed]);
+
   const [method, setMethod] = useState<Method>('bkash');
   const [sender, setSender] = useState('');
   const [txn, setTxn] = useState('');
