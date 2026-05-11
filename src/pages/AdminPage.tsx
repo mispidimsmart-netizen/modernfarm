@@ -71,6 +71,7 @@ import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
 import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboard';
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
+import { OrganizationsPanel } from '@/components/admin/OrganizationsPanel';
 
 const t = {
   bn: {
@@ -466,7 +467,15 @@ export default function AdminPage() {
               <TrendingUp className="w-4 h-4 mr-2" />
               বেঞ্চমার্ক
             </TabsTrigger>
+            <TabsTrigger value="orgs" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Building2 className="w-4 h-4 mr-2" />
+              কোম্পানি
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="orgs" className="mt-4">
+            <OrganizationsPanel />
+          </TabsContent>
 
           <TabsContent value="benchmark" className="mt-4">
             <FarmBenchmarkingTab />

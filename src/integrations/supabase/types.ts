@@ -8191,6 +8191,16 @@ export type Database = {
       }
       acknowledge_alert: { Args: { _alert_id: string }; Returns: boolean }
       acknowledge_anomaly: { Args: { _id: string }; Returns: boolean }
+      admin_search_users: {
+        Args: { _q: string }
+        Returns: {
+          email: string
+          farm_name: string
+          id: string
+          phone: string
+          user_name: string
+        }[]
+      }
       assign_user_role: {
         Args: {
           _assigner_id: string
@@ -8498,6 +8508,40 @@ export type Database = {
       snooze_notifications: {
         Args: { _farm_id?: string; _minutes: number }
         Returns: Json
+      }
+      super_admin_add_org_member: {
+        Args: {
+          _identifier: string
+          _org_id: string
+          _role?: Database["public"]["Enums"]["org_role"]
+        }
+        Returns: string
+      }
+      super_admin_create_organization: {
+        Args: {
+          _license_expires_at?: string
+          _license_type?: Database["public"]["Enums"]["org_license_type"]
+          _max_farms?: number
+          _max_users?: number
+          _name: string
+          _name_en: string
+          _notes?: string
+          _owner_user_id: string
+          _slug: string
+        }
+        Returns: string
+      }
+      super_admin_remove_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      super_admin_set_org_member_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["org_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
