@@ -143,6 +143,32 @@ export default function OrgAdminPage() {
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
   });
 
+  const { data: invitations = [] } = useQuery({
+    queryKey: ['org_invitations', activeId],
+    enabled: !!activeId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('org_admin_list_invitations' as any, { _org_id: activeId });
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string; invited_email: string | null; invited_phone: string | null;
+        role: OrgRole; status: string; expires_at: string; created_at: string;
+      }>;
+    },
+  });
+
+  const cancelInvite = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('org_admin_cancel_invitation' as any, { _invitation_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org_invitations', activeId] });
+      toast({ title: 'আমন্ত্রণ বাতিল হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
+
   if (isLoading) {
     return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">লোড হচ্ছে...</div>;
   }
