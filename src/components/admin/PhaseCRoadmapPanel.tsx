@@ -13,7 +13,7 @@ import {
   Pencil, Save, X, Plus, Trash2, Loader2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { toast } from 'sonner';
 
 type Status = 'done' | 'in_progress' | 'planned';
@@ -50,8 +50,8 @@ const statusLabel = (s: Status) =>
   s === 'done' ? '✓ সম্পন্ন' : s === 'in_progress' ? '◐ চলমান' : 'পরিকল্পিত';
 
 export const PhaseCRoadmapPanel = () => {
-  const { data: permissions } = useUserPermissions();
-  const isAdmin = permissions?.role === 'admin';
+  const { isSuperAdmin } = useSuperAdmin();
+  const isAdmin = isSuperAdmin;
 
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
