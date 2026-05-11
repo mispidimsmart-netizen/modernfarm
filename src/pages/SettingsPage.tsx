@@ -51,19 +51,12 @@ export function SettingsPage() {
   const { data: userRole } = useUserRole();
   const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
   const isOwner = userRole?.role === 'owner';
-  const isAdmin = permissions?.role === 'admin';
   const canEditSettings = permissions?.canEditFarmSettings ?? false;
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
-  const { data: myOrgs = [] } = useQuery({
-    queryKey: ['my_organizations_settings', user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_my_organizations' as any);
-      if (error) return [];
-      return (data || []) as Array<{ id: string; name: string; my_role: string }>;
-    },
-  });
-  const isOrgAdmin = myOrgs.length > 0;
+  const { data: platformRole } = usePlatformRole();
+  const isSuperAdmin = !!platformRole?.isSuperAdmin;
+  const isOrgAdmin = !!(platformRole?.isOrgOwner || platformRole?.isOrgAdmin);
+  const myOrgs = platformRole?.orgs || [];
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
