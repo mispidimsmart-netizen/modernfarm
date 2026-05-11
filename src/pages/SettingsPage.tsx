@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
