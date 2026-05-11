@@ -275,6 +275,7 @@ function AppRoutes() {
         <Route path="/training" element={<ProtectedRoute><TrainingVideosPage /></ProtectedRoute>} />
         <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
         <Route path="/phase9-report" element={<ProtectedRoute><RoleProtectedRoute requiredRole="admin"><Phase9ReportPage /></RoleProtectedRoute></ProtectedRoute>} />
+        <Route path="/benchmark" element={<ProtectedRoute><BenchmarkPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
