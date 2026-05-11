@@ -57,6 +57,7 @@ const ResetPasswordPage = lazyRetry(() => import("./pages/ResetPasswordPage"));
 const FinanceReportPage = lazyRetry(() => import("./pages/FinanceReportPage"));
 const TrainingVideosPage = lazyRetry(() => import("./pages/TrainingVideosPage"));
 const CommunityPage = lazyRetry(() => import("./pages/CommunityPage"));
+const Phase9ReportPage = lazyRetry(() => import("./pages/Phase9ReportPage"));
 import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
