@@ -4872,6 +4872,57 @@ export type Database = {
         }
         Relationships: []
       }
+      phase_c_roadmap: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          item_position: number
+          status: string
+          title: string
+          track_color: string
+          track_goal: string | null
+          track_icon: string
+          track_id: string
+          track_name: string
+          track_position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          item_position: number
+          status?: string
+          title: string
+          track_color?: string
+          track_goal?: string | null
+          track_icon?: string
+          track_id: string
+          track_name: string
+          track_position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          item_position?: number
+          status?: string
+          title?: string
+          track_color?: string
+          track_goal?: string | null
+          track_icon?: string
+          track_id?: string
+          track_name?: string
+          track_position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       power_outage_logs: {
         Row: {
           actions_taken: string | null
