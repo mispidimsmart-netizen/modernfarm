@@ -1,6 +1,8 @@
-import { Cpu, Sparkles, CheckCircle2, Circle } from 'lucide-react';
+import { Cpu, Sparkles, CheckCircle2, Circle, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSensorUpgradeSummary, useDeviceSensorInventory } from '@/hooks/useAirQuality';
 
@@ -84,6 +86,12 @@ export function Phase9SensorUpgradeCard() {
             কোনো নতুন সেন্সর এখনো রিপোর্ট করেনি। ESP32 firmware boot হলে অটো-ডিটেক্ট হবে।
           </p>
         )}
+
+        <Button asChild variant="outline" size="sm" className="w-full">
+          <Link to="/phase9-report">
+            <FileText className="h-4 w-4 mr-1" /> টেস্ট রিপোর্ট দেখুন
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
