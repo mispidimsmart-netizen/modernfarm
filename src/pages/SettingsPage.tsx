@@ -53,6 +53,16 @@ export function SettingsPage() {
   const isAdmin = permissions?.role === 'admin';
   const canEditSettings = permissions?.canEditFarmSettings ?? false;
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { data: myOrgs = [] } = useQuery({
+    queryKey: ['my_organizations_settings', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_my_organizations' as any);
+      if (error) return [];
+      return (data || []) as Array<{ id: string; name: string; my_role: string }>;
+    },
+  });
+  const isOrgAdmin = myOrgs.length > 0;
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
