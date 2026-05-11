@@ -2981,6 +2981,7 @@ export type Database = {
           location: string | null
           name: string
           name_en: string
+          organization_id: string | null
           owner_id: string
           total_sheds: number | null
           updated_at: string
@@ -2992,6 +2993,7 @@ export type Database = {
           location?: string | null
           name?: string
           name_en?: string
+          organization_id?: string | null
           owner_id: string
           total_sheds?: number | null
           updated_at?: string
@@ -3003,11 +3005,20 @@ export type Database = {
           location?: string | null
           name?: string
           name_en?: string
+          organization_id?: string | null
           owner_id?: string
           total_sheds?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "farms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feed_consumption: {
         Row: {
@@ -4660,6 +4671,83 @@ export type Database = {
           synced_at?: string | null
           table_name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          license_expires_at: string | null
+          license_type: Database["public"]["Enums"]["org_license_type"]
+          max_farms: number
+          max_users: number
+          name: string
+          name_en: string
+          notes: string | null
+          owner_user_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          license_expires_at?: string | null
+          license_type?: Database["public"]["Enums"]["org_license_type"]
+          max_farms?: number
+          max_users?: number
+          name: string
+          name_en: string
+          notes?: string | null
+          owner_user_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          license_expires_at?: string | null
+          license_type?: Database["public"]["Enums"]["org_license_type"]
+          max_farms?: number
+          max_users?: number
+          name?: string
+          name_en?: string
+          notes?: string | null
+          owner_user_id?: string
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -8313,6 +8401,10 @@ export type Database = {
         Returns: Json
       }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
+      get_user_organization_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       has_min_role: {
         Args: { _required_role: string; _user_id: string }
         Returns: boolean
@@ -8325,6 +8417,14 @@ export type Database = {
         Returns: boolean
       }
       is_farm_owner: { Args: { _user_id: string }; Returns: boolean }
+      is_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_within_update_window: {
         Args: { _firmware_id: string }
@@ -8419,6 +8519,8 @@ export type Database = {
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
+      org_license_type: "trial" | "lifetime" | "subscription" | "suspended"
+      org_role: "org_owner" | "org_admin" | "member"
       sensor_type: "temperature" | "humidity" | "ammonia"
     }
     CompositeTypes: {
@@ -8562,6 +8664,8 @@ export const Constants = {
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
+      org_license_type: ["trial", "lifetime", "subscription", "suspended"],
+      org_role: ["org_owner", "org_admin", "member"],
       sensor_type: ["temperature", "humidity", "ammonia"],
     },
   },
