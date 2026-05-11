@@ -94,6 +94,42 @@ export default function OrgAdminPage() {
   const selected = orgs.find(o => o.id === selectedId) || orgs[0];
   const activeId = selected?.id || null;
 
+  // Deeplink support: ?section=billing[&action=upgrade][&org=<id>]
+  const [searchParams, setSearchParams] = useSearchParams();
+  const section = searchParams.get('section');
+  const action = searchParams.get('action');
+  const orgParam = searchParams.get('org');
+  const billingRef = useRef<HTMLDivElement | null>(null);
+  const [autoOpenUpgrade, setAutoOpenUpgrade] = useState(false);
+
+  // Apply ?org= preselection
+  useEffect(() => {
+    if (orgParam && orgs.some(o => o.id === orgParam) && selectedId !== orgParam) {
+      setSelectedId(orgParam);
+    }
+  }, [orgParam, orgs, selectedId]);
+
+  // Scroll to billing section + auto-open dialog when ?action=upgrade
+  useEffect(() => {
+    if (!activeId) return;
+    if (section === 'billing' || action === 'upgrade') {
+      requestAnimationFrame(() => {
+        billingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    if (action === 'upgrade') {
+      setAutoOpenUpgrade(true);
+    }
+  }, [section, action, activeId]);
+
+  const goToBilling = (opts?: { upgrade?: boolean }) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('section', 'billing');
+    if (opts?.upgrade) next.set('action', 'upgrade');
+    if (activeId) next.set('org', activeId);
+    setSearchParams(next, { replace: false });
+  };
+
   const { data: members = [] } = useQuery({
     queryKey: ['org_members', activeId],
     enabled: !!activeId,
