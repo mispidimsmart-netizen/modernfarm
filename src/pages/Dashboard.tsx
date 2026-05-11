@@ -66,9 +66,6 @@ import {
   HourlyForecastCard
 } from '@/components/assistant';
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
-const _kept = {
-  HourlyForecastCard
-} from '@/components/assistant';
 import { QuickSensorDisplay } from '@/components/assistant/QuickSensorDisplay';
 import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
