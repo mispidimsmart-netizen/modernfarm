@@ -69,6 +69,11 @@ export default function OrgAdminPage() {
   const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [farmSearch, setFarmSearch] = useState('');
+  const [farmPage, setFarmPage] = useState(1);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberPage, setMemberPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ['my_organizations'],
