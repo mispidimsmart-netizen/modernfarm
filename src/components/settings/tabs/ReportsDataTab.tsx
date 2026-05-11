@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { 
-  FileText, BarChart3, ScrollText, TrendingUp
+  FileText, BarChart3, ScrollText, TrendingUp, Globe
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
