@@ -1,10 +1,11 @@
-import { Wifi, WifiOff, LogOut, Globe, ArrowLeft } from 'lucide-react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield } from 'lucide-react';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,9 @@ export function Header() {
   const { data: deviceStatus } = useDeviceStatus();
   const { data: deviceHealth } = useAllDeviceHealth();
   const { data: userRole } = useUserRole();
+  const { data: platformRole } = usePlatformRole();
+  const primaryOrg = platformRole?.orgs?.[0];
+  const orgClickable = !!primaryOrg && (primaryOrg.my_role === 'org_owner' || primaryOrg.my_role === 'org_admin');
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -64,7 +68,30 @@ export function Header() {
             <h1 className="text-sm font-medium text-foreground truncate">
               {profile?.farm_name || (language === 'bn' ? 'আমার খামার' : 'My Farm')}
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {primaryOrg && (
+                <button
+                  type="button"
+                  onClick={() => orgClickable && navigate('/org-admin')}
+                  disabled={!orgClickable}
+                  className={cn(
+                    'flex items-center gap-1 rounded-full border px-1.5 py-0 text-[10px] font-medium leading-none h-[18px] transition-colors',
+                    'border-primary/30 bg-primary/10 text-primary',
+                    orgClickable && 'hover:bg-primary/20 cursor-pointer',
+                    !orgClickable && 'cursor-default opacity-90'
+                  )}
+                  title={primaryOrg.name}
+                >
+                  {primaryOrg.my_role === 'org_owner' ? (
+                    <Crown size={10} />
+                  ) : primaryOrg.my_role === 'org_admin' ? (
+                    <Shield size={10} />
+                  ) : (
+                    <Building2 size={10} />
+                  )}
+                  <span className="max-w-[110px] truncate">{primaryOrg.name}</span>
+                </button>
+              )}
               {userRole?.role === 'worker' && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   {language === 'bn' ? 'কর্মী' : 'Worker'}
