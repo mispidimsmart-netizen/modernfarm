@@ -240,14 +240,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        {/* Platform Admin Panel — Nexiot Labs super admin only (gated inside AdminPage via is_super_admin). */}
+        {/* Platform Admin Panel — Nexiot Labs super admin ONLY */}
         <Route
           path="/admin"
           element={
             <ProtectedRoute>
-              <RoleProtectedRoute requiredRole="admin">
+              <PlatformRoleGuard require="super_admin">
                 <AdminPage />
-              </RoleProtectedRoute>
+              </PlatformRoleGuard>
             </ProtectedRoute>
           }
         />
@@ -255,15 +255,20 @@ function AppRoutes() {
           path="/platform-admin"
           element={
             <ProtectedRoute>
-              <AdminPage />
+              <PlatformRoleGuard require="super_admin">
+                <AdminPage />
+              </PlatformRoleGuard>
             </ProtectedRoute>
           }
         />
+        {/* Org Admin Dashboard — org owner/admin (or super admin) */}
         <Route
           path="/org-admin"
           element={
             <ProtectedRoute>
-              <OrgAdminPage />
+              <PlatformRoleGuard require="org_admin">
+                <OrgAdminPage />
+              </PlatformRoleGuard>
             </ProtectedRoute>
           }
         />
