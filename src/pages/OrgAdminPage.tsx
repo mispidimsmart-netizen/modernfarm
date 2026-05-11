@@ -385,19 +385,34 @@ export default function OrgAdminPage() {
               <TrialStatusBanner
                 licenseType={selected.license_type}
                 licenseExpiresAt={selected.license_expires_at}
+                onUpgrade={() => goToBilling({ upgrade: true })}
               />
             )}
 
             {/* License expiry alerts (threshold-based notifications) */}
-            {activeId && <LicenseExpiryBanner orgId={activeId} />}
+            {activeId && (
+              <LicenseExpiryBanner
+                orgId={activeId}
+                onRenew={() => goToBilling({ upgrade: true })}
+              />
+            )}
 
             {/* Usage analytics */}
             {activeId && <OrgUsageAnalytics orgId={activeId} />}
 
             {/* Payment & license renewal */}
             {activeId && (
-              <div id="payment-request-panel">
-                <PaymentRequestPanel orgId={activeId} />
+              <div id="payment-request-panel" ref={billingRef}>
+                <PaymentRequestPanel
+                  orgId={activeId}
+                  autoOpen={autoOpenUpgrade}
+                  onAutoOpenConsumed={() => {
+                    setAutoOpenUpgrade(false);
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('action');
+                    setSearchParams(next, { replace: true });
+                  }}
+                />
               </div>
             )}
 
