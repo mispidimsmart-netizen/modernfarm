@@ -1345,6 +1345,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
 
           {/* Wiring Tab */}
           <TabsContent value="wiring" className="mt-4 space-y-4">
+            <InstallationV10WiringNotice />
             {/* Wire Color Legend */}
             <Card className="bg-gradient-to-r from-muted/50 to-muted/30">
               <CardHeader className="pb-2">
