@@ -267,6 +267,9 @@ export function ProductionAuditReport() {
         </CardContent>
       </Card>
 
+      {/* Phase 1-9 live automation status (single source of truth) */}
+      <CurrentAutomationStatusBanner />
+
       <ScrollArea className="h-[calc(100vh-380px)]">
         <div className="grid gap-4 md:grid-cols-2">
           <AuditSection
