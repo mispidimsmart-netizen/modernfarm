@@ -313,6 +313,7 @@ export function Dashboard() {
                 <InsideOutsideDeltaCard />
                 <SensorCharts />
                 <HourlyForecastCard />
+                <SevenDayForecastCard />
                 <AmmoniaTrendCard result={ammoniaTrendResult} />
                 <CoolingEfficiencyCard result={coolingEfficiencyResult} />
                 {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
