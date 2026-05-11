@@ -175,30 +175,49 @@ export default function OrgAdminPage() {
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
   });
-  // Search + pagination for farms
+  // Search + sort + pagination for farms
   const filteredFarms = useMemo(() => {
     const q = farmSearch.trim().toLowerCase();
-    if (!q) return farms;
-    return farms.filter(f =>
+    const base = !q ? [...farms] : farms.filter(f =>
       (f.name || '').toLowerCase().includes(q) ||
       (f.name_en || '').toLowerCase().includes(q)
     );
-  }, [farms, farmSearch]);
+    base.sort((a, b) => {
+      switch (farmSort) {
+        case 'name_asc':  return (a.name || '').localeCompare(b.name || '', 'bn');
+        case 'name_desc': return (b.name || '').localeCompare(a.name || '', 'bn');
+        case 'date_desc': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date_asc':
+        default:          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+    });
+    return base;
+  }, [farms, farmSearch, farmSort]);
   const farmTotalPages = Math.max(1, Math.ceil(filteredFarms.length / PAGE_SIZE));
   const farmCurPage = Math.min(farmPage, farmTotalPages);
   const pagedFarms = filteredFarms.slice((farmCurPage - 1) * PAGE_SIZE, farmCurPage * PAGE_SIZE);
 
-  // Search + pagination for members
+  // Search + sort + pagination for members
   const filteredMembers = useMemo(() => {
     const q = memberSearch.trim().toLowerCase();
-    if (!q) return members;
-    return members.filter(m =>
+    const base = !q ? [...members] : members.filter(m =>
       (m.profile?.user_name || '').toLowerCase().includes(q) ||
       (m.profile?.phone || '').toLowerCase().includes(q) ||
       (m.profile?.email || '').toLowerCase().includes(q) ||
       (roleLabel[m.role] || '').toLowerCase().includes(q)
     );
-  }, [members, memberSearch]);
+    const roleRank: Record<OrgRole, number> = { org_owner: 0, org_admin: 1, member: 2 };
+    const nameOf = (m: MemberRow) => (m.profile?.user_name || m.profile?.phone || m.profile?.email || m.user_id);
+    base.sort((a, b) => {
+      switch (memberSort) {
+        case 'name_asc':  return nameOf(a).localeCompare(nameOf(b), 'bn');
+        case 'name_desc': return nameOf(b).localeCompare(nameOf(a), 'bn');
+        case 'role':
+        default:          return roleRank[a.role] - roleRank[b.role] || nameOf(a).localeCompare(nameOf(b), 'bn');
+      }
+    });
+    return base;
+  }, [members, memberSearch, memberSort]);
   const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
   const memberCurPage = Math.min(memberPage, memberTotalPages);
   const pagedMembers = filteredMembers.slice((memberCurPage - 1) * PAGE_SIZE, memberCurPage * PAGE_SIZE);
