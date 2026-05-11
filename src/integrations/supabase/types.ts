@@ -3795,6 +3795,59 @@ export type Database = {
         }
         Relationships: []
       }
+      license_notifications: {
+        Row: {
+          created_at: string
+          days_remaining: number
+          dismissed_at: string | null
+          email_error: string | null
+          email_sent_at: string | null
+          id: string
+          license_expires_at: string
+          message_bn: string
+          organization_id: string
+          seen_at: string | null
+          severity: string
+          threshold_days: number
+        }
+        Insert: {
+          created_at?: string
+          days_remaining: number
+          dismissed_at?: string | null
+          email_error?: string | null
+          email_sent_at?: string | null
+          id?: string
+          license_expires_at: string
+          message_bn: string
+          organization_id: string
+          seen_at?: string | null
+          severity: string
+          threshold_days: number
+        }
+        Update: {
+          created_at?: string
+          days_remaining?: number
+          dismissed_at?: string | null
+          email_error?: string | null
+          email_sent_at?: string | null
+          id?: string
+          license_expires_at?: string
+          message_bn?: string
+          organization_id?: string
+          seen_at?: string | null
+          severity?: string
+          threshold_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lighting_schedule: {
         Row: {
           broiler_age_auto: boolean
@@ -8383,12 +8436,17 @@ export type Database = {
         Args: { _invitation_id: string }
         Returns: Json
       }
+      dismiss_license_notification: {
+        Args: { _id: string }
+        Returns: undefined
+      }
       ensure_future_sensor_partitions: { Args: never; Returns: undefined }
       evaluate_alert_rules: { Args: { _farm_id: string }; Returns: number }
       evaluate_ota_safety_gates: {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      generate_license_expiry_notifications: { Args: never; Returns: Json }
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
         Returns: Json
@@ -8635,6 +8693,10 @@ export type Database = {
           _success?: boolean
           _user_id?: string
         }
+        Returns: undefined
+      }
+      mark_license_notification_seen: {
+        Args: { _id: string }
         Returns: undefined
       }
       org_admin_add_member: {
