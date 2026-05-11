@@ -10,33 +10,32 @@ import { calculateHSI } from '@/lib/heatStressIndex';
 
 describe('Hardware Safety Invariants — cloud mirror', () => {
   it('Invariant #1: temp > 38°C → HSI must be in critical band (≥80)', () => {
-    const hsi = calculateHSI(39, 70);
-    expect(hsi).toBeGreaterThanOrEqual(80);
+    expect(calculateHSI(39, 70).index).toBeGreaterThanOrEqual(80);
   });
 
   it('Invariant #1 boundary: exactly 38°C must NOT trigger critical', () => {
-    const hsi = calculateHSI(38, 60);
-    expect(hsi).toBeLessThan(95); // strict > triggers
+    expect(calculateHSI(38, 60).index).toBeLessThan(95);
   });
 
-  it('Invariant #2: temp < 18°C → HSI low (≤30) — heater allowed', () => {
-    const hsi = calculateHSI(17, 65);
-    expect(hsi).toBeLessThanOrEqual(40);
+  it('Invariant #2: temp < 18°C → low HSI, heater allowed', () => {
+    expect(calculateHSI(17, 65).index).toBeLessThanOrEqual(40);
   });
 
   it('HSI scales with humidity: 30°C @ 90% RH > 30°C @ 40% RH', () => {
-    const dry = calculateHSI(30, 40);
-    const humid = calculateHSI(30, 90);
-    expect(humid).toBeGreaterThan(dry);
+    expect(calculateHSI(30, 90).index).toBeGreaterThan(calculateHSI(30, 40).index);
   });
 
   it('HSI is bounded [0, 100]', () => {
-    expect(calculateHSI(50, 100)).toBeLessThanOrEqual(100);
-    expect(calculateHSI(0, 0)).toBeGreaterThanOrEqual(0);
+    expect(calculateHSI(50, 100).index).toBeLessThanOrEqual(100);
+    expect(calculateHSI(0, 0).index).toBeGreaterThanOrEqual(0);
   });
 
   it('Comfort zone (25°C / 60% RH) → HSI ≤ 50', () => {
-    expect(calculateHSI(25, 60)).toBeLessThanOrEqual(50);
+    expect(calculateHSI(25, 60).index).toBeLessThanOrEqual(50);
+  });
+
+  it('Critical HSI must trigger fan activation', () => {
+    expect(calculateHSI(40, 80).shouldActivateFan).toBe(true);
   });
 });
 
