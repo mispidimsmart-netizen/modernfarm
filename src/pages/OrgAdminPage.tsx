@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
 import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
+import { LicenseExpiryBanner } from '@/components/billing/LicenseExpiryBanner';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -341,11 +342,18 @@ export default function OrgAdminPage() {
               </Card>
             </div>
 
+            {/* License expiry alerts */}
+            {activeId && <LicenseExpiryBanner orgId={activeId} />}
+
             {/* Usage analytics */}
             {activeId && <OrgUsageAnalytics orgId={activeId} />}
 
             {/* Payment & license renewal */}
-            {activeId && <PaymentRequestPanel orgId={activeId} />}
+            {activeId && (
+              <div id="payment-request-panel">
+                <PaymentRequestPanel orgId={activeId} />
+              </div>
+            )}
 
             {/* License audit history */}
             {activeId && <LicenseAuditLog orgId={activeId} />}
