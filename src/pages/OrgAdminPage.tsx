@@ -341,11 +341,18 @@ export default function OrgAdminPage() {
               </Card>
             </div>
 
+            {/* License expiry alerts */}
+            {activeId && <LicenseExpiryBanner orgId={activeId} />}
+
             {/* Usage analytics */}
             {activeId && <OrgUsageAnalytics orgId={activeId} />}
 
             {/* Payment & license renewal */}
-            {activeId && <PaymentRequestPanel orgId={activeId} />}
+            {activeId && (
+              <div id="payment-request-panel">
+                <PaymentRequestPanel orgId={activeId} />
+              </div>
+            )}
 
             {/* License audit history */}
             {activeId && <LicenseAuditLog orgId={activeId} />}
