@@ -324,6 +324,7 @@ export default function OrgAdminPage() {
                         onAdded={() => {
                           setAddOpen(false);
                           qc.invalidateQueries({ queryKey: ['org_members', activeId] });
+                          qc.invalidateQueries({ queryKey: ['org_invitations', activeId] });
                           qc.invalidateQueries({ queryKey: ['my_organizations'] });
                         }}
                       />
