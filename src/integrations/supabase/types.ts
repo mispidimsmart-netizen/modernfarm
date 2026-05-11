@@ -8359,6 +8359,23 @@ export type Database = {
         Args: { _farm_id: string; _feed_type: string }
         Returns: number
       }
+      get_my_organizations: {
+        Args: never
+        Returns: {
+          farm_count: number
+          id: string
+          license_expires_at: string
+          license_type: Database["public"]["Enums"]["org_license_type"]
+          license_valid: boolean
+          max_farms: number
+          max_users: number
+          member_count: number
+          my_role: Database["public"]["Enums"]["org_role"]
+          name: string
+          name_en: string
+          slug: string
+        }[]
+      }
       get_performance_summary: {
         Args: { _hours?: number }
         Returns: {
@@ -8455,6 +8472,26 @@ export type Database = {
           _user_id?: string
         }
         Returns: undefined
+      }
+      org_admin_add_member: {
+        Args: {
+          _identifier: string
+          _org_id: string
+          _role?: Database["public"]["Enums"]["org_role"]
+        }
+        Returns: Json
+      }
+      org_admin_remove_member: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: Json
+      }
+      org_admin_set_member_role: {
+        Args: {
+          _org_id: string
+          _role: Database["public"]["Enums"]["org_role"]
+          _user_id: string
+        }
+        Returns: Json
       }
       ota_hardening_summary: { Args: never; Returns: Json }
       record_device_metric: {

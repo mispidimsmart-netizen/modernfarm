@@ -61,6 +61,7 @@ const Phase9ReportPage = lazyRetry(() => import("./pages/Phase9ReportPage"));
 const BenchmarkPage = lazyRetry(() => import("./pages/BenchmarkPage"));
 const StatusPage = lazyRetry(() => import("./pages/StatusPage"));
 const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"));
+const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
 import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
@@ -255,6 +256,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/org-admin"
+          element={
+            <ProtectedRoute>
+              <OrgAdminPage />
             </ProtectedRoute>
           }
         />
