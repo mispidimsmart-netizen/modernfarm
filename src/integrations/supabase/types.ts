@@ -8047,6 +8047,24 @@ export type Database = {
         Args: { _primary_device_token_id: string }
         Returns: Json
       }
+      get_anonymized_benchmark: {
+        Args: { _days?: number }
+        Returns: {
+          anon_id: string
+          avg_ammonia: number
+          avg_hsi: number
+          avg_humidity: number
+          avg_temp: number
+          critical_alerts: number
+          is_self: boolean
+          reading_count: number
+          total_alerts: number
+          total_anomalies: number
+          total_birds: number
+          total_eggs: number
+          total_mortality: number
+        }[]
+      }
       get_best_sensor_reading: {
         Args: { p_farm_id: string; p_shed_id?: string }
         Returns: {
