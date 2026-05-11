@@ -8436,6 +8436,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_organization_license_valid: {
+        Args: { _org_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_within_update_window: {
         Args: { _firmware_id: string }
@@ -8543,6 +8547,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      super_admin_update_organization_license: {
+        Args: {
+          _license_expires_at?: string
+          _license_type?: Database["public"]["Enums"]["org_license_type"]
+          _max_farms?: number
+          _max_users?: number
+          _notes?: string
+          _org_id: string
+        }
+        Returns: Json
       }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
