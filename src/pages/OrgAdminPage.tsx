@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Building2, Crown, Shield, UserPlus, Trash2, Tractor, Users, Calendar, Mail, X, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -279,6 +280,9 @@ export default function OrgAdminPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* License audit history */}
+            {activeId && <LicenseAuditLog orgId={activeId} />}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Farms */}
