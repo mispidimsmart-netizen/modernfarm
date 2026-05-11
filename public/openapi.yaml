@@ -1,0 +1,221 @@
+openapi: 3.1.0
+info:
+  title: FarmEye / ModernFarm Public API
+  version: "10.0.0"
+  description: |
+    Public REST API for FarmEye (powered by Nexiot Labs).
+    Base URL: `https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1`
+
+    Auth: every device call must include `Authorization: Bearer <DEVICE_TOKEN>`
+    issued from the FarmEye dashboard. User app calls use the Supabase JWT.
+  contact:
+    name: Nexiot Labs
+    url: https://farmeye.pro.bd
+servers:
+  - url: https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1
+    description: Production
+tags:
+  - name: ESP32
+    description: Device telemetry & command sync
+  - name: Automation
+    description: Server-side decision engine
+  - name: AI
+    description: Lovable AI Gateway powered insights
+  - name: Reports
+    description: Exports & forensics
+paths:
+  /esp32-api/sensor-data:
+    post:
+      tags: [ESP32]
+      summary: Submit sensor reading
+      description: Called every 30s by ESP32 firmware.
+      security: [{ deviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, temperature, humidity, ammonia]
+              properties:
+                device_id: { type: string, example: FE-DEMO-001 }
+                shed_id:   { type: string, format: uuid }
+                temperature: { type: number, example: 28.4 }
+                humidity:    { type: number, example: 62.1 }
+                ammonia:     { type: number, example: 12.3 }
+                light_lux:   { type: number }
+                co2_ppm:     { type: number, description: "Phase 9 SCD41" }
+                pm25_ugm3:   { type: number, description: "Phase 9 PMS5003" }
+                pm10_ugm3:   { type: number, description: "Phase 9 PMS5003" }
+                sensor_source:
+                  type: object
+                  description: Per-metric provenance (e.g. SHT31 vs DHT22)
+      responses:
+        '200': { description: Accepted }
+        '401': { description: Invalid device token }
+
+  /esp32-api/desired-state:
+    get:
+      tags: [ESP32]
+      summary: Poll cloud-desired relay state
+      description: |
+        ESP32 polls every 10s. Cloud writes only `desired_*` columns —
+        ESP32 keeps full safety authority over the actual relay state.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - in: query
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Desired state object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  desired_fan_on:     { type: boolean }
+                  desired_heater_on:  { type: boolean }
+                  desired_light_on:   { type: boolean }
+                  desired_fogger_on:  { type: boolean }
+                  desired_sprinkler_on: { type: boolean }
+                  desired_alarm_on:   { type: boolean }
+                  manual_override_until: { type: string, format: date-time, nullable: true }
+
+  /automation-engine:
+    post:
+      tags: [Automation]
+      summary: Run server-side automation evaluation
+      description: |
+        Evaluates HSI, age curves, weather, ammonia trend.
+        Writes `desired_*` only — never overrides ESP32 hardware safety.
+      security: [{ userJwt: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [farm_id]
+              properties:
+                farm_id: { type: string, format: uuid }
+      responses:
+        '200': { description: Decision log }
+
+  /safety-engine:
+    post:
+      tags: [Automation]
+      summary: Evaluate the 8 hardcoded safety invariants
+      description: |
+        Mirror of on-device safety logic. Used for Cloud-side audit only;
+        the ESP32 is the final source of truth.
+      security: [{ deviceToken: [] }]
+
+  /ai-forecast:
+    get:
+      tags: [AI]
+      summary: 24-hour environment forecast
+      security: [{ userJwt: [] }]
+      parameters:
+        - in: query
+          name: farm_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Hourly predictions + risk_level + recommendation }
+
+  /ai-forecast-7day:
+    get:
+      tags: [AI]
+      summary: 7-day farm health, mortality, feed & water forecast (Phase A)
+      security: [{ userJwt: [] }]
+      parameters:
+        - in: query
+          name: farm_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 7-day predictions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  forecast:
+                    type: object
+                    properties:
+                      risk_level: { type: string, enum: [low, medium, high, critical] }
+                      summary_bn: { type: string }
+                      recommendation_bn: { type: string }
+                      days:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            day_offset: { type: integer }
+                            avg_temp:   { type: number }
+                            hsi_avg:    { type: number }
+                            mortality_risk_pct: { type: number }
+                            expected_feed_kg:   { type: number }
+                            expected_water_l:   { type: number }
+
+  /heat-risk:
+    post:
+      tags: [AI]
+      summary: Heat-stress risk prediction (next 6 h)
+      security: [{ userJwt: [] }]
+
+  /water-trend:
+    post:
+      tags: [AI]
+      summary: Water consumption anomaly detection
+      security: [{ userJwt: [] }]
+
+  /anomaly-detector:
+    post:
+      tags: [AI]
+      summary: Daily anomaly cron (sensor drift + outliers)
+      security: [{ userJwt: [] }]
+
+  /report-export:
+    post:
+      tags: [Reports]
+      summary: Export farm report (PDF / CSV / XLSX)
+      security: [{ userJwt: [] }]
+
+  /export-data:
+    post:
+      tags: [Reports]
+      summary: Bulk sensor export
+      security: [{ userJwt: [] }]
+
+  /ota-firmware:
+    get:
+      tags: [ESP32]
+      summary: Signed firmware OTA manifest
+      security: [{ deviceToken: [] }]
+
+  /mqtt-publish:
+    post:
+      tags: [ESP32]
+      summary: Publish to MQTT topic from cloud (realtime command)
+      security: [{ userJwt: [] }]
+
+  /gsm-sms-relay:
+    post:
+      tags: [ESP32]
+      summary: Send SMS via GSM module (failover when network down)
+      security: [{ deviceToken: [] }]
+
+components:
+  securitySchemes:
+    deviceToken:
+      type: http
+      scheme: bearer
+      description: HMAC device token issued via /provision-device
+    userJwt:
+      type: http
+      scheme: bearer
+      description: Supabase user JWT
