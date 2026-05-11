@@ -66,6 +66,7 @@ import {
   HourlyForecastCard
 } from '@/components/assistant';
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
+import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
 import { QuickSensorDisplay } from '@/components/assistant/QuickSensorDisplay';
 import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
@@ -314,6 +315,7 @@ export function Dashboard() {
                 <SensorCharts />
                 <HourlyForecastCard />
                 <SevenDayForecastCard />
+                <AIAccuracyCard />
                 <AmmoniaTrendCard result={ammoniaTrendResult} />
                 <CoolingEfficiencyCard result={coolingEfficiencyResult} />
                 {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
