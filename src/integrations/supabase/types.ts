@@ -8442,6 +8442,23 @@ export type Database = {
           role: Database["public"]["Enums"]["org_role"]
         }[]
       }
+      get_org_license_audit: {
+        Args: { _limit?: number; _org_id: string }
+        Returns: {
+          changed_at: string
+          changed_by: string
+          changed_by_email: string
+          changed_by_name: string
+          id: string
+          is_super_admin: boolean
+          max_farms: number
+          max_users: number
+          new_expires_at: string
+          new_license_type: string
+          old_expires_at: string
+          old_license_type: string
+        }[]
+      }
       get_performance_summary: {
         Args: { _hours?: number }
         Returns: {
