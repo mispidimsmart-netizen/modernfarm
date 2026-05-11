@@ -54,7 +54,7 @@ export function TrialStatusBanner({ licenseType, licenseExpiresAt, onUpgrade }: 
 
   let tone = 'border-primary/40 bg-primary/5';
   let icon = <Sparkles className="h-5 w-5 text-primary" />;
-  let title = tr.titleActive;
+  let title: string = tr.titleActive;
   let nearExpiry = false;
 
   if (expired) {
