@@ -278,8 +278,10 @@ export default function OrgAdminPage() {
                   <div className="text-xs text-slate-400">আপনার রোল</div>
                   <div className="text-lg font-bold mt-1">{roleLabel[selected.my_role]}</div>
                 </CardContent>
-              </Card>
             </div>
+
+            {/* License audit history */}
+            {activeId && <LicenseAuditLog orgId={activeId} />}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Farms */}
