@@ -71,6 +71,7 @@ import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
 import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboard';
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
+import { OrganizationsPanel } from '@/components/admin/OrganizationsPanel';
 
 const t = {
   bn: {
