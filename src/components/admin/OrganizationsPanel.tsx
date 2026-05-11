@@ -206,20 +206,36 @@ export function OrganizationsPanel() {
             সদস্য {selectedOrg ? `· ${selectedOrg.name}` : ''}
           </CardTitle>
           {selectedOrg && (
-            <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                  <UserPlus className="w-4 h-4 mr-1" /> যোগ করুন
-                </Button>
-              </DialogTrigger>
-              <AddMemberDialog
-                orgId={selectedOrg.id}
-                onAdded={() => {
-                  setAddMemberOpen(false);
-                  qc.invalidateQueries({ queryKey: ['admin_org_members', selectedOrg.id] });
-                }}
-              />
-            </Dialog>
+            <div className="flex gap-2">
+              <Dialog open={licenseOpen} onOpenChange={setLicenseOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="border-emerald-400/40 text-emerald-300 hover:bg-emerald-500/10">
+                    <KeyRound className="w-4 h-4 mr-1" /> লাইসেন্স
+                  </Button>
+                </DialogTrigger>
+                <LicenseDialog
+                  org={selectedOrg}
+                  onSaved={() => {
+                    setLicenseOpen(false);
+                    qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+                  }}
+                />
+              </Dialog>
+              <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                    <UserPlus className="w-4 h-4 mr-1" /> যোগ করুন
+                  </Button>
+                </DialogTrigger>
+                <AddMemberDialog
+                  orgId={selectedOrg.id}
+                  onAdded={() => {
+                    setAddMemberOpen(false);
+                    qc.invalidateQueries({ queryKey: ['admin_org_members', selectedOrg.id] });
+                  }}
+                />
+              </Dialog>
+            </div>
           )}
         </CardHeader>
         <CardContent>
