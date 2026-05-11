@@ -157,7 +157,10 @@ export function AppDocumentation() {
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-6 space-y-6">
+        {/* Phase 1-9 live automation status (single source of truth) */}
+        <CurrentAutomationStatusBanner />
+
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid grid-cols-4 gap-2 mb-6 bg-slate-800/50 p-1 rounded-xl">
             <TabsTrigger value="overview" className="text-xs">🏠 ওভারভিউ</TabsTrigger>
