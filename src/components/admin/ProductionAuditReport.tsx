@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, CheckCircle, Shield, Thermometer, Cpu, Radio, Server, HardDrive, Lock, Smartphone, Rocket, Hand, MessageSquare, Trash2, Users, Sliders, Wrench } from 'lucide-react';
+import { CurrentAutomationStatusBanner } from './CurrentAutomationStatusBanner';
 
 const REPORT_VERSION = 'v8.2.0';
 const EDGE_FN_COUNT = 19;
@@ -265,6 +266,9 @@ export function ProductionAuditReport() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Phase 1-9 live automation status (single source of truth) */}
+      <CurrentAutomationStatusBanner />
 
       <ScrollArea className="h-[calc(100vh-380px)]">
         <div className="grid gap-4 md:grid-cols-2">

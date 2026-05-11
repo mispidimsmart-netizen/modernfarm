@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, CheckCircle, Cpu, Shield, Thermometer, Radio, Server, HardDrive, Lock, Smartphone, Zap, Database, Wifi, Settings, BarChart3, Hand, MessageSquare, Trash2, AlertTriangle } from 'lucide-react';
+import { CurrentAutomationStatusBanner } from './CurrentAutomationStatusBanner';
 
 const handleDownloadPDF = () => {
   const printWindow = window.open('', '_blank');
@@ -302,6 +303,9 @@ export function TechnicalArchitectureReport() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Phase 1-9 live automation status (single source of truth) */}
+      <CurrentAutomationStatusBanner />
 
       <ScrollArea className="h-[calc(100vh-380px)]">
         <div className="grid gap-4 md:grid-cols-2">
