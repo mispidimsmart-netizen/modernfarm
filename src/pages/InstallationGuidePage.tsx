@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
+import { CurrentAutomationStatusBanner } from '@/components/admin/CurrentAutomationStatusBanner';
 import wiringDiagram from '@/assets/esp32-wiring-diagram.png';
 import relayAcWiringDiagram from '@/assets/relay-ac-wiring-diagram.png';
 import capacitorWiringDiagram from '@/assets/esp32-capacitor-wiring.png';
