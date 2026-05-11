@@ -20,6 +20,7 @@ import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
 import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
 import { LicenseExpiryBanner } from '@/components/billing/LicenseExpiryBanner';
+import { TrialStatusBanner } from '@/components/billing/TrialStatusBanner';
 import { OrgActivityAuditLog } from '@/components/admin/OrgActivityAuditLog';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
