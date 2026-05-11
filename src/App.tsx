@@ -274,6 +274,16 @@ function AppRoutes() {
           }
         />
 
+        {/* Public org self-signup (auth required, no org needed) */}
+        <Route
+          path="/org-signup"
+          element={
+            <ProtectedRoute>
+              <OrgSignupPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/installation-guide"
           element={
