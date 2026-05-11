@@ -4974,6 +4974,74 @@ export type Database = {
           },
         ]
       }
+      payment_requests: {
+        Row: {
+          amount_bdt: number
+          applied_expires_at: string | null
+          created_at: string
+          id: string
+          months_requested: number
+          notes: string | null
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          rejection_reason: string | null
+          requested_license_type: Database["public"]["Enums"]["org_license_type"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sender_account: string
+          status: Database["public"]["Enums"]["payment_request_status"]
+          submitted_by: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_bdt: number
+          applied_expires_at?: string | null
+          created_at?: string
+          id?: string
+          months_requested: number
+          notes?: string | null
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          rejection_reason?: string | null
+          requested_license_type?: Database["public"]["Enums"]["org_license_type"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sender_account: string
+          status?: Database["public"]["Enums"]["payment_request_status"]
+          submitted_by: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_bdt?: number
+          applied_expires_at?: string | null
+          created_at?: string
+          id?: string
+          months_requested?: number
+          notes?: string | null
+          organization_id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          rejection_reason?: string | null
+          requested_license_type?: Database["public"]["Enums"]["org_license_type"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sender_account?: string
+          status?: Database["public"]["Enums"]["payment_request_status"]
+          submitted_by?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       performance_metrics: {
         Row: {
           created_at: string
@@ -8252,6 +8320,7 @@ export type Database = {
           user_name: string
         }[]
       }
+      approve_payment_request: { Args: { _request_id: string }; Returns: Json }
       assign_user_role: {
         Args: {
           _assigner_id: string
@@ -8264,6 +8333,10 @@ export type Database = {
       auto_advance_rollout: { Args: never; Returns: Json }
       can_access_farm: {
         Args: { _owner_id: string; _user_id: string }
+        Returns: boolean
+      }
+      cancel_payment_request: {
+        Args: { _request_id: string }
         Returns: boolean
       }
       check_air_quality_thresholds: {
@@ -8644,6 +8717,10 @@ export type Database = {
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       refresh_farm_daily_rollup: { Args: never; Returns: undefined }
       refresh_sensor_hourly_rollup: { Args: never; Returns: undefined }
+      reject_payment_request: {
+        Args: { _reason: string; _request_id: string }
+        Returns: boolean
+      }
       report_boot_failure: {
         Args: {
           _device_token_id: string
@@ -8651,6 +8728,14 @@ export type Database = {
           _from_version?: string
         }
         Returns: Json
+      }
+      resume_organization_license: {
+        Args: {
+          _new_expires_at: string
+          _new_type: Database["public"]["Enums"]["org_license_type"]
+          _organization_id: string
+        }
+        Returns: boolean
       }
       scale_readiness_summary: { Args: never; Returns: Json }
       should_deliver_notification: {
@@ -8665,6 +8750,19 @@ export type Database = {
       snooze_notifications: {
         Args: { _farm_id?: string; _minutes: number }
         Returns: Json
+      }
+      submit_payment_request: {
+        Args: {
+          _amount_bdt: number
+          _months_requested: number
+          _notes?: string
+          _organization_id: string
+          _payment_method: Database["public"]["Enums"]["payment_method"]
+          _requested_license_type?: Database["public"]["Enums"]["org_license_type"]
+          _sender_account: string
+          _transaction_id: string
+        }
+        Returns: string
       }
       super_admin_add_org_member: {
         Args: {
@@ -8711,6 +8809,10 @@ export type Database = {
         }
         Returns: Json
       }
+      suspend_organization_license: {
+        Args: { _organization_id: string; _reason: string }
+        Returns: boolean
+      }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
         Returns: boolean
@@ -8743,6 +8845,8 @@ export type Database = {
         | "cancelled"
       org_license_type: "trial" | "lifetime" | "subscription" | "suspended"
       org_role: "org_owner" | "org_admin" | "member"
+      payment_method: "bkash" | "nagad" | "rocket" | "bank_transfer" | "other"
+      payment_request_status: "pending" | "approved" | "rejected" | "cancelled"
       sensor_type: "temperature" | "humidity" | "ammonia"
     }
     CompositeTypes: {
@@ -8895,6 +8999,8 @@ export const Constants = {
       ],
       org_license_type: ["trial", "lifetime", "subscription", "suspended"],
       org_role: ["org_owner", "org_admin", "member"],
+      payment_method: ["bkash", "nagad", "rocket", "bank_transfer", "other"],
+      payment_request_status: ["pending", "approved", "rejected", "cancelled"],
       sensor_type: ["temperature", "humidity", "ammonia"],
     },
   },

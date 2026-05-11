@@ -68,6 +68,7 @@ import { AdminDeviceHealthPanel } from '@/components/admin/AdminDeviceHealthPane
 import { SecurityAuditLogPanel } from '@/components/admin/SecurityAuditLogPanel';
 import { AdminCommandDeliveryPanel } from '@/components/admin/AdminCommandDeliveryPanel';
 import { PCBManufacturingSpec } from '@/components/admin/PCBManufacturingSpec';
+import { PaymentApprovalPanel } from '@/components/admin/PaymentApprovalPanel';
 import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboard';
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
@@ -471,11 +472,19 @@ export default function AdminPage() {
               <Building2 className="w-4 h-4 mr-2" />
               কোম্পানি
             </TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              পেমেন্ট
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="orgs" className="mt-4">
             <OrganizationsPanel />
           </TabsContent>
+
+          <TabsContent value="payments" className="mt-4">
+            <PaymentApprovalPanel />
+          </TabsContent>
+
 
           <TabsContent value="benchmark" className="mt-4">
             <FarmBenchmarkingTab />
