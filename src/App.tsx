@@ -62,6 +62,7 @@ const BenchmarkPage = lazyRetry(() => import("./pages/BenchmarkPage"));
 const StatusPage = lazyRetry(() => import("./pages/StatusPage"));
 const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"));
 const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
+const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
 import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
