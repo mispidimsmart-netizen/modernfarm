@@ -57,6 +57,7 @@ import { CalibrationWizardSheet } from '@/components/calibration/CalibrationWiza
 import ForensicTimelineCard from '@/components/admin/ForensicTimelineCard';
 import { ProductionAuditReport } from '@/components/admin/ProductionAuditReport';
 import { TechnicalArchitectureReport } from '@/components/admin/TechnicalArchitectureReport';
+import { PhaseCRoadmapPanel } from '@/components/admin/PhaseCRoadmapPanel';
 import { FirmwareManagementTab } from '@/components/admin/FirmwareManagementTab';
 import { MqttHealthCard } from '@/components/admin/MqttHealthCard';
 import { OTAHardeningCard } from '@/components/admin/OTAHardeningCard';
@@ -714,7 +715,8 @@ export default function AdminPage() {
             <ProductionAuditReport />
           </TabsContent>
 
-          <TabsContent value="architecture" className="mt-4">
+          <TabsContent value="architecture" className="mt-4 space-y-4">
+            <PhaseCRoadmapPanel />
             <TechnicalArchitectureReport />
           </TabsContent>
 
