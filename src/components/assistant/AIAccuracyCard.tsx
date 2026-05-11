@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useFarm } from '@/context/FarmContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Brain, TrendingUp } from 'lucide-react';
@@ -21,20 +21,20 @@ const labelBn: Record<string, string> = {
 };
 
 export const AIAccuracyCard = () => {
-  const { currentFarm } = useFarm();
+  const { selectedFarmId } = useFarmContext();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentFarm?.id) return;
+    if (!selectedFarmId) return;
     setLoading(true);
     supabase
-      .rpc('get_ai_accuracy_summary' as never, { _farm_id: currentFarm.id, _days: 30 } as never)
+      .rpc('get_ai_accuracy_summary' as never, { _farm_id: selectedFarmId, _days: 30 } as never)
       .then(({ data }) => {
         setRows((data as Row[]) || []);
         setLoading(false);
       });
-  }, [currentFarm?.id]);
+  }, [selectedFarmId]);
 
   return (
     <Card className="bg-gradient-to-br from-indigo-950/40 to-slate-900/60 border-indigo-500/20">
