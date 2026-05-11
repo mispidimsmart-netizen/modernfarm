@@ -76,6 +76,19 @@ export function ReportsDataTab() {
         <CardContent>
           <Button 
             variant="outline" 
+            className="w-full justify-start h-12 mb-2"
+            onClick={() => navigate('/benchmark')}
+          >
+            <Globe className="mr-3 h-5 w-5 text-primary" />
+            <div className="text-left">
+              <p className="font-medium">{language === 'bn' ? 'ফার্ম বেঞ্চমার্ক' : 'Farm Benchmark'}</p>
+              <p className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'অন্যান্য অ্যানোনিমাইজড ফার্মের সাথে KPI তুলনা' : 'Compare KPIs vs anonymized farms'}
+              </p>
+            </div>
+          </Button>
+          <Button 
+            variant="outline" 
             className="w-full justify-start h-12"
             onClick={() => navigate('/audit-log')}
           >
