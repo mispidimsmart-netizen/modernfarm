@@ -4674,6 +4674,56 @@ export type Database = {
         }
         Relationships: []
       }
+      org_invitations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          invited_by: string
+          invited_email: string | null
+          invited_phone: string | null
+          organization_id: string
+          responded_at: string | null
+          responded_by: string | null
+          role: Database["public"]["Enums"]["org_role"]
+          status: Database["public"]["Enums"]["org_invitation_status"]
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          invited_email?: string | null
+          invited_phone?: string | null
+          organization_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          status?: Database["public"]["Enums"]["org_invitation_status"]
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          invited_email?: string | null
+          invited_phone?: string | null
+          organization_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          status?: Database["public"]["Enums"]["org_invitation_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -8179,6 +8229,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_org_invitation: { Args: { _invitation_id: string }; Returns: Json }
       accept_sensor_batch: {
         Args: {
           _device_token_id: string
@@ -8250,6 +8301,10 @@ export type Database = {
       create_sensor_partition_for_month: {
         Args: { _month: string }
         Returns: string
+      }
+      decline_org_invitation: {
+        Args: { _invitation_id: string }
+        Returns: Json
       }
       ensure_future_sensor_partitions: { Args: never; Returns: undefined }
       evaluate_alert_rules: { Args: { _farm_id: string }; Returns: number }
@@ -8376,6 +8431,17 @@ export type Database = {
           slug: string
         }[]
       }
+      get_my_pending_invitations: {
+        Args: never
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          org_name: string
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"]
+        }[]
+      }
       get_performance_summary: {
         Args: { _hours?: number }
         Returns: {
@@ -8480,6 +8546,34 @@ export type Database = {
           _role?: Database["public"]["Enums"]["org_role"]
         }
         Returns: Json
+      }
+      org_admin_cancel_invitation: {
+        Args: { _invitation_id: string }
+        Returns: Json
+      }
+      org_admin_create_invitation: {
+        Args: {
+          _expires_days?: number
+          _identifier: string
+          _org_id: string
+          _role?: Database["public"]["Enums"]["org_role"]
+        }
+        Returns: Json
+      }
+      org_admin_list_invitations: {
+        Args: { _org_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          invited_by: string
+          invited_email: string
+          invited_phone: string
+          organization_id: string
+          responded_at: string
+          role: Database["public"]["Enums"]["org_role"]
+          status: Database["public"]["Enums"]["org_invitation_status"]
+        }[]
       }
       org_admin_remove_member: {
         Args: { _org_id: string; _user_id: string }
@@ -8620,6 +8714,12 @@ export type Database = {
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
+      org_invitation_status:
+        | "pending"
+        | "accepted"
+        | "declined"
+        | "expired"
+        | "cancelled"
       org_license_type: "trial" | "lifetime" | "subscription" | "suspended"
       org_role: "org_owner" | "org_admin" | "member"
       sensor_type: "temperature" | "humidity" | "ammonia"
@@ -8765,6 +8865,13 @@ export const Constants = {
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
+      org_invitation_status: [
+        "pending",
+        "accepted",
+        "declined",
+        "expired",
+        "cancelled",
+      ],
       org_license_type: ["trial", "lifetime", "subscription", "suspended"],
       org_role: ["org_owner", "org_admin", "member"],
       sensor_type: ["temperature", "humidity", "ammonia"],
