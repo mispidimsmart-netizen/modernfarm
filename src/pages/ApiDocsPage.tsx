@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, Cpu, Wifi, Code2, FileCode, ExternalLink } from "lucide-react";
+import { OpenApiSpecCard } from "@/components/api-docs/OpenApiSpecCard";
 
 const API_BASE_URL = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/esp32-api";
 
