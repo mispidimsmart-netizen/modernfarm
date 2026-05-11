@@ -359,6 +359,9 @@ export default function OrgAdminPage() {
             {/* License audit history */}
             {activeId && <LicenseAuditLog orgId={activeId} />}
 
+            {/* Org & member activity audit with filters + CSV */}
+            {activeId && <OrgActivityAuditLog orgId={activeId} />}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Farms */}
               <Card className="bg-slate-900/80 border-white/10">
