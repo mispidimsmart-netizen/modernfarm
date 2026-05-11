@@ -714,7 +714,8 @@ export default function AdminPage() {
             <ProductionAuditReport />
           </TabsContent>
 
-          <TabsContent value="architecture" className="mt-4">
+          <TabsContent value="architecture" className="mt-4 space-y-4">
+            <PhaseCRoadmapPanel />
             <TechnicalArchitectureReport />
           </TabsContent>
 
