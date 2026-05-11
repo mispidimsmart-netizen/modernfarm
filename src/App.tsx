@@ -58,6 +58,7 @@ const FinanceReportPage = lazyRetry(() => import("./pages/FinanceReportPage"));
 const TrainingVideosPage = lazyRetry(() => import("./pages/TrainingVideosPage"));
 const CommunityPage = lazyRetry(() => import("./pages/CommunityPage"));
 const Phase9ReportPage = lazyRetry(() => import("./pages/Phase9ReportPage"));
+const BenchmarkPage = lazyRetry(() => import("./pages/BenchmarkPage"));
 import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
 
 
