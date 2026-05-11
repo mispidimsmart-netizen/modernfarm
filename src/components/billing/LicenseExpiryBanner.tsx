@@ -19,6 +19,7 @@ interface Notif {
 
 interface Props {
   orgId: string;
+  onRenew?: () => void;
 }
 
 const severityStyles: Record<Notif['severity'], string> = {
