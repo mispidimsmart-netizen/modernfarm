@@ -172,8 +172,7 @@ export default function OrgAdminPage() {
       toast({ title: 'আমন্ত্রণ বাতিল হয়েছে' });
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
-
-
+  });
   // Search + pagination for farms
   const filteredFarms = useMemo(() => {
     const q = farmSearch.trim().toLowerCase();
