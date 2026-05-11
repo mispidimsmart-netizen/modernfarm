@@ -1167,6 +1167,9 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
       </header>
 
       <div className="p-4 space-y-6">
+        {/* Phase 1-9 live automation status (single source of truth) */}
+        <CurrentAutomationStatusBanner />
+
         {/* LDR Hardware Status — large, farmer-friendly */}
         <LDRStatusBanner />
 
