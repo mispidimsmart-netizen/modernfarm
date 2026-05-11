@@ -44,6 +44,9 @@ export function ApiDocsPage() {
       <Header />
 
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {/* Phase A: Public OpenAPI spec */}
+        <OpenApiSpecCard />
+
         {/* Quick Start */}
         <Card>
           <CardHeader>
