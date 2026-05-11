@@ -349,14 +349,27 @@ export default function OrgAdminPage() {
                       {filteredFarms.length}{farmSearch ? ` / ${farms.length}` : ''}
                     </span>
                   </CardTitle>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <Input
-                      value={farmSearch}
-                      onChange={(e) => { setFarmSearch(e.target.value); setFarmPage(1); }}
-                      placeholder="ফার্ম খুঁজুন..."
-                      className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Input
+                        value={farmSearch}
+                        onChange={(e) => { setFarmSearch(e.target.value); setFarmPage(1); }}
+                        placeholder="ফার্ম খুঁজুন..."
+                        className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
+                      />
+                    </div>
+                    <Select value={farmSort} onValueChange={(v: typeof farmSort) => setFarmSort(v)}>
+                      <SelectTrigger className="h-8 w-[140px] bg-slate-900 border-white/10 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date_asc">তারিখ (পুরোনো)</SelectItem>
+                        <SelectItem value="date_desc">তারিখ (নতুন)</SelectItem>
+                        <SelectItem value="name_asc">নাম (অ→হ)</SelectItem>
+                        <SelectItem value="name_desc">নাম (হ→অ)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
                 <CardContent>
