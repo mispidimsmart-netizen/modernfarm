@@ -3284,6 +3284,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
 
           {/* Setup Tab */}
           <TabsContent value="setup" className="mt-4 space-y-4">
+            <InstallationV10SetupNotice />
             {/* ESP32 Code Generator - Interactive */}
             <ESP32CodeGenerator language="bn" />
 
