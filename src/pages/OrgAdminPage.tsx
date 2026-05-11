@@ -319,18 +319,32 @@ export default function OrgAdminPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Farms */}
               <Card className="bg-slate-900/80 border-white/10">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Tractor className="w-4 h-4 text-emerald-400" /> ফার্মসমূহ
+                <CardHeader className="pb-3 space-y-2">
+                  <CardTitle className="text-base flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      <Tractor className="w-4 h-4 text-emerald-400" /> ফার্মসমূহ
+                    </span>
+                    <span className="text-xs font-normal text-slate-400">
+                      {filteredFarms.length}{farmSearch ? ` / ${farms.length}` : ''}
+                    </span>
                   </CardTitle>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <Input
+                      value={farmSearch}
+                      onChange={(e) => { setFarmSearch(e.target.value); setFarmPage(1); }}
+                      placeholder="ফার্ম খুঁজুন..."
+                      className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="h-[360px] pr-2">
-                    {farms.length === 0 ? (
-                      <p className="text-sm text-slate-400">কোনো ফার্ম নেই।</p>
+                  <ScrollArea className="h-[320px] pr-2">
+                    {filteredFarms.length === 0 ? (
+                      <p className="text-sm text-slate-400">{farmSearch ? 'কোনো ফার্ম পাওয়া যায়নি।' : 'কোনো ফার্ম নেই।'}</p>
                     ) : (
                       <div className="space-y-2">
-                        {farms.map(f => (
+                        {pagedFarms.map(f => (
                           <div key={f.id} className="p-3 rounded-lg bg-slate-800/50 border border-white/5">
                             <div className="font-medium">{f.name}</div>
                             <div className="text-[11px] text-slate-400">{f.name_en} · {new Date(f.created_at).toLocaleDateString('bn-BD')}</div>
@@ -339,6 +353,23 @@ export default function OrgAdminPage() {
                       </div>
                     )}
                   </ScrollArea>
+                  {farmTotalPages > 1 && (
+                    <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
+                      <span>পৃষ্ঠা {farmCurPage} / {farmTotalPages}</span>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" className="h-7 px-2 border-white/10"
+                          disabled={farmCurPage <= 1}
+                          onClick={() => setFarmPage(p => Math.max(1, p - 1))}>
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2 border-white/10"
+                          disabled={farmCurPage >= farmTotalPages}
+                          onClick={() => setFarmPage(p => Math.min(farmTotalPages, p + 1))}>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
