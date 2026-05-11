@@ -13,7 +13,7 @@ import { OfflineIndicator } from "./components/OfflineIndicator";
 import { OfflineMutationBadge } from "./components/OfflineMutationBadge";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { InstallPromptCard } from "./components/pwa/InstallPromptCard";
-import { RoleProtectedRoute } from "./components/auth";
+import { RoleProtectedRoute, PlatformRoleGuard } from "./components/auth";
 import { useBatchEditQueue } from "./hooks/useBatchEditQueue";
 import { useFarmDataRealtime } from "./hooks/useFarmDataRealtime";
 import { useDeviceOnlineToasts } from "./hooks/useDeviceOnlineToasts";
