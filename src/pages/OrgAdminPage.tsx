@@ -73,6 +73,8 @@ export default function OrgAdminPage() {
   const [farmPage, setFarmPage] = useState(1);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
+  const [farmSort, setFarmSort] = useState<'name_asc' | 'name_desc' | 'date_desc' | 'date_asc'>('date_asc');
+  const [memberSort, setMemberSort] = useState<'name_asc' | 'name_desc' | 'role'>('role');
   const PAGE_SIZE = 10;
 
   const { data: orgs = [], isLoading } = useQuery({
