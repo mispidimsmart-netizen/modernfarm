@@ -191,7 +191,7 @@ export function SettingsPage() {
                     )}
                     <Badge 
                       className={`text-xs shrink-0 ${
-                        isAdmin 
+                        isSuperAdmin 
                           ? 'bg-purple-500/20 text-purple-100 border-purple-400/30'
                           : isOwner 
                             ? 'bg-green-500/20 text-green-100 border-green-400/30' 
@@ -199,7 +199,7 @@ export function SettingsPage() {
                       }`}
                     >
                       <Shield className="h-3 w-3 mr-1" />
-                      {isAdmin 
+                      {isSuperAdmin 
                         ? (language === 'bn' ? 'অ্যাডমিন' : 'Admin')
                         : isOwner 
                           ? t.owner[language] 
@@ -263,7 +263,7 @@ export function SettingsPage() {
           )}
 
           {/* Quick Actions */}
-          {isAdmin && (
+          {isSuperAdmin && (
             <motion.a
               href="/admin"
               whileHover={{ scale: 1.02 }}
