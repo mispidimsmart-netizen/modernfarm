@@ -73,6 +73,8 @@ export default function OrgAdminPage() {
   const [farmPage, setFarmPage] = useState(1);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
+  const [farmSort, setFarmSort] = useState<'name_asc' | 'name_desc' | 'date_desc' | 'date_asc'>('date_asc');
+  const [memberSort, setMemberSort] = useState<'name_asc' | 'name_desc' | 'role'>('role');
   const PAGE_SIZE = 10;
 
   const { data: orgs = [], isLoading } = useQuery({
@@ -173,30 +175,49 @@ export default function OrgAdminPage() {
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
   });
-  // Search + pagination for farms
+  // Search + sort + pagination for farms
   const filteredFarms = useMemo(() => {
     const q = farmSearch.trim().toLowerCase();
-    if (!q) return farms;
-    return farms.filter(f =>
+    const base = !q ? [...farms] : farms.filter(f =>
       (f.name || '').toLowerCase().includes(q) ||
       (f.name_en || '').toLowerCase().includes(q)
     );
-  }, [farms, farmSearch]);
+    base.sort((a, b) => {
+      switch (farmSort) {
+        case 'name_asc':  return (a.name || '').localeCompare(b.name || '', 'bn');
+        case 'name_desc': return (b.name || '').localeCompare(a.name || '', 'bn');
+        case 'date_desc': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date_asc':
+        default:          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+    });
+    return base;
+  }, [farms, farmSearch, farmSort]);
   const farmTotalPages = Math.max(1, Math.ceil(filteredFarms.length / PAGE_SIZE));
   const farmCurPage = Math.min(farmPage, farmTotalPages);
   const pagedFarms = filteredFarms.slice((farmCurPage - 1) * PAGE_SIZE, farmCurPage * PAGE_SIZE);
 
-  // Search + pagination for members
+  // Search + sort + pagination for members
   const filteredMembers = useMemo(() => {
     const q = memberSearch.trim().toLowerCase();
-    if (!q) return members;
-    return members.filter(m =>
+    const base = !q ? [...members] : members.filter(m =>
       (m.profile?.user_name || '').toLowerCase().includes(q) ||
       (m.profile?.phone || '').toLowerCase().includes(q) ||
       (m.profile?.email || '').toLowerCase().includes(q) ||
       (roleLabel[m.role] || '').toLowerCase().includes(q)
     );
-  }, [members, memberSearch]);
+    const roleRank: Record<OrgRole, number> = { org_owner: 0, org_admin: 1, member: 2 };
+    const nameOf = (m: MemberRow) => (m.profile?.user_name || m.profile?.phone || m.profile?.email || m.user_id);
+    base.sort((a, b) => {
+      switch (memberSort) {
+        case 'name_asc':  return nameOf(a).localeCompare(nameOf(b), 'bn');
+        case 'name_desc': return nameOf(b).localeCompare(nameOf(a), 'bn');
+        case 'role':
+        default:          return roleRank[a.role] - roleRank[b.role] || nameOf(a).localeCompare(nameOf(b), 'bn');
+      }
+    });
+    return base;
+  }, [members, memberSearch, memberSort]);
   const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
   const memberCurPage = Math.min(memberPage, memberTotalPages);
   const pagedMembers = filteredMembers.slice((memberCurPage - 1) * PAGE_SIZE, memberCurPage * PAGE_SIZE);
@@ -328,14 +349,27 @@ export default function OrgAdminPage() {
                       {filteredFarms.length}{farmSearch ? ` / ${farms.length}` : ''}
                     </span>
                   </CardTitle>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <Input
-                      value={farmSearch}
-                      onChange={(e) => { setFarmSearch(e.target.value); setFarmPage(1); }}
-                      placeholder="ফার্ম খুঁজুন..."
-                      className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Input
+                        value={farmSearch}
+                        onChange={(e) => { setFarmSearch(e.target.value); setFarmPage(1); }}
+                        placeholder="ফার্ম খুঁজুন..."
+                        className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
+                      />
+                    </div>
+                    <Select value={farmSort} onValueChange={(v: typeof farmSort) => setFarmSort(v)}>
+                      <SelectTrigger className="h-8 w-[140px] bg-slate-900 border-white/10 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date_asc">তারিখ (পুরোনো)</SelectItem>
+                        <SelectItem value="date_desc">তারিখ (নতুন)</SelectItem>
+                        <SelectItem value="name_asc">নাম (অ→হ)</SelectItem>
+                        <SelectItem value="name_desc">নাম (হ→অ)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -402,14 +436,26 @@ export default function OrgAdminPage() {
                       )}
                     </Dialog>
                   </div>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <Input
-                      value={memberSearch}
-                      onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
-                      placeholder="নাম, ফোন, ইমেইল..."
-                      className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Input
+                        value={memberSearch}
+                        onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
+                        placeholder="নাম, ফোন, ইমেইল..."
+                        className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
+                      />
+                    </div>
+                    <Select value={memberSort} onValueChange={(v: typeof memberSort) => setMemberSort(v)}>
+                      <SelectTrigger className="h-8 w-[130px] bg-slate-900 border-white/10 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="role">রোল অনুযায়ী</SelectItem>
+                        <SelectItem value="name_asc">নাম (অ→হ)</SelectItem>
+                        <SelectItem value="name_desc">নাম (হ→অ)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
                 <CardContent>
