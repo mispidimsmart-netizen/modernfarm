@@ -239,7 +239,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        {/* Admin Page - Requires admin role */}
+        {/* Platform Admin Panel — Nexiot Labs super admin only (gated inside AdminPage via is_super_admin). */}
         <Route
           path="/admin"
           element={
@@ -250,6 +250,15 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/platform-admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/installation-guide"
           element={
