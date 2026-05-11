@@ -436,14 +436,26 @@ export default function OrgAdminPage() {
                       )}
                     </Dialog>
                   </div>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <Input
-                      value={memberSearch}
-                      onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
-                      placeholder="নাম, ফোন, ইমেইল..."
-                      className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Input
+                        value={memberSearch}
+                        onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
+                        placeholder="নাম, ফোন, ইমেইল..."
+                        className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
+                      />
+                    </div>
+                    <Select value={memberSort} onValueChange={(v: typeof memberSort) => setMemberSort(v)}>
+                      <SelectTrigger className="h-8 w-[130px] bg-slate-900 border-white/10 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="role">রোল অনুযায়ী</SelectItem>
+                        <SelectItem value="name_asc">নাম (অ→হ)</SelectItem>
+                        <SelectItem value="name_desc">নাম (হ→অ)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardHeader>
                 <CardContent>
