@@ -206,6 +206,8 @@ export function Dashboard() {
 
         {/* ============ 🔝 STICKY CRITICAL ZONE (always visible) ============ */}
         <div className="mb-3 space-y-2">
+          {/* Org invitations awaiting response */}
+          <PendingInvitationsBanner />
           {/* Setup / Manual / Emergency / Alert banners */}
           <SetupReminderBanner />
           <ManualModeWarningBanner />
