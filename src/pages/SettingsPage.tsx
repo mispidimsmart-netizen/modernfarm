@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -51,6 +53,16 @@ export function SettingsPage() {
   const isAdmin = permissions?.role === 'admin';
   const canEditSettings = permissions?.canEditFarmSettings ?? false;
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { data: myOrgs = [] } = useQuery({
+    queryKey: ['my_organizations_settings', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_my_organizations' as any);
+      if (error) return [];
+      return (data || []) as Array<{ id: string; name: string; my_role: string }>;
+    },
+  });
+  const isOrgAdmin = myOrgs.length > 0;
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
@@ -233,6 +245,28 @@ export function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Org Admin Dashboard — visible to org owners/admins */}
+          {isOrgAdmin && (
+            <motion.a
+              href="/org-admin"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-4 shadow-sm transition-colors hover:from-emerald-700 hover:to-emerald-800 text-primary-foreground"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground/20">
+                <Building2 size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{language === 'bn' ? 'আমার কোম্পানি' : 'My Organization'}</p>
+                <p className="text-xs text-emerald-100 truncate">
+                  {myOrgs.length === 1
+                    ? myOrgs[0].name
+                    : (language === 'bn' ? `${myOrgs.length} টি কোম্পানি` : `${myOrgs.length} organizations`)}
+                </p>
+              </div>
+            </motion.a>
+          )}
 
           {/* Quick Actions */}
           {isAdmin && (
