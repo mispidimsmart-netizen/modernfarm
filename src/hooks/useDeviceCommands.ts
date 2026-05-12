@@ -314,14 +314,20 @@ export function useSendDeviceCommand() {
             console.warn('[useDeviceCommands] failed to log command failure', logErr);
           }
 
+          const retryAction = {
+            label: isBn ? 'আবার চেষ্টা' : 'Retry',
+            onClick: () => retryLastCommand(variables),
+          };
+
           if (isOffline) {
             toast.error(
               isBn
                 ? `📡 ${name.bn}: ডিভাইস অফলাইন — কমান্ড পৌঁছায়নি। WiFi/পাওয়ার চেক করুন।`
                 : `📡 ${name.en}: device offline — command not delivered. Check WiFi/power.`,
-              { id: ackToastId, duration: 10000 }
+              { id: ackToastId, duration: 10000, action: retryAction }
             );
           } else if (safetyLocked) {
+            // No retry — Safety Engine will block again until condition clears.
             toast.warning(
               isBn
                 ? `🛡️ ${name.bn}: সেফটি ইঞ্জিন কমান্ড ব্লক করেছে (নিরাপত্তার জন্য)।`
@@ -333,7 +339,7 @@ export function useSendDeviceCommand() {
               isBn
                 ? `⚠️ ${name.bn}: ডিভাইস থেকে নিশ্চিতকরণ আসেনি, আবার চেষ্টা করুন।`
                 : `⚠️ ${name.en}: no device acknowledgement, please retry.`,
-              { id: ackToastId, duration: 8000 }
+              { id: ackToastId, duration: 8000, action: retryAction }
             );
           }
         }
