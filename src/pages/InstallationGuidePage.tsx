@@ -1391,6 +1391,8 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                 <img 
                   src={wiringDiagram} 
                   alt="ESP32 Wiring Diagram" 
+                  loading="lazy"
+                  decoding="async"
                   className="w-full rounded-lg border border-border mb-4"
                 />
                 
@@ -1702,6 +1704,8 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                                   <img 
                                     src={capacitorWiringDiagram} 
                                     alt="ESP32 Capacitor Wiring" 
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-auto bg-white"
                                   />
                                 </div>
@@ -2607,6 +2611,8 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                                 <img 
                                   src={relayAcWiringDiagram} 
                                   alt="Relay NC COM NO Wiring Diagram" 
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-full h-auto bg-white"
                                 />
                               </div>
