@@ -33,6 +33,7 @@ export function Header() {
   const { data: platformRole } = usePlatformRole();
   const primaryOrg = platformRole?.orgs?.[0];
   const orgClickable = !!primaryOrg && (primaryOrg.my_role === 'org_owner' || primaryOrg.my_role === 'org_admin');
+  const { farms, currentFarm, setSelectedFarmId, selectedFarmId } = useFarmContext();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -41,6 +42,11 @@ export function Header() {
     return Date.now() - new Date(d.last_seen_at).getTime() < ONLINE_THRESHOLD_MS;
   });
   const isHomePage = location.pathname === '/' || location.pathname === '/dashboard';
+  const farmDisplayName =
+    (currentFarm && (language === 'bn' ? currentFarm.name : currentFarm.name_en)) ||
+    profile?.farm_name ||
+    (language === 'bn' ? 'আমার খামার' : 'My Farm');
+  const hasMultipleFarms = farms.length > 1;
 
   const handleBack = () => {
     // Always navigate to home page for consistent behavior
