@@ -1,4 +1,4 @@
-import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield } from 'lucide-react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield, ChevronDown, Check } from 'lucide-react';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -6,10 +6,19 @@ import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePlatformRole } from '@/hooks/usePlatformRole';
+import { useFarmContext } from '@/context/FarmContext';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AlertBell } from '@/components/AlertBell';
 
