@@ -59,7 +59,7 @@ export function EmergencyProtectionBanner() {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'relative overflow-hidden rounded-2xl bg-gradient-to-r shadow-lg border mb-3',
+        'relative overflow-hidden rounded-2xl bg-gradient-to-r shadow-lg border h-full flex flex-col',
         config.gradient,
         config.border,
       )}
