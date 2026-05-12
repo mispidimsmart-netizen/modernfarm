@@ -80,9 +80,46 @@ export function Header() {
           
           {/* Farm Name & Status */}
           <div className="min-w-0 flex-1">
-            <h1 className="text-sm font-medium text-foreground truncate">
-              {profile?.farm_name || (language === 'bn' ? 'আমার খামার' : 'My Farm')}
-            </h1>
+            {hasMultipleFarms ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="group flex items-center gap-1 rounded-md px-1 -mx-1 hover:bg-accent transition-colors max-w-full"
+                    aria-label={language === 'bn' ? 'খামার পরিবর্তন' : 'Switch farm'}
+                  >
+                    <h1 className="text-sm font-medium text-foreground truncate">
+                      {farmDisplayName}
+                    </h1>
+                    <ChevronDown size={14} className="text-muted-foreground flex-shrink-0 group-hover:text-foreground transition-colors" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64 max-h-[60vh] overflow-y-auto">
+                  <DropdownMenuLabel className="text-xs">
+                    {language === 'bn' ? 'খামার নির্বাচন' : 'Switch farm'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {farms.map(f => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      onSelect={() => setSelectedFarmId(f.id)}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="truncate">
+                        {language === 'bn' ? f.name : f.name_en}
+                      </span>
+                      {f.id === selectedFarmId && (
+                        <Check size={14} className="text-primary flex-shrink-0" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <h1 className="text-sm font-medium text-foreground truncate">
+                {farmDisplayName}
+              </h1>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               {primaryOrg && (
                 <button
