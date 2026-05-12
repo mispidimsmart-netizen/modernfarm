@@ -240,6 +240,19 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
         </span>
       </div>
 
+      {/* Acknowledge audit trail — when alert was acknowledged */}
+      {alert.acknowledged && alert.acknowledgedAt && (
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+          <Clock size={11} />
+          <span>
+            {language === 'bn' ? 'গ্রহণ করা হয়েছে' : 'Acknowledged'}
+            {typeof alert.responseSeconds === 'number' && ` ${formatResponse(alert.responseSeconds)}`}
+            {' · '}
+            {alert.acknowledgedAt.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      )}
+
       {/* Acknowledge button */}
       {!alert.acknowledged && (
         <button
