@@ -20,6 +20,7 @@ import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { Header } from '@/components/Header';
 import { DashboardSnapshotBar } from '@/components/dashboard/DashboardSnapshotBar';
+import { IndustrialKpiGrid } from '@/components/dashboard/IndustrialKpiGrid';
 import { PendingInvitationsBanner } from '@/components/PendingInvitationsBanner';
 import { BottomNav } from '@/components/BottomNav';
 import { ShedSelector } from '@/components/shed/ShedSelector';
@@ -216,7 +217,10 @@ export function Dashboard() {
           <EmergencyProtectionBanner />
           <AlertSummaryBanner />
 
-          {/* Quick sensor strip — temp / humidity / ammonia */}
+          {/* Industrial KPI grid — 4 critical sensors at-a-glance */}
+          <IndustrialKpiGrid />
+
+          {/* Quick sensor strip — temp / humidity / ammonia hero */}
           <QuickSensorDisplay />
 
           {/* Farm Health Score */}
