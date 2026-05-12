@@ -17,7 +17,7 @@ import { useFoggerCooling } from '@/hooks/useFoggerCooling';
 import { useCoolingEfficiency } from '@/hooks/useCoolingEfficiency';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
-import { SensorCard } from '@/components/SensorCard';
+
 import { Header } from '@/components/Header';
 import { DashboardSnapshotBar } from '@/components/dashboard/DashboardSnapshotBar';
 import { IndustrialKpiGrid } from '@/components/dashboard/IndustrialKpiGrid';
