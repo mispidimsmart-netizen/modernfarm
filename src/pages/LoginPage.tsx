@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 type FarmType = 'layer' | 'broiler';
 type UserType = 'owner' | 'worker';
@@ -388,6 +389,8 @@ export function LoginPage() {
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
+
+                  <GoogleSignInButton />
                 </form>
               </motion.div>
             )}
@@ -562,6 +565,8 @@ export function LoginPage() {
               {isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}
             </Button>
           </div>
+
+          <GoogleSignInButton />
         </form>
 
         {/* Trust Indicators */}
