@@ -34,7 +34,7 @@ import { GsmFallbackCard } from '@/components/settings/GsmFallbackCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { QuietHoursAndSnoozeCard } from '@/components/settings/QuietHoursAndSnoozeCard';
 import { TestNotificationCard } from '@/components/settings/TestNotificationCard';
-import { PermissionsMatrixCard } from '@/components/settings/PermissionsMatrixCard';
+
 // S5.3 — Tab-level code splitting. Each settings tab is loaded on demand,
 // trimming ~50KB gz from the initial SettingsPage bundle. The first (default)
 // tab still mounts immediately because users almost always land there first.
@@ -265,8 +265,6 @@ export function SettingsPage() {
             </button>
           </div>
 
-          {/* Permissions Matrix — visible to all so workers understand limits */}
-          <PermissionsMatrixCard />
           {isOrgAdmin && (
             <motion.a
               href="/org-admin"
