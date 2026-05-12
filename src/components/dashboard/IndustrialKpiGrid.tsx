@@ -45,11 +45,16 @@ const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: stri
   danger:  { ring: 'ring-red-500/40',     text: 'text-red-600 dark:text-red-400',       dot: 'bg-red-500' },
 };
 
-function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0 }: KpiTileProps) {
+function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, statusLabel }: KpiTileProps) {
   const s = STATUS_STYLES[status];
   const isFresh = state === 'fresh';
   const isNever = state === 'never';
   const showSpark = isFresh && trend && trend.length >= 2;
+  // S6.3 — Single-string SR label so VoiceOver/TalkBack reads the whole tile
+  // ("তাপমাত্রা ৩২.৫ ডিগ্রি, স্বাভাবিক") instead of icon + label + value separately.
+  const a11yLabel = isFresh
+    ? `${label} ${value} ${unit}${statusLabel ? `, ${statusLabel}` : ''}`
+    : `${label}: ${isNever ? 'no data' : 'stale'}`;
 
   if (isNever) {
     // Skeleton state — animated placeholder, never shows numbers
