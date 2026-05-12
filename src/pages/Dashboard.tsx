@@ -221,7 +221,7 @@ export function Dashboard() {
         {/* S6.3 — aria-live so SR users hear new banners (alerts, failed commands)
             without having to navigate back to the top of the page. */}
         <section
-          className="mb-3 space-y-2"
+          className="mb-3 space-y-1.5"
           aria-label={language === 'bn' ? 'গুরুত্বপূর্ণ তথ্য' : 'Critical information'}
           aria-live="polite"
         >
@@ -236,9 +236,6 @@ export function Dashboard() {
 
           {/* Industrial KPI grid — 4 critical sensors at-a-glance (above-the-fold) */}
           <IndustrialKpiGrid />
-
-          {/* Farm Health Score */}
-          <FarmHealthScore />
         </section>
 
         {/* ============ 🗂️ MAIN TABS (4 sections) ============ */}
@@ -287,6 +284,7 @@ export function Dashboard() {
                 {/* Connection: only the offline banner here (auto-hides when online).
                     Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
+                <FarmHealthScore />
                 <IndustrialHeroStatus />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">

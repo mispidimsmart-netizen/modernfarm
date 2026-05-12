@@ -130,10 +130,13 @@
 
   body {
     @apply bg-background text-foreground font-bengali antialiased;
+    /* Defensive: prevent any rogue element from causing page-level horizontal scroll on mobile */
+    overflow-x: hidden;
   }
 
   html {
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 }
 
