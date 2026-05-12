@@ -324,7 +324,9 @@ function AppRoutes() {
           path="/audit-log"
           element={
             <ProtectedRoute>
-              <AuditLogPage />
+              <RoleProtectedRoute requiredRole="farmer">
+                <AuditLogPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />
@@ -332,7 +334,9 @@ function AppRoutes() {
           path="/finance-report"
           element={
             <ProtectedRoute>
-              <FinanceReportPage />
+              <RoleProtectedRoute requiredRole="farmer">
+                <FinanceReportPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />
