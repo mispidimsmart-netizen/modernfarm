@@ -30,19 +30,19 @@ export const CriticalAlertBanner = memo(function CriticalAlertBanner() {
   const ack = useAcknowledgeAlert();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  if (!user) return null;
-  if (HIDDEN_ROUTES.some(r => location.pathname.startsWith(r))) return null;
+  const hiddenRoute = HIDDEN_ROUTES.some(r => location.pathname.startsWith(r));
 
   const dangerAlerts = activeAlerts.filter(
     a => a.level === 'danger' && !dismissedIds.has(a.id) && !a.id.startsWith('synthetic_')
   );
-  const top = dangerAlerts[0];
+  const top = !user || hiddenRoute ? undefined : dangerAlerts[0];
 
   // Fire haptic + beep on the first appearance of each danger alert (deduped per id)
   useEffect(() => {
     if (top) severityFeedback('danger', { dedupeKey: `critical:${top.id}` });
   }, [top?.id]);
 
+  if (!user || hiddenRoute) return null;
   if (!top) return null;
 
   const extra = dangerAlerts.length - 1;
