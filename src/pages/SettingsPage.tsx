@@ -260,7 +260,8 @@ export function SettingsPage() {
             )}
           </div>
 
-          {/* Org Admin Dashboard — visible to org owners/admins */}
+          {/* Permissions Matrix — visible to all so workers understand limits */}
+          <PermissionsMatrixCard />
           {isOrgAdmin && (
             <motion.a
               href="/org-admin"
