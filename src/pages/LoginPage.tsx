@@ -514,6 +514,23 @@ export function LoginPage() {
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><ChevronDown className="h-5 w-5" /></div>
                   </IconInput>
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">অর্গানাইজেশন *</label>
+                  <IconInput icon={<Building2 className="h-5 w-5" />}>
+                    <select
+                      value={signupOrgId}
+                      onChange={(e) => setSignupOrgId(e.target.value)}
+                      className={`${inputClass} flex w-full appearance-none pr-10 py-3`}
+                    >
+                      <option value="">— অর্গানাইজেশন বেছে নিন —</option>
+                      {orgOptions.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><ChevronDown className="h-5 w-5" /></div>
+                  </IconInput>
+                  <p className="text-[11px] text-muted-foreground">আপনার ফার্ম এই অর্গানাইজেশনের অধীনে যুক্ত হবে। অ্যাডমিন পরে পরিবর্তন করতে পারবেন।</p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
