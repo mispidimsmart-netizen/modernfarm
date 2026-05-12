@@ -66,6 +66,7 @@ const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"))
 const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
 const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
 const WorkerPage = lazyRetry(() => import("./pages/WorkerPage"));
+const MembersPage = lazyRetry(() => import("./pages/MembersPage"));
 const SentryTestPage = lazyRetry(() => import("./pages/SentryTestPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
