@@ -137,6 +137,14 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
     return date.toLocaleDateString('en-US');
   };
 
+  const formatResponse = (secs: number) => {
+    if (secs < 60) return language === 'bn' ? `${secs} সেকেন্ডে` : `in ${secs}s`;
+    const m = Math.floor(secs / 60);
+    if (m < 60) return language === 'bn' ? `${m} মিনিটে` : `in ${m}m`;
+    const h = Math.floor(m / 60);
+    return language === 'bn' ? `${h} ঘন্টায়` : `in ${h}h`;
+  };
+
   const timeStatus = alert.acknowledged
     ? (language === 'bn' ? 'সমাধান হয়েছে' : 'Resolved')
     : formatTime(alert.timestamp);
