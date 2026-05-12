@@ -66,6 +66,7 @@ const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"))
 const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
 const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
 const WorkerPage = lazyRetry(() => import("./pages/WorkerPage"));
+const SentryTestPage = lazyRetry(() => import("./pages/SentryTestPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
 import { CriticalAlertBanner } from "./components/dashboard/CriticalAlertBanner";
@@ -185,6 +186,8 @@ function AppRoutes() {
         {/* Public transparency pages — no auth required */}
         <Route path="/status" element={<StatusPage />} />
         <Route path="/security" element={<SecurityReportPage />} />
+        {/* Sentry verification — public, no auth required for testing */}
+        <Route path="/sentry-test" element={<SentryTestPage />} />
         <Route
           path="/"
           element={
