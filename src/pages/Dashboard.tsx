@@ -312,6 +312,7 @@ export function Dashboard() {
               >
                 {/* Live sensor 2x2 grid removed — duplicate of IndustrialKpiGrid above the tabs.
                     CoreMetricsRow below provides the richer per-metric breakdown. */}
+                <ComfortIndicators />
                 <CoreMetricsRow />
                 <InsideOutsideDeltaCard />
                 <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
