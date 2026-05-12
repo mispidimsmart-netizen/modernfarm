@@ -241,6 +241,8 @@ export function EmergencyProtectionBanner() {
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
