@@ -216,7 +216,10 @@ export function Dashboard() {
           <EmergencyProtectionBanner />
           <AlertSummaryBanner />
 
-          {/* Quick sensor strip — temp / humidity / ammonia */}
+          {/* Industrial KPI grid — 4 critical sensors at-a-glance */}
+          <IndustrialKpiGrid />
+
+          {/* Quick sensor strip — temp / humidity / ammonia hero */}
           <QuickSensorDisplay />
 
           {/* Farm Health Score */}
