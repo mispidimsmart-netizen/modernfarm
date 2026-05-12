@@ -70,15 +70,15 @@ export function EmergencyProtectionBanner() {
     }
   }, []);
 
-  if (activeEvents.length === 0 || !highestPriority) return null;
-
-  const config = PRIORITY_CONFIG[highestPriority];
-  const Icon = config.icon;
+  const hasEvents = activeEvents.length > 0 && !!highestPriority;
   const isLifeThreatening = highestPriority === 'LIFE_THREATENING';
-
   // Safety guard: never allow dismissal of LIFE_THREATENING — too dangerous to hide.
   const canDismiss = !isLifeThreatening;
-  if (canDismiss && dismissedSig && dismissedSig === signature) return null;
+  const isDismissed = canDismiss && dismissedSig === signature;
+  const isVisible = hasEvents && !isDismissed;
+
+  const config = hasEvents ? PRIORITY_CONFIG[highestPriority!] : PRIORITY_CONFIG.INFO;
+  const Icon = config.icon;
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -92,12 +92,20 @@ export function EmergencyProtectionBanner() {
   };
 
   return (
+    <AnimatePresence mode="wait">
+      {isVisible && (
     <motion.div
+      key="emergency-banner"
       layout
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{
+        opacity: { duration: 0.35, ease: 'easeOut' },
+        y: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+        scale: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+        layout: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+      }}
       className={cn(
         'relative overflow-hidden rounded-2xl bg-gradient-to-r shadow-lg border h-full flex flex-col',
         config.gradient,
@@ -238,6 +246,8 @@ export function EmergencyProtectionBanner() {
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
