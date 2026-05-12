@@ -1,15 +1,44 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, AlertCircle, Info, Bell, Moon, BellOff } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, Bell, Moon, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Link } from 'react-router-dom';
 
+const DISMISS_KEY = 'alert-summary-dismissed-id';
+
 export function AlertSummaryBanner() {
   const { language } = useAuth();
   const { alertCounts, criticalAlert, isQuietHours } = useSmartAlerts();
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
+
+  // Read session-dismissed id once on mount
+  useEffect(() => {
+    try {
+      setDismissedId(sessionStorage.getItem(DISMISS_KEY));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   if (alertCounts.total === 0) return null;
+
+  // If the current critical alert was dismissed this session, hide banner
+  // (until a new alert appears with a different id)
+  const currentAlertKey = criticalAlert?.id || `count-${alertCounts.total}`;
+  if (dismissedId && dismissedId === currentAlertKey) return null;
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      sessionStorage.setItem(DISMISS_KEY, currentAlertKey);
+    } catch {
+      // ignore
+    }
+    setDismissedId(currentAlertKey);
+  };
 
   const getBannerStyle = () => {
     if (alertCounts.danger > 0) {
@@ -41,67 +70,70 @@ export function AlertSummaryBanner() {
 
   return (
     <AnimatePresence>
-      <Link to="/alerts">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className={cn(
-            'mx-4 mb-4 rounded-xl p-3 text-white shadow-lg',
-            style.bg,
-            style.pulse && 'animate-pulse'
-          )}
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-              <Icon size={22} className="text-white" />
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        className={cn(
+          'relative rounded-xl text-white shadow-md',
+          style.bg,
+          style.pulse && 'animate-pulse'
+        )}
+      >
+        <Link to="/alerts" className="block px-3 py-2.5">
+          <div className="flex items-center gap-2.5 pr-7">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 shrink-0">
+              <Icon size={18} className="text-white" />
             </div>
 
             <div className="min-w-0 flex-1">
-              {criticalAlert && (
-                <p className="truncate font-medium">
-                  {language === 'bn' ? criticalAlert.titleBn : criticalAlert.title}
-                </p>
-              )}
-              {!criticalAlert && (
-                <p className="truncate font-medium">
-                  {style.label[language]}
-                </p>
-              )}
-              <div className="flex items-center gap-3 text-sm text-white/80">
+              <p className="truncate text-sm font-semibold leading-tight">
+                {criticalAlert
+                  ? (language === 'bn' ? criticalAlert.titleBn : criticalAlert.title)
+                  : style.label[language]}
+              </p>
+              <div className="flex items-center gap-2.5 text-[11px] text-white/80 mt-0.5">
                 {alertCounts.danger > 0 && (
-                  <span className="flex items-center gap-1">
-                    <AlertTriangle size={14} />
+                  <span className="flex items-center gap-0.5">
+                    <AlertTriangle size={11} />
                     {alertCounts.danger}
                   </span>
                 )}
                 {alertCounts.warning > 0 && (
-                  <span className="flex items-center gap-1">
-                    <AlertCircle size={14} />
+                  <span className="flex items-center gap-0.5">
+                    <AlertCircle size={11} />
                     {alertCounts.warning}
                   </span>
                 )}
                 {alertCounts.info > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Info size={14} />
+                  <span className="flex items-center gap-0.5">
+                    <Info size={11} />
                     {alertCounts.info}
+                  </span>
+                )}
+                {isQuietHours && (
+                  <span className="flex items-center gap-0.5 ml-auto">
+                    <Moon size={11} />
+                    {language === 'bn' ? 'রাত' : 'Night'}
                   </span>
                 )}
               </div>
             </div>
 
-            {/* Quiet hours indicator */}
-            {isQuietHours && (
-              <div className="flex items-center gap-1 rounded-full bg-white/20 px-2 py-1 text-xs">
-                <Moon size={12} />
-                <span>{language === 'bn' ? 'রাত' : 'Night'}</span>
-              </div>
-            )}
-
-            <Bell size={20} className="text-white/60" />
+            <Bell size={16} className="text-white/60 shrink-0" />
           </div>
-        </motion.div>
-      </Link>
+        </Link>
+
+        {/* Dismiss for this session (does NOT resolve the alert — Alerts page still shows it) */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          aria-label={language === 'bn' ? 'এই সেশনের জন্য বন্ধ করুন' : 'Dismiss for this session'}
+          className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-white/10 hover:bg-white/25 transition-colors text-white/80"
+        >
+          <X size={13} />
+        </button>
+      </motion.div>
     </AnimatePresence>
   );
 }
