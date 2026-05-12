@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Phone, User, Building2, Crown, HardHat, Ticket, Egg, Eye, EyeOff, ChevronDown, Bird, Drumstick } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -100,6 +100,16 @@ export function LoginPage() {
   const [userType, setUserType] = useState<UserType>('owner');
   const [invitationCode, setInvitationCode] = useState('');
   const [showOptionalEmail, setShowOptionalEmail] = useState(false);
+  const [signupOrgId, setSignupOrgId] = useState<string>('');
+  const [orgOptions, setOrgOptions] = useState<Array<{ id: string; name: string; name_en: string }>>([]);
+
+  // Load active organizations for signup picker
+  useEffect(() => {
+    if (!isSignUp) return;
+    supabase.rpc('list_active_organizations_for_signup' as any).then(({ data }) => {
+      if (data) setOrgOptions(data as any);
+    });
+  }, [isSignUp]);
 
   const passwordStrength = useMemo(() => getPasswordStrength(signupPassword), [signupPassword]);
 
@@ -242,6 +252,18 @@ export function LoginPage() {
                     _farm_owner_id: ownerId,
                   });
                 }
+              }
+            } else if (userType === 'owner' && signupOrgId) {
+              // Assign new owner's farm to the chosen organization
+              const { error: assignError } = await supabase.rpc('assign_self_to_organization' as any, {
+                _org_id: signupOrgId,
+              });
+              if (assignError) {
+                toast({
+                  title: 'সতর্কতা',
+                  description: 'অর্গানাইজেশন বরাদ্দ ব্যর্থ — অ্যাডমিনকে জানান',
+                  variant: 'destructive',
+                });
               }
             }
           }
@@ -503,6 +525,23 @@ export function LoginPage() {
                     </select>
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><ChevronDown className="h-5 w-5" /></div>
                   </IconInput>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground">অর্গানাইজেশন *</label>
+                  <IconInput icon={<Building2 className="h-5 w-5" />}>
+                    <select
+                      value={signupOrgId}
+                      onChange={(e) => setSignupOrgId(e.target.value)}
+                      className={`${inputClass} flex w-full appearance-none pr-10 py-3`}
+                    >
+                      <option value="">— অর্গানাইজেশন বেছে নিন —</option>
+                      {orgOptions.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"><ChevronDown className="h-5 w-5" /></div>
+                  </IconInput>
+                  <p className="text-[11px] text-muted-foreground">আপনার ফার্ম এই অর্গানাইজেশনের অধীনে যুক্ত হবে। অ্যাডমিন পরে পরিবর্তন করতে পারবেন।</p>
                 </div>
               </motion.div>
             )}

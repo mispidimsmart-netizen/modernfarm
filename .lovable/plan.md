@@ -1,80 +1,59 @@
-# Phase 7: Notifications & Alerts (Polish + Gap-Fill)
+## লক্ষ্য
 
-**Status check:** এই প্রজেক্টে ইতিমধ্যে অনেক কিছু আছে — `push_subscriptions`, `alert_rules`, `alerts`, `alert_deliveries`, `notification_escalation_config`, `sms_alert_settings`, `alert_channel_config`, এবং edge functions: `send-push-notification`, `alert-dispatcher`, `alert-escalator`, `notification-escalation`, `gsm-sms-relay`. কাজেই Phase 7 = "rebuild নয়, পরিপূর্ণ করা।"
+অ্যাডমিন ড্যাশবোর্ডের ট্যাব-ভীড় কমিয়ে ইউজার সংক্রান্ত সব ব্যবস্থাপনা একটি জায়গায় আনা, এবং সাইন-আপে অর্গানাইজেশন বেছে নেওয়া বাধ্যতামূলক করা যাতে প্রতিটি ফার্ম একটি অর্গানাইজেশনের অধীনে থাকে।
 
-## যা যোগ/উন্নত করা হবে
+## নতুন ট্যাব কাঠামো
 
-### 1. Quiet Hours & Snooze (per-user, per-farm)
-- নতুন কলাম `notification_preferences`-এ: `quiet_hours_start`, `quiet_hours_end`, `snooze_until`
-- `alert-dispatcher` quiet-hour check করে non-critical alerts hold করবে; **CRITICAL** alerts (>38°C, power fail, ESM trigger) bypass করবে
-- UI: Settings → Notifications-এ quiet hours picker + "Snooze 1h/4h/until tomorrow" button
+```text
+অ্যাডমিন ড্যাশবোর্ড
+├── 👥 ব্যবহারকারী ব্যবস্থাপনা (নতুন প্যারেন্ট ট্যাব)
+│   ├── 👑 অ্যাডমিন      → বিদ্যমান AdminManagementTab
+│   ├── 🏢 অর্গানাইজেশন  → বিদ্যমান OrganizationsPanel (তালিকা + তৈরি/এডিট/ডিলিট/সদস্য)
+│   ├── 🚜 ফার্ম         → নতুন FarmsAdminPanel (সব ফার্ম + অর্গানাইজেশন বদলানো/ডিলিট)
+│   └── 🛠️ ওয়ার্কার      → নতুন WorkersAdminPanel (ফার্মভিত্তিক ওয়ার্কারদের তালিকা)
+├── 📊 অ্যানালিটিক্স
+├── 🔔 নোটিফিকেশন
+├── ⚙️ সিস্টেম (System Health, MQTT, Phase 8/9, OTA, Scale, Roadmap একসাথে)
+├── 🛡️ সিকিউরিটি ও অডিট (Security Logs, Isolation, Forensic, Audit Report)
+├── 🔌 ফার্মওয়্যার ও PCB
+├── 💳 পেমেন্ট
+└── 📚 ডকুমেন্টেশন (Docs + Architecture + Installation Guide একসাথে)
+```
 
-### 2. Digest Notifications (low-priority batching)
-- নতুন কলাম `digest_mode` (`instant`|`hourly`|`daily`) প্রতি channel-এ
-- pg_cron জব: প্রতি ঘণ্টায় unsent low/medium alerts একসাথে roll-up করে এক push পাঠাবে
-- "৩টি ঘটনা গত ১ ঘণ্টায়: তাপমাত্রা ৩৫°, আর্দ্রতা ৮২%, ..."
+পুরোনো বিচ্ছিন্ন "কোম্পানি", "ফার্ম অ্যাসাইনমেন্ট", "আইসোলেশন", "PCB", "পর্যবেক্ষণ", "পারফরম্যান্স", "বেঞ্চমার্ক", "অডিট" ইত্যাদি আলাদা টপ-লেভেল ট্যাব আর থাকবে না — সব উপরের ৮টি গ্রুপের ভেতরে।
 
-### 3. Alert Rules Wizard UI
-- বর্তমানে rules DB-তে আছে কিন্তু UI সীমিত — full CRUD wizard
-- Pre-built templates: "Heat warning", "Ammonia high", "Power outage", "Device offline >10m", "Low water flow"
-- Per-rule: severity, cooldown_minutes, channels (push/sms/whatsapp), recipient roles
+## সাইন-আপ ফ্লো পরিবর্তন
 
-### 4. Alert History & Delivery Status Page
-- নতুন route `/alerts/history`
-- Timeline: alert → delivery attempts (push/sms/email) per channel → ack/escalation
-- Filter: severity, date range, type, acknowledged status
-- Re-send button (super-admin)
+- `/signup` (এবং `OrgSignupPage`)-এ একটি **"অর্গানাইজেশন বেছে নিন"** সিলেক্ট/সার্চ যোগ হবে — অ্যাকটিভ অর্গানাইজেশনের তালিকা থেকে।
+- নতুন ফার্ম তৈরি হলে সেটির `farms.organization_id` ঐ নির্বাচিত অর্গানাইজেশনে সেট হবে এবং ইউজার ঐ org-এর `member` হিসেবে `organization_members`-এ যুক্ত হবে।
+- যদি কোনো অর্গানাইজেশন না থাকে, একটি ডিফল্ট "স্বতন্ত্র ব্যবহারকারী" org-এ যাবে (super admin তৈরি করে রাখবেন; UI fallback সহ)।
+- অ্যাডমিন **ফার্ম** সাব-ট্যাব থেকে যে কোনো ফার্মের অর্গানাইজেশন বদলাতে/মুছতে পারবেন।
 
-### 5. WhatsApp Channel (via Twilio connector)
-- Existing `gsm-sms-relay` থাকা সত্ত্বেও WhatsApp আলাদা — Twilio API দিয়ে template message
-- শুধু verified opt-in users-এর জন্য
-- DB: `alert_channel_config.whatsapp_enabled`, `whatsapp_number`
+## নতুন উপাদান
 
-### 6. Acknowledge from Notification
-- Push notification action button: "✓ স্বীকার করি" → service worker → API call → `acknowledge_alert(_alert_id)`
-- SMS reply: "OK <code>" → webhook → ack
-- ack করলে চলমান escalation থেমে যাবে
+1. **`UserManagementTab.tsx`** (নতুন) — ভেতরে একটি nested `<Tabs>` যাতে চারটি সাব-ট্যাব: Admins / Orgs / Farms / Workers। প্রতিটি সাব-ট্যাব ইতিমধ্যে থাকা/নতুন প্যানেল রেন্ডার করবে।
+2. **`FarmsAdminPanel.tsx`** (নতুন) — সব ফার্মের তালিকা, প্রতিটির পাশে: org dropdown (পরিবর্তন), মালিক, সদস্য সংখ্যা, edit name, delete। RPC: `super_admin_set_farm_organization`, `super_admin_delete_farm`।
+3. **`WorkersAdminPanel.tsx`** (নতুন) — ফার্ম সিলেক্ট → ঐ ফার্মের ওয়ার্কারদের (`farm_members` role=worker/viewer/manager) তালিকা; assign/remove (বিদ্যমান `OrgFarmAssignmentsPanel`-এর লজিক পুনরায় ব্যবহার)।
+4. **`AdminPage.tsx`** — পুরোনো ১৮টি ফ্ল্যাট ট্যাব রিগ্রুপ করে ৮টি প্যারেন্ট ট্যাবে নামানো। কোনো বিদ্যমান প্যানেল কম্পোনেন্ট মুছে ফেলা হবে না — শুধু কোথায় রেন্ডার হচ্ছে সেটাই বদলাবে।
+5. **`OrgSignupPage.tsx`** ও সাধারণ signup পথ — অর্গানাইজেশন সিলেক্টর ফিল্ড + সাবমিটে `farms.organization_id` সেট ও `organization_members` ইনসার্ট।
 
-### 7. Sound + Vibration Pattern by Severity
-- বর্তমানে sound আছে কিন্তু severity-aware নয়
-- Critical: 3-pulse vibration + alarm sound, loops 5x
-- High: 2-pulse, single ring
-- Medium/Low: subtle chime
+## ডাটাবেস পরিবর্তন
 
-### 8. Test Notification Button
-- Settings-এ "Send test push" বাটন — প্রতিটি channel test করে delivery status দেখায়
-- Diagnostic: subscription valid, VAPID key correct, FCM endpoint reachable
+- নতুন RPC দরকার: `super_admin_set_farm_organization(_farm_id uuid, _org_id uuid)` — শুধু super admin চালাতে পারবেন; `farms.organization_id` আপডেট করবে এবং org_activity_audit-এ লিখবে।
+- নতুন RPC: `super_admin_delete_farm(_farm_id uuid)` — সাবধানে cascade।
+- `signup` flow-এ ব্যবহারের জন্য একটি লাইটওয়েট পাবলিক RPC: `list_active_organizations_for_signup()` (id, name, name_en, slug মাত্র; trial/lifetime/subscription-গুলো শুধু)।
+- কোনো বিদ্যমান টেবিল/কলাম মুছবে না — সবটাই additive।
 
-## Technical Details
+## ক্রম
 
-**Migrations needed:**
-- `notification_preferences` table (per user_id + farm_id): quiet_hours_start/end, snooze_until, digest_mode, severity_min_for_*
-- `alert_channel_config` ALTER: add `whatsapp_enabled`, `whatsapp_number`, `digest_mode`
-- New trigger: when `acknowledged=true` set on alerts → cancel pending escalation rows
+1. SQL মাইগ্রেশন: তিনটি RPC যোগ করা।
+2. `FarmsAdminPanel`, `WorkersAdminPanel`, `UserManagementTab` তৈরি।
+3. `AdminPage.tsx` রিফ্যাক্টর — ট্যাব নতুন ৮-গ্রুপে সাজানো।
+4. সাইন-আপ ফর্মে অর্গানাইজেশন সিলেক্টর যোগ + ফার্ম তৈরি লজিকে org_id সেট।
+5. ব্রাউজার-প্রিভিউতে যাচাই।
 
-**New edge functions:**
-- `digest-notifications` (pg_cron, hourly)
-- `notification-test` (manual diagnostic)
-- `sms-inbound-webhook` (handle "OK <code>" replies)
+## অপ্রভাবিত
 
-**Frontend:**
-- `/alerts/history` page (lazy-loaded)
-- `AlertRulesWizard` component (Settings tab)
-- `QuietHoursCard`, `SnoozeButton`, `TestNotificationCard` components
-- `useNotificationPreferences` hook
-
-**Out-of-scope (later phase):**
-- Native push for iOS Safari (requires Web Push API which iOS 16.4+ supports — already covered by VAPID)
-- Email digests (will come in Phase 9 Reporting)
-
-## Rollout Order
-1. **DB migration** — `notification_preferences` + `alert_channel_config` columns + ack-cancel trigger
-2. **Quiet hours + Snooze** — backend check in `alert-dispatcher`, frontend Settings UI
-3. **Test notification button** — quickest win, validates pipeline
-4. **Alert History page** + delivery status visualization
-5. **Alert Rules Wizard UI**
-6. **Severity-aware sounds + push action buttons** (ack from notification)
-7. **Digest mode** — pg_cron + edge function
-8. **WhatsApp channel** (needs Twilio connector setup; will ask before this step)
-
-প্রতিটি step approve করে পরেরটাতে যাব। Step 1 থেকে শুরু করি?
+- সব বিদ্যমান কম্পোনেন্ট, RLS, অটোমেশন রুল, ESP32 লজিক — কিছুই মুছছে না।
+- "Hardware-as-Source-of-Truth" এবং safety invariants স্পর্শ করা হচ্ছে না।
+- বিদ্যমান ফার্মগুলোর org_id NULL থাকলে সেগুলো NULL-ই থাকবে (অ্যাডমিন পরে অ্যাসাইন করতে পারবেন)।

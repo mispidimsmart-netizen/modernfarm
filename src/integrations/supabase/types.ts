@@ -8427,6 +8427,10 @@ export type Database = {
         }[]
       }
       approve_payment_request: { Args: { _request_id: string }; Returns: Json }
+      assign_self_to_organization: {
+        Args: { _org_id: string }
+        Returns: undefined
+      }
       assign_user_role: {
         Args: {
           _assigner_id: string
@@ -8771,6 +8775,15 @@ export type Database = {
         Args: { _firmware_id: string }
         Returns: boolean
       }
+      list_active_organizations_for_signup: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          name_en: string
+          slug: string
+        }[]
+      }
       log_security_event: {
         Args: {
           _details?: Json
@@ -8947,9 +8960,17 @@ export type Database = {
         }
         Returns: string
       }
+      super_admin_delete_farm: {
+        Args: { _farm_id: string }
+        Returns: undefined
+      }
       super_admin_remove_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
+      }
+      super_admin_set_farm_organization: {
+        Args: { _farm_id: string; _org_id: string }
+        Returns: undefined
       }
       super_admin_set_org_member_role: {
         Args: {
