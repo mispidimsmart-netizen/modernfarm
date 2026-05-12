@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { ReactNode, useEffect, useRef } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { usePlatformRole } from '@/hooks/usePlatformRole';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert } from 'lucide-react';
@@ -20,6 +21,31 @@ interface Props {
  */
 export function PlatformRoleGuard({ children, require, fallbackPath = '/' }: Props) {
   const { data, isLoading } = usePlatformRole();
+  const { logAccessDenied } = useAuditLog();
+  const location = useLocation();
+  const loggedRef = useRef<string | null>(null);
+
+  let allowed = false;
+  if (data) {
+    if (require === 'super_admin') {
+      allowed = data.isSuperAdmin;
+    } else if (require === 'org_admin') {
+      allowed = data.isSuperAdmin || data.isOrgOwner || data.isOrgAdmin;
+    }
+  }
+  const denied = !isLoading && !!data && !allowed;
+
+  useEffect(() => {
+    if (!denied) return;
+    const key = `${location.pathname}|${require}`;
+    if (loggedRef.current === key) return;
+    loggedRef.current = key;
+    logAccessDenied(
+      location.pathname + location.search,
+      data?.topRole || 'user',
+      require,
+    );
+  }, [denied, location.pathname, location.search, require, data?.topRole, logAccessDenied]);
 
   if (isLoading || !data) {
     return (
@@ -29,12 +55,6 @@ export function PlatformRoleGuard({ children, require, fallbackPath = '/' }: Pro
     );
   }
 
-  let allowed = false;
-  if (require === 'super_admin') {
-    allowed = data.isSuperAdmin;
-  } else if (require === 'org_admin') {
-    allowed = data.isSuperAdmin || data.isOrgOwner || data.isOrgAdmin;
-  }
 
   if (!allowed) {
     return (
