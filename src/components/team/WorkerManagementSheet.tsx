@@ -115,37 +115,74 @@ export function WorkerManagementSheet() {
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
-          {/* Join Farm Section (for non-owners) */}
+          {/* Join Farm / Leave Farm Section (for non-owners) */}
           {!isOwner && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Key className="h-4 w-4" />
-                  {language === 'bn' ? 'ফার্মে যোগ দিন' : 'Join a Farm'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {language === 'bn'
-                    ? 'মালিকের দেওয়া আমন্ত্রণ কোড দিয়ে ফার্মে যোগ দিন'
-                    : 'Enter the invitation code from the farm owner'}
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={language === 'bn' ? 'আমন্ত্রণ কোড' : 'Invitation code'}
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                    className="uppercase"
-                  />
-                  <Button
-                    onClick={handleJoinFarm}
-                    disabled={!inviteCode.trim() || joinFarm.isPending}
-                  >
-                    {language === 'bn' ? 'যোগ দিন' : 'Join'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Key className="h-4 w-4" />
+                    {language === 'bn' ? 'ফার্মে যোগ দিন' : 'Join a Farm'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'bn'
+                      ? 'মালিকের দেওয়া আমন্ত্রণ কোড দিয়ে ফার্মে যোগ দিন'
+                      : 'Enter the invitation code from the farm owner'}
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={language === 'bn' ? 'আমন্ত্রণ কোড' : 'Invitation code'}
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      className="uppercase"
+                    />
+                    <Button
+                      onClick={handleJoinFarm}
+                      disabled={!inviteCode.trim() || joinFarm.isPending}
+                    >
+                      {language === 'bn' ? 'যোগ দিন' : 'Join'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Leave Farm — only visible if user is currently a worker on some farm */}
+              <Card className="border-destructive/30">
+                <CardContent className="pt-4">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 border-destructive/30">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {language === 'bn' ? 'ফার্ম থেকে বের হই' : 'Leave Farm'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {language === 'bn' ? 'ফার্ম থেকে বের হবেন?' : 'Leave Farm?'}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {language === 'bn'
+                            ? 'আপনি এই ফার্মের ডেটা আর দেখতে পারবেন না। নতুন আমন্ত্রণ কোড লাগবে আবার যোগ দিতে।'
+                            : "You'll lose access to this farm's data. A new invitation code is needed to rejoin."}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{language === 'bn' ? 'বাতিল' : 'Cancel'}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => leaveFarm.mutate(undefined, { onSuccess: () => setIsOpen(false) })}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {language === 'bn' ? 'বের হই' : 'Leave'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Owner sections */}
