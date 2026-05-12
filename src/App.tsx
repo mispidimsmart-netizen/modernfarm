@@ -370,6 +370,7 @@ const App = () => {
                 </a>
                 <div id="main-content">
                   <OperationsHealthStrip />
+                  <CriticalAlertBanner />
                   <AppWithRoutes />
                 </div>
                 <GlobalActionFAB />
