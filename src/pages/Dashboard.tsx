@@ -467,13 +467,7 @@ export function Dashboard() {
                 skeleton={<FlockTabSkeleton />}
                 loadingHint={{ bn: 'ব্যাচ ও ফ্লক তথ্য লোড হচ্ছে…', en: 'Loading flock & batch info…' }}
               >
-                <div>
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
-                  </p>
-                  <SystemActivityCard />
-                </div>
-
+                {/* SystemActivityCard moved to Summary tab — Flock tab focuses on batch data only */}
                 <Suspense fallback={<div className="h-40 rounded-xl bg-muted/40 animate-pulse" />}>
                   {isLayer && <LayerBatchCard />}
                   {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
