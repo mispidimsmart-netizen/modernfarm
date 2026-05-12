@@ -3,7 +3,6 @@ import { Shield, ShieldAlert, ShieldOff, AlertTriangle, Timer } from 'lucide-rea
 import { useAuth } from '@/context/AuthContext';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -12,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { HoldToConfirmButton } from '@/components/ui/hold-to-confirm-button';
 import { useState } from 'react';
 
 export interface AutomationStatusBannerProps {
@@ -247,13 +247,14 @@ export function AutomationStatusBanner({
                 {language === 'bn' ? 'তবুও বন্ধ করুন' : 'Disable Anyway'}
               </button>
             ) : (
-              <AlertDialogAction
-                onClick={handleSecondConfirm}
+              <HoldToConfirmButton
+                onConfirm={handleSecondConfirm}
                 disabled={!overrideReason.trim()}
-                className="bg-destructive hover:bg-destructive/90 disabled:opacity-50"
-              >
-                {language === 'bn' ? 'হ্যাঁ, আমি নিশ্চিত' : 'Yes, I confirm'}
-              </AlertDialogAction>
+                holdMs={1000}
+                variant="destructive"
+                label={language === 'bn' ? '🔒 ১ সেকেন্ড চেপে ধরুন' : '🔒 Hold 1s to confirm'}
+                holdingLabel={language === 'bn' ? 'ধরে রাখুন...' : 'Keep holding...'}
+              />
             )}
           </AlertDialogFooter>
         </AlertDialogContent>
