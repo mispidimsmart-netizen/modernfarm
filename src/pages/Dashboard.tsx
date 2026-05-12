@@ -51,6 +51,7 @@ import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard'
 import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Industrial Dashboard Components
 import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
@@ -294,6 +295,12 @@ export function Dashboard() {
                   <WeatherCard />
                 </div>
                 <TodayReadableSummary />
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
+                  </p>
+                  <SystemActivityCard />
+                </div>
               </TabLoadingWrapper>
             </TabsContent>
 
@@ -316,7 +323,6 @@ export function Dashboard() {
                 <AIAccuracyCard />
                 <AmmoniaTrendCard result={ammoniaTrendResult} />
                 <CoolingEfficiencyCard result={coolingEfficiencyResult} />
-                {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
               </TabLoadingWrapper>
             </TabsContent>
 
@@ -397,22 +403,36 @@ export function Dashboard() {
                       <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                     </div>
                   )}
+
+                  {/* Tomorrow's heat-stress prediction — unified with today's status */}
+                  {isLayer && (
+                    <div className="min-w-0">
+                      <HeatStressRiskCard result={heatStressRiskResult} />
+                    </div>
+                  )}
                     </>
                   )}
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
-                  🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
-                </h3>
-                <div className="space-y-3">
-                  <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-                  <ConnectionQualityCard />
-                  <SensorHealthCard />
-                  <PowerOutageCard />
-                </div>
-              </section>
+              {/* Device & System — collapsed by default to reduce noise on Control tab */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="device-system" className="border border-border/50 rounded-xl bg-muted/20 px-3">
+                  <AccordionTrigger className="text-sm font-bold text-muted-foreground hover:no-underline py-3">
+                    <span className="flex items-center gap-2">
+                      🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-1 pb-2">
+                      <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                      <ConnectionQualityCard />
+                      <SensorHealthCard />
+                      <PowerOutageCard />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               <div className={`rounded-xl border px-4 py-2 text-center ${
                 isManualMode
@@ -447,13 +467,7 @@ export function Dashboard() {
                 skeleton={<FlockTabSkeleton />}
                 loadingHint={{ bn: 'ব্যাচ ও ফ্লক তথ্য লোড হচ্ছে…', en: 'Loading flock & batch info…' }}
               >
-                <div>
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
-                  </p>
-                  <SystemActivityCard />
-                </div>
-
+                {/* SystemActivityCard moved to Summary tab — Flock tab focuses on batch data only */}
                 <Suspense fallback={<div className="h-40 rounded-xl bg-muted/40 animate-pulse" />}>
                   {isLayer && <LayerBatchCard />}
                   {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
