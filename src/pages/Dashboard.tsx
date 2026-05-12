@@ -196,6 +196,7 @@ export function Dashboard() {
     <DashboardSnapshotProvider>
     <div className="min-h-screen bg-background">
       <Header />
+      <DashboardSnapshotBar />
 
       <main className="page-container px-4">
         {/* ============ SHED SELECTOR ============ */}
