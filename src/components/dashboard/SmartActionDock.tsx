@@ -158,9 +158,19 @@ export const SmartActionDock = memo(function SmartActionDock() {
             <Icon size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {language === 'bn' ? 'প্রস্তাবিত পদক্ষেপ' : 'Suggested action'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {language === 'bn' ? 'প্রস্তাবিত পদক্ষেপ' : 'Suggested action'}
+              </p>
+              {extraCount > 0 && (
+                <span
+                  className="rounded-full bg-muted px-1.5 py-px text-[9px] font-bold text-muted-foreground"
+                  title={language === 'bn' ? 'আরও সতর্কতা সক্রিয়' : 'More alerts active'}
+                >
+                  +{extraCount} {language === 'bn' ? 'আরও' : 'more'}
+                </span>
+              )}
+            </div>
             <p className="truncate text-xs font-medium text-foreground">
               {reason[language]}
             </p>
