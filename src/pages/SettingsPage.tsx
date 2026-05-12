@@ -241,23 +241,28 @@ export function SettingsPage() {
           <div className="grid grid-cols-2 gap-3">
             <SettingsInstallCard />
             
-            {isOwner ? (
-              <WorkerManagementSheet />
-            ) : (
-              <div className="flex items-center gap-2.5 rounded-2xl bg-muted/50 p-3 border border-dashed">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted shrink-0">
-                  <Users className="h-5 w-5 text-muted-foreground" />
+            <button
+              onClick={() => navigate('/settings/members')}
+              className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-secondary to-secondary/80 p-3 shadow-md text-left w-full relative overflow-hidden"
+            >
+              <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-white/10 blur-xl" />
+              <div className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full bg-white/10 blur-xl" />
+              <div className="relative flex items-center gap-2.5 w-full">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+                  <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-muted-foreground text-sm">
-                    {language === 'bn' ? 'দল ব্যবস্থাপনা' : 'Team'}
+                  <h3 className="font-semibold text-white text-sm">
+                    {language === 'bn' ? 'সদস্যবৃন্দ' : 'Members'}
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {language === 'bn' ? 'মালিকের জন্য' : 'Owner only'}
+                  <p className="text-xs text-white/70">
+                    {isOwner
+                      ? (language === 'bn' ? 'আমন্ত্রণ ও রোল' : 'Invite & roles')
+                      : (language === 'bn' ? 'যোগ দিন / ছাড়ুন' : 'Join / leave')}
                   </p>
                 </div>
               </div>
-            )}
+            </button>
           </div>
 
           {/* Permissions Matrix — visible to all so workers understand limits */}
