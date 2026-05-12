@@ -139,6 +139,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
   const { sensorData, hasRealData, hasAnyData, ageMs, browserOnline } = useRealtimeSensorData();
   const status = useRealtimeStatusLevels(sensorData);
   const { data: history } = useSensorHistory(1); // last 1 hour for sparklines
+  const { show: showHint, dismiss: dismissHint } = useFirstRunHint('kpi-color-legend');
 
   // Determine grid state
   const tileState: TileState = hasRealData
