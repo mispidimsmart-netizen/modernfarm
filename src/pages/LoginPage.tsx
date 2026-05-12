@@ -565,6 +565,8 @@ export function LoginPage() {
               {isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}
             </Button>
           </div>
+
+          <GoogleSignInButton />
         </form>
 
         {/* Trust Indicators */}
