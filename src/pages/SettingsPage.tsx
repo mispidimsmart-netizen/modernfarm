@@ -34,13 +34,32 @@ import { GsmFallbackCard } from '@/components/settings/GsmFallbackCard';
 import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
 import { QuietHoursAndSnoozeCard } from '@/components/settings/QuietHoursAndSnoozeCard';
 import { TestNotificationCard } from '@/components/settings/TestNotificationCard';
-import { 
-  FarmSetupTab, 
-  OperationPreferencesTab, 
-  ReportsDataTab, 
-  DeviceSystemTab,
-  LightingTab,
-} from '@/components/settings/tabs';
+// S5.3 — Tab-level code splitting. Each settings tab is loaded on demand,
+// trimming ~50KB gz from the initial SettingsPage bundle. The first (default)
+// tab still mounts immediately because users almost always land there first.
+const FarmSetupTab = lazy(() =>
+  import('@/components/settings/tabs/FarmSetupTab').then(m => ({ default: m.FarmSetupTab }))
+);
+const OperationPreferencesTab = lazy(() =>
+  import('@/components/settings/tabs/OperationPreferencesTab').then(m => ({ default: m.OperationPreferencesTab }))
+);
+const ReportsDataTab = lazy(() =>
+  import('@/components/settings/tabs/ReportsDataTab').then(m => ({ default: m.ReportsDataTab }))
+);
+const DeviceSystemTab = lazy(() =>
+  import('@/components/settings/tabs/DeviceSystemTab').then(m => ({ default: m.DeviceSystemTab }))
+);
+const LightingTab = lazy(() =>
+  import('@/components/settings/tabs/LightingTab').then(m => ({ default: m.LightingTab }))
+);
+
+function TabFallback() {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="h-7 w-7 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
 export function SettingsPage() {
