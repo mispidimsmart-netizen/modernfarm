@@ -367,6 +367,8 @@ export function DeviceSystemTab() {
     <div className="space-y-4">
       {/* Worker Mode (S2.1) — owner sets PIN, opens /worker kiosk */}
       <WorkerModeCard />
+      {/* Severity haptics + sound preference (S3.2) */}
+      <SeverityFeedbackToggle />
       {/* Non-admin users only see OTA Firmware (read-only view) */}
       {!isAdmin ? (
         <>
