@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 
@@ -28,7 +28,10 @@ import { ShedManagementSheet } from '@/components/shed/ShedManagementSheet';
 
 import { WeatherCard } from '@/components/weather/WeatherCard';
 
-import { SensorCharts } from '@/components/dashboard/SensorCharts';
+// SensorCharts is recharts-heavy and lives on the (non-default) Environment tab — lazy-load it
+const SensorCharts = lazy(() =>
+  import('@/components/dashboard/SensorCharts').then(m => ({ default: m.SensorCharts }))
+);
 
 import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
 import { SystemModeCard } from '@/components/dashboard/SystemModeCard';
@@ -71,8 +74,13 @@ import {
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
 import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
 // QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
-import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
-import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
+// Flock tab — recharts-heavy widgets, lazy-load
+const LayerBatchCard = lazy(() =>
+  import('@/components/farm/LayerBatchCard').then(m => ({ default: m.LayerBatchCard }))
+);
+const BroilerDashboardWidget = lazy(() =>
+  import('@/components/broiler/BroilerDashboardWidget').then(m => ({ default: m.BroilerDashboardWidget }))
+);
 
 // Smart Alert Banner
 import { AlertSummaryBanner } from '@/components/alerts';
@@ -318,7 +326,9 @@ export function Dashboard() {
                 </div>
                 <CoreMetricsRow />
                 <InsideOutsideDeltaCard />
-                <SensorCharts />
+                <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
+                  <SensorCharts />
+                </Suspense>
                 <HourlyForecastCard />
                 <SevenDayForecastCard />
                 <AIAccuracyCard />
@@ -460,8 +470,10 @@ export function Dashboard() {
                   <SystemActivityCard />
                 </div>
 
-                {isLayer && <LayerBatchCard />}
-                {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
+                <Suspense fallback={<div className="h-40 rounded-xl bg-muted/40 animate-pulse" />}>
+                  {isLayer && <LayerBatchCard />}
+                  {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
+                </Suspense>
 
                 {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
                 {isBroiler && broilerWaterResult && (
