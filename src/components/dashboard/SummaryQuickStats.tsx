@@ -90,8 +90,8 @@ export function SummaryQuickStats() {
   })();
 
   // ── Tomorrow heat-risk ──
-  const riskInfo = RISK_STYLE[heatRisk.riskLevel] || RISK_STYLE.low;
-  const tomorrowMax = heatRisk.tomorrowForecast.maxTemp;
+  const riskInfo = RISK_STYLE[heatRisk?.riskLevel ?? 'low'] || RISK_STYLE.low;
+  const tomorrowMax = heatRisk?.tomorrowForecast?.maxTemp;
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
