@@ -133,7 +133,12 @@ export default function MembersPage() {
                       className="uppercase"
                     />
                     <Button
-                      onClick={() => inviteCode.trim() && joinFarm.mutate(inviteCode.trim(), { onSuccess: () => setInviteCode('') })}
+                      onClick={() => inviteCode.trim() && joinFarm.mutate(inviteCode.trim(), {
+                        onSuccess: () => {
+                          logMemberAction('farm_joined', { inviteCode: inviteCode.trim(), actorRole });
+                          setInviteCode('');
+                        },
+                      })}
                       disabled={!inviteCode.trim() || joinFarm.isPending}
                     >
                       {language === 'bn' ? 'যোগ দিন' : 'Join'}
@@ -164,7 +169,7 @@ export default function MembersPage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{language === 'bn' ? 'বাতিল' : 'Cancel'}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => leaveFarm.mutate()} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction onClick={() => leaveFarm.mutate(undefined, { onSuccess: () => logMemberAction('member_left', { actorRole }) })} className="bg-destructive hover:bg-destructive/90">
                           {language === 'bn' ? 'বের হই' : 'Leave'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -215,7 +220,23 @@ export default function MembersPage() {
                           <div className="flex items-center gap-2">
                             <Select
                               value={m.role}
-                              onValueChange={(v) => updateRole.mutate({ memberId: m.id, role: v as AppRole })}
+                              onValueChange={(v) => {
+                                const newRole = v as AppRole;
+                                if (newRole === m.role) return;
+                                const oldRole = m.role;
+                                updateRole.mutate(
+                                  { memberId: m.id, role: newRole },
+                                  {
+                                    onSuccess: () => logMemberAction('role_changed', {
+                                      targetUserId: m.user_id,
+                                      targetMemberRowId: m.id,
+                                      oldRole,
+                                      newRole,
+                                      actorRole,
+                                    }),
+                                  },
+                                );
+                              }}
                               disabled={updateRole.isPending}
                             >
                               <SelectTrigger className="h-8 w-[130px] text-xs">
@@ -249,7 +270,14 @@ export default function MembersPage() {
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>{language === 'bn' ? 'বাতিল' : 'Cancel'}</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => removeWorker.mutate(m.id)}
+                                    onClick={() => removeWorker.mutate(m.id, {
+                                      onSuccess: () => logMemberAction('member_removed', {
+                                        targetUserId: m.user_id,
+                                        targetMemberRowId: m.id,
+                                        oldRole: m.role,
+                                        actorRole,
+                                      }),
+                                    })}
                                     className="bg-destructive hover:bg-destructive/90"
                                   >
                                     {language === 'bn' ? 'সরান' : 'Remove'}
@@ -282,7 +310,9 @@ export default function MembersPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => createInvitation.mutate()}
+                      onClick={() => createInvitation.mutate(undefined, {
+                        onSuccess: (inv: any) => logMemberAction('invite_created', { inviteCode: inv?.invite_code, actorRole }),
+                      })}
                       disabled={createInvitation.isPending}
                       className="gap-1"
                     >
@@ -318,7 +348,9 @@ export default function MembersPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => deleteInvitation.mutate(inv.id)}
+                            onClick={() => deleteInvitation.mutate(inv.id, {
+                              onSuccess: () => logMemberAction('invite_deleted', { inviteCode: inv.invite_code, actorRole }),
+                            })}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
