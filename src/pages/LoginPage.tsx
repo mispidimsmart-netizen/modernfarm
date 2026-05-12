@@ -253,6 +253,18 @@ export function LoginPage() {
                   });
                 }
               }
+            } else if (userType === 'owner' && signupOrgId) {
+              // Assign new owner's farm to the chosen organization
+              const { error: assignError } = await supabase.rpc('assign_self_to_organization' as any, {
+                _org_id: signupOrgId,
+              });
+              if (assignError) {
+                toast({
+                  title: 'সতর্কতা',
+                  description: 'অর্গানাইজেশন বরাদ্দ ব্যর্থ — অ্যাডমিনকে জানান',
+                  variant: 'destructive',
+                });
+              }
             }
           }
 
