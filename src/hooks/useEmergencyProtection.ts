@@ -59,15 +59,28 @@ export function useEmergencyProtection() {
   const queryClient = useQueryClient();
   const safety = useSafetyStatus();
 
+  // Multi-shed scoping: when an account has >1 shed AND a specific shed is selected,
+  // only show events that belong to that shed (or are farm-wide / shed_id NULL).
+  // Single-shed accounts behave exactly as before.
+  const shedCtx = useContext(ShedContext);
+  const selectedShedId = shedCtx?.selectedShedId ?? null;
+  const { data: sheds = [] } = useSheds();
+  const scopeShedId = sheds.length > 1 && selectedShedId ? selectedShedId : null;
+
   // Fetch active emergency events (display only)
   const { data: activeEvents = [] } = useQuery({
-    queryKey: ['emergency-events', user?.id],
+    queryKey: ['emergency-events', user?.id, scopeShedId],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await (supabase.from('emergency_events') as any)
+      let q = (supabase.from('emergency_events') as any)
         .select('*')
         .eq('user_id', user.id)
-        .in('status', ['active', 'escalated'])
+        .in('status', ['active', 'escalated']);
+      if (scopeShedId) {
+        // Include events for this shed + farm-wide events with no shed_id
+        q = q.or(`shed_id.eq.${scopeShedId},shed_id.is.null`);
+      }
+      const { data, error } = await q
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
