@@ -191,6 +191,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.temperature[language]}
           status={status.temperature}
           state={tileState}
+          trend={trends.temperature}
           delay={0}
         />
         <KpiTile
@@ -200,6 +201,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.humidity[language]}
           status={status.humidity}
           state={tileState}
+          trend={trends.humidity}
           delay={0.05}
         />
         <KpiTile
@@ -209,6 +211,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.ammonia[language]}
           status={status.ammonia}
           state={tileState}
+          trend={trends.ammonia}
           delay={0.1}
         />
         <KpiTile
@@ -218,6 +221,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.water[language]}
           status={status.water}
           state={tileState}
+          trend={trends.water}
           delay={0.15}
         />
       </div>
