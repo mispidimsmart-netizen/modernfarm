@@ -231,8 +231,12 @@ export function Dashboard() {
           <SetupReminderBanner />
           <ManualModeWarningBanner />
           <FailedCommandsBanner />
-          <EmergencyProtectionBanner />
-          <AlertSummaryBanner />
+          {/* Side-by-side: auto-cols-fr means single visible banner takes full width,
+              both visible → 50/50 split */}
+          <div className="grid grid-flow-col auto-cols-fr gap-2 [&>*]:min-w-0">
+            <EmergencyProtectionBanner />
+            <AlertSummaryBanner />
+          </div>
 
           {/* Industrial KPI grid — 4 critical sensors at-a-glance (above-the-fold) */}
           <IndustrialKpiGrid />
