@@ -71,9 +71,13 @@ import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 // Farmer-Friendly Assistant Components
 import { 
   ComfortIndicators, AdvisoryAssistant, QuickControlFAB,
-  SystemActivityCard, TodayReadableSummary, FarmHealthScore,
+  TodayReadableSummary, FarmHealthScore,
   HourlyForecastCard
 } from '@/components/assistant';
+// Lazy-load below-the-fold SystemActivityCard — paints Summary tab faster
+const SystemActivityCard = lazy(() =>
+  import('@/components/assistant/SystemActivityCard').then(m => ({ default: m.SystemActivityCard }))
+);
 import { SummaryQuickStats } from '@/components/dashboard/SummaryQuickStats';
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
 import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
@@ -301,7 +305,9 @@ export function Dashboard() {
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
                   </p>
-                  <SystemActivityCard />
+                  <Suspense fallback={<div className="h-32 rounded-xl bg-muted/40 animate-pulse" />}>
+                    <SystemActivityCard />
+                  </Suspense>
                 </div>
               </TabLoadingWrapper>
             </TabsContent>
