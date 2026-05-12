@@ -96,7 +96,7 @@ export function QuickControlFAB() {
   const activeCount = [deviceStatus.fan, deviceStatus.heater, deviceStatus.light, deviceStatus.ceilingFan, deviceStatus.sprinkler].filter(Boolean).length;
 
   return (
-    <div className="fixed bottom-24 right-4 z-50">
+    <div className="fixed bottom-40 right-4 z-50">{/* lifted above SmartActionDock (bottom-[64px] + ~70px card) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div

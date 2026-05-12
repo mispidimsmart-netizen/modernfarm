@@ -161,7 +161,7 @@ export const SmartActionDock = memo(function SmartActionDock() {
         aria-live="polite"
         aria-label={language === 'bn' ? 'প্রস্তাবিত পদক্ষেপ' : 'Suggested action'}
       >
-        <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border bg-card/95 p-2 shadow-lg backdrop-blur-md pointer-events-auto">
+        <div className="mx-auto flex max-w-md items-center gap-2 rounded-2xl border bg-card/95 p-2 pr-3 shadow-lg backdrop-blur-md pointer-events-auto">
           <div className={cn(
             'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-white',
             toneClass.split(' ')[0]
