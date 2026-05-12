@@ -403,6 +403,13 @@ export function Dashboard() {
                       <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                     </div>
                   )}
+
+                  {/* Tomorrow's heat-stress prediction — unified with today's status */}
+                  {isLayer && (
+                    <div className="min-w-0">
+                      <HeatStressRiskCard result={heatStressRiskResult} />
+                    </div>
+                  )}
                     </>
                   )}
                 </div>
