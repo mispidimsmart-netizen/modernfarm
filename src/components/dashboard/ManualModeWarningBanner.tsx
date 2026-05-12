@@ -32,40 +32,37 @@ export function ManualModeWarningBanner() {
   return (
     <Link
       to="/settings"
-      className={`block rounded-2xl border p-4 mb-3 transition-colors ${
+      className={`block rounded-xl border px-3 py-2 transition-colors ${
         isCritical
-          ? 'bg-gradient-to-r from-destructive/15 to-destructive/5 border-destructive/40'
+          ? 'bg-destructive/10 border-destructive/40'
           : isLong
-            ? 'bg-gradient-to-r from-amber-500/15 to-amber-500/5 border-amber-500/40'
-            : 'bg-gradient-to-r from-amber-500/10 to-amber-500/5 border-amber-500/30'
+            ? 'bg-amber-500/10 border-amber-500/40'
+            : 'bg-amber-500/10 border-amber-500/30'
       }`}
     >
-      <div className="flex items-center gap-3">
-        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+      <div className="flex items-center gap-2.5">
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 ${
           isCritical
             ? 'bg-destructive text-destructive-foreground'
             : 'bg-amber-500 text-white'
         }`}>
-          {isCritical ? <AlertTriangle className="h-5 w-5" /> : <Hand className="h-5 w-5" />}
+          {isCritical ? <AlertTriangle className="h-4 w-4" /> : <Hand className="h-4 w-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-bold ${isCritical ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'}`}>
-            {language === 'bn' ? '✋ ম্যানুয়াল মোড সক্রিয়' : '✋ Manual Mode Active'}
-          </p>
-          <div className="flex items-center gap-1 mt-0.5">
-            <Clock className="h-3 w-3 text-muted-foreground" />
-            <p className="text-xs text-muted-foreground truncate">
-              {manualSince
-                ? (language === 'bn' ? `${timeAgo} থেকে ম্যানুয়াল` : `Manual since ${timeAgo}`)
-                : (language === 'bn' ? 'অটোমেশন বন্ধ আছে' : 'Automation is off')
-              }
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={`text-xs font-bold ${isCritical ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'}`}>
+              {language === 'bn' ? '✋ ম্যানুয়াল মোড' : '✋ Manual Mode'}
             </p>
+            {manualSince && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Clock className="h-2.5 w-2.5" />
+                {timeAgo}
+              </span>
+            )}
           </div>
           {isLong && (
-            <p className={`text-xs mt-1 font-medium ${isCritical ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`}>
-              {language === 'bn'
-                ? '⚠️ দীর্ঘদিন ম্যানুয়ালে আছেন — অটো মোডে ফেরার কথা বিবেচনা করুন'
-                : '⚠️ Extended manual mode — consider switching back to Auto'}
+            <p className={`text-[10px] mt-0.5 ${isCritical ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`}>
+              {language === 'bn' ? 'দীর্ঘদিন ম্যানুয়ালে — অটোতে ফেরা ভালো' : 'Long manual — switch to Auto'}
             </p>
           )}
         </div>
