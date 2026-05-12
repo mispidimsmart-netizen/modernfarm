@@ -71,7 +71,12 @@ function calculateHourlyAverages(
   const now = new Date();
 
   readings.forEach(reading => {
-    const hoursAgo = Math.floor((now.getTime() - reading.timestamp.getTime()) / (1000 * 60 * 60));
+    // Coerce: persisted React Query cache rehydrates Date as string.
+    const ts = reading.timestamp instanceof Date
+      ? reading.timestamp
+      : new Date(reading.timestamp as unknown as string | number);
+    if (isNaN(ts.getTime())) return;
+    const hoursAgo = Math.floor((now.getTime() - ts.getTime()) / (1000 * 60 * 60));
     if (!hourlyData.has(hoursAgo)) {
       hourlyData.set(hoursAgo, []);
     }
@@ -142,10 +147,15 @@ function detectEarlyWarning(
   }
 
   const now = new Date();
+  const toDate = (v: unknown): Date =>
+    v instanceof Date ? v : new Date(v as string | number);
+
   // Get readings from last 30 minutes
-  const recentReadings = readings.filter(r => 
-    (now.getTime() - r.timestamp.getTime()) <= EARLY_WARNING_MINUTES * 60 * 1000
-  ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  const recentReadings = readings
+    .map(r => ({ ...r, timestamp: toDate(r.timestamp) }))
+    .filter(r => !isNaN(r.timestamp.getTime()))
+    .filter(r => (now.getTime() - r.timestamp.getTime()) <= EARLY_WARNING_MINUTES * 60 * 1000)
+    .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
   if (recentReadings.length < MIN_READINGS_FOR_EARLY_WARNING) {
     return { earlyWarning: false, risingMinutes: 0, percentIncrease: 0 };
