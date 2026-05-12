@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Droplets, Thermometer, Wind, Bird, CheckCircle2, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -16,7 +16,7 @@ interface SummaryItem {
   trend?: 'up' | 'down' | 'stable';
 }
 
-export function TodayReadableSummary() {
+function TodayReadableSummaryImpl() {
   const { language } = useAuth();
   const { sensorData, hasRealData } = useRealtimeSensorData();
   const { data: history } = useSensorHistory();
@@ -197,3 +197,6 @@ export function TodayReadableSummary() {
     </Card>
   );
 }
+
+
+export const TodayReadableSummary = memo(TodayReadableSummaryImpl);

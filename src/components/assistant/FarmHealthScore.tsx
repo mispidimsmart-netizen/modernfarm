@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, TrendingUp, TrendingDown, Minus, Sparkles, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -16,7 +16,7 @@ interface ScoreBreakdown {
   devices: number;
 }
 
-export function FarmHealthScore() {
+function FarmHealthScoreImpl() {
   const { language } = useAuth();
   const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus } = useRealtimeDeviceStatus();
@@ -205,3 +205,6 @@ export function FarmHealthScore() {
     </Card>
   );
 }
+
+
+export const FarmHealthScore = memo(FarmHealthScoreImpl);

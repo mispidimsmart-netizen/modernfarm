@@ -6,7 +6,7 @@
  *
  * ক্লান্তিকর navigation কমাতে home-এ এক ঝলকে দরকারি data দেখায়।
  */
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Egg, AlertTriangle, CloudSun, ChevronRight, CheckCircle2, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -23,7 +23,7 @@ const RISK_STYLE: Record<string, { bn: string; en: string; color: string }> = {
   critical: { bn: 'অতিরিক্ত', en: 'Critical', color: 'text-red-600 dark:text-red-400' },
 };
 
-export function SummaryQuickStats() {
+function SummaryQuickStatsImpl() {
   const { language } = useAuth();
   const { isLayer, isBroiler } = useFarmType();
   const { data: todaySummary } = useTodaySummary();
@@ -187,3 +187,6 @@ export function SummaryQuickStats() {
     </div>
   );
 }
+
+
+export const SummaryQuickStats = memo(SummaryQuickStatsImpl);
