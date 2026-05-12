@@ -112,6 +112,16 @@ export function SensorCharts() {
 
   const resetZoom = () => setZoom({});
 
+  // Active point per dataKey for sticky touch-friendly readout
+  const [active, setActive] = useState<Record<string, { time: string; value: number } | null>>({});
+
+  const handleMove = (dataKey: string) => (state: any) => {
+    if (state && state.activePayload && state.activePayload.length) {
+      const p = state.activePayload[0];
+      setActive(prev => ({ ...prev, [dataKey]: { time: state.activeLabel, value: Number(p.value) } }));
+    }
+  };
+
   // Shared chart pieces
   const renderChart = (
     dataKey: 'temperature' | 'humidity' | 'ammonia',
@@ -122,10 +132,50 @@ export function SensorCharts() {
     unit: string,
     name: string,
     refLine?: { y: number; label: string }
-  ) => (
-    <div className="h-[240px] w-full rounded-2xl bg-muted/50 p-3 border border-border">
+  ) => {
+    const readout = active[dataKey];
+    return (
+    <div className="space-y-2">
+      {/* Sticky touch-friendly readout pill — stays visible after lift */}
+      <div
+        className="flex items-center justify-between rounded-xl border bg-muted/40 px-3 py-2"
+        style={{ borderColor: readout ? accent : 'hsl(var(--border))' }}
+        aria-live="polite"
+      >
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span className="text-xl font-bold tabular-nums" style={{ color: accent }}>
+            {readout ? readout.value.toFixed(1) : '—'}
+          </span>
+          <span className="text-xs text-muted-foreground">{unit}</span>
+          <span className="text-[10px] text-muted-foreground truncate">• {name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground tabular-nums">
+            {readout ? readout.time : (language === 'bn' ? 'গ্রাফে স্পর্শ করুন' : 'Tap chart')}
+          </span>
+          {readout && (
+            <button
+              type="button"
+              onClick={() => setActive(prev => ({ ...prev, [dataKey]: null }))}
+              className="text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+            >
+              {language === 'bn' ? 'মুছুন' : 'Clear'}
+            </button>
+          )}
+        </div>
+      </div>
+      <div
+        className="h-[240px] w-full rounded-2xl bg-muted/50 p-3 border border-border touch-pan-y select-none"
+        style={{ WebkitTapHighlightColor: 'transparent' }}
+      >
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+        <AreaChart
+          data={chartData}
+          margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
+          onMouseMove={handleMove(dataKey)}
+          onTouchMove={handleMove(dataKey) as any}
+          onTouchStart={handleMove(dataKey) as any}
+        >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={gradientStops[0]} stopOpacity={0.4} />
