@@ -72,7 +72,7 @@ export function VoiceCommandFAB() {
         aria-label={isListening ? 'ভয়েস কমান্ড থামান' : 'ভয়েস কমান্ড চালু করুন'}
         onClick={() => { setOpen(true); if (!isListening) toggleListening(); }}
         className={cn(
-          'fixed z-40 right-3 bottom-20 md:bottom-6 h-12 w-12 rounded-full shadow-lg',
+          'fixed z-40 right-safe bottom-safe-nav md:bottom-6 h-12 w-12 rounded-full shadow-lg',
           'flex items-center justify-center transition-all',
           isListening
             ? 'bg-destructive text-destructive-foreground animate-pulse'
@@ -88,7 +88,7 @@ export function VoiceCommandFAB() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed z-40 right-3 bottom-36 md:bottom-20 w-72 rounded-xl border bg-card p-4 shadow-xl"
+            className="fixed z-40 right-safe bottom-safe-dock md:bottom-20 w-72 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-card p-4 shadow-xl"
             role="dialog"
             aria-label="ভয়েস কমান্ড"
           >

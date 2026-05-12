@@ -155,8 +155,7 @@ export const SmartActionDock = memo(function SmartActionDock() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 60, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="fixed inset-x-0 bottom-[64px] z-40 px-3 pb-2 pointer-events-none"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+        className="fixed inset-x-0 bottom-safe-nav z-40 px-3 pointer-events-none"
         role="region"
         aria-live="polite"
         aria-label={language === 'bn' ? 'প্রস্তাবিত পদক্ষেপ' : 'Suggested action'}
