@@ -295,6 +295,7 @@ export function Dashboard() {
                   <WeatherCard />
                 </div>
                 <TodayReadableSummary />
+                <SummaryQuickStats />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
