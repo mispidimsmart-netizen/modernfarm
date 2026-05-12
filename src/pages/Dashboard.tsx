@@ -219,9 +219,10 @@ export function Dashboard() {
         <div className="mb-3 space-y-2">
           {/* Org invitations awaiting response */}
           <PendingInvitationsBanner />
-          {/* Setup / Manual / Emergency / Alert banners */}
+          {/* Setup / Manual / Emergency / Alert / Failed-command banners */}
           <SetupReminderBanner />
           <ManualModeWarningBanner />
+          <FailedCommandsBanner />
           <EmergencyProtectionBanner />
           <AlertSummaryBanner />
 
