@@ -42,10 +42,11 @@ const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: stri
   danger:  { ring: 'ring-red-500/40',     text: 'text-red-600 dark:text-red-400',       dot: 'bg-red-500' },
 };
 
-function KpiTile({ icon, value, unit, label, status, state, delay = 0 }: KpiTileProps) {
+function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0 }: KpiTileProps) {
   const s = STATUS_STYLES[status];
   const isFresh = state === 'fresh';
   const isNever = state === 'never';
+  const showSpark = isFresh && trend && trend.length >= 2;
 
   if (isNever) {
     // Skeleton state — animated placeholder, never shows numbers
@@ -74,37 +75,44 @@ function KpiTile({ icon, value, unit, label, status, state, delay = 0 }: KpiTile
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay }}
       className={cn(
-        'relative flex items-center gap-2 rounded-xl border bg-card p-2.5 ring-1',
+        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1',
         isFresh ? s.ring : 'ring-border/40 border-dashed'
       )}
     >
-      <div
-        className={cn(
-          'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
-          isFresh ? cn('bg-current/10', s.text) : 'bg-muted text-muted-foreground/60'
-        )}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
-            {label}
-          </p>
-          {isFresh && <span className={cn('h-1 w-1 rounded-full flex-shrink-0', s.dot)} />}
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
+            isFresh ? cn('bg-current/10', s.text) : 'bg-muted text-muted-foreground/60'
+          )}
+        >
+          {icon}
         </div>
-        <div className="flex items-baseline gap-0.5">
-          <span
-            className={cn(
-              'text-lg font-bold tabular-nums leading-tight',
-              isFresh ? s.text : 'text-muted-foreground/50'
-            )}
-          >
-            {value}
-          </span>
-          <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+              {label}
+            </p>
+            {isFresh && <span className={cn('h-1 w-1 rounded-full flex-shrink-0', s.dot)} />}
+          </div>
+          <div className="flex items-baseline gap-0.5">
+            <span
+              className={cn(
+                'text-lg font-bold tabular-nums leading-tight',
+                isFresh ? s.text : 'text-muted-foreground/50'
+              )}
+            >
+              {value}
+            </span>
+            <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
+          </div>
         </div>
       </div>
+      {showSpark && (
+        <div className={cn('mt-0.5 -mx-0.5', s.text)} aria-hidden="true">
+          <MiniSparkline values={trend!} height={16} />
+        </div>
+      )}
     </motion.div>
   );
 }
