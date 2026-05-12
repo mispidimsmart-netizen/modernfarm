@@ -9,7 +9,22 @@ const isPreviewHost =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1");
 
-const isProd = import.meta.env.PROD && !isPreviewHost;
+// Force-enable Sentry via ?sentry=on (persists in sessionStorage for the tab)
+function isForcedOn() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("sentry") === "on") {
+      sessionStorage.setItem("sentry_force_on", "1");
+    }
+    return sessionStorage.getItem("sentry_force_on") === "1";
+  } catch {
+    return false;
+  }
+}
+
+const isProd = (import.meta.env.PROD && !isPreviewHost) || isForcedOn();
+
+export const sentryEnabled = () => isProd;
 
 export function initSentry() {
   // Only enable in real production deployments — skip Lovable preview & local dev
