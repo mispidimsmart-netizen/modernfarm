@@ -37,6 +37,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 const ASSIGNABLE_ROLES: AppRole[] = ['worker', 'farmer', 'manager', 'technician', 'viewer'];
 
