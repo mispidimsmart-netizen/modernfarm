@@ -146,6 +146,17 @@ export function EmergencyProtectionBanner() {
           )}
         </button>
 
+        {canDismiss && (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label={language === 'bn' ? 'ব্যানার বন্ধ করুন' : 'Dismiss banner'}
+            className="absolute top-2 right-2 z-20 flex h-6 w-6 items-center justify-center rounded-md bg-white/15 hover:bg-white/30 transition-colors text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+
         {/* Expanded event list */}
         <AnimatePresence>
           {expanded && (
