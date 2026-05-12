@@ -183,6 +183,15 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        {/* Worker Mode (S2.1) — kiosk route, PIN-locked, no global chrome */}
+        <Route
+          path="/worker"
+          element={
+            <ProtectedRoute>
+              <WorkerPage />
+            </ProtectedRoute>
+          }
+        />
         {/* Control Page - Requires at least viewer role (shown with restrictions) */}
         <Route
           path="/control"
