@@ -486,6 +486,14 @@ export default function AdminPage() {
             <OrganizationsPanel />
           </TabsContent>
 
+          <TabsContent value="orgs" className="mt-4">
+            <OrganizationsPanel />
+          </TabsContent>
+
+          <TabsContent value="farm-assign" className="mt-4">
+            <OrgFarmAssignmentsPanel />
+          </TabsContent>
+
           <TabsContent value="payments" className="mt-4">
             <PaymentApprovalPanel />
           </TabsContent>
