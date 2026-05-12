@@ -110,20 +110,42 @@ export function Header() {
                     {language === 'bn' ? 'খামার নির্বাচন' : 'Switch farm'}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {farms.map(f => (
-                    <DropdownMenuItem
-                      key={f.id}
-                      onSelect={() => setSelectedFarmId(f.id)}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span className="truncate">
-                        {language === 'bn' ? f.name : f.name_en}
-                      </span>
-                      {f.id === selectedFarmId && (
-                        <Check size={14} className="text-primary flex-shrink-0" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
+                  {showFarmSearch && (
+                    <div className="sticky top-0 z-10 bg-popover px-2 pb-2">
+                      <div className="relative">
+                        <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          type="search"
+                          value={farmSearch}
+                          onChange={e => setFarmSearch(e.target.value)}
+                          onKeyDown={e => e.stopPropagation()}
+                          placeholder={language === 'bn' ? 'খামার খুঁজুন...' : 'Search farms...'}
+                          aria-label={language === 'bn' ? 'খামার খুঁজুন' : 'Search farms'}
+                          className="w-full rounded-md border border-input bg-background pl-7 pr-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {filteredFarms.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                      {language === 'bn' ? 'কোনো খামার পাওয়া যায়নি' : 'No farms found'}
+                    </div>
+                  ) : (
+                    filteredFarms.map(f => (
+                      <DropdownMenuItem
+                        key={f.id}
+                        onSelect={() => { setSelectedFarmId(f.id); setFarmSearch(''); }}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="truncate">
+                          {language === 'bn' ? f.name : f.name_en}
+                        </span>
+                        {f.id === selectedFarmId && (
+                          <Check size={14} className="text-primary flex-shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
