@@ -43,7 +43,7 @@ export const SmartActionDock = memo(function SmartActionDock() {
   const location = useLocation();
   const { sensorData, hasRealData } = useRealtimeSensorData();
   const status = useRealtimeStatusLevels(sensorData);
-  const deviceStatus = useRealtimeDeviceStatus();
+  const { status: deviceStatus } = useRealtimeDeviceStatus();
   const { data: settings } = useFarmSettings();
   const sendCmd = useSendDeviceCommand();
 
