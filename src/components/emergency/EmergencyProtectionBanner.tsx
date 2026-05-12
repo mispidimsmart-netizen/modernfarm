@@ -52,12 +52,44 @@ export function EmergencyProtectionBanner() {
   const { language } = useAuth();
   const { activeEvents, highestPriority, acknowledgeEvent, resolveEvent, isEmergency } = useEmergencyProtection();
   const [expanded, setExpanded] = useState(false);
+  const [dismissedSig, setDismissedSig] = useState<string | null>(null);
+
+  // Signature = priority + sorted active event ids. New event / escalation → new sig → re-show.
+  const signature = useMemo(() => {
+    if (!highestPriority || activeEvents.length === 0) return '';
+    const ids = activeEvents.map(e => e.id).sort().join(',');
+    return `${highestPriority}:${ids}`;
+  }, [activeEvents, highestPriority]);
+
+  // Load persisted dismiss
+  useEffect(() => {
+    try {
+      setDismissedSig(localStorage.getItem(DISMISS_KEY));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   if (activeEvents.length === 0 || !highestPriority) return null;
 
   const config = PRIORITY_CONFIG[highestPriority];
   const Icon = config.icon;
   const isLifeThreatening = highestPriority === 'LIFE_THREATENING';
+
+  // Safety guard: never allow dismissal of LIFE_THREATENING — too dangerous to hide.
+  const canDismiss = !isLifeThreatening;
+  if (canDismiss && dismissedSig && dismissedSig === signature) return null;
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      localStorage.setItem(DISMISS_KEY, signature);
+    } catch {
+      // ignore
+    }
+    setDismissedSig(signature);
+  };
 
   return (
     <motion.div
