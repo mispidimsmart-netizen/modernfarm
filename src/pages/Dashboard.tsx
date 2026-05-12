@@ -1,5 +1,5 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { LayoutGroup } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 
@@ -232,19 +232,15 @@ export function Dashboard() {
           <SetupReminderBanner />
           <ManualModeWarningBanner />
           <FailedCommandsBanner />
-          {/* Mobile: stack vertically (full width each).
-              sm+: side-by-side — auto-cols-fr means single visible banner takes full width,
-              both visible → 50/50 split.
-              AnimatePresence + layout → smooth slide/fade when banners appear, disappear, or restack. */}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div
-              layout
-              className="flex flex-col gap-2 sm:grid sm:grid-flow-col sm:auto-cols-fr [&>*]:min-w-0"
-            >
+          {/* Mobile: stack vertically. sm+: side-by-side 50/50 (or full-width if one).
+              LayoutGroup → siblings smoothly slide-reflow when one mounts/unmounts.
+              Each banner owns its own AnimatePresence for crossfade enter/exit. */}
+          <LayoutGroup>
+            <div className="flex flex-col gap-2 sm:grid sm:grid-flow-col sm:auto-cols-fr [&>*]:min-w-0">
               <EmergencyProtectionBanner />
               <AlertSummaryBanner />
-            </motion.div>
-          </AnimatePresence>
+            </div>
+          </LayoutGroup>
 
           {/* Industrial KPI grid — 4 critical sensors at-a-glance (above-the-fold) */}
           <IndustrialKpiGrid />
