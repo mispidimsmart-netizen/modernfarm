@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ShedPicker } from '@/components/farm/ShedPicker';
 
 interface MortalitySheetProps {
   open: boolean;
@@ -45,6 +46,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
     cause: 'unknown',
     age_weeks: flockInfo?.age_weeks ?? null,
     notes: '',
+    shed_id: null as string | null,
   });
 
   const t = {
@@ -79,6 +81,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
       ...formData,
       age_weeks: formData.age_weeks || null,
       notes: formData.notes || null,
+      shed_id: formData.shed_id || null,
     });
   };
 
@@ -134,6 +137,11 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
                 />
               </div>
             </div>
+
+            <ShedPicker
+              value={formData.shed_id}
+              onChange={(id) => setFormData(p => ({ ...p, shed_id: id }))}
+            />
 
             <div className="space-y-2">
               <Label>{t.cause[language]}</Label>

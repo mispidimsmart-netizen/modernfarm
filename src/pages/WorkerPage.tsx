@@ -26,6 +26,7 @@ import { WorkerLockScreen } from '@/components/worker/WorkerLockScreen';
 import { IndustrialKpiGrid } from '@/components/dashboard/IndustrialKpiGrid';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
 import { MortalitySheet } from '@/components/farm/MortalitySheet';
+import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner';
 import { cn } from '@/lib/utils';
 
 type Relay = 'fan' | 'heater' | 'sprinkler' | 'light';
@@ -101,6 +102,9 @@ export function WorkerPage() {
       </header>
 
       <main className="mx-auto max-w-md space-y-4 px-3 pt-4">
+        {/* Failed/expired command alert — sticky until dismissed */}
+        <FailedCommandsBanner />
+
         {/* 1. KPI strip — read only */}
         <section aria-label={language === 'bn' ? 'সেন্সর সারাংশ' : 'Sensor summary'}>
           <IndustrialKpiGrid />

@@ -55,6 +55,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // Industrial Dashboard Components
 import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
 import { EspConnectionBanner } from '@/components/dashboard/EspConnectionBanner';
+import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner';
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
@@ -219,9 +220,10 @@ export function Dashboard() {
         <div className="mb-3 space-y-2">
           {/* Org invitations awaiting response */}
           <PendingInvitationsBanner />
-          {/* Setup / Manual / Emergency / Alert banners */}
+          {/* Setup / Manual / Emergency / Alert / Failed-command banners */}
           <SetupReminderBanner />
           <ManualModeWarningBanner />
+          <FailedCommandsBanner />
           <EmergencyProtectionBanner />
           <AlertSummaryBanner />
 
