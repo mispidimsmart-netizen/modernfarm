@@ -257,7 +257,7 @@ export function OrgFarmAssignmentsPanel() {
                                 value={assigned.role}
                                 onValueChange={(v: FarmRole) => updateRole.mutate({ id: assigned.id, role: v })}
                               >
-                                <SelectTrigger className="h-8 w-[110px] bg-slate-900 border-white/10 text-xs">
+                                <SelectTrigger className="h-8 w-[110px] bg-slate-900 border-white/10 text-white text-xs">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
