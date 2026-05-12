@@ -415,17 +415,24 @@ export function Dashboard() {
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
-                  🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
-                </h3>
-                <div className="space-y-3">
-                  <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-                  <ConnectionQualityCard />
-                  <SensorHealthCard />
-                  <PowerOutageCard />
-                </div>
-              </section>
+              {/* Device & System — collapsed by default to reduce noise on Control tab */}
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="device-system" className="border border-border/50 rounded-xl bg-muted/20 px-3">
+                  <AccordionTrigger className="text-sm font-bold text-muted-foreground hover:no-underline py-3">
+                    <span className="flex items-center gap-2">
+                      🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-1 pb-2">
+                      <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                      <ConnectionQualityCard />
+                      <SensorHealthCard />
+                      <PowerOutageCard />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               <div className={`rounded-xl border px-4 py-2 text-center ${
                 isManualMode
