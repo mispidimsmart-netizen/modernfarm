@@ -389,6 +389,8 @@ export function LoginPage() {
                       {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                     </Button>
                   </div>
+
+                  <GoogleSignInButton />
                 </form>
               </motion.div>
             )}
