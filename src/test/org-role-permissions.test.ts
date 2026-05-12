@@ -55,7 +55,7 @@ describe('Org role permissions — anon / unauthenticated', () => {
 
   it('blocks super_admin_create_organization', async () => {
     const { error } = await client.rpc('super_admin_create_organization' as never, {
-      _name: 'X', _name_en: 'X', _slug: 'x-anon-' + Date.now(),
+      _name: 'X', _name_en: 'X', _slug: 'x-anon-' + Date.now(), _owner_user_id: FAKE_USER,
     } as never);
     expectDenied(error);
   });
