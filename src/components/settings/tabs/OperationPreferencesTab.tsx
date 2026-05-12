@@ -489,6 +489,9 @@ export function OperationPreferencesTab() {
 
       {/* Haptic Feedback Settings */}
       <HapticSettingsCard />
+
+      {/* S4.3 — replay one-shot onboarding hints */}
+      <ResetFirstRunHintsCard />
       </div>
     </div>
   );
