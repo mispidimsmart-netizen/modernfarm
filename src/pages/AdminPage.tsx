@@ -473,6 +473,10 @@ export default function AdminPage() {
               <Building2 className="w-4 h-4 mr-2" />
               কোম্পানি
             </TabsTrigger>
+            <TabsTrigger value="farm-assign" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-teal-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+              <Users className="w-4 h-4 mr-2" />
+              ফার্ম অ্যাসাইনমেন্ট
+            </TabsTrigger>
             <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
               পেমেন্ট
             </TabsTrigger>
