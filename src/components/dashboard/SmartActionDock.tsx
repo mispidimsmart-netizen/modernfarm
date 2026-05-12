@@ -25,6 +25,7 @@ import { useFarmSettings } from '@/hooks/useFarmData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { HoldToConfirmButton } from '@/components/ui/hold-to-confirm-button';
 import { cn } from '@/lib/utils';
+import { severityFeedback } from '@/lib/severityFeedback';
 
 const HIDDEN_ROUTES = ['/login', '/reset-password', '/org-signup'];
 
