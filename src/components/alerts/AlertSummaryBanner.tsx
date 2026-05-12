@@ -125,11 +125,12 @@ export function AlertSummaryBanner() {
           </div>
         </Link>
 
-        {/* Dismiss for this session (does NOT resolve the alert — Alerts page still shows it) */}
+        {/* Dismiss persistently (localStorage). Auto-resurfaces when a new alert id appears.
+            Does NOT resolve the alert — /alerts still shows it. Works offline. */}
         <button
           type="button"
           onClick={handleDismiss}
-          aria-label={language === 'bn' ? 'এই সেশনের জন্য বন্ধ করুন' : 'Dismiss for this session'}
+          aria-label={language === 'bn' ? 'ব্যানার বন্ধ করুন' : 'Dismiss banner'}
           className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-white/10 hover:bg-white/25 transition-colors text-white/80"
         >
           <X size={13} />
