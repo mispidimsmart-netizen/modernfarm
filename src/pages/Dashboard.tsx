@@ -102,8 +102,7 @@ import { useIsFetching } from '@tanstack/react-query';
 import { DashboardSnapshotProvider } from '@/context/DashboardSnapshotContext';
 export function Dashboard() {
   const { language } = useAuth();
-  const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
-  const statusLevels = useRealtimeStatusLevels(sensorData);
+  const { sensorData } = useRealtimeSensorData();
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   
   const { data: automationMode } = useAutomationMode();
