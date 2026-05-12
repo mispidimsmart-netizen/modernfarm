@@ -13,7 +13,7 @@
  */
 
 import { memo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Thermometer, Droplets, Wind, GlassWater, WifiOff, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeStatusLevels } from '@/hooks/useRealtimeSensorData';
@@ -85,7 +85,7 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
       role="group"
       aria-label={a11yLabel}
       className={cn(
-        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1',
+        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1 transition-[box-shadow,border-color,background-color] duration-500 ease-out',
         isFresh ? s.ring : 'ring-border/40 border-dashed'
       )}
     >
@@ -108,11 +108,23 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
           <div className="flex items-baseline gap-0.5">
             <span
               className={cn(
-                'text-lg font-bold tabular-nums leading-tight',
+                'relative text-lg font-bold tabular-nums leading-tight transition-colors duration-500 ease-out',
                 isFresh ? s.text : 'text-muted-foreground/50'
               )}
+              aria-live="polite"
             >
-              {value}
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={value}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  className="inline-block"
+                >
+                  {value}
+                </motion.span>
+              </AnimatePresence>
             </span>
             <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
           </div>
