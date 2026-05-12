@@ -52,7 +52,10 @@ function SystemActivityCardImpl() {
       };
     },
     enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5min — runtime stats don't move that fast
+    gcTime: 1000 * 60 * 30,
     refetchInterval: 300000,
+    refetchOnMount: false,
   });
 
   const stats = useMemo((): ActivityStat[] => {
