@@ -326,7 +326,9 @@ export function Dashboard() {
                 </div>
                 <CoreMetricsRow />
                 <InsideOutsideDeltaCard />
-                <SensorCharts />
+                <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
+                  <SensorCharts />
+                </Suspense>
                 <HourlyForecastCard />
                 <SevenDayForecastCard />
                 <AIAccuracyCard />
