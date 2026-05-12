@@ -100,6 +100,16 @@ export function LoginPage() {
   const [userType, setUserType] = useState<UserType>('owner');
   const [invitationCode, setInvitationCode] = useState('');
   const [showOptionalEmail, setShowOptionalEmail] = useState(false);
+  const [signupOrgId, setSignupOrgId] = useState<string>('');
+  const [orgOptions, setOrgOptions] = useState<Array<{ id: string; name: string; name_en: string }>>([]);
+
+  // Load active organizations for signup picker
+  useEffect(() => {
+    if (!isSignUp) return;
+    supabase.rpc('list_active_organizations_for_signup' as any).then(({ data }) => {
+      if (data) setOrgOptions(data as any);
+    });
+  }, [isSignUp]);
 
   const passwordStrength = useMemo(() => getPasswordStrength(signupPassword), [signupPassword]);
 
