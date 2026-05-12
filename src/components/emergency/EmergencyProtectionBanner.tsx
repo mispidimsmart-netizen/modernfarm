@@ -70,15 +70,15 @@ export function EmergencyProtectionBanner() {
     }
   }, []);
 
-  const hasBanner = activeEvents.length > 0 && !!highestPriority;
-
-  const config = PRIORITY_CONFIG[highestPriority];
-  const Icon = config.icon;
+  const hasEvents = activeEvents.length > 0 && !!highestPriority;
   const isLifeThreatening = highestPriority === 'LIFE_THREATENING';
-
   // Safety guard: never allow dismissal of LIFE_THREATENING — too dangerous to hide.
   const canDismiss = !isLifeThreatening;
-  if (canDismiss && dismissedSig && dismissedSig === signature) return null;
+  const isDismissed = canDismiss && dismissedSig === signature;
+  const isVisible = hasEvents && !isDismissed;
+
+  const config = hasEvents ? PRIORITY_CONFIG[highestPriority!] : PRIORITY_CONFIG.INFO;
+  const Icon = config.icon;
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -92,7 +92,10 @@ export function EmergencyProtectionBanner() {
   };
 
   return (
+    <AnimatePresence mode="wait">
+      {isVisible && (
     <motion.div
+      key="emergency-banner"
       layout
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
