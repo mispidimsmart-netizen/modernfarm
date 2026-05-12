@@ -82,6 +82,8 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay }}
+      role="group"
+      aria-label={a11yLabel}
       className={cn(
         'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1',
         isFresh ? s.ring : 'ring-border/40 border-dashed'
