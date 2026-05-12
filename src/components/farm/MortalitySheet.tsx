@@ -46,6 +46,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
     cause: 'unknown',
     age_weeks: flockInfo?.age_weeks ?? null,
     notes: '',
+    shed_id: null as string | null,
   });
 
   const t = {
