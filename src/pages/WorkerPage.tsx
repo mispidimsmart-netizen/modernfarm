@@ -26,6 +26,7 @@ import { WorkerLockScreen } from '@/components/worker/WorkerLockScreen';
 import { IndustrialKpiGrid } from '@/components/dashboard/IndustrialKpiGrid';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
 import { MortalitySheet } from '@/components/farm/MortalitySheet';
+import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner';
 import { cn } from '@/lib/utils';
 
 type Relay = 'fan' | 'heater' | 'sprinkler' | 'light';
