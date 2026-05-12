@@ -58,6 +58,7 @@ export function WorkerManagementSheet() {
   const deleteInvitation = useDeleteInvitation();
   const joinFarm = useJoinFarm();
   const promoteToOwner = usePromoteToOwner();
+  const leaveFarm = useLeaveFarm();
   const { toast } = useToast();
   
   const [inviteCode, setInviteCode] = useState('');
