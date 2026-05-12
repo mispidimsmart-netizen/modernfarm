@@ -276,6 +276,38 @@ export function usePromoteToOwner() {
   });
 }
 
+export function useLeaveFarm() {
+  const { user, language } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('role', 'worker');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'আপনি ফার্ম থেকে বের হয়েছেন' : 'You have left the farm',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useDeleteInvitation() {
   const { language } = useAuth();
   const queryClient = useQueryClient();
