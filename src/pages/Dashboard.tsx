@@ -51,6 +51,7 @@ import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard'
 import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Industrial Dashboard Components
 import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
