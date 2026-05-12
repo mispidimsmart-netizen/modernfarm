@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ShieldAlert, ShieldCheck, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEmergencyProtection, EmergencyPriority } from '@/hooks/useEmergencyProtection';
