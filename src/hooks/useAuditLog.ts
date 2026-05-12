@@ -146,6 +146,33 @@ export function useAuditLog() {
     source: 'route_guard',
   }), [logAction]);
 
+  const logMemberAction = useCallback((
+    action: 'invite_created' | 'invite_deleted' | 'role_changed' | 'member_removed' | 'member_left' | 'farm_joined',
+    opts: {
+      targetUserId?: string;
+      targetMemberRowId?: string;
+      oldRole?: string;
+      newRole?: string;
+      inviteCode?: string;
+      actorRole?: string;
+    } = {},
+  ) => logAction({
+    action_type: `member_${action}`,
+    action_category: 'auth',
+    severity: action === 'member_removed' || action === 'member_left' ? 'warning' : 'info',
+    target_entity: opts.targetUserId || opts.targetMemberRowId || opts.inviteCode || null,
+    target_id: opts.targetMemberRowId || null,
+    old_value: opts.oldRole ? { role: opts.oldRole } : undefined,
+    new_value: opts.newRole ? { role: opts.newRole } : undefined,
+    metadata: {
+      url: typeof window !== 'undefined' ? window.location.pathname + window.location.search : null,
+      actor_role: opts.actorRole || null,
+      target_user_id: opts.targetUserId || null,
+      invite_code: opts.inviteCode || null,
+    },
+    source: 'members_page',
+  }), [logAction]);
+
   return {
     logAction,
     logSettingsChange,
@@ -154,6 +181,7 @@ export function useAuditLog() {
     logSafetyOverride,
     logFirmwareUpdate,
     logAccessDenied,
+    logMemberAction,
   };
 }
 
