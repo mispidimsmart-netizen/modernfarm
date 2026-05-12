@@ -75,7 +75,7 @@ export function AlertSummaryBanner() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         className={cn(
-          'relative rounded-xl text-white shadow-md',
+          'relative rounded-xl text-white shadow-md h-full flex flex-col',
           style.bg,
           style.pulse && 'animate-pulse'
         )}
