@@ -137,6 +137,14 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
     return date.toLocaleDateString('en-US');
   };
 
+  const formatResponse = (secs: number) => {
+    if (secs < 60) return language === 'bn' ? `${secs} সেকেন্ডে` : `in ${secs}s`;
+    const m = Math.floor(secs / 60);
+    if (m < 60) return language === 'bn' ? `${m} মিনিটে` : `in ${m}m`;
+    const h = Math.floor(m / 60);
+    return language === 'bn' ? `${h} ঘন্টায়` : `in ${h}h`;
+  };
+
   const timeStatus = alert.acknowledged
     ? (language === 'bn' ? 'সমাধান হয়েছে' : 'Resolved')
     : formatTime(alert.timestamp);
@@ -231,6 +239,19 @@ export function IndustrialAlertCard({ alert, onAcknowledge }: IndustrialAlertCar
           {timeStatus}
         </span>
       </div>
+
+      {/* Acknowledge audit trail — when alert was acknowledged */}
+      {alert.acknowledged && alert.acknowledgedAt && (
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+          <Clock size={11} />
+          <span>
+            {language === 'bn' ? 'গ্রহণ করা হয়েছে' : 'Acknowledged'}
+            {typeof alert.responseSeconds === 'number' && ` ${formatResponse(alert.responseSeconds)}`}
+            {' · '}
+            {alert.acknowledgedAt.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      )}
 
       {/* Acknowledge button */}
       {!alert.acknowledged && (

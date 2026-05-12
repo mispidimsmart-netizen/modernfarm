@@ -24,6 +24,9 @@ export interface SmartAlert {
   suggestionBn: string;
   timestamp: Date;
   acknowledged: boolean;
+  acknowledgedAt?: Date;
+  acknowledgedBy?: string;
+  responseSeconds?: number;
   resolvedAt?: Date;
   groupId?: string;
   priority: NotificationPriority;
@@ -377,6 +380,9 @@ export function useSmartAlerts() {
         suggestionBn: suggestion.bn,
         timestamp: new Date(alert.created_at),
         acknowledged: alert.acknowledged,
+        acknowledgedAt: (alert as any).acknowledged_at ? new Date((alert as any).acknowledged_at) : undefined,
+        acknowledgedBy: (alert as any).acknowledged_by ?? undefined,
+        responseSeconds: (alert as any).response_seconds ?? undefined,
         priority: mapAlertLevelToPriority(level),
       };
     });

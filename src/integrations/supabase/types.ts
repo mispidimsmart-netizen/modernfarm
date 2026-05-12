@@ -497,6 +497,7 @@ export type Database = {
           id: string
           message: string
           message_bn: string
+          response_seconds: number | null
           rule_id: string | null
           severity: Database["public"]["Enums"]["alert_severity"]
           shed_id: string | null
@@ -514,6 +515,7 @@ export type Database = {
           id?: string
           message: string
           message_bn: string
+          response_seconds?: number | null
           rule_id?: string | null
           severity: Database["public"]["Enums"]["alert_severity"]
           shed_id?: string | null
@@ -531,6 +533,7 @@ export type Database = {
           id?: string
           message?: string
           message_bn?: string
+          response_seconds?: number | null
           rule_id?: string | null
           severity?: Database["public"]["Enums"]["alert_severity"]
           shed_id?: string | null
