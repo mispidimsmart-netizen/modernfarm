@@ -21,6 +21,32 @@ export function RoleProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, isLoading: authLoading, language } = useAuth();
   const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
+  const { logAccessDenied } = useAuditLog();
+  const location = useLocation();
+  const loggedRef = useRef<string | null>(null);
+
+  // Determine denial outside render so we can log via effect (no DB write during render)
+  const userRole = permissions?.role || 'viewer';
+  const roleHierarchy: Record<AccessRole, number> = { viewer: 0, farmer: 1, admin: 2 };
+  const roleDenied = !!requiredRole &&
+    roleHierarchy[userRole] < roleHierarchy[requiredRole];
+  const permDenied = !!requiredPermission && !!permissions &&
+    !permissions[requiredPermission as keyof typeof permissions];
+  const denied = !authLoading && !permissionsLoading && !!user && (roleDenied || permDenied);
+
+  useEffect(() => {
+    if (!denied) return;
+    const key = `${location.pathname}|${requiredRole || ''}|${String(requiredPermission || '')}`;
+    if (loggedRef.current === key) return;
+    loggedRef.current = key;
+    logAccessDenied(
+      location.pathname + location.search,
+      userRole,
+      requiredRole,
+      requiredPermission as string | undefined,
+    );
+  }, [denied, location.pathname, location.search, userRole, requiredRole, requiredPermission, logAccessDenied]);
+
 
   // Loading state
   if (authLoading || permissionsLoading) {
