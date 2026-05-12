@@ -132,7 +132,7 @@ export function SummaryQuickStats() {
               {t.tomorrow[language]}
             </p>
             <div className="text-sm leading-tight">
-              {tomorrowMax !== null ? (
+              {tomorrowMax != null ? (
                 <>
                   <span className={cn('font-semibold', riskInfo.color)}>
                     {riskInfo[language]}
