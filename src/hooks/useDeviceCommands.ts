@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +14,14 @@ interface SendCommandParams {
   shedId?: string;
 }
 
+// Module-level reference to the active mutate fn so failure-toast "Retry"
+// buttons (closures) can re-issue without prop-drilling. Set in useEffect
+// below by whichever component mounted the hook first/last.
+let _activeMutate: ((p: SendCommandParams) => void) | null = null;
+export function retryLastCommand(p: SendCommandParams) {
+  _activeMutate?.(p);
+}
+
 /**
  * Hook for sending instant device commands to ESP32
  * Commands are stored in device_commands table (Realtime-enabled).
@@ -24,7 +33,7 @@ export function useSendDeviceCommand() {
   const { selectedFarmId } = useFarmContext();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
 
