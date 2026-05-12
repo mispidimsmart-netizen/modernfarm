@@ -37,6 +37,16 @@ export function Header() {
   const { farms, currentFarm, setSelectedFarmId, selectedFarmId } = useFarmContext();
   const location = useLocation();
   const navigate = useNavigate();
+  // S1.4 — search input only when farmer manages many farms (≥6).
+  const [farmSearch, setFarmSearch] = useState('');
+  const showFarmSearch = farms.length > 5;
+  const filteredFarms = useMemo(() => {
+    if (!farmSearch.trim()) return farms;
+    const q = farmSearch.toLowerCase().trim();
+    return farms.filter(f =>
+      f.name?.toLowerCase().includes(q) || f.name_en?.toLowerCase().includes(q)
+    );
+  }, [farms, farmSearch]);
 
   const isConnected = (deviceHealth || []).some((d) => {
     if (!d.is_online || !d.last_seen_at) return false;
