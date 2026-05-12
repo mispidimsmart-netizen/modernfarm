@@ -21,6 +21,31 @@ interface Props {
  */
 export function PlatformRoleGuard({ children, require, fallbackPath = '/' }: Props) {
   const { data, isLoading } = usePlatformRole();
+  const { logAccessDenied } = useAuditLog();
+  const location = useLocation();
+  const loggedRef = useRef<string | null>(null);
+
+  let allowed = false;
+  if (data) {
+    if (require === 'super_admin') {
+      allowed = data.isSuperAdmin;
+    } else if (require === 'org_admin') {
+      allowed = data.isSuperAdmin || data.isOrgOwner || data.isOrgAdmin;
+    }
+  }
+  const denied = !isLoading && !!data && !allowed;
+
+  useEffect(() => {
+    if (!denied) return;
+    const key = `${location.pathname}|${require}`;
+    if (loggedRef.current === key) return;
+    loggedRef.current = key;
+    logAccessDenied(
+      location.pathname + location.search,
+      data?.topRole || 'user',
+      require,
+    );
+  }, [denied, location.pathname, location.search, require, data?.topRole, logAccessDenied]);
 
   if (isLoading || !data) {
     return (
@@ -30,12 +55,6 @@ export function PlatformRoleGuard({ children, require, fallbackPath = '/' }: Pro
     );
   }
 
-  let allowed = false;
-  if (require === 'super_admin') {
-    allowed = data.isSuperAdmin;
-  } else if (require === 'org_admin') {
-    allowed = data.isSuperAdmin || data.isOrgOwner || data.isOrgAdmin;
-  }
 
   if (!allowed) {
     return (
