@@ -217,7 +217,13 @@ export function Dashboard() {
         </div>
 
         {/* ============ 🔝 STICKY CRITICAL ZONE (always visible) ============ */}
-        <div className="mb-3 space-y-2">
+        {/* S6.3 — aria-live so SR users hear new banners (alerts, failed commands)
+            without having to navigate back to the top of the page. */}
+        <section
+          className="mb-3 space-y-2"
+          aria-label={language === 'bn' ? 'গুরুত্বপূর্ণ তথ্য' : 'Critical information'}
+          aria-live="polite"
+        >
           {/* Org invitations awaiting response */}
           <PendingInvitationsBanner />
           {/* Setup / Manual / Emergency / Alert / Failed-command banners */}
@@ -232,7 +238,7 @@ export function Dashboard() {
 
           {/* Farm Health Score */}
           <FarmHealthScore />
-        </div>
+        </section>
 
         {/* ============ 🗂️ MAIN TABS (4 sections) ============ */}
         <div className="mb-5">
