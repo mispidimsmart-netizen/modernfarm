@@ -363,6 +363,8 @@ export function DeviceSystemTab() {
 
   return (
     <div className="space-y-4">
+      {/* Worker Mode (S2.1) — owner sets PIN, opens /worker kiosk */}
+      <WorkerModeCard />
       {/* Non-admin users only see OTA Firmware (read-only view) */}
       {!isAdmin ? (
         <>
