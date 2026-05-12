@@ -147,10 +147,15 @@ function detectEarlyWarning(
   }
 
   const now = new Date();
+  const toDate = (v: unknown): Date =>
+    v instanceof Date ? v : new Date(v as string | number);
+
   // Get readings from last 30 minutes
-  const recentReadings = readings.filter(r => 
-    (now.getTime() - r.timestamp.getTime()) <= EARLY_WARNING_MINUTES * 60 * 1000
-  ).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  const recentReadings = readings
+    .map(r => ({ ...r, timestamp: toDate(r.timestamp) }))
+    .filter(r => !isNaN(r.timestamp.getTime()))
+    .filter(r => (now.getTime() - r.timestamp.getTime()) <= EARLY_WARNING_MINUTES * 60 * 1000)
+    .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
   if (recentReadings.length < MIN_READINGS_FOR_EARLY_WARNING) {
     return { earlyWarning: false, risingMinutes: 0, percentIncrease: 0 };
