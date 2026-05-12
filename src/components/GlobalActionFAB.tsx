@@ -83,7 +83,7 @@ export function GlobalActionFAB() {
   };
 
   return (
-    <div className="fixed right-3 bottom-20 md:bottom-6 z-40">
+    <div className="fixed right-safe bottom-safe-nav md:bottom-6 z-40">
       {/* Backdrop */}
       <AnimatePresence>
         {open && (
