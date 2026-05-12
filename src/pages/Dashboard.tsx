@@ -284,6 +284,7 @@ export function Dashboard() {
                 {/* Connection: only the offline banner here (auto-hides when online).
                     Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
+                <FarmHealthScore />
                 <IndustrialHeroStatus />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
