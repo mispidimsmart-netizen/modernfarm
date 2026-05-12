@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sentry, sentryEnabled, captureSupabaseError, captureEsp32AckIssue } from "@/lib/sentry";
+import { Sentry, sentryEnabled, sentryEnvironment, sentryRelease, captureSupabaseError, captureEsp32AckIssue } from "@/lib/sentry";
 import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 
 function BomberChild(): JSX.Element {
@@ -87,9 +87,15 @@ export default function SentryTestPage() {
             </>
           )}
           {enabled && (
-            <p className="text-muted-foreground">
-              নিচের কোনো বাটন চাপুন → Sentry dashboard → Issues tab-এ ৩০ সেকেন্ডের মধ্যে দেখা যাবে।
-            </p>
+            <>
+              <p className="text-muted-foreground">
+                নিচের কোনো বাটন চাপুন → Sentry dashboard → Issues tab-এ ৩০ সেকেন্ডের মধ্যে দেখা যাবে।
+              </p>
+              <div className="grid grid-cols-2 gap-2 mt-2 p-2 bg-muted/50 rounded text-xs font-mono">
+                <div><span className="text-muted-foreground">env:</span> {sentryEnvironment()}</div>
+                <div className="truncate"><span className="text-muted-foreground">release:</span> {sentryRelease()}</div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

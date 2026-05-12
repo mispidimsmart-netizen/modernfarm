@@ -3,9 +3,20 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { readFileSync } from "fs";
+
+const pkg = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8"));
+const buildTime = new Date().toISOString();
+// Short build hash from timestamp (stable per build)
+const buildId = buildTime.replace(/[^0-9]/g, "").slice(2, 12); // YYMMDDHHMM
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version || "0.0.0"),
+    __BUILD_ID__: JSON.stringify(buildId),
+    __BUILD_TIME__: JSON.stringify(buildTime),
+  },
   server: {
     host: "::",
     port: 8080,

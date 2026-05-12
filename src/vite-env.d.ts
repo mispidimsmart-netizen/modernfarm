@@ -3,6 +3,11 @@
 /// <reference types="vite-plugin-pwa/react" />
 /// <reference types="vite-plugin-pwa/info" />
 
+// Build-time injected via vite.config.ts `define`
+declare const __APP_VERSION__: string;
+declare const __BUILD_ID__: string;
+declare const __BUILD_TIME__: string;
+
 // Extend ServiceWorkerRegistration with PushManager (not included in all TS libs)
 interface ServiceWorkerRegistration {
   readonly pushManager: PushManager;
