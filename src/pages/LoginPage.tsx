@@ -212,6 +212,12 @@ export function LoginPage() {
       return;
     }
 
+    if (userType === 'owner' && !signupOrgId) {
+      toast({ title: 'ত্রুটি', description: 'অনুগ্রহ করে একটি অর্গানাইজেশন নির্বাচন করুন', variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Note: invitation code is validated server-side via redeem_invitation RPC.
       // We no longer pre-fetch worker_invitations (RLS now blocks anonymous reads
