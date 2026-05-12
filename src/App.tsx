@@ -64,6 +64,7 @@ const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"))
 const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
 const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
 import { VoiceCommandFAB } from "./components/voice/VoiceCommandFAB";
+import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
 
 
 // Optimized QueryClient with better caching
@@ -367,6 +368,7 @@ const App = () => {
                   মূল কন্টেন্টে যান
                 </a>
                 <div id="main-content">
+                  <OperationsHealthStrip />
                   <AppWithRoutes />
                 </div>
                 <VoiceCommandFAB />
