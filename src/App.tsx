@@ -290,6 +290,15 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        {/* Per-sub-tab deep-link routes with their own role guards */}
+        <Route
+          path="/admin/users/:subtab"
+          element={
+            <ProtectedRoute>
+              <AdminUserSubTabPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/platform-admin"
           element={
