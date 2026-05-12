@@ -70,7 +70,7 @@ import {
 } from '@/components/assistant';
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
 import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
-import { QuickSensorDisplay } from '@/components/assistant/QuickSensorDisplay';
+// QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
 import { LayerBatchCard } from '@/components/farm/LayerBatchCard';
 import { BroilerDashboardWidget } from '@/components/broiler/BroilerDashboardWidget';
 
