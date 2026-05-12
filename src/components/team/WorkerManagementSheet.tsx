@@ -9,6 +9,7 @@ import {
   useJoinFarm,
   useIsOwner,
   usePromoteToOwner,
+  useLeaveFarm,
 } from '@/hooks/useUserRole';
 import {
   Sheet,
