@@ -283,8 +283,8 @@ export function Dashboard() {
                 skeleton={<SummaryTabSkeleton />}
                 loadingHint={{ bn: 'সারসংক্ষেপ লোড হচ্ছে…', en: 'Loading summary…' }}
               >
-                <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-                <ConnectionQualityCard />
+                {/* Connection: only the offline banner here (auto-hides when online).
+                    Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
                 <ComfortIndicators />
