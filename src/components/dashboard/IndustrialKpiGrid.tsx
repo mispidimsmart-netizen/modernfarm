@@ -35,6 +35,8 @@ interface KpiTileProps {
   state: TileState;
   trend?: number[];
   delay?: number;
+  /** Bengali/English status word for screen readers (e.g. "স্বাভাবিক"). */
+  statusLabel?: string;
 }
 
 const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: string }> = {
