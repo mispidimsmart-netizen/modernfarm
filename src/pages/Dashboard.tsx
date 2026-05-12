@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
-import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
+import { useRealtimeSensorData, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
@@ -17,7 +17,7 @@ import { useFoggerCooling } from '@/hooks/useFoggerCooling';
 import { useCoolingEfficiency } from '@/hooks/useCoolingEfficiency';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
-import { SensorCard } from '@/components/SensorCard';
+
 import { Header } from '@/components/Header';
 import { DashboardSnapshotBar } from '@/components/dashboard/DashboardSnapshotBar';
 import { IndustrialKpiGrid } from '@/components/dashboard/IndustrialKpiGrid';
@@ -60,7 +60,7 @@ import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { AirQualityCard } from '@/components/dashboard/AirQualityCard';
-import { SensorFreshnessBadge } from '@/components/dashboard/SensorFreshnessBadge';
+
 import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
 import { ConnectionQualityCard } from '@/components/control/ConnectionQualityCard';
 import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
@@ -102,8 +102,7 @@ import { useIsFetching } from '@tanstack/react-query';
 import { DashboardSnapshotProvider } from '@/context/DashboardSnapshotContext';
 export function Dashboard() {
   const { language } = useAuth();
-  const { sensorData, isConnected, hasRealData } = useRealtimeSensorData();
-  const statusLevels = useRealtimeStatusLevels(sensorData);
+  const { sensorData } = useRealtimeSensorData();
   const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
   
   const { data: automationMode } = useAutomationMode();
@@ -283,8 +282,8 @@ export function Dashboard() {
                 skeleton={<SummaryTabSkeleton />}
                 loadingHint={{ bn: 'সারসংক্ষেপ লোড হচ্ছে…', en: 'Loading summary…' }}
               >
-                <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-                <ConnectionQualityCard />
+                {/* Connection: only the offline banner here (auto-hides when online).
+                    Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
                 <ComfortIndicators />
@@ -305,33 +304,8 @@ export function Dashboard() {
                 skeleton={<EnvironmentTabSkeleton />}
                 loadingHint={{ bn: 'সেন্সর ও পরিবেশ ডেটা লোড হচ্ছে…', en: 'Loading environment data…' }}
               >
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      📡 {language === 'bn' ? 'লাইভ সেন্সর' : 'Live Sensors'}
-                    </p>
-                    <SensorFreshnessBadge timestamp={sensorData.timestamp} compact />
-                  </div>
-                  {hasRealData ? (
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <SensorCard type="temperature" value={sensorData.temperature} unit={translations.units.celsius[language]} label={translations.sensors.temperature[language]} status={statusLevels.temperature} />
-                      <SensorCard type="humidity" value={sensorData.humidity} unit={translations.units.percent[language]} label={translations.sensors.humidity[language]} status={statusLevels.humidity} />
-                      <SensorCard type="ammonia" value={sensorData.ammonia} unit={translations.units.ppm[language]} label={translations.sensors.ammonia[language]} status={statusLevels.ammonia} />
-                      <SensorCard type="water" value={sensorData.waterUsage} unit={translations.units.litersPerHour[language]} label={translations.sensors.water[language]} status={statusLevels.water} />
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
-                      <p className="text-sm font-medium text-muted-foreground mb-1">
-                        📡 {language === 'bn' ? 'কোনো লাইভ সেন্সর ডেটা নেই' : 'No live sensor data'}
-                      </p>
-                      <p className="text-xs text-muted-foreground/80">
-                        {language === 'bn'
-                          ? 'ESP32 ডিভাইস কানেক্ট হলে এখানে রিয়েল-টাইম ডেটা দেখানো হবে'
-                          : 'Real-time data will appear here once your ESP32 connects'}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {/* Live sensor 2x2 grid removed — duplicate of IndustrialKpiGrid above the tabs.
+                    CoreMetricsRow below provides the richer per-metric breakdown. */}
                 <CoreMetricsRow />
                 <InsideOutsideDeltaCard />
                 <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
@@ -433,6 +407,8 @@ export function Dashboard() {
                   🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
                 </h3>
                 <div className="space-y-3">
+                  <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                  <ConnectionQualityCard />
                   <SensorHealthCard />
                   <PowerOutageCard />
                 </div>
