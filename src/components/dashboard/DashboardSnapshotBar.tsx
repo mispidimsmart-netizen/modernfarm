@@ -74,6 +74,11 @@ export const DashboardSnapshotBar = memo(function DashboardSnapshotBar() {
 
   const activeAlerts = alertCounts.danger + alertCounts.warning;
 
+  // Hide the snapshot bar entirely when the account manages only a single shed —
+  // the same info is already visible elsewhere on the dashboard, so this row
+  // becomes redundant noise for single-shed farms.
+  if (sheds.length <= 1) return null;
+
   const alertTone: ChipProps['tone'] =
     alertCounts.danger > 0 ? 'danger' : alertCounts.warning > 0 ? 'warn' : 'ok';
 
