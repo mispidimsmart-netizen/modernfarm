@@ -255,6 +255,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/settings/members"
+          element={
+            <ProtectedRoute>
+              <MembersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/api-docs"
           element={
             <ProtectedRoute>
