@@ -408,6 +408,8 @@ export function Dashboard() {
                   🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
                 </h3>
                 <div className="space-y-3">
+                  <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
+                  <ConnectionQualityCard />
                   <SensorHealthCard />
                   <PowerOutageCard />
                 </div>
