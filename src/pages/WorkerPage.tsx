@@ -22,7 +22,7 @@ import {
 } from '@/hooks/useWorkerPin';
 import { HoldToConfirmButton } from '@/components/ui/hold-to-confirm-button';
 import { Button } from '@/components/ui/button';
-import { WorkerLockScreen } from './WorkerLockScreen';
+import { WorkerLockScreen } from '@/components/worker/WorkerLockScreen';
 import { IndustrialKpiGrid } from '@/components/dashboard/IndustrialKpiGrid';
 import { FeedManagementSheet } from '@/components/farm/FeedManagementSheet';
 import { MortalitySheet } from '@/components/farm/MortalitySheet';
