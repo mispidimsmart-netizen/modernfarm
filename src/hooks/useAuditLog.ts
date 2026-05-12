@@ -126,6 +126,26 @@ export function useAuditLog() {
     metadata: { status },
   }), [logAction]);
 
+  const logAccessDenied = useCallback((
+    attemptedPath: string,
+    userRole: string,
+    requiredRole?: string,
+    requiredPermission?: string,
+  ) => logAction({
+    action_type: 'access_denied',
+    action_category: 'auth',
+    severity: 'warning',
+    target_entity: attemptedPath,
+    metadata: {
+      attempted_url: attemptedPath,
+      user_role: userRole,
+      required_role: requiredRole || null,
+      required_permission: requiredPermission || null,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    },
+    source: 'route_guard',
+  }), [logAction]);
+
   return {
     logAction,
     logSettingsChange,
@@ -133,6 +153,7 @@ export function useAuditLog() {
     logManualControl,
     logSafetyOverride,
     logFirmwareUpdate,
+    logAccessDenied,
   };
 }
 
