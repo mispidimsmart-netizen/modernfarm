@@ -32,41 +32,38 @@ export function ManualModeWarningBanner() {
   return (
     <Link
       to="/settings"
-      className={`block rounded-xl border px-3 py-2 transition-colors ${
+      className={`inline-flex max-w-full items-center gap-2 rounded-full border pl-1 pr-3 py-1 transition-colors ${
         isCritical
-          ? 'bg-destructive/10 border-destructive/40'
-          : isLong
-            ? 'bg-amber-500/10 border-amber-500/40'
-            : 'bg-amber-500/10 border-amber-500/30'
+          ? 'bg-destructive/10 border-destructive/40 hover:bg-destructive/15'
+          : 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
       }`}
+      aria-label={language === 'bn' ? 'ম্যানুয়াল মোড — সেটিংসে যান' : 'Manual mode — go to settings'}
     >
-      <div className="flex items-center gap-2.5">
-        <div className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 ${
+      <span className={`flex h-6 w-6 items-center justify-center rounded-full shrink-0 ${
+        isCritical ? 'bg-destructive text-destructive-foreground' : 'bg-amber-500 text-white'
+      }`}>
+        {isCritical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Hand className="h-3.5 w-3.5" />}
+      </span>
+      <span className={`text-xs font-bold whitespace-nowrap ${
+        isCritical ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'
+      }`}>
+        {language === 'bn' ? '✋ ম্যানুয়াল' : '✋ Manual'}
+      </span>
+      {manualSince && (
+        <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground border-l border-border/60 pl-2 truncate min-w-0">
+          <Clock className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">{timeAgo}</span>
+        </span>
+      )}
+      {isLong && (
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap ${
           isCritical
-            ? 'bg-destructive text-destructive-foreground'
-            : 'bg-amber-500 text-white'
+            ? 'bg-destructive/20 text-destructive'
+            : 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
         }`}>
-          {isCritical ? <AlertTriangle className="h-4 w-4" /> : <Hand className="h-4 w-4" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className={`text-xs font-bold ${isCritical ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'}`}>
-              {language === 'bn' ? '✋ ম্যানুয়াল মোড' : '✋ Manual Mode'}
-            </p>
-            {manualSince && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Clock className="h-2.5 w-2.5" />
-                {timeAgo}
-              </span>
-            )}
-          </div>
-          {isLong && (
-            <p className={`text-[10px] mt-0.5 ${isCritical ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'}`}>
-              {language === 'bn' ? 'দীর্ঘদিন ম্যানুয়ালে — অটোতে ফেরা ভালো' : 'Long manual — switch to Auto'}
-            </p>
-          )}
-        </div>
-      </div>
+          {language === 'bn' ? 'দীর্ঘ' : 'Long'}
+        </span>
+      )}
     </Link>
   );
 }
