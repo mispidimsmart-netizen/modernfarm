@@ -24,6 +24,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const VALID_LANGUAGES: Language[] = ['bn', 'en'];
+const LANG_STORAGE_KEY = 'farmeye_language';
+
+function getValidLanguage(stored: string | null): Language {
+  if (stored && (VALID_LANGUAGES as string[]).includes(stored)) {
+    return stored as Language;
+  }
+  return 'bn';
+}
+
+function loadLanguage(): Language {
+  try {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY);
+    return getValidLanguage(stored);
+  } catch {
+    return 'bn';
+  }
+}
+
 // Helper to format phone number for Supabase (needs +880 format for Bangladesh)
 const formatPhoneNumber = (phone: string): string => {
   // Remove all non-digit characters
