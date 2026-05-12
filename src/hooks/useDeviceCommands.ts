@@ -350,4 +350,14 @@ export function useSendDeviceCommand() {
       );
     },
   });
+
+  // Expose latest mutate to module-level singleton so failure-toast Retry buttons work.
+  useEffect(() => {
+    _activeMutate = mutation.mutate;
+    return () => {
+      if (_activeMutate === mutation.mutate) _activeMutate = null;
+    };
+  }, [mutation.mutate]);
+
+  return mutation;
 }
