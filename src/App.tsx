@@ -380,12 +380,16 @@ const App = () => {
                   মূল কন্টেন্টে যান
                 </a>
                 <div id="main-content">
-                  <OperationsHealthStrip />
-                  <CriticalAlertBanner />
+                  <KioskGate>
+                    <OperationsHealthStrip />
+                    <CriticalAlertBanner />
+                  </KioskGate>
                   <AppWithRoutes />
                 </div>
-                <SmartActionDock />
-                <GlobalActionFAB />
+                <KioskGate>
+                  <SmartActionDock />
+                  <GlobalActionFAB />
+                </KioskGate>
               </BrowserRouter>
             </ShedProvider>
           </FarmProvider>
