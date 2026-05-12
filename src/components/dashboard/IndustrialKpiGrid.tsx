@@ -14,10 +14,11 @@
 
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { Thermometer, Droplets, Wind, GlassWater, WifiOff } from 'lucide-react';
+import { Thermometer, Droplets, Wind, GlassWater, WifiOff, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeStatusLevels } from '@/hooks/useRealtimeSensorData';
 import { useSensorHistory } from '@/hooks/useSensorHistory';
+import { useFirstRunHint } from '@/hooks/useFirstRunHint';
 import { cn } from '@/lib/utils';
 import { translations } from '@/lib/translations';
 import type { StatusLevel } from '@/lib/types';
@@ -138,6 +139,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
   const { sensorData, hasRealData, hasAnyData, ageMs, browserOnline } = useRealtimeSensorData();
   const status = useRealtimeStatusLevels(sensorData);
   const { data: history } = useSensorHistory(1); // last 1 hour for sparklines
+  const { show: showHint, dismiss: dismissHint } = useFirstRunHint('kpi-color-legend');
 
   // Determine grid state
   const tileState: TileState = hasRealData
@@ -181,6 +183,38 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
             </span>
           )}
         </motion.div>
+      )}
+
+      {/* S4.4 — first-run color-legend hint (one-shot per browser) */}
+      {showHint && hasAnyData && (
+        <div
+          role="note"
+          className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px]"
+        >
+          <span className="font-semibold text-primary">
+            {language === 'bn' ? 'টিপ:' : 'Tip:'}
+          </span>
+          <span className="flex items-center gap-1 text-foreground/80">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            {language === 'bn' ? 'ঠিক' : 'OK'}
+          </span>
+          <span className="flex items-center gap-1 text-foreground/80">
+            <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+            {language === 'bn' ? 'সাবধান' : 'Warn'}
+          </span>
+          <span className="flex items-center gap-1 text-foreground/80">
+            <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+            {language === 'bn' ? 'বিপদ' : 'Danger'}
+          </span>
+          <button
+            type="button"
+            onClick={dismissHint}
+            className="ml-auto rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={language === 'bn' ? 'টিপ বন্ধ করুন' : 'Dismiss tip'}
+          >
+            <X size={12} />
+          </button>
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-2">
