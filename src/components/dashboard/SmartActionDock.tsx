@@ -15,7 +15,7 @@
  * Cloud writes desired_* via useSendDeviceCommand (never overrides actual).
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Fan, Flame, Wind } from 'lucide-react';
