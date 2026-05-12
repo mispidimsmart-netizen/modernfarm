@@ -32,7 +32,7 @@ export function ManualModeWarningBanner() {
   return (
     <Link
       to="/settings"
-      className={`inline-flex max-w-full items-center gap-2 rounded-full border pl-1 pr-3 py-1 transition-colors ${
+      className={`flex w-full items-center gap-2 rounded-full border pl-1 pr-3 py-1 transition-colors ${
         isCritical
           ? 'bg-destructive/10 border-destructive/40 hover:bg-destructive/15'
           : 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15'
