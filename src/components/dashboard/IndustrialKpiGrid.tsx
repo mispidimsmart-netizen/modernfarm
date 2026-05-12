@@ -17,9 +17,11 @@ import { motion } from 'framer-motion';
 import { Thermometer, Droplets, Wind, GlassWater, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeStatusLevels } from '@/hooks/useRealtimeSensorData';
+import { useSensorHistory } from '@/hooks/useSensorHistory';
 import { cn } from '@/lib/utils';
 import { translations } from '@/lib/translations';
 import type { StatusLevel } from '@/lib/types';
+import { MiniSparkline } from './MiniSparkline';
 
 type TileState = 'fresh' | 'stale' | 'never';
 
@@ -30,6 +32,7 @@ interface KpiTileProps {
   label: string;
   status: StatusLevel;
   state: TileState;
+  trend?: number[];
   delay?: number;
 }
 
@@ -39,10 +42,11 @@ const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: stri
   danger:  { ring: 'ring-red-500/40',     text: 'text-red-600 dark:text-red-400',       dot: 'bg-red-500' },
 };
 
-function KpiTile({ icon, value, unit, label, status, state, delay = 0 }: KpiTileProps) {
+function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0 }: KpiTileProps) {
   const s = STATUS_STYLES[status];
   const isFresh = state === 'fresh';
   const isNever = state === 'never';
+  const showSpark = isFresh && trend && trend.length >= 2;
 
   if (isNever) {
     // Skeleton state — animated placeholder, never shows numbers
@@ -71,37 +75,44 @@ function KpiTile({ icon, value, unit, label, status, state, delay = 0 }: KpiTile
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay }}
       className={cn(
-        'relative flex items-center gap-2 rounded-xl border bg-card p-2.5 ring-1',
+        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1',
         isFresh ? s.ring : 'ring-border/40 border-dashed'
       )}
     >
-      <div
-        className={cn(
-          'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
-          isFresh ? cn('bg-current/10', s.text) : 'bg-muted text-muted-foreground/60'
-        )}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
-            {label}
-          </p>
-          {isFresh && <span className={cn('h-1 w-1 rounded-full flex-shrink-0', s.dot)} />}
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
+            isFresh ? cn('bg-current/10', s.text) : 'bg-muted text-muted-foreground/60'
+          )}
+        >
+          {icon}
         </div>
-        <div className="flex items-baseline gap-0.5">
-          <span
-            className={cn(
-              'text-lg font-bold tabular-nums leading-tight',
-              isFresh ? s.text : 'text-muted-foreground/50'
-            )}
-          >
-            {value}
-          </span>
-          <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+              {label}
+            </p>
+            {isFresh && <span className={cn('h-1 w-1 rounded-full flex-shrink-0', s.dot)} />}
+          </div>
+          <div className="flex items-baseline gap-0.5">
+            <span
+              className={cn(
+                'text-lg font-bold tabular-nums leading-tight',
+                isFresh ? s.text : 'text-muted-foreground/50'
+              )}
+            >
+              {value}
+            </span>
+            <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
+          </div>
         </div>
       </div>
+      {showSpark && (
+        <div className={cn('mt-0.5 -mx-0.5', s.text)} aria-hidden="true">
+          <MiniSparkline values={trend!} height={16} />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -126,6 +137,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
   const { language } = useAuth();
   const { sensorData, hasRealData, hasAnyData, ageMs, browserOnline } = useRealtimeSensorData();
   const status = useRealtimeStatusLevels(sensorData);
+  const { data: history } = useSensorHistory(1); // last 1 hour for sparklines
 
   // Determine grid state
   const tileState: TileState = hasRealData
@@ -136,6 +148,15 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
 
   const fmt = (n: number, decimals = 0) =>
     tileState === 'fresh' ? n.toFixed(decimals) : '--';
+
+  // Build per-metric trend arrays (cap at last 30 points to keep SVG lean)
+  const cap = (arr: number[]) => (arr.length > 30 ? arr.slice(-30) : arr);
+  const trends = {
+    temperature: cap((history ?? []).map(p => p.temperature)),
+    humidity: cap((history ?? []).map(p => p.humidity)),
+    ammonia: cap((history ?? []).map(p => p.ammonia)),
+    water: cap((history ?? []).map(p => p.water_usage)),
+  };
 
   const showOfflineBanner = !browserOnline || tileState === 'stale';
 
@@ -170,6 +191,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.temperature[language]}
           status={status.temperature}
           state={tileState}
+          trend={trends.temperature}
           delay={0}
         />
         <KpiTile
@@ -179,6 +201,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.humidity[language]}
           status={status.humidity}
           state={tileState}
+          trend={trends.humidity}
           delay={0.05}
         />
         <KpiTile
@@ -188,6 +211,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.ammonia[language]}
           status={status.ammonia}
           state={tileState}
+          trend={trends.ammonia}
           delay={0.1}
         />
         <KpiTile
@@ -197,6 +221,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
           label={translations.sensors.water[language]}
           status={status.water}
           state={tileState}
+          trend={trends.water}
           delay={0.15}
         />
       </div>
