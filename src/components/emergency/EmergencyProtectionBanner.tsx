@@ -70,7 +70,7 @@ export function EmergencyProtectionBanner() {
     }
   }, []);
 
-  if (activeEvents.length === 0 || !highestPriority) return null;
+  const hasBanner = activeEvents.length > 0 && !!highestPriority;
 
   const config = PRIORITY_CONFIG[highestPriority];
   const Icon = config.icon;
