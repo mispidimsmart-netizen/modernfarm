@@ -16,6 +16,7 @@ import { generateDeviceToken } from '@/lib/esp32Api';
 import { useSheds } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { DeviceHealthCard } from '@/components/device/DeviceHealthCard';
+import { WorkerModeCard } from '@/components/settings/WorkerModeCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -363,6 +364,8 @@ export function DeviceSystemTab() {
 
   return (
     <div className="space-y-4">
+      {/* Worker Mode (S2.1) — owner sets PIN, opens /worker kiosk */}
+      <WorkerModeCard />
       {/* Non-admin users only see OTA Firmware (read-only view) */}
       {!isAdmin ? (
         <>

@@ -2988,6 +2988,7 @@ export type Database = {
           owner_id: string
           total_sheds: number | null
           updated_at: string
+          worker_pin_hash: string | null
         }
         Insert: {
           created_at?: string
@@ -3000,6 +3001,7 @@ export type Database = {
           owner_id: string
           total_sheds?: number | null
           updated_at?: string
+          worker_pin_hash?: string | null
         }
         Update: {
           created_at?: string
@@ -3012,6 +3014,7 @@ export type Database = {
           owner_id?: string
           total_sheds?: number | null
           updated_at?: string
+          worker_pin_hash?: string | null
         }
         Relationships: [
           {
@@ -8880,6 +8883,10 @@ export type Database = {
         Returns: boolean
       }
       scale_readiness_summary: { Args: never; Returns: Json }
+      set_worker_pin: {
+        Args: { _farm_id: string; _pin: string }
+        Returns: boolean
+      }
       should_deliver_notification: {
         Args: {
           _channel: string
@@ -8961,6 +8968,10 @@ export type Database = {
       }
       user_can_access_farm_v2: {
         Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      verify_worker_pin: {
+        Args: { _farm_id: string; _pin: string }
         Returns: boolean
       }
     }

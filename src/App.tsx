@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ShedProvider } from "./hooks/useSheds";
 import { FarmProvider } from "./context/FarmContext";
@@ -63,6 +63,7 @@ const StatusPage = lazyRetry(() => import("./pages/StatusPage"));
 const SecurityReportPage = lazyRetry(() => import("./pages/SecurityReportPage"));
 const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
 const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
+const WorkerPage = lazyRetry(() => import("./pages/WorkerPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
 import { CriticalAlertBanner } from "./components/dashboard/CriticalAlertBanner";
@@ -155,6 +156,14 @@ function GlobalBatchEditQueue() {
   return null;
 }
 
+// Hide global chrome (BottomNav, FAB, OperationsHealthStrip, etc.) on kiosk routes.
+const KIOSK_ROUTES = ['/worker'];
+function KioskGate({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  if (KIOSK_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))) return null;
+  return <>{children}</>;
+}
+
 // App routes component
 function AppRoutes() {
   const { user, isLoading } = useAuth();
@@ -179,6 +188,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        {/* Worker Mode (S2.1) — kiosk route, PIN-locked, no global chrome */}
+        <Route
+          path="/worker"
+          element={
+            <ProtectedRoute>
+              <WorkerPage />
             </ProtectedRoute>
           }
         />
@@ -370,12 +388,16 @@ const App = () => {
                   মূল কন্টেন্টে যান
                 </a>
                 <div id="main-content">
-                  <OperationsHealthStrip />
-                  <CriticalAlertBanner />
+                  <KioskGate>
+                    <OperationsHealthStrip />
+                    <CriticalAlertBanner />
+                  </KioskGate>
                   <AppWithRoutes />
                 </div>
-                <SmartActionDock />
-                <GlobalActionFAB />
+                <KioskGate>
+                  <SmartActionDock />
+                  <GlobalActionFAB />
+                </KioskGate>
               </BrowserRouter>
             </ShedProvider>
           </FarmProvider>
