@@ -470,8 +470,10 @@ export function Dashboard() {
                   <SystemActivityCard />
                 </div>
 
-                {isLayer && <LayerBatchCard />}
-                {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
+                <Suspense fallback={<div className="h-40 rounded-xl bg-muted/40 animate-pulse" />}>
+                  {isLayer && <LayerBatchCard />}
+                  {isBroiler && <BroilerDashboardWidget onBatchClick={() => {}} onWeightClick={() => {}} onFeedClick={() => {}} />}
+                </Suspense>
 
                 {isLayer && layerWaterAnomalyResult && <WaterAnomalyCard result={layerWaterAnomalyResult} />}
                 {isBroiler && broilerWaterResult && (
