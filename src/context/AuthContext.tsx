@@ -248,10 +248,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const noopAuth: AuthContextType = {
+  user: null,
+  session: null,
+  isLoading: false,
+  language: 'bn',
+  setLanguage: () => {},
+  signUp: async () => ({ error: new Error('AuthProvider not mounted') }),
+  signIn: async () => ({ error: new Error('AuthProvider not mounted') }),
+  signOut: async () => {},
+};
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Fallback: avoid crashing components rendered outside the provider tree.
+    if (import.meta.env.DEV) {
+      console.warn('useAuth called outside AuthProvider — using safe defaults (lang=bn).');
+    }
+    return noopAuth;
   }
   return context;
 }
