@@ -1,7 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock, ExternalLink } from 'lucide-react';
+import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock } from 'lucide-react';
 import { AdminManagementTab } from './AdminManagementTab';
 import { OrganizationsPanel } from './OrganizationsPanel';
 import { FarmsAdminPanel } from './FarmsAdminPanel';
