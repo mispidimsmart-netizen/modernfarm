@@ -17,6 +17,7 @@ import { useSheds } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { DeviceHealthCard } from '@/components/device/DeviceHealthCard';
 import { WorkerModeCard } from '@/components/settings/WorkerModeCard';
+import { SeverityFeedbackToggle } from '@/components/settings/SeverityFeedbackToggle';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
