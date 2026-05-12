@@ -1,4 +1,5 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 
