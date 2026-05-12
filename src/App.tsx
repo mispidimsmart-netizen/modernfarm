@@ -374,6 +374,7 @@ const App = () => {
                   <CriticalAlertBanner />
                   <AppWithRoutes />
                 </div>
+                <SmartActionDock />
                 <GlobalActionFAB />
               </BrowserRouter>
             </ShedProvider>
