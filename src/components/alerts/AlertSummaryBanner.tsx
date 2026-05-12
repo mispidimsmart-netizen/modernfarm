@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Link } from 'react-router-dom';
 
+// localStorage so dismiss persists across sessions and works fully offline.
 const DISMISS_KEY = 'alert-summary-dismissed-id';
 
 export function AlertSummaryBanner() {
@@ -13,19 +14,19 @@ export function AlertSummaryBanner() {
   const { alertCounts, criticalAlert, isQuietHours } = useSmartAlerts();
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
-  // Read session-dismissed id once on mount
+  // Read persisted dismiss id once on mount
   useEffect(() => {
     try {
-      setDismissedId(sessionStorage.getItem(DISMISS_KEY));
+      setDismissedId(localStorage.getItem(DISMISS_KEY));
     } catch {
-      // ignore
+      // ignore (private mode / quota)
     }
   }, []);
 
   if (alertCounts.total === 0) return null;
 
-  // If the current critical alert was dismissed this session, hide banner
-  // (until a new alert appears with a different id)
+  // If the current critical alert was dismissed, hide banner until a NEW alert
+  // (different id) appears — then it auto-resurfaces.
   const currentAlertKey = criticalAlert?.id || `count-${alertCounts.total}`;
   if (dismissedId && dismissedId === currentAlertKey) return null;
 
@@ -33,7 +34,7 @@ export function AlertSummaryBanner() {
     e.preventDefault();
     e.stopPropagation();
     try {
-      sessionStorage.setItem(DISMISS_KEY, currentAlertKey);
+      localStorage.setItem(DISMISS_KEY, currentAlertKey);
     } catch {
       // ignore
     }
