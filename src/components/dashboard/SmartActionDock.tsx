@@ -36,6 +36,13 @@ interface ActionConfig {
   Icon: typeof Fan;
   reason: { bn: string; en: string };
   toneClass: string;
+  /**
+   * Priority weight — lower = shown first.
+   * Tens digit = severity (10 danger, 20 warning).
+   * Ones digit = metric tie-break (1 temperature, 2 ammonia, 3 humidity).
+   * Rule of thumb: life-safety (temperature) > air quality (ammonia) > comfort.
+   */
+  priority: number;
 }
 
 export const SmartActionDock = memo(function SmartActionDock() {
@@ -47,11 +54,22 @@ export const SmartActionDock = memo(function SmartActionDock() {
   const { data: settings } = useFarmSettings();
   const sendCmd = useSendDeviceCommand();
 
-  const action = useMemo<ActionConfig | null>(() => {
-    if (!hasRealData || !settings) return null;
+  // Build the FULL list of currently-violated conditions, then pick the
+  // highest-priority one. Multi-alert tie-break is deterministic:
+  //   danger temperature → danger ammonia → danger cold
+  //   warning hot         → warning ammonia → warning cold
+  const { primary, extraCount } = useMemo<{ primary: ActionConfig | null; extraCount: number }>(() => {
+    if (!hasRealData || !settings) return { primary: null, extraCount: 0 };
+
+    const candidates: ActionConfig[] = [];
+    const tMax = Number(settings.temperature_max);
+    const tMin = Number(settings.temperature_min);
+    const nh3Max = Number(settings.ammonia_max);
+
     // Hot → fan
-    if (status.temperature !== 'normal' && sensorData.temperature > Number(settings.temperature_max)) {
-      return {
+    if (sensorData.temperature > tMax) {
+      const sev = status.temperature === 'danger' ? 10 : 20;
+      candidates.push({
         device: 'fan',
         isOn: deviceStatus.fan,
         Icon: Fan,
@@ -59,25 +77,14 @@ export const SmartActionDock = memo(function SmartActionDock() {
           bn: `শেড গরম (${sensorData.temperature.toFixed(1)}°C)`,
           en: `Shed hot (${sensorData.temperature.toFixed(1)}°C)`,
         },
-        toneClass: 'bg-red-600 hover:bg-red-700',
-      };
-    }
-    // Cold → heater
-    if (status.temperature !== 'normal' && sensorData.temperature < Number(settings.temperature_min)) {
-      return {
-        device: 'heater',
-        isOn: deviceStatus.heater,
-        Icon: Flame,
-        reason: {
-          bn: `শেড ঠান্ডা (${sensorData.temperature.toFixed(1)}°C)`,
-          en: `Shed cold (${sensorData.temperature.toFixed(1)}°C)`,
-        },
-        toneClass: 'bg-orange-600 hover:bg-orange-700',
-      };
+        toneClass: sev === 10 ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
+        priority: sev + 1,
+      });
     }
     // High ammonia → fogger
-    if (status.ammonia !== 'normal' && sensorData.ammonia > Number(settings.ammonia_max)) {
-      return {
+    if (sensorData.ammonia > nh3Max) {
+      const sev = status.ammonia === 'danger' ? 10 : 20;
+      candidates.push({
         device: 'fogger',
         isOn: deviceStatus.fogger,
         Icon: Wind,
@@ -85,15 +92,36 @@ export const SmartActionDock = memo(function SmartActionDock() {
           bn: `অ্যামোনিয়া বেশি (${sensorData.ammonia.toFixed(0)} ppm)`,
           en: `Ammonia high (${sensorData.ammonia.toFixed(0)} ppm)`,
         },
-        toneClass: 'bg-amber-600 hover:bg-amber-700',
-      };
+        toneClass: sev === 10 ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700',
+        priority: sev + 2,
+      });
     }
-    return null;
+    // Cold → heater
+    if (sensorData.temperature < tMin) {
+      const sev = status.temperature === 'danger' ? 10 : 20;
+      candidates.push({
+        device: 'heater',
+        isOn: deviceStatus.heater,
+        Icon: Flame,
+        reason: {
+          bn: `শেড ঠান্ডা (${sensorData.temperature.toFixed(1)}°C)`,
+          en: `Shed cold (${sensorData.temperature.toFixed(1)}°C)`,
+        },
+        toneClass: sev === 10 ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
+        priority: sev + 3,
+      });
+    }
+
+    if (candidates.length === 0) return { primary: null, extraCount: 0 };
+
+    candidates.sort((a, b) => a.priority - b.priority);
+    return { primary: candidates[0], extraCount: candidates.length - 1 };
   }, [hasRealData, settings, status, sensorData, deviceStatus]);
 
   if (!user) return null;
   if (HIDDEN_ROUTES.some(r => location.pathname.startsWith(r))) return null;
-  if (!action) return null;
+  if (!primary) return null;
+  const action = primary;
 
   const { device, isOn, Icon, reason, toneClass } = action;
   const targetState = !isOn;
