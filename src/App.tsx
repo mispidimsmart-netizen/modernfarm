@@ -222,7 +222,9 @@ function AppRoutes() {
           path="/automation"
           element={
             <ProtectedRoute>
-              <AutomationPage />
+              <RoleProtectedRoute requiredRole="farmer">
+                <AutomationPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />
