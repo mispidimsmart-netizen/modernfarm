@@ -81,6 +81,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
       ...formData,
       age_weeks: formData.age_weeks || null,
       notes: formData.notes || null,
+      shed_id: formData.shed_id || null,
     });
   };
 
