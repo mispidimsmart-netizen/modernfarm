@@ -66,15 +66,10 @@ function OperationsHealthStripInner() {
   const smart = useSmartAlerts();
   const { hasRealData } = useRealtimeSensorData();
 
-  const counts = useMemo(() => {
-    const list = (smart?.smartAlerts ?? []) as Array<{ level?: string }>;
-    let critical = 0, warning = 0;
-    for (const a of list) {
-      if (a.level === 'danger') critical++;
-      else if (a.level === 'warning') warning++;
-    }
-    return { critical, warning };
-  }, [smart?.smartAlerts]);
+  const counts = useMemo(() => ({
+    critical: smart?.alertCounts?.danger ?? 0,
+    warning: smart?.alertCounts?.warning ?? 0,
+  }), [smart?.alertCounts?.danger, smart?.alertCounts?.warning]);
 
   const tone: StripTone = useMemo(() => {
     if (!hasRealData) return 'offline';
