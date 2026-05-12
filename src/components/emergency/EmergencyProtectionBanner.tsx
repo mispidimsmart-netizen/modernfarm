@@ -97,10 +97,15 @@ export function EmergencyProtectionBanner() {
     <motion.div
       key="emergency-banner"
       layout
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{
+        opacity: { duration: 0.35, ease: 'easeOut' },
+        y: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+        scale: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+        layout: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+      }}
       className={cn(
         'relative overflow-hidden rounded-2xl bg-gradient-to-r shadow-lg border h-full flex flex-col',
         config.gradient,
