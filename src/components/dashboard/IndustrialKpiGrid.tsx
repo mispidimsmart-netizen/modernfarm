@@ -85,7 +85,7 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
       role="group"
       aria-label={a11yLabel}
       className={cn(
-        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1',
+        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1 transition-[box-shadow,border-color,background-color] duration-500 ease-out',
         isFresh ? s.ring : 'ring-border/40 border-dashed'
       )}
     >
