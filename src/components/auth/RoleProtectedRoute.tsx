@@ -1,7 +1,8 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { ReactNode, useEffect, useRef } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useUserPermissions, AccessRole } from '@/hooks/useUserPermissions';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShieldAlert } from 'lucide-react';
 
