@@ -108,11 +108,23 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
           <div className="flex items-baseline gap-0.5">
             <span
               className={cn(
-                'text-lg font-bold tabular-nums leading-tight',
+                'relative text-lg font-bold tabular-nums leading-tight transition-colors duration-500 ease-out',
                 isFresh ? s.text : 'text-muted-foreground/50'
               )}
+              aria-live="polite"
             >
-              {value}
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={value}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  className="inline-block"
+                >
+                  {value}
+                </motion.span>
+              </AnimatePresence>
             </span>
             <span className="text-[10px] font-semibold text-muted-foreground">{unit}</span>
           </div>
