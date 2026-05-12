@@ -1,4 +1,5 @@
-import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield, ChevronDown, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield, ChevronDown, Check, Search } from 'lucide-react';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -36,6 +37,16 @@ export function Header() {
   const { farms, currentFarm, setSelectedFarmId, selectedFarmId } = useFarmContext();
   const location = useLocation();
   const navigate = useNavigate();
+  // S1.4 — search input only when farmer manages many farms (≥6).
+  const [farmSearch, setFarmSearch] = useState('');
+  const showFarmSearch = farms.length > 5;
+  const filteredFarms = useMemo(() => {
+    if (!farmSearch.trim()) return farms;
+    const q = farmSearch.toLowerCase().trim();
+    return farms.filter(f =>
+      f.name?.toLowerCase().includes(q) || f.name_en?.toLowerCase().includes(q)
+    );
+  }, [farms, farmSearch]);
 
   const isConnected = (deviceHealth || []).some((d) => {
     if (!d.is_online || !d.last_seen_at) return false;
@@ -99,20 +110,42 @@ export function Header() {
                     {language === 'bn' ? 'খামার নির্বাচন' : 'Switch farm'}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {farms.map(f => (
-                    <DropdownMenuItem
-                      key={f.id}
-                      onSelect={() => setSelectedFarmId(f.id)}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span className="truncate">
-                        {language === 'bn' ? f.name : f.name_en}
-                      </span>
-                      {f.id === selectedFarmId && (
-                        <Check size={14} className="text-primary flex-shrink-0" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
+                  {showFarmSearch && (
+                    <div className="sticky top-0 z-10 bg-popover px-2 pb-2">
+                      <div className="relative">
+                        <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          type="search"
+                          value={farmSearch}
+                          onChange={e => setFarmSearch(e.target.value)}
+                          onKeyDown={e => e.stopPropagation()}
+                          placeholder={language === 'bn' ? 'খামার খুঁজুন...' : 'Search farms...'}
+                          aria-label={language === 'bn' ? 'খামার খুঁজুন' : 'Search farms'}
+                          className="w-full rounded-md border border-input bg-background pl-7 pr-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {filteredFarms.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                      {language === 'bn' ? 'কোনো খামার পাওয়া যায়নি' : 'No farms found'}
+                    </div>
+                  ) : (
+                    filteredFarms.map(f => (
+                      <DropdownMenuItem
+                        key={f.id}
+                        onSelect={() => { setSelectedFarmId(f.id); setFarmSearch(''); }}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="truncate">
+                          {language === 'bn' ? f.name : f.name_en}
+                        </span>
+                        {f.id === selectedFarmId && (
+                          <Check size={14} className="text-primary flex-shrink-0" />
+                        )}
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (

@@ -35,6 +35,8 @@ interface KpiTileProps {
   state: TileState;
   trend?: number[];
   delay?: number;
+  /** Bengali/English status word for screen readers (e.g. "স্বাভাবিক"). */
+  statusLabel?: string;
 }
 
 const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: string }> = {
@@ -43,11 +45,16 @@ const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: stri
   danger:  { ring: 'ring-red-500/40',     text: 'text-red-600 dark:text-red-400',       dot: 'bg-red-500' },
 };
 
-function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0 }: KpiTileProps) {
+function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, statusLabel }: KpiTileProps) {
   const s = STATUS_STYLES[status];
   const isFresh = state === 'fresh';
   const isNever = state === 'never';
   const showSpark = isFresh && trend && trend.length >= 2;
+  // S6.3 — Single-string SR label so VoiceOver/TalkBack reads the whole tile
+  // ("তাপমাত্রা ৩২.৫ ডিগ্রি, স্বাভাবিক") instead of icon + label + value separately.
+  const a11yLabel = isFresh
+    ? `${label} ${value} ${unit}${statusLabel ? `, ${statusLabel}` : ''}`
+    : `${label}: ${isNever ? 'no data' : 'stale'}`;
 
   if (isNever) {
     // Skeleton state — animated placeholder, never shows numbers
@@ -75,12 +82,14 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0 }: 
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay }}
+      role="group"
+      aria-label={a11yLabel}
       className={cn(
         'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1',
         isFresh ? s.ring : 'ring-border/40 border-dashed'
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" aria-hidden="true">
         <div
           className={cn(
             'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
@@ -217,48 +226,62 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <KpiTile
-          icon={<Thermometer size={18} />}
-          value={fmt(sensorData.temperature, 1)}
-          unit={translations.units.celsius[language]}
-          label={translations.sensors.temperature[language]}
-          status={status.temperature}
-          state={tileState}
-          trend={trends.temperature}
-          delay={0}
-        />
-        <KpiTile
-          icon={<Droplets size={18} />}
-          value={fmt(sensorData.humidity)}
-          unit={translations.units.percent[language]}
-          label={translations.sensors.humidity[language]}
-          status={status.humidity}
-          state={tileState}
-          trend={trends.humidity}
-          delay={0.05}
-        />
-        <KpiTile
-          icon={<Wind size={18} />}
-          value={fmt(sensorData.ammonia)}
-          unit={translations.units.ppm[language]}
-          label={translations.sensors.ammonia[language]}
-          status={status.ammonia}
-          state={tileState}
-          trend={trends.ammonia}
-          delay={0.1}
-        />
-        <KpiTile
-          icon={<GlassWater size={18} />}
-          value={fmt(sensorData.waterUsage)}
-          unit={translations.units.litersPerHour[language]}
-          label={translations.sensors.water[language]}
-          status={status.water}
-          state={tileState}
-          trend={trends.water}
-          delay={0.15}
-        />
-      </div>
+      {(() => {
+        const STATUS_WORDS: Record<StatusLevel, { bn: string; en: string }> = {
+          normal:  { bn: 'স্বাভাবিক', en: 'normal' },
+          warning: { bn: 'সাবধান',    en: 'warning' },
+          danger:  { bn: 'বিপদ',      en: 'danger' },
+        };
+        const sw = (lvl: StatusLevel) => STATUS_WORDS[lvl][language];
+        return (
+          <div className="grid grid-cols-2 gap-2" role="list" aria-label={language === 'bn' ? 'সেন্সর সারাংশ' : 'Sensor summary'}>
+            <KpiTile
+              icon={<Thermometer size={18} />}
+              value={fmt(sensorData.temperature, 1)}
+              unit={translations.units.celsius[language]}
+              label={translations.sensors.temperature[language]}
+              status={status.temperature}
+              statusLabel={sw(status.temperature)}
+              state={tileState}
+              trend={trends.temperature}
+              delay={0}
+            />
+            <KpiTile
+              icon={<Droplets size={18} />}
+              value={fmt(sensorData.humidity)}
+              unit={translations.units.percent[language]}
+              label={translations.sensors.humidity[language]}
+              status={status.humidity}
+              statusLabel={sw(status.humidity)}
+              state={tileState}
+              trend={trends.humidity}
+              delay={0.05}
+            />
+            <KpiTile
+              icon={<Wind size={18} />}
+              value={fmt(sensorData.ammonia)}
+              unit={translations.units.ppm[language]}
+              label={translations.sensors.ammonia[language]}
+              status={status.ammonia}
+              statusLabel={sw(status.ammonia)}
+              state={tileState}
+              trend={trends.ammonia}
+              delay={0.1}
+            />
+            <KpiTile
+              icon={<GlassWater size={18} />}
+              value={fmt(sensorData.waterUsage)}
+              unit={translations.units.litersPerHour[language]}
+              label={translations.sensors.water[language]}
+              status={status.water}
+              statusLabel={sw(status.water)}
+              state={tileState}
+              trend={trends.water}
+              delay={0.15}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 });
