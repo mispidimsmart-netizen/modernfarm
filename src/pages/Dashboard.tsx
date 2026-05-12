@@ -287,7 +287,6 @@ export function Dashboard() {
                     Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
-                <ComfortIndicators />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
@@ -313,6 +312,7 @@ export function Dashboard() {
               >
                 {/* Live sensor 2x2 grid removed — duplicate of IndustrialKpiGrid above the tabs.
                     CoreMetricsRow below provides the richer per-metric breakdown. */}
+                <ComfortIndicators />
                 <CoreMetricsRow />
                 <InsideOutsideDeltaCard />
                 <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
