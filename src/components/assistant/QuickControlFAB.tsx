@@ -7,6 +7,7 @@ import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface QuickAction {
   key: 'fan' | 'heater' | 'light' | 'ceiling_fan' | 'sprinkler';
