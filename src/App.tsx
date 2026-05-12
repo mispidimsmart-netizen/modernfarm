@@ -17,6 +17,8 @@ import { RoleProtectedRoute, PlatformRoleGuard } from "./components/auth";
 import { useBatchEditQueue } from "./hooks/useBatchEditQueue";
 import { useFarmDataRealtime } from "./hooks/useFarmDataRealtime";
 import { useDeviceOnlineToasts } from "./hooks/useDeviceOnlineToasts";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import { SentryUserSync } from "./components/SentryUserSync";
 
 // Retry wrapper for lazy imports (handles stale cache / failed fetches)
 function lazyRetry<T extends React.ComponentType<any>>(
@@ -368,7 +370,9 @@ const App = () => {
       }}
     >
       <TooltipProvider>
+        <AppErrorBoundary>
         <AuthProvider>
+          <SentryUserSync />
           <FarmProvider>
             <ShedProvider>
               <Toaster />
@@ -402,6 +406,7 @@ const App = () => {
             </ShedProvider>
           </FarmProvider>
         </AuthProvider>
+        </AppErrorBoundary>
       </TooltipProvider>
     </PersistQueryClientProvider>
   );
