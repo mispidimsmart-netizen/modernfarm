@@ -220,6 +220,20 @@
   }
 }
 
+@layer base {
+  /* S6.1 — Visible focus rings for keyboard nav (mouse clicks remain unaffected) */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    border-radius: 0.375rem;
+  }
+  /* Don't double-ring elements that already define their own focus styles */
+  [data-radix-collection-item]:focus-visible,
+  [role="menuitem"]:focus-visible,
+  [role="option"]:focus-visible {
+    @apply ring-0 ring-offset-0;
+  }
+}
+
 @layer utilities {
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
