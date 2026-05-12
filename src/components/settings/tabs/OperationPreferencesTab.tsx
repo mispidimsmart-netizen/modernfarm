@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
+import { ResetFirstRunHintsCard } from '@/components/settings/ResetFirstRunHintsCard';
 import { AutomationModeCard } from '@/components/settings/AutomationModeCard';
 import { SafetyEngineToggleCard } from '@/components/settings/SafetyEngineToggleCard';
 import { SafetyEngineHistoryCard } from '@/components/settings/SafetyEngineHistoryCard';
