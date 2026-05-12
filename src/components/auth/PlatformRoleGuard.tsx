@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { ReactNode, useEffect, useRef } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { usePlatformRole } from '@/hooks/usePlatformRole';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert } from 'lucide-react';
