@@ -1,4 +1,5 @@
 import { useState, useCallback, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 
@@ -233,11 +234,17 @@ export function Dashboard() {
           <FailedCommandsBanner />
           {/* Mobile: stack vertically (full width each).
               sm+: side-by-side — auto-cols-fr means single visible banner takes full width,
-              both visible → 50/50 split */}
-          <div className="flex flex-col gap-2 sm:grid sm:grid-flow-col sm:auto-cols-fr [&>*]:min-w-0">
-            <EmergencyProtectionBanner />
-            <AlertSummaryBanner />
-          </div>
+              both visible → 50/50 split.
+              AnimatePresence + layout → smooth slide/fade when banners appear, disappear, or restack. */}
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              layout
+              className="flex flex-col gap-2 sm:grid sm:grid-flow-col sm:auto-cols-fr [&>*]:min-w-0"
+            >
+              <EmergencyProtectionBanner />
+              <AlertSummaryBanner />
+            </motion.div>
+          </AnimatePresence>
 
           {/* Industrial KPI grid — 4 critical sensors at-a-glance (above-the-fold) */}
           <IndustrialKpiGrid />
