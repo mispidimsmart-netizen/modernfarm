@@ -73,6 +73,7 @@ import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboar
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
 import { OrganizationsPanel } from '@/components/admin/OrganizationsPanel';
+import { OrgFarmAssignmentsPanel } from '@/components/admin/OrgFarmAssignmentsPanel';
 
 const t = {
   bn: {
