@@ -295,6 +295,12 @@ export function Dashboard() {
                   <WeatherCard />
                 </div>
                 <TodayReadableSummary />
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
+                  </p>
+                  <SystemActivityCard />
+                </div>
               </TabLoadingWrapper>
             </TabsContent>
 
