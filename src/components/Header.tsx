@@ -1,4 +1,4 @@
-import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield } from 'lucide-react';
+import { Wifi, WifiOff, LogOut, Globe, ArrowLeft, Building2, Crown, Shield, ChevronDown, Check } from 'lucide-react';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -6,10 +6,19 @@ import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePlatformRole } from '@/hooks/usePlatformRole';
+import { useFarmContext } from '@/context/FarmContext';
 import { translations } from '@/lib/translations';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AlertBell } from '@/components/AlertBell';
 
@@ -24,6 +33,7 @@ export function Header() {
   const { data: platformRole } = usePlatformRole();
   const primaryOrg = platformRole?.orgs?.[0];
   const orgClickable = !!primaryOrg && (primaryOrg.my_role === 'org_owner' || primaryOrg.my_role === 'org_admin');
+  const { farms, currentFarm, setSelectedFarmId, selectedFarmId } = useFarmContext();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -32,6 +42,11 @@ export function Header() {
     return Date.now() - new Date(d.last_seen_at).getTime() < ONLINE_THRESHOLD_MS;
   });
   const isHomePage = location.pathname === '/' || location.pathname === '/dashboard';
+  const farmDisplayName =
+    (currentFarm && (language === 'bn' ? currentFarm.name : currentFarm.name_en)) ||
+    profile?.farm_name ||
+    (language === 'bn' ? 'আমার খামার' : 'My Farm');
+  const hasMultipleFarms = farms.length > 1;
 
   const handleBack = () => {
     // Always navigate to home page for consistent behavior
@@ -65,9 +80,46 @@ export function Header() {
           
           {/* Farm Name & Status */}
           <div className="min-w-0 flex-1">
-            <h1 className="text-sm font-medium text-foreground truncate">
-              {profile?.farm_name || (language === 'bn' ? 'আমার খামার' : 'My Farm')}
-            </h1>
+            {hasMultipleFarms ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="group flex items-center gap-1 rounded-md px-1 -mx-1 hover:bg-accent transition-colors max-w-full"
+                    aria-label={language === 'bn' ? 'খামার পরিবর্তন' : 'Switch farm'}
+                  >
+                    <h1 className="text-sm font-medium text-foreground truncate">
+                      {farmDisplayName}
+                    </h1>
+                    <ChevronDown size={14} className="text-muted-foreground flex-shrink-0 group-hover:text-foreground transition-colors" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64 max-h-[60vh] overflow-y-auto">
+                  <DropdownMenuLabel className="text-xs">
+                    {language === 'bn' ? 'খামার নির্বাচন' : 'Switch farm'}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {farms.map(f => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      onSelect={() => setSelectedFarmId(f.id)}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="truncate">
+                        {language === 'bn' ? f.name : f.name_en}
+                      </span>
+                      {f.id === selectedFarmId && (
+                        <Check size={14} className="text-primary flex-shrink-0" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <h1 className="text-sm font-medium text-foreground truncate">
+                {farmDisplayName}
+              </h1>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               {primaryOrg && (
                 <button

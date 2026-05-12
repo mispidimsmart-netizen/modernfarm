@@ -15,7 +15,7 @@
  * Cloud writes desired_* via useSendDeviceCommand (never overrides actual).
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Fan, Flame, Wind } from 'lucide-react';
@@ -25,6 +25,7 @@ import { useFarmSettings } from '@/hooks/useFarmData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { HoldToConfirmButton } from '@/components/ui/hold-to-confirm-button';
 import { cn } from '@/lib/utils';
+import { severityFeedback } from '@/lib/severityFeedback';
 
 const HIDDEN_ROUTES = ['/login', '/reset-password', '/org-signup'];
 
@@ -117,6 +118,13 @@ export const SmartActionDock = memo(function SmartActionDock() {
     candidates.sort((a, b) => a.priority - b.priority);
     return { primary: candidates[0], extraCount: candidates.length - 1 };
   }, [hasRealData, settings, status, sensorData, deviceStatus]);
+
+  // Fire warning haptic the first time a new device-action becomes primary.
+  // Dedupe key includes device + isOn so toggling state can re-fire if needed.
+  useEffect(() => {
+    if (!primary) return;
+    severityFeedback('warning', { dedupeKey: `dock:${primary.device}:${primary.isOn}` });
+  }, [primary?.device, primary?.isOn]);
 
   if (!user) return null;
   if (HIDDEN_ROUTES.some(r => location.pathname.startsWith(r))) return null;

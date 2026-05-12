@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +14,14 @@ interface SendCommandParams {
   shedId?: string;
 }
 
+// Module-level reference to the active mutate fn so failure-toast "Retry"
+// buttons (closures) can re-issue without prop-drilling. Set in useEffect
+// below by whichever component mounted the hook first/last.
+let _activeMutate: ((p: SendCommandParams) => void) | null = null;
+export function retryLastCommand(p: SendCommandParams) {
+  _activeMutate?.(p);
+}
+
 /**
  * Hook for sending instant device commands to ESP32
  * Commands are stored in device_commands table (Realtime-enabled).
@@ -24,7 +33,7 @@ export function useSendDeviceCommand() {
   const { selectedFarmId } = useFarmContext();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -305,14 +314,20 @@ export function useSendDeviceCommand() {
             console.warn('[useDeviceCommands] failed to log command failure', logErr);
           }
 
+          const retryAction = {
+            label: isBn ? 'আবার চেষ্টা' : 'Retry',
+            onClick: () => retryLastCommand(variables),
+          };
+
           if (isOffline) {
             toast.error(
               isBn
                 ? `📡 ${name.bn}: ডিভাইস অফলাইন — কমান্ড পৌঁছায়নি। WiFi/পাওয়ার চেক করুন।`
                 : `📡 ${name.en}: device offline — command not delivered. Check WiFi/power.`,
-              { id: ackToastId, duration: 10000 }
+              { id: ackToastId, duration: 10000, action: retryAction }
             );
           } else if (safetyLocked) {
+            // No retry — Safety Engine will block again until condition clears.
             toast.warning(
               isBn
                 ? `🛡️ ${name.bn}: সেফটি ইঞ্জিন কমান্ড ব্লক করেছে (নিরাপত্তার জন্য)।`
@@ -324,7 +339,7 @@ export function useSendDeviceCommand() {
               isBn
                 ? `⚠️ ${name.bn}: ডিভাইস থেকে নিশ্চিতকরণ আসেনি, আবার চেষ্টা করুন।`
                 : `⚠️ ${name.en}: no device acknowledgement, please retry.`,
-              { id: ackToastId, duration: 8000 }
+              { id: ackToastId, duration: 8000, action: retryAction }
             );
           }
         }
@@ -341,4 +356,14 @@ export function useSendDeviceCommand() {
       );
     },
   });
+
+  // Expose latest mutate to module-level singleton so failure-toast Retry buttons work.
+  useEffect(() => {
+    _activeMutate = mutation.mutate;
+    return () => {
+      if (_activeMutate === mutation.mutate) _activeMutate = null;
+    };
+  }, [mutation.mutate]);
+
+  return mutation;
 }

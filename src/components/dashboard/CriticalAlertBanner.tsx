@@ -9,7 +9,7 @@
  *  - Hold-to-acknowledge (1s) → marks the top alert acknowledged
  */
 
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, ChevronRight } from 'lucide-react';
@@ -17,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import useSmartAlerts from '@/hooks/useSmartAlerts';
 import { useAcknowledgeAlert } from '@/hooks/useFarmData';
 import { HoldToConfirmButton } from '@/components/ui/hold-to-confirm-button';
+import { severityFeedback } from '@/lib/severityFeedback';
 import { cn } from '@/lib/utils';
 
 const HIDDEN_ROUTES = ['/login', '/reset-password', '/org-signup'];
@@ -36,6 +37,12 @@ export const CriticalAlertBanner = memo(function CriticalAlertBanner() {
     a => a.level === 'danger' && !dismissedIds.has(a.id) && !a.id.startsWith('synthetic_')
   );
   const top = dangerAlerts[0];
+
+  // Fire haptic + beep on the first appearance of each danger alert (deduped per id)
+  useEffect(() => {
+    if (top) severityFeedback('danger', { dedupeKey: `critical:${top.id}` });
+  }, [top?.id]);
+
   if (!top) return null;
 
   const extra = dangerAlerts.length - 1;
