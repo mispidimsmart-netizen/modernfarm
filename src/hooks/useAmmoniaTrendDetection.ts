@@ -71,7 +71,12 @@ function calculateHourlyAverages(
   const now = new Date();
 
   readings.forEach(reading => {
-    const hoursAgo = Math.floor((now.getTime() - reading.timestamp.getTime()) / (1000 * 60 * 60));
+    // Coerce: persisted React Query cache rehydrates Date as string.
+    const ts = reading.timestamp instanceof Date
+      ? reading.timestamp
+      : new Date(reading.timestamp as unknown as string | number);
+    if (isNaN(ts.getTime())) return;
+    const hoursAgo = Math.floor((now.getTime() - ts.getTime()) / (1000 * 60 * 60));
     if (!hourlyData.has(hoursAgo)) {
       hourlyData.set(hoursAgo, []);
     }
