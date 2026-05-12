@@ -102,6 +102,9 @@ export function WorkerPage() {
       </header>
 
       <main className="mx-auto max-w-md space-y-4 px-3 pt-4">
+        {/* Failed/expired command alert — sticky until dismissed */}
+        <FailedCommandsBanner />
+
         {/* 1. KPI strip — read only */}
         <section aria-label={language === 'bn' ? 'সেন্সর সারাংশ' : 'Sensor summary'}>
           <IndustrialKpiGrid />
