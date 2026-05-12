@@ -164,10 +164,7 @@ export function SummaryQuickStats() {
             {recentAlertCount > 0 ? (
               <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
             ) : (
-              <Skull className="h-4 w-4 text-emerald-600 dark:text-emerald-400 opacity-0" />
-            )}
-            {recentAlertCount === 0 && (
-              <span className="absolute text-emerald-600 dark:text-emerald-400 text-base">✓</span>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             )}
           </div>
           <div className="flex-1 min-w-0">
