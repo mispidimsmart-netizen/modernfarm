@@ -289,6 +289,8 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                       <img 
                         src={selectedProfile.avatar_url} 
                         alt="" 
+                        loading="lazy"
+                        decoding="async"
                         className="w-5 h-5 rounded-full object-cover shrink-0"
                       />
                     ) : (
@@ -351,6 +353,8 @@ export function AdminSensorCharts({ language = 'bn' }: AdminSensorChartsProps) {
                         <img 
                           src={profile.avatar_url} 
                           alt="" 
+                          loading="lazy"
+                          decoding="async"
                           className="w-5 h-5 rounded-full object-cover shrink-0"
                         />
                       ) : (
