@@ -73,6 +73,7 @@ import {
   SystemActivityCard, TodayReadableSummary, FarmHealthScore,
   HourlyForecastCard
 } from '@/components/assistant';
+import { SummaryQuickStats } from '@/components/dashboard/SummaryQuickStats';
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
 import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
 // QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
@@ -294,6 +295,7 @@ export function Dashboard() {
                   <WeatherCard />
                 </div>
                 <TodayReadableSummary />
+                <SummaryQuickStats />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
