@@ -538,6 +538,8 @@ export function LoginPage() {
                     <select
                       value={signupOrgId}
                       onChange={(e) => setSignupOrgId(e.target.value)}
+                      required
+                      aria-required="true"
                       className={`${inputClass} flex w-full appearance-none pr-10 py-3`}
                     >
                       <option value="">— অর্গানাইজেশন বেছে নিন —</option>
