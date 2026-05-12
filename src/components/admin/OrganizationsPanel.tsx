@@ -104,6 +104,8 @@ export function OrganizationsPanel() {
     },
   });
 
+  const membersKey = ['admin_org_members', selectedOrgId] as const;
+
   const removeMember = useMutation({
     mutationFn: async ({ user_id }: { user_id: string }) => {
       const { error } = await supabase.rpc('super_admin_remove_org_member' as any, {
@@ -111,11 +113,26 @@ export function OrganizationsPanel() {
       });
       if (error) throw error;
     },
+    onMutate: async ({ user_id }) => {
+      await qc.cancelQueries({ queryKey: membersKey });
+      const previous = qc.getQueryData<MemberRow[]>(membersKey);
+      if (previous) {
+        qc.setQueryData<MemberRow[]>(membersKey, previous.filter(m => m.user_id !== user_id));
+      }
+      return { previous };
+    },
+    onError: (e: any, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(membersKey, ctx.previous);
+      toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' });
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin_org_members', selectedOrgId] });
       toast({ title: 'সদস্য সরানো হয়েছে' });
     },
-    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: membersKey, refetchType: 'active' });
+      qc.invalidateQueries({ queryKey: ['platform_role'] });
+      qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+    },
   });
 
   const setRole = useMutation({
@@ -125,11 +142,31 @@ export function OrganizationsPanel() {
       });
       if (error) throw error;
     },
+    onMutate: async ({ user_id, role }) => {
+      await qc.cancelQueries({ queryKey: membersKey });
+      const previous = qc.getQueryData<MemberRow[]>(membersKey);
+      if (previous) {
+        qc.setQueryData<MemberRow[]>(
+          membersKey,
+          previous.map(m => (m.user_id === user_id ? { ...m, role } : m)),
+        );
+      }
+      return { previous };
+    },
+    onError: (e: any, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(membersKey, ctx.previous);
+      toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' });
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin_org_members', selectedOrgId] });
       toast({ title: 'রোল আপডেট হয়েছে' });
     },
-    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+    onSettled: async () => {
+      // Force a fresh fetch from the server so the canonical role is shown,
+      // and refresh anything else that depends on org membership/roles.
+      await qc.invalidateQueries({ queryKey: membersKey, refetchType: 'active' });
+      qc.invalidateQueries({ queryKey: ['platform_role'] });
+      qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+    },
   });
 
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
