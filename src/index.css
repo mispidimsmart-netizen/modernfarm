@@ -246,6 +246,23 @@
     padding-top: max(0.5rem, env(safe-area-inset-top));
   }
 
+  /* Floating-element safe-area helpers
+     BottomNav ≈ 64px; SmartActionDock card ≈ 72px above the nav.
+     All include env(safe-area-inset-bottom) so iOS notch / Android gesture-bar
+     never cuts off floating UI. Right inset for landscape notch.            */
+  .bottom-safe-nav {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 0.75rem);
+  }
+  .bottom-safe-dock {
+    bottom: calc(64px + 72px + env(safe-area-inset-bottom) + 0.5rem);
+  }
+  .right-safe {
+    right: max(0.75rem, env(safe-area-inset-right));
+  }
+  .left-safe {
+    left: max(0.75rem, env(safe-area-inset-left));
+  }
+
   .font-bengali {
     font-family: 'Noto Sans Bengali', system-ui, sans-serif;
   }
