@@ -218,7 +218,7 @@ export function SensorCharts() {
             strokeWidth={2.5}
             fill={`url(#${gradientId})`}
             dot={false}
-            activeDot={{ r: 5, fill: accent, stroke: 'hsl(var(--background))', strokeWidth: 2 }}
+            activeDot={{ r: 7, fill: accent, stroke: 'hsl(var(--background))', strokeWidth: 3 }}
             isAnimationActive={false}
           />
           <Brush
