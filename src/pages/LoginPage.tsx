@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import farmeyeLogo from '@/assets/farmeye-logo-new-gen.png';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 
 type FarmType = 'layer' | 'broiler';
 type UserType = 'owner' | 'worker';
