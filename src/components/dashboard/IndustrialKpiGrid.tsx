@@ -17,9 +17,11 @@ import { motion } from 'framer-motion';
 import { Thermometer, Droplets, Wind, GlassWater, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData, useRealtimeStatusLevels } from '@/hooks/useRealtimeSensorData';
+import { useSensorHistory } from '@/hooks/useSensorHistory';
 import { cn } from '@/lib/utils';
 import { translations } from '@/lib/translations';
 import type { StatusLevel } from '@/lib/types';
+import { MiniSparkline } from './MiniSparkline';
 
 type TileState = 'fresh' | 'stale' | 'never';
 
@@ -30,6 +32,7 @@ interface KpiTileProps {
   label: string;
   status: StatusLevel;
   state: TileState;
+  trend?: number[];
   delay?: number;
 }
 
