@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ShieldAlert, ShieldCheck, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEmergencyProtection, EmergencyPriority } from '@/hooks/useEmergencyProtection';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+// localStorage so dismiss persists across reloads and works offline.
+// Key encodes the active-event signature → if a new emergency arrives,
+// or priority escalates, the banner auto-resurfaces.
+const DISMISS_KEY = 'emergency-banner-dismissed-sig';
 
 const PRIORITY_CONFIG: Record<EmergencyPriority, {
   gradient: string;
