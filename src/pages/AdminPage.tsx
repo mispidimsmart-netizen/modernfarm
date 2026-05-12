@@ -399,266 +399,45 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* Tabs for Admins, Users, System, Notifications, Analytics */}
-        <Tabs defaultValue="admins" className="w-full">
-          <TabsList className="bg-slate-900/80 border border-white/10 flex-wrap h-auto gap-1 p-1.5 rounded-xl shadow-lg">
-            <TabsTrigger value="admins" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Crown className="w-4 h-4 mr-2" />
-              {labels.tabAdmins}
-            </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+        {/* Top-level grouped tabs */}
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="bg-slate-900/80 border border-white/10 flex flex-wrap h-auto gap-1 p-1.5 rounded-xl shadow-lg w-full justify-start">
+            <TabsTrigger value="users" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <Users className="w-4 h-4 mr-2" />
-              {labels.tabUsers}
+              ব্যবহারকারী ব্যবস্থাপনা
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <TrendingUp className="w-4 h-4 mr-2" />
-              {labels.tabAnalytics}
+              অ্যানালিটিক্স
             </TabsTrigger>
-            <TabsTrigger value="notify" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="notify" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-amber-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <Bell className="w-4 h-4 mr-2" />
-              {labels.tabNotify}
+              নোটিফিকেশন
             </TabsTrigger>
-            <TabsTrigger value="system" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="system" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <Activity className="w-4 h-4 mr-2" />
-              {labels.tabSystem}
+              সিস্টেম
             </TabsTrigger>
-            <TabsTrigger value="docs" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-pink-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <BookOpen className="w-4 h-4 mr-2" />
-              {labels.tabDocs}
-            </TabsTrigger>
-            <TabsTrigger value="guide" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-teal-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Cpu className="w-4 h-4 mr-2" />
-              {labels.tabGuide}
-            </TabsTrigger>
-            <TabsTrigger value="audit" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <FileText className="w-4 h-4 mr-2" />
-              {labels.tabAudit}
-            </TabsTrigger>
-            <TabsTrigger value="architecture" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Cpu className="w-4 h-4 mr-2" />
-              {labels.tabArchitecture}
-            </TabsTrigger>
-            <TabsTrigger value="firmware" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Upload className="w-4 h-4 mr-2" />
-              {labels.tabFirmware}
-            </TabsTrigger>
-            <TabsTrigger value="security" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-rose-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="security" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-rose-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <Shield className="w-4 h-4 mr-2" />
-              {labels.tabSecurity}
+              সিকিউরিটি ও অডিট
             </TabsTrigger>
-            <TabsTrigger value="commands" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Activity className="w-4 h-4 mr-2" />
-              {labels.tabCommands}
-            </TabsTrigger>
-            <TabsTrigger value="isolation" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-green-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Shield className="w-4 h-4 mr-2" />
-              আইসোলেশন
-            </TabsTrigger>
-            <TabsTrigger value="pcb" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="firmware" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <Cpu className="w-4 h-4 mr-2" />
-              PCB ম্যানুফ্যাকচারিং
+              ফার্মওয়্যার ও PCB
             </TabsTrigger>
-            <TabsTrigger value="observability" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-fuchsia-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Activity className="w-4 h-4 mr-2" />
-              পর্যবেক্ষণ
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-fuchsia-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-fuchsia-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              পারফরম্যান্স
-            </TabsTrigger>
-            <TabsTrigger value="benchmark" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              বেঞ্চমার্ক
-            </TabsTrigger>
-            <TabsTrigger value="orgs" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Building2 className="w-4 h-4 mr-2" />
-              কোম্পানি
-            </TabsTrigger>
-            <TabsTrigger value="farm-assign" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-teal-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
-              <Users className="w-4 h-4 mr-2" />
-              ফার্ম অ্যাসাইনমেন্ট
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-emerald-500/30 text-slate-400 hover:text-white transition-all rounded-lg">
+            <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               পেমেন্ট
+            </TabsTrigger>
+            <TabsTrigger value="docs" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-rose-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
+              <BookOpen className="w-4 h-4 mr-2" />
+              ডকুমেন্টেশন
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="orgs" className="mt-4">
-            <OrganizationsPanel />
-          </TabsContent>
-
-          <TabsContent value="farm-assign" className="mt-4">
-            <OrgFarmAssignmentsPanel />
-          </TabsContent>
-
-          <TabsContent value="payments" className="mt-4">
-            <PaymentApprovalPanel />
-          </TabsContent>
-
-
-          <TabsContent value="benchmark" className="mt-4">
-            <FarmBenchmarkingTab />
-          </TabsContent>
-
-          <TabsContent value="performance" className="mt-4">
-            <PerformanceDashboardTab />
-          </TabsContent>
-
-          <TabsContent value="isolation" className="mt-4">
-            <TenantIsolationAuditTab />
-          </TabsContent>
-
-          <TabsContent value="admins" className="mt-4">
-            <AdminManagementTab language={language} />
-          </TabsContent>
-
+          {/* User Management — Admin / Org / Farm / Worker */}
           <TabsContent value="users" className="mt-4">
-            {/* Users List */}
-            <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-violet-500/20 shadow-xl shadow-violet-500/5">
-              <CardHeader className="pb-4 border-b border-violet-500/10">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                  <CardTitle className="text-white flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="bg-gradient-to-r from-violet-200 to-purple-200 bg-clip-text text-transparent">
-                      {labels.allUsers}
-                    </span>
-                  </CardTitle>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400" />
-                    <Input
-                      placeholder={labels.searchUsers}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-slate-800/80 border-violet-500/20 text-white placeholder:text-violet-300/50 focus:border-violet-500/40 focus:ring-violet-500/20"
-                    />
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[500px]">
-                  {loadingUsers ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Skeleton key={i} className="h-20 w-full bg-slate-700/50" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {filteredUsers?.map(u => {
-                        const sensorData = userDetails?.[u.id];
-                        return (
-                          <div
-                            key={u.id}
-                            className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
-                              u.is_blocked 
-                                ? 'bg-red-900/20 border border-red-500/30' 
-                                : 'bg-slate-700/30 hover:bg-slate-700/50'
-                            }`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="relative">
-                                <Avatar className={`w-12 h-12 border-2 ${u.is_blocked ? 'border-red-500/50' : 'border-purple-500/30'}`}>
-                                  <AvatarImage src={u.avatar_url || undefined} />
-                                  <AvatarFallback className={u.is_blocked ? 'bg-red-600 text-white' : 'bg-purple-600 text-white'}>
-                                    {(u.user_name || u.farm_name).charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                {u.is_blocked && (
-                                  <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5">
-                                    <Ban className="w-3 h-3 text-white" />
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className={`font-semibold ${u.is_blocked ? 'text-red-300' : 'text-white'}`}>
-                                    {u.user_name || labels.noName}
-                                  </h3>
-                                  {u.is_blocked && (
-                                    <Badge variant="outline" className="border-red-500 text-red-400 text-xs">
-                                      🚫 ব্লকড
-                                    </Badge>
-                                  )}
-                                  <Badge 
-                                    variant="outline" 
-                                    className={u.farm_type === 'broiler' 
-                                      ? 'border-amber-500/30 text-amber-400 text-xs' 
-                                      : u.farm_type === 'mixed'
-                                        ? 'border-purple-500/30 text-purple-400 text-xs'
-                                        : 'border-green-500/30 text-green-400 text-xs'
-                                    }
-                                  >
-                                    {u.farm_type === 'broiler' ? '🐔' : u.farm_type === 'mixed' ? '🥚🐔' : '🥚'} {u.farm_type === 'broiler' ? labels.broiler : u.farm_type === 'mixed' ? 'মিক্সড' : labels.layer}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-purple-300">{u.farm_name}</p>
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-1">
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="w-3 h-3" />
-                                    {u.phone || labels.noPhone}
-                                  </span>
-                                  {u.email && (
-                                    <span className="flex items-center gap-1">
-                                      📧 {u.email}
-                                    </span>
-                                  )}
-                                  <span className="flex items-center gap-1">
-                                    <Building2 className="w-3 h-3" />
-                                    {u.sheds_count} {labels.sheds}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: bn })}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {sensorData && (
-                                <div className="hidden lg:flex items-center gap-2 text-xs">
-                                  <Badge variant="outline" className="border-orange-500/30 text-orange-400">
-                                    <Thermometer className="w-3 h-3 mr-1" />
-                                    {sensorData.temperature}°C
-                                  </Badge>
-                                  <Badge variant="outline" className="border-blue-500/30 text-blue-400">
-                                    <Droplets className="w-3 h-3 mr-1" />
-                                    {sensorData.humidity}%
-                                  </Badge>
-                                </div>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10"
-                                onClick={() => {
-                                  setEditingUser(u);
-                                  setShowEditDialog(true);
-                                }}
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                                onClick={() => {
-                                  setSelectedUser(u);
-                                  setShowUserDialog(true);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            <UserManagementTab language={language} />
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-4">
@@ -673,44 +452,36 @@ export default function AdminPage() {
             <SystemHealthCard language={language} />
             <AdminDeviceHealthPanel language={language} />
             <MqttHealthCard />
-            <OTAHardeningCard />
             <ScaleReadinessCard />
             <Phase8StatusCard />
             <Phase9SensorUpgradeCard />
+            <ObservabilityDashboard language={language} />
+            <PerformanceDashboardTab />
+            <FarmBenchmarkingTab />
+          </TabsContent>
+
+          <TabsContent value="security" className="mt-4 space-y-4">
+            <SecurityAuditLogPanel />
+            <AdminCommandDeliveryPanel />
+            <TenantIsolationAuditTab />
             <ForensicTimelineCard />
-            {/* Calibration Wizard Card */}
-            <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
-              <CardHeader className="border-b border-cyan-500/10">
-                <CardTitle className="text-white flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg shadow-cyan-500/40">
-                    <Cpu className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="bg-gradient-to-r from-cyan-200 to-teal-200 bg-clip-text text-transparent font-semibold">
-                    {language === 'bn' ? 'ইনস্টলেশন ক্যালিব্রেশন উইজার্ড' : 'Installation Calibration Wizard'}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <p className="text-slate-400 text-sm mb-4">
-                  {language === 'bn' 
-                    ? 'নতুন ডিভাইস সেটআপের সময় সঠিক সেন্সর প্লেসমেন্ট ও ক্যালিব্রেশন নিশ্চিত করতে এই উইজার্ড ব্যবহার করুন।'
-                    : 'Use this wizard to ensure correct sensor placement and calibration during new device setup.'}
-                </p>
-                <CalibrationWizardSheet>
-                  <Button className="bg-gradient-to-r from-cyan-500 to-teal-600 text-white border-0 hover:from-cyan-600 hover:to-teal-700 shadow-lg shadow-cyan-500/30">
-                    <Cpu className="w-4 h-4 mr-2" />
-                    {language === 'bn' ? 'ক্যালিব্রেশন উইজার্ড চালু করুন' : 'Launch Calibration Wizard'}
-                  </Button>
-                </CalibrationWizardSheet>
-              </CardContent>
-            </Card>
+            <ProductionAuditReport />
           </TabsContent>
-          
-          <TabsContent value="docs" className="mt-4">
+
+          <TabsContent value="firmware" className="mt-4 space-y-4">
+            <FirmwareManagementTab language={language} />
+            <OTAHardeningCard />
+            <PCBManufacturingSpec />
+            <PhaseCRoadmapPanel />
+            <TechnicalArchitectureReport />
+          </TabsContent>
+
+          <TabsContent value="payments" className="mt-4">
+            <PaymentApprovalPanel />
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4 space-y-4">
             <AppDocumentation />
-          </TabsContent>
-          
-          <TabsContent value="guide" className="mt-4">
             <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
               <CardHeader className="border-b border-teal-500/10">
                 <CardTitle className="text-white flex items-center gap-3">
@@ -718,54 +489,46 @@ export default function AdminPage() {
                     <BookOpen className="w-5 h-5 text-white" />
                   </div>
                   <span className="bg-gradient-to-r from-teal-200 to-emerald-200 bg-clip-text text-transparent font-semibold">
-                    {language === 'bn' ? 'ESP32 ইনস্টলেশন গাইড' : 'ESP32 Installation Guide'}
+                    ESP32 ইনস্টলেশন গাইড
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 <p className="text-teal-200/70">
-                  {language === 'bn' 
-                    ? 'ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।'
-                    : 'ESP32 hardware setup, parts list, wiring diagram and firmware upload guide.'}
+                  ESP32 হার্ডওয়্যার সেটআপ, পার্টস লিস্ট, ওয়্যারিং ডায়াগ্রাম এবং ফার্মওয়্যার আপলোড গাইড।
                 </p>
-                <Button 
+                <Button
                   onClick={() => navigate('/installation-guide')}
                   className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-teal-500/30 transition-all"
                 >
                   <BookOpen className="w-4 h-4 mr-2" />
-                  {language === 'bn' ? 'ইনস্টলেশন গাইড দেখুন' : 'View Installation Guide'}
+                  ইনস্টলেশন গাইড দেখুন
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="audit" className="mt-4">
-            <ProductionAuditReport />
-          </TabsContent>
-
-          <TabsContent value="architecture" className="mt-4 space-y-4">
-            <PhaseCRoadmapPanel />
-            <TechnicalArchitectureReport />
-          </TabsContent>
-
-          <TabsContent value="firmware" className="mt-4">
-            <FirmwareManagementTab language={language} />
-          </TabsContent>
-
-          <TabsContent value="security" className="mt-4">
-            <SecurityAuditLogPanel />
-          </TabsContent>
-
-          <TabsContent value="commands" className="mt-4">
-            <AdminCommandDeliveryPanel />
-          </TabsContent>
-
-          <TabsContent value="pcb" className="mt-4">
-            <PCBManufacturingSpec />
-          </TabsContent>
-
-          <TabsContent value="observability" className="mt-4">
-            <ObservabilityDashboard language={language} />
+            <Card className="bg-gradient-to-br from-slate-900/90 to-slate-800/50 border-cyan-500/20 shadow-xl shadow-cyan-500/5">
+              <CardHeader className="border-b border-cyan-500/10">
+                <CardTitle className="text-white flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg shadow-cyan-500/40">
+                    <Cpu className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-cyan-200 to-teal-200 bg-clip-text text-transparent font-semibold">
+                    ইনস্টলেশন ক্যালিব্রেশন উইজার্ড
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <p className="text-slate-400 text-sm mb-4">
+                  নতুন ডিভাইস সেটআপের সময় সঠিক সেন্সর প্লেসমেন্ট ও ক্যালিব্রেশন নিশ্চিত করতে এই উইজার্ড ব্যবহার করুন।
+                </p>
+                <CalibrationWizardSheet>
+                  <Button className="bg-gradient-to-r from-cyan-500 to-teal-600 text-white border-0 hover:from-cyan-600 hover:to-teal-700 shadow-lg shadow-cyan-500/30">
+                    <Cpu className="w-4 h-4 mr-2" />
+                    ক্যালিব্রেশন উইজার্ড চালু করুন
+                  </Button>
+                </CalibrationWizardSheet>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
