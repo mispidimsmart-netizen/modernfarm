@@ -262,7 +262,7 @@ export function OrganizationsPanel() {
                       value={m.role}
                       onValueChange={(v: OrgRole) => setRole.mutate({ user_id: m.user_id, role: v })}
                     >
-                      <SelectTrigger className="h-8 w-[120px] bg-slate-900 border-white/10 text-xs">
+                      <SelectTrigger className="h-8 w-[120px] bg-slate-900 border-white/10 text-white text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
