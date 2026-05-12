@@ -8734,6 +8734,14 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      has_farm_role: {
+        Args: {
+          _farm_id: string
+          _min_role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_min_role: {
         Args: { _required_role: string; _user_id: string }
         Returns: boolean
@@ -8881,6 +8889,10 @@ export type Database = {
           _organization_id: string
         }
         Returns: boolean
+      }
+      role_rank: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: number
       }
       scale_readiness_summary: { Args: never; Returns: Json }
       set_worker_pin: {
