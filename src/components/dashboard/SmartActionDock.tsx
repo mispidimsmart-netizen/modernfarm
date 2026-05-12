@@ -119,6 +119,13 @@ export const SmartActionDock = memo(function SmartActionDock() {
     return { primary: candidates[0], extraCount: candidates.length - 1 };
   }, [hasRealData, settings, status, sensorData, deviceStatus]);
 
+  // Fire warning haptic the first time a new device-action becomes primary.
+  // Dedupe key includes device + isOn so toggling state can re-fire if needed.
+  useEffect(() => {
+    if (!primary) return;
+    severityFeedback('warning', { dedupeKey: `dock:${primary.device}:${primary.isOn}` });
+  }, [primary?.device, primary?.isOn]);
+
   if (!user) return null;
   if (HIDDEN_ROUTES.some(r => location.pathname.startsWith(r))) return null;
   if (!primary) return null;
