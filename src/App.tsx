@@ -156,6 +156,14 @@ function GlobalBatchEditQueue() {
   return null;
 }
 
+// Hide global chrome (BottomNav, FAB, OperationsHealthStrip, etc.) on kiosk routes.
+const KIOSK_ROUTES = ['/worker'];
+function KioskGate({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  if (KIOSK_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))) return null;
+  return <>{children}</>;
+}
+
 // App routes component
 function AppRoutes() {
   const { user, isLoading } = useAuth();
