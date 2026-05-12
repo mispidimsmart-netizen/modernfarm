@@ -8,11 +8,12 @@
  * Acknowledge/resolve actions still write to DB (user intent).
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafetyStatus, type EmergencyPriority } from './useSafetyStatus';
+import { ShedContext, useSheds } from './useSheds';
 
 export type { EmergencyPriority };
 
