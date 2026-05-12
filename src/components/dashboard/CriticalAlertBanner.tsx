@@ -93,7 +93,7 @@ export const CriticalAlertBanner = memo(function CriticalAlertBanner() {
                 'hover:bg-white/25 border-white/30'
               )}
               label={language === 'bn' ? 'ধরে রাখুন' : 'Hold'}
-              activeLabel={language === 'bn' ? 'গ্রহণ করছি…' : 'Acknowledging…'}
+              holdingLabel={language === 'bn' ? 'গ্রহণ করছি…' : 'Acknowledging…'}
             />
             <button
               type="button"
