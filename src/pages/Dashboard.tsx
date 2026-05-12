@@ -19,6 +19,7 @@ import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 import { SensorCard } from '@/components/SensorCard';
 import { Header } from '@/components/Header';
+import { DashboardSnapshotBar } from '@/components/dashboard/DashboardSnapshotBar';
 import { PendingInvitationsBanner } from '@/components/PendingInvitationsBanner';
 import { BottomNav } from '@/components/BottomNav';
 import { ShedSelector } from '@/components/shed/ShedSelector';
@@ -196,6 +197,7 @@ export function Dashboard() {
     <DashboardSnapshotProvider>
     <div className="min-h-screen bg-background">
       <Header />
+      <DashboardSnapshotBar />
 
       <main className="page-container px-4">
         {/* ============ SHED SELECTOR ============ */}
