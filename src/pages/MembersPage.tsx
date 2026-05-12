@@ -60,6 +60,8 @@ export default function MembersPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isOwner = useIsOwner();
+  const { logMemberAction } = useAuditLog();
+  const actorRole: AppRole = isOwner ? 'owner' : 'worker';
 
   const { data: workers, isLoading: workersLoading } = useWorkers();
   const { data: invitations, isLoading: invitationsLoading } = useWorkerInvitations();
