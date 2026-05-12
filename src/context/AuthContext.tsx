@@ -65,8 +65,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [language, setLanguage] = useState<Language>('bn');
+  const [language, setLanguageRaw] = useState<Language>(loadLanguage);
   const { toast } = useToast();
+
+  // Safe language setter with localStorage persistence and validation
+  const setLanguage = useCallback((lang: Language) => {
+    const valid = getValidLanguage(lang);
+    setLanguageRaw(valid);
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, valid);
+    } catch {
+      // localStorage may be unavailable in some environments
+    }
+  }, []);
 
   useEffect(() => {
     // Set up auth state listener FIRST
