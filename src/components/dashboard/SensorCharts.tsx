@@ -173,8 +173,6 @@ export function SensorCharts() {
           data={chartData}
           margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
           onMouseMove={handleMove(dataKey)}
-          onTouchMove={handleMove(dataKey) as any}
-          onTouchStart={handleMove(dataKey) as any}
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
