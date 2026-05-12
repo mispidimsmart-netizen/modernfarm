@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { WifiOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { cn } from '@/lib/utils';
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
  * - Auto-updates via the realtime subscription in useRealtimeSensorData — no
  *   manual reconnect logic needed.
  */
-export function EspConnectionBanner() {
+function EspConnectionBannerImpl() {
   const { hasRealData, hasAnyData, lastSeenAt, ageMs, browserOnline, isConnected } =
     useRealtimeSensorData();
 
@@ -86,3 +86,6 @@ export function EspConnectionBanner() {
     </div>
   );
 }
+
+
+export const EspConnectionBanner = memo(EspConnectionBannerImpl);

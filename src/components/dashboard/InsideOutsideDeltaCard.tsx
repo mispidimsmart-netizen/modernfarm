@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowDownUp, Thermometer, Sun, Wind, Droplets } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -7,7 +8,7 @@ import { useInsideOutsideDelta, getVentilationModifier } from '@/hooks/useInside
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { cn } from '@/lib/utils';
 
-export function InsideOutsideDeltaCard() {
+function InsideOutsideDeltaCardImpl() {
   const { language } = useAuth();
   const delta = useInsideOutsideDelta();
   const { hasRealData } = useRealtimeSensorData();
@@ -141,3 +142,6 @@ export function InsideOutsideDeltaCard() {
     </motion.div>
   );
 }
+
+
+export const InsideOutsideDeltaCard = memo(InsideOutsideDeltaCardImpl);

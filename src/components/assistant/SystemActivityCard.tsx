@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Fan, Flame, Bell, Droplets, Activity, Clock, ArrowUpFromDot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -14,7 +14,7 @@ interface ActivityStat {
   bgColor: string;
 }
 
-export function SystemActivityCard() {
+function SystemActivityCardImpl() {
   const { language, user } = useAuth();
   const today = new Date().toISOString().split('T')[0];
 
@@ -52,7 +52,10 @@ export function SystemActivityCard() {
       };
     },
     enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5min — runtime stats don't move that fast
+    gcTime: 1000 * 60 * 30,
     refetchInterval: 300000,
+    refetchOnMount: false,
   });
 
   const stats = useMemo((): ActivityStat[] => {
@@ -145,3 +148,6 @@ export function SystemActivityCard() {
     </Card>
   );
 }
+
+
+export const SystemActivityCard = memo(SystemActivityCardImpl);

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   AlertTriangle, CheckCircle2, Thermometer, Snowflake, 
@@ -99,7 +99,7 @@ interface DeviceItem {
   reason: { bn: string; en: string };
 }
 
-export function IndustrialHeroStatus() {
+function IndustrialHeroStatusImpl() {
   const { language } = useAuth();
   const { sensorData, hasRealData } = useRealtimeSensorData();
   const { status: deviceStatus, isDeviceOnline } = useRealtimeDeviceStatus();
@@ -382,3 +382,6 @@ export function IndustrialHeroStatus() {
     </motion.div>
   );
 }
+
+
+export const IndustrialHeroStatus = memo(IndustrialHeroStatusImpl);
