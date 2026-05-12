@@ -287,7 +287,6 @@ export function Dashboard() {
                     Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
                 <IndustrialHeroStatus />
-                <ComfortIndicators />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
