@@ -137,6 +137,7 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
   const { language } = useAuth();
   const { sensorData, hasRealData, hasAnyData, ageMs, browserOnline } = useRealtimeSensorData();
   const status = useRealtimeStatusLevels(sensorData);
+  const { data: history } = useSensorHistory(1); // last 1 hour for sparklines
 
   // Determine grid state
   const tileState: TileState = hasRealData
@@ -147,6 +148,15 @@ export const IndustrialKpiGrid = memo(function IndustrialKpiGrid() {
 
   const fmt = (n: number, decimals = 0) =>
     tileState === 'fresh' ? n.toFixed(decimals) : '--';
+
+  // Build per-metric trend arrays (cap at last 30 points to keep SVG lean)
+  const cap = (arr: number[]) => (arr.length > 30 ? arr.slice(-30) : arr);
+  const trends = {
+    temperature: cap((history ?? []).map(p => p.temperature)),
+    humidity: cap((history ?? []).map(p => p.humidity)),
+    ammonia: cap((history ?? []).map(p => p.ammonia)),
+    water: cap((history ?? []).map(p => p.water_usage)),
+  };
 
   const showOfflineBanner = !browserOnline || tileState === 'stale';
 
