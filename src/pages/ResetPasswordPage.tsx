@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-6">
         <div className="text-center space-y-4">
-          <img src={farmeyeLogo} alt="FarmEye" className="h-16 w-16 mx-auto" />
+          <img src={farmeyeLogo} alt="FarmEye" fetchPriority="high" decoding="async" className="h-16 w-16 mx-auto" />
           <h1 className="text-xl font-bold text-foreground">অবৈধ লিংক</h1>
           <p className="text-sm text-muted-foreground">এই পাসওয়ার্ড রিসেট লিংকটি অবৈধ বা মেয়াদোত্তীর্ণ।</p>
           <Button onClick={() => navigate('/login')} className="rounded-xl">লগইন পেজে যান</Button>
@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
         }} />
         <div className="relative z-10">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 shadow-xl">
-            <img src={farmeyeLogo} alt="FarmEye" className="h-8 w-8 object-contain" />
+            <img src={farmeyeLogo} alt="FarmEye" fetchPriority="high" decoding="async" className="h-8 w-8 object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">FarmEye</h1>
           <p className="mt-0.5 text-sm font-medium text-white/90">পাসওয়ার্ড রিসেট</p>
