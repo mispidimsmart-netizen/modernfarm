@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ShieldAlert, ShieldCheck, ChevronDown, ChevronUp, Check, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEmergencyProtection, EmergencyPriority } from '@/hooks/useEmergencyProtection';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+// localStorage so dismiss persists across reloads and works offline.
+// Key encodes the active-event signature → if a new emergency arrives,
+// or priority escalates, the banner auto-resurfaces.
+const DISMISS_KEY = 'emergency-banner-dismissed-sig';
 
 const PRIORITY_CONFIG: Record<EmergencyPriority, {
   gradient: string;
@@ -47,12 +52,44 @@ export function EmergencyProtectionBanner() {
   const { language } = useAuth();
   const { activeEvents, highestPriority, acknowledgeEvent, resolveEvent, isEmergency } = useEmergencyProtection();
   const [expanded, setExpanded] = useState(false);
+  const [dismissedSig, setDismissedSig] = useState<string | null>(null);
+
+  // Signature = priority + sorted active event ids. New event / escalation → new sig → re-show.
+  const signature = useMemo(() => {
+    if (!highestPriority || activeEvents.length === 0) return '';
+    const ids = activeEvents.map(e => e.id).sort().join(',');
+    return `${highestPriority}:${ids}`;
+  }, [activeEvents, highestPriority]);
+
+  // Load persisted dismiss
+  useEffect(() => {
+    try {
+      setDismissedSig(localStorage.getItem(DISMISS_KEY));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   if (activeEvents.length === 0 || !highestPriority) return null;
 
   const config = PRIORITY_CONFIG[highestPriority];
   const Icon = config.icon;
   const isLifeThreatening = highestPriority === 'LIFE_THREATENING';
+
+  // Safety guard: never allow dismissal of LIFE_THREATENING — too dangerous to hide.
+  const canDismiss = !isLifeThreatening;
+  if (canDismiss && dismissedSig && dismissedSig === signature) return null;
+
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      localStorage.setItem(DISMISS_KEY, signature);
+    } catch {
+      // ignore
+    }
+    setDismissedSig(signature);
+  };
 
   return (
     <motion.div
@@ -108,6 +145,17 @@ export function EmergencyProtectionBanner() {
             <ChevronDown className="h-5 w-5 text-white/70" />
           )}
         </button>
+
+        {canDismiss && (
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label={language === 'bn' ? 'ব্যানার বন্ধ করুন' : 'Dismiss banner'}
+            className="absolute top-2 right-2 z-20 flex h-6 w-6 items-center justify-center rounded-md bg-white/15 hover:bg-white/30 transition-colors text-white"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
 
         {/* Expanded event list */}
         <AnimatePresence>

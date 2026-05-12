@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useSmartAlerts } from '@/hooks/useSmartAlerts';
 import { Link } from 'react-router-dom';
 
+// localStorage so dismiss persists across sessions and works fully offline.
 const DISMISS_KEY = 'alert-summary-dismissed-id';
 
 export function AlertSummaryBanner() {
@@ -13,19 +14,19 @@ export function AlertSummaryBanner() {
   const { alertCounts, criticalAlert, isQuietHours } = useSmartAlerts();
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
-  // Read session-dismissed id once on mount
+  // Read persisted dismiss id once on mount
   useEffect(() => {
     try {
-      setDismissedId(sessionStorage.getItem(DISMISS_KEY));
+      setDismissedId(localStorage.getItem(DISMISS_KEY));
     } catch {
-      // ignore
+      // ignore (private mode / quota)
     }
   }, []);
 
   if (alertCounts.total === 0) return null;
 
-  // If the current critical alert was dismissed this session, hide banner
-  // (until a new alert appears with a different id)
+  // If the current critical alert was dismissed, hide banner until a NEW alert
+  // (different id) appears — then it auto-resurfaces.
   const currentAlertKey = criticalAlert?.id || `count-${alertCounts.total}`;
   if (dismissedId && dismissedId === currentAlertKey) return null;
 
@@ -33,7 +34,7 @@ export function AlertSummaryBanner() {
     e.preventDefault();
     e.stopPropagation();
     try {
-      sessionStorage.setItem(DISMISS_KEY, currentAlertKey);
+      localStorage.setItem(DISMISS_KEY, currentAlertKey);
     } catch {
       // ignore
     }
@@ -124,11 +125,12 @@ export function AlertSummaryBanner() {
           </div>
         </Link>
 
-        {/* Dismiss for this session (does NOT resolve the alert — Alerts page still shows it) */}
+        {/* Dismiss persistently (localStorage). Auto-resurfaces when a new alert id appears.
+            Does NOT resolve the alert — /alerts still shows it. Works offline. */}
         <button
           type="button"
           onClick={handleDismiss}
-          aria-label={language === 'bn' ? 'এই সেশনের জন্য বন্ধ করুন' : 'Dismiss for this session'}
+          aria-label={language === 'bn' ? 'ব্যানার বন্ধ করুন' : 'Dismiss banner'}
           className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-white/10 hover:bg-white/25 transition-colors text-white/80"
         >
           <X size={13} />
