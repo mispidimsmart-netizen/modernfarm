@@ -231,9 +231,10 @@ export function Dashboard() {
           <SetupReminderBanner />
           <ManualModeWarningBanner />
           <FailedCommandsBanner />
-          {/* Side-by-side: auto-cols-fr means single visible banner takes full width,
+          {/* Mobile: stack vertically (full width each).
+              sm+: side-by-side — auto-cols-fr means single visible banner takes full width,
               both visible → 50/50 split */}
-          <div className="grid grid-flow-col auto-cols-fr gap-2 [&>*]:min-w-0">
+          <div className="flex flex-col gap-2 sm:grid sm:grid-flow-col sm:auto-cols-fr [&>*]:min-w-0">
             <EmergencyProtectionBanner />
             <AlertSummaryBanner />
           </div>
