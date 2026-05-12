@@ -323,7 +323,6 @@ export function Dashboard() {
                 <AIAccuracyCard />
                 <AmmoniaTrendCard result={ammoniaTrendResult} />
                 <CoolingEfficiencyCard result={coolingEfficiencyResult} />
-                {isLayer && <HeatStressRiskCard result={heatStressRiskResult} />}
               </TabLoadingWrapper>
             </TabsContent>
 
