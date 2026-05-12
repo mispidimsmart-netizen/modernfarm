@@ -89,7 +89,7 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
         isFresh ? s.ring : 'ring-border/40 border-dashed'
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" aria-hidden="true">
         <div
           className={cn(
             'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
