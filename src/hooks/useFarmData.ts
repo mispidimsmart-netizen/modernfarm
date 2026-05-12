@@ -268,15 +268,26 @@ export function useUpdateLightingSchedule() {
 // Alerts hooks
 export function useAlerts() {
   const { user } = useAuth();
-  
+
+  // Multi-shed scoping: when account has >1 shed AND a specific shed is selected,
+  // filter alerts to that shed (plus farm-wide alerts where shed_id IS NULL).
+  const shedCtx = useContext(ShedContext);
+  const selectedShedId = shedCtx?.selectedShedId ?? null;
+  const { data: sheds = [] } = useSheds();
+  const scopeShedId = sheds.length > 1 && selectedShedId ? selectedShedId : null;
+
   return useQuery({
-    queryKey: ['alerts', user?.id],
+    queryKey: ['alerts', user?.id, scopeShedId],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let q = supabase
         .from('alerts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id);
+      if (scopeShedId) {
+        q = q.or(`shed_id.eq.${scopeShedId},shed_id.is.null`);
+      }
+      const { data, error } = await q
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
