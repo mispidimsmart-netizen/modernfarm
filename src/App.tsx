@@ -65,6 +65,7 @@ const OrgAdminPage = lazyRetry(() => import("./pages/OrgAdminPage"));
 const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
+import { CriticalAlertBanner } from "./components/dashboard/CriticalAlertBanner";
 
 
 // Optimized QueryClient with better caching
