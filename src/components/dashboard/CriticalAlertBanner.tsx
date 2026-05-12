@@ -37,6 +37,12 @@ export const CriticalAlertBanner = memo(function CriticalAlertBanner() {
     a => a.level === 'danger' && !dismissedIds.has(a.id) && !a.id.startsWith('synthetic_')
   );
   const top = dangerAlerts[0];
+
+  // Fire haptic + beep on the first appearance of each danger alert (deduped per id)
+  useEffect(() => {
+    if (top) severityFeedback('danger', { dedupeKey: `critical:${top.id}` });
+  }, [top?.id]);
+
   if (!top) return null;
 
   const extra = dangerAlerts.length - 1;
