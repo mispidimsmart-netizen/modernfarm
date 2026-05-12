@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
-import { useRealtimeSensorData, useRealtimeStatusLevels, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
+import { useRealtimeSensorData, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
