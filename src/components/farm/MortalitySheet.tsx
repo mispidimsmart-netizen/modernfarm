@@ -138,6 +138,11 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
               </div>
             </div>
 
+            <ShedPicker
+              value={formData.shed_id}
+              onChange={(id) => setFormData(p => ({ ...p, shed_id: id }))}
+            />
+
             <div className="space-y-2">
               <Label>{t.cause[language]}</Label>
               <Select 
