@@ -24,6 +24,9 @@ export interface SmartAlert {
   suggestionBn: string;
   timestamp: Date;
   acknowledged: boolean;
+  acknowledgedAt?: Date;
+  acknowledgedBy?: string;
+  responseSeconds?: number;
   resolvedAt?: Date;
   groupId?: string;
   priority: NotificationPriority;
