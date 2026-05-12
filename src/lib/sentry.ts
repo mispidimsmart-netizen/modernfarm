@@ -2,12 +2,28 @@ import * as Sentry from "@sentry/react";
 
 const DSN = "https://b6f3d510f46f1a28d1f006bcece29267@o4511375757017088.ingest.us.sentry.io/4511375772090368";
 
-const isPreviewHost =
-  typeof window !== "undefined" &&
-  (window.location.hostname.includes("id-preview--") ||
-    window.location.hostname.includes("lovableproject.com") ||
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1");
+const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+
+const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
+const isLovablePreview =
+  hostname.includes("id-preview--") || hostname.includes("lovableproject.com");
+const isLovablePublished = hostname.endsWith(".lovable.app");
+// Custom domain (farmeye.pro.bd, modernfarm.pro.bd) = real production
+const isCustomDomain = !isLocalHost && !isLovablePreview && !isLovablePublished && hostname !== "";
+
+/**
+ * Sentry environment label — used to group/filter issues in the dashboard.
+ */
+function resolveEnvironment(): "development" | "preview" | "staging" | "production" {
+  if (isLocalHost) return "development";
+  if (isLovablePreview) return "preview";
+  if (isLovablePublished) return "staging"; // *.lovable.app — pre-prod
+  if (isCustomDomain) return "production";   // farmeye.pro.bd, modernfarm.pro.bd
+  return "development";
+}
+
+const SENTRY_ENV = resolveEnvironment();
+const RELEASE = `farmeye@${__APP_VERSION__}+${__BUILD_ID__}`;
 
 // Force-enable Sentry via ?sentry=on (persists in sessionStorage for the tab)
 function isForcedOn() {
@@ -22,21 +38,24 @@ function isForcedOn() {
   }
 }
 
-const isProd = (import.meta.env.PROD && !isPreviewHost) || isForcedOn();
+// Auto-enable on staging + production. Skip dev/preview unless forced.
+const autoEnabled = SENTRY_ENV === "production" || SENTRY_ENV === "staging";
+const isProd = (import.meta.env.PROD && autoEnabled) || isForcedOn();
 
 export const sentryEnabled = () => isProd;
+export const sentryEnvironment = () => SENTRY_ENV;
+export const sentryRelease = () => RELEASE;
 
 export function initSentry() {
-  // Only enable in real production deployments — skip Lovable preview & local dev
   if (!isProd) return;
 
   Sentry.init({
     dsn: DSN,
-    environment: window.location.hostname,
-    release: `farmeye@${import.meta.env.VITE_APP_VERSION || "unknown"}`,
+    environment: SENTRY_ENV,
+    release: RELEASE,
 
-    // Performance — minimal sampling (cost control on free tier)
-    tracesSampleRate: 0.1,
+    // Lighter sampling on production to control quota
+    tracesSampleRate: SENTRY_ENV === "production" ? 0.05 : 0.2,
 
     // PII scrub — never send default IP, headers, cookies
     sendDefaultPii: false,
