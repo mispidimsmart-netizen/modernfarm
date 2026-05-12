@@ -7,7 +7,7 @@
  * ক্লান্তিকর navigation কমাতে home-এ এক ঝলকে দরকারি data দেখায়।
  */
 import { useMemo } from 'react';
-import { Egg, AlertTriangle, CloudSun, ChevronRight, Skull, Scale } from 'lucide-react';
+import { Egg, AlertTriangle, CloudSun, ChevronRight, CheckCircle2, Scale } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmType } from '@/hooks/useFarmType';
