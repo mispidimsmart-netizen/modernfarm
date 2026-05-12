@@ -103,7 +103,7 @@ export function QuickControlFAB() {
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="absolute bottom-16 right-0 flex flex-col gap-3 items-end"
+            className="absolute bottom-14 right-0 flex flex-col gap-2.5 items-end"
           >
             {actions.map((action, index) => {
               const Icon = action.icon;
@@ -119,9 +119,12 @@ export function QuickControlFAB() {
                   transition={{ delay: index * 0.05 }}
                   className="flex items-center gap-2"
                 >
-                  <span className={`text-xs font-medium px-2 py-1 rounded-lg backdrop-blur-sm ${
-                    isActive ? 'bg-background text-foreground shadow-sm' : 'bg-muted/80 text-muted-foreground'
-                  }`}>
+                  <span className={cn(
+                    'text-[11px] font-semibold px-2 py-0.5 rounded-md backdrop-blur-sm whitespace-nowrap',
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm ring-1 ring-emerald-500/40'
+                      : 'bg-muted/80 text-muted-foreground'
+                  )}>
                     {action.label[language]}
                     {isActive && <span className="ml-1 text-emerald-500">●</span>}
                   </span>
@@ -131,16 +134,21 @@ export function QuickControlFAB() {
                     variant="ghost"
                     disabled={isActionLoading || isPending}
                     onClick={() => handleToggle(action.key)}
-                    className={`h-12 w-12 rounded-full shadow-lg transition-all ${
-                      isActive 
-                        ? `${action.activeColor} text-white ${action.activeGlow}` 
+                    aria-label={action.label[language]}
+                    className={cn(
+                      'h-10 w-10 rounded-full shadow-md transition-all',
+                      isActive
+                        ? `${action.activeColor} text-white ${action.activeGlow} ring-2 ring-white/40`
                         : 'bg-background border border-border hover:bg-muted'
-                    }`}
+                    )}
                   >
                     {isActionLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Icon className={`h-5 w-5 ${isActive && (action.key === 'fan' || action.key === 'ceiling_fan') ? 'animate-spin' : ''}`} 
+                      <Icon className={cn(
+                        'h-4 w-4',
+                        isActive && (action.key === 'fan' || action.key === 'ceiling_fan') && 'animate-spin'
+                      )}
                         style={isActive && (action.key === 'fan' || action.key === 'ceiling_fan') ? { animationDuration: '1s' } : undefined}
                       />
                     )}
@@ -156,16 +164,18 @@ export function QuickControlFAB() {
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition-all ${
-          isOpen 
-            ? 'bg-muted text-foreground rotate-45' 
+        aria-label={isOpen ? (language === 'bn' ? 'বন্ধ করুন' : 'Close') : (language === 'bn' ? 'কুইক অ্যাকশন' : 'Quick actions')}
+        className={cn(
+          'relative flex h-12 w-12 items-center justify-center rounded-full shadow-xl transition-all',
+          isOpen
+            ? 'bg-muted text-foreground rotate-45'
             : 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-primary/30'
-        }`}
+        )}
       >
         {isOpen ? (
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         ) : (
-          <Zap className="h-6 w-6" />
+          <Zap className="h-5 w-5" />
         )}
         
         {/* Pulse indicator when devices are active */}
