@@ -308,6 +308,38 @@ export function useLeaveFarm() {
   });
 }
 
+export function useUpdateMemberRole() {
+  const { language } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ memberId, role }: { memberId: string; role: AppRole }) => {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ role })
+        .eq('id', memberId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workers'] });
+      queryClient.invalidateQueries({ queryKey: ['user_role'] });
+      queryClient.invalidateQueries({ queryKey: ['user_permissions'] });
+      toast({
+        title: language === 'bn' ? 'সফল!' : 'Success!',
+        description: language === 'bn' ? 'রোল আপডেট হয়েছে' : 'Role updated',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: language === 'bn' ? 'ত্রুটি' : 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useDeleteInvitation() {
   const { language } = useAuth();
   const queryClient = useQueryClient();
