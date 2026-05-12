@@ -333,16 +333,13 @@ export function Dashboard() {
                 skeleton={<ControlTabSkeleton />}
                 loadingHint={{ bn: 'নিয়ন্ত্রণ ও অটোমেশন স্ট্যাটাস লোড হচ্ছে…', en: 'Loading controls & automation…' }}
               >
+              {/* 1️⃣ Action — কী করতে হবে */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="min-w-0"><CurrentActionPanel /></div>
                 <div className="min-w-0"><AdvisoryAssistant /></div>
               </div>
 
-              <LightStatusPanel />
-              <LightActionHistory />
-              <LightSensorCard />
-              <AirQualityCard />
-
+              {/* 2️⃣ System Mode & Safety */}
               <section className="min-w-0">
                 <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
                   {isManualMode ? '✋' : '⚙️'} {language === 'bn'
@@ -352,68 +349,81 @@ export function Dashboard() {
                 <div className="space-y-3">
                   {systemStatusFetching > 0 ? (
                     <SystemStatusCardsSkeleton
-                      showHeatStress={!isManualMode}
+                      showHeatStress={false}
                       showAutomation={!isManualMode}
-                      showBroiler={isBroiler}
-                      showFanSpeed={isLayer && !isManualMode}
+                      showBroiler={false}
+                      showFanSpeed={false}
                     />
                   ) : (
                     <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {!isManualMode && (
-                      <div className="min-w-0">
-                        <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="min-w-0"><SystemModeCard /></div>
+                        <div className="min-w-0"><SafetyEngineStatusCard /></div>
                       </div>
-                    )}
-                    <div className="min-w-0">
-                      <SystemModeCard />
-                    </div>
-                    <div className="min-w-0">
-                      <SafetyEngineStatusCard />
-                    </div>
-                  </div>
-                  {!isManualMode && (
-                    <div className="min-w-0">
-                      <AutomationStatusCard />
-                    </div>
-                  )}
-
-                  {isBroiler && (
-                    <div className="space-y-3 min-w-0">
-                      {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
-                      <BroilerTempStatusCard tempResult={broilerEnvResult ? {
-                        currentTemp: broilerEnvResult.temperature.current,
-                        targetMin: broilerEnvResult.temperature.targetMin,
-                        targetMax: broilerEnvResult.temperature.targetMax,
-                        ageWeeks: broilerEnvResult.ageWeeks,
-                        ageDays: broilerEnvResult.ageDays,
-                        level: broilerEnvResult.temperature.level === 'emergency' ? 'critical' : broilerEnvResult.temperature.level,
-                        deviation: broilerEnvResult.temperature.deviation,
-                        shouldActivateFan: broilerEnvResult.temperature.shouldActivateFan,
-                        shouldActivateHeater: broilerEnvResult.temperature.shouldActivateHeater,
-                        shouldAlert: broilerEnvResult.temperature.shouldAlarm,
-                        message: broilerEnvResult.overallMessage,
-                      } : null} />
-                      <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
-                    </div>
-                  )}
-
-                  {isLayer && !isManualMode && (
-                    <div className="min-w-0">
-                      <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
-                    </div>
-                  )}
-
-                  {/* Tomorrow's heat-stress prediction — unified with today's status */}
-                  {isLayer && (
-                    <div className="min-w-0">
-                      <HeatStressRiskCard result={heatStressRiskResult} />
-                    </div>
-                  )}
+                      {!isManualMode && (
+                        <div className="min-w-0"><AutomationStatusCard /></div>
+                      )}
                     </>
                   )}
                 </div>
               </section>
+
+              {/* 3️⃣ Heat Stress — unified (current + risk একসাথে) */}
+              {isLayer && (
+                <section className="min-w-0">
+                  <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
+                    🌡️ {language === 'bn' ? 'হিট স্ট্রেস' : 'Heat Stress'}
+                  </h3>
+                  <div className="space-y-3">
+                    {!isManualMode && (
+                      <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
+                    )}
+                    <HeatStressRiskCard result={heatStressRiskResult} />
+                    {!isManualMode && (
+                      <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* 4️⃣ Lighting */}
+              <section className="min-w-0">
+                <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
+                  💡 {language === 'bn' ? 'লাইটিং' : 'Lighting'}
+                </h3>
+                <div className="space-y-3">
+                  <LightStatusPanel />
+                  <LightActionHistory />
+                  <LightSensorCard />
+                  <AirQualityCard />
+                </div>
+              </section>
+
+              {/* 5️⃣ Broiler-specific */}
+              {isBroiler && (
+                <section className="min-w-0">
+                  <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
+                    🐤 {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}
+                  </h3>
+                  <div className="space-y-3">
+                    {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
+                    <BroilerTempStatusCard tempResult={broilerEnvResult ? {
+                      currentTemp: broilerEnvResult.temperature.current,
+                      targetMin: broilerEnvResult.temperature.targetMin,
+                      targetMax: broilerEnvResult.temperature.targetMax,
+                      ageWeeks: broilerEnvResult.ageWeeks,
+                      ageDays: broilerEnvResult.ageDays,
+                      level: broilerEnvResult.temperature.level === 'emergency' ? 'critical' : broilerEnvResult.temperature.level,
+                      deviation: broilerEnvResult.temperature.deviation,
+                      shouldActivateFan: broilerEnvResult.temperature.shouldActivateFan,
+                      shouldActivateHeater: broilerEnvResult.temperature.shouldActivateHeater,
+                      shouldAlert: broilerEnvResult.temperature.shouldAlarm,
+                      message: broilerEnvResult.overallMessage,
+                    } : null} />
+                    <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
+                  </div>
+                </section>
+              )}
 
               {/* Device & System — collapsed by default to reduce noise on Control tab */}
               <Accordion type="single" collapsible className="w-full">
