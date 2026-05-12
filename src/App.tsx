@@ -53,6 +53,7 @@ const FarmManagementPage = lazyRetry(() => import("./pages/FarmManagementPage").
 const InstallationGuidePage = lazyRetry(() => import("./pages/InstallationGuidePage"));
 const AuditLogPage = lazyRetry(() => import("./pages/AuditLogPage"));
 const AdminPage = lazyRetry(() => import("./pages/AdminPage"));
+const AdminUserSubTabPage = lazyRetry(() => import("./pages/AdminUserSubTabPage"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 const FarmSetupWizardPage = lazyRetry(() => import("./pages/FarmSetupWizardPage"));
 const ResetPasswordPage = lazyRetry(() => import("./pages/ResetPasswordPage"));
@@ -286,6 +287,15 @@ function AppRoutes() {
               <PlatformRoleGuard require="super_admin">
                 <AdminPage />
               </PlatformRoleGuard>
+            </ProtectedRoute>
+          }
+        />
+        {/* Per-sub-tab deep-link routes with their own role guards */}
+        <Route
+          path="/admin/users/:subtab"
+          element={
+            <ProtectedRoute>
+              <AdminUserSubTabPage />
             </ProtectedRoute>
           }
         />

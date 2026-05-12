@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock } from 'lucide-react';
 import { AdminManagementTab } from './AdminManagementTab';
@@ -55,8 +56,28 @@ export function UserManagementTab({ language }: Props) {
     return order.find(can) ?? 'admins';
   }, [can]);
 
-  const [active, setActive] = useState<SubTabKey>(firstAllowed);
-  useEffect(() => { setActive(firstAllowed); }, [firstAllowed]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const urlTab = searchParams.get('subtab') as SubTabKey | null;
+  const active: SubTabKey = (urlTab && (['admins','orgs','farms','workers'] as SubTabKey[]).includes(urlTab))
+    ? urlTab
+    : firstAllowed;
+
+  // If URL points to a sub-tab the user can't access, redirect to a deep-link guarded route
+  // so the route-level PlatformRoleGuard handles the denial uniformly.
+  useEffect(() => {
+    if (!role) return;
+    if (urlTab && !can(urlTab)) {
+      navigate(`/admin/users/${urlTab}`, { replace: true });
+    }
+  }, [urlTab, role, can, navigate]);
+
+  const setActive = (v: SubTabKey) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'users');
+    next.set('subtab', v);
+    setSearchParams(next, { replace: true });
+  };
 
   if (isLoading) {
     return (
