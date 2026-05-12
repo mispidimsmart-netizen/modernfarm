@@ -179,7 +179,7 @@ function IndustrialHeroStatusImpl() {
     const hum = sensorData.humidity;
     const hsi = hsiResult?.index || 0;
 
-    const offlineLabel = { bn: '⚠️ অজানা — ESP32 অফলাইন', en: '⚠️ Unknown — ESP32 offline' };
+    const offlineLabel = { bn: '⚠️ অজানা — ESP32', en: '⚠️ Unknown — ESP32' };
 
     // ESP32 offline → cannot trust relay state. Show all as unknown.
     if (!hasRealData || !isDeviceOnline) {
