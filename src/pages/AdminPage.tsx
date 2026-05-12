@@ -74,6 +74,7 @@ import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboard
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
 import { OrganizationsPanel } from '@/components/admin/OrganizationsPanel';
 import { OrgFarmAssignmentsPanel } from '@/components/admin/OrgFarmAssignmentsPanel';
+import { UserManagementTab } from '@/components/admin/UserManagementTab';
 
 const t = {
   bn: {
