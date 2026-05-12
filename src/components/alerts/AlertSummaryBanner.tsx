@@ -80,7 +80,7 @@ export function AlertSummaryBanner() {
           style.pulse && 'animate-pulse'
         )}
       >
-        <Link to="/alerts" className="block px-3 py-2.5">
+        <Link to="/alerts" className="block flex-1 flex items-center px-3 py-2.5">
           <div className="flex items-center gap-2.5 pr-7">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 shrink-0">
               <Icon size={18} className="text-white" />
