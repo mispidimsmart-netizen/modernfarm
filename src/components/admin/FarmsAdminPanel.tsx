@@ -61,10 +61,9 @@ export function FarmsAdminPanel() {
     },
   });
 
-  // Soft-deleted farms
+  // Soft-deleted farms (always loaded so the badge count stays live)
   const { data: deletedFarms = [] } = useQuery({
     queryKey: ['admin_deleted_farms'],
-    enabled: tab === 'deleted',
     queryFn: async (): Promise<FarmRow[]> => {
       const { data, error } = await supabase.rpc('super_admin_list_deleted_farms' as any);
       if (error) throw error;
