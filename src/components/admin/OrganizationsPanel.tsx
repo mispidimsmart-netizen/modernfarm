@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil } from 'lucide-react';
+import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil, ArrowLeft } from 'lucide-react';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -201,8 +201,9 @@ export function OrganizationsPanel() {
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Orgs list */}
+    <div className={selectedOrg ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-4'}>
+      {/* Orgs list — hidden once one is selected */}
+      {!selectedOrg && (
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-white flex items-center gap-2">
@@ -288,11 +289,23 @@ export function OrganizationsPanel() {
           </ScrollArea>
         </CardContent>
       </Card>
+      )}
 
       {/* Members panel */}
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-white flex items-center gap-2">
+            {selectedOrg && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-slate-300 hover:bg-slate-700/40 -ml-1"
+                onClick={() => setSelectedOrgId(null)}
+                title="ফিরে যান"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
             <Shield className="w-5 h-5 text-amber-400" />
             সদস্য {selectedOrg ? `· ${selectedOrg.name}` : ''}
           </CardTitle>
