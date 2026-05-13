@@ -182,6 +182,8 @@ export default function OrgSignupPage() {
                 {slugStatus === 'invalid' && <>✗ অবৈধ slug ফরম্যাট</>}
               </p>
             )}
+          </div>
+
 
           <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 text-xs text-slate-300 space-y-1">
             <div className="font-semibold text-emerald-300">যা পাবেন:</div>
