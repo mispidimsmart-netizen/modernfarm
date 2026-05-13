@@ -61,6 +61,7 @@ export function FarmProvider({ children }: { children: ReactNode }) {
         .from('farms')
         .select('*')
         .in('id', farmIds)
+        .is('deleted_at', null)
         .order('created_at', { ascending: true });
       
       if (farmsError) throw farmsError;
