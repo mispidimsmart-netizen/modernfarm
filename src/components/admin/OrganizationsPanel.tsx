@@ -54,9 +54,9 @@ interface UserSearchRow {
 }
 
 const roleLabel: Record<OrgRole, string> = {
-  org_owner: 'মালিক',
-  org_admin: 'অ্যাডমিন',
-  member: 'সদস্য',
+  org_owner: 'কোম্পানি/অর্গানাইজেশন',
+  org_admin: 'ফার্ম',
+  member: 'ওয়ার্কার',
 };
 
 const licenseLabel: Record<LicenseType, string> = {
