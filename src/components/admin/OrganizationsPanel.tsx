@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse } from 'lucide-react';
+import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil } from 'lucide-react';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -69,6 +69,7 @@ export function OrganizationsPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
+  const [editOrg, setEditOrg] = useState<Org | null>(null);
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ['admin_organizations'],
@@ -76,10 +77,24 @@ export function OrganizationsPanel() {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
+        .not('slug', 'like', 'personal-%')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as Org[];
     },
+  });
+
+  const deleteOrg = useMutation({
+    mutationFn: async (org_id: string) => {
+      const { error } = await supabase.rpc('super_admin_delete_organization' as any, { _org_id: org_id });
+      if (error) throw error;
+    },
+    onSuccess: (_d, org_id) => {
+      toast({ title: 'অর্গানাইজেশন মুছে ফেলা হয়েছে' });
+      if (selectedOrgId === org_id) setSelectedOrgId(null);
+      qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+    },
+    onError: (e: any) => toast({ title: 'মুছে ফেলা যায়নি', description: e.message, variant: 'destructive' }),
   });
 
   const { data: members = [] } = useQuery({
@@ -216,23 +231,48 @@ export function OrganizationsPanel() {
             )}
             <div className="space-y-2">
               {orgs.map(o => (
-                <button
+                <div
                   key={o.id}
                   onClick={() => setSelectedOrgId(o.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition ${
+                  className={`w-full text-left p-3 rounded-lg border transition cursor-pointer ${
                     selectedOrgId === o.id
                       ? 'bg-emerald-500/10 border-emerald-400/50'
                       : 'bg-slate-800/50 border-white/5 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-semibold text-white">{o.name}</div>
-                      <div className="text-xs text-slate-400">{o.name_en} · /{o.slug}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-white truncate">{o.name}</div>
+                      <div className="text-xs text-slate-400 truncate">{o.name_en} · /{o.slug}</div>
                     </div>
-                    <Badge variant="outline" className="border-emerald-400/40 text-emerald-300 text-[10px]">
-                      {licenseLabel[o.license_type]}
-                    </Badge>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant="outline" className="border-emerald-400/40 text-emerald-300 text-[10px]">
+                        {licenseLabel[o.license_type]}
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-slate-300 hover:bg-slate-700/40"
+                        onClick={(e) => { e.stopPropagation(); setEditOrg(o); }}
+                        title="এডিট"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-rose-400 hover:bg-rose-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`"${o.name}" মুছে ফেলতে চান? এই কাজ আর ফেরানো যাবে না।`)) {
+                            deleteOrg.mutate(o.id);
+                          }
+                        }}
+                        title="ডিলিট"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
                     <span>সর্বোচ্চ ফার্ম: {o.max_farms} · ইউজার: {o.max_users}</span>
@@ -242,7 +282,7 @@ export function OrganizationsPanel() {
                       </span>
                     )}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </ScrollArea>
@@ -368,7 +408,85 @@ export function OrganizationsPanel() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit org dialog */}
+      <Dialog open={!!editOrg} onOpenChange={(o) => !o && setEditOrg(null)}>
+        {editOrg && (
+          <EditOrgDialog
+            org={editOrg}
+            onSaved={() => {
+              setEditOrg(null);
+              qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+            }}
+          />
+        )}
+      </Dialog>
     </div>
+  );
+}
+
+/* ---------------- Edit Org Dialog ---------------- */
+
+function EditOrgDialog({ org, onSaved }: { org: Org; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [name, setName] = useState(org.name);
+  const [nameEn, setNameEn] = useState(org.name_en);
+  const [slug, setSlug] = useState(org.slug);
+  const [notes, setNotes] = useState(org.notes ?? '');
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('super_admin_update_organization' as any, {
+        _org_id: org.id,
+        _name: name,
+        _name_en: nameEn || name,
+        _slug: slug,
+        _notes: notes || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'অর্গানাইজেশন আপডেট হয়েছে' });
+      onSaved();
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader>
+        <DialogTitle>অর্গানাইজেশন এডিট</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>নাম (বাংলা)</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label>Name (English)</Label>
+            <Input value={nameEn} onChange={e => setNameEn(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <Label>Slug (URL)</Label>
+          <Input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))} />
+        </div>
+        <div>
+          <Label>নোট</Label>
+          <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="ঐচ্ছিক" />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          onClick={() => save.mutate()}
+          disabled={save.isPending || !name.trim() || !slug.trim()}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          {save.isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 

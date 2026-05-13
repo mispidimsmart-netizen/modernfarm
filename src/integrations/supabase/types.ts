@@ -8964,6 +8964,10 @@ export type Database = {
         Args: { _farm_id: string }
         Returns: undefined
       }
+      super_admin_delete_organization: {
+        Args: { _org_id: string }
+        Returns: undefined
+      }
       super_admin_remove_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -8979,6 +8983,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      super_admin_update_organization: {
+        Args: {
+          _name?: string
+          _name_en?: string
+          _notes?: string
+          _org_id: string
+          _slug?: string
+        }
+        Returns: undefined
       }
       super_admin_update_organization_license: {
         Args: {
