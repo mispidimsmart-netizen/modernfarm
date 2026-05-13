@@ -46,8 +46,32 @@ const FARM_ROLES = [
 ];
 
 export function UnifiedRoleEditorPanel() {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [openUserId, setOpenUserId] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  const runIntegrationTests = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.rpc('test_role_sync_invariants' as any);
+      if (error) throw error;
+      const r = data as any as { passed: number; failed: number; total: number; tests: { name: string; pass: boolean; detail?: string }[] };
+      const failedItems = (r.tests || []).filter(t => !t.pass);
+      toast({
+        title: r.failed === 0 ? `সব ${r.total}টি ইন্টিগ্রেশন টেস্ট পাস ✅` : `${r.failed}/${r.total} টেস্ট ফেইল ❌`,
+        description: r.failed === 0
+          ? 'farm_members ↔ user_roles ↔ farms.owner_id সিঙ্ক ঠিক আছে।'
+          : failedItems.map(t => `${t.name}${t.detail ? ` (${t.detail})` : ''}`).join(' • '),
+        variant: r.failed === 0 ? 'default' : 'destructive',
+      });
+    } catch (e: any) {
+      toast({ title: 'টেস্ট রান ব্যর্থ', description: e.message, variant: 'destructive' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin_all_profiles_for_roles'],
@@ -83,14 +107,26 @@ export function UnifiedRoleEditorPanel() {
             ইউনিফাইড রোল এডিটর
             <Badge className="bg-violet-500/20 text-violet-300 border-violet-400/40">{filtered.length}</Badge>
           </CardTitle>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
-            <Input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="নাম/ফোন/ইমেইল খুঁজুন..."
-              className="pl-9 bg-slate-800 border-white/10 text-white w-full sm:w-72"
-            />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm" variant="outline"
+              className="h-9 border-violet-400/40 text-violet-300 hover:bg-violet-500/10"
+              disabled={testing}
+              onClick={runIntegrationTests}
+              title="রোল সিঙ্ক ইন্টিগ্রেশন টেস্ট চালান"
+            >
+              {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              টেস্ট চালান
+            </Button>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+              <Input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="নাম/ফোন/ইমেইল খুঁজুন..."
+                className="pl-9 bg-slate-800 border-white/10 text-white w-full sm:w-72"
+              />
+            </div>
           </div>
         </div>
         <p className="text-xs text-slate-400 mt-1">
