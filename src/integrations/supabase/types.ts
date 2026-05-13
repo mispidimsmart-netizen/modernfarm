@@ -8814,6 +8814,7 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      is_org_slug_available: { Args: { _slug: string }; Returns: boolean }
       is_organization_license_valid: {
         Args: { _org_id: string }
         Returns: boolean
