@@ -302,9 +302,7 @@ export function OrganizationsPanel() {
                         className="h-7 w-7 text-rose-400 hover:bg-rose-500/10"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`"${o.name}" মুছে ফেলতে চান? এই কাজ আর ফেরানো যাবে না।`)) {
-                            deleteOrg.mutate(o.id);
-                          }
+                          setDeleteOrgTarget(o);
                         }}
                         title="ডিলিট"
                       >
