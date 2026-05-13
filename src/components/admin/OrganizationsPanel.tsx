@@ -76,6 +76,7 @@ export function OrganizationsPanel() {
   const [editOrg, setEditOrg] = useState<Org | null>(null);
   const [deleteOrgTarget, setDeleteOrgTarget] = useState<Org | null>(null);
   const [removeMemberTarget, setRemoveMemberTarget] = useState<MemberRow | null>(null);
+  const [editMemberTarget, setEditMemberTarget] = useState<MemberRow | null>(null);
 
   const orgsKey = ['admin_organizations'] as const;
 
