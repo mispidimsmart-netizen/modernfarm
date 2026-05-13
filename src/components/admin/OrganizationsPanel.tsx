@@ -69,6 +69,7 @@ export function OrganizationsPanel() {
   const [createOpen, setCreateOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
+  const [editOrg, setEditOrg] = useState<Org | null>(null);
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ['admin_organizations'],
@@ -76,10 +77,24 @@ export function OrganizationsPanel() {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
+        .not('slug', 'like', 'personal-%')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as Org[];
     },
+  });
+
+  const deleteOrg = useMutation({
+    mutationFn: async (org_id: string) => {
+      const { error } = await supabase.rpc('super_admin_delete_organization' as any, { _org_id: org_id });
+      if (error) throw error;
+    },
+    onSuccess: (_d, org_id) => {
+      toast({ title: 'অর্গানাইজেশন মুছে ফেলা হয়েছে' });
+      if (selectedOrgId === org_id) setSelectedOrgId(null);
+      qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+    },
+    onError: (e: any) => toast({ title: 'মুছে ফেলা যায়নি', description: e.message, variant: 'destructive' }),
   });
 
   const { data: members = [] } = useQuery({
