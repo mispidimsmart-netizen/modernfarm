@@ -9106,6 +9106,7 @@ export type Database = {
         Args: { _organization_id: string; _reason: string }
         Returns: boolean
       }
+      test_role_sync_invariants: { Args: never; Returns: Json }
       user_can_access_farm: {
         Args: { _farm_id: string; _user_id: string }
         Returns: boolean
