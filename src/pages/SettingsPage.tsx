@@ -265,7 +265,7 @@ export function SettingsPage() {
             </button>
           </div>
 
-          {isOrgAdmin && (
+          {isOrgAdmin && !isSuperAdmin && (
             <motion.a
               href="/org-admin"
               whileHover={{ scale: 1.02 }}
