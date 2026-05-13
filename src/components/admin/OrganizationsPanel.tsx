@@ -14,7 +14,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil, ArrowLeft } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil, ArrowLeft, AlertTriangle } from 'lucide-react';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -70,9 +74,13 @@ export function OrganizationsPanel() {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [editOrg, setEditOrg] = useState<Org | null>(null);
+  const [deleteOrgTarget, setDeleteOrgTarget] = useState<Org | null>(null);
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<MemberRow | null>(null);
+
+  const orgsKey = ['admin_organizations'] as const;
 
   const { data: orgs = [], isLoading } = useQuery({
-    queryKey: ['admin_organizations'],
+    queryKey: orgsKey,
     queryFn: async (): Promise<Org[]> => {
       const { data, error } = await supabase
         .from('organizations')
@@ -88,13 +96,42 @@ export function OrganizationsPanel() {
     mutationFn: async (org_id: string) => {
       const { error } = await supabase.rpc('super_admin_delete_organization' as any, { _org_id: org_id });
       if (error) throw error;
+      return org_id;
     },
-    onSuccess: (_d, org_id) => {
+    onMutate: async (org_id) => {
+      await qc.cancelQueries({ queryKey: orgsKey });
+      const previous = qc.getQueryData<Org[]>(orgsKey);
+      if (previous) {
+        qc.setQueryData<Org[]>(orgsKey, previous.filter(o => o.id !== org_id));
+      }
+      return { previous };
+    },
+    onError: (e: any, _org_id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(orgsKey, ctx.previous);
+      toast({ title: 'মুছে ফেলা যায়নি', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: (org_id) => {
       toast({ title: 'অর্গানাইজেশন মুছে ফেলা হয়েছে' });
       if (selectedOrgId === org_id) setSelectedOrgId(null);
-      qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+      setDeleteOrgTarget(null);
     },
-    onError: (e: any) => toast({ title: 'মুছে ফেলা যায়নি', description: e.message, variant: 'destructive' }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: orgsKey, refetchType: 'active' });
+      qc.invalidateQueries({ queryKey: ['platform_role'] });
+    },
+  });
+
+  // Counts for the delete-org confirmation dialog
+  const { data: deleteOrgCounts } = useQuery({
+    queryKey: ['admin_org_delete_counts', deleteOrgTarget?.id],
+    enabled: !!deleteOrgTarget,
+    queryFn: async () => {
+      const [farms, members] = await Promise.all([
+        supabase.from('farms').select('id', { count: 'exact', head: true }).eq('organization_id', deleteOrgTarget!.id),
+        supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', deleteOrgTarget!.id),
+      ]);
+      return { farms: farms.count ?? 0, members: members.count ?? 0 };
+    },
   });
 
   const { data: members = [] } = useQuery({
@@ -265,9 +302,7 @@ export function OrganizationsPanel() {
                         className="h-7 w-7 text-rose-400 hover:bg-rose-500/10"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`"${o.name}" মুছে ফেলতে চান? এই কাজ আর ফেরানো যাবে না।`)) {
-                            deleteOrg.mutate(o.id);
-                          }
+                          setDeleteOrgTarget(o);
                         }}
                         title="ডিলিট"
                       >
@@ -379,11 +414,7 @@ export function OrganizationsPanel() {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                      onClick={() => {
-                        if (confirm('এই সদস্যকে সরাতে চান?')) {
-                          removeMember.mutate({ user_id: m.user_id });
-                        }
-                      }}
+                      onClick={() => setRemoveMemberTarget(m)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -434,6 +465,95 @@ export function OrganizationsPanel() {
           />
         )}
       </Dialog>
+
+      {/* Delete organization confirmation */}
+      <AlertDialog
+        open={!!deleteOrgTarget}
+        onOpenChange={(o) => !o && !deleteOrg.isPending && setDeleteOrgTarget(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-rose-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              অর্গানাইজেশন মুছে ফেলতে চান?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300 space-y-2">
+              <span className="block">
+                আপনি <strong className="text-white">"{deleteOrgTarget?.name}"</strong> মুছে ফেলতে যাচ্ছেন।
+              </span>
+              {deleteOrgCounts && (
+                <span className="block rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-amber-200 text-xs">
+                  এই অর্গানাইজেশনে <strong>{deleteOrgCounts.members}</strong> জন সদস্য এবং <strong>{deleteOrgCounts.farms}</strong>টি ফার্ম রয়েছে।
+                  {deleteOrgCounts.farms > 0 && (
+                    <> ফার্ম থাকা অবস্থায় মুছে ফেলা যাবে না — আগে ফার্মগুলো অন্যত্র সরান।</>
+                  )}
+                </span>
+              )}
+              <span className="block text-rose-300 text-xs">এই কাজ আর ফেরানো যাবে না।</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteOrg.isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteOrg.isPending || (deleteOrgCounts?.farms ?? 0) > 0}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteOrgTarget) deleteOrg.mutate(deleteOrgTarget.id);
+              }}
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+            >
+              {deleteOrg.isPending ? 'মুছছে...' : 'মুছে ফেলুন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove member confirmation */}
+      <AlertDialog
+        open={!!removeMemberTarget}
+        onOpenChange={(o) => !o && !removeMember.isPending && setRemoveMemberTarget(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-rose-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              সদস্য সরাতে চান?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300 space-y-2">
+              <span className="block">
+                <strong className="text-white">
+                  {removeMemberTarget?.profile?.user_name || removeMemberTarget?.profile?.phone || removeMemberTarget?.user_id.slice(0, 8)}
+                </strong>{' '}
+                কে এই অর্গানাইজেশন থেকে সরিয়ে দেওয়া হবে।
+              </span>
+              {removeMemberTarget?.role === 'org_owner' && (
+                <span className="block rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-amber-200 text-xs">
+                  সতর্কতা: এই ব্যবহারকারী মালিক — সরালে অর্গানাইজেশন মালিকবিহীন হয়ে যেতে পারে।
+                </span>
+              )}
+              <span className="block text-slate-400 text-xs">তাদের ফার্ম অ্যাসাইনমেন্টও বাতিল হতে পারে।</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeMember.isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeMember.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (removeMemberTarget) {
+                  removeMember.mutate(
+                    { user_id: removeMemberTarget.user_id },
+                    { onSettled: () => setRemoveMemberTarget(null) },
+                  );
+                }
+              }}
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+            >
+              {removeMember.isPending ? 'সরানো হচ্ছে...' : 'সরিয়ে দিন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
