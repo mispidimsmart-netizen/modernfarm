@@ -26,7 +26,7 @@ interface FarmRow {
   is_active: boolean | null;
   created_at: string;
 }
-interface OrgRow { id: string; name: string; name_en: string; }
+interface OrgRow { id: string; name: string; name_en: string; slug: string | null; }
 interface ProfileRow { id: string; user_name: string | null; phone: string | null; email: string | null; }
 
 export function FarmsAdminPanel() {
@@ -48,17 +48,22 @@ export function FarmsAdminPanel() {
     },
   });
 
-  const { data: orgs = [] } = useQuery({
+  const { data: allOrgs = [] } = useQuery({
     queryKey: ['admin_orgs_for_farms'],
     queryFn: async (): Promise<OrgRow[]> => {
       const { data, error } = await supabase
         .from('organizations')
-        .select('id, name, name_en')
+        .select('id, name, name_en, slug')
         .order('name', { ascending: true });
       if (error) throw error;
       return (data || []) as OrgRow[];
     },
   });
+  // Exclude auto-created personal orgs from filter & assignment dropdowns
+  const orgs = useMemo(
+    () => allOrgs.filter(o => !(o.slug || '').startsWith('personal-')),
+    [allOrgs]
+  );
 
   const ownerIds = useMemo(() => Array.from(new Set(farms.map(f => f.owner_id))), [farms]);
   const { data: owners = [] } = useQuery({
@@ -74,7 +79,7 @@ export function FarmsAdminPanel() {
     },
   });
   const ownerMap = useMemo(() => new Map(owners.map(o => [o.id, o])), [owners]);
-  const orgMap = useMemo(() => new Map(orgs.map(o => [o.id, o])), [orgs]);
+  const orgMap = useMemo(() => new Map(allOrgs.map(o => [o.id, o])), [allOrgs]);
 
   const setOrg = useMutation({
     mutationFn: async ({ farmId, orgId }: { farmId: string; orgId: string | null }) => {
