@@ -231,23 +231,48 @@ export function OrganizationsPanel() {
             )}
             <div className="space-y-2">
               {orgs.map(o => (
-                <button
+                <div
                   key={o.id}
                   onClick={() => setSelectedOrgId(o.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition ${
+                  className={`w-full text-left p-3 rounded-lg border transition cursor-pointer ${
                     selectedOrgId === o.id
                       ? 'bg-emerald-500/10 border-emerald-400/50'
                       : 'bg-slate-800/50 border-white/5 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-semibold text-white">{o.name}</div>
-                      <div className="text-xs text-slate-400">{o.name_en} · /{o.slug}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-white truncate">{o.name}</div>
+                      <div className="text-xs text-slate-400 truncate">{o.name_en} · /{o.slug}</div>
                     </div>
-                    <Badge variant="outline" className="border-emerald-400/40 text-emerald-300 text-[10px]">
-                      {licenseLabel[o.license_type]}
-                    </Badge>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant="outline" className="border-emerald-400/40 text-emerald-300 text-[10px]">
+                        {licenseLabel[o.license_type]}
+                      </Badge>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-slate-300 hover:bg-slate-700/40"
+                        onClick={(e) => { e.stopPropagation(); setEditOrg(o); }}
+                        title="এডিট"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-rose-400 hover:bg-rose-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`"${o.name}" মুছে ফেলতে চান? এই কাজ আর ফেরানো যাবে না।`)) {
+                            deleteOrg.mutate(o.id);
+                          }
+                        }}
+                        title="ডিলিট"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
                     <span>সর্বোচ্চ ফার্ম: {o.max_farms} · ইউজার: {o.max_users}</span>
@@ -257,7 +282,7 @@ export function OrganizationsPanel() {
                       </span>
                     )}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </ScrollArea>
