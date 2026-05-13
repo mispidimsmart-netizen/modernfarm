@@ -46,8 +46,32 @@ const FARM_ROLES = [
 ];
 
 export function UnifiedRoleEditorPanel() {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [openUserId, setOpenUserId] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  const runIntegrationTests = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.rpc('test_role_sync_invariants' as any);
+      if (error) throw error;
+      const r = data as any as { passed: number; failed: number; total: number; tests: { name: string; pass: boolean; detail?: string }[] };
+      const failedItems = (r.tests || []).filter(t => !t.pass);
+      toast({
+        title: r.failed === 0 ? `সব ${r.total}টি ইন্টিগ্রেশন টেস্ট পাস ✅` : `${r.failed}/${r.total} টেস্ট ফেইল ❌`,
+        description: r.failed === 0
+          ? 'farm_members ↔ user_roles ↔ farms.owner_id সিঙ্ক ঠিক আছে।'
+          : failedItems.map(t => `${t.name}${t.detail ? ` (${t.detail})` : ''}`).join(' • '),
+        variant: r.failed === 0 ? 'default' : 'destructive',
+      });
+    } catch (e: any) {
+      toast({ title: 'টেস্ট রান ব্যর্থ', description: e.message, variant: 'destructive' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin_all_profiles_for_roles'],
