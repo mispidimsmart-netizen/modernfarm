@@ -9002,6 +9002,10 @@ export type Database = {
         }
         Returns: string
       }
+      super_admin_apply_user_roles: {
+        Args: { _payload: Json; _user_id: string }
+        Returns: Json
+      }
       super_admin_create_organization: {
         Args: {
           _license_expires_at?: string

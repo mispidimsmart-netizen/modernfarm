@@ -46,8 +46,6 @@ const FARM_ROLES = [
 ];
 
 export function UnifiedRoleEditorPanel() {
-  const qc = useQueryClient();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [openUserId, setOpenUserId] = useState<string | null>(null);
 
@@ -139,11 +137,14 @@ export function UnifiedRoleEditorPanel() {
   );
 }
 
+interface DraftOrg { organization_id: string; role: string; org_name: string; org_slug: string; }
+interface DraftFarm { farm_id: string; role: string; farm_name: string; }
+
 function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const { data: summary, isLoading, refetch } = useQuery({
+  const { data: summary, isLoading } = useQuery({
     queryKey: ['user_role_summary', user.id],
     queryFn: async (): Promise<RoleSummary> => {
       const { data, error } = await supabase.rpc(
@@ -183,113 +184,96 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
     },
   });
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['user_role_summary', user.id] });
-    qc.invalidateQueries({ queryKey: ['admin_all_farms'] });
-    qc.invalidateQueries({ queryKey: ['admin_organizations'] });
-    refetch();
-  };
+  // Local draft state
+  const [draftSuper, setDraftSuper] = useState<boolean>(false);
+  const [draftOrgs, setDraftOrgs] = useState<DraftOrg[]>([]);
+  const [draftFarms, setDraftFarms] = useState<DraftFarm[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
-  const handleErr = (e: any) =>
-    toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' });
+  // Hydrate draft from summary once
+  useMemo(() => {
+    if (summary && !hydrated) {
+      setDraftSuper(summary.is_super_admin);
+      setDraftOrgs(summary.orgs.map(o => ({
+        organization_id: o.organization_id,
+        role: o.role,
+        org_name: o.org_name,
+        org_slug: o.org_slug,
+      })));
+      setDraftFarms(summary.farm_memberships.map(f => ({
+        farm_id: f.farm_id,
+        role: f.role,
+        farm_name: f.farm_name,
+      })));
+      setHydrated(true);
+    }
+  }, [summary, hydrated]);
 
-  const setSuperAdmin = useMutation({
-    mutationFn: async (enabled: boolean) => {
-      const { error } = await supabase.rpc(
-        'super_admin_set_super_admin' as any,
-        { _user_id: user.id, _enabled: enabled }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => { invalidate(); toast({ title: 'সুপার এডমিন স্ট্যাটাস আপডেট' }); },
-    onError: handleErr,
-  });
-
-  const setOrgRole = useMutation({
-    mutationFn: async ({ orgId, role }: { orgId: string; role: string }) => {
-      const { error } = await supabase.rpc(
-        'super_admin_set_org_member_role' as any,
-        { _organization_id: orgId, _user_id: user.id, _role: role }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => { invalidate(); toast({ title: 'অর্গ রোল আপডেট' }); },
-    onError: handleErr,
-  });
-
-  const addOrgMember = useMutation({
-    mutationFn: async ({ orgId, role }: { orgId: string; role: string }) => {
-      const { error } = await supabase.rpc(
-        'super_admin_add_org_member' as any,
-        { _organization_id: orgId, _user_id: user.id, _role: role }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => { invalidate(); toast({ title: 'অর্গে যোগ করা হয়েছে' }); },
-    onError: handleErr,
-  });
-
-  const removeOrgMember = useMutation({
-    mutationFn: async (orgId: string) => {
-      const { error } = await supabase.rpc(
-        'super_admin_remove_org_member' as any,
-        { _organization_id: orgId, _user_id: user.id }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => { invalidate(); toast({ title: 'অর্গ থেকে সরানো হয়েছে' }); },
-    onError: handleErr,
-  });
-
-  const setFarmMemberRole = useMutation({
-    mutationFn: async ({ farmId, role }: { farmId: string; role: string }) => {
-      const { error } = await supabase.rpc(
-        'super_admin_set_farm_member_role' as any,
-        { _farm_id: farmId, _user_id: user.id, _role: role }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => { invalidate(); toast({ title: 'ফার্ম রোল আপডেট' }); },
-    onError: handleErr,
-  });
-
-  const repairRoles = useMutation({
+  // Single Save mutation — one transaction, all scopes
+  const apply = useMutation({
     mutationFn: async () => {
+      const payload = {
+        is_super_admin: draftSuper,
+        orgs: draftOrgs.map(o => ({ organization_id: o.organization_id, role: o.role })),
+        farm_memberships: draftFarms.map(f => ({ farm_id: f.farm_id, role: f.role })),
+      };
       const { data, error } = await supabase.rpc(
-        'super_admin_repair_user_roles' as any,
-        { _user_id: user.id }
+        'super_admin_apply_user_roles' as any,
+        { _user_id: user.id, _payload: payload as any }
       );
       if (error) throw error;
-      return data as unknown as { inserted: number; deleted: number };
+      return data as unknown as {
+        orgs: { added: number; updated: number; removed: number };
+        farms: { added: number; updated: number; removed: number };
+      };
     },
-    onSuccess: (r) => {
-      invalidate();
+    onSuccess: async (r) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['user_role_summary', user.id], refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_organizations'], refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['v_user_canonical_roles'], refetchType: 'all' }),
+      ]);
       toast({
-        title: 'রোল রিপেয়ার সম্পন্ন',
-        description: `যোগ: ${r.inserted}, সরানো: ${r.deleted}`,
+        title: 'রোল আপডেট সম্পন্ন',
+        description: `অর্গ: +${r.orgs.added}/~${r.orgs.updated}/−${r.orgs.removed} • ফার্ম: +${r.farms.added}/~${r.farms.updated}/−${r.farms.removed}`,
       });
+      onClose();
     },
-    onError: handleErr,
+    onError: (e: any) => toast({ title: 'সেভ ব্যর্থ', description: e.message, variant: 'destructive' }),
   });
 
-  // Add new org/farm pickers
+  // Add/edit/remove draft helpers
   const [newOrgId, setNewOrgId] = useState<string>('');
   const [newOrgRole, setNewOrgRole] = useState<string>('member');
   const [newFarmId, setNewFarmId] = useState<string>('');
   const [newFarmRole, setNewFarmRole] = useState<string>('member');
 
   const availableOrgs = useMemo(() => {
-    const taken = new Set((summary?.orgs || []).map(o => o.organization_id));
+    const taken = new Set(draftOrgs.map(o => o.organization_id));
     return realOrgs.filter(o => !taken.has(o.id));
-  }, [realOrgs, summary]);
+  }, [realOrgs, draftOrgs]);
 
   const availableFarms = useMemo(() => {
-    const taken = new Set((summary?.farm_memberships || []).map(f => f.farm_id));
+    const taken = new Set(draftFarms.map(f => f.farm_id));
     return allFarms.filter(f => !taken.has(f.id));
-  }, [allFarms, summary]);
+  }, [allFarms, draftFarms]);
+
+  // Detect dirty state
+  const dirty = useMemo(() => {
+    if (!summary || !hydrated) return false;
+    if (draftSuper !== summary.is_super_admin) return true;
+    const orgKey = (xs: { organization_id: string; role: string }[]) =>
+      xs.map(x => `${x.organization_id}:${x.role}`).sort().join('|');
+    if (orgKey(draftOrgs) !== orgKey(summary.orgs)) return true;
+    const fKey = (xs: { farm_id: string; role: string }[]) =>
+      xs.map(x => `${x.farm_id}:${x.role}`).sort().join('|');
+    if (fKey(draftFarms) !== fKey(summary.farm_memberships)) return true;
+    return false;
+  }, [summary, hydrated, draftSuper, draftOrgs, draftFarms]);
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && (!dirty || confirm('সেভ না করা পরিবর্তন বাদ দেবেন?')) && onClose()}>
       <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -316,9 +300,8 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                     <span className="font-semibold text-amber-200">সুপার এডমিন</span>
                   </div>
                   <Switch
-                    checked={summary.is_super_admin}
-                    disabled={setSuperAdmin.isPending}
-                    onCheckedChange={(v) => setSuperAdmin.mutate(v)}
+                    checked={draftSuper}
+                    onCheckedChange={(v) => setDraftSuper(v)}
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">পুরো সিস্টেমের সম্পূর্ণ এডমিন অ্যাক্সেস।</p>
@@ -330,10 +313,10 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                   <Building2 className="w-4 h-4 text-emerald-400" />
                   <span className="font-semibold text-emerald-200">অর্গানাইজেশন রোল</span>
                 </div>
-                {summary.orgs.length === 0 && (
+                {draftOrgs.length === 0 && (
                   <p className="text-xs text-slate-400">কোনো অর্গে সদস্য না।</p>
                 )}
-                {summary.orgs.map(o => (
+                {draftOrgs.map(o => (
                   <div key={o.organization_id} className="flex items-center gap-2 p-2 rounded bg-slate-800/60">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate">{o.org_name}</div>
@@ -341,7 +324,9 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                     </div>
                     <Select
                       value={o.role}
-                      onValueChange={(v) => setOrgRole.mutate({ orgId: o.organization_id, role: v })}
+                      onValueChange={(v) => setDraftOrgs(prev =>
+                        prev.map(x => x.organization_id === o.organization_id ? { ...x, role: v } : x)
+                      )}
                     >
                       <SelectTrigger className="h-8 w-[140px] bg-slate-900 border-white/10 text-xs">
                         <SelectValue />
@@ -355,11 +340,7 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                     <Button
                       size="icon" variant="ghost"
                       className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                      onClick={() => {
-                        if (confirm('এই অর্গ থেকে সরাতে চান?')) {
-                          removeOrgMember.mutate(o.organization_id);
-                        }
-                      }}
+                      onClick={() => setDraftOrgs(prev => prev.filter(x => x.organization_id !== o.organization_id))}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -389,9 +370,16 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                     </Select>
                     <Button
                       size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700"
-                      disabled={!newOrgId || addOrgMember.isPending}
+                      disabled={!newOrgId}
                       onClick={() => {
-                        addOrgMember.mutate({ orgId: newOrgId, role: newOrgRole });
+                        const org = realOrgs.find(o => o.id === newOrgId);
+                        if (!org) return;
+                        setDraftOrgs(prev => [...prev, {
+                          organization_id: org.id,
+                          role: newOrgRole,
+                          org_name: org.name,
+                          org_slug: org.slug || '',
+                        }]);
                         setNewOrgId('');
                       }}
                     >
@@ -401,7 +389,7 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                 )}
               </section>
 
-              {/* Owned Farms (read-only summary) */}
+              {/* Owned Farms (read-only) */}
               <section className="p-3 rounded-lg bg-green-500/5 border border-green-400/20">
                 <div className="flex items-center gap-2 mb-2">
                   <Tractor className="w-4 h-4 text-green-400" />
@@ -423,21 +411,23 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                 </p>
               </section>
 
-              {/* Farm Memberships (worker / member / manager / viewer) */}
+              {/* Farm Memberships */}
               <section className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-400/20 space-y-2">
                 <div className="flex items-center gap-2">
                   <HardHat className="w-4 h-4 text-cyan-400" />
                   <span className="font-semibold text-cyan-200">ফার্ম মেম্বারশিপ (ওয়ার্কার/ম্যানেজার)</span>
                 </div>
-                {summary.farm_memberships.length === 0 && (
+                {draftFarms.length === 0 && (
                   <p className="text-xs text-slate-400">কোনো ফার্মে সদস্য না।</p>
                 )}
-                {summary.farm_memberships.map(f => (
+                {draftFarms.map(f => (
                   <div key={f.farm_id} className="flex items-center gap-2 p-2 rounded bg-slate-800/60">
                     <div className="flex-1 min-w-0 text-sm text-white truncate">{f.farm_name}</div>
                     <Select
                       value={f.role}
-                      onValueChange={(v) => setFarmMemberRole.mutate({ farmId: f.farm_id, role: v })}
+                      onValueChange={(v) => setDraftFarms(prev =>
+                        prev.map(x => x.farm_id === f.farm_id ? { ...x, role: v } : x)
+                      )}
                     >
                       <SelectTrigger className="h-8 w-[130px] bg-slate-900 border-white/10 text-xs">
                         <SelectValue />
@@ -451,11 +441,7 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                     <Button
                       size="icon" variant="ghost"
                       className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                      onClick={() => {
-                        if (confirm('এই ফার্ম থেকে সরাতে চান?')) {
-                          setFarmMemberRole.mutate({ farmId: f.farm_id, role: 'none' });
-                        }
-                      }}
+                      onClick={() => setDraftFarms(prev => prev.filter(x => x.farm_id !== f.farm_id))}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -485,9 +471,15 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
                     </Select>
                     <Button
                       size="sm" className="h-8 bg-cyan-600 hover:bg-cyan-700"
-                      disabled={!newFarmId || setFarmMemberRole.isPending}
+                      disabled={!newFarmId}
                       onClick={() => {
-                        setFarmMemberRole.mutate({ farmId: newFarmId, role: newFarmRole });
+                        const farm = allFarms.find(x => x.id === newFarmId);
+                        if (!farm) return;
+                        setDraftFarms(prev => [...prev, {
+                          farm_id: farm.id,
+                          role: newFarmRole,
+                          farm_name: farm.name,
+                        }]);
                         setNewFarmId('');
                       }}
                     >
@@ -501,19 +493,32 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
         )}
         <div className="border-t border-white/10 pt-3 mt-2 flex items-center justify-between gap-2">
           <p className="text-[11px] text-slate-500">
-            সব পরিবর্তন স্বয়ংক্রিয়ভাবে legacy worker টেবিলে sync হয় (transactional triggers)।
+            সব পরিবর্তন একটি transaction-এ সেভ হবে; legacy worker টেবিল triggers দিয়ে auto-sync।
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 border-violet-400/40 text-violet-300 hover:bg-violet-500/10"
-            disabled={repairRoles.isPending}
-            onClick={() => repairRoles.mutate()}
-          >
-            {repairRoles.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'রোল রিপেয়ার'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline" size="sm"
+              className="h-8 border-white/10 text-slate-300 hover:bg-slate-800"
+              onClick={() => {
+                if (!dirty || confirm('সেভ না করা পরিবর্তন বাদ দেবেন?')) onClose();
+              }}
+              disabled={apply.isPending}
+            >
+              বাতিল
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 bg-violet-600 hover:bg-violet-700"
+              disabled={!dirty || apply.isPending || isLoading}
+              onClick={() => apply.mutate()}
+            >
+              {apply.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+              সেভ করুন
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
