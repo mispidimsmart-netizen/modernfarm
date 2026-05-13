@@ -37,12 +37,18 @@ export function FarmsAdminPanel() {
   const [confirmDelete, setConfirmDelete] = useState<FarmRow | null>(null);
 
   const { data: farms = [], isLoading } = useQuery({
-    queryKey: ['admin_all_farms'],
+    queryKey: ['admin_all_farms', orgFilter],
     queryFn: async (): Promise<FarmRow[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('farms')
         .select('id, name, name_en, location, owner_id, organization_id, is_active, created_at')
         .order('created_at', { ascending: false });
+      if (orgFilter === 'none') {
+        q = q.is('organization_id', null);
+      } else if (orgFilter !== 'all') {
+        q = q.eq('organization_id', orgFilter);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as FarmRow[];
     },
