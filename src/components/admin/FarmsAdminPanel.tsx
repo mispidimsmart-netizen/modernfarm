@@ -26,7 +26,7 @@ interface FarmRow {
   is_active: boolean | null;
   created_at: string;
 }
-interface OrgRow { id: string; name: string; name_en: string; }
+interface OrgRow { id: string; name: string; name_en: string; slug: string | null; }
 interface ProfileRow { id: string; user_name: string | null; phone: string | null; email: string | null; }
 
 export function FarmsAdminPanel() {
