@@ -104,6 +104,20 @@ export function OrganizationsPanel() {
     },
   });
 
+  const { data: orgFarms = [], isLoading: farmsLoading } = useQuery({
+    queryKey: ['admin_org_farms', selectedOrgId],
+    enabled: !!selectedOrgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('farms')
+        .select('id, name, owner_id, created_at')
+        .eq('organization_id', selectedOrgId!)
+        .order('name');
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string; owner_id: string; created_at: string }>;
+    },
+  });
+
   const membersKey = ['admin_org_members', selectedOrgId] as const;
 
   const removeMember = useMutation({
