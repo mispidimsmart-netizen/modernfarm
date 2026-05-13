@@ -1,0 +1,1 @@
+UPDATE public.farms SET deleted_at = now(), is_active = false WHERE id = '904a380b-a1b6-4757-a900-55e7219709de';
