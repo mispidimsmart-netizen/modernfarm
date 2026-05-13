@@ -74,9 +74,14 @@ export default function OrgSignupPage() {
       setTimeout(() => navigate('/org-admin'), 400);
     },
     onError: (e: any) => {
+      const msg: string = e?.message || '';
+      const isDuplicate = /slug/i.test(msg) && (/ব্যবহার করা হচ্ছে/.test(msg) || /duplicate|already|unique/i.test(msg));
+      if (isDuplicate) setSlugStatus('taken');
       toast({
-        title: 'ত্রুটি',
-        description: e.message || 'কোম্পানি তৈরি করা যায়নি',
+        title: isDuplicate ? 'এই URL slug ইতিমধ্যে নেওয়া হয়েছে' : 'ত্রুটি',
+        description: isDuplicate
+          ? 'অনুগ্রহ করে অন্য একটি slug বেছে নিন (যেমন আপনার কোম্পানির নামের সাথে সংখ্যা যোগ করুন)।'
+          : msg || 'কোম্পানি তৈরি করা যায়নি',
         variant: 'destructive',
       });
     },
