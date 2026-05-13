@@ -154,18 +154,15 @@ describe('OrganizationsPanel mutations — optimistic + onSettled', () => {
     expect(after.find(m => m.user_id === 'u1')?.role).toBe('member');
   });
 
-  it('removeMember optimistically removes row then triggers refetch on settle', async () => {
+  it('removeMember optimistically removes row then invalidates on settle', async () => {
     rpcMock.mockResolvedValue({ error: null });
     const { result } = renderHook(() => useOrgMutations(), { wrapper: makeWrapper(qc) });
 
     qc.setQueryData<MemberRow[]>(membersKey, seedMembers());
-    await qc.prefetchQuery({ queryKey: membersKey });
-    refetchCount = 0;
 
-    // Capture the snapshot during onMutate (synchronous post-commit) by reading
-    // cache right after mutate() resolves the optimistic step.
     const promise = result.current.removeMember.mutateAsync({ user_id: 'u2' });
 
+    // Optimistic removal observable before RPC resolves
     await waitFor(() => {
       const snap = qc.getQueryData<MemberRow[]>(membersKey)!;
       expect(snap.find(m => m.user_id === 'u2')).toBeUndefined();
@@ -177,7 +174,9 @@ describe('OrganizationsPanel mutations — optimistic + onSettled', () => {
       'super_admin_remove_org_member',
       { _org_id: ORG_ID, _user_id: 'u2' },
     );
-    await waitFor(() => expect(refetchCount).toBeGreaterThanOrEqual(1));
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: membersKey, refetchType: 'active' }),
+    );
   });
 
   it('removeMember rolls back when RPC fails', async () => {
