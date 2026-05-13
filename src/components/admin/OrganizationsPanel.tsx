@@ -83,13 +83,19 @@ export function OrganizationsPanel() {
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: orgsKey,
     queryFn: async (): Promise<Org[]> => {
+      // Server-side: exclude auto-created personal orgs via case-insensitive LIKE.
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
+        .not('slug', 'ilike', 'personal-%')
+        .not('slug', 'ilike', '/personal-%')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      // Belt-and-suspenders: filter out auto-created personal orgs (slug starts with "personal-")
-      return ((data || []) as Org[]).filter(o => !/^personal-/i.test(o.slug || ''));
+      // Client-side belt-and-suspenders: any slug that *contains* "personal-" is excluded.
+      return ((data || []) as Org[]).filter(o => {
+        const s = (o.slug || '').trim().toLowerCase();
+        return s.length > 0 && !s.includes('personal-');
+      });
     },
   });
 
