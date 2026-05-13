@@ -976,8 +976,10 @@ function EditMemberRoleDialog({
   onClose: () => void;
 }) {
   const [role, setRole] = useState<OrgRole>(member.role);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const displayName = member.profile?.user_name || member.profile?.phone || member.user_id.slice(0, 8);
   const changed = role !== member.role;
+  const isOwnerChange = member.role === 'org_owner' || role === 'org_owner';
 
   return (
     <DialogContent className="bg-slate-900 border-white/10">
@@ -996,7 +998,7 @@ function EditMemberRoleDialog({
         </div>
         <div className="space-y-2">
           <Label className="text-slate-200">রোল</Label>
-          <Select value={role} onValueChange={(v: OrgRole) => setRole(v)}>
+          <Select value={role} onValueChange={(v: OrgRole) => setRole(v)} disabled={isPending}>
             <SelectTrigger className="bg-slate-800 border-white/10 text-white">
               <SelectValue />
             </SelectTrigger>
@@ -1018,11 +1020,51 @@ function EditMemberRoleDialog({
         <Button
           className="bg-emerald-600 hover:bg-emerald-700"
           disabled={!changed || isPending}
-          onClick={() => onSave(role)}
+          onClick={() => setConfirmOpen(true)}
         >
           {isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
         </Button>
       </DialogFooter>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(o) => !isPending && setConfirmOpen(o)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-amber-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              রোল পরিবর্তন নিশ্চিত করুন?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300 space-y-2">
+              <span className="block">
+                <strong className="text-white">{displayName}</strong> এর রোল{' '}
+                <strong className="text-white">{roleLabel[member.role]}</strong> থেকে{' '}
+                <strong className="text-white">{roleLabel[role]}</strong> এ পরিবর্তন করা হবে।
+              </span>
+              {isOwnerChange && (
+                <span className="block rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-amber-200 text-xs">
+                  সতর্কতা: মালিক (Owner) রোল পরিবর্তন অর্গানাইজেশনের অ্যাক্সেস ও কন্ট্রোলে বড় প্রভাব ফেলতে পারে।
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                onSave(role);
+                setConfirmOpen(false);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isPending ? 'সংরক্ষণ হচ্ছে...' : 'হ্যাঁ, পরিবর্তন করুন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   );
 }
