@@ -465,6 +465,95 @@ export function OrganizationsPanel() {
           />
         )}
       </Dialog>
+
+      {/* Delete organization confirmation */}
+      <AlertDialog
+        open={!!deleteOrgTarget}
+        onOpenChange={(o) => !o && !deleteOrg.isPending && setDeleteOrgTarget(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-rose-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              অর্গানাইজেশন মুছে ফেলতে চান?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300 space-y-2">
+              <span className="block">
+                আপনি <strong className="text-white">"{deleteOrgTarget?.name}"</strong> মুছে ফেলতে যাচ্ছেন।
+              </span>
+              {deleteOrgCounts && (
+                <span className="block rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-amber-200 text-xs">
+                  এই অর্গানাইজেশনে <strong>{deleteOrgCounts.members}</strong> জন সদস্য এবং <strong>{deleteOrgCounts.farms}</strong>টি ফার্ম রয়েছে।
+                  {deleteOrgCounts.farms > 0 && (
+                    <> ফার্ম থাকা অবস্থায় মুছে ফেলা যাবে না — আগে ফার্মগুলো অন্যত্র সরান।</>
+                  )}
+                </span>
+              )}
+              <span className="block text-rose-300 text-xs">এই কাজ আর ফেরানো যাবে না।</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteOrg.isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteOrg.isPending || (deleteOrgCounts?.farms ?? 0) > 0}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteOrgTarget) deleteOrg.mutate(deleteOrgTarget.id);
+              }}
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+            >
+              {deleteOrg.isPending ? 'মুছছে...' : 'মুছে ফেলুন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove member confirmation */}
+      <AlertDialog
+        open={!!removeMemberTarget}
+        onOpenChange={(o) => !o && !removeMember.isPending && setRemoveMemberTarget(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-rose-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              সদস্য সরাতে চান?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300 space-y-2">
+              <span className="block">
+                <strong className="text-white">
+                  {removeMemberTarget?.profile?.user_name || removeMemberTarget?.profile?.phone || removeMemberTarget?.user_id.slice(0, 8)}
+                </strong>{' '}
+                কে এই অর্গানাইজেশন থেকে সরিয়ে দেওয়া হবে।
+              </span>
+              {removeMemberTarget?.role === 'org_owner' && (
+                <span className="block rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-amber-200 text-xs">
+                  সতর্কতা: এই ব্যবহারকারী মালিক — সরালে অর্গানাইজেশন মালিকবিহীন হয়ে যেতে পারে।
+                </span>
+              )}
+              <span className="block text-slate-400 text-xs">তাদের ফার্ম অ্যাসাইনমেন্টও বাতিল হতে পারে।</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeMember.isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeMember.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (removeMemberTarget) {
+                  removeMember.mutate(
+                    { user_id: removeMemberTarget.user_id },
+                    { onSettled: () => setRemoveMemberTarget(null) },
+                  );
+                }
+              }}
+              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
+            >
+              {removeMember.isPending ? 'সরানো হচ্ছে...' : 'সরিয়ে দিন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
