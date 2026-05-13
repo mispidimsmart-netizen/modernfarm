@@ -232,6 +232,8 @@ export function OrganizationsPanel() {
       qc.setQueryData<MemberRow[]>(membersKey, (prev) =>
         (prev || []).map(m => (m.user_id === updated.user_id ? { ...m, ...updated } : m)),
       );
+      // Refresh role history for this member so the new entry shows immediately.
+      qc.invalidateQueries({ queryKey: ['member_role_history', updated.id] });
       toast({ title: 'রোল আপডেট হয়েছে' });
     },
     onSettled: () => {
