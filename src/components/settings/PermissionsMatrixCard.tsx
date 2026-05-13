@@ -2,7 +2,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck, Eye, Tractor, Crown, Building2, Check, X } from 'lucide-react';
 
-type Role = 'super_admin' | 'org_admin' | 'owner' | 'worker';
+type Role = 'super_admin' | 'org_owner' | 'farm_owner' | 'worker';
 
 interface Capability {
   key: string;
@@ -10,64 +10,89 @@ interface Capability {
   access: Record<Role, boolean>;
 }
 
+// Rule recap:
+//   super_admin             → everything
+//   org_owner (কোম্পানি/অর্গ) → manages org's farms & members; NO direct farm operation, NO hardware
+//   farm_owner (ফার্ম)        → full control of own farm including hardware
+//   worker (ওয়ার্কার)         → same as farm_owner EXCEPT hardware/automation/threshold/ESP32
 const CAPS: Capability[] = [
   {
     key: 'view_dashboard',
     label: { bn: 'ড্যাশবোর্ড দেখা', en: 'View Dashboard' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: true },
+    access: { super_admin: true, org_owner: true, farm_owner: true, worker: true },
   },
   {
     key: 'view_alerts',
     label: { bn: 'অ্যালার্ট দেখা', en: 'View Alerts' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: true },
+    access: { super_admin: true, org_owner: true, farm_owner: true, worker: true },
   },
   {
     key: 'temp_override',
     label: { bn: '২০ মিনিট ম্যানুয়াল ওভাররাইড', en: '20-min Manual Override' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: true },
+    access: { super_admin: true, org_owner: false, farm_owner: true, worker: true },
+  },
+  {
+    key: 'log_daily',
+    label: { bn: 'খাবার/পানি/মৃত্যু/ডিম এন্ট্রি', en: 'Daily Logs (feed/water/mortality/eggs)' },
+    access: { super_admin: true, org_owner: false, farm_owner: true, worker: true },
+  },
+  {
+    key: 'finance',
+    label: { bn: 'ফাইন্যান্স রিপোর্ট ও এন্ট্রি', en: 'Finance Reports & Entries' },
+    access: { super_admin: true, org_owner: true, farm_owner: true, worker: true },
+  },
+  {
+    key: 'batches',
+    label: { bn: 'ব্যাচ তৈরি/বন্ধ', en: 'Batch Create/Close' },
+    access: { super_admin: true, org_owner: false, farm_owner: true, worker: false },
   },
   {
     key: 'edit_automation',
     label: { bn: 'অটোমেশন রুল এডিট', en: 'Edit Automation Rules' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: false },
+    access: { super_admin: true, org_owner: false, farm_owner: true, worker: false },
   },
   {
     key: 'edit_thresholds',
     label: { bn: 'থ্রেশহোল্ড পরিবর্তন', en: 'Edit Thresholds' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: false },
+    access: { super_admin: true, org_owner: false, farm_owner: true, worker: false },
   },
   {
     key: 'manage_workers',
-    label: { bn: 'কর্মী ম্যানেজমেন্ট', en: 'Manage Workers' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: false },
+    label: { bn: 'ওয়ার্কার ম্যানেজমেন্ট', en: 'Manage Workers' },
+    access: { super_admin: true, org_owner: true, farm_owner: true, worker: false },
   },
   {
-    key: 'finance',
-    label: { bn: 'ফাইন্যান্স রিপোর্ট', en: 'Finance Reports' },
-    access: { super_admin: true, org_admin: true, owner: true, worker: false },
+    key: 'manage_farm',
+    label: { bn: 'ফার্ম যোগ/মুছে দেওয়া', en: 'Add/Remove Farm' },
+    access: { super_admin: true, org_owner: true, farm_owner: false, worker: false },
+  },
+  {
+    key: 'manage_org_members',
+    label: { bn: 'অর্গানাইজেশন মেম্বার ম্যানেজ', en: 'Manage Org Members' },
+    access: { super_admin: true, org_owner: true, farm_owner: false, worker: false },
   },
   {
     key: 'esp32_config',
     label: { bn: 'ESP32 ফার্মওয়্যার / কনফিগ', en: 'ESP32 Firmware / Config' },
-    access: { super_admin: true, org_admin: false, owner: false, worker: false },
+    access: { super_admin: true, org_owner: false, farm_owner: false, worker: false },
   },
   {
-    key: 'multi_farm',
-    label: { bn: 'একাধিক ফার্ম ম্যানেজ', en: 'Manage Multiple Farms' },
-    access: { super_admin: true, org_admin: true, owner: false, worker: false },
+    key: 'platform_admin',
+    label: { bn: 'সকল ইউজার/অর্গ নিয়োগ', en: 'Appoint Users/Orgs' },
+    access: { super_admin: true, org_owner: false, farm_owner: false, worker: false },
   },
 ];
 
 const ROLE_META: Record<Role, { icon: typeof Crown; label: { bn: string; en: string }; color: string }> = {
-  super_admin: { icon: Crown, label: { bn: 'অ্যাডমিন', en: 'Admin' }, color: 'text-purple-600 dark:text-purple-400' },
-  org_admin: { icon: Building2, label: { bn: 'অর্গ', en: 'Org' }, color: 'text-emerald-600 dark:text-emerald-400' },
-  owner: { icon: Tractor, label: { bn: 'মালিক', en: 'Owner' }, color: 'text-primary' },
-  worker: { icon: Eye, label: { bn: 'কর্মী', en: 'Worker' }, color: 'text-amber-600 dark:text-amber-400' },
+  super_admin: { icon: Crown, label: { bn: 'সুপার এডমিন', en: 'Super Admin' }, color: 'text-purple-600 dark:text-purple-400' },
+  org_owner: { icon: Building2, label: { bn: 'কোম্পানি/অর্গ', en: 'Company/Org' }, color: 'text-emerald-600 dark:text-emerald-400' },
+  farm_owner: { icon: Tractor, label: { bn: 'ফার্ম', en: 'Farm' }, color: 'text-primary' },
+  worker: { icon: Eye, label: { bn: 'ওয়ার্কার', en: 'Worker' }, color: 'text-amber-600 dark:text-amber-400' },
 };
 
 export function PermissionsMatrixCard() {
   const { language } = useAuth();
-  const roles: Role[] = ['super_admin', 'org_admin', 'owner', 'worker'];
+  const roles: Role[] = ['super_admin', 'org_owner', 'farm_owner', 'worker'];
 
   return (
     <Card className="overflow-hidden">
@@ -117,11 +142,16 @@ export function PermissionsMatrixCard() {
             </tbody>
           </table>
         </div>
-        <div className="p-3 border-t bg-muted/20">
+        <div className="p-3 border-t bg-muted/20 space-y-1">
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             {language === 'bn'
-              ? '⚠️ কর্মীরা পরিবর্তন করতে পারবে না — শুধুমাত্র ২০ মিনিটের সাময়িক ওভাররাইড। সব অটোমেশন রুল ও থ্রেশহোল্ড মালিক/অ্যাডমিন নিয়ন্ত্রণ করেন।'
-              : 'Workers can only do 20-min temporary overrides. All automation rules and thresholds are controlled by Owner/Admin.'}
+              ? '⚠️ ওয়ার্কার hardware/automation/threshold বদলাতে পারবে না — শুধু ২০ মিনিটের সাময়িক ওভাররাইড ও দৈনিক ডেটা এন্ট্রি।'
+              : 'Workers cannot change hardware/automation/thresholds — only 20-min override and daily logs.'}
+          </p>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {language === 'bn'
+              ? 'ℹ️ সুপার এডমিন ও কোম্পানি/অর্গানাইজেশন সরাসরি ফার্ম পরিচালনা করেন না — তারা অ্যাসাইন/মনিটর করেন।'
+              : 'Super Admin & Company/Org do not directly run farms — they assign and monitor.'}
           </p>
         </div>
       </CardContent>
