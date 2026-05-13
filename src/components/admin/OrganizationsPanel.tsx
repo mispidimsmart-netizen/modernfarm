@@ -517,6 +517,26 @@ export function OrganizationsPanel() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Edit member role */}
+      <Dialog
+        open={!!editMemberTarget}
+        onOpenChange={(o) => !o && !setRole.isPending && setEditMemberTarget(null)}
+      >
+        {editMemberTarget && (
+          <EditMemberRoleDialog
+            member={editMemberTarget}
+            isPending={setRole.isPending}
+            onSave={(role) => {
+              setRole.mutate(
+                { user_id: editMemberTarget.user_id, role },
+                { onSuccess: () => setEditMemberTarget(null) },
+              );
+            }}
+            onClose={() => setEditMemberTarget(null)}
+          />
+        )}
+      </Dialog>
+
       {/* Remove member confirmation */}
       <AlertDialog
         open={!!removeMemberTarget}
