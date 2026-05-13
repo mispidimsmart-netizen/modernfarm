@@ -76,6 +76,7 @@ export function OrganizationsPanel() {
   const [editOrg, setEditOrg] = useState<Org | null>(null);
   const [deleteOrgTarget, setDeleteOrgTarget] = useState<Org | null>(null);
   const [removeMemberTarget, setRemoveMemberTarget] = useState<MemberRow | null>(null);
+  const [editMemberTarget, setEditMemberTarget] = useState<MemberRow | null>(null);
 
   const orgsKey = ['admin_organizations'] as const;
 
@@ -397,19 +398,27 @@ export function OrganizationsPanel() {
                         {m.profile?.phone || ''} {m.profile?.email ? `· ${m.profile.email}` : ''}
                       </div>
                     </div>
-                    <Select
-                      value={m.role}
-                      onValueChange={(v: OrgRole) => setRole.mutate({ user_id: m.user_id, role: v })}
+                    <Badge
+                      variant="outline"
+                      className={
+                        m.role === 'org_owner'
+                          ? 'border-amber-400/40 text-amber-300'
+                          : m.role === 'org_admin'
+                            ? 'border-emerald-400/40 text-emerald-300'
+                            : 'border-slate-400/30 text-slate-300'
+                      }
                     >
-                      <SelectTrigger className="h-8 w-[120px] bg-slate-900 border-white/10 text-white text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="org_owner">{roleLabel.org_owner}</SelectItem>
-                        <SelectItem value="org_admin">{roleLabel.org_admin}</SelectItem>
-                        <SelectItem value="member">{roleLabel.member}</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      {roleLabel[m.role]}
+                    </Badge>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-slate-300 hover:bg-slate-700/40"
+                      onClick={() => setEditMemberTarget(m)}
+                      title="রোল এডিট করুন"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -507,6 +516,26 @@ export function OrganizationsPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit member role */}
+      <Dialog
+        open={!!editMemberTarget}
+        onOpenChange={(o) => !o && !setRole.isPending && setEditMemberTarget(null)}
+      >
+        {editMemberTarget && (
+          <EditMemberRoleDialog
+            member={editMemberTarget}
+            isPending={setRole.isPending}
+            onSave={(role) => {
+              setRole.mutate(
+                { user_id: editMemberTarget.user_id, role },
+                { onSuccess: () => setEditMemberTarget(null) },
+              );
+            }}
+            onClose={() => setEditMemberTarget(null)}
+          />
+        )}
+      </Dialog>
 
       {/* Remove member confirmation */}
       <AlertDialog
@@ -923,6 +952,71 @@ function LicenseDialog({ org, onSaved }: { org: Org; onSaved: () => void }) {
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           {save.isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+/* ---------------- Edit Member Role Dialog ---------------- */
+
+function EditMemberRoleDialog({
+  member,
+  isPending,
+  onSave,
+  onClose,
+}: {
+  member: MemberRow;
+  isPending: boolean;
+  onSave: (role: OrgRole) => void;
+  onClose: () => void;
+}) {
+  const [role, setRole] = useState<OrgRole>(member.role);
+  const displayName = member.profile?.user_name || member.profile?.phone || member.user_id.slice(0, 8);
+  const changed = role !== member.role;
+
+  return (
+    <DialogContent className="bg-slate-900 border-white/10">
+      <DialogHeader>
+        <DialogTitle className="text-white flex items-center gap-2">
+          <Shield className="w-5 h-5 text-amber-400" />
+          সদস্যের রোল এডিট করুন
+        </DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        <div className="text-sm text-slate-300">
+          <div className="text-white font-medium">{displayName}</div>
+          <div className="text-xs text-slate-400">
+            {member.profile?.phone || ''} {member.profile?.email ? `· ${member.profile.email}` : ''}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-slate-200">রোল</Label>
+          <Select value={role} onValueChange={(v: OrgRole) => setRole(v)}>
+            <SelectTrigger className="bg-slate-800 border-white/10 text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="org_owner">{roleLabel.org_owner}</SelectItem>
+              <SelectItem value="org_admin">{roleLabel.org_admin}</SelectItem>
+              <SelectItem value="member">{roleLabel.member}</SelectItem>
+            </SelectContent>
+          </Select>
+          {changed && (
+            <p className="text-xs text-amber-300/90">
+              পরিবর্তন: <strong>{roleLabel[member.role]}</strong> → <strong>{roleLabel[role]}</strong>
+            </p>
+          )}
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose} disabled={isPending}>বাতিল</Button>
+        <Button
+          className="bg-emerald-600 hover:bg-emerald-700"
+          disabled={!changed || isPending}
+          onClick={() => onSave(role)}
+        >
+          {isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}
         </Button>
       </DialogFooter>
     </DialogContent>
