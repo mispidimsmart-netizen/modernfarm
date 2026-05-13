@@ -9029,6 +9029,10 @@ export type Database = {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
+      super_admin_repair_user_roles: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
       super_admin_set_farm_member_role: {
         Args: { _farm_id: string; _role: string; _user_id: string }
         Returns: undefined
