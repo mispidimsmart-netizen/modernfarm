@@ -1,0 +1,2 @@
+ALTER TABLE public.device_tokens DROP CONSTRAINT device_tokens_farm_id_fkey;
+ALTER TABLE public.device_tokens ADD CONSTRAINT device_tokens_farm_id_fkey FOREIGN KEY (farm_id) REFERENCES public.farms(id) ON DELETE SET NULL;
