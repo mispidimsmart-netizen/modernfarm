@@ -118,8 +118,30 @@ test.describe('Unified role editor → cache refresh', () => {
       )
       .toBe(true);
 
-    // Optional: confirm device/dashboard caches also bust (broadcast path).
-    // These won't all fire in admin context — we only assert at least one.
+    // (4) Device-related caches (status/tokens/health) are refetched within a few seconds.
+    //     The unified role editor broadcasts a cache-bust signal; even in admin context,
+    //     at least one of these device tables should refetch as access scope changes.
+    await expect
+      .poll(
+        () => {
+          const deviceKeys = ['device_status', 'device_tokens', 'device_health', 'device_commands'];
+          return deviceKeys.some((k) => refetchedKeys.has(k));
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+
+    // (5) Dashboard snapshot RPC is re-invoked after role change.
+    await expect
+      .poll(
+        () =>
+          refetchedKeys.has('dashboard-snapshot') ||
+          rpcCalls.includes('get_farm_dashboard_snapshot'),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+
+    // Sanity: at least one cache key was refetched overall.
     expect(refetchedKeys.size).toBeGreaterThan(0);
 
     page.off('request', onRequest);
