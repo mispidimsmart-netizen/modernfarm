@@ -1016,6 +1016,8 @@ function EditMemberRoleDialog({
             </p>
           )}
         </div>
+
+        <MemberRoleHistory memberId={member.id} />
       </div>
       <DialogFooter>
         <Button variant="ghost" onClick={onClose} disabled={isPending}>বাতিল</Button>
