@@ -111,13 +111,17 @@ export function UserManagementTab({ language }: Props) {
 
   return (
     <Tabs value={active} onValueChange={(v) => setActive(v as SubTabKey)} className="w-full">
-      <TabsList className="bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-1 p-1.5 rounded-xl shadow-lg h-auto w-full">
+      <TabsList className="bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-5 gap-1 p-1.5 rounded-xl shadow-lg h-auto w-full">
+        {renderTrigger('roles', UserCog, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('admins', Crown, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('orgs', Building2, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('farms', Tractor, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('workers', HardHat, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
       </TabsList>
 
+      <TabsContent value="roles" className="mt-4">
+        {can('roles') ? <UnifiedRoleEditorPanel /> : <DeniedCard tab="roles" />}
+      </TabsContent>
       <TabsContent value="admins" className="mt-4">
         {can('admins') ? <AdminManagementTab language={language} /> : <DeniedCard tab="admins" />}
       </TabsContent>
