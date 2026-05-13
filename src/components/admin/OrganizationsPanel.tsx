@@ -18,7 +18,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse, Pencil, AlertTriangle } from 'lucide-react';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -54,9 +54,9 @@ interface UserSearchRow {
 }
 
 const roleLabel: Record<OrgRole, string> = {
-  org_owner: 'মালিক',
-  org_admin: 'অ্যাডমিন',
-  member: 'সদস্য',
+  org_owner: 'কোম্পানি/অর্গানাইজেশন',
+  org_admin: 'ফার্ম',
+  member: 'ওয়ার্কার',
 };
 
 const licenseLabel: Record<LicenseType, string> = {
@@ -86,10 +86,10 @@ export function OrganizationsPanel() {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
-        .not('slug', 'like', 'personal-%')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as Org[];
+      // Belt-and-suspenders: filter out auto-created personal orgs (slug starts with "personal-")
+      return ((data || []) as Org[]).filter(o => !/^personal-/i.test(o.slug || ''));
     },
   });
 
@@ -245,9 +245,9 @@ export function OrganizationsPanel() {
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
 
   return (
-    <div className={selectedOrg ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-4'}>
-      {/* Orgs list — hidden once one is selected */}
-      {!selectedOrg && (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Orgs list — always visible */}
+      {(
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-white flex items-center gap-2">
@@ -337,17 +337,6 @@ export function OrganizationsPanel() {
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-white flex items-center gap-2">
-            {selectedOrg && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-slate-300 hover:bg-slate-700/40 -ml-1"
-                onClick={() => setSelectedOrgId(null)}
-                title="ফিরে যান"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            )}
             <Shield className="w-5 h-5 text-amber-400" />
             সদস্য {selectedOrg ? `· ${selectedOrg.name}` : ''}
           </CardTitle>
