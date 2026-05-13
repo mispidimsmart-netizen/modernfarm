@@ -74,9 +74,13 @@ export function OrganizationsPanel() {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [editOrg, setEditOrg] = useState<Org | null>(null);
+  const [deleteOrgTarget, setDeleteOrgTarget] = useState<Org | null>(null);
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<MemberRow | null>(null);
+
+  const orgsKey = ['admin_organizations'] as const;
 
   const { data: orgs = [], isLoading } = useQuery({
-    queryKey: ['admin_organizations'],
+    queryKey: orgsKey,
     queryFn: async (): Promise<Org[]> => {
       const { data, error } = await supabase
         .from('organizations')
