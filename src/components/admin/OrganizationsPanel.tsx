@@ -201,8 +201,9 @@ export function OrganizationsPanel() {
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Orgs list */}
+    <div className={selectedOrg ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 lg:grid-cols-2 gap-4'}>
+      {/* Orgs list — hidden once one is selected */}
+      {!selectedOrg && (
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-white flex items-center gap-2">
