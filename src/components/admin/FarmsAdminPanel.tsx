@@ -106,10 +106,14 @@ export function FarmsAdminPanel() {
   const ownerMap = useMemo(() => new Map(owners.map(o => [o.id, o])), [owners]);
   const orgMap = useMemo(() => new Map(allOrgs.map(o => [o.id, o])), [allOrgs]);
 
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ['admin_all_farms'] });
-    qc.invalidateQueries({ queryKey: ['admin_deleted_farms'] });
-    qc.invalidateQueries({ queryKey: ['user-farms'] });
+  const invalidateAll = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['admin_deleted_farms'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['admin_farm_owners'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['user-farms'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['farms'], refetchType: 'all' }),
+    ]);
   };
 
   const setOrg = useMutation({
