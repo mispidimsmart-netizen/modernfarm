@@ -8982,7 +8982,7 @@ export type Database = {
           _role: Database["public"]["Enums"]["org_role"]
           _user_id: string
         }
-        Returns: boolean
+        Returns: Json
       }
       super_admin_update_organization: {
         Args: {
