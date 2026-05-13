@@ -22,6 +22,7 @@ export default function OrgSignupPage() {
   const [nameEn, setNameEn] = useState('');
   const [slug, setSlug] = useState('');
   const [autoSlug, setAutoSlug] = useState(true);
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
 
   // Auto-generate slug from English name
   useEffect(() => {
@@ -36,6 +37,22 @@ export default function OrgSignupPage() {
       );
     }
   }, [nameEn, autoSlug]);
+
+  // Debounced slug availability check
+  useEffect(() => {
+    const s = slug.trim();
+    if (s.length < 3 || !/^[a-z0-9-]+$/.test(s)) {
+      setSlugStatus(s.length === 0 ? 'idle' : 'invalid');
+      return;
+    }
+    setSlugStatus('checking');
+    const t = setTimeout(async () => {
+      const { data, error } = await supabase.rpc('is_org_slug_available' as any, { _slug: s });
+      if (error) { setSlugStatus('idle'); return; }
+      setSlugStatus(data ? 'available' : 'taken');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [slug]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -57,9 +74,14 @@ export default function OrgSignupPage() {
       setTimeout(() => navigate('/org-admin'), 400);
     },
     onError: (e: any) => {
+      const msg: string = e?.message || '';
+      const isDuplicate = /slug/i.test(msg) && (/ব্যবহার করা হচ্ছে/.test(msg) || /duplicate|already|unique/i.test(msg));
+      if (isDuplicate) setSlugStatus('taken');
       toast({
-        title: 'ত্রুটি',
-        description: e.message || 'কোম্পানি তৈরি করা যায়নি',
+        title: isDuplicate ? 'এই URL slug ইতিমধ্যে নেওয়া হয়েছে' : 'ত্রুটি',
+        description: isDuplicate
+          ? 'অনুগ্রহ করে অন্য একটি slug বেছে নিন (যেমন আপনার কোম্পানির নামের সাথে সংখ্যা যোগ করুন)।'
+          : msg || 'কোম্পানি তৈরি করা যায়নি',
         variant: 'destructive',
       });
     },
@@ -80,6 +102,8 @@ export default function OrgSignupPage() {
     nameEn.trim().length >= 2 &&
     slug.trim().length >= 3 &&
     /^[a-z0-9-]+$/.test(slug.trim()) &&
+    slugStatus !== 'taken' &&
+    slugStatus !== 'checking' &&
     !create.isPending;
 
   return (
@@ -140,7 +164,26 @@ export default function OrgSignupPage() {
               />
             </div>
             <p className="text-[11px] text-slate-500">শুধু ইংরেজি অক্ষর, সংখ্যা ও hyphen (-) ব্যবহার করুন</p>
+            {slug.trim().length >= 3 && (
+              <p
+                className={`text-[11px] flex items-center gap-1 ${
+                  slugStatus === 'available'
+                    ? 'text-emerald-400'
+                    : slugStatus === 'taken'
+                    ? 'text-rose-400'
+                    : slugStatus === 'invalid'
+                    ? 'text-rose-400'
+                    : 'text-slate-400'
+                }`}
+              >
+                {slugStatus === 'checking' && <><Loader2 className="w-3 h-3 animate-spin" /> যাচাই করা হচ্ছে...</>}
+                {slugStatus === 'available' && <>✓ এই slug ব্যবহারের জন্য খালি আছে</>}
+                {slugStatus === 'taken' && <>✗ এই slug ইতিমধ্যে নেওয়া হয়েছে — অন্যটি বেছে নিন</>}
+                {slugStatus === 'invalid' && <>✗ অবৈধ slug ফরম্যাট</>}
+              </p>
+            )}
           </div>
+
 
           <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 text-xs text-slate-300 space-y-1">
             <div className="font-semibold text-emerald-300">যা পাবেন:</div>
