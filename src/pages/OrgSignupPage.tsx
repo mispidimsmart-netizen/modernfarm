@@ -22,6 +22,7 @@ export default function OrgSignupPage() {
   const [nameEn, setNameEn] = useState('');
   const [slug, setSlug] = useState('');
   const [autoSlug, setAutoSlug] = useState(true);
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
 
   // Auto-generate slug from English name
   useEffect(() => {
@@ -36,6 +37,22 @@ export default function OrgSignupPage() {
       );
     }
   }, [nameEn, autoSlug]);
+
+  // Debounced slug availability check
+  useEffect(() => {
+    const s = slug.trim();
+    if (s.length < 3 || !/^[a-z0-9-]+$/.test(s)) {
+      setSlugStatus(s.length === 0 ? 'idle' : 'invalid');
+      return;
+    }
+    setSlugStatus('checking');
+    const t = setTimeout(async () => {
+      const { data, error } = await supabase.rpc('is_org_slug_available' as any, { _slug: s });
+      if (error) { setSlugStatus('idle'); return; }
+      setSlugStatus(data ? 'available' : 'taken');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [slug]);
 
   const create = useMutation({
     mutationFn: async () => {
