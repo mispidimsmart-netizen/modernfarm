@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound } from 'lucide-react';
+import { Building2, Plus, UserPlus, Trash2, Search, Crown, Shield, KeyRound, Warehouse } from 'lucide-react';
 
 type OrgRole = 'org_owner' | 'org_admin' | 'member';
 type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
@@ -101,6 +101,20 @@ export function OrganizationsPanel() {
         .in('id', ids);
       const map = new Map((profs || []).map((p: any) => [p.id, p]));
       return rows.map(r => ({ ...r, profile: map.get(r.user_id) as any }));
+    },
+  });
+
+  const { data: orgFarms = [], isLoading: farmsLoading } = useQuery({
+    queryKey: ['admin_org_farms', selectedOrgId],
+    enabled: !!selectedOrgId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('farms')
+        .select('id, name, owner_id, created_at')
+        .eq('organization_id', selectedOrgId!)
+        .order('name');
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string; owner_id: string; created_at: string }>;
     },
   });
 
@@ -322,6 +336,33 @@ export function OrganizationsPanel() {
                     </Button>
                   </div>
                 ))}
+              </div>
+
+              {/* Farms under this organization */}
+              <div className="mt-5 pt-4 border-t border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Warehouse className="w-4 h-4 text-cyan-400" />
+                  <span className="text-white text-sm font-medium">আওতাভুক্ত ফার্ম</span>
+                  <Badge variant="outline" className="border-cyan-400/40 text-cyan-300 text-[10px]">
+                    {orgFarms.length}
+                  </Badge>
+                </div>
+                {farmsLoading ? (
+                  <p className="text-slate-400 text-xs">লোড হচ্ছে...</p>
+                ) : orgFarms.length === 0 ? (
+                  <p className="text-slate-400 text-xs">এই অর্গানাইজেশনের অধীনে কোনো ফার্ম নেই।</p>
+                ) : (
+                  <div className="space-y-2">
+                    {orgFarms.map(f => (
+                      <div key={f.id} className="p-2.5 rounded-md bg-slate-800/40 border border-white/5">
+                        <div className="text-white text-sm truncate">{f.name}</div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          মালিক: {f.owner_id.slice(0, 8)}… · যোগদান: {new Date(f.created_at).toLocaleDateString('bn-BD')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </ScrollArea>
           )}
