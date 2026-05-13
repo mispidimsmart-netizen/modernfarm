@@ -408,7 +408,85 @@ export function OrganizationsPanel() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit org dialog */}
+      <Dialog open={!!editOrg} onOpenChange={(o) => !o && setEditOrg(null)}>
+        {editOrg && (
+          <EditOrgDialog
+            org={editOrg}
+            onSaved={() => {
+              setEditOrg(null);
+              qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+            }}
+          />
+        )}
+      </Dialog>
     </div>
+  );
+}
+
+/* ---------------- Edit Org Dialog ---------------- */
+
+function EditOrgDialog({ org, onSaved }: { org: Org; onSaved: () => void }) {
+  const { toast } = useToast();
+  const [name, setName] = useState(org.name);
+  const [nameEn, setNameEn] = useState(org.name_en);
+  const [slug, setSlug] = useState(org.slug);
+  const [notes, setNotes] = useState(org.notes ?? '');
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc('super_admin_update_organization' as any, {
+        _org_id: org.id,
+        _name: name,
+        _name_en: nameEn || name,
+        _slug: slug,
+        _notes: notes || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'অর্গানাইজেশন আপডেট হয়েছে' });
+      onSaved();
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader>
+        <DialogTitle>অর্গানাইজেশন এডিট</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>নাম (বাংলা)</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label>Name (English)</Label>
+            <Input value={nameEn} onChange={e => setNameEn(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <Label>Slug (URL)</Label>
+          <Input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))} />
+        </div>
+        <div>
+          <Label>নোট</Label>
+          <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="ঐচ্ছিক" />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          onClick={() => save.mutate()}
+          disabled={save.isPending || !name.trim() || !slug.trim()}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          {save.isPending ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 
