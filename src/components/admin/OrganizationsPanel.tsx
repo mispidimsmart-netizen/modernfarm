@@ -414,11 +414,7 @@ export function OrganizationsPanel() {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                      onClick={() => {
-                        if (confirm('এই সদস্যকে সরাতে চান?')) {
-                          removeMember.mutate({ user_id: m.user_id });
-                        }
-                      }}
+                      onClick={() => setRemoveMemberTarget(m)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
