@@ -79,7 +79,7 @@ export function FarmsAdminPanel() {
     },
   });
   const ownerMap = useMemo(() => new Map(owners.map(o => [o.id, o])), [owners]);
-  const orgMap = useMemo(() => new Map(orgs.map(o => [o.id, o])), [orgs]);
+  const orgMap = useMemo(() => new Map(allOrgs.map(o => [o.id, o])), [allOrgs]);
 
   const setOrg = useMutation({
     mutationFn: async ({ farmId, orgId }: { farmId: string; orgId: string | null }) => {
