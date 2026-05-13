@@ -61,10 +61,9 @@ export function FarmsAdminPanel() {
     },
   });
 
-  // Soft-deleted farms
+  // Soft-deleted farms (always loaded so the badge count stays live)
   const { data: deletedFarms = [] } = useQuery({
     queryKey: ['admin_deleted_farms'],
-    enabled: tab === 'deleted',
     queryFn: async (): Promise<FarmRow[]> => {
       const { data, error } = await supabase.rpc('super_admin_list_deleted_farms' as any);
       if (error) throw error;
@@ -107,10 +106,14 @@ export function FarmsAdminPanel() {
   const ownerMap = useMemo(() => new Map(owners.map(o => [o.id, o])), [owners]);
   const orgMap = useMemo(() => new Map(allOrgs.map(o => [o.id, o])), [allOrgs]);
 
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ['admin_all_farms'] });
-    qc.invalidateQueries({ queryKey: ['admin_deleted_farms'] });
-    qc.invalidateQueries({ queryKey: ['user-farms'] });
+  const invalidateAll = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['admin_deleted_farms'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['admin_farm_owners'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['user-farms'], refetchType: 'all' }),
+      qc.invalidateQueries({ queryKey: ['farms'], refetchType: 'all' }),
+    ]);
   };
 
   const setOrg = useMutation({
@@ -120,8 +123,8 @@ export function FarmsAdminPanel() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'অর্গানাইজেশন আপডেট হয়েছে' });
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
@@ -132,8 +135,8 @@ export function FarmsAdminPanel() {
       const { error } = await supabase.rpc('super_admin_soft_delete_farm' as any, { _farm_id: farmId });
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'ফার্ম সরানো হয়েছে', description: 'প্রয়োজনে "মুছে ফেলা" ট্যাব থেকে ফেরানো যাবে।' });
       setConfirmDelete(null);
     },
@@ -145,8 +148,8 @@ export function FarmsAdminPanel() {
       const { error } = await supabase.rpc('super_admin_restore_farm' as any, { _farm_id: farmId });
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'ফার্ম ফিরিয়ে আনা হয়েছে' });
     },
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
@@ -157,8 +160,8 @@ export function FarmsAdminPanel() {
       const { error } = await supabase.rpc('super_admin_delete_farm' as any, { _farm_id: farmId });
       if (error) throw error;
     },
-    onSuccess: () => {
-      invalidateAll();
+    onSuccess: async () => {
+      await invalidateAll();
       toast({ title: 'ফার্ম স্থায়ীভাবে মুছে ফেলা হয়েছে' });
       setConfirmDelete(null);
     },
