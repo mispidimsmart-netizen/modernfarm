@@ -499,6 +499,20 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
             </div>
           </ScrollArea>
         )}
+        <div className="border-t border-white/10 pt-3 mt-2 flex items-center justify-between gap-2">
+          <p className="text-[11px] text-slate-500">
+            সব পরিবর্তন স্বয়ংক্রিয়ভাবে legacy worker টেবিলে sync হয় (transactional triggers)।
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 border-violet-400/40 text-violet-300 hover:bg-violet-500/10"
+            disabled={repairRoles.isPending}
+            onClick={() => repairRoles.mutate()}
+          >
+            {repairRoles.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'রোল রিপেয়ার'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
