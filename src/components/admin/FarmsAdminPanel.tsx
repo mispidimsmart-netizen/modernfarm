@@ -48,17 +48,22 @@ export function FarmsAdminPanel() {
     },
   });
 
-  const { data: orgs = [] } = useQuery({
+  const { data: allOrgs = [] } = useQuery({
     queryKey: ['admin_orgs_for_farms'],
     queryFn: async (): Promise<OrgRow[]> => {
       const { data, error } = await supabase
         .from('organizations')
-        .select('id, name, name_en')
+        .select('id, name, name_en, slug')
         .order('name', { ascending: true });
       if (error) throw error;
       return (data || []) as OrgRow[];
     },
   });
+  // Exclude auto-created personal orgs from filter & assignment dropdowns
+  const orgs = useMemo(
+    () => allOrgs.filter(o => !(o.slug || '').startsWith('personal-')),
+    [allOrgs]
+  );
 
   const ownerIds = useMemo(() => Array.from(new Set(farms.map(f => f.owner_id))), [farms]);
   const { data: owners = [] } = useQuery({
