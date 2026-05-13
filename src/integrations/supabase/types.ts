@@ -8401,6 +8401,30 @@ export type Database = {
           },
         ]
       }
+      v_user_canonical_roles: {
+        Row: {
+          phone: string | null
+          role: Database["public"]["Enums"]["canonical_role"] | null
+          role_label_bn: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          phone?: string | null
+          role?: never
+          role_label_bn?: never
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          phone?: string | null
+          role?: never
+          role_label_bn?: never
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_org_invitation: { Args: { _invitation_id: string }; Returns: Json }
@@ -8464,6 +8488,10 @@ export type Database = {
       cancel_payment_request: {
         Args: { _request_id: string }
         Returns: boolean
+      }
+      canonical_role_label_bn: {
+        Args: { _role: Database["public"]["Enums"]["canonical_role"] }
+        Returns: string
       }
       check_air_quality_thresholds: {
         Args: {
@@ -8565,6 +8593,10 @@ export type Database = {
           source: Json
           temperature: number
         }[]
+      }
+      get_canonical_role: {
+        Args: { _farm_id?: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["canonical_role"]
       }
       get_device_secret: {
         Args: { _device_token_id: string }
@@ -9054,6 +9086,7 @@ export type Database = {
         | "admin"
         | "manager"
         | "technician"
+      canonical_role: "super_admin" | "company_org" | "farm" | "worker"
       device_mode: "AUTO" | "MANUAL" | "FAIL_SAFE" | "OFFLINE"
       device_type: "fan" | "light" | "alarm"
       operator_type: ">" | "<" | ">=" | "<="
@@ -9207,6 +9240,7 @@ export const Constants = {
         "manager",
         "technician",
       ],
+      canonical_role: ["super_admin", "company_org", "farm", "worker"],
       device_mode: ["AUTO", "MANUAL", "FAIL_SAFE", "OFFLINE"],
       device_type: ["fan", "light", "alarm"],
       operator_type: [">", "<", ">=", "<="],
