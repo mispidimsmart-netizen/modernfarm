@@ -9021,9 +9021,17 @@ export type Database = {
         Args: { _org_id: string }
         Returns: undefined
       }
+      super_admin_get_user_role_summary: {
+        Args: { _user_id: string }
+        Returns: Json
+      }
       super_admin_remove_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
+      }
+      super_admin_set_farm_member_role: {
+        Args: { _farm_id: string; _role: string; _user_id: string }
+        Returns: undefined
       }
       super_admin_set_farm_organization: {
         Args: { _farm_id: string; _org_id: string }
@@ -9036,6 +9044,10 @@ export type Database = {
           _user_id: string
         }
         Returns: Json
+      }
+      super_admin_set_super_admin: {
+        Args: { _enabled: boolean; _user_id: string }
+        Returns: undefined
       }
       super_admin_update_organization: {
         Args: {

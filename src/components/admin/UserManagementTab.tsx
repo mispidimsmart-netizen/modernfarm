@@ -1,20 +1,22 @@
 import { useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock } from 'lucide-react';
+import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock, UserCog } from 'lucide-react';
 import { AdminManagementTab } from './AdminManagementTab';
 import { OrganizationsPanel } from './OrganizationsPanel';
 import { FarmsAdminPanel } from './FarmsAdminPanel';
 import { WorkersAdminPanel } from './WorkersAdminPanel';
+import { UnifiedRoleEditorPanel } from './UnifiedRoleEditorPanel';
 import { usePlatformRole, type PlatformRole } from '@/hooks/usePlatformRole';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface Props { language: 'bn' | 'en'; }
 
-type SubTabKey = 'admins' | 'orgs' | 'farms' | 'workers';
+type SubTabKey = 'roles' | 'admins' | 'orgs' | 'farms' | 'workers';
 
 // Role-based access matrix per sub-tab. super_admin always implied.
 const ACCESS: Record<SubTabKey, PlatformRole[]> = {
+  roles: ['super_admin'],
   admins: ['super_admin'],
   orgs: ['super_admin'],
   farms: ['super_admin', 'org_owner', 'org_admin'],
@@ -22,6 +24,7 @@ const ACCESS: Record<SubTabKey, PlatformRole[]> = {
 };
 
 const TAB_LABEL: Record<SubTabKey, string> = {
+  roles: 'রোল',
   admins: 'অ্যাডমিন',
   orgs: 'অর্গানাইজেশন',
   farms: 'ফার্ম',
@@ -52,14 +55,14 @@ export function UserManagementTab({ language }: Props) {
 
   // Pick first allowed tab as default
   const firstAllowed: SubTabKey = useMemo(() => {
-    const order: SubTabKey[] = ['admins', 'orgs', 'farms', 'workers'];
+    const order: SubTabKey[] = ['roles', 'admins', 'orgs', 'farms', 'workers'];
     return order.find(can) ?? 'admins';
   }, [can]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const urlTab = searchParams.get('subtab') as SubTabKey | null;
-  const active: SubTabKey = (urlTab && (['admins','orgs','farms','workers'] as SubTabKey[]).includes(urlTab))
+  const active: SubTabKey = (urlTab && (['roles','admins','orgs','farms','workers'] as SubTabKey[]).includes(urlTab))
     ? urlTab
     : firstAllowed;
 
@@ -108,13 +111,17 @@ export function UserManagementTab({ language }: Props) {
 
   return (
     <Tabs value={active} onValueChange={(v) => setActive(v as SubTabKey)} className="w-full">
-      <TabsList className="bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-1 p-1.5 rounded-xl shadow-lg h-auto w-full">
+      <TabsList className="bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-5 gap-1 p-1.5 rounded-xl shadow-lg h-auto w-full">
+        {renderTrigger('roles', UserCog, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('admins', Crown, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('orgs', Building2, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('farms', Tractor, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('workers', HardHat, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
       </TabsList>
 
+      <TabsContent value="roles" className="mt-4">
+        {can('roles') ? <UnifiedRoleEditorPanel /> : <DeniedCard tab="roles" />}
+      </TabsContent>
       <TabsContent value="admins" className="mt-4">
         {can('admins') ? <AdminManagementTab language={language} /> : <DeniedCard tab="admins" />}
       </TabsContent>
