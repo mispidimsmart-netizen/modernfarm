@@ -2979,6 +2979,7 @@ export type Database = {
       farms: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           is_active: boolean | null
           location: string | null
@@ -2992,6 +2993,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
@@ -3005,6 +3007,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_active?: boolean | null
           location?: string | null
@@ -9025,6 +9028,19 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Json
       }
+      super_admin_list_deleted_farms: {
+        Args: never
+        Returns: {
+          created_at: string
+          deleted_at: string
+          id: string
+          location: string
+          name: string
+          name_en: string
+          organization_id: string
+          owner_id: string
+        }[]
+      }
       super_admin_remove_org_member: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -9032,6 +9048,10 @@ export type Database = {
       super_admin_repair_user_roles: {
         Args: { _user_id: string }
         Returns: Json
+      }
+      super_admin_restore_farm: {
+        Args: { _farm_id: string }
+        Returns: undefined
       }
       super_admin_set_farm_member_role: {
         Args: { _farm_id: string; _role: string; _user_id: string }
@@ -9051,6 +9071,10 @@ export type Database = {
       }
       super_admin_set_super_admin: {
         Args: { _enabled: boolean; _user_id: string }
+        Returns: undefined
+      }
+      super_admin_soft_delete_farm: {
+        Args: { _farm_id: string }
         Returns: undefined
       }
       super_admin_update_organization: {
