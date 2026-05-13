@@ -96,13 +96,42 @@ export function OrganizationsPanel() {
     mutationFn: async (org_id: string) => {
       const { error } = await supabase.rpc('super_admin_delete_organization' as any, { _org_id: org_id });
       if (error) throw error;
+      return org_id;
     },
-    onSuccess: (_d, org_id) => {
+    onMutate: async (org_id) => {
+      await qc.cancelQueries({ queryKey: orgsKey });
+      const previous = qc.getQueryData<Org[]>(orgsKey);
+      if (previous) {
+        qc.setQueryData<Org[]>(orgsKey, previous.filter(o => o.id !== org_id));
+      }
+      return { previous };
+    },
+    onError: (e: any, _org_id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(orgsKey, ctx.previous);
+      toast({ title: 'মুছে ফেলা যায়নি', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: (org_id) => {
       toast({ title: 'অর্গানাইজেশন মুছে ফেলা হয়েছে' });
       if (selectedOrgId === org_id) setSelectedOrgId(null);
-      qc.invalidateQueries({ queryKey: ['admin_organizations'] });
+      setDeleteOrgTarget(null);
     },
-    onError: (e: any) => toast({ title: 'মুছে ফেলা যায়নি', description: e.message, variant: 'destructive' }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: orgsKey, refetchType: 'active' });
+      qc.invalidateQueries({ queryKey: ['platform_role'] });
+    },
+  });
+
+  // Counts for the delete-org confirmation dialog
+  const { data: deleteOrgCounts } = useQuery({
+    queryKey: ['admin_org_delete_counts', deleteOrgTarget?.id],
+    enabled: !!deleteOrgTarget,
+    queryFn: async () => {
+      const [farms, members] = await Promise.all([
+        supabase.from('farms').select('id', { count: 'exact', head: true }).eq('organization_id', deleteOrgTarget!.id),
+        supabase.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', deleteOrgTarget!.id),
+      ]);
+      return { farms: farms.count ?? 0, members: members.count ?? 0 };
+    },
   });
 
   const { data: members = [] } = useQuery({
