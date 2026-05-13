@@ -46,8 +46,6 @@ const FARM_ROLES = [
 ];
 
 export function UnifiedRoleEditorPanel() {
-  const qc = useQueryClient();
-  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [openUserId, setOpenUserId] = useState<string | null>(null);
 
