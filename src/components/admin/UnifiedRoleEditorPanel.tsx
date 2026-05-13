@@ -253,6 +253,25 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
     onError: handleErr,
   });
 
+  const repairRoles = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc(
+        'super_admin_repair_user_roles' as any,
+        { _user_id: user.id }
+      );
+      if (error) throw error;
+      return data as unknown as { inserted: number; deleted: number };
+    },
+    onSuccess: (r) => {
+      invalidate();
+      toast({
+        title: 'রোল রিপেয়ার সম্পন্ন',
+        description: `যোগ: ${r.inserted}, সরানো: ${r.deleted}`,
+      });
+    },
+    onError: handleErr,
+  });
+
   // Add new org/farm pickers
   const [newOrgId, setNewOrgId] = useState<string>('');
   const [newOrgRole, setNewOrgRole] = useState<string>('member');
