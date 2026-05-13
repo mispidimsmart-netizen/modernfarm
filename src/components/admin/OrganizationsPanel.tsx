@@ -232,6 +232,8 @@ export function OrganizationsPanel() {
       qc.setQueryData<MemberRow[]>(membersKey, (prev) =>
         (prev || []).map(m => (m.user_id === updated.user_id ? { ...m, ...updated } : m)),
       );
+      // Refresh role history for this member so the new entry shows immediately.
+      qc.invalidateQueries({ queryKey: ['member_role_history', updated.id] });
       toast({ title: 'রোল আপডেট হয়েছে' });
     },
     onSettled: () => {
@@ -1014,6 +1016,8 @@ function EditMemberRoleDialog({
             </p>
           )}
         </div>
+
+        <MemberRoleHistory memberId={member.id} />
       </div>
       <DialogFooter>
         <Button variant="ghost" onClick={onClose} disabled={isPending}>বাতিল</Button>
@@ -1066,5 +1070,87 @@ function EditMemberRoleDialog({
         </AlertDialogContent>
       </AlertDialog>
     </DialogContent>
+  );
+}
+
+/* ---------------- Member Role History ---------------- */
+
+function MemberRoleHistory({ memberId }: { memberId: string }) {
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ['member_role_history', memberId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('org_activity_audit')
+        .select('id, actor_user_id, before, after, changed_at')
+        .eq('action_type', 'org_member_role_changed')
+        .eq('entity_id', memberId)
+        .order('changed_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      const rows = (data || []) as Array<{
+        id: string;
+        actor_user_id: string | null;
+        before: any;
+        after: any;
+        changed_at: string;
+      }>;
+      const actorIds = Array.from(new Set(rows.map(r => r.actor_user_id).filter(Boolean) as string[]));
+      let actorMap = new Map<string, { user_name: string | null; phone: string | null; email: string | null }>();
+      if (actorIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, user_name, phone, email')
+          .in('id', actorIds);
+        actorMap = new Map((profs || []).map((p: any) => [p.id, p]));
+      }
+      return rows.map(r => ({ ...r, actor: r.actor_user_id ? actorMap.get(r.actor_user_id) : null }));
+    },
+  });
+
+  return (
+    <div className="space-y-2 border-t border-white/10 pt-3">
+      <div className="flex items-center gap-2 text-slate-200 text-sm font-medium">
+        <Shield className="w-4 h-4 text-slate-400" />
+        রোল পরিবর্তনের ইতিহাস
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-slate-400">লোড হচ্ছে...</p>
+      ) : history.length === 0 ? (
+        <p className="text-xs text-slate-500">কোনো পূর্ববর্তী পরিবর্তন নেই।</p>
+      ) : (
+        <ScrollArea className="h-40 rounded-md border border-white/10 bg-slate-950/40 p-2">
+          <ul className="space-y-2">
+            {history.map((h) => {
+              const before = (h.before as any)?.role as OrgRole | undefined;
+              const after = (h.after as any)?.role as OrgRole | undefined;
+              const actorName =
+                (h.actor as any)?.user_name ||
+                (h.actor as any)?.phone ||
+                (h.actor_user_id ? `${h.actor_user_id.slice(0, 8)}…` : 'অজানা');
+              const when = new Date(h.changed_at).toLocaleString('bn-BD', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              });
+              return (
+                <li key={h.id} className="text-xs text-slate-300 leading-relaxed">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant="outline" className="text-[10px] border-slate-600 text-slate-300">
+                      {before ? roleLabel[before] : '—'}
+                    </Badge>
+                    <span className="text-slate-500">→</span>
+                    <Badge className="text-[10px] bg-emerald-600/30 text-emerald-200 border-emerald-500/40">
+                      {after ? roleLabel[after] : '—'}
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    <span className="text-slate-300">{actorName}</span> · {when}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </ScrollArea>
+      )}
+    </div>
   );
 }
