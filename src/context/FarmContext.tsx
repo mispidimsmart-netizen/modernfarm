@@ -38,7 +38,28 @@ const FarmContext = createContext<FarmContextType | undefined>(undefined);
 
 export function FarmProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
+
+  // Listen for super-admin role updates targeting this user and refresh
+  // every access-dependent cache so farms/devices/permissions reflect new
+  // access without a manual reload.
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`role-updates:${user.id}`)
+      .on('broadcast', { event: 'roles_changed' }, () => {
+        const keys = [
+          ['user-farms'], ['farm-members'],
+          ['perm_farm_checks'], ['v_user_canonical_roles'],
+          ['device_tokens'], ['device_health'], ['device_status'],
+          ['device_commands'], ['device-command-log'], ['dashboard-snapshot'],
+        ];
+        keys.forEach(k => queryClient.invalidateQueries({ queryKey: k as any, refetchType: 'all' }));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, queryClient]);
 
   // Fetch farms user has access to via farm_members
   const { data: farms = [], isLoading } = useQuery({

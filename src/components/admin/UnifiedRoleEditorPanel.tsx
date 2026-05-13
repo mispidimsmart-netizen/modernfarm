@@ -228,12 +228,53 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
       };
     },
     onSuccess: async (r) => {
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ['user_role_summary', user.id], refetchType: 'all' }),
-        qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
-        qc.invalidateQueries({ queryKey: ['admin_organizations'], refetchType: 'all' }),
-        qc.invalidateQueries({ queryKey: ['v_user_canonical_roles'], refetchType: 'all' }),
-      ]);
+      // 1. Invalidate everything access-dependent so any open view of this
+      //    user's farms/devices/permissions refetches immediately.
+      const accessKeys = [
+        ['user_role_summary', user.id],
+        ['admin_all_farms'],
+        ['admin_deleted_farms'],
+        ['admin_organizations'],
+        ['admin_orgs_for_farms'],
+        ['admin_orgs_for_unified'],
+        ['admin_farms_for_unified'],
+        ['admin_all_profiles_for_roles'],
+        ['v_user_canonical_roles'],
+        // Per-user cached queries
+        ['user-farms', user.id],
+        ['user-farms'],
+        ['farm-members'],
+        ['perm_farm_checks', user.id],
+        ['perm_farm_checks'],
+        // Device & dashboard caches that depend on farm access
+        ['device_tokens', user.id],
+        ['device_tokens'],
+        ['device_health', user.id],
+        ['device_health'],
+        ['device_status'],
+        ['device_commands'],
+        ['device-command-log'],
+        ['device-command-log-devices'],
+        ['dashboard-snapshot'],
+      ] as const;
+      await Promise.all(
+        accessKeys.map(k => qc.invalidateQueries({ queryKey: k as any, refetchType: 'all' }))
+      );
+
+      // 2. Broadcast over Supabase Realtime so the affected user's other
+      //    open sessions/tabs also refresh access without waiting for reload.
+      try {
+        const ch = supabase.channel(`role-updates:${user.id}`);
+        await ch.send({
+          type: 'broadcast',
+          event: 'roles_changed',
+          payload: { user_id: user.id, at: new Date().toISOString() },
+        });
+        supabase.removeChannel(ch);
+      } catch {
+        // best-effort; ignore broadcast failure
+      }
+
       toast({
         title: 'রোল আপডেট সম্পন্ন',
         description: `অর্গ: +${r.orgs.added}/~${r.orgs.updated}/−${r.orgs.removed} • ফার্ম: +${r.farms.added}/~${r.farms.updated}/−${r.farms.removed}`,
