@@ -397,19 +397,27 @@ export function OrganizationsPanel() {
                         {m.profile?.phone || ''} {m.profile?.email ? `· ${m.profile.email}` : ''}
                       </div>
                     </div>
-                    <Select
-                      value={m.role}
-                      onValueChange={(v: OrgRole) => setRole.mutate({ user_id: m.user_id, role: v })}
+                    <Badge
+                      variant="outline"
+                      className={
+                        m.role === 'org_owner'
+                          ? 'border-amber-400/40 text-amber-300'
+                          : m.role === 'org_admin'
+                            ? 'border-emerald-400/40 text-emerald-300'
+                            : 'border-slate-400/30 text-slate-300'
+                      }
                     >
-                      <SelectTrigger className="h-8 w-[120px] bg-slate-900 border-white/10 text-white text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="org_owner">{roleLabel.org_owner}</SelectItem>
-                        <SelectItem value="org_admin">{roleLabel.org_admin}</SelectItem>
-                        <SelectItem value="member">{roleLabel.member}</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      {roleLabel[m.role]}
+                    </Badge>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-slate-300 hover:bg-slate-700/40"
+                      onClick={() => setEditMemberTarget(m)}
+                      title="রোল এডিট করুন"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
