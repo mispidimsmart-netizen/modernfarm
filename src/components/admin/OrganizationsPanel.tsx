@@ -86,10 +86,10 @@ export function OrganizationsPanel() {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
-        .not('slug', 'like', 'personal-%')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as Org[];
+      // Belt-and-suspenders: filter out auto-created personal orgs (slug starts with "personal-")
+      return ((data || []) as Org[]).filter(o => !/^personal-/i.test(o.slug || ''));
     },
   });
 
