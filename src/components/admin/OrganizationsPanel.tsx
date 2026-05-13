@@ -337,17 +337,6 @@ export function OrganizationsPanel() {
       <Card className="bg-slate-900/80 border-white/10">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-white flex items-center gap-2">
-            {selectedOrg && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-slate-300 hover:bg-slate-700/40 -ml-1"
-                onClick={() => setSelectedOrgId(null)}
-                title="ফিরে যান"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            )}
             <Shield className="w-5 h-5 text-amber-400" />
             সদস্য {selectedOrg ? `· ${selectedOrg.name}` : ''}
           </CardTitle>
