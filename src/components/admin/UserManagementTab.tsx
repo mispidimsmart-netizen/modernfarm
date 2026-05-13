@@ -55,14 +55,14 @@ export function UserManagementTab({ language }: Props) {
 
   // Pick first allowed tab as default
   const firstAllowed: SubTabKey = useMemo(() => {
-    const order: SubTabKey[] = ['admins', 'orgs', 'farms', 'workers'];
+    const order: SubTabKey[] = ['roles', 'admins', 'orgs', 'farms', 'workers'];
     return order.find(can) ?? 'admins';
   }, [can]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const urlTab = searchParams.get('subtab') as SubTabKey | null;
-  const active: SubTabKey = (urlTab && (['admins','orgs','farms','workers'] as SubTabKey[]).includes(urlTab))
+  const active: SubTabKey = (urlTab && (['roles','admins','orgs','farms','workers'] as SubTabKey[]).includes(urlTab))
     ? urlTab
     : firstAllowed;
 
