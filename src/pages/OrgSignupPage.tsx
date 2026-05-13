@@ -164,7 +164,24 @@ export default function OrgSignupPage() {
               />
             </div>
             <p className="text-[11px] text-slate-500">শুধু ইংরেজি অক্ষর, সংখ্যা ও hyphen (-) ব্যবহার করুন</p>
-          </div>
+            {slug.trim().length >= 3 && (
+              <p
+                className={`text-[11px] flex items-center gap-1 ${
+                  slugStatus === 'available'
+                    ? 'text-emerald-400'
+                    : slugStatus === 'taken'
+                    ? 'text-rose-400'
+                    : slugStatus === 'invalid'
+                    ? 'text-rose-400'
+                    : 'text-slate-400'
+                }`}
+              >
+                {slugStatus === 'checking' && <><Loader2 className="w-3 h-3 animate-spin" /> যাচাই করা হচ্ছে...</>}
+                {slugStatus === 'available' && <>✓ এই slug ব্যবহারের জন্য খালি আছে</>}
+                {slugStatus === 'taken' && <>✗ এই slug ইতিমধ্যে নেওয়া হয়েছে — অন্যটি বেছে নিন</>}
+                {slugStatus === 'invalid' && <>✗ অবৈধ slug ফরম্যাট</>}
+              </p>
+            )}
 
           <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 text-xs text-slate-300 space-y-1">
             <div className="font-semibold text-emerald-300">যা পাবেন:</div>
