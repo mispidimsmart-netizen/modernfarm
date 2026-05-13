@@ -110,31 +110,19 @@ const makeWrapper = (qc: QueryClient) => {
 
 describe('OrganizationsPanel mutations — optimistic + onSettled', () => {
   let qc: QueryClient;
-  let refetchCount: number;
+  let invalidateSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     rpcMock.mockReset();
-    refetchCount = 0;
     qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-
-    // Seed an *active* query so invalidate() actually triggers a refetch.
-    qc.setQueryDefaults(membersKey, {
-      queryFn: async () => {
-        refetchCount += 1;
-        return seedMembers();
-      },
-    });
+    invalidateSpy = vi.spyOn(qc, 'invalidateQueries');
   });
 
-  it('setRole optimistically updates cache then triggers refetch on settle', async () => {
+  it('setRole optimistically updates cache then invalidates on settle', async () => {
     rpcMock.mockResolvedValue({ error: null });
     const { result } = renderHook(() => useOrgMutations(), { wrapper: makeWrapper(qc) });
 
-    // Prime cache as if the members query had fetched.
     qc.setQueryData<MemberRow[]>(membersKey, seedMembers());
-    // Mark it active by subscribing via fetchQuery
-    await qc.prefetchQuery({ queryKey: membersKey });
-    refetchCount = 0;
 
     await act(async () => {
       await result.current.setRole.mutateAsync({ user_id: 'u1', role: 'org_admin' });
@@ -146,7 +134,9 @@ describe('OrganizationsPanel mutations — optimistic + onSettled', () => {
       'super_admin_set_org_member_role',
       { _org_id: ORG_ID, _user_id: 'u1', _role: 'org_admin' },
     );
-    await waitFor(() => expect(refetchCount).toBeGreaterThanOrEqual(1));
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: membersKey, refetchType: 'active' }),
+    );
   });
 
   it('setRole rolls back optimistic update when RPC fails', async () => {
