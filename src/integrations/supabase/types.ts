@@ -8445,6 +8445,22 @@ export type Database = {
         Args: { _owner_id: string; _user_id: string }
         Returns: boolean
       }
+      can_change_hardware: {
+        Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_log_daily_data: {
+        Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_farm: {
+        Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_org: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
       cancel_payment_request: {
         Args: { _request_id: string }
         Returns: boolean
@@ -8773,6 +8789,10 @@ export type Database = {
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_within_update_window: {
         Args: { _firmware_id: string }
+        Returns: boolean
+      }
+      is_worker_on_farm: {
+        Args: { _farm_id: string; _user_id: string }
         Returns: boolean
       }
       list_active_organizations_for_signup: {
