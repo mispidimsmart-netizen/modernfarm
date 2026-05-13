@@ -1,20 +1,22 @@
 import { useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock } from 'lucide-react';
+import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock, UserCog } from 'lucide-react';
 import { AdminManagementTab } from './AdminManagementTab';
 import { OrganizationsPanel } from './OrganizationsPanel';
 import { FarmsAdminPanel } from './FarmsAdminPanel';
 import { WorkersAdminPanel } from './WorkersAdminPanel';
+import { UnifiedRoleEditorPanel } from './UnifiedRoleEditorPanel';
 import { usePlatformRole, type PlatformRole } from '@/hooks/usePlatformRole';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface Props { language: 'bn' | 'en'; }
 
-type SubTabKey = 'admins' | 'orgs' | 'farms' | 'workers';
+type SubTabKey = 'roles' | 'admins' | 'orgs' | 'farms' | 'workers';
 
 // Role-based access matrix per sub-tab. super_admin always implied.
 const ACCESS: Record<SubTabKey, PlatformRole[]> = {
+  roles: ['super_admin'],
   admins: ['super_admin'],
   orgs: ['super_admin'],
   farms: ['super_admin', 'org_owner', 'org_admin'],
@@ -22,6 +24,7 @@ const ACCESS: Record<SubTabKey, PlatformRole[]> = {
 };
 
 const TAB_LABEL: Record<SubTabKey, string> = {
+  roles: 'রোল',
   admins: 'অ্যাডমিন',
   orgs: 'অর্গানাইজেশন',
   farms: 'ফার্ম',
