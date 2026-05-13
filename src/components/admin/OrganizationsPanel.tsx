@@ -203,11 +203,13 @@ export function OrganizationsPanel() {
   });
 
   const setRole = useMutation({
-    mutationFn: async ({ user_id, role }: { user_id: string; role: OrgRole }) => {
-      const { error } = await supabase.rpc('super_admin_set_org_member_role' as any, {
+    mutationFn: async ({ user_id, role }: { user_id: string; role: OrgRole }): Promise<MemberRow> => {
+      const { data, error } = await supabase.rpc('super_admin_set_org_member_role' as any, {
         _org_id: selectedOrgId, _user_id: user_id, _role: role,
       });
       if (error) throw error;
+      if (!data) throw new Error('সার্ভার থেকে আপডেটেড সদস্য ডেটা পাওয়া যায়নি');
+      return data as MemberRow;
     },
     onMutate: async ({ user_id, role }) => {
       await qc.cancelQueries({ queryKey: membersKey });
@@ -224,13 +226,15 @@ export function OrganizationsPanel() {
       if (ctx?.previous) qc.setQueryData(membersKey, ctx.previous);
       toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      // Use the canonical row returned by the server to update the cache —
+      // no extra fetch needed.
+      qc.setQueryData<MemberRow[]>(membersKey, (prev) =>
+        (prev || []).map(m => (m.user_id === updated.user_id ? { ...m, ...updated } : m)),
+      );
       toast({ title: 'রোল আপডেট হয়েছে' });
     },
-    onSettled: async () => {
-      // Force a fresh fetch from the server so the canonical role is shown,
-      // and refresh anything else that depends on org membership/roles.
-      await qc.invalidateQueries({ queryKey: membersKey, refetchType: 'active' });
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ['platform_role'] });
       qc.invalidateQueries({ queryKey: ['admin_organizations'] });
     },
