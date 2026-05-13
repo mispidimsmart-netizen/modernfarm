@@ -102,6 +102,8 @@ export default function OrgSignupPage() {
     nameEn.trim().length >= 2 &&
     slug.trim().length >= 3 &&
     /^[a-z0-9-]+$/.test(slug.trim()) &&
+    slugStatus !== 'taken' &&
+    slugStatus !== 'checking' &&
     !create.isPending;
 
   return (
