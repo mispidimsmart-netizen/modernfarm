@@ -187,6 +187,9 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
           </SheetTitle>
         </SheetHeader>
 
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
+
         {/* Summary */}
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Card className="bg-emerald-500/10">
