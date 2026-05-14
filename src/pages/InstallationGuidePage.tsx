@@ -1559,7 +1559,30 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
               </CardHeader>
               <CardContent>
                 <Accordion type="single" collapsible className="w-full">
-                  {detailedWiringGuide.map((sensor, idx) => (
+                  {wiringCategories.map((cat) => {
+                    const sensors = cat.sensorIds
+                      .map((sid) => detailedWiringGuide.find((s) => s.id === sid))
+                      .filter((s): s is typeof detailedWiringGuide[number] => Boolean(s));
+                    if (sensors.length === 0) return null;
+                    const CatIcon = cat.icon;
+                    return (
+                      <AccordionItem key={cat.id} value={cat.id}>
+                        <AccordionTrigger className="hover:no-underline py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-full ${cat.bgColor} flex items-center justify-center`}>
+                              <CatIcon className={`h-5 w-5 ${cat.color}`} />
+                            </div>
+                            <div className="text-left">
+                              <p className="text-sm font-semibold">{cat.name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {cat.nameEn} · {sensors.length} বিকল্প/ডিভাইস
+                              </p>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2 pb-4">
+                          <Accordion type="single" collapsible className="w-full border-l-2 border-primary/20 pl-3 ml-2">
+                  {sensors.map((sensor, idx) => (
                     <AccordionItem key={sensor.id} value={sensor.id}>
                       <AccordionTrigger className="hover:no-underline py-3">
                         <div className="flex items-center gap-3">
