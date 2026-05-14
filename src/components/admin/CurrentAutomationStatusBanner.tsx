@@ -240,6 +240,8 @@ export function CurrentAutomationStatusBanner() {
           <Stat icon={<CheckCircle2 className="h-3 w-3" />} label="Failover" value="GSM SMS + local autonomous mode" />
         </div>
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
