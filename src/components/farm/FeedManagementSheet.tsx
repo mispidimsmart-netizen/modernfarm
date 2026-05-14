@@ -343,7 +343,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
               <SmartDatePicker value={usageForm.consumption_date || null}
                 onChange={(iso) => setUsageForm((p) => ({ ...p, consumption_date: iso }))} disableFuture />
             </div>
-            <Button onClick={handleAddUsage} className="w-full" disabled={addConsumption.isPending}>
+            <Button onClick={handleAddUsage} className="w-full" disabled={addConsumption.isPending || !canLogDailyData}>
               <Plus className="mr-2 h-4 w-4" />{t.save[language]}
             </Button>
           </TabsContent>
