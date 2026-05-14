@@ -36,6 +36,7 @@ type DeviceType = Database['public']['Enums']['device_type'];
 export function AutomationPage() {
   const { language } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { canChangeHardware, isWorker } = usePermissions();
   const { data: farmSettings } = useFarmSettings();
   const updateSettings = useUpdateFarmSettings();
   const { data: automationRules } = useAutomationRules();
