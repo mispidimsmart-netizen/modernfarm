@@ -90,6 +90,9 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
           </SheetTitle>
         </SheetHeader>
 
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
+
         <Tabs defaultValue="add" className="h-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="add">{t.addNew[language]}</TabsTrigger>
