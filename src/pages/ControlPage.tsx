@@ -298,6 +298,17 @@ export function ControlPage() {
   };
 
   const handleAutomationToggle = (enabled: boolean, reason?: string) => {
+    // Defensive guard — UI gates this via canDisableAutomation, but RPC layer should too
+    if (!canDisableAutomation) {
+      toast({
+        title: language === 'bn' ? 'অনুমতি নেই' : 'Permission denied',
+        description: language === 'bn'
+          ? 'অটোমেশন চালু/বন্ধ করার অনুমতি শুধু ফার্ম-ওনার/অ্যাডমিনের'
+          : 'Only farm owner/admin can toggle automation',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!enabled) {
       // Switching to MANUAL mode
       const currentTemp = sensorData.temperature;
@@ -318,14 +329,6 @@ export function ControlPage() {
       setActiveTimers({});
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // USE useSetAutomationMode to update ALL sources of truth:
-    // 1. farm_settings.automation_mode (authoritative)
-    // 2. device_status.desired_manual_override + mode
-    // 3. device_commands (stop_automation command to ESP32)
-    // 4. device_health.mode
-    // This prevents the cloud from contradicting the ESP32's mode.
-    // ═══════════════════════════════════════════════════════════
     const newMode = enabled ? 'AUTO' : 'MANUAL';
     setAutomationMode.mutate(newMode);
 
@@ -341,12 +344,14 @@ export function ControlPage() {
 
   const hasTemporaryOverrides = Object.keys(activeTimers).length > 0;
 
+  const tempMax = Number(farmSettings?.temperature_max ?? 32);
+  const ammoniaMax = Number(farmSettings?.ammonia_max ?? 25);
   const safetyProtections = DEFAULT_SAFETY_PROTECTIONS.map(p => ({
     ...p,
     isActive: p.key === 'heat_stress' 
-      ? sensorData.temperature > 32 
+      ? sensorData.temperature > tempMax 
       : p.key === 'gas_purge'
-        ? sensorData.ammonia > 25
+        ? sensorData.ammonia > ammoniaMax
         : true,
   }));
 
@@ -515,8 +520,8 @@ export function ControlPage() {
           </div>
         ) : (
           /* ========== AUTO MODE: Timer-based Temporary Control ========== */
-          <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 text-center">
+          <div className="rounded-2xl border-2 border-status-warning/40 bg-status-warning/10 p-4 space-y-3">
+            <p className="text-sm font-semibold text-status-warning text-center">
               {language === 'bn' 
                 ? '⚠️ সতর্কতা: অটোমেশন বন্ধ করলে মুরগির ক্ষতি হতে পারে'
                 : '⚠️ Warning: Disabling automation may harm birds'}
