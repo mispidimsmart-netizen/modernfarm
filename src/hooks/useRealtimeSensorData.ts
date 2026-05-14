@@ -24,6 +24,7 @@ export function useRealtimeSensorData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
+  const selectedFarmId = safeSelectedFarmId();
 
   // Seed initial state from localStorage so the UI shows the last known values
   // immediately on mount — even before the first network round-trip succeeds,
