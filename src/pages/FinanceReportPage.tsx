@@ -26,8 +26,9 @@ import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { FinanceExportButton } from '@/components/farm/FinanceExportButton';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 
 type Bucket = { key: string; label: string; income: number; expense: number; net: number };
 
@@ -165,28 +166,24 @@ export default function FinanceReportPage() {
         {/* Date range filter — applied to both income & expense before export */}
         <Card>
           <CardContent className="p-3 flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[140px]">
+            <div className="flex-1 min-w-[160px]">
               <Label htmlFor="from-date" className="text-xs text-muted-foreground">
                 শুরুর তারিখ
               </Label>
-              <Input
-                id="from-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                max={endDate || undefined}
+              <SmartDatePicker
+                value={startDate || null}
+                onChange={(iso) => setStartDate(iso || '')}
+                disableFuture
               />
             </div>
-            <div className="flex-1 min-w-[140px]">
+            <div className="flex-1 min-w-[160px]">
               <Label htmlFor="to-date" className="text-xs text-muted-foreground">
                 শেষ তারিখ
               </Label>
-              <Input
-                id="to-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate || undefined}
+              <SmartDatePicker
+                value={endDate || null}
+                onChange={(iso) => setEndDate(iso || '')}
+                disableFuture
               />
             </div>
             {(startDate || endDate) && (
@@ -257,9 +254,19 @@ export default function FinanceReportPage() {
           <TabsContent value={mode} className="mt-4 space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                   <Calendar className="h-4 w-4" />
                   আয় বনাম ব্যয় ({mode === 'daily' ? 'দৈনিক' : 'মাসিক'})
+                  {activeBatchId && (
+                    <Badge variant="outline" className="ml-1 text-[10px]">
+                      {isLayer ? 'লেয়ার ব্যাচ' : 'ব্রয়লার ব্যাচ'}: {(activeLayerBatch as any)?.batch_name ?? (activeBroilerBatch as any)?.batch_name ?? '—'}
+                    </Badge>
+                  )}
+                  {!activeBatchId && financeMode !== null && (
+                    <Badge variant="outline" className="ml-1 text-[10px] text-muted-foreground">
+                      কোনো সক্রিয় ব্যাচ নেই
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
