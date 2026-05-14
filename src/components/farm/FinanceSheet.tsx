@@ -4,6 +4,8 @@ import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3, Egg, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction, useUpdateExpense, useDeleteExpense, useUpdateIncome, useDeleteIncome, type Expense, type Income } from '@/hooks/useFarmManagement';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
