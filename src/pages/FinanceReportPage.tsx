@@ -26,8 +26,9 @@ import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { FinanceExportButton } from '@/components/farm/FinanceExportButton';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 
 type Bucket = { key: string; label: string; income: number; expense: number; net: number };
 
