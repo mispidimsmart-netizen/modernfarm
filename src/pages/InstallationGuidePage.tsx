@@ -1597,6 +1597,40 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                       </AccordionTrigger>
                       <AccordionContent className="pt-2 pb-4">
                         <div className="ml-11 space-y-4">
+                          {/* Quick pin-out chart (compact) */}
+                          <div className={`rounded-lg border-2 ${sensor.bgColor} border-dashed p-2.5`}>
+                            <p className="text-[11px] font-semibold mb-2 flex items-center gap-1">
+                              <Cable className={`h-3 w-3 ${sensor.color}`} />
+                              📍 দ্রুত পিন-আউট চার্ট ({sensor.pins.length} পিন)
+                            </p>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-[10px] font-mono">
+                                <thead>
+                                  <tr className="border-b border-border/60 text-muted-foreground">
+                                    <th className="text-left py-1 pr-2 font-semibold">#</th>
+                                    <th className="text-left py-1 pr-2 font-semibold">{sensor.nameEn.split(' ')[0]} পিন</th>
+                                    <th className="text-center py-1 px-1">→</th>
+                                    <th className="text-left py-1 pr-2 font-semibold">ESP32 / টার্গেট</th>
+                                    <th className="text-left py-1 font-semibold">তার</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {sensor.pins.map((pin, i) => (
+                                    <tr key={i} className="border-b border-border/30 last:border-0">
+                                      <td className="py-1 pr-2 text-muted-foreground">{i + 1}</td>
+                                      <td className="py-1 pr-2 font-semibold">{pin.sensorPin}</td>
+                                      <td className="py-1 px-1 text-center text-primary">→</td>
+                                      <td className="py-1 pr-2 text-primary">{pin.esp32Pin}</td>
+                                      <td className="py-1 text-muted-foreground">
+                                        {pin.wireColor && pin.wireColor !== '-' ? `🔌 ${pin.wireNameEn || pin.wireColor}` : '—'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
                           {/* Pin connections */}
                           <div className="space-y-2">
                             {sensor.pins.map((pin, pinIdx) => (
