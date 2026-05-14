@@ -267,7 +267,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-2.5 text-xs text-blue-700 dark:text-blue-300">
               {t.note[language]}
             </div>
-            <Button onClick={handleAddStock} className="w-full" disabled={addInventory.isPending}>
+            <Button onClick={handleAddStock} className="w-full" disabled={addInventory.isPending || !canLogDailyData}>
               <Plus className="mr-2 h-4 w-4" />{t.save[language]}
             </Button>
 
