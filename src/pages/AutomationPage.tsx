@@ -75,6 +75,12 @@ export function AutomationPage() {
   });
 
   const handleAddRule = () => {
+    if (!canChangeHardware) {
+      toast.error(language === 'bn'
+        ? 'এই কাজের অনুমতি আপনার নেই (শুধু ফার্ম-ওনার/অ্যাডমিন)'
+        : 'You do not have permission (farm owner/admin only)');
+      return;
+    }
     if (newRule.name.trim()) {
       addRule.mutate({ ...newRule, farm_id: selectedFarmId });
       setNewRule({
@@ -88,6 +94,12 @@ export function AutomationPage() {
       });
       setIsDialogOpen(false);
     }
+  };
+
+  const denyHardwareEdit = () => {
+    toast.error(language === 'bn'
+      ? 'এই কাজের অনুমতি আপনার নেই (শুধু ফার্ম-ওনার/অ্যাডমিন)'
+      : 'You do not have permission (farm owner/admin only)');
   };
 
   const sensorLabels = {
