@@ -262,7 +262,7 @@ export default function FinanceReportPage() {
                       {isLayer ? 'লেয়ার ব্যাচ' : 'ব্রয়লার ব্যাচ'}: {(activeLayerBatch as any)?.batch_name ?? (activeBroilerBatch as any)?.batch_name ?? '—'}
                     </Badge>
                   )}
-                  {!activeBatchId && financeMode !== 'unknown' && (
+                  {!activeBatchId && financeMode !== null && (
                     <Badge variant="outline" className="ml-1 text-[10px] text-muted-foreground">
                       কোনো সক্রিয় ব্যাচ নেই
                     </Badge>
