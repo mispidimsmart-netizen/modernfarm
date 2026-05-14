@@ -206,37 +206,37 @@ export default function FinanceReportPage() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card className="border-l-4 border-l-green-500">
+          <Card className="border-l-4 border-l-status-normal">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">মোট আয়</p>
-                <p className="text-xl font-bold text-green-600">
+                <p className="text-xl font-bold text-status-normal">
                   {formatBDT(totals.totalIncome)}
                 </p>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500/70" />
+              <TrendingUp className="h-8 w-8 text-status-normal/70" />
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-red-500">
+          <Card className="border-l-4 border-l-status-danger">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">মোট ব্যয়</p>
-                <p className="text-xl font-bold text-red-600">
+                <p className="text-xl font-bold text-status-danger">
                   {formatBDT(totals.totalExpense)}
                 </p>
               </div>
-              <TrendingDown className="h-8 w-8 text-red-500/70" />
+              <TrendingDown className="h-8 w-8 text-status-danger/70" />
             </CardContent>
           </Card>
           <Card
-            className={`border-l-4 ${totals.net >= 0 ? 'border-l-primary' : 'border-l-orange-500'}`}
+            className={`border-l-4 ${totals.net >= 0 ? 'border-l-primary' : 'border-l-status-warning'}`}
           >
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">নেট ব্যালেন্স</p>
                 <p
                   className={`text-xl font-bold ${
-                    totals.net >= 0 ? 'text-primary' : 'text-orange-600'
+                    totals.net >= 0 ? 'text-primary' : 'text-status-warning'
                   }`}
                 >
                   {formatBDT(totals.net)}
@@ -282,11 +282,11 @@ export default function FinanceReportPage() {
                         }}
                       />
                       <Legend />
-                      <Bar dataKey="income" name="আয়" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="income" name="আয়" fill="hsl(var(--status-normal))" radius={[4, 4, 0, 0]} />
                       <Bar
                         dataKey="expense"
                         name="ব্যয়"
-                        fill="hsl(0 72% 51%)"
+                        fill="hsl(var(--status-danger))"
                         radius={[4, 4, 0, 0]}
                       />
                       <Line
@@ -324,15 +324,15 @@ export default function FinanceReportPage() {
                       .map((b) => (
                         <tr key={b.key} className="border-b last:border-0">
                           <td className="py-2 pr-2">{b.label}</td>
-                          <td className="py-2 pr-2 text-right text-green-600">
+                          <td className="py-2 pr-2 text-right text-status-normal">
                             {formatBDT(b.income)}
                           </td>
-                          <td className="py-2 pr-2 text-right text-red-600">
+                          <td className="py-2 pr-2 text-right text-status-danger">
                             {formatBDT(b.expense)}
                           </td>
                           <td
                             className={`py-2 text-right font-semibold ${
-                              b.net >= 0 ? 'text-primary' : 'text-orange-600'
+                              b.net >= 0 ? 'text-primary' : 'text-status-warning'
                             }`}
                           >
                             {formatBDT(b.net)}
