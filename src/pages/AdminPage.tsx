@@ -484,8 +484,7 @@ export default function AdminPage() {
             <PaymentApprovalPanel />
           </TabsContent>
 
-          <TabsContent value="docs" className="mt-4 space-y-4">
-            <AppDocumentation />
+          <TabsContent value="guide" className="mt-4 space-y-4">
             <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
               <CardHeader className="border-b border-teal-500/10">
                 <CardTitle className="text-white flex items-center gap-3">
@@ -533,6 +532,10 @@ export default function AdminPage() {
                 </CalibrationWizardSheet>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4 space-y-4">
+            <AppDocumentation />
           </TabsContent>
         </Tabs>
       </div>
