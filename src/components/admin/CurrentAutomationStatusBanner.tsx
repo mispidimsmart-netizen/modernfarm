@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   CheckCircle2,
   Cpu,
@@ -10,6 +13,7 @@ import {
   Globe,
   AlertTriangle,
   Layers,
+  ChevronDown,
 } from 'lucide-react';
 
 /**
@@ -132,24 +136,41 @@ const INVARIANTS = [
 
 export function CurrentAutomationStatusBanner() {
   const liveCount = PHASES.filter((p) => p.status === 'live').length;
+  const [open, setOpen] = useState(false);
 
   return (
     <Card className="border-2 border-primary/40 bg-gradient-to-br from-primary/5 via-background to-emerald-500/5 shadow-lg">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-          <Activity className="h-5 w-5 text-primary" />
-          বর্তমান অটোমেশন স্ট্যাটাস
-          <Badge variant="default" className="bg-primary">v10 Live</Badge>
-          <Badge variant="outline" className="border-emerald-500 text-emerald-600">
-            {liveCount}/{PHASES.length} Phases Active
-          </Badge>
-        </CardTitle>
-        <p className="text-xs text-muted-foreground mt-1">
-          এই পেজের তথ্য নিচের সকল live phases এর সাথে align করা। এক জায়গায় আপডেট
-          → সব admin tab-এ propagate। (Source: <code className="text-[10px]">CurrentAutomationStatusBanner.tsx</code>)
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full text-left flex items-start justify-between gap-2 group"
+              aria-expanded={open}
+            >
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                  <Activity className="h-5 w-5 text-primary" />
+                  বর্তমান অটোমেশন স্ট্যাটাস
+                  <Badge variant="default" className="bg-primary">v10 Live</Badge>
+                  <Badge variant="outline" className="border-emerald-500 text-emerald-600">
+                    {liveCount}/{PHASES.length} Phases Active
+                  </Badge>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {open
+                    ? 'এই পেজের তথ্য নিচের সকল live phases এর সাথে align করা।'
+                    : 'বিস্তারিত phases ও safety invariants দেখতে ক্লিক করুন।'}
+                </p>
+              </div>
+              <ChevronDown
+                className={`h-5 w-5 text-muted-foreground shrink-0 mt-1 transition-transform ${open ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+        <CardContent className="space-y-4">
         {/* Phase grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {PHASES.map((p) => (
@@ -219,6 +240,8 @@ export function CurrentAutomationStatusBanner() {
           <Stat icon={<CheckCircle2 className="h-3 w-3" />} label="Failover" value="GSM SMS + local autonomous mode" />
         </div>
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
