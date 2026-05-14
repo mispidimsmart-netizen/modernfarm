@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShedPicker } from '@/components/farm/ShedPicker';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface MortalitySheetProps {
   open: boolean;
