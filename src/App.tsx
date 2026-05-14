@@ -419,13 +419,13 @@ const App = () => {
                 >
                   মূল কন্টেন্টে যান
                 </a>
-                <div id="main-content">
+                <main id="main-content">
                   <KioskGate>
                     <OperationsHealthStrip />
                     <CriticalAlertBanner />
                   </KioskGate>
                   <AppWithRoutes />
-                </div>
+                </main>
                 <KioskGate>
                   <SmartActionDock />
                   <GlobalActionFAB />

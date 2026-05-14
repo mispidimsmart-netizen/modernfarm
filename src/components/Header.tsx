@@ -74,6 +74,7 @@ export function Header() {
               variant="ghost"
               size="icon"
               onClick={handleBack}
+              aria-label={language === 'bn' ? 'হোমে ফিরে যান' : 'Back to home'}
               className="h-9 w-9 shrink-0"
             >
               <ArrowLeft size={20} />

@@ -1,0 +1,18 @@
+# FarmEye
+
+> Smart poultry farm automation platform by Nexiot Labs — ESP32-based hardware, Bengali-first UI, AI forecasting, and 8 hardware safety invariants for layer & broiler farms in Bangladesh.
+
+FarmEye monitors temperature, humidity, ammonia, and water consumption in real time, and automates fans, heaters, foggers, lights, and curtains via ESP32 controllers. Cloud writes only `desired_*` state — the ESP32 firmware is the source of truth for relay decisions, with built-in safety invariants (e.g. >38°C forces fans on) that work even when the network is down.
+
+## Pages
+
+- [Home / Dashboard](/): Live sensor readings, device status, and farm overview (login required).
+- [Login](/login): Phone or email sign-in for farm owners and workers.
+- [Public Status](/status): Platform uptime, edge-function health, and ESP32 telemetry latency.
+- [Security Report](/security): RLS policies, role model, and hardware-as-source-of-truth security posture.
+- [API Documentation](/api-docs): OpenAPI 3.1 spec for ESP32 endpoints, automation engine, and AI forecast.
+
+## Optional
+
+- [Installation Guide](/installation-guide): ESP32-WROOM-32 38-pin DevKit V1 wiring and 8-channel relay mapping.
+- [Training Videos](/training): Bengali video tutorials for farm owners and workers.
