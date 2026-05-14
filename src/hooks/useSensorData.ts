@@ -76,28 +76,37 @@ export function useStatusLevels(sensorData: SensorData) {
 
   const getTemperatureStatus = useCallback((): StatusLevel => {
     if (!settings) return 'normal';
-    if (sensorData.temperature > settings.temperature_max + 5) return 'danger';
-    if (sensorData.temperature > Number(settings.temperature_max) || sensorData.temperature < Number(settings.temperature_min)) return 'warning';
+    const tMax = Number(settings.temperature_max);
+    const tMin = Number(settings.temperature_min);
+    const t = Number(sensorData.temperature);
+    if (t > tMax + 5) return 'danger';
+    if (t > tMax || t < tMin) return 'warning';
     return 'normal';
   }, [sensorData.temperature, settings]);
 
   const getHumidityStatus = useCallback((): StatusLevel => {
     if (!settings) return 'normal';
-    if (sensorData.humidity > Number(settings.humidity_max) + 10 || sensorData.humidity < Number(settings.humidity_min) - 10) return 'danger';
-    if (sensorData.humidity > Number(settings.humidity_max) || sensorData.humidity < Number(settings.humidity_min)) return 'warning';
+    const hMax = Number(settings.humidity_max);
+    const hMin = Number(settings.humidity_min);
+    const h = Number(sensorData.humidity);
+    if (h > hMax + 10 || h < hMin - 10) return 'danger';
+    if (h > hMax || h < hMin) return 'warning';
     return 'normal';
   }, [sensorData.humidity, settings]);
 
   const getAmmoniaStatus = useCallback((): StatusLevel => {
     if (!settings) return 'normal';
-    if (sensorData.ammonia > Number(settings.ammonia_max) + 10) return 'danger';
-    if (sensorData.ammonia > Number(settings.ammonia_max)) return 'warning';
+    const aMax = Number(settings.ammonia_max);
+    const a = Number(sensorData.ammonia);
+    if (a > aMax + 10) return 'danger';
+    if (a > aMax) return 'warning';
     return 'normal';
   }, [sensorData.ammonia, settings]);
 
   const getWaterStatus = useCallback((): StatusLevel => {
-    if (sensorData.waterUsage < 10) return 'danger';
-    if (sensorData.waterUsage < 20) return 'warning';
+    const w = Number(sensorData.waterUsage);
+    if (w < 10) return 'danger';
+    if (w < 20) return 'warning';
     return 'normal';
   }, [sensorData.waterUsage]);
 
