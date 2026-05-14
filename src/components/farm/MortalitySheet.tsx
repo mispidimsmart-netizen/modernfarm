@@ -98,6 +98,8 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
           </SheetTitle>
         </SheetHeader>
 
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
         {/* Summary */}
         <Card className="mb-4 border-red-200 bg-red-50">
           <CardContent className="flex items-center justify-between p-4">
