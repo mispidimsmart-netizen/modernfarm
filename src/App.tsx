@@ -224,7 +224,7 @@ function AppRoutes() {
           path="/automation"
           element={
             <ProtectedRoute>
-              <RoleProtectedRoute requiredRole="farmer">
+              <RoleProtectedRoute requiredCapability="canLogDailyData">
                 <AutomationPage />
               </RoleProtectedRoute>
             </ProtectedRoute>
