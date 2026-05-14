@@ -8,6 +8,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
+import { useFarmSettings } from '@/hooks/useFarmData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useBoundedOverride } from '@/hooks/useBoundedOverride';
 // Migrated from legacy useUserPermissions to canonical 4-role usePermissions
