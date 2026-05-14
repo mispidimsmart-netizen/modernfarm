@@ -529,7 +529,7 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
             <Button
               onClick={handleAddUsage}
               className="w-full h-12"
-              disabled={addMedUsage.isPending || !usageForm.medicine_name}
+              disabled={addMedUsage.isPending || !usageForm.medicine_name || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
