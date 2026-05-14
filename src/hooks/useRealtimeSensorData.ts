@@ -361,7 +361,7 @@ export function useRealtimeAlerts() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, queryClient, playSound]);
+  }, [user?.id, selectedFarmId, queryClient, playSound]);
 }
 
 // Get status levels based on farm settings (same as before)
