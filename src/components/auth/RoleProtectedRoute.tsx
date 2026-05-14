@@ -2,14 +2,29 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useUserPermissions, AccessRole } from '@/hooks/useUserPermissions';
+import { usePermissions, type PermissionsState } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShieldAlert } from 'lucide-react';
 
+/** Capability flags from canonical 4-role model (usePermissions). */
+export type RouteCapability =
+  | 'canManageFarm'
+  | 'canChangeHardware'
+  | 'canLogDailyData'
+  | 'canViewFinance'
+  | 'canEditFinance'
+  | 'canManageWorkers'
+  | 'canTempOverride';
+
 interface ProtectedRouteProps {
   children: ReactNode;
+  /** Legacy 3-tier role gate (viewer/farmer/admin). Prefer `requiredCapability`. */
   requiredRole?: AccessRole;
+  /** Legacy permission flag from useUserPermissions. */
   requiredPermission?: keyof ReturnType<typeof useUserPermissions>['data'];
+  /** Canonical 4-role capability flag from usePermissions(). Preferred. */
+  requiredCapability?: RouteCapability;
   fallbackPath?: string;
 }
 
