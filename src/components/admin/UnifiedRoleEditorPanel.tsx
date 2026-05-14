@@ -605,6 +605,28 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
         </div>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+      <AlertDialogContent className="bg-slate-900 border-white/10 text-white">
+        <AlertDialogHeader>
+          <AlertDialogTitle>সেভ না করা পরিবর্তন বাদ দেবেন?</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-400">
+            আপনার পরিবর্তনগুলো সেভ হয়নি। ডায়ালগ বন্ধ করলে এগুলো হারিয়ে যাবে।
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-slate-800 border-white/10 text-slate-200 hover:bg-slate-700">
+            থাকি
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-rose-600 hover:bg-rose-700"
+            onClick={() => { setConfirmDiscardOpen(false); onClose(); }}
+          >
+            বাদ দাও
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
