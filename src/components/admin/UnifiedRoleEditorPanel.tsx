@@ -358,7 +358,8 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
   }, [summary, hydrated, draftSuper, draftOrgs, draftFarms]);
 
   return (
-    <Dialog open onOpenChange={(o) => !o && (!dirty || confirm('সেভ না করা পরিবর্তন বাদ দেবেন?')) && onClose()}>
+    <>
+    <Dialog open onOpenChange={(o) => { if (!o) { if (dirty) setConfirmDiscardOpen(true); else onClose(); } }}>
       <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
