@@ -63,6 +63,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
   }
 
   const { language } = useAuth();
+  const { canLogDailyData } = usePermissions();
   const { data: inventory } = useFeedInventory();
   const { data: consumption } = useFeedConsumption();
   const addInventory = useAddFeedInventory();
