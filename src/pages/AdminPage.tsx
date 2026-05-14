@@ -429,6 +429,10 @@ export default function AdminPage() {
             <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               পেমেন্ট
             </TabsTrigger>
+            <TabsTrigger value="guide" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
+              <BookOpen className="w-4 h-4 mr-2" />
+              ইনস্টলেশন গাইড
+            </TabsTrigger>
             <TabsTrigger value="docs" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-rose-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
               <BookOpen className="w-4 h-4 mr-2" />
               ডকুমেন্টেশন
@@ -480,8 +484,7 @@ export default function AdminPage() {
             <PaymentApprovalPanel />
           </TabsContent>
 
-          <TabsContent value="docs" className="mt-4 space-y-4">
-            <AppDocumentation />
+          <TabsContent value="guide" className="mt-4 space-y-4">
             <Card className="bg-gradient-to-br from-teal-950/40 via-slate-900/90 to-emerald-950/30 border-teal-500/20 shadow-xl shadow-teal-500/10 backdrop-blur-sm">
               <CardHeader className="border-b border-teal-500/10">
                 <CardTitle className="text-white flex items-center gap-3">
@@ -529,6 +532,10 @@ export default function AdminPage() {
                 </CalibrationWizardSheet>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="docs" className="mt-4 space-y-4">
+            <AppDocumentation />
           </TabsContent>
         </Tabs>
       </div>
