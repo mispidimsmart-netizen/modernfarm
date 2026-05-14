@@ -319,7 +319,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             <Button 
               onClick={handleAddExpense} 
               className="w-full bg-red-600 hover:bg-red-700"
-              disabled={addExpense.isPending}
+              disabled={addExpense.isPending || !canEditFinance}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
