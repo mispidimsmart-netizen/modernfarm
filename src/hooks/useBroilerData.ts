@@ -137,6 +137,9 @@ export function useCreateBatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
       queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      // SSOT: DB trigger updates flock_info — refresh dependent caches
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-age'] });
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'নতুন ব্যাচ তৈরি হয়েছে' : 'New batch created',
@@ -173,6 +176,8 @@ export function useUpdateBatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
       queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-age'] });
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'ব্যাচ আপডেট হয়েছে' : 'Batch updated',
@@ -212,6 +217,8 @@ export function useDeleteBatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
       queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-age'] });
       toast({
         title: language === 'bn' ? 'মুছে ফেলা হয়েছে' : 'Deleted',
         description: language === 'bn' ? 'ব্যাচ মুছে ফেলা হয়েছে' : 'Batch deleted',
