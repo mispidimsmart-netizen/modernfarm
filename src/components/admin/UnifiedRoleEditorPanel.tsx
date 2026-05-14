@@ -322,8 +322,11 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
       });
       onClose();
     },
-    onError: (e: any) => toast({ title: 'সেভ ব্যর্থ', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'সেভ ব্যর্থ', description: translatePgError(e), variant: 'destructive' }),
   });
+
+  // AlertDialog state for unsaved-changes confirmation
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
   // Add/edit/remove draft helpers
   const [newOrgId, setNewOrgId] = useState<string>('');
