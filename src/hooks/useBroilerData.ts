@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
-import { calculateFCR, evaluateFCR, getBroilerTargetWeight } from './useFarmType';
+import { calculateFCR, evaluateFCR, getBroilerTargetWeight, getInitialChickWeight } from './useFarmType';
 
 export interface BroilerBatch {
   id: string;
@@ -406,10 +406,10 @@ export function useBatchStats(batchId: string | undefined) {
   const totalFeedKg = feed?.reduce((sum, f) => sum + Number(f.quantity_kg), 0) || 0;
 
   // FCR = total feed / surviving-bird weight gain.
-  // Use per-survivor gain (latest avg weight − initial chick ~42g) × current_bird_count
+  // Use per-survivor gain (latest avg weight − breed-specific chick weight) × current_bird_count
   // so that mortality doesn't artificially inflate or deflate the ratio.
-  const INITIAL_CHICK_WEIGHT_G = 42;
-  const perBirdGainKg = Math.max(0, (latestWeight - INITIAL_CHICK_WEIGHT_G) / 1000);
+  const initialChickWeightG = getInitialChickWeight(batch.breed);
+  const perBirdGainKg = Math.max(0, (latestWeight - initialChickWeightG) / 1000);
   const weightGainKg = batch.current_bird_count * perBirdGainKg;
 
   const fcr = calculateFCR(totalFeedKg, weightGainKg);

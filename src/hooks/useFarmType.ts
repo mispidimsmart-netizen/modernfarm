@@ -184,6 +184,22 @@ export function getBroilerTargetWeight(ageDays: number): number {
 }
 
 /**
+ * Initial chick weight (in grams) by breed.
+ * Standard hatchery values; falls back to 42g for unknown breeds.
+ */
+export function getInitialChickWeight(breed?: string | null): number {
+  if (!breed) return 42;
+  const b = breed.toLowerCase();
+  if (b.includes('ross')) return 44;       // Ross 308
+  if (b.includes('cobb')) return 42;       // Cobb 500
+  if (b.includes('hubbard')) return 43;
+  if (b.includes('arbor')) return 42;      // Arbor Acres
+  if (b.includes('indian river')) return 42;
+  if (b.includes('sonali') || b.includes('সোনালী')) return 35; // local desi cross
+  return 42;
+}
+
+/**
  * Calculate FCR (Feed Conversion Ratio)
  */
 export function calculateFCR(totalFeedKg: number, totalWeightGainKg: number): number {

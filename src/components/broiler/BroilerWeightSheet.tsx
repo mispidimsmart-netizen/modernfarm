@@ -122,8 +122,13 @@ export function BroilerWeightSheet({ open, onOpenChange }: BroilerWeightSheetPro
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{t.progress[language]}</span>
-                  <span className={`font-medium ${status.color}`}>
+                  <span className={`font-medium ${status.color} flex items-center gap-1.5`}>
                     {stats.weightProgress.toFixed(0)}% - {status.label[language]}
+                    {stats.weightProgress > 100 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                        +{(stats.weightProgress - 100).toFixed(0)}% {language === 'bn' ? 'টার্গেটের উপরে' : 'over target'}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <Progress value={Math.min(stats.weightProgress, 100)} className="h-3" />
