@@ -1,59 +1,63 @@
-## লক্ষ্য
+# সম্পূর্ণ সফটওয়্যার অডিট — স্টেপ বাই স্টেপ
 
-অ্যাডমিন ড্যাশবোর্ডের ট্যাব-ভীড় কমিয়ে ইউজার সংক্রান্ত সব ব্যবস্থাপনা একটি জায়গায় আনা, এবং সাইন-আপে অর্গানাইজেশন বেছে নেওয়া বাধ্যতামূলক করা যাতে প্রতিটি ফার্ম একটি অর্গানাইজেশনের অধীনে থাকে।
+আমি পুরো সিস্টেম সূক্ষ্মভাবে যাচাই করব এবং প্রতিটি ধাপে রিপোর্ট দেব। বড় কাজ — তাই **৭ ফেজে** ভাগ করে চালাব। প্রতিটি ফেজ শেষে আপনাকে findings + fixes দেখাব, এরপর পরের ফেজে যাব।
 
-## নতুন ট্যাব কাঠামো
+## ফেজগুলো
 
-```text
-অ্যাডমিন ড্যাশবোর্ড
-├── 👥 ব্যবহারকারী ব্যবস্থাপনা (নতুন প্যারেন্ট ট্যাব)
-│   ├── 👑 অ্যাডমিন      → বিদ্যমান AdminManagementTab
-│   ├── 🏢 অর্গানাইজেশন  → বিদ্যমান OrganizationsPanel (তালিকা + তৈরি/এডিট/ডিলিট/সদস্য)
-│   ├── 🚜 ফার্ম         → নতুন FarmsAdminPanel (সব ফার্ম + অর্গানাইজেশন বদলানো/ডিলিট)
-│   └── 🛠️ ওয়ার্কার      → নতুন WorkersAdminPanel (ফার্মভিত্তিক ওয়ার্কারদের তালিকা)
-├── 📊 অ্যানালিটিক্স
-├── 🔔 নোটিফিকেশন
-├── ⚙️ সিস্টেম (System Health, MQTT, Phase 8/9, OTA, Scale, Roadmap একসাথে)
-├── 🛡️ সিকিউরিটি ও অডিট (Security Logs, Isolation, Forensic, Audit Report)
-├── 🔌 ফার্মওয়্যার ও PCB
-├── 💳 পেমেন্ট
-└── 📚 ডকুমেন্টেশন (Docs + Architecture + Installation Guide একসাথে)
-```
+### Phase 1 — Auth, Roles & Routing
+- LoginPage, OrgSignup, ResetPassword flow
+- 4-role guards: super_admin / org_owner / farm_owner / worker
+- RoleProtectedRoute, PlatformRoleGuard, WorkerLockScreen
+- usePermissions vs legacy useUserPermissions/useUserRole inconsistency
+- Route table in App.tsx — প্রতিটি route-এ সঠিক guard আছে কিনা
 
-পুরোনো বিচ্ছিন্ন "কোম্পানি", "ফার্ম অ্যাসাইনমেন্ট", "আইসোলেশন", "PCB", "পর্যবেক্ষণ", "পারফরম্যান্স", "বেঞ্চমার্ক", "অডিট" ইত্যাদি আলাদা টপ-লেভেল ট্যাব আর থাকবে না — সব উপরের ৮টি গ্রুপের ভেতরে।
+### Phase 2 — Dashboard, Sensors & Sheds
+- Dashboard cards (SensorCard, AlertCard, BroilerDashboardWidget, WeatherCard)
+- useSensorData / useRealtimeSensorData / useSafetyStatus
+- ShedSelector + multi-shed isolation (farm_id filter)
+- Phase 9 sensors mapping (DHT22/SHT31, MQ-137/ZE03-NH3, GSM)
 
-## সাইন-আপ ফ্লো পরিবর্তন
+### Phase 3 — Automation & Control (Manual / Auto / Broiler / Layer)
+- AutomationPage — RBAC gates (verify আগের fix কাজ করছে)
+- ControlPage — temp override, 20m timeout, canChangeHardware
+- BroilerAgeAutoModeCard, BroilerTempCurveCard — day-based curve
+- 8 hardware invariants vs cloud mirror (heatStressIndex)
+- Layer mode: ceiling fan, sprinkler thresholds
+- AutomationEngineDashboard, AutomationStatusCard
 
-- `/signup` (এবং `OrgSignupPage`)-এ একটি **"অর্গানাইজেশন বেছে নিন"** সিলেক্ট/সার্চ যোগ হবে — অ্যাকটিভ অর্গানাইজেশনের তালিকা থেকে।
-- নতুন ফার্ম তৈরি হলে সেটির `farms.organization_id` ঐ নির্বাচিত অর্গানাইজেশনে সেট হবে এবং ইউজার ঐ org-এর `member` হিসেবে `organization_members`-এ যুক্ত হবে।
-- যদি কোনো অর্গানাইজেশন না থাকে, একটি ডিফল্ট "স্বতন্ত্র ব্যবহারকারী" org-এ যাবে (super admin তৈরি করে রাখবেন; UI fallback সহ)।
-- অ্যাডমিন **ফার্ম** সাব-ট্যাব থেকে যে কোনো ফার্মের অর্গানাইজেশন বদলাতে/মুছতে পারবেন।
+### Phase 4 — Broiler & Layer Mode Specifics
+- BroilerBatch/Feed/Weight sheets, FCR
+- LayerBatch flock_info SSOT trigger
+- Lighting curve + age-based suggestion
+- Active batch → flock_info auto-sync verification
 
-## নতুন উপাদান
+### Phase 5 — Finance, Reports & Analytics
+- FinanceReportPage — batch_id scope filter
+- FinanceAuditPanel hidden from farm page (constraint)
+- Reports, Analytics, Phase9Report, BroilerCost
 
-1. **`UserManagementTab.tsx`** (নতুন) — ভেতরে একটি nested `<Tabs>` যাতে চারটি সাব-ট্যাব: Admins / Orgs / Farms / Workers। প্রতিটি সাব-ট্যাব ইতিমধ্যে থাকা/নতুন প্যানেল রেন্ডার করবে।
-2. **`FarmsAdminPanel.tsx`** (নতুন) — সব ফার্মের তালিকা, প্রতিটির পাশে: org dropdown (পরিবর্তন), মালিক, সদস্য সংখ্যা, edit name, delete। RPC: `super_admin_set_farm_organization`, `super_admin_delete_farm`।
-3. **`WorkersAdminPanel.tsx`** (নতুন) — ফার্ম সিলেক্ট → ঐ ফার্মের ওয়ার্কারদের (`farm_members` role=worker/viewer/manager) তালিকা; assign/remove (বিদ্যমান `OrgFarmAssignmentsPanel`-এর লজিক পুনরায় ব্যবহার)।
-4. **`AdminPage.tsx`** — পুরোনো ১৮টি ফ্ল্যাট ট্যাব রিগ্রুপ করে ৮টি প্যারেন্ট ট্যাবে নামানো। কোনো বিদ্যমান প্যানেল কম্পোনেন্ট মুছে ফেলা হবে না — শুধু কোথায় রেন্ডার হচ্ছে সেটাই বদলাবে।
-5. **`OrgSignupPage.tsx`** ও সাধারণ signup পথ — অর্গানাইজেশন সিলেক্টর ফিল্ড + সাবমিটে `farms.organization_id` সেট ও `organization_members` ইনসার্ট।
+### Phase 6 — Admin & Org Panel
+- AdminPage tabs (User, Role editor, Farm soft-delete/restore)
+- OrgAdminPage — org member management
+- Role auto-sync triggers + test_role_sync_invariants RPC
+- Newly added test_role_write_invariants RPC button
 
-## ডাটাবেস পরিবর্তন
+### Phase 7 — Hardware/Edge Integration & Alerts
+- esp32-api edge function — desired_* writes only
+- safety-engine, automation-engine, ai-forecast
+- Alert pipeline: SmartAlerts, AlertDispatcher, SMS/Push
+- Device commands (no shed_id), device_status RLS
 
-- নতুন RPC দরকার: `super_admin_set_farm_organization(_farm_id uuid, _org_id uuid)` — শুধু super admin চালাতে পারবেন; `farms.organization_id` আপডেট করবে এবং org_activity_audit-এ লিখবে।
-- নতুন RPC: `super_admin_delete_farm(_farm_id uuid)` — সাবধানে cascade।
-- `signup` flow-এ ব্যবহারের জন্য একটি লাইটওয়েট পাবলিক RPC: `list_active_organizations_for_signup()` (id, name, name_en, slug মাত্র; trial/lifetime/subscription-গুলো শুধু)।
-- কোনো বিদ্যমান টেবিল/কলাম মুছবে না — সবটাই additive।
+## প্রতিটি ফেজে যা করব
+1. সংশ্লিষ্ট ফাইলগুলো পড়ব (parallel)
+2. কোড vs memory rules vs DB schema cross-check
+3. বাগ/inconsistency পেলে fix proposal লিখব
+4. user-approved হলে fix apply করব
+5. সংক্ষিপ্ত findings table দেব
 
-## ক্রম
+## টেকনিক্যাল নোট
+- পড়া-শোনা প্রধান কাজ, code edits শুধু confirmed bugs-এ
+- Memory rules কঠোরভাবে মানা হবে (Bengali UI, hardware SSOT, no overwriting actual_* columns, ইত্যাদি)
+- প্রতিটি ফেজ শেষে stop → আপনার সম্মতি নিয়ে পরের ফেজ
 
-1. SQL মাইগ্রেশন: তিনটি RPC যোগ করা।
-2. `FarmsAdminPanel`, `WorkersAdminPanel`, `UserManagementTab` তৈরি।
-3. `AdminPage.tsx` রিফ্যাক্টর — ট্যাব নতুন ৮-গ্রুপে সাজানো।
-4. সাইন-আপ ফর্মে অর্গানাইজেশন সিলেক্টর যোগ + ফার্ম তৈরি লজিকে org_id সেট।
-5. ব্রাউজার-প্রিভিউতে যাচাই।
-
-## অপ্রভাবিত
-
-- সব বিদ্যমান কম্পোনেন্ট, RLS, অটোমেশন রুল, ESP32 লজিক — কিছুই মুছছে না।
-- "Hardware-as-Source-of-Truth" এবং safety invariants স্পর্শ করা হচ্ছে না।
-- বিদ্যমান ফার্মগুলোর org_id NULL থাকলে সেগুলো NULL-ই থাকবে (অ্যাডমিন পরে অ্যাসাইন করতে পারবেন)।
+**শুরু করব Phase 1 দিয়ে?** নাকি কোনো নির্দিষ্ট ফেজ আগে চান (যেমন সরাসরি Phase 3 — Automation/Control)?
