@@ -23,6 +23,7 @@ interface EggProductionSheetProps {
 
 export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetProps) {
   const { language } = useAuth();
+  const { canLogDailyData } = usePermissions();
   const { data: eggData, isLoading } = useEggProduction();
   const addEggProduction = useAddEggProduction();
   const updateEgg = useUpdateEggProduction();
