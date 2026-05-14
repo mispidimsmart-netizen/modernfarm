@@ -33,9 +33,9 @@ const statusColors: Record<StatusLevel, string> = {
 };
 
 const statusBgColors: Record<StatusLevel, string> = {
-  normal: 'bg-green-50 border-green-200',
-  warning: 'bg-amber-50 border-amber-200',
-  danger: 'bg-red-50 border-red-200',
+  normal: 'bg-status-normal/10 border-status-normal/30',
+  warning: 'bg-status-warning/10 border-status-warning/30',
+  danger: 'bg-status-danger/10 border-status-danger/40',
 };
 
 export const SensorCard = forwardRef<HTMLDivElement, SensorCardProps>(
@@ -62,7 +62,7 @@ export const SensorCard = forwardRef<HTMLDivElement, SensorCardProps>(
 
         <div className="flex items-start gap-3">
           <div className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm',
+            'flex h-12 w-12 items-center justify-center rounded-xl bg-card shadow-sm',
             sensorColors[type]
           )}>
             <Icon size={24} />

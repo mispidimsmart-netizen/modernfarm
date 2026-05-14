@@ -229,6 +229,17 @@ export function ControlPage() {
 
   // ===== MANUAL MODE: Direct ON/OFF toggle =====
   const handleManualToggle = (deviceKey: string, newValue: boolean) => {
+    // Worker / viewer guard — direct hardware toggle requires canChangeHardware
+    if (!canFullControl) {
+      toast({
+        title: language === 'bn' ? 'অনুমতি নেই' : 'Permission denied',
+        description: language === 'bn'
+          ? 'ম্যানুয়াল মোডে সরাসরি ডিভাইস টগল করার অনুমতি শুধু ফার্ম-ওনার/অ্যাডমিনের'
+          : 'Direct device toggle in manual mode is restricted to farm owner/admin',
+        variant: 'destructive',
+      });
+      return;
+    }
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: newValue, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: newValue });
@@ -485,7 +496,7 @@ export function ControlPage() {
                             <Switch
                               checked={active}
                               onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={isViewer || sendCommand.isPending}
+                              disabled={isViewer || !canFullControl || sendCommand.isPending}
                               className={`scale-110 ${active ? 'data-[state=checked]:bg-emerald-500' : ''}`}
                             />
                             <span className={`text-[10px] font-bold tracking-wider ${
