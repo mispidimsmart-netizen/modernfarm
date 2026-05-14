@@ -171,6 +171,7 @@ export function useRealtimeDeviceStatus() {
   const { data: initialStatus, isLoading } = useDeviceStatus();
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
+  const selectedFarmId = safeSelectedFarmId();
 
   // Tick every 15s so `ageMs`/`isDeviceOnline` recompute and the UI flips
   // from "অফলাইন" → "লাইভ" (or vice-versa) automatically as time passes,
