@@ -11,12 +11,20 @@ import {
   writeCachedSensorData,
   useBrowserOnline,
 } from './useOfflineSensorCache';
+import { useFarmContext } from '@/context/FarmContext';
+
+// Helper: prefer farm-scoped realtime filter when a farm is selected, else
+// fall back to user-scoped (legacy / no-farm-context callers).
+function safeSelectedFarmId(): string | null {
+  try { return useFarmContext().selectedFarmId; } catch { return null; }
+}
 
 // Realtime sensor data with Supabase subscriptions + offline cache fallback
 export function useRealtimeSensorData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
+  const selectedFarmId = safeSelectedFarmId();
 
   // Seed initial state from localStorage so the UI shows the last known values
   // immediately on mount — even before the first network round-trip succeeds,
@@ -72,15 +80,16 @@ export function useRealtimeSensorData() {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Fetch initial latest sensor reading
+    // Fetch initial latest sensor reading (farm-scoped if available)
     const fetchLatest = async () => {
-      const { data } = await supabase
+      let q = supabase
         .from('sensor_readings')
         .select('*')
-        .eq('user_id', user.id)
         .order('recorded_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      else q = q.eq('user_id', user.id);
+      const { data } = await q.maybeSingle();
 
       if (data) {
         applyReading({
@@ -95,17 +104,21 @@ export function useRealtimeSensorData() {
 
     fetchLatest();
 
-    // Subscribe to realtime sensor updates — when ESP32 reconnects and writes,
-    // this auto-syncs the UI with the new value (and updates the cache).
+    // Subscribe to realtime sensor updates — farm-scoped when a farm is selected
+    // so multi-farm users only get events for the active farm (less noise).
+    const channelKey = selectedFarmId ?? user.id;
+    const filter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`sensor_readings_${user.id}`)
+      .channel(`sensor_readings_${channelKey}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'sensor_readings',
-          filter: `user_id=eq.${user.id}`,
+          filter,
         },
         (payload) => {
           const data = payload.new;
@@ -125,7 +138,7 @@ export function useRealtimeSensorData() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, applyReading]);
+  }, [user?.id, selectedFarmId, applyReading]);
 
   // hasRealData = a real reading exists AND it is fresh (within last 1 hour).
   // Stale readings (e.g. ESP32 offline for days) must NOT drive UI values or
@@ -158,6 +171,7 @@ export function useRealtimeDeviceStatus() {
   const { data: initialStatus, isLoading } = useDeviceStatus();
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
+  const selectedFarmId = safeSelectedFarmId();
 
   // Tick every 15s so `ageMs`/`isDeviceOnline` recompute and the UI flips
   // from "অফলাইন" → "লাইভ" (or vice-versa) automatically as time passes,
@@ -180,15 +194,19 @@ export function useRealtimeDeviceStatus() {
     // AND to sensor_readings INSERTs — when the device wakes up the FIRST
     // signal is usually a new sensor row, which should immediately re-pull
     // device_status so the UI flips back to live.
+    const channelKey = selectedFarmId ?? user.id;
+    const dsFilter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`device_status_${user.id}`)
+      .channel(`device_status_${channelKey}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'device_status',
-          filter: `user_id=eq.${user.id}`,
+          filter: dsFilter,
         },
         () => refreshDeviceStatus()
       )
@@ -198,7 +216,7 @@ export function useRealtimeDeviceStatus() {
           event: 'INSERT',
           schema: 'public',
           table: 'sensor_readings',
-          filter: `user_id=eq.${user.id}`,
+          filter: dsFilter,
         },
         () => refreshDeviceStatus()
       )
@@ -229,7 +247,7 @@ export function useRealtimeDeviceStatus() {
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [user?.id, refreshDeviceStatus]);
+  }, [user?.id, selectedFarmId, refreshDeviceStatus]);
 
   // When the browser flips back to "online", also force a refetch (covers
   // the case where the listener above mounted while already offline).
@@ -304,69 +322,46 @@ export function useRealtimeAlerts() {
   const queryClient = useQueryClient();
   const { playSound } = useNotificationSound();
   const lastAlertIdRef = useRef<string | null>(null);
+  const selectedFarmId = safeSelectedFarmId();
 
   useEffect(() => {
     if (!user?.id) return;
 
+    const channelKey = selectedFarmId ?? user.id;
+    const aFilter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`alerts_${user.id}`)
+      .channel(`alerts_${channelKey}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'alerts', filter: aFilter },
         (payload) => {
-          // Play sound for new alerts if enabled
           const newAlert = payload.new as { id: string; severity: string };
-          
-          // Avoid duplicate sounds for the same alert
           if (newAlert.id !== lastAlertIdRef.current && areSoundsEnabled()) {
             lastAlertIdRef.current = newAlert.id;
-            
-            // Play appropriate sound based on severity
-            if (newAlert.severity === 'danger') {
-              playSound('danger');
-            } else {
-              playSound('warning');
-            }
+            if (newAlert.severity === 'danger') playSound('danger');
+            else playSound('warning');
           }
-          
           queryClient.invalidateQueries({ queryKey: ['alerts'] });
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['alerts'] });
-        }
+        { event: 'UPDATE', schema: 'public', table: 'alerts', filter: aFilter },
+        () => { queryClient.invalidateQueries({ queryKey: ['alerts'] }); }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['alerts'] });
-        }
+        { event: 'DELETE', schema: 'public', table: 'alerts', filter: aFilter },
+        () => { queryClient.invalidateQueries({ queryKey: ['alerts'] }); }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, queryClient, playSound]);
+  }, [user?.id, selectedFarmId, queryClient, playSound]);
 }
 
 // Get status levels based on farm settings (same as before)

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export type CommandLogStatus = 'pending' | 'sent' | 'acked' | 'failed' | 'expired';
@@ -36,6 +37,34 @@ export interface DeviceCommandLogEntry {
 const PAGE_SIZE = 200;
 
 export function useDeviceCommandLog(filters: DeviceCommandLogFilters = {}) {
+  const qc = useQueryClient();
+
+  // Realtime: subscribe to device_command_log changes for the active farm
+  // (or globally when no farm filter is set). Falls back gracefully via the
+  // existing 5s polling if realtime drops.
+  useEffect(() => {
+    const farmId = filters.farmId;
+    const channelKey = farmId ?? 'all';
+    const ch = supabase
+      .channel(`device_command_log_${channelKey}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'device_command_log',
+          ...(farmId ? { filter: `farm_id=eq.${farmId}` } : {}),
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ['device-command-log'] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [filters.farmId, qc]);
+
   return useQuery({
     queryKey: ['device-command-log', filters],
     queryFn: async (): Promise<DeviceCommandLogEntry[]> => {
@@ -60,7 +89,6 @@ export function useDeviceCommandLog(filters: DeviceCommandLogFilters = {}) {
 
       const rows = (data || []) as DeviceCommandLogEntry[];
 
-      // Client-side text search across command_type, device_name, command_id
       if (filters.searchQuery) {
         const q = filters.searchQuery.toLowerCase().trim();
         return rows.filter(
@@ -73,8 +101,10 @@ export function useDeviceCommandLog(filters: DeviceCommandLogFilters = {}) {
 
       return rows;
     },
-    staleTime: 5 * 1000,
-    refetchInterval: 5000,
+    // Realtime now drives freshness; keep a slow safety-net poll (30s)
+    // instead of the previous 5s flood.
+    staleTime: 10 * 1000,
+    refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   });
 }
