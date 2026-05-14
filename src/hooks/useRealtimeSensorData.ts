@@ -322,6 +322,7 @@ export function useRealtimeAlerts() {
   const queryClient = useQueryClient();
   const { playSound } = useNotificationSound();
   const lastAlertIdRef = useRef<string | null>(null);
+  const selectedFarmId = safeSelectedFarmId();
 
   useEffect(() => {
     if (!user?.id) return;
