@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
+import { useFarmContext } from '@/context/FarmContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export type SystemState = 'NORMAL' | 'WARNING' | 'DANGER' | 'EMERGENCY' | 'SURVIVAL' | 'SENSOR_FAIL';
@@ -131,17 +132,22 @@ const DEFAULT_SAFETY: Omit<SafetyStatus, 'id' | 'updated_at'> = {
 export function useSafetyStatus() {
   const { user } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  let selectedFarmId: string | null = null;
+  try { selectedFarmId = useFarmContext().selectedFarmId; } catch { /* outside provider */ }
   const queryClient = useQueryClient();
 
-  // Fetch current safety status
+  // Fetch current safety status (RLS enforces farm membership)
   const { data: safetyStatus, isLoading } = useQuery({
-    queryKey: ['safety-status', user?.id, selectedShedId],
+    queryKey: ['safety-status', user?.id, selectedFarmId, selectedShedId],
     queryFn: async () => {
       if (!user) return null;
-      const query = (supabase.from('safety_status') as any)
-        .select('*')
-        .eq('user_id', user.id);
+      const query = (supabase.from('safety_status') as any).select('*');
 
+      if (selectedFarmId) {
+        query.eq('farm_id', selectedFarmId);
+      } else {
+        query.eq('user_id', user.id);
+      }
       if (selectedShedId) {
         query.eq('shed_id', selectedShedId);
       }
@@ -157,24 +163,29 @@ export function useSafetyStatus() {
     refetchInterval: 10000, // fallback poll every 10s
   });
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates (filter by farm if available, else user)
   useEffect(() => {
     if (!user?.id) return;
 
+    const channelKey = selectedFarmId ?? user.id;
+    const filter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
+
     const channel = supabase
-      .channel(`safety_status_${user.id}`)
+      .channel(`safety_status_${channelKey}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'safety_status',
-        filter: `user_id=eq.${user.id}`,
+        filter,
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['safety-status'] });
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, queryClient]);
+  }, [user?.id, selectedFarmId, queryClient]);
 
   const status = safetyStatus || { id: '', updated_at: new Date().toISOString(), ...DEFAULT_SAFETY };
 
