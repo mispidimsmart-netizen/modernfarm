@@ -71,7 +71,7 @@ export function UnifiedRoleEditorPanel() {
         variant: r.failed === 0 ? 'default' : 'destructive',
       });
     } catch (e: any) {
-      toast({ title: 'টেস্ট রান ব্যর্থ', description: e.message, variant: 'destructive' });
+      toast({ title: 'টেস্ট রান ব্যর্থ', description: translatePgError(e), variant: 'destructive' });
     } finally {
       setTesting(false);
     }
