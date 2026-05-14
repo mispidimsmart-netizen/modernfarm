@@ -263,6 +263,8 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
           </SheetTitle>
         </SheetHeader>
 
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
         {/* Top summary */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <Card className="bg-destructive/10 border-destructive/20">
