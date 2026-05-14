@@ -46,6 +46,7 @@ const INCOME_CATEGORIES = [
 
 export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { language } = useAuth();
+  const { canEditFinance } = usePermissions();
   const navigate = useNavigate();
   const { data: expenses } = useExpenses();
   const { data: income } = useIncome();
