@@ -166,28 +166,24 @@ export default function FinanceReportPage() {
         {/* Date range filter — applied to both income & expense before export */}
         <Card>
           <CardContent className="p-3 flex flex-wrap items-end gap-3">
-            <div className="flex-1 min-w-[140px]">
+            <div className="flex-1 min-w-[160px]">
               <Label htmlFor="from-date" className="text-xs text-muted-foreground">
                 শুরুর তারিখ
               </Label>
-              <Input
-                id="from-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                max={endDate || undefined}
+              <SmartDatePicker
+                value={startDate || null}
+                onChange={(iso) => setStartDate(iso || '')}
+                disableFuture
               />
             </div>
-            <div className="flex-1 min-w-[140px]">
+            <div className="flex-1 min-w-[160px]">
               <Label htmlFor="to-date" className="text-xs text-muted-foreground">
                 শেষ তারিখ
               </Label>
-              <Input
-                id="to-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate || undefined}
+              <SmartDatePicker
+                value={endDate || null}
+                onChange={(iso) => setEndDate(iso || '')}
+                disableFuture
               />
             </div>
             {(startDate || endDate) && (
