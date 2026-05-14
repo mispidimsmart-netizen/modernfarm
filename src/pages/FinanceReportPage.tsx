@@ -254,9 +254,19 @@ export default function FinanceReportPage() {
           <TabsContent value={mode} className="mt-4 space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                   <Calendar className="h-4 w-4" />
                   আয় বনাম ব্যয় ({mode === 'daily' ? 'দৈনিক' : 'মাসিক'})
+                  {activeBatchId && (
+                    <Badge variant="outline" className="ml-1 text-[10px]">
+                      {isLayer ? 'লেয়ার ব্যাচ' : 'ব্রয়লার ব্যাচ'}: {(activeLayerBatch as any)?.batch_name ?? (activeBroilerBatch as any)?.batch_name ?? '—'}
+                    </Badge>
+                  )}
+                  {!activeBatchId && financeMode !== 'unknown' && (
+                    <Badge variant="outline" className="ml-1 text-[10px] text-muted-foreground">
+                      কোনো সক্রিয় ব্যাচ নেই
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
