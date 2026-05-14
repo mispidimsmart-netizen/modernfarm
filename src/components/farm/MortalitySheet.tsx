@@ -190,7 +190,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
             <Button 
               onClick={handleSubmit} 
               className="w-full bg-red-600 hover:bg-red-700"
-              disabled={addRecord.isPending}
+              disabled={addRecord.isPending || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
