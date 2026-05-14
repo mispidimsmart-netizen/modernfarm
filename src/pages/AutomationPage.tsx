@@ -139,6 +139,22 @@ export function AutomationPage() {
 
           {/* Custom Rules Tab */}
           <TabsContent value="rules" className="space-y-6">
+            {/* Worker / read-only banner */}
+            {!canChangeHardware && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+                <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                <span className="flex-1">
+                  {language === 'bn'
+                    ? (isWorker
+                        ? 'আপনি ওয়ার্কার — থ্রেশহোল্ড ও অটোমেশন নিয়ম পরিবর্তনের অনুমতি নেই। শুধু দেখতে পারবেন।'
+                        : 'এই ফার্মে hardware/automation পরিবর্তনের অনুমতি আপনার নেই।')
+                    : (isWorker
+                        ? 'You are a worker — threshold & automation rules are read-only.'
+                        : 'You do not have permission to change hardware/automation on this farm.')}
+                </span>
+              </div>
+            )}
+
             {/* Threshold Settings */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -157,6 +173,7 @@ export function AutomationPage() {
                       type="number"
                       value={farmSettings?.temperature_max ?? 32}
                       onChange={(e) => updateSettings.mutate({ temperature_max: Number(e.target.value) })}
+                      disabled={!canChangeHardware}
                       className="h-10 w-20 text-center"
                     />
                     <span className="text-sm text-muted-foreground">°C</span>
@@ -171,6 +188,7 @@ export function AutomationPage() {
                       type="number"
                       value={farmSettings?.ammonia_max ?? 25}
                       onChange={(e) => updateSettings.mutate({ ammonia_max: Number(e.target.value) })}
+                      disabled={!canChangeHardware}
                       className="h-10 w-20 text-center"
                     />
                     <span className="text-sm text-muted-foreground">ppm</span>
@@ -185,6 +203,7 @@ export function AutomationPage() {
                       type="number"
                       value={farmSettings?.humidity_max ?? 80}
                       onChange={(e) => updateSettings.mutate({ humidity_max: Number(e.target.value) })}
+                      disabled={!canChangeHardware}
                       className="h-10 w-20 text-center"
                     />
                     <span className="text-sm text-muted-foreground">%</span>
@@ -201,13 +220,14 @@ export function AutomationPage() {
             >
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="section-title mb-0">{translations.automation.title[language]}</h2>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1 rounded-full">
-                      <Plus size={16} />
-                      {language === 'bn' ? 'নতুন' : 'New'}
-                    </Button>
-                  </DialogTrigger>
+                {canChangeHardware && (
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-1 rounded-full">
+                        <Plus size={16} />
+                        {language === 'bn' ? 'নতুন' : 'New'}
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-[90%] rounded-2xl">
                     <DialogHeader>
                       <DialogTitle>{translations.automation.addRule[language]}</DialogTitle>
