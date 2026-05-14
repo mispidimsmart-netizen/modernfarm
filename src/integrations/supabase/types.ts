@@ -5861,6 +5861,7 @@ export type Database = {
         Row: {
           advisory_type: string | null
           created_at: string
+          farm_id: string | null
           id: string
           is_read: boolean
           message: string
@@ -5872,6 +5873,7 @@ export type Database = {
         Insert: {
           advisory_type?: string | null
           created_at?: string
+          farm_id?: string | null
           id?: string
           is_read?: boolean
           message: string
@@ -5883,6 +5885,7 @@ export type Database = {
         Update: {
           advisory_type?: string | null
           created_at?: string
+          farm_id?: string | null
           id?: string
           is_read?: boolean
           message?: string
@@ -5892,6 +5895,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "schedule_notifications_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "schedule_notifications_schedule_id_fkey"
             columns: ["schedule_id"]
@@ -5908,6 +5918,7 @@ export type Database = {
           day_of_month: number | null
           day_of_week: number | null
           description: string | null
+          farm_id: string | null
           id: string
           is_active: boolean
           last_run_at: string | null
@@ -5928,6 +5939,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          farm_id?: string | null
           id?: string
           is_active?: boolean
           last_run_at?: string | null
@@ -5948,6 +5960,7 @@ export type Database = {
           day_of_month?: number | null
           day_of_week?: number | null
           description?: string | null
+          farm_id?: string | null
           id?: string
           is_active?: boolean
           last_run_at?: string | null
@@ -5963,6 +5976,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "schedules_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "schedules_shed_id_fkey"
             columns: ["shed_id"]
