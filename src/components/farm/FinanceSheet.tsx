@@ -168,6 +168,9 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
           </SheetTitle>
         </SheetHeader>
 
+        {!canEditFinance && <div className="mb-3"><ReadOnlyBanner /></div>}
+
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="summary">{t.summary[language]}</TabsTrigger>
