@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ShedPicker } from '@/components/farm/ShedPicker';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface MortalitySheetProps {
   open: boolean;
@@ -34,6 +36,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
   const { language } = useAuth();
   const { data: records, isLoading } = useMortalityRecords();
   const { data: flockInfo } = useFlockInfo();
+  const { canLogDailyData } = usePermissions();
   const addRecord = useAddMortalityRecord();
   const updateRecord = useUpdateMortalityRecord();
   const deleteRecord = useDeleteMortalityRecord();
@@ -94,6 +97,8 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
             {t.title[language]}
           </SheetTitle>
         </SheetHeader>
+
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
 
         {/* Summary */}
         <Card className="mb-4 border-red-200 bg-red-50">
@@ -185,7 +190,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
             <Button 
               onClick={handleSubmit} 
               className="w-full bg-red-600 hover:bg-red-700"
-              disabled={addRecord.isPending}
+              disabled={addRecord.isPending || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}

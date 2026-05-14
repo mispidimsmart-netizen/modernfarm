@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Egg, Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import { useEggProduction, useAddEggProduction, useUpdateEggProduction, useDeleteEggProduction, type EggProduction } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -21,6 +23,7 @@ interface EggProductionSheetProps {
 
 export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetProps) {
   const { language } = useAuth();
+  const { canLogDailyData } = usePermissions();
   const { data: eggData, isLoading } = useEggProduction();
   const addEggProduction = useAddEggProduction();
   const updateEgg = useUpdateEggProduction();
@@ -86,6 +89,9 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
             {t.title[language]}
           </SheetTitle>
         </SheetHeader>
+
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
 
         <Tabs defaultValue="add" className="h-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -163,7 +169,7 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
             <Button 
               onClick={handleSubmit} 
               className="w-full"
-              disabled={addEggProduction.isPending}
+              disabled={addEggProduction.isPending || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}

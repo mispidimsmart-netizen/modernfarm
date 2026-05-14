@@ -4,6 +4,8 @@ import { bn, enUS } from 'date-fns/locale';
 import { HeartPulse, Plus, Skull, Pill, Package, AlertTriangle, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmType } from '@/hooks/useFarmType';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import {
   useMortalityRecords,
   useAddMortalityRecord,
@@ -75,6 +77,8 @@ const REASONS = [
 export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
   const { language } = useAuth();
   const { isBroiler } = useFarmType();
+  void isBroiler;
+  const { canLogDailyData } = usePermissions();
 
   // Mortality
   const { data: mortRecords } = useMortalityRecords();
@@ -259,6 +263,8 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
           </SheetTitle>
         </SheetHeader>
 
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
         {/* Top summary */}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <Card className="bg-destructive/10 border-destructive/20">
@@ -358,7 +364,7 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
             <Button
               onClick={handleAddMortality}
               className="w-full h-12 bg-destructive hover:bg-destructive/90"
-              disabled={addMortality.isPending}
+              disabled={addMortality.isPending || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
@@ -523,7 +529,7 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
             <Button
               onClick={handleAddUsage}
               className="w-full h-12"
-              disabled={addMedUsage.isPending || !usageForm.medicine_name}
+              disabled={addMedUsage.isPending || !usageForm.medicine_name || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
@@ -686,7 +692,7 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
             <Button
               onClick={handleAddStock}
               className="w-full h-12"
-              disabled={addMedInv.isPending || !stockForm.medicine_name}
+              disabled={addMedInv.isPending || !stockForm.medicine_name || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}

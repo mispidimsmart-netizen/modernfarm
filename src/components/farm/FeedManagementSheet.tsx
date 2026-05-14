@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Wheat, Plus, Package, TrendingDown, Pencil, Trash2, Coins } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import {
   useFeedInventory,
   useFeedConsumption,
@@ -61,6 +63,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
   }
 
   const { language } = useAuth();
+  const { canLogDailyData } = usePermissions();
   const { data: inventory } = useFeedInventory();
   const { data: consumption } = useFeedConsumption();
   const addInventory = useAddFeedInventory();
@@ -184,6 +187,9 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
           </SheetTitle>
         </SheetHeader>
 
+        {!canLogDailyData && <div className="mb-3"><ReadOnlyBanner /></div>}
+
+
         {/* Summary */}
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Card className="bg-emerald-500/10">
@@ -261,7 +267,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
             <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-2.5 text-xs text-blue-700 dark:text-blue-300">
               {t.note[language]}
             </div>
-            <Button onClick={handleAddStock} className="w-full" disabled={addInventory.isPending}>
+            <Button onClick={handleAddStock} className="w-full" disabled={addInventory.isPending || !canLogDailyData}>
               <Plus className="mr-2 h-4 w-4" />{t.save[language]}
             </Button>
 
@@ -337,7 +343,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
               <SmartDatePicker value={usageForm.consumption_date || null}
                 onChange={(iso) => setUsageForm((p) => ({ ...p, consumption_date: iso }))} disableFuture />
             </div>
-            <Button onClick={handleAddUsage} className="w-full" disabled={addConsumption.isPending}>
+            <Button onClick={handleAddUsage} className="w-full" disabled={addConsumption.isPending || !canLogDailyData}>
               <Plus className="mr-2 h-4 w-4" />{t.save[language]}
             </Button>
           </TabsContent>

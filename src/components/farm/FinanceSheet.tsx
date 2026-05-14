@@ -4,6 +4,8 @@ import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Wallet, Plus, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle, BarChart3, Egg, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import { useExpenses, useIncome, useAddExpense, useAddIncome, useEggProduction, useUpdateExpense, useDeleteExpense, useUpdateIncome, useDeleteIncome, type Expense, type Income } from '@/hooks/useFarmManagement';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
@@ -44,6 +46,7 @@ const INCOME_CATEGORIES = [
 
 export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
   const { language } = useAuth();
+  const { canEditFinance } = usePermissions();
   const navigate = useNavigate();
   const { data: expenses } = useExpenses();
   const { data: income } = useIncome();
@@ -164,6 +167,9 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             {t.title[language]}
           </SheetTitle>
         </SheetHeader>
+
+        {!canEditFinance && <div className="mb-3"><ReadOnlyBanner /></div>}
+
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
@@ -313,7 +319,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             <Button 
               onClick={handleAddExpense} 
               className="w-full bg-red-600 hover:bg-red-700"
-              disabled={addExpense.isPending}
+              disabled={addExpense.isPending || !canEditFinance}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
@@ -435,7 +441,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             <Button 
               onClick={handleAddIncome} 
               className="w-full bg-green-600 hover:bg-green-700"
-              disabled={addIncome.isPending}
+              disabled={addIncome.isPending || !canEditFinance}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}

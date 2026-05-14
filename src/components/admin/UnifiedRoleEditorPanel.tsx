@@ -14,7 +14,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Search, Crown, Building2, Tractor, HardHat, UserCog, Plus, Trash2, Loader2 } from 'lucide-react';
+import { translatePgError } from '@/lib/translatePgError';
 
 interface ProfileRow {
   id: string;
@@ -66,7 +71,7 @@ export function UnifiedRoleEditorPanel() {
         variant: r.failed === 0 ? 'default' : 'destructive',
       });
     } catch (e: any) {
-      toast({ title: 'টেস্ট রান ব্যর্থ', description: e.message, variant: 'destructive' });
+      toast({ title: 'টেস্ট রান ব্যর্থ', description: translatePgError(e), variant: 'destructive' });
     } finally {
       setTesting(false);
     }
@@ -317,8 +322,11 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
       });
       onClose();
     },
-    onError: (e: any) => toast({ title: 'সেভ ব্যর্থ', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'সেভ ব্যর্থ', description: translatePgError(e), variant: 'destructive' }),
   });
+
+  // AlertDialog state for unsaved-changes confirmation
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
   // Add/edit/remove draft helpers
   const [newOrgId, setNewOrgId] = useState<string>('');
@@ -350,7 +358,8 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
   }, [summary, hydrated, draftSuper, draftOrgs, draftFarms]);
 
   return (
-    <Dialog open onOpenChange={(o) => !o && (!dirty || confirm('সেভ না করা পরিবর্তন বাদ দেবেন?')) && onClose()}>
+    <>
+    <Dialog open onOpenChange={(o) => { if (!o) { if (dirty) setConfirmDiscardOpen(true); else onClose(); } }}>
       <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -577,7 +586,7 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
               variant="outline" size="sm"
               className="h-8 border-white/10 text-slate-300 hover:bg-slate-800"
               onClick={() => {
-                if (!dirty || confirm('সেভ না করা পরিবর্তন বাদ দেবেন?')) onClose();
+                if (dirty) setConfirmDiscardOpen(true); else onClose();
               }}
               disabled={apply.isPending}
             >
@@ -596,6 +605,28 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
         </div>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+      <AlertDialogContent className="bg-slate-900 border-white/10 text-white">
+        <AlertDialogHeader>
+          <AlertDialogTitle>সেভ না করা পরিবর্তন বাদ দেবেন?</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-400">
+            আপনার পরিবর্তনগুলো সেভ হয়নি। ডায়ালগ বন্ধ করলে এগুলো হারিয়ে যাবে।
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="bg-slate-800 border-white/10 text-slate-200 hover:bg-slate-700">
+            থাকি
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-rose-600 hover:bg-rose-700"
+            onClick={() => { setConfirmDiscardOpen(false); onClose(); }}
+          >
+            বাদ দাও
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
