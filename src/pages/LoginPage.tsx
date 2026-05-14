@@ -326,6 +326,7 @@ export function LoginPage() {
         <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
           className={`font-bold tracking-tight text-white ${isSignUp ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>
           FarmEye
+          <span className="sr-only"> — Smart Poultry Farm Automation by Nexiot Labs</span>
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3, duration: 0.5 }}
           className={`mt-0.5 font-medium text-white/80 ${isSignUp ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'}`}>
