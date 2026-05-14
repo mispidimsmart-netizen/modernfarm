@@ -137,6 +137,9 @@ export function useCreateBatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
       queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      // SSOT: DB trigger updates flock_info — refresh dependent caches
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-age'] });
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'নতুন ব্যাচ তৈরি হয়েছে' : 'New batch created',
@@ -173,6 +176,8 @@ export function useUpdateBatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
       queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-age'] });
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
         description: language === 'bn' ? 'ব্যাচ আপডেট হয়েছে' : 'Batch updated',
@@ -212,6 +217,8 @@ export function useDeleteBatch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['broiler-batches'] });
       queryClient.invalidateQueries({ queryKey: ['broiler-batch-active'] });
+      queryClient.invalidateQueries({ queryKey: ['flock-info'] });
+      queryClient.invalidateQueries({ queryKey: ['bird-age'] });
       toast({
         title: language === 'bn' ? 'মুছে ফেলা হয়েছে' : 'Deleted',
         description: language === 'bn' ? 'ব্যাচ মুছে ফেলা হয়েছে' : 'Batch deleted',
@@ -398,13 +405,15 @@ export function useBatchStats(batchId: string | undefined) {
 
   const totalFeedKg = feed?.reduce((sum, f) => sum + Number(f.quantity_kg), 0) || 0;
 
-  // Calculate weight gain (current - initial chick weight ~42g)
-  const initialWeightKg = (batch.initial_bird_count * 42) / 1000;
-  const currentWeightKg = (batch.current_bird_count * latestWeight) / 1000;
-  const weightGainKg = currentWeightKg - initialWeightKg;
+  // FCR = total feed / surviving-bird weight gain.
+  // Use per-survivor gain (latest avg weight − initial chick ~42g) × current_bird_count
+  // so that mortality doesn't artificially inflate or deflate the ratio.
+  const INITIAL_CHICK_WEIGHT_G = 42;
+  const perBirdGainKg = Math.max(0, (latestWeight - INITIAL_CHICK_WEIGHT_G) / 1000);
+  const weightGainKg = batch.current_bird_count * perBirdGainKg;
 
   const fcr = calculateFCR(totalFeedKg, weightGainKg);
-  const fcrRating = evaluateFCR(fcr, ageWeeks);
+  const fcrRating = evaluateFCR(fcr, Math.max(1, ageWeeks));
 
   const mortality = batch.initial_bird_count - batch.current_bird_count;
   const mortalityPercent = batch.initial_bird_count > 0 
