@@ -11,6 +11,13 @@ import {
   writeCachedSensorData,
   useBrowserOnline,
 } from './useOfflineSensorCache';
+import { useFarmContext } from '@/context/FarmContext';
+
+// Helper: prefer farm-scoped realtime filter when a farm is selected, else
+// fall back to user-scoped (legacy / no-farm-context callers).
+function safeSelectedFarmId(): string | null {
+  try { return useFarmContext().selectedFarmId; } catch { return null; }
+}
 
 // Realtime sensor data with Supabase subscriptions + offline cache fallback
 export function useRealtimeSensorData() {
