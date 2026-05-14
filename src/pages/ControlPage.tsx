@@ -140,6 +140,7 @@ export function ControlPage() {
   const { isBroiler } = useFarmType();
   const { data: automationMode } = useAutomationMode();
   const setAutomationMode = useSetAutomationMode();
+  const { data: farmSettings } = useFarmSettings();
   const isManualMode = automationMode === 'MANUAL';
 
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
