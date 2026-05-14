@@ -364,7 +364,7 @@ export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
             <Button
               onClick={handleAddMortality}
               className="w-full h-12 bg-destructive hover:bg-destructive/90"
-              disabled={addMortality.isPending}
+              disabled={addMortality.isPending || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
