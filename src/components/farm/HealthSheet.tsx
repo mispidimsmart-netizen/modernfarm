@@ -76,7 +76,8 @@ const REASONS = [
 
 export function HealthSheet({ open, onOpenChange }: HealthSheetProps) {
   const { language } = useAuth();
-  const { isBroiler: _isBroiler } = useFarmType();
+  const { isBroiler } = useFarmType();
+  void isBroiler;
   const { canLogDailyData } = usePermissions();
 
   // Mortality
