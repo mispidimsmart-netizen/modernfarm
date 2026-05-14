@@ -380,16 +380,22 @@ export function AutomationPage() {
                       </div>
                       <Switch
                         checked={rule.enabled}
-                        onCheckedChange={(enabled) => updateRule.mutate({ id: rule.id, enabled })}
+                        disabled={!canChangeHardware}
+                        onCheckedChange={(enabled) => {
+                          if (!canChangeHardware) { denyHardwareEdit(); return; }
+                          updateRule.mutate({ id: rule.id, enabled });
+                        }}
                       />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteRule.mutate(rule.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
+                      {canChangeHardware && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRule.mutate(rule.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      )}
                     </motion.div>
                     );
                   })}
