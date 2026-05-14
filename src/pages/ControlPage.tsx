@@ -10,8 +10,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useBoundedOverride } from '@/hooks/useBoundedOverride';
-// useUserRole removed — permissions hook already provides role info
-import { useUserPermissions } from '@/hooks/useUserPermissions';
+// Migrated from legacy useUserPermissions to canonical 4-role usePermissions
+import { usePermissions } from '@/hooks/usePermissions';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useSelectedShed } from '@/hooks/useSheds';
