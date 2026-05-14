@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Zap, ChevronRight, Activity, Clock, WifiOff } from 'lucide-react';
+import { Plus, Trash2, Zap, ChevronRight, Activity, Clock, WifiOff, Lock } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { 
   useFarmSettings, 
   useUpdateFarmSettings,
