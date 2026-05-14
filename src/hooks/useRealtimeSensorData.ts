@@ -247,7 +247,7 @@ export function useRealtimeDeviceStatus() {
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [user?.id, refreshDeviceStatus]);
+  }, [user?.id, selectedFarmId, refreshDeviceStatus]);
 
   // When the browser flips back to "online", also force a refetch (covers
   // the case where the listener above mounted while already offline).
