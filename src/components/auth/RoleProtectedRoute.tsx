@@ -32,10 +32,12 @@ export function RoleProtectedRoute({
   children,
   requiredRole,
   requiredPermission,
+  requiredCapability,
   fallbackPath = '/',
 }: ProtectedRouteProps) {
   const { user, isLoading: authLoading, language } = useAuth();
   const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
+  const caps = usePermissions();
   const { logAccessDenied } = useAuditLog();
   const location = useLocation();
   const loggedRef = useRef<string | null>(null);
@@ -47,20 +49,24 @@ export function RoleProtectedRoute({
     roleHierarchy[userRole] < roleHierarchy[requiredRole];
   const permDenied = !!requiredPermission && !!permissions &&
     !permissions[requiredPermission as keyof typeof permissions];
-  const denied = !authLoading && !permissionsLoading && !!user && (roleDenied || permDenied);
+  // Super admin & org owner bypass capability gates (they have full oversight).
+  const capBypass = caps.isSuperAdmin || caps.isOrgOwner;
+  const capDenied = !!requiredCapability && !capBypass &&
+    !caps[requiredCapability as keyof PermissionsState];
+  const denied = !authLoading && !permissionsLoading && !!user && (roleDenied || permDenied || capDenied);
 
   useEffect(() => {
     if (!denied) return;
-    const key = `${location.pathname}|${requiredRole || ''}|${String(requiredPermission || '')}`;
+    const key = `${location.pathname}|${requiredRole || ''}|${String(requiredPermission || '')}|${requiredCapability || ''}`;
     if (loggedRef.current === key) return;
     loggedRef.current = key;
     logAccessDenied(
       location.pathname + location.search,
       userRole,
-      requiredRole,
-      requiredPermission as string | undefined,
+      requiredRole || requiredCapability,
+      (requiredPermission as string | undefined) || requiredCapability,
     );
-  }, [denied, location.pathname, location.search, userRole, requiredRole, requiredPermission, logAccessDenied]);
+  }, [denied, location.pathname, location.search, userRole, requiredRole, requiredPermission, requiredCapability, logAccessDenied]);
 
 
   // Loading state
