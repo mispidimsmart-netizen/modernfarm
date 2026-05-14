@@ -194,15 +194,19 @@ export function useRealtimeDeviceStatus() {
     // AND to sensor_readings INSERTs — when the device wakes up the FIRST
     // signal is usually a new sensor row, which should immediately re-pull
     // device_status so the UI flips back to live.
+    const channelKey = selectedFarmId ?? user.id;
+    const dsFilter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`device_status_${user.id}`)
+      .channel(`device_status_${channelKey}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'device_status',
-          filter: `user_id=eq.${user.id}`,
+          filter: dsFilter,
         },
         () => refreshDeviceStatus()
       )
@@ -212,7 +216,7 @@ export function useRealtimeDeviceStatus() {
           event: 'INSERT',
           schema: 'public',
           table: 'sensor_readings',
-          filter: `user_id=eq.${user.id}`,
+          filter: dsFilter,
         },
         () => refreshDeviceStatus()
       )
