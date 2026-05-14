@@ -156,6 +156,38 @@ export function RoleProtectedRoute({
     }
   }
 
+  // Check capability requirement (canonical 4-role model)
+  if (requiredCapability && !capBypass && !caps[requiredCapability as keyof PermissionsState]) {
+    const labels: Record<RouteCapability, string> = {
+      canManageFarm: 'ফার্ম পরিচালনার',
+      canChangeHardware: 'হার্ডওয়্যার/অটোমেশন পরিবর্তনের',
+      canLogDailyData: 'দৈনিক ডেটা লগের',
+      canViewFinance: 'আর্থিক রিপোর্ট দেখার',
+      canEditFinance: 'আর্থিক এন্ট্রির',
+      canManageWorkers: 'কর্মী পরিচালনার',
+      canTempOverride: 'অস্থায়ী নিয়ন্ত্রণের',
+    };
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <Card className="max-w-md w-full border-destructive/30 bg-destructive/5">
+          <CardContent className="pt-6 text-center">
+            <ShieldAlert className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">অনুমতি নেই</h2>
+            <p className="text-muted-foreground mb-4">
+              এই পৃষ্ঠা দেখতে {labels[requiredCapability]} অনুমতি প্রয়োজন। আপনার বর্তমান রোল: <b>{caps.role}</b>
+            </p>
+            <a
+              href={fallbackPath}
+              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              হোমে ফিরে যান
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
