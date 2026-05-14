@@ -4,6 +4,8 @@ import { bn, enUS } from 'date-fns/locale';
 import { HeartPulse, Plus, Skull, Pill, Package, AlertTriangle, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmType } from '@/hooks/useFarmType';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import {
   useMortalityRecords,
   useAddMortalityRecord,
