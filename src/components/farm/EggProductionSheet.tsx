@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Egg, Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import { useEggProduction, useAddEggProduction, useUpdateEggProduction, useDeleteEggProduction, type EggProduction } from '@/hooks/useFarmManagement';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
