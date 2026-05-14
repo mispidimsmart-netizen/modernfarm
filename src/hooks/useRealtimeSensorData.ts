@@ -327,58 +327,34 @@ export function useRealtimeAlerts() {
   useEffect(() => {
     if (!user?.id) return;
 
+    const channelKey = selectedFarmId ?? user.id;
+    const aFilter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`alerts_${user.id}`)
+      .channel(`alerts_${channelKey}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'alerts', filter: aFilter },
         (payload) => {
-          // Play sound for new alerts if enabled
           const newAlert = payload.new as { id: string; severity: string };
-          
-          // Avoid duplicate sounds for the same alert
           if (newAlert.id !== lastAlertIdRef.current && areSoundsEnabled()) {
             lastAlertIdRef.current = newAlert.id;
-            
-            // Play appropriate sound based on severity
-            if (newAlert.severity === 'danger') {
-              playSound('danger');
-            } else {
-              playSound('warning');
-            }
+            if (newAlert.severity === 'danger') playSound('danger');
+            else playSound('warning');
           }
-          
           queryClient.invalidateQueries({ queryKey: ['alerts'] });
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['alerts'] });
-        }
+        { event: 'UPDATE', schema: 'public', table: 'alerts', filter: aFilter },
+        () => { queryClient.invalidateQueries({ queryKey: ['alerts'] }); }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['alerts'] });
-        }
+        { event: 'DELETE', schema: 'public', table: 'alerts', filter: aFilter },
+        () => { queryClient.invalidateQueries({ queryKey: ['alerts'] }); }
       )
       .subscribe();
 
