@@ -3,6 +3,8 @@ import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Wheat, Plus, Package, TrendingDown, Pencil, Trash2, Coins } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ReadOnlyBanner } from '@/components/farm/ReadOnlyBanner';
 import {
   useFeedInventory,
   useFeedConsumption,
