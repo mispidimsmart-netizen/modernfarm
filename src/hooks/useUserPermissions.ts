@@ -1,3 +1,11 @@
+/**
+ * @deprecated Legacy 3-tier permission hook (viewer/farmer/admin).
+ * Prefer the canonical 4-role model via `usePermissions()` from `@/hooks/usePermissions`.
+ * This hook is retained only for backward compatibility with `RoleProtectedRoute`'s
+ * `requiredRole`/`requiredPermission` props and a few legacy components. New code
+ * MUST use `usePermissions()` so worker / farm_owner / org_owner / super_admin
+ * are correctly distinguished.
+ */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
