@@ -80,15 +80,16 @@ export function useRealtimeSensorData() {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Fetch initial latest sensor reading
+    // Fetch initial latest sensor reading (farm-scoped if available)
     const fetchLatest = async () => {
-      const { data } = await supabase
+      let q = supabase
         .from('sensor_readings')
         .select('*')
-        .eq('user_id', user.id)
         .order('recorded_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      else q = q.eq('user_id', user.id);
+      const { data } = await q.maybeSingle();
 
       if (data) {
         applyReading({
@@ -103,17 +104,21 @@ export function useRealtimeSensorData() {
 
     fetchLatest();
 
-    // Subscribe to realtime sensor updates — when ESP32 reconnects and writes,
-    // this auto-syncs the UI with the new value (and updates the cache).
+    // Subscribe to realtime sensor updates — farm-scoped when a farm is selected
+    // so multi-farm users only get events for the active farm (less noise).
+    const channelKey = selectedFarmId ?? user.id;
+    const filter = selectedFarmId
+      ? `farm_id=eq.${selectedFarmId}`
+      : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`sensor_readings_${user.id}`)
+      .channel(`sensor_readings_${channelKey}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'sensor_readings',
-          filter: `user_id=eq.${user.id}`,
+          filter,
         },
         (payload) => {
           const data = payload.new;
@@ -133,7 +138,7 @@ export function useRealtimeSensorData() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, applyReading]);
+  }, [user?.id, selectedFarmId, applyReading]);
 
   // hasRealData = a real reading exists AND it is fresh (within last 1 hour).
   // Stale readings (e.g. ESP32 offline for days) must NOT drive UI values or
