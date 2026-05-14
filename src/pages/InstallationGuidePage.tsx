@@ -3187,6 +3187,11 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
                       </AccordionContent>
                     </AccordionItem>
                   ))}
+                          </Accordion>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
                 </Accordion>
               </CardContent>
             </Card>
