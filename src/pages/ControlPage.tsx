@@ -133,20 +133,22 @@ export function ControlPage() {
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
-  // userRole removed (was unused) — permissions hook covers role-based gating
-  const { data: permissions } = useUserPermissions();
+  // Canonical 4-role permissions (workers blocked from hardware/automation)
+  const perms = usePermissions();
   const { sensorData } = useRealtimeSensorData();
   const { isBroiler } = useFarmType();
   const { data: automationMode } = useAutomationMode();
   const setAutomationMode = useSetAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
-  
+
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
-  
-  const canTemporaryControl = permissions?.canTemporaryControl ?? false;
-  const canFullControl = permissions?.canFullControl ?? false;
-  const canDisableAutomation = permissions?.canDisableAutomation ?? false;
-  const isViewer = permissions?.role === 'viewer';
+
+  // Capability mapping: workers get temp override only; hardware/automation toggles
+  // require canChangeHardware (farm_owner / org_owner / super_admin).
+  const canTemporaryControl = perms.canTempOverride;
+  const canFullControl = perms.canChangeHardware;
+  const canDisableAutomation = perms.canChangeHardware;
+  const isViewer = perms.role === 'guest';
   const { toast } = useToast();
 
   const [timerDialogOpen, setTimerDialogOpen] = useState(false);
