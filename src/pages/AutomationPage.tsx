@@ -323,6 +323,7 @@ export function AutomationPage() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                )}
               </div>
 
               {!hasRealData && (automationRules?.some((r) => r.enabled) ?? false) && (
