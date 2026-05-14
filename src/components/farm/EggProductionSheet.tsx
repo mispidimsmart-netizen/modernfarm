@@ -169,7 +169,7 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
             <Button 
               onClick={handleSubmit} 
               className="w-full"
-              disabled={addEggProduction.isPending}
+              disabled={addEggProduction.isPending || !canLogDailyData}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
