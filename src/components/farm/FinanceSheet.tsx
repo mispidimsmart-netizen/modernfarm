@@ -441,7 +441,7 @@ export function FinanceSheet({ open, onOpenChange }: FinanceSheetProps) {
             <Button 
               onClick={handleAddIncome} 
               className="w-full bg-green-600 hover:bg-green-700"
-              disabled={addIncome.isPending}
+              disabled={addIncome.isPending || !canEditFinance}
             >
               <Plus className="mr-2 h-4 w-4" />
               {t.save[language]}
