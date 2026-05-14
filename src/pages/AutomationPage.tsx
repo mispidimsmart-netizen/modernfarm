@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Zap, ChevronRight, Activity, Clock, WifiOff } from 'lucide-react';
+import { Plus, Trash2, Zap, ChevronRight, Activity, Clock, WifiOff, Lock } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { 
   useFarmSettings, 
   useUpdateFarmSettings,
@@ -35,6 +36,7 @@ type DeviceType = Database['public']['Enums']['device_type'];
 export function AutomationPage() {
   const { language } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const { canChangeHardware, isWorker } = usePermissions();
   const { data: farmSettings } = useFarmSettings();
   const updateSettings = useUpdateFarmSettings();
   const { data: automationRules } = useAutomationRules();
@@ -73,6 +75,12 @@ export function AutomationPage() {
   });
 
   const handleAddRule = () => {
+    if (!canChangeHardware) {
+      toast.error(language === 'bn'
+        ? 'এই কাজের অনুমতি আপনার নেই (শুধু ফার্ম-ওনার/অ্যাডমিন)'
+        : 'You do not have permission (farm owner/admin only)');
+      return;
+    }
     if (newRule.name.trim()) {
       addRule.mutate({ ...newRule, farm_id: selectedFarmId });
       setNewRule({
@@ -86,6 +94,12 @@ export function AutomationPage() {
       });
       setIsDialogOpen(false);
     }
+  };
+
+  const denyHardwareEdit = () => {
+    toast.error(language === 'bn'
+      ? 'এই কাজের অনুমতি আপনার নেই (শুধু ফার্ম-ওনার/অ্যাডমিন)'
+      : 'You do not have permission (farm owner/admin only)');
   };
 
   const sensorLabels = {
@@ -125,6 +139,22 @@ export function AutomationPage() {
 
           {/* Custom Rules Tab */}
           <TabsContent value="rules" className="space-y-6">
+            {/* Worker / read-only banner */}
+            {!canChangeHardware && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+                <Lock className="h-4 w-4 mt-0.5 shrink-0" />
+                <span className="flex-1">
+                  {language === 'bn'
+                    ? (isWorker
+                        ? 'আপনি ওয়ার্কার — থ্রেশহোল্ড ও অটোমেশন নিয়ম পরিবর্তনের অনুমতি নেই। শুধু দেখতে পারবেন।'
+                        : 'এই ফার্মে hardware/automation পরিবর্তনের অনুমতি আপনার নেই।')
+                    : (isWorker
+                        ? 'You are a worker — threshold & automation rules are read-only.'
+                        : 'You do not have permission to change hardware/automation on this farm.')}
+                </span>
+              </div>
+            )}
+
             {/* Threshold Settings */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -143,6 +173,7 @@ export function AutomationPage() {
                       type="number"
                       value={farmSettings?.temperature_max ?? 32}
                       onChange={(e) => updateSettings.mutate({ temperature_max: Number(e.target.value) })}
+                      disabled={!canChangeHardware}
                       className="h-10 w-20 text-center"
                     />
                     <span className="text-sm text-muted-foreground">°C</span>
@@ -157,6 +188,7 @@ export function AutomationPage() {
                       type="number"
                       value={farmSettings?.ammonia_max ?? 25}
                       onChange={(e) => updateSettings.mutate({ ammonia_max: Number(e.target.value) })}
+                      disabled={!canChangeHardware}
                       className="h-10 w-20 text-center"
                     />
                     <span className="text-sm text-muted-foreground">ppm</span>
@@ -171,6 +203,7 @@ export function AutomationPage() {
                       type="number"
                       value={farmSettings?.humidity_max ?? 80}
                       onChange={(e) => updateSettings.mutate({ humidity_max: Number(e.target.value) })}
+                      disabled={!canChangeHardware}
                       className="h-10 w-20 text-center"
                     />
                     <span className="text-sm text-muted-foreground">%</span>
@@ -187,13 +220,14 @@ export function AutomationPage() {
             >
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="section-title mb-0">{translations.automation.title[language]}</h2>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1 rounded-full">
-                      <Plus size={16} />
-                      {language === 'bn' ? 'নতুন' : 'New'}
-                    </Button>
-                  </DialogTrigger>
+                {canChangeHardware && (
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-1 rounded-full">
+                        <Plus size={16} />
+                        {language === 'bn' ? 'নতুন' : 'New'}
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-[90%] rounded-2xl">
                     <DialogHeader>
                       <DialogTitle>{translations.automation.addRule[language]}</DialogTitle>
@@ -289,6 +323,7 @@ export function AutomationPage() {
                     </div>
                   </DialogContent>
                 </Dialog>
+                )}
               </div>
 
               {!hasRealData && (automationRules?.some((r) => r.enabled) ?? false) && (
@@ -345,16 +380,22 @@ export function AutomationPage() {
                       </div>
                       <Switch
                         checked={rule.enabled}
-                        onCheckedChange={(enabled) => updateRule.mutate({ id: rule.id, enabled })}
+                        disabled={!canChangeHardware}
+                        onCheckedChange={(enabled) => {
+                          if (!canChangeHardware) { denyHardwareEdit(); return; }
+                          updateRule.mutate({ id: rule.id, enabled });
+                        }}
                       />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteRule.mutate(rule.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
+                      {canChangeHardware && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRule.mutate(rule.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      )}
                     </motion.div>
                     );
                   })}
