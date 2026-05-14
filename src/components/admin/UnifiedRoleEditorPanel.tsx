@@ -586,7 +586,7 @@ function UserRoleDialog({ user, onClose }: { user: ProfileRow; onClose: () => vo
               variant="outline" size="sm"
               className="h-8 border-white/10 text-slate-300 hover:bg-slate-800"
               onClick={() => {
-                if (!dirty || confirm('সেভ না করা পরিবর্তন বাদ দেবেন?')) onClose();
+                if (dirty) setConfirmDiscardOpen(true); else onClose();
               }}
               disabled={apply.isPending}
             >
