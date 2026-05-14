@@ -14,7 +14,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Search, Crown, Building2, Tractor, HardHat, UserCog, Plus, Trash2, Loader2 } from 'lucide-react';
+import { translatePgError } from '@/lib/translatePgError';
 
 interface ProfileRow {
   id: string;
