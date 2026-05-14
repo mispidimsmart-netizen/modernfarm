@@ -2,14 +2,29 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useUserPermissions, AccessRole } from '@/hooks/useUserPermissions';
+import { usePermissions, type PermissionsState } from '@/hooks/usePermissions';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { Card, CardContent } from '@/components/ui/card';
 import { ShieldAlert } from 'lucide-react';
 
+/** Capability flags from canonical 4-role model (usePermissions). */
+export type RouteCapability =
+  | 'canManageFarm'
+  | 'canChangeHardware'
+  | 'canLogDailyData'
+  | 'canViewFinance'
+  | 'canEditFinance'
+  | 'canManageWorkers'
+  | 'canTempOverride';
+
 interface ProtectedRouteProps {
   children: ReactNode;
+  /** Legacy 3-tier role gate (viewer/farmer/admin). Prefer `requiredCapability`. */
   requiredRole?: AccessRole;
+  /** Legacy permission flag from useUserPermissions. */
   requiredPermission?: keyof ReturnType<typeof useUserPermissions>['data'];
+  /** Canonical 4-role capability flag from usePermissions(). Preferred. */
+  requiredCapability?: RouteCapability;
   fallbackPath?: string;
 }
 
@@ -17,10 +32,12 @@ export function RoleProtectedRoute({
   children,
   requiredRole,
   requiredPermission,
+  requiredCapability,
   fallbackPath = '/',
 }: ProtectedRouteProps) {
   const { user, isLoading: authLoading, language } = useAuth();
   const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
+  const caps = usePermissions();
   const { logAccessDenied } = useAuditLog();
   const location = useLocation();
   const loggedRef = useRef<string | null>(null);
@@ -32,20 +49,24 @@ export function RoleProtectedRoute({
     roleHierarchy[userRole] < roleHierarchy[requiredRole];
   const permDenied = !!requiredPermission && !!permissions &&
     !permissions[requiredPermission as keyof typeof permissions];
-  const denied = !authLoading && !permissionsLoading && !!user && (roleDenied || permDenied);
+  // Super admin & org owner bypass capability gates (they have full oversight).
+  const capBypass = caps.isSuperAdmin || caps.isOrgOwner;
+  const capDenied = !!requiredCapability && !capBypass &&
+    !caps[requiredCapability as keyof PermissionsState];
+  const denied = !authLoading && !permissionsLoading && !!user && (roleDenied || permDenied || capDenied);
 
   useEffect(() => {
     if (!denied) return;
-    const key = `${location.pathname}|${requiredRole || ''}|${String(requiredPermission || '')}`;
+    const key = `${location.pathname}|${requiredRole || ''}|${String(requiredPermission || '')}|${requiredCapability || ''}`;
     if (loggedRef.current === key) return;
     loggedRef.current = key;
     logAccessDenied(
       location.pathname + location.search,
       userRole,
-      requiredRole,
-      requiredPermission as string | undefined,
+      requiredRole || requiredCapability,
+      (requiredPermission as string | undefined) || requiredCapability,
     );
-  }, [denied, location.pathname, location.search, userRole, requiredRole, requiredPermission, logAccessDenied]);
+  }, [denied, location.pathname, location.search, userRole, requiredRole, requiredPermission, requiredCapability, logAccessDenied]);
 
 
   // Loading state
@@ -133,6 +154,38 @@ export function RoleProtectedRoute({
         </div>
       );
     }
+  }
+
+  // Check capability requirement (canonical 4-role model)
+  if (requiredCapability && !capBypass && !caps[requiredCapability as keyof PermissionsState]) {
+    const labels: Record<RouteCapability, string> = {
+      canManageFarm: 'ফার্ম পরিচালনার',
+      canChangeHardware: 'হার্ডওয়্যার/অটোমেশন পরিবর্তনের',
+      canLogDailyData: 'দৈনিক ডেটা লগের',
+      canViewFinance: 'আর্থিক রিপোর্ট দেখার',
+      canEditFinance: 'আর্থিক এন্ট্রির',
+      canManageWorkers: 'কর্মী পরিচালনার',
+      canTempOverride: 'অস্থায়ী নিয়ন্ত্রণের',
+    };
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <Card className="max-w-md w-full border-destructive/30 bg-destructive/5">
+          <CardContent className="pt-6 text-center">
+            <ShieldAlert className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">অনুমতি নেই</h2>
+            <p className="text-muted-foreground mb-4">
+              এই পৃষ্ঠা দেখতে {labels[requiredCapability]} অনুমতি প্রয়োজন। আপনার বর্তমান রোল: <b>{caps.role}</b>
+            </p>
+            <a
+              href={fallbackPath}
+              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              হোমে ফিরে যান
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -41,7 +41,15 @@ export function useUserRole() {
     queryFn: async (): Promise<{ role: AppRole; farmOwnerId: string }> => {
       if (!user) throw new Error('Not authenticated');
 
-      // Check if user is a worker for someone
+      // 1. Super admin? (platform-level)
+      const { data: isSuper } = await supabase.rpc('is_super_admin' as any, {
+        _user_id: user.id,
+      });
+      if (isSuper) {
+        return { role: 'super_admin' as AppRole, farmOwnerId: user.id };
+      }
+
+      // 2. Worker on some farm?
       const { data: workerRole, error } = await supabase
         .from('user_roles')
         .select('*')
@@ -58,7 +66,8 @@ export function useUserRole() {
         };
       }
 
-      // User is an owner
+      // 3. Default: owner of own farm (org_owner/farm_owner both treated as owner here;
+      //    use usePlatformRole() for fine-grained org distinction).
       return {
         role: 'owner' as AppRole,
         farmOwnerId: user.id,
