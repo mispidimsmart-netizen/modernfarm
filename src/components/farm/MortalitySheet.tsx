@@ -36,6 +36,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
   const { language } = useAuth();
   const { data: records, isLoading } = useMortalityRecords();
   const { data: flockInfo } = useFlockInfo();
+  const { canLogDailyData } = usePermissions();
   const addRecord = useAddMortalityRecord();
   const updateRecord = useUpdateMortalityRecord();
   const deleteRecord = useDeleteMortalityRecord();
