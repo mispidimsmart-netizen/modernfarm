@@ -242,7 +242,9 @@ function AppRoutes() {
           path="/alerts"
           element={
             <ProtectedRoute>
-              <AlertsPage />
+              <RoleProtectedRoute requiredCapability="canLogDailyData">
+                <AlertsPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />
