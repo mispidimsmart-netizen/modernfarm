@@ -343,7 +343,7 @@ function AppRoutes() {
           path="/audit-log"
           element={
             <ProtectedRoute>
-              <RoleProtectedRoute requiredRole="farmer">
+              <RoleProtectedRoute requiredCapability="canLogDailyData">
                 <AuditLogPage />
               </RoleProtectedRoute>
             </ProtectedRoute>
@@ -353,7 +353,7 @@ function AppRoutes() {
           path="/finance-report"
           element={
             <ProtectedRoute>
-              <RoleProtectedRoute requiredRole="farmer">
+              <RoleProtectedRoute requiredCapability="canViewFinance">
                 <FinanceReportPage />
               </RoleProtectedRoute>
             </ProtectedRoute>
