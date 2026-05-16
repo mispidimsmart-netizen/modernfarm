@@ -29,6 +29,7 @@ const otaConfigSchema = z.object({
 
 type FarmType = 'layer' | 'broiler';
 type FirmwareMode = 'hardcoded' | 'ota';
+type FirmwareVersion = 'v8' | 'v10';
 
 interface ESP32CodeGeneratorProps {
   language?: 'bn' | 'en';
@@ -56,6 +57,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const [shedId, setShedId] = useState('');
   const [shedName, setShedName] = useState('');
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
+  const [firmwareVersion, setFirmwareVersion] = useState<FirmwareVersion>('v8');
   const [farmId, setFarmId] = useState('');
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
@@ -273,12 +275,85 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     setIsDownloading(true);
     
     try {
-      // Fetch firmware template from public folder with cache-busting
-      // IMPORTANT: Use esp32-industrial.ino (v7.0+) — the ONLY authorized firmware
-      const response = await fetch('/esp32-industrial.ino?t=' + Date.now());
+      // Fetch firmware template — branch on selected version
+      // v8 = esp32-industrial.ino (legacy stable, mass-deployed in field)
+      // v10 = esp32-industrial-v10.ino (Phase 9 sensors, new GPIO map, BETA)
+      const templateUrl = firmwareVersion === 'v10'
+        ? '/esp32-industrial-v10.ino?t=' + Date.now()
+        : '/esp32-industrial.ino?t=' + Date.now();
+      const response = await fetch(templateUrl);
       if (!response.ok) throw new Error('Failed to fetch firmware template');
       let firmwareCode = await response.text();
-      
+
+      // v10 has a simpler config block — handle separately and skip v8-only options
+      if (firmwareVersion === 'v10') {
+        if (firmwareMode === 'ota') {
+          toast.error(language === 'bn'
+            ? 'v10 Beta এখনো OTA mode template support করে না — Hardcoded mode ব্যবহার করুন'
+            : 'v10 Beta does not yet support OTA template mode — use Hardcoded mode');
+          setIsDownloading(false);
+          return;
+        }
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+WIFI_SSID\s*=\s*"[^"]*"\s*;/,
+          `const char* WIFI_SSID      = "${ssid.trim()}";`
+        );
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+WIFI_PASS\s*=\s*"[^"]*"\s*;/,
+          `const char* WIFI_PASS      = "${password}";`
+        );
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+DEVICE_TOKEN\s*=\s*"[^"]*"\s*;/,
+          `const char* DEVICE_TOKEN   = "${deviceToken.trim()}";`
+        );
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+SHED_ID\s*=\s*"[^"]*"\s*;/,
+          `const char* SHED_ID        = "${shedId.trim()}";`
+        );
+
+        const v10Header = `/*
+ * ╔═══════════════════════════════════════════════════════════════════════╗
+ * ║  🔧 AUTO-CONFIGURED BY FARMEYE GENERATOR — v10 BETA                  ║
+ * ╠═══════════════════════════════════════════════════════════════════════╣
+ * ║  Firmware: Industrial v10 (Phase 9 sensors, locked GPIO map)         ║
+ * ║  WiFi SSID: ${ssid.trim().padEnd(54)}║
+ * ║  Device Token: ${deviceToken.trim().substring(0, 50).padEnd(50)}...║
+ * ║  Generated: ${new Date().toISOString().padEnd(53)}║
+ * ╠═══════════════════════════════════════════════════════════════════════╣
+ * ║  ⚠️ v10 BETA — only use on NEW v10 hardware (Exhaust=5, Heater=21).  ║
+ * ║  ⚠️ DO NOT flash on existing v8 field devices.                       ║
+ * ╚═══════════════════════════════════════════════════════════════════════╝
+ */
+
+`;
+        firmwareCode = v10Header + firmwareCode;
+
+        const v10Filename = `farmeye-v10-beta-${Date.now()}.ino`;
+        await new Promise<void>((resolve) => {
+          const blob = new Blob([firmwareCode], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = v10Filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            resolve();
+          }, 500);
+        });
+
+        toast.success(language === 'bn'
+          ? '✅ v10 Beta firmware ডাউনলোড হয়েছে! শুধুমাত্র নতুন v10 hardware-এ flash করুন।'
+          : '✅ v10 Beta firmware downloaded! Flash only on new v10 hardware.',
+          { duration: 6000 });
+        setIsDownloading(false);
+        return;
+      }
+
+
       if (firmwareMode === 'hardcoded') {
         // Mode 1: Hardcoded credentials (for first-time setup)
         // Use regex to handle variable whitespace alignment in firmware template
@@ -511,6 +586,40 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
             )}
           </div>
         )}
+
+        {/* Firmware Version selector (v8 Stable vs v10 Beta) */}
+        <div className="space-y-2 pb-2 border-b">
+          <Label className="text-sm flex items-center gap-2">
+            <Cpu className="h-3 w-3" />
+            {language === 'bn' ? 'ফার্মওয়্যার ভার্সন' : 'Firmware Version'}
+          </Label>
+          <Select value={firmwareVersion} onValueChange={(v) => setFirmwareVersion(v as FirmwareVersion)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="v8">
+                v8.0.0 — Stable (legacy GPIO: Exhaust=25, Heater=14)
+              </SelectItem>
+              <SelectItem value="v10">
+                v10.0.0-beta.1 — Beta (Phase 9 sensors, Exhaust=5, Heater=21)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {firmwareVersion === 'v10' ? (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              {language === 'bn'
+                ? '⚠️ v10 Beta — শুধুমাত্র নতুন v10 hardware (Phase 9 pin map)। পুরাতন মাঠের device-এ flash করবেন না। OTA mode এখনো support নেই।'
+                : '⚠️ v10 Beta — only for new v10 hardware (Phase 9 pin map). Do NOT flash on existing field devices. OTA mode not yet supported.'}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              {language === 'bn'
+                ? 'মাঠে চলা সব device-এর জন্য নিরাপদ default।'
+                : 'Safe default for all field-deployed devices.'}
+            </p>
+          )}
+        </div>
 
         {/* Step 1: Firmware Mode */}
         <div className="space-y-3">
