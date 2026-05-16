@@ -275,12 +275,85 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     setIsDownloading(true);
     
     try {
-      // Fetch firmware template from public folder with cache-busting
-      // IMPORTANT: Use esp32-industrial.ino (v7.0+) — the ONLY authorized firmware
-      const response = await fetch('/esp32-industrial.ino?t=' + Date.now());
+      // Fetch firmware template — branch on selected version
+      // v8 = esp32-industrial.ino (legacy stable, mass-deployed in field)
+      // v10 = esp32-industrial-v10.ino (Phase 9 sensors, new GPIO map, BETA)
+      const templateUrl = firmwareVersion === 'v10'
+        ? '/esp32-industrial-v10.ino?t=' + Date.now()
+        : '/esp32-industrial.ino?t=' + Date.now();
+      const response = await fetch(templateUrl);
       if (!response.ok) throw new Error('Failed to fetch firmware template');
       let firmwareCode = await response.text();
-      
+
+      // v10 has a simpler config block — handle separately and skip v8-only options
+      if (firmwareVersion === 'v10') {
+        if (firmwareMode === 'ota') {
+          toast.error(language === 'bn'
+            ? 'v10 Beta এখনো OTA mode template support করে না — Hardcoded mode ব্যবহার করুন'
+            : 'v10 Beta does not yet support OTA template mode — use Hardcoded mode');
+          setIsDownloading(false);
+          return;
+        }
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+WIFI_SSID\s*=\s*"[^"]*"\s*;/,
+          `const char* WIFI_SSID      = "${ssid.trim()}";`
+        );
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+WIFI_PASS\s*=\s*"[^"]*"\s*;/,
+          `const char* WIFI_PASS      = "${password}";`
+        );
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+DEVICE_TOKEN\s*=\s*"[^"]*"\s*;/,
+          `const char* DEVICE_TOKEN   = "${deviceToken.trim()}";`
+        );
+        firmwareCode = firmwareCode.replace(
+          /const\s+char\*\s+SHED_ID\s*=\s*"[^"]*"\s*;/,
+          `const char* SHED_ID        = "${shedId.trim()}";`
+        );
+
+        const v10Header = `/*
+ * ╔═══════════════════════════════════════════════════════════════════════╗
+ * ║  🔧 AUTO-CONFIGURED BY FARMEYE GENERATOR — v10 BETA                  ║
+ * ╠═══════════════════════════════════════════════════════════════════════╣
+ * ║  Firmware: Industrial v10 (Phase 9 sensors, locked GPIO map)         ║
+ * ║  WiFi SSID: ${ssid.trim().padEnd(54)}║
+ * ║  Device Token: ${deviceToken.trim().substring(0, 50).padEnd(50)}...║
+ * ║  Generated: ${new Date().toISOString().padEnd(53)}║
+ * ╠═══════════════════════════════════════════════════════════════════════╣
+ * ║  ⚠️ v10 BETA — only use on NEW v10 hardware (Exhaust=5, Heater=21).  ║
+ * ║  ⚠️ DO NOT flash on existing v8 field devices.                       ║
+ * ╚═══════════════════════════════════════════════════════════════════════╝
+ */
+
+`;
+        firmwareCode = v10Header + firmwareCode;
+
+        const v10Filename = `farmeye-v10-beta-${Date.now()}.ino`;
+        await new Promise<void>((resolve) => {
+          const blob = new Blob([firmwareCode], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = v10Filename;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            resolve();
+          }, 500);
+        });
+
+        toast.success(language === 'bn'
+          ? '✅ v10 Beta firmware ডাউনলোড হয়েছে! শুধুমাত্র নতুন v10 hardware-এ flash করুন।'
+          : '✅ v10 Beta firmware downloaded! Flash only on new v10 hardware.',
+          { duration: 6000 });
+        setIsDownloading(false);
+        return;
+      }
+
+
       if (firmwareMode === 'hardcoded') {
         // Mode 1: Hardcoded credentials (for first-time setup)
         // Use regex to handle variable whitespace alignment in firmware template
