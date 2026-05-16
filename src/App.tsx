@@ -51,6 +51,7 @@ const SettingsPage = lazyRetry(() => import("./pages/SettingsPage").then(m => ({
 const ApiDocsPage = lazyRetry(() => import("./pages/ApiDocsPage").then(m => ({ default: m.ApiDocsPage })));
 const FarmManagementPage = lazyRetry(() => import("./pages/FarmManagementPage").then(m => ({ default: m.FarmManagementPage })));
 const InstallationGuidePage = lazyRetry(() => import("./pages/InstallationGuidePage"));
+const DeviceSetupWizardPage = lazyRetry(() => import("./pages/DeviceSetupWizardPage"));
 const AuditLogPage = lazyRetry(() => import("./pages/AuditLogPage"));
 const AdminPage = lazyRetry(() => import("./pages/AdminPage"));
 const AdminUserSubTabPage = lazyRetry(() => import("./pages/AdminUserSubTabPage"));
@@ -338,6 +339,16 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <InstallationGuidePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/device-setup"
+          element={
+            <ProtectedRoute>
+              <RoleProtectedRoute requiredCapability="canChangeHardware">
+                <DeviceSetupWizardPage />
+              </RoleProtectedRoute>
             </ProtectedRoute>
           }
         />
