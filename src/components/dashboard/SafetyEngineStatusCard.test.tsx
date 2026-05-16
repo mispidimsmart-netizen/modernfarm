@@ -19,6 +19,28 @@ vi.mock('@/hooks/useDeviceHealth', () => ({
 vi.mock('@/context/FarmContext', () => ({
   useFarmContext: () => farmCtxMock(),
 }));
+vi.mock('@tanstack/react-query', async () => {
+  const actual = await vi.importActual<typeof import('@tanstack/react-query')>(
+    '@tanstack/react-query'
+  );
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: vi.fn(),
+      setQueryData: vi.fn(),
+      getQueryData: vi.fn(),
+    }),
+  };
+});
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    channel: () => ({
+      on: function () { return this; },
+      subscribe: () => ({ unsubscribe: vi.fn() }),
+    }),
+    removeChannel: vi.fn(),
+  },
+}));
 
 const FARM_ID = 'farm-1';
 
