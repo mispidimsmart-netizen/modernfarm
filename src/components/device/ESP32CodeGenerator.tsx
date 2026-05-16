@@ -557,6 +557,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
         console.warn('Could not download safety header:', headerErr);
       }
       
+      setVerifyError(null);
       const successMsg = firmwareMode === 'ota' ? t.downloadOTASuccess : t.downloadSuccess;
       toast.success(
         (language === 'bn' 
