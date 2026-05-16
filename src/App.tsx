@@ -343,6 +343,16 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/device-setup"
+          element={
+            <ProtectedRoute>
+              <RoleProtectedRoute requiredCapability="canChangeHardware">
+                <DeviceSetupWizardPage />
+              </RoleProtectedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/audit-log"
           element={
             <ProtectedRoute>
