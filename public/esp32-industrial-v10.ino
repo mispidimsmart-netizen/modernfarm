@@ -485,6 +485,8 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
+  wifiTick();   // non-blocking WiFi state machine — never blocks the loop
+
   // Control cycle — every 2s
   if (now - lastControl >= 2000) {
     lastControl = now;
@@ -501,11 +503,10 @@ void loop() {
     applyRelayState(target);
   }
 
-  // Poll desired state — every 10s
+  // Poll desired state — every 10s (only if link up; wifiTick handles reconnect)
   if (now - lastPoll >= 10000) {
     lastPoll = now;
-    if (WiFi.status() != WL_CONNECTED) connectWifi();
-    fetchDesiredState();
+    if (WiFi.status() == WL_CONNECTED) fetchDesiredState();
   }
 
   // Telemetry — every 30s
