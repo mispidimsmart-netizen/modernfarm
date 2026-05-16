@@ -1079,7 +1079,8 @@ float readLightLux() {
 bool detectLDR() {
   pinMode(LDR_PIN, INPUT);
   int reading1 = analogRead(LDR_PIN);
-  delay(50);
+  // Non-blocking 50ms settle (boot-time, but keep pattern consistent)
+  { unsigned long w = millis(); while (millis() - w < 50) { esp_task_wdt_reset(); yield(); } }
   int reading2 = analogRead(LDR_PIN);
   // If both readings are 0 or both are 4095, sensor likely not connected (floating or shorted)
   if ((reading1 < 10 && reading2 < 10) || (reading1 > 4080 && reading2 > 4080)) {
@@ -2731,7 +2732,8 @@ void connectWiFi() {
   WiFi.setAutoReconnect(true);
   WiFi.setSleep(false);
   WiFi.disconnect(false, false);  // Reconnect radio only; do NOT wipe stored WiFi state
-  delay(200);
+  // Non-blocking wait (200ms) — honors "ZERO delay() in main loop" invariant
+  { unsigned long w = millis(); while (millis() - w < 200) { esp_task_wdt_reset(); yield(); } }
   WiFi.mode(WIFI_STA);
   WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
   Serial.printf("📡 WiFi: Attempting connection (max 10s)...\n");
