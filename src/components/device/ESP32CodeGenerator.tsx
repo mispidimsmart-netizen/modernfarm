@@ -306,6 +306,43 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
       if (!response.ok) throw new Error('Failed to fetch firmware template');
       let firmwareCode = await response.text();
 
+      // ════════════════════════════════════════════════════════════════
+      // CONTENT VERIFICATION — parse the fetched .ino to confirm it
+      // actually matches the selected version + GPIO map. Aborts
+      // download on mismatch (prevents stale-cache or wrong-file ship).
+      // ════════════════════════════════════════════════════════════════
+      const v8Signature = /INDUSTRIAL CONTROLLER v8/i;
+      const v8Pinmap =
+        /FAN_RELAY_PIN\s+25\b/.test(firmwareCode) &&
+        /HEATER_RELAY_PIN\s+14\b/.test(firmwareCode) &&
+        /LIGHT_RELAY_PIN\s+27\b/.test(firmwareCode);
+      const v10Signature = /Industrial Firmware v10/i;
+      const v10Pinmap =
+        /PIN_FAN_EXHAUST\s+5\b/.test(firmwareCode) &&
+        /PIN_HEATER\s+21\b/.test(firmwareCode) &&
+        /PIN_LIGHT\s+19\b/.test(firmwareCode);
+
+      const detectedVersion: FirmwareVersion | 'unknown' =
+        v10Signature.test(firmwareCode) && v10Pinmap ? 'v10'
+        : v8Signature.test(firmwareCode) && v8Pinmap ? 'v8'
+        : 'unknown';
+
+      if (detectedVersion !== firmwareVersion) {
+        toast.error(
+          language === 'bn'
+            ? `❌ যাচাই ব্যর্থ — Server থেকে আসা ফাইলে ${detectedVersion === 'unknown' ? 'সঠিক version tag/GPIO map পাওয়া যায়নি' : detectedVersion.toUpperCase() + ' পাওয়া গেছে'}, কিন্তু আপনি ${firmwareVersion.toUpperCase()} চেয়েছেন। Download বাতিল করা হলো। Browser cache clear করে আবার চেষ্টা করুন।`
+            : `❌ Verification failed — fetched file ${detectedVersion === 'unknown' ? 'has no recognizable version tag/GPIO map' : 'is ' + detectedVersion.toUpperCase()}, but you selected ${firmwareVersion.toUpperCase()}. Download aborted. Clear browser cache and retry.`,
+          { duration: 8000 }
+        );
+        setIsDownloading(false);
+        return;
+      }
+
+      // Verification passed — log signature so user/QA can confirm in console
+      console.info(
+        `[FirmwareGen] ✓ Verified ${detectedVersion.toUpperCase()} content (${firmwareCode.length} bytes) from ${templateUrl}`
+      );
+
       // v10 has a simpler config block — handle separately and skip v8-only options
       if (firmwareVersion === 'v10') {
         if (firmwareMode === 'ota') {
