@@ -1037,7 +1037,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
               className="w-full gap-2"
               size="lg"
               disabled={!isValid || isDownloading}
-              onClick={downloadPreparedFirmware}
+              onClick={openConfirm}
             >
               {isDownloading ? (
                 <>
