@@ -1170,11 +1170,21 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
               {language === 'bn' ? 'বাতিল' : 'Cancel'}
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={!finalAck || isDownloading}
+              disabled={!isDownloadAllowed({ confirmOpen, finalAck, isDownloading })}
               onClick={(e) => {
                 e.preventDefault();
-                setConfirmOpen(false);
-                downloadPreparedFirmware();
+                const ran = tryDownload(
+                  { confirmOpen, finalAck, isDownloading },
+                  () => {
+                    setConfirmOpen(false);
+                    downloadPreparedFirmware();
+                  },
+                );
+                if (!ran) {
+                  toast.error(language === 'bn'
+                    ? 'নিশ্চিতকরণ চেকবক্স টিক দিন'
+                    : 'Please tick the confirmation checkbox');
+                }
               }}
             >
               {language === 'bn' ? 'Verify ও ডাউনলোড' : 'Verify & Download'}
