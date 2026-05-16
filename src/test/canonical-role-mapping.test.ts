@@ -11,7 +11,7 @@
  * Seed users (created during onboarding, expected to remain stable):
  *   268ec8e0…     → super_admin (priority test: also has personal farm)
  *   70604f53…     → company_org (org_owner of an organization)
- *   79892004…     → farm        (farm owner only)
+ *   79892004…     → company_org (promoted to org_owner; canonical role wins)
  *   2a6d9397…     → farm        (farm owner only)
  */
 import { describe, it, expect } from 'vitest';
@@ -59,10 +59,10 @@ describe('canonical_role: get_canonical_role()', () => {
     expect(data).toBe('company_org');
   });
 
-  it('farm owner #1 → "farm"', async () => {
+  it('FARM_OWNER_1 (also org_owner) → "company_org" (org role wins over farm)', async () => {
     const { data, error } = await getRole(FARM_OWNER_1);
     expect(error).toBeNull();
-    expect(data).toBe('farm');
+    expect(data).toBe('company_org');
   });
 
   it('farm owner #2 → "farm"', async () => {
