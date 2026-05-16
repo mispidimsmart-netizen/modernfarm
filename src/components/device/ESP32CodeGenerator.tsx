@@ -84,6 +84,8 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     detected: FirmwareVersion | 'unknown';
     url: string;
   } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [finalAck, setFinalAck] = useState(false);
 
   // Fetch all farms for admin selector
   useEffect(() => {
