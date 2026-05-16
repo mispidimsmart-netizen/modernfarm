@@ -59,6 +59,8 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const [shedName, setShedName] = useState('');
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
   const [firmwareVersion, setFirmwareVersion] = useState<FirmwareVersion>('v8');
+  const [hardwareVersion, setHardwareVersion] = useState<HardwareVersion>('unknown');
+  const [mismatchAck, setMismatchAck] = useState(false);
   const [farmId, setFarmId] = useState('');
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
