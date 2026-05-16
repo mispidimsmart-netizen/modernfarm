@@ -25,13 +25,17 @@ export interface BroilerTempResult {
 }
 
 /**
- * Calculate age in days and weeks from start date
+ * Calculate age in days and weeks from start date.
+ *
+ * MUST match useBirdAge.ts SSOT: floor(elapsed/24h), clamp to 0.
+ * Previously used Math.ceil + Math.abs which:
+ *   - Off-by-1: a chick placed today returned day=1 instead of day=0
+ *   - Silently flipped future start_dates instead of clamping
  */
 export function calculateBroilerAge(startDate: string): { days: number; weeks: number } {
-  const start = new Date(startDate);
-  const today = new Date();
-  const diffTime = Math.abs(today.getTime() - start.getTime());
-  const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const startMs = new Date(startDate).getTime();
+  const todayMs = Date.now();
+  const days = Math.max(0, Math.floor((todayMs - startMs) / 86_400_000));
   const weeks = Math.floor(days / 7);
   return { days, weeks };
 }
