@@ -1273,6 +1273,19 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
       </header>
 
       <div className="p-4 space-y-6">
+        {/* Quick link to Pin Map page */}
+        <Button
+          variant="outline"
+          className="w-full justify-between border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 h-auto py-3"
+          onClick={() => navigate('/pin-map')}
+        >
+          <span className="flex flex-col items-start gap-0.5">
+            <span className="text-sm font-bold text-primary">পিন ম্যাপ & সেন্সর দেখুন</span>
+            <span className="text-[11px] text-muted-foreground font-normal">v8 / v10 দ্রুত toggle ও search</span>
+          </span>
+          <ArrowLeft className="h-4 w-4 rotate-180 text-primary" />
+        </Button>
+
         {/* Phase 1-9 live automation status (single source of truth) */}
         <CurrentAutomationStatusBanner />
 
@@ -1280,6 +1293,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
         <LDRStatusBanner />
 
         {/* LDR Installation Guide moved into the Wiring tab below */}
+
 
         {/* Farm Type Info Banner */}
         <Card className="border-2 border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/5">
