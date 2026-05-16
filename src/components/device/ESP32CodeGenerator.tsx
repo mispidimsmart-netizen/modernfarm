@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
+import { verifyFirmwareContent } from '@/lib/firmwareVerifier';
 
 // Validation schema
 const configSchema = z.object({
