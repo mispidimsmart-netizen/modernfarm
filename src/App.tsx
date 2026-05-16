@@ -70,6 +70,7 @@ const OrgSignupPage = lazyRetry(() => import("./pages/OrgSignupPage"));
 const WorkerPage = lazyRetry(() => import("./pages/WorkerPage"));
 const MembersPage = lazyRetry(() => import("./pages/MembersPage"));
 const SentryTestPage = lazyRetry(() => import("./pages/SentryTestPage"));
+const PinMapPage = lazyRetry(() => import("./pages/PinMapPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
 import { CriticalAlertBanner } from "./components/dashboard/CriticalAlertBanner";
@@ -376,6 +377,7 @@ function AppRoutes() {
         <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
         <Route path="/phase9-report" element={<ProtectedRoute><RoleProtectedRoute requiredRole="admin"><Phase9ReportPage /></RoleProtectedRoute></ProtectedRoute>} />
         <Route path="/benchmark" element={<ProtectedRoute><BenchmarkPage /></ProtectedRoute>} />
+        <Route path="/pin-map" element={<ProtectedRoute><PinMapPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
