@@ -1091,7 +1091,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
                     size="sm"
                     variant="destructive"
                     disabled={isDownloading}
-                    onClick={downloadPreparedFirmware}
+                    onClick={() => { setVerifyError(null); openConfirm(); }}
                   >
                     {isDownloading ? (
                       <><Loader2 className="h-3 w-3 animate-spin" /> {t.downloading}</>
