@@ -1017,7 +1017,67 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
                 </>
               )}
             </Button>
-            
+
+            {verifyError && (
+              <div className="space-y-2 p-3 bg-destructive/10 border border-destructive/40 rounded-lg">
+                <p className="text-sm font-semibold text-destructive">
+                  {language === 'bn'
+                    ? `❌ যাচাই ব্যর্থ — প্রত্যাশিত ${verifyError.expected.toUpperCase()}, পাওয়া গেছে ${verifyError.detected === 'unknown' ? 'অজানা' : verifyError.detected.toUpperCase()}`
+                    : `❌ Verification failed — expected ${verifyError.expected.toUpperCase()}, got ${verifyError.detected === 'unknown' ? 'unknown' : verifyError.detected.toUpperCase()}`}
+                </p>
+                <ol className="text-xs text-destructive/90 list-decimal pl-5 space-y-1">
+                  <li>
+                    {language === 'bn'
+                      ? 'Browser cache clear করুন (Ctrl+Shift+R বা Cmd+Shift+R দিয়ে hard reload)।'
+                      : 'Clear browser cache (hard reload with Ctrl+Shift+R or Cmd+Shift+R).'}
+                  </li>
+                  <li>
+                    {language === 'bn'
+                      ? 'Service Worker disable / unregister করুন (DevTools → Application → Service Workers → Unregister)।'
+                      : 'Unregister service worker (DevTools → Application → Service Workers → Unregister).'}
+                  </li>
+                  <li>
+                    {language === 'bn'
+                      ? `নিশ্চিত করুন hardware ও firmware version মিলেছে (এখন: ${verifyError.expected.toUpperCase()})।`
+                      : `Confirm hardware and firmware versions match (now: ${verifyError.expected.toUpperCase()}).`}
+                  </li>
+                  <li>
+                    {language === 'bn'
+                      ? 'নিচের Retry বোতাম চাপুন — fresh fetch হবে।'
+                      : 'Press Retry below — a fresh fetch will run.'}
+                  </li>
+                  <li>
+                    {language === 'bn'
+                      ? 'এখনও fail করলে অন্য network/incognito tab থেকে চেষ্টা করুন বা support-কে জানান।'
+                      : 'If it still fails, try another network/incognito tab or contact support.'}
+                  </li>
+                </ol>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={isDownloading}
+                    onClick={downloadPreparedFirmware}
+                  >
+                    {isDownloading ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" /> {t.downloading}</>
+                    ) : (
+                      <>🔄 {language === 'bn' ? 'পুনরায় চেষ্টা করুন (Retry)' : 'Retry'}</>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setVerifyError(null)}
+                  >
+                    {language === 'bn' ? 'বন্ধ করুন' : 'Dismiss'}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground break-all pt-1">
+                  URL: {verifyError.url}
+                </p>
+              </div>
+            )}
             {isValid && (
               <div className="flex items-start gap-2 p-3 bg-primary/10 border border-primary/30 rounded-lg">
                 <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
