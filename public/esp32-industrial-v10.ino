@@ -413,17 +413,59 @@ void sendGsmSms(const String& msg) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// WIFI
+// WIFI — non-blocking reconnect state machine
+//   Call wifiTick() every loop iteration. No delay() anywhere on this path so
+//   the 2s control cycle + safety invariants keep running while WiFi recovers.
+//   Backoff: 5s → 10s → 20s → 40s → 60s (cap), reset on successful connect.
 // ════════════════════════════════════════════════════════════════════════════
-void connectWifi() {
-  WiFi.mode(WIFI_STA);
+enum WifiState { WIFI_IDLE, WIFI_CONNECTING, WIFI_CONNECTED_OK };
+WifiState wifiState = WIFI_IDLE;
+unsigned long wifiAttemptStartedAt = 0;
+unsigned long wifiNextRetryAt = 0;
+uint32_t wifiBackoffMs = 5000;
+bool wifiInitDone = false;
+bool wifiPrevConnected = false;
+
+void wifiBeginAttempt() {
+  if (!wifiInitDone) { WiFi.mode(WIFI_STA); wifiInitDone = true; }
+  WiFi.disconnect(false, false);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  uint32_t t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) { delay(250); Serial.print("."); }
-  if (WiFi.status() == WL_CONNECTED) {
-    lastWifiOkAt = millis();
-    Serial.printf("\n[WiFi] %s\n", WiFi.localIP().toString().c_str());
+  wifiAttemptStartedAt = millis();
+  wifiState = WIFI_CONNECTING;
+  Serial.print("[WiFi] connecting…");
+}
+
+void wifiTick() {
+  unsigned long now = millis();
+  wl_status_t st = WiFi.status();
+
+  if (st == WL_CONNECTED) {
+    if (!wifiPrevConnected) {
+      Serial.printf("\n[WiFi] %s\n", WiFi.localIP().toString().c_str());
+      wifiPrevConnected = true;
+      wifiBackoffMs = 5000;  // reset backoff
+    }
+    wifiState = WIFI_CONNECTED_OK;
+    lastWifiOkAt = now;
+    return;
   }
+
+  // Lost / never had link
+  if (wifiPrevConnected) { Serial.println("[WiFi] link lost"); wifiPrevConnected = false; }
+
+  if (wifiState == WIFI_CONNECTING) {
+    // 15s attempt window — then back off
+    if (now - wifiAttemptStartedAt > 15000) {
+      Serial.printf("\n[WiFi] attempt failed, retry in %lus\n", wifiBackoffMs / 1000);
+      wifiNextRetryAt = now + wifiBackoffMs;
+      wifiBackoffMs = min<uint32_t>(wifiBackoffMs * 2, 60000);
+      wifiState = WIFI_IDLE;
+    }
+    return;
+  }
+
+  // IDLE — wait for retry slot
+  if (now >= wifiNextRetryAt) wifiBeginAttempt();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
