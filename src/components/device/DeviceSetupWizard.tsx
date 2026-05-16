@@ -101,6 +101,9 @@ export function DeviceSetupWizard() {
   const [version, setVersion] = useState<HwVersion | null>(null);
   const [wiringConfirmed, setWiringConfirmed] = useState(false);
   const [selectedSensors, setSelectedSensors] = useState<string[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [finalAck, setFinalAck] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const step: StepKey = STEPS[stepIdx].key;
   const progress = ((stepIdx + 1) / STEPS.length) * 100;
