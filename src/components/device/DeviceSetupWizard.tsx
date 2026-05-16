@@ -457,7 +457,7 @@ export function DeviceSetupWizard() {
               </div>
             </div>
 
-            <Button onClick={downloadFirmware} className="w-full" size="lg">
+            <Button onClick={openConfirm} className="w-full" size="lg">
               <Download className="h-4 w-4 mr-2" />
               {firmwareLabel} ডাউনলোড করুন
             </Button>
