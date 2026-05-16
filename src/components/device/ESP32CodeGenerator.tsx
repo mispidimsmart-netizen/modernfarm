@@ -322,27 +322,13 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
       let firmwareCode = await response.text();
 
       // ════════════════════════════════════════════════════════════════
-      // CONTENT VERIFICATION — parse the fetched .ino to confirm it
-      // actually matches the selected version + GPIO map. Aborts
-      // download on mismatch (prevents stale-cache or wrong-file ship).
+      // CONTENT VERIFICATION — see src/lib/firmwareVerifier.ts.
+      // Shared with unit tests in src/test/firmwareVerifier.test.ts.
       // ════════════════════════════════════════════════════════════════
-      const v8Signature = /INDUSTRIAL CONTROLLER v8/i;
-      const v8Pinmap =
-        /FAN_RELAY_PIN\s+25\b/.test(firmwareCode) &&
-        /HEATER_RELAY_PIN\s+14\b/.test(firmwareCode) &&
-        /LIGHT_RELAY_PIN\s+27\b/.test(firmwareCode);
-      const v10Signature = /Industrial Firmware v10/i;
-      const v10Pinmap =
-        /PIN_FAN_EXHAUST\s+5\b/.test(firmwareCode) &&
-        /PIN_HEATER\s+21\b/.test(firmwareCode) &&
-        /PIN_LIGHT\s+19\b/.test(firmwareCode);
+      const verify = verifyFirmwareContent(firmwareCode, firmwareVersion);
+      const detectedVersion = verify.detected;
 
-      const detectedVersion: FirmwareVersion | 'unknown' =
-        v10Signature.test(firmwareCode) && v10Pinmap ? 'v10'
-        : v8Signature.test(firmwareCode) && v8Pinmap ? 'v8'
-        : 'unknown';
-
-      if (detectedVersion !== firmwareVersion) {
+      if (!verify.matches) {
         setVerifyError({ expected: firmwareVersion, detected: detectedVersion, url: templateUrl });
         toast.error(
           language === 'bn'
