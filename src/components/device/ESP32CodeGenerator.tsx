@@ -333,11 +333,12 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
         : 'unknown';
 
       if (detectedVersion !== firmwareVersion) {
+        setVerifyError({ expected: firmwareVersion, detected: detectedVersion, url: templateUrl });
         toast.error(
           language === 'bn'
-            ? `❌ যাচাই ব্যর্থ — Server থেকে আসা ফাইলে ${detectedVersion === 'unknown' ? 'সঠিক version tag/GPIO map পাওয়া যায়নি' : detectedVersion.toUpperCase() + ' পাওয়া গেছে'}, কিন্তু আপনি ${firmwareVersion.toUpperCase()} চেয়েছেন। Download বাতিল করা হলো। Browser cache clear করে আবার চেষ্টা করুন।`
-            : `❌ Verification failed — fetched file ${detectedVersion === 'unknown' ? 'has no recognizable version tag/GPIO map' : 'is ' + detectedVersion.toUpperCase()}, but you selected ${firmwareVersion.toUpperCase()}. Download aborted. Clear browser cache and retry.`,
-          { duration: 8000 }
+            ? `❌ যাচাই ব্যর্থ — নিচের গাইড দেখুন এবং Retry চাপুন।`
+            : `❌ Verification failed — see the guide below and press Retry.`,
+          { duration: 6000 }
         );
         setIsDownloading(false);
         return;
