@@ -30,6 +30,7 @@ const otaConfigSchema = z.object({
 type FarmType = 'layer' | 'broiler';
 type FirmwareMode = 'hardcoded' | 'ota';
 type FirmwareVersion = 'v8' | 'v10';
+type HardwareVersion = 'v8' | 'v10' | 'unknown';
 
 interface ESP32CodeGeneratorProps {
   language?: 'bn' | 'en';
