@@ -30,6 +30,7 @@ const otaConfigSchema = z.object({
 type FarmType = 'layer' | 'broiler';
 type FirmwareMode = 'hardcoded' | 'ota';
 type FirmwareVersion = 'v8' | 'v10';
+type HardwareVersion = 'v8' | 'v10' | 'unknown';
 
 interface ESP32CodeGeneratorProps {
   language?: 'bn' | 'en';
@@ -58,6 +59,8 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const [shedName, setShedName] = useState('');
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
   const [firmwareVersion, setFirmwareVersion] = useState<FirmwareVersion>('v8');
+  const [hardwareVersion, setHardwareVersion] = useState<HardwareVersion>('unknown');
+  const [mismatchAck, setMismatchAck] = useState(false);
   const [farmId, setFarmId] = useState('');
   const [autoLoaded, setAutoLoaded] = useState(false);
   const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
@@ -266,9 +269,27 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     }
   };
 
+  const isMismatch =
+    hardwareVersion !== 'unknown' && hardwareVersion !== firmwareVersion;
+
   const downloadPreparedFirmware = async () => {
     if (!validateInputs()) {
       toast.error(t.fillAllFields);
+      return;
+    }
+
+    if (hardwareVersion === 'unknown') {
+      toast.error(language === 'bn'
+        ? 'প্রথমে device-এর hardware version (v8/v10) select করুন'
+        : 'Please select the device hardware version (v8/v10) first');
+      return;
+    }
+
+    if (isMismatch && !mismatchAck) {
+      toast.error(language === 'bn'
+        ? `⚠️ Hardware ${hardwareVersion.toUpperCase()} কিন্তু firmware ${firmwareVersion.toUpperCase()} — mismatch! নিচের checkbox-এ tick দিয়ে confirm করুন বা সঠিক version select করুন।`
+        : `⚠️ Hardware is ${hardwareVersion.toUpperCase()} but firmware is ${firmwareVersion.toUpperCase()} — mismatch! Tick the confirm checkbox or select the matching version.`,
+        { duration: 7000 });
       return;
     }
 
@@ -584,6 +605,71 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
                   : 'No device token found for this farm. Setup Wizard must be completed first.'}
               </p>
             )}
+          </div>
+        )}
+
+        {/* Hardware Version selector (asks user what device they have) */}
+        <div className="space-y-2 pb-2 border-b">
+          <Label className="text-sm flex items-center gap-2">
+            <Cpu className="h-3 w-3" />
+            {language === 'bn' ? 'এই device-এর Hardware Version' : 'This Device Hardware Version'}
+          </Label>
+          <Select value={hardwareVersion} onValueChange={(v) => { setHardwareVersion(v as HardwareVersion); setMismatchAck(false); }}>
+            <SelectTrigger>
+              <SelectValue placeholder={language === 'bn' ? 'নির্বাচন করুন...' : 'Select...'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unknown">
+                {language === 'bn' ? '— নির্বাচন করুন —' : '— Select —'}
+              </SelectItem>
+              <SelectItem value="v8">
+                v8 Hardware (Exhaust=25, Heater=14, DHT22, MQ-135)
+              </SelectItem>
+              <SelectItem value="v10">
+                v10 Hardware (Exhaust=5, Heater=21, SHT31/BH1750/ZE03)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-muted-foreground">
+            {language === 'bn'
+              ? 'বোর্ডের relay GPIO ও সেন্সর দেখে মিলিয়ে নিন। ভুল হলে relay উল্টো trigger হবে।'
+              : 'Match by relay GPIO + sensors on the board. Wrong choice will trigger relays incorrectly.'}
+          </p>
+        </div>
+
+        {/* Firmware ↔ Hardware mismatch warning */}
+        {isMismatch && (
+          <div className="border-2 border-destructive bg-destructive/10 rounded-lg p-3 space-y-2">
+            <p className="text-sm font-semibold text-destructive flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              {language === 'bn' ? 'Mismatch সতর্কতা' : 'Mismatch Warning'}
+            </p>
+            <p className="text-xs text-foreground">
+              {language === 'bn'
+                ? `আপনার device hardware ${hardwareVersion.toUpperCase()}, কিন্তু firmware ${firmwareVersion.toUpperCase()} select করা। এই combination flash করলে relay/সেন্সর ভুল GPIO-তে কাজ করবে — fans হিটারের জায়গায়, light alarm-এর জায়গায় চলতে পারে।`
+                : `Your device hardware is ${hardwareVersion.toUpperCase()} but firmware ${firmwareVersion.toUpperCase()} is selected. Flashing this combination will route relays/sensors to wrong GPIOs — fans may toggle the heater, lights may trigger the alarm.`}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                onClick={() => setFirmwareVersion(hardwareVersion as FirmwareVersion)}
+              >
+                {language === 'bn' ? `Firmware ${hardwareVersion.toUpperCase()}-এ পরিবর্তন করুন` : `Switch firmware to ${hardwareVersion.toUpperCase()}`}
+              </Button>
+              <label className="flex items-center gap-2 text-[11px] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={mismatchAck}
+                  onChange={(e) => setMismatchAck(e.target.checked)}
+                  className="rounded"
+                />
+                {language === 'bn'
+                  ? 'আমি জানি, তবুও download করব (override)'
+                  : 'I understand, download anyway (override)'}
+              </label>
+            </div>
           </div>
         )}
 
