@@ -1123,6 +1123,66 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           </div>
         </div>
       </CardContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={(o) => { if (!isDownloading) setConfirmOpen(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {language === 'bn' ? 'ডাউনলোডের আগে নিশ্চিত করুন' : 'Confirm before download'}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2 rounded-md border p-2">
+                  <div>
+                    <div className="text-xs text-muted-foreground">{language === 'bn' ? 'হার্ডওয়্যার' : 'Hardware'}</div>
+                    <div className="font-semibold">{hardwareVersion.toUpperCase()}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{language === 'bn' ? 'ফার্মওয়্যার' : 'Firmware'}</div>
+                    <div className="font-semibold">{firmwareVersion.toUpperCase()}</div>
+                  </div>
+                </div>
+                {isMismatch && (
+                  <p className="text-destructive font-medium">
+                    {language === 'bn'
+                      ? '⚠️ Hardware ও Firmware version মেলেনি — ভুল আপলোড করলে রিলে/সেন্সর কাজ করবে না।'
+                      : '⚠️ Hardware and firmware versions do not match — wrong upload will break relays/sensors.'}
+                  </p>
+                )}
+                <p className="text-muted-foreground">
+                  {language === 'bn'
+                    ? 'ডাউনলোডের পরে ফাইলের ভেতরের version tag ও GPIO map auto-verify হবে। mismatch হলে download বাতিল হবে।'
+                    : 'After fetch, the file\'s version tag and GPIO map will be auto-verified. Mismatch will abort the download.'}
+                </p>
+                <label className="flex items-start gap-2 cursor-pointer pt-1">
+                  <Checkbox checked={finalAck} onCheckedChange={(v) => setFinalAck(v === true)} />
+                  <span className="text-sm">
+                    {language === 'bn'
+                      ? `আমি নিশ্চিত আমার ESP32 wiring ${firmwareVersion.toUpperCase()} অনুযায়ী এবং আমি ${firmwareVersion.toUpperCase()} ফার্মওয়্যার আপলোড করতে চাই।`
+                      : `I confirm my ESP32 wiring matches ${firmwareVersion.toUpperCase()} and I want to upload ${firmwareVersion.toUpperCase()} firmware.`}
+                  </span>
+                </label>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDownloading}>
+              {language === 'bn' ? 'বাতিল' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!finalAck || isDownloading}
+              onClick={(e) => {
+                e.preventDefault();
+                setConfirmOpen(false);
+                downloadPreparedFirmware();
+              }}
+            >
+              {language === 'bn' ? 'Verify ও ডাউনলোড' : 'Verify & Download'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
