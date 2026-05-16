@@ -478,7 +478,7 @@ void setup() {
   Serial.printf("\nFarmEye ESP32 Industrial v%s (%s)\n", FW_VERSION, FW_CHANNEL);
   initRelays();
   detectSensors();
-  connectWifi();
+  wifiBeginAttempt();   // non-blocking; wifiTick() drives the rest
   lastSensorOkAt = millis();
 }
 
