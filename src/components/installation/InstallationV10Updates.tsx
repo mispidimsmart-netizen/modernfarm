@@ -266,10 +266,24 @@ export function InstallationV10SetupNotice() {
             variant="default"
             size="sm"
             className="w-full justify-start"
+            onClick={() => window.open('/esp32-industrial-v10.ino', '_blank')}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            <span className="flex-1 text-left">
+              Industrial v10 Beta (Unified — relay + Phase 9 sensors + GSM + safety)
+            </span>
+            <Badge variant="secondary" className="bg-background">
+              v10 Beta
+            </Badge>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start"
             onClick={() => window.open('/esp32-phase9-sensors.ino', '_blank')}
           >
             <Download className="h-4 w-4 mr-2" />
-            <span className="flex-1 text-left">Phase 9 Sensor Firmware (recommended)</span>
+            <span className="flex-1 text-left">Phase 9 Sensor Firmware (sensors only)</span>
             <Badge variant="secondary" className="bg-background">
               v10
             </Badge>
