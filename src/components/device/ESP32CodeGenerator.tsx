@@ -269,9 +269,27 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     }
   };
 
+  const isMismatch =
+    hardwareVersion !== 'unknown' && hardwareVersion !== firmwareVersion;
+
   const downloadPreparedFirmware = async () => {
     if (!validateInputs()) {
       toast.error(t.fillAllFields);
+      return;
+    }
+
+    if (hardwareVersion === 'unknown') {
+      toast.error(language === 'bn'
+        ? 'প্রথমে device-এর hardware version (v8/v10) select করুন'
+        : 'Please select the device hardware version (v8/v10) first');
+      return;
+    }
+
+    if (isMismatch && !mismatchAck) {
+      toast.error(language === 'bn'
+        ? `⚠️ Hardware ${hardwareVersion.toUpperCase()} কিন্তু firmware ${firmwareVersion.toUpperCase()} — mismatch! নিচের checkbox-এ tick দিয়ে confirm করুন বা সঠিক version select করুন।`
+        : `⚠️ Hardware is ${hardwareVersion.toUpperCase()} but firmware is ${firmwareVersion.toUpperCase()} — mismatch! Tick the confirm checkbox or select the matching version.`,
+        { duration: 7000 });
       return;
     }
 
