@@ -141,13 +141,50 @@ export function DeviceSetupWizard() {
   const firmwareFile = version === 'v10' ? '/esp32-industrial-v10.ino' : '/esp32-industrial.ino';
   const firmwareLabel = version === 'v10' ? 'Industrial v10 (Beta)' : 'Industrial v8 (Stable)';
 
-  const downloadFirmware = () => {
+  const downloadFirmware = async () => {
     if (!version) return;
-    const a = document.createElement('a');
-    a.href = `${firmwareFile}?t=${Date.now()}`;
-    a.download = version === 'v10' ? 'esp32-industrial-v10.ino' : 'esp32-industrial.ino';
-    a.click();
-    toast.success(`${firmwareLabel} ডাউনলোড শুরু হলো`);
+    setIsVerifying(true);
+    try {
+      const url = `${firmwareFile}?t=${Date.now()}&r=${Math.random().toString(36).slice(2, 10)}`;
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const content = await res.text();
+      const verify = verifyFirmwareContent(content, version);
+      if (!verify.matches) {
+        toast.error(
+          `ভেরিফিকেশন ব্যর্থ: প্রত্যাশিত ${version.toUpperCase()}, পাওয়া গেছে ${verify.detected.toUpperCase()}। ডাউনলোড বাতিল।`
+        );
+        return;
+      }
+      const blob = new Blob([content], { type: 'text/plain' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = version === 'v10' ? 'esp32-industrial-v10.ino' : 'esp32-industrial.ino';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      toast.success(`${firmwareLabel} ডাউনলোড শুরু হলো — ${version.toUpperCase()} verified ✓`);
+      setConfirmOpen(false);
+      setFinalAck(false);
+    } catch (e) {
+      toast.error(`ডাউনলোড ব্যর্থ: ${(e as Error).message}`);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const openConfirm = () => {
+    if (!version) return;
+    setFinalAck(false);
+    setConfirmOpen(true);
   };
 
   const goNext = () => setStepIdx(i => Math.min(i + 1, STEPS.length - 1));
