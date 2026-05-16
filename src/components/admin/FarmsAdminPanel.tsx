@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Building2, Search, Trash2, MapPin, User, Undo2, Archive } from 'lucide-react';
+import { Building2, Search, Trash2, MapPin, User, Undo2, Archive, Flame } from 'lucide-react';
 
 interface FarmRow {
   id: string;
@@ -271,10 +271,19 @@ export function FarmsAdminPanel() {
                           size="icon"
                           variant="ghost"
                           title="ফার্ম সরান (পরে ফেরানো যাবে)"
-                          className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
+                          className="h-8 w-8 text-amber-400 hover:bg-amber-500/10"
                           onClick={() => setConfirmDelete({ farm: f, mode: 'soft' })}
                         >
                           <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="একবারে স্থায়ীভাবে মুছুন (ফেরানো যাবে না)"
+                          className="h-8 w-8 text-rose-500 hover:bg-rose-500/15"
+                          onClick={() => setConfirmDelete({ farm: f, mode: 'permanent' })}
+                        >
+                          <Flame className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
