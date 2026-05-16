@@ -304,10 +304,20 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
       // Fetch firmware template — branch on selected version
       // v8 = esp32-industrial.ino (legacy stable, mass-deployed in field)
       // v10 = esp32-industrial-v10.ino (Phase 9 sensors, new GPIO map, BETA)
-      const templateUrl = firmwareVersion === 'v10'
-        ? '/esp32-industrial-v10.ino?t=' + Date.now()
-        : '/esp32-industrial.ino?t=' + Date.now();
-      const response = await fetch(templateUrl);
+      // Cache-busting: unique query (timestamp + random) + no-store + explicit no-cache headers
+      // ensures the browser/SW/CDN never serves a stale .ino file.
+      const cacheBuster = `t=${Date.now()}&r=${Math.random().toString(36).slice(2, 10)}`;
+      const baseFile = firmwareVersion === 'v10'
+        ? '/esp32-industrial-v10.ino'
+        : '/esp32-industrial.ino';
+      const templateUrl = `${baseFile}?${cacheBuster}`;
+      const response = await fetch(templateUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch firmware template');
       let firmwareCode = await response.text();
 
