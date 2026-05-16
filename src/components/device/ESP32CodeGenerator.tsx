@@ -299,7 +299,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     }
 
     setIsDownloading(true);
-    
+    setVerifyError(null);
     try {
       // Fetch firmware template — branch on selected version
       // v8 = esp32-industrial.ino (legacy stable, mass-deployed in field)
