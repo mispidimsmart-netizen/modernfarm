@@ -587,6 +587,40 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           </div>
         )}
 
+        {/* Firmware Version selector (v8 Stable vs v10 Beta) */}
+        <div className="space-y-2 pb-2 border-b">
+          <Label className="text-sm flex items-center gap-2">
+            <Cpu className="h-3 w-3" />
+            {language === 'bn' ? 'ফার্মওয়্যার ভার্সন' : 'Firmware Version'}
+          </Label>
+          <Select value={firmwareVersion} onValueChange={(v) => setFirmwareVersion(v as FirmwareVersion)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="v8">
+                v8.0.0 — Stable (legacy GPIO: Exhaust=25, Heater=14)
+              </SelectItem>
+              <SelectItem value="v10">
+                v10.0.0-beta.1 — Beta (Phase 9 sensors, Exhaust=5, Heater=21)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {firmwareVersion === 'v10' ? (
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              {language === 'bn'
+                ? '⚠️ v10 Beta — শুধুমাত্র নতুন v10 hardware (Phase 9 pin map)। পুরাতন মাঠের device-এ flash করবেন না। OTA mode এখনো support নেই।'
+                : '⚠️ v10 Beta — only for new v10 hardware (Phase 9 pin map). Do NOT flash on existing field devices. OTA mode not yet supported.'}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              {language === 'bn'
+                ? 'মাঠে চলা সব device-এর জন্য নিরাপদ default।'
+                : 'Safe default for all field-deployed devices.'}
+            </p>
+          )}
+        </div>
+
         {/* Step 1: Firmware Mode */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
