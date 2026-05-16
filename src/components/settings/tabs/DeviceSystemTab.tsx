@@ -577,6 +577,17 @@ export function DeviceSystemTab() {
         language={language}
       >
         <div className="space-y-4">
+          <Button
+            variant="default"
+            className="w-full"
+            onClick={() => (window.location.href = '/device-setup')}
+          >
+            <FileCode className="mr-2 h-4 w-4" />
+            {language === 'bn'
+              ? 'ডিভাইস সেটআপ উইজার্ড (v8/v10)'
+              : 'Device Setup Wizard (v8/v10)'}
+          </Button>
+
           <ESP32CodeGenerator language={language} showFarmSelector={true} />
 
           <Separator />
