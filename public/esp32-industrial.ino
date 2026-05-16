@@ -3228,6 +3228,29 @@ void checkCommands() {
           requestSprinkler(value);
           forceApplyManualRelay("sprinkler", value);
           Serial.println(value ? "🚿 Sprinkler relay ON (manual immediate)" : "⏹️ Sprinkler relay OFF (manual immediate)");
+        } else if (type == "restart" || type == "reboot") {
+          // Admin remote restart — ACK first, then reboot after a short delay
+          // so the ACK HTTP call below has time to complete.
+          manualCommandPending = false;
+          Serial.println("🔄 REMOTE RESTART command received — will reboot in ~2s");
+          if (id.length() > 0) {
+            HTTPClient ack;
+            String ackUrl = String(API_URL) + "/commands-ack";
+            ack.begin(ackUrl);
+            ack.addHeader("Content-Type", "application/json");
+            ack.addHeader("x-device-token", activeDeviceToken.c_str());
+            ack.setTimeout(3000);
+            StaticJsonDocument<256> adoc;
+            adoc["command_ids"][0] = id;
+            String ap; serializeJson(adoc, ap);
+            attachSignature(ack, ap);
+            ack.POST(ap); ack.end();
+            if (cri.length() > 0) markCommandApplied(cri);
+          }
+          // Non-blocking wait so watchdog stays happy
+          { unsigned long w = millis(); while (millis() - w < 1500) { esp_task_wdt_reset(); yield(); } }
+          ESP.restart();
+          return; // unreachable but keeps compiler happy
         } else if (type == "stop_automation") {
           // Full manual mode: disable automation + safety arbiter entirely until AUTO resumes
           localManualOverride = value;
