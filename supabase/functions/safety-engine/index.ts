@@ -149,9 +149,11 @@ interface EvaluationInput {
 }
 
 Deno.serve(async (req) => {
-  const cors = buildCorsHeaders(req.headers.get('origin'));
+  // Per-request CORS headers — reflects allowed Origin so the browser can
+  // read the response body. Shadows the outer module-level const.
+  const corsHeaders = buildCorsHeaders(req.headers.get('origin'));
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: cors });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {

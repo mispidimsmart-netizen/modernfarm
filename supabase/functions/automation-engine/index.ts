@@ -359,9 +359,10 @@ async function detectAndMarkStaleDevices(
 
 // ================ MAIN HANDLER ================
 Deno.serve(async (req) => {
-  const cors = buildCorsHeaders(req.headers.get('origin'));
+  // Per-request CORS headers — see safety-engine for rationale.
+  const corsHeaders = buildCorsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: cors });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
