@@ -1,9 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-token',
-};
+// CORS — restrict to known FarmEye origins. See safety-engine for rationale.
+const ALLOWED_ORIGINS = new Set<string>([
+  'https://farmeye.lovable.app',
+  'https://farmeye.pro.bd',
+  'https://modernfarm.pro.bd',
+]);
+const ALLOWED_ORIGIN_SUFFIXES = ['.lovable.app', '.lovable.dev'];
+function buildCorsHeaders(origin: string | null): Record<string, string> {
+  const allow =
+    origin && (ALLOWED_ORIGINS.has(origin) ||
+      ALLOWED_ORIGIN_SUFFIXES.some((s) => origin.endsWith(s)))
+      ? origin
+      : 'null';
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-token',
+  };
+}
+const corsHeaders = buildCorsHeaders(null);
 
 // ================ RETRY HELPER WITH TIMEOUT ================
 async function fetchWithRetry(
@@ -343,8 +359,9 @@ async function detectAndMarkStaleDevices(
 
 // ================ MAIN HANDLER ================
 Deno.serve(async (req) => {
+  const cors = buildCorsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: cors });
   }
 
   try {
