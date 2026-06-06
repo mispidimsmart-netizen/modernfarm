@@ -48,7 +48,8 @@ export function useBoundedOverride() {
     if (!user) return;
 
     try {
-      // Update device_status for the SELECTED farm only (multi-tenancy safety)
+      // Update device_status scoped to BOTH farm and shed when known so a
+      // single-shed override does not leak across the user's other sheds.
       let upd = supabase
         .from('device_status')
         .update({
@@ -57,6 +58,7 @@ export function useBoundedOverride() {
         })
         .eq('user_id', user.id);
       if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 
       // Log override intent
@@ -70,6 +72,8 @@ export function useBoundedOverride() {
           override_reason: request.reason,
           target_temp: request.targetTemp,
           is_out_of_range: _isOutOfRange,
+          farm_id: selectedFarmId,
+          shed_id: selectedShedId,
         },
       });
 
@@ -80,14 +84,13 @@ export function useBoundedOverride() {
     } catch (err) {
       console.error('Failed to start override:', err);
     }
-  }, [user, selectedShedId, language]);
+  }, [user, selectedFarmId, selectedShedId, language]);
 
-  // Send end-override request
+  // Send end-override request — same farm+shed scoping as startOverride
   const endOverride = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Update device_status for the SELECTED farm only (multi-tenancy safety)
       let upd = supabase
         .from('device_status')
         .update({
@@ -96,6 +99,7 @@ export function useBoundedOverride() {
         })
         .eq('user_id', user.id);
       if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 
       toast.success(
@@ -104,7 +108,7 @@ export function useBoundedOverride() {
     } catch (err) {
       console.error('Failed to end override:', err);
     }
-  }, [user, selectedShedId, language]);
+  }, [user, selectedFarmId, selectedShedId, language]);
 
   // Read state from safety_status (display-only)
   const state: BoundedOverrideState = {

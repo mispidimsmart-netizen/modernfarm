@@ -260,7 +260,10 @@ export function InstallationV10SetupNotice() {
           ))}
         </div>
 
-        {/* New firmware downloads */}
+        {/* Firmware downloads — only production-ready images are exposed.
+            esp32-unified.ino and esp32-mqtt.ino are legacy disabled stubs
+            (GPIO 16/17 conflict with v10 I²C SDA/SCL) and were removed from
+            this UI to prevent users from flashing dangerous code. */}
         <div className="grid grid-cols-1 gap-2">
           <Button
             variant="default"
@@ -270,10 +273,10 @@ export function InstallationV10SetupNotice() {
           >
             <Download className="h-4 w-4 mr-2" />
             <span className="flex-1 text-left">
-              Industrial v10 Beta (Unified — relay + Phase 9 sensors + GSM + safety)
+              Industrial v10 (Production — relay + Phase 9 sensors + GSM + safety + offline buffer + watchdog)
             </span>
             <Badge variant="secondary" className="bg-background">
-              v10 Beta
+              v10.1
             </Badge>
           </Button>
           <Button
@@ -292,31 +295,11 @@ export function InstallationV10SetupNotice() {
             variant="outline"
             size="sm"
             className="w-full justify-start"
-            onClick={() => window.open('/esp32-unified.ino', '_blank')}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            <span className="flex-1 text-left">Unified Firmware (MQTT + OTA + GSM)</span>
-            <Badge variant="secondary">All-in-one</Badge>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
             onClick={() => window.open('/esp32-ota-signed.ino', '_blank')}
           >
             <Download className="h-4 w-4 mr-2" />
             <span className="flex-1 text-left">Signed OTA Updater</span>
             <Badge variant="secondary">Security</Badge>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => window.open('/esp32-mqtt.ino', '_blank')}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            <span className="flex-1 text-left">MQTT Realtime Telemetry</span>
-            <Badge variant="secondary">Optional</Badge>
           </Button>
         </div>
 

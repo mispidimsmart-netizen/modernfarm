@@ -14,14 +14,21 @@ const v8Sample = `
 #define LIGHT_RELAY_PIN  27
 `;
 
+// v10 verifier now requires ALL eight relay pins to be present so partial /
+// Frankenstein pin maps cannot pass as v10.
 const v10Sample = `
 /*
  * FarmEye ESP32 — Industrial Firmware v10 (Beta)
  * Phase 9 sensors + new pin map
  */
 #define PIN_FAN_EXHAUST 5
-#define PIN_HEATER      21
+#define PIN_FAN_CEILING 18
 #define PIN_LIGHT       19
+#define PIN_HEATER      21
+#define PIN_FOGGER      22
+#define PIN_ALARM       23
+#define PIN_SPRINKLER   25
+#define PIN_FAN_CIRC    26
 `;
 
 describe('verifyFirmwareContent — match cases', () => {
@@ -61,7 +68,7 @@ describe('verifyFirmwareContent — mismatch cases', () => {
     expect(r.matches).toBe(false);
   });
 
-  it('returns unknown when v8 tag present but pinmap is v10', () => {
+  it('returns unknown when v8 tag present but partial v10 pinmap', () => {
     const frankenstein = `
       // SMART FARM - INDUSTRIAL CONTROLLER v8.0.0
       #define PIN_FAN_EXHAUST 5
@@ -73,7 +80,10 @@ describe('verifyFirmwareContent — mismatch cases', () => {
     expect(r.matches).toBe(false);
     expect(r.hasV8Tag).toBe(true);
     expect(r.hasV8Pinmap).toBe(false);
-    expect(r.hasV10Pinmap).toBe(true);
+    // Partial pinmap (3 of 8 pins) is correctly rejected
+    expect(r.hasV10Pinmap).toBe(false);
+    expect(r.v10PinResults?.PIN_FAN_EXHAUST).toBe(true);
+    expect(r.v10PinResults?.PIN_SPRINKLER).toBe(false);
   });
 
   it('returns unknown when v10 tag present but pinmap is v8', () => {

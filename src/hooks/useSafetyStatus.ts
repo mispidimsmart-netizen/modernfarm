@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
-import { useFarmContext } from '@/context/FarmContext';
+import { useFarmContextSafe } from '@/context/FarmContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export type SystemState = 'NORMAL' | 'WARNING' | 'DANGER' | 'EMERGENCY' | 'SURVIVAL' | 'SENSOR_FAIL';
@@ -132,8 +132,11 @@ const DEFAULT_SAFETY: Omit<SafetyStatus, 'id' | 'updated_at'> = {
 export function useSafetyStatus() {
   const { user } = useAuth();
   const { selectedShedId } = useSelectedShed();
-  let selectedFarmId: string | null = null;
-  try { selectedFarmId = useFarmContext().selectedFarmId; } catch { /* outside provider */ }
+  // useFarmContextSafe never throws — returns null outside a FarmProvider —
+  // which keeps the hook compliant with the Rules of Hooks (no conditional
+  // hook invocation, no try/catch around a hook call).
+  const farmCtx = useFarmContextSafe();
+  const selectedFarmId: string | null = farmCtx?.selectedFarmId ?? null;
   const queryClient = useQueryClient();
 
   // Fetch current safety status (RLS enforces farm membership)
