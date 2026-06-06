@@ -115,6 +115,17 @@ export function useFarmContext() {
   return context;
 }
 
+/**
+ * Non-throwing variant for components/hooks that may render outside a
+ * FarmProvider (e.g. tests, public pages, or shared hooks like
+ * useSafetyStatus). Returns `null` when the provider is absent — callers
+ * can decide whether that is acceptable.
+ */
+export function useFarmContextSafe(): FarmContextType | null {
+  const context = useContext(FarmContext);
+  return context ?? null;
+}
+
 // Hook: Farm members management
 export function useFarmMembers(farmId?: string | null) {
   const { user } = useAuth();
