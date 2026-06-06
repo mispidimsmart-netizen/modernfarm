@@ -2270,6 +2270,103 @@ async function getDeviceState(supabase: any, userId: string, shedId: string | nu
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// GET /desired-state — flat response consumed by Industrial v10 firmware.
+//   Body shape:
+//     {
+//       desired_fan_on, desired_fan_ceiling, desired_fan_circ,
+//       desired_light_on, desired_heater_on, desired_fogger_on,
+//       desired_alarm_on, desired_sprinkler_on,
+//       manual_override, is_broiler_brooding
+//     }
+//   `is_broiler_brooding` is derived server-side as:
+//       shed.farm_type === 'broiler' AND active broiler batch age ≤ 21 days.
+// ════════════════════════════════════════════════════════════════════════════
+async function getDesiredStateFlat(
+  supabase: any,
+  userId: string,
+  farmId: string | null,
+  shedId: string | null,
+): Promise<Response> {
+  try {
+    // 1. Desired relay state (farm- and shed-scoped where available)
+    let statusQ = supabase
+      .from('device_status')
+      .select([
+        'desired_fan_on', 'desired_fan_speed',
+        'desired_ceiling_fan_on', 'desired_circulation_fan_on',
+        'desired_light_on', 'desired_heater_on', 'desired_fogger_on',
+        'desired_alarm_on', 'desired_sprinkler_on',
+        'desired_manual_override',
+      ].join(','))
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (farmId) statusQ = statusQ.eq('farm_id', farmId);
+    if (shedId) statusQ = statusQ.eq('shed_id', shedId);
+    const { data: status } = await statusQ.maybeSingle();
+
+    // 2. Brooding flag — shed.farm_type === 'broiler' AND active batch age ≤ 21d
+    let farmType: string = 'layer';
+    if (shedId) {
+      const { data: shed } = await supabase
+        .from('sheds').select('farm_type').eq('id', shedId).maybeSingle();
+      farmType = shed?.farm_type || 'layer';
+    } else {
+      const { data: profile } = await supabase
+        .from('profiles').select('farm_type').eq('id', userId).maybeSingle();
+      farmType = profile?.farm_type || 'layer';
+    }
+
+    let isBroilerBrooding = false;
+    if (farmType === 'broiler') {
+      const { data: batch } = await supabase
+        .from('broiler_batches')
+        .select('start_date')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (batch?.start_date) {
+        const ageDays = Math.max(
+          1,
+          Math.ceil((Date.now() - new Date(batch.start_date).getTime()) / 86_400_000),
+        );
+        isBroilerBrooding = ageDays <= 21;
+      } else {
+        // No batch yet on a broiler shed → assume brooding (safer for chicks)
+        isBroilerBrooding = true;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        desired_fan_on:       status?.desired_fan_on ?? false,
+        desired_fan_ceiling:  status?.desired_ceiling_fan_on ?? false,
+        desired_fan_circ:     status?.desired_circulation_fan_on ?? false,
+        desired_light_on:     status?.desired_light_on ?? false,
+        desired_heater_on:    status?.desired_heater_on ?? false,
+        desired_fogger_on:    status?.desired_fogger_on ?? false,
+        desired_alarm_on:     status?.desired_alarm_on ?? false,
+        desired_sprinkler_on: status?.desired_sprinkler_on ?? false,
+        manual_override:      status?.desired_manual_override ?? false,
+        is_broiler_brooding:  isBroilerBrooding,
+        server_time:          new Date().toISOString(),
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  } catch (err) {
+    console.error('[desired-state] error', err);
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch desired state', code: 'FETCH_FAILED' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+}
+
+
+
 async function getSettings(supabase: any, userId: string) {
   // Return ALL settings for fail-safe caching on ESP32
   const { data, error } = await supabase
