@@ -143,8 +143,11 @@ async function verifyDeviceSignature(
 // | 80-85  | High Stress | Fan HIGH       |
 // | > 85   | Danger      | Fan HIGH+Alert |
 // ═══════════════════════════════════════════════════════════════════════════
+// Heat Stress Index — Steadman formula. MUST match firmware calcHSI() in
+// public/esp32-industrial-v10.ino (line ~250) and src/lib/heatStressIndex.ts
+// so cloud and device agree on a single number for the same inputs.
 function calculateHSI(temperature: number, humidity: number): number {
-  return 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
+  return (1.8 * temperature + 32) - ((0.55 - 0.0055 * humidity) * (1.8 * temperature - 26));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -270,8 +273,9 @@ interface SensorPayload {
   pm25_ugm3?: number;          // PMS5003
   pm10_ugm3?: number;          // PMS5003
   sensor_source?: Record<string, string>;
-  device_id?: string;
-  shed_id?: string;
+  sensor_error?: boolean;      // firmware sets true when sensors failed
+  fw_version?: string;
+  fw_channel?: string;
 }
 
 interface DeviceStatusPayload {
@@ -732,6 +736,17 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
       return await handleQualityUpdate(bodyData, supabase, userId, deviceToken);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🎯 GET /desired-state — flat desired_* keys consumed by Industrial v10
+    //   Returns the cloud-requested relay states plus the `is_broiler_brooding`
+    //   flag the firmware needs to honour safety Invariant #2 (heater allowed
+    //   only during broiler brooding when temp < 12 °C).
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (req.method === 'GET' && path === 'desired-state') {
+      return await getDesiredStateFlat(
+        supabase, userId, deviceFarmId ?? null, deviceShedId ?? null,
+      );
+    }
 
     // ===== GET DEVICE STATE ENDPOINT =====
     // Get current state for a specific device/shed
