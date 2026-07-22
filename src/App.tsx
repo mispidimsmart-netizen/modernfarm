@@ -41,7 +41,7 @@ function lazyRetry<T extends React.ComponentType<any>>(
 
 
 // Lazy load pages for better initial load performance
-const LoginPage = lazyRetry(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
+const LoginPage = lazyRetry(() => import("./pages/LoginRoute").then(m => ({ default: m.LoginRoute })));
 const Dashboard = lazyRetry(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
 const ControlPage = lazyRetry(() => import("./pages/ControlPage").then(m => ({ default: m.ControlPage })));
 const AutomationPage = lazyRetry(() => import("./pages/AutomationPage").then(m => ({ default: m.AutomationPage })));
@@ -71,6 +71,7 @@ const WorkerPage = lazyRetry(() => import("./pages/WorkerPage"));
 const MembersPage = lazyRetry(() => import("./pages/MembersPage"));
 const SentryTestPage = lazyRetry(() => import("./pages/SentryTestPage"));
 const PinMapPage = lazyRetry(() => import("./pages/PinMapPage"));
+const OAuthConsentPage = lazyRetry(() => import("./pages/OAuthConsentPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
 import { CriticalAlertBanner } from "./components/dashboard/CriticalAlertBanner";
@@ -182,9 +183,9 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to="/" replace /> : <LoginPage />} 
+        <Route
+          path="/login"
+          element={<LoginPage />}
         />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* Public transparency pages — no auth required */}
@@ -378,6 +379,8 @@ function AppRoutes() {
         <Route path="/phase9-report" element={<ProtectedRoute><RoleProtectedRoute requiredRole="admin"><Phase9ReportPage /></RoleProtectedRoute></ProtectedRoute>} />
         <Route path="/benchmark" element={<ProtectedRoute><BenchmarkPage /></ProtectedRoute>} />
         <Route path="/pin-map" element={<ProtectedRoute><PinMapPage /></ProtectedRoute>} />
+        {/* OAuth 2.1 consent page for MCP / external app authorization */}
+        <Route path="/.lovable/oauth/consent" element={<OAuthConsentPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

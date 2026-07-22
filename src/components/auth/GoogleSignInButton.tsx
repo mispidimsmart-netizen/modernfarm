@@ -6,9 +6,11 @@ import { useAuth } from '@/context/AuthContext';
 interface Props {
   /** Show "or" divider above */
   showDivider?: boolean;
+  /** Relative same-origin path to return to after OAuth (e.g. "/.lovable/oauth/consent?..."). Defaults to "/". */
+  nextPath?: string;
 }
 
-export function GoogleSignInButton({ showDivider = true }: Props) {
+export function GoogleSignInButton({ showDivider = true, nextPath = '/' }: Props) {
   const { language } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -16,8 +18,11 @@ export function GoogleSignInButton({ showDivider = true }: Props) {
   const handleClick = async () => {
     setLoading(true);
     try {
+      const safeNext = nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/';
+      // Route back through /login so nextPath is consumed after the session hydrates.
+      const returnTo = `${window.location.origin}/login?next=${encodeURIComponent(safeNext)}`;
       const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+        redirect_uri: returnTo,
       });
       if (result.error) {
         toast({

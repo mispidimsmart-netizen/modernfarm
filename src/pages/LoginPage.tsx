@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Phone, User, Building2, Crown, HardHat, Ticket, Egg, Eye, EyeOff, ChevronDown, Bird, Drumstick } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { translations } from '@/lib/translations';
 import { Button } from '@/components/ui/button';
@@ -72,9 +72,18 @@ const Footer = ({ isSignUp, onToggle }: { isSignUp: boolean; onToggle: () => voi
   </>
 );
 
+// Safe same-origin relative path validator (for OAuth `next` return).
+function safeNextPath(v: string | null): string {
+  if (!v) return '/';
+  if (!v.startsWith('/') || v.startsWith('//')) return '/';
+  return v;
+}
+
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get('next'));
   const { toast } = useToast();
 
   // Shared
@@ -168,7 +177,7 @@ export function LoginPage() {
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
-        navigate('/');
+        navigate(nextPath);
       }
     } catch {
       toast({ title: 'ত্রুটি', description: 'সংযোগ ত্রুটি', variant: 'destructive' });
@@ -274,7 +283,7 @@ export function LoginPage() {
             }
           }
 
-          navigate('/');
+          navigate(nextPath);
         }
       }
     } catch {
@@ -419,7 +428,7 @@ export function LoginPage() {
                     </Button>
                   </div>
 
-                  <GoogleSignInButton />
+                  <GoogleSignInButton nextPath={nextPath} />
                 </form>
               </motion.div>
             )}
@@ -614,7 +623,7 @@ export function LoginPage() {
             </Button>
           </div>
 
-          <GoogleSignInButton />
+          <GoogleSignInButton nextPath={nextPath} />
         </form>
 
         {/* Trust Indicators */}
