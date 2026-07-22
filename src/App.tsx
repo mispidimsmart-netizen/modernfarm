@@ -41,7 +41,7 @@ function lazyRetry<T extends React.ComponentType<any>>(
 
 
 // Lazy load pages for better initial load performance
-const LoginPage = lazyRetry(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
+const LoginPage = lazyRetry(() => import("./pages/LoginRoute").then(m => ({ default: m.LoginRoute })));
 const Dashboard = lazyRetry(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
 const ControlPage = lazyRetry(() => import("./pages/ControlPage").then(m => ({ default: m.ControlPage })));
 const AutomationPage = lazyRetry(() => import("./pages/AutomationPage").then(m => ({ default: m.AutomationPage })));
@@ -183,9 +183,9 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to="/" replace /> : <LoginPage />} 
+        <Route
+          path="/login"
+          element={<LoginPage />}
         />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         {/* Public transparency pages — no auth required */}

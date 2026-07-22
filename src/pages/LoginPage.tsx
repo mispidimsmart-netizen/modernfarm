@@ -428,7 +428,7 @@ export function LoginPage() {
                     </Button>
                   </div>
 
-                  <GoogleSignInButton />
+                  <GoogleSignInButton nextPath={nextPath} />
                 </form>
               </motion.div>
             )}
@@ -623,7 +623,7 @@ export function LoginPage() {
             </Button>
           </div>
 
-          <GoogleSignInButton />
+          <GoogleSignInButton nextPath={nextPath} />
         </form>
 
         {/* Trust Indicators */}
