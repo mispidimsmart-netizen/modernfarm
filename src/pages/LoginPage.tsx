@@ -72,9 +72,18 @@ const Footer = ({ isSignUp, onToggle }: { isSignUp: boolean; onToggle: () => voi
   </>
 );
 
+// Safe same-origin relative path validator (for OAuth `next` return).
+function safeNextPath(v: string | null): string {
+  if (!v) return '/';
+  if (!v.startsWith('/') || v.startsWith('//')) return '/';
+  return v;
+}
+
 export function LoginPage() {
   const { language, signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get('next'));
   const { toast } = useToast();
 
   // Shared
