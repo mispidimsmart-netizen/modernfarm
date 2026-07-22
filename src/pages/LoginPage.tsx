@@ -177,7 +177,7 @@ export function LoginPage() {
       if (error) {
         toast({ title: 'ত্রুটি', description: error.message, variant: 'destructive' });
       } else {
-        navigate('/');
+        navigate(nextPath);
       }
     } catch {
       toast({ title: 'ত্রুটি', description: 'সংযোগ ত্রুটি', variant: 'destructive' });
@@ -283,7 +283,7 @@ export function LoginPage() {
             }
           }
 
-          navigate('/');
+          navigate(nextPath);
         }
       }
     } catch {
