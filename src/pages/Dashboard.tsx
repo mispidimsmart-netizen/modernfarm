@@ -140,12 +140,6 @@ export function Dashboard() {
   const heatStressRiskResult = useHeatStressRiskPrediction();
 
 
-  // Ammonia rising trend detection
-  const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
-
-  // Tomorrow's heat stress risk prediction
-  const heatStressRiskResult = useHeatStressRiskPrediction();
-
   // Fogger status for cooling efficiency detection
   const foggerStatus = useFoggerCooling({
     temperature: sensorData.temperature,
