@@ -37,8 +37,11 @@ export function ManualControlTimerDialog({
   deviceIcon,
   onConfirm,
   onCancel,
+  intent = 'on',
 }: ManualControlTimerDialogProps) {
   const { language } = useAuth();
+  const isOff = intent === 'off';
+
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
 
   const handleConfirm = () => {
