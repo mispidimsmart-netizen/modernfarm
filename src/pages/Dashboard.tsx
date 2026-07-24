@@ -230,6 +230,7 @@ export function Dashboard() {
                 <EspConnectionBanner />
                 <FarmHealthScore />
                 <InsideOutsideDeltaCard />
+                <DeviceStatusSummary />
                 <TodayReadableSummary />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -239,6 +240,7 @@ export function Dashboard() {
                     <SystemActivityCard />
                   </Suspense>
                 </div>
+
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     📈 {language === 'bn' ? 'সেন্সর ট্রেন্ড' : 'Sensor Trends'}
