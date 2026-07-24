@@ -205,6 +205,31 @@ export function ControlPage() {
     }
   }, [rawDeviceStatus]);
 
+  // Helper: clear a device's desired_* column (null-out) so automation resumes.
+  // Used by timer expiry AND handleStop — never sends a raw hardware OFF, which
+  // would race the automation engine.
+  const clearDesiredColumn = useCallback(async (deviceKey: string) => {
+    const desiredColMap: Record<string, string> = {
+      fan: 'desired_fan_on',
+      light: 'desired_light_on',
+      alarm: 'desired_alarm_on',
+      heater: 'desired_heater_on',
+      circulation_fan: 'desired_circulation_fan_on',
+      fogger: 'desired_fogger_on',
+      ceiling_fan: 'desired_ceiling_fan_on',
+      sprinkler: 'desired_sprinkler_on',
+    };
+    const col = desiredColMap[deviceKey];
+    if (!col || !user) return;
+    let q = supabase
+      .from('device_status')
+      .update({ [col]: null, updated_at: new Date().toISOString() } as any)
+      .eq('user_id', user.id);
+    if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+    if (selectedShedId) q = q.eq('shed_id', selectedShedId);
+    await q;
+  }, [user, selectedFarmId, selectedShedId]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -215,22 +240,35 @@ export function ControlPage() {
 
       if (expired.length === 0) return;
 
-      // Side effects: turn devices off + notify
+      // Safety guard: if a protection is forcing this device ON right now,
+      // do NOT try to turn it off — safety engine will re-assert immediately
+      // causing relay oscillation. Silently keep the device running.
+      const heatActive = sensorData.temperature > Number(farmSettings?.temperature_max ?? 32);
+      const gasActive = sensorData.ammonia > Number(farmSettings?.ammonia_max ?? 25);
+      const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
+
+      // Side effect: clear desired_* → null so automation resumes.
+      // Do NOT send a raw OFF command (would fight the automation engine).
       expired.forEach((deviceKey) => {
-        const cmdType = deviceKey as
-          | 'fan' | 'light' | 'alarm' | 'heater'
-          | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-        sendCommand.mutate({
-          commandType: cmdType,
-          commandValue: false,
-          shedId: selectedShedId || undefined,
-        });
+        const safetyLocked =
+          (heatActive && coolingDevices.includes(deviceKey)) ||
+          (gasActive && (deviceKey === 'fan' || deviceKey === 'circulation_fan'));
+        if (safetyLocked) {
+          toast({
+            title: language === 'bn' ? '🛡️ সেফটি সক্রিয়' : '🛡️ Safety active',
+            description: language === 'bn'
+              ? 'টাইমার শেষ, তবে সুরক্ষার জন্য ডিভাইস চলবে'
+              : 'Timer ended, but device stays ON for safety',
+          });
+          return;
+        }
+        void clearDesiredColumn(deviceKey);
         setDeviceStatus({ [deviceKey]: false });
         toast({
           title: language === 'bn' ? '⏰ টাইমার শেষ' : '⏰ Timer Expired',
           description: language === 'bn'
-            ? 'ডিভাইস বন্ধ হয়ে অটো মোডে ফিরে গেছে'
-            : 'Device turned off, back to AUTO mode',
+            ? 'সাময়িক ওভাররাইড বাতিল — অটোমেশন পুনরায় নিয়ন্ত্রণে'
+            : 'Override cleared — automation back in control',
         });
       });
 
@@ -243,7 +281,7 @@ export function ControlPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
+  }, [activeTimers, language, clearDesiredColumn, setDeviceStatus, toast, sensorData.temperature, sensorData.ammonia, farmSettings?.temperature_max, farmSettings?.ammonia_max]);
 
   // Reconcile: when ESP32 reports actual == desired, clear the pending spinner.
   // NO toast here — success is already surfaced by useSendDeviceCommand.
