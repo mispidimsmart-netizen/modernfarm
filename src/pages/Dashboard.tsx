@@ -81,9 +81,7 @@ import {
   EnvironmentTabSkeleton,
   ControlTabSkeleton,
   FlockTabSkeleton,
-  SystemStatusCardsSkeleton,
 } from '@/components/dashboard/TabSkeletons';
-import { useIsFetching } from '@tanstack/react-query';
 import { DashboardSnapshotProvider } from '@/context/DashboardSnapshotContext';
 export function Dashboard() {
   const { language } = useAuth();
