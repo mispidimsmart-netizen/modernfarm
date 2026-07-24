@@ -357,21 +357,42 @@ export function ControlPage() {
     setTimerDialogOpen(true);
   };
 
-  const handleStop = (deviceKey: string) => {
+  // AUTO-mode Stop: cancel the temporary override by clearing desired_* → null
+  // so automation can resume. Do NOT send a hardware OFF command (that would
+  // fight the automation engine and cause the relay to flicker).
+  const handleStop = async (deviceKey: string) => {
     if (!requireFarmSelected()) return;
-    const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-    sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
-    setDeviceStatus({ [deviceKey]: false });
-    markPending(deviceKey, false);
+    const desiredColMap: Record<string, string> = {
+      fan: 'desired_fan_on',
+      light: 'desired_light_on',
+      alarm: 'desired_alarm_on',
+      heater: 'desired_heater_on',
+      circulation_fan: 'desired_circulation_fan_on',
+      fogger: 'desired_fogger_on',
+      ceiling_fan: 'desired_ceiling_fan_on',
+      sprinkler: 'desired_sprinkler_on',
+    };
+    const col = desiredColMap[deviceKey];
     setActiveTimers(prev => {
-
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
     });
+    setDeviceStatus({ [deviceKey]: false });
+    if (col && user) {
+      let q = supabase
+        .from('device_status')
+        .update({ [col]: null, updated_at: new Date().toISOString() } as any)
+        .eq('user_id', user.id);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      if (selectedShedId) q = q.eq('shed_id', selectedShedId);
+      await q;
+    }
     toast({
-      title: language === 'bn' ? '✅ বন্ধ হয়েছে' : '✅ Stopped',
-      description: language === 'bn' ? 'ডিভাইস অটো মোডে ফিরে গেছে' : 'Device returned to AUTO mode',
+      title: language === 'bn' ? '↩️ অটোতে ফিরল' : '↩️ Returned to AUTO',
+      description: language === 'bn'
+        ? 'সাময়িক ওভাররাইড বাতিল — অটোমেশন পুনরায় নিয়ন্ত্রণে'
+        : 'Temporary override cleared — automation back in control',
     });
   };
 
@@ -413,22 +434,19 @@ export function ControlPage() {
       return;
     }
     if (!enabled) {
-      // Switching to MANUAL mode
+      // Switching to MANUAL mode — cancel any timers so they don't ghost-fire
+      // OFF commands 5 minutes later while user is doing manual work.
       const currentTemp = sensorData.temperature;
       const isOutOfRange = !boundedOverride.isWithinBioLimits(currentTemp);
       boundedOverride.startOverride(
         { reason: reason || 'No reason provided', targetTemp: currentTemp },
         isOutOfRange,
       );
+      setActiveTimers({});
     } else {
-      // Switching to AUTO mode — clear all timers and send device OFF commands
+      // Switching to AUTO mode — cancel timers by clearing desired_* → null.
+      // Sending hardware OFF here would race the automation engine.
       boundedOverride.endOverride();
-      const timerDevices = Object.keys(activeTimers);
-      timerDevices.forEach((deviceKey) => {
-        const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-        sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
-        setDeviceStatus({ [deviceKey]: false });
-      });
       setActiveTimers({});
     }
 
