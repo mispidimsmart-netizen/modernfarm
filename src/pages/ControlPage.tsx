@@ -813,16 +813,8 @@ export function ControlPage() {
         ) : (
           /* ========== AUTO MODE: Timer-based Temporary Control ========== */
           <div className="rounded-2xl border-2 border-status-warning/40 bg-status-warning/10 p-4 space-y-3">
-            {/* Mode is now managed only from Settings → Devices. This banner
-                only displays the current status; toggling is disabled here. */}
-            <AutomationStatusBanner
-              automationEnabled={!isManualMode}
-              hasTemporaryOverrides={hasTemporaryOverrides}
-              onToggleAutomation={() => { /* disabled — change from Settings */ }}
-              canToggle={false}
-              overrideRemainingSeconds={boundedOverride.remainingSeconds}
-              isOutOfBioRange={boundedOverride.isOutOfBioRange}
-            />
+
+
 
 
             {/* Viewer restriction */}
@@ -871,20 +863,7 @@ export function ControlPage() {
             {(farmSettings as any)?.safety_engine_enabled !== false && (
               <SafetyLockedDevices protections={safetyProtections} />
             )}
-            {(farmSettings as any)?.safety_engine_enabled === false && (
-              <Card className="border-amber-500/40 bg-amber-500/5">
-                <CardContent className="pt-3 pb-3 text-xs">
-                  <p className="font-semibold text-amber-700 dark:text-amber-400">
-                    {language === 'bn' ? '⚠️ স্মার্ট সেফটি ইঞ্জিন বন্ধ' : '⚠️ Smart Safety Engine OFF'}
-                  </p>
-                  <p className="text-muted-foreground mt-1">
-                    {language === 'bn'
-                      ? 'ক্লাউড থেকে কোনো সেফটি ওভাররাইড আসবে না। শুধু ৪২°C+ হার্ড ফ্লোর ESP32-এ সক্রিয় থাকবে। সেটিংস থেকে আবার চালু করুন।'
-                      : 'No cloud safety overrides will fire. Only the 42°C+ hard floor stays active on ESP32. Re-enable from Settings.'}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+
 
             {/* Active Timers Summary */}
             {hasTemporaryOverrides && (
