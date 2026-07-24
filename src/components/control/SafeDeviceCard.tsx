@@ -184,14 +184,6 @@ export function SafeDeviceCard({
           </Button>
         </div>
       )}
-      {/* Auto-mode hint explaining the timer-based Stop behavior */}
-      {isAutoMode && isActive && !hasOverride && !isSafetyLocked && (
-        <p className="mt-2 text-[11px] text-muted-foreground text-center">
-          {language === 'bn'
-            ? 'অটোমেশন চালাচ্ছে — সাময়িক বন্ধে টাইমার শেষে অটো ফিরে পাবে'
-            : 'Automation is running this — Stop Temp uses a timer, then automation resumes'}
-        </p>
-      )}
 
     </motion.div>
   );
