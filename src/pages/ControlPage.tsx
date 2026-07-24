@@ -644,28 +644,20 @@ export function ControlPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Quick mode-switch — visible in BOTH modes so user is never
-                trapped in MANUAL without a way back to AUTO. */}
-            {canDisableAutomation && (
-              <button
-                type="button"
-                onClick={() => handleAutomationToggle(isManualMode)}
-                disabled={farmNotReady || setAutomationMode.isPending}
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                  isManualMode
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-amber-500 text-white hover:bg-amber-600'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {isManualMode
-                  ? (language === 'bn' ? '🤖 অটোতে ফিরুন' : '🤖 Back to AUTO')
-                  : (language === 'bn' ? '✋ ম্যানুয়াল' : '✋ Manual')}
-              </button>
-            )}
+            {/* Mode switching now lives on Settings page — this page only
+                reflects the current mode. Link users there instead. */}
+            <Link
+              to="/settings?tab=devices"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+              title={language === 'bn' ? 'সেটিংস থেকে মোড পরিবর্তন করুন' : 'Change mode from Settings'}
+            >
+              {language === 'bn' ? 'মোড পরিবর্তন → সেটিংস' : 'Change mode → Settings'}
+            </Link>
             <Link to="/settings" className="p-2 rounded-lg hover:bg-muted transition-colors">
               <Settings className="h-4 w-4 text-muted-foreground" />
             </Link>
           </div>
+
         </div>
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
