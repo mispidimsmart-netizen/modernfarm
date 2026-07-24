@@ -55,11 +55,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Industrial Dashboard Components
-import { IndustrialHeroStatus } from '@/components/dashboard/IndustrialHeroStatus';
 import { EspConnectionBanner } from '@/components/dashboard/EspConnectionBanner';
 import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner';
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
-import { CoreMetricsRow } from '@/components/dashboard/CoreMetricsRow';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { AirQualityCard } from '@/components/dashboard/AirQualityCard';
 
@@ -78,7 +76,7 @@ import {
 const SystemActivityCard = lazy(() =>
   import('@/components/assistant/SystemActivityCard').then(m => ({ default: m.SystemActivityCard }))
 );
-import { SummaryQuickStats } from '@/components/dashboard/SummaryQuickStats';
+
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
 import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
 // QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
@@ -297,10 +295,8 @@ export function Dashboard() {
                     Detailed device + signal info lives in Control → Device & System. */}
                 <EspConnectionBanner />
                 <FarmHealthScore />
-                <IndustrialHeroStatus />
                 <InsideOutsideDeltaCard />
                 <TodayReadableSummary />
-                <SummaryQuickStats />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     ⚡ {language === 'bn' ? 'আজকের কার্যক্রম' : "Today's Activity"}
@@ -328,7 +324,6 @@ export function Dashboard() {
                   <WeatherCard />
                 </div>
                 <ComfortIndicators />
-                <CoreMetricsRow />
                 <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
                   <SensorCharts />
                 </Suspense>
