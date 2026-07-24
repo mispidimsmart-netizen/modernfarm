@@ -22,14 +22,19 @@ interface CustomTooltipProps {
 
 function RichTooltip({ active, payload, label, unit, name, accent, language }: CustomTooltipProps) {
   if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload || {};
   const value = Number(payload[0].value);
+  const t = row.temperature;
+  const h = row.humidity;
+  const a = row.ammonia;
+  const isBn = language === 'bn';
   return (
     <div
-      className="rounded-xl border bg-popover/95 backdrop-blur px-3 py-2 shadow-xl"
+      className="rounded-xl border bg-popover/95 backdrop-blur px-3 py-2 shadow-xl min-w-[180px]"
       style={{ borderColor: accent }}
     >
       <p className="text-[10px] font-medium text-muted-foreground">
-        {language === 'bn' ? 'সময়' : 'Time'}: <span className="text-foreground">{label}</span>
+        {isBn ? 'সময়' : 'Time'}: <span className="text-foreground">{label}</span>
       </p>
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className="text-lg font-bold" style={{ color: accent }}>
@@ -37,6 +42,35 @@ function RichTooltip({ active, payload, label, unit, name, accent, language }: C
         </span>
         <span className="text-xs text-muted-foreground">{unit}</span>
         <span className="ml-1 text-[10px] text-muted-foreground">• {name}</span>
+      </div>
+      <div className="mt-2 border-t pt-1.5 space-y-0.5">
+        {typeof t === 'number' && (
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500" />
+              {isBn ? 'তাপমাত্রা' : 'Temperature'}
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">{t.toFixed(1)} °C</span>
+          </div>
+        )}
+        {typeof h === 'number' && (
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-500" />
+              {isBn ? 'আর্দ্রতা' : 'Humidity'}
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">{h.toFixed(0)} %</span>
+          </div>
+        )}
+        {typeof a === 'number' && (
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500" />
+              {isBn ? 'অ্যামোনিয়া' : 'Ammonia'}
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">{a.toFixed(1)} ppm</span>
+          </div>
+        )}
       </div>
     </div>
   );
