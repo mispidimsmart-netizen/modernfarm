@@ -397,7 +397,6 @@ export function Dashboard() {
                     {!isManualMode && (
                       <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
                     )}
-                    <HeatStressRiskCard result={heatStressRiskResult} />
                     {!isManualMode && (
                       <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
                     )}
