@@ -114,13 +114,6 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
           );
         })}
       </div>
-      {!isDeviceOnline && (
-        <p className="mt-2 text-[11px] text-muted-foreground text-center">
-          {language === 'bn'
-            ? 'ESP32 অফলাইন — সর্বশেষ পরিচিত অবস্থা দেখানো হচ্ছে না'
-            : 'ESP32 offline — live states unavailable'}
-        </p>
-      )}
     </motion.div>
   );
 });
