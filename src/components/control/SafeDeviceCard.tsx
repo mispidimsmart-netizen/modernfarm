@@ -52,9 +52,11 @@ export function SafeDeviceCard({
   safetyReason,
   onRunTemporarily,
   onStopTemporarily,
+  onCancelOverride,
   disabled,
   hasOverride,
   isAutoMode,
+
 }: SafeDeviceCardProps) {
   const { language } = useAuth();
 
