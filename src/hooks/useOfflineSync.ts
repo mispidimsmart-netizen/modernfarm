@@ -112,6 +112,16 @@ export function useOfflineSync() {
             ok = !error;
             break;
           }
+          case 'UPSERT': {
+            const { error } = await supabase
+              .from(item.table_name as 'egg_production')
+              .upsert(
+                { ...item.record_data, user_id: user.id } as any,
+                item.on_conflict ? { onConflict: item.on_conflict } : undefined,
+              );
+            ok = !error;
+            break;
+          }
           case 'UPDATE': {
             const { id: recordId, ...updateData } = item.record_data;
             const { error } = await supabase
@@ -137,6 +147,7 @@ export function useOfflineSync() {
         failed.push({ ...item, retry_count: (item.retry_count ?? 0) + 1 });
       }
     }
+
 
     // Keep failed items (with bumped retry_count) for the next attempt
     saveLocalQueue(failed);
