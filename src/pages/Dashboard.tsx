@@ -315,25 +315,35 @@ export function Dashboard() {
                 skeleton={<EnvironmentTabSkeleton />}
                 loadingHint={{ bn: 'সেন্সর ও পরিবেশ ডেটা লোড হচ্ছে…', en: 'Loading environment data…' }}
               >
-                {/* Live sensor 2x2 grid removed — duplicate of IndustrialKpiGrid above the tabs.
-                    CoreMetricsRow below provides the richer per-metric breakdown. */}
+                {/* Weather + heat-stress prediction unified — both are outdoor/forecast context */}
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    🌤️ {language === 'bn' ? 'আবহাওয়া' : 'Weather'}
+                    🌤️ {language === 'bn' ? 'আবহাওয়া ও পূর্বাভাস' : 'Weather & Forecast'}
                   </p>
-                  <WeatherCard />
+                  <div className="space-y-3">
+                    <WeatherCard />
+                    <HourlyForecastCard />
+                    <SevenDayForecastCard />
+                    <HeatStressRiskCard result={heatStressRiskResult} />
+                  </div>
                 </div>
+
                 <ComfortIndicators />
+
+                {/* Sensors moved here from Control → Lighting (they measure environment) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <AirQualityCard />
+                  <LightSensorCard />
+                </div>
+
                 <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
                   <SensorCharts />
                 </Suspense>
-                <HourlyForecastCard />
-                <SevenDayForecastCard />
-                <AIAccuracyCard />
                 <AmmoniaTrendCard result={ammoniaTrendResult} />
                 <CoolingEfficiencyCard result={coolingEfficiencyResult} />
               </TabLoadingWrapper>
             </TabsContent>
+
 
             {/* TAB 3: ⚡ নিয়ন্ত্রণ ও অটোমেশন */}
             <TabsContent value="control" className="mt-3 space-y-3">
