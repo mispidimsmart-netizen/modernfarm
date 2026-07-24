@@ -266,31 +266,29 @@ export function useAddWeight() {
       const farmId = selectedFarmId || farms[0]?.id;
       if (!farmId) throw new Error('No farm available.');
 
-      const { data, error } = await supabase
-        .from('broiler_weights')
-        .insert({
-          user_id: user.id,
-          farm_id: farmId,
-          batch_id: weight.batch_id!,
-          record_date: weight.record_date || new Date().toISOString().split('T')[0],
-          sample_count: weight.sample_count || 10,
-          average_weight_grams: weight.average_weight_grams!,
-          min_weight_grams: weight.min_weight_grams || null,
-          max_weight_grams: weight.max_weight_grams || null,
-          uniformity_percent: weight.uniformity_percent || null,
-          notes: weight.notes || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('broiler_weights', {
+        user_id: user.id,
+        farm_id: farmId,
+        batch_id: weight.batch_id!,
+        record_date: weight.record_date || new Date().toISOString().split('T')[0],
+        sample_count: weight.sample_count || 10,
+        average_weight_grams: weight.average_weight_grams!,
+        min_weight_grams: weight.min_weight_grams || null,
+        max_weight_grams: weight.max_weight_grams || null,
+        uniformity_percent: weight.uniformity_percent || null,
+        notes: weight.notes || null,
+      });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['broiler-weights', variables.batch_id] });
       toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'ওজন রেকর্ড যোগ হয়েছে' : 'Weight record added',
+        title: (res as any)?.queued
+          ? (language === 'bn' ? '📴 অফলাইনে সংরক্ষিত' : '📴 Saved offline')
+          : (language === 'bn' ? 'সফল!' : 'Success!'),
+        description: (res as any)?.queued
+          ? (language === 'bn' ? 'নেট এলে সিঙ্ক হবে' : 'Will sync when online')
+          : (language === 'bn' ? 'ওজন রেকর্ড যোগ হয়েছে' : 'Weight record added'),
       });
     },
     onError: (error) => {
@@ -302,6 +300,7 @@ export function useAddWeight() {
     },
   });
 }
+
 
 // Fetch feed for a batch
 export function useBatchFeed(batchId: string | undefined) {
