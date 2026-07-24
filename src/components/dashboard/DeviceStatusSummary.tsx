@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Fan, Lightbulb, Bell, Flame, Droplets, Wind, Power,
-  CircleDot, CircleOff, Cpu
+  CircleDot, CircleOff
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
@@ -62,68 +62,64 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
         )}
       </div>
 
-      {isDeviceOnline ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {devices.map((device, idx) => {
-            const Icon = device.icon;
-            const isOn = device.isOn;
-            return (
-              <motion.div
-                key={device.key}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.05 }}
-                className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
-                  isOn
-                    ? 'bg-emerald-500/10 border-emerald-500/30'
-                    : 'bg-muted/40 border-border/50'
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {devices.map((device, idx) => {
+          const Icon = device.icon;
+          const isOn = isDeviceOnline && device.isOn;
+          const dim = !isDeviceOnline;
+          return (
+            <motion.div
+              key={device.key}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: idx * 0.05 }}
+              className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
+                isOn
+                  ? 'bg-emerald-500/10 border-emerald-500/30'
+                  : 'bg-muted/40 border-border/50'
+              } ${dim ? 'opacity-70' : ''}`}
+            >
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                  isOn ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground'
                 }`}
               >
-                <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                    isOn ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-foreground truncate">
+                  {device.label[language]}
+                </p>
+                <div className="flex items-center gap-1 text-[11px] font-semibold">
+                  {isOn ? (
+                    <>
+                      <CircleDot className="h-2.5 w-2.5 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {language === 'bn' ? 'চালু' : 'ON'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CircleOff className="h-2.5 w-2.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        {dim
+                          ? (language === 'bn' ? '—' : '—')
+                          : (language === 'bn' ? 'বন্ধ' : 'OFF')}
+                      </span>
+                    </>
+                  )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground truncate">
-                    {device.label[language]}
-                  </p>
-                  <div className="flex items-center gap-1 text-[11px] font-semibold">
-                    {isOn ? (
-                      <>
-                        <CircleDot className="h-2.5 w-2.5 text-emerald-500" />
-                        <span className="text-emerald-600 dark:text-emerald-400">
-                          {language === 'bn' ? 'চালু' : 'ON'}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <CircleOff className="h-2.5 w-2.5 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {language === 'bn' ? 'বন্ধ' : 'OFF'}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Cpu className="h-10 w-10 text-muted-foreground/40 mb-2" />
-          <p className="text-sm text-muted-foreground font-medium">
-            {language === 'bn' ? 'কোনো ডিভাইস সংযুক্ত নেই' : 'No device connected'}
-          </p>
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            {language === 'bn'
-              ? 'ESP32 কানেক্ট হলে ডিভাইস অবস্থা দেখা যাবে'
-              : 'Device status will appear once ESP32 is connected'}
-          </p>
-        </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+      {!isDeviceOnline && (
+        <p className="mt-2 text-[11px] text-muted-foreground text-center">
+          {language === 'bn'
+            ? 'ESP32 অফলাইন — সর্বশেষ পরিচিত অবস্থা দেখানো হচ্ছে না'
+            : 'ESP32 offline — live states unavailable'}
+        </p>
       )}
     </motion.div>
   );
