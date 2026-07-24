@@ -181,7 +181,7 @@ export function StateExplanationHeader() {
         </motion.div>
 
         {/* Main explanation — PRIMARY */}
-        <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-white leading-tight mb-1.5 sm:mb-2">
+        <h1 className="text-base sm:text-lg md:text-xl lg:text-3xl xl:text-4xl font-bold text-white leading-tight mb-1.5 sm:mb-2 lg:mb-3 max-w-4xl">
           {currentState.explanation[language]}
         </h1>
 
