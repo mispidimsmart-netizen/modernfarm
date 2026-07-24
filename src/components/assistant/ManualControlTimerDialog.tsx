@@ -19,7 +19,10 @@ interface ManualControlTimerDialogProps {
   deviceIcon: React.ReactNode;
   onConfirm: (durationMinutes: number) => void;
   onCancel: () => void;
+  /** 'on' = temporarily start; 'off' = temporarily stop. Defaults to 'on'. */
+  intent?: 'on' | 'off';
 }
+
 
 const DURATION_OPTIONS = [
   { minutes: 10, label: { bn: '১০ মিনিট', en: '10 minutes' } },
