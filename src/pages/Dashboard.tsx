@@ -387,78 +387,32 @@ export function Dashboard() {
                 </div>
               </section>
 
-              {/* 3️⃣ Heat Stress — unified (current + risk একসাথে) */}
-              {isLayer && (
-                <section className="min-w-0">
-                  <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
-                    🌡️ {language === 'bn' ? 'হিট স্ট্রেস' : 'Heat Stress'}
-                  </h3>
-                  <div className="space-y-3">
-                    {!isManualMode && (
-                      <HeatStressStatusCard hsiResult={hsiResult} temperature={sensorData.temperature} humidity={sensorData.humidity} />
-                    )}
-                    {!isManualMode && (
-                      <FanSpeedCard temperature={sensorData.temperature} fanSpeed={fanSpeedResult?.speed || 'OFF'} message={fanSpeedResult?.message[language] || (language === 'bn' ? 'অপেক্ষা করুন...' : 'Loading...')} />
-                    )}
-                  </div>
-                </section>
-              )}
-
-              {/* 4️⃣ Lighting */}
-              <section className="min-w-0">
-                <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
-                  💡 {language === 'bn' ? 'লাইটিং' : 'Lighting'}
-                </h3>
-                <div className="space-y-3">
-                  <LightStatusPanel />
-                  <LightActionHistory />
-                </div>
-              </section>
-
-              {/* 5️⃣ Broiler-specific */}
-              {isBroiler && (
-                <section className="min-w-0">
-                  <h3 className="text-sm font-bold text-muted-foreground mb-2 flex items-center gap-2">
-                    🐤 {language === 'bn' ? 'ব্রয়লার' : 'Broiler'}
-                  </h3>
-                  <div className="space-y-3">
-                    {!isManualMode && <BroilerAgeAutoModeCard enabled={true} />}
-                    <BroilerTempStatusCard tempResult={broilerEnvResult ? {
-                      currentTemp: broilerEnvResult.temperature.current,
-                      targetMin: broilerEnvResult.temperature.targetMin,
-                      targetMax: broilerEnvResult.temperature.targetMax,
-                      ageWeeks: broilerEnvResult.ageWeeks,
-                      ageDays: broilerEnvResult.ageDays,
-                      level: broilerEnvResult.temperature.level === 'emergency' ? 'critical' : broilerEnvResult.temperature.level,
-                      deviation: broilerEnvResult.temperature.deviation,
-                      shouldActivateFan: broilerEnvResult.temperature.shouldActivateFan,
-                      shouldActivateHeater: broilerEnvResult.temperature.shouldActivateHeater,
-                      shouldAlert: broilerEnvResult.temperature.shouldAlarm,
-                      message: broilerEnvResult.overallMessage,
-                    } : null} />
-                    <BroilerTempCurveCard currentTemp={sensorData.temperature ?? undefined} />
-                  </div>
-                </section>
-              )}
-
-              {/* Device & System — collapsed by default to reduce noise on Control tab */}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="device-system" className="border border-border/50 rounded-xl bg-muted/20 px-3">
-                  <AccordionTrigger className="text-sm font-bold text-muted-foreground hover:no-underline py-3">
-                    <span className="flex items-center gap-2">
-                      🔧 {language === 'bn' ? 'ডিভাইস ও সিস্টেম' : 'Device & System'}
-                    </span>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3 pt-1 pb-2">
-                      <DeviceConnectionStatus deviceHealth={deviceHealth} language={language} />
-                      <ConnectionQualityCard />
-                      <SensorHealthCard />
-                      <PowerOutageCard />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+              {/* Deep controls, lighting, heat-stress details, broiler curves এবং device diagnostics
+                  আলাদা পেজে সরানো হয়েছে যাতে হোম Control ট্যাব হালকা থাকে। */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a
+                  href="/control"
+                  className="rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors px-4 py-3 text-center"
+                >
+                  <p className="text-sm font-bold text-primary">
+                    ⚡ {language === 'bn' ? 'পূর্ণ নিয়ন্ত্রণ প্যানেল' : 'Full Control Panel'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {language === 'bn' ? 'ম্যানুয়াল সুইচ, টাইমার, ডিভাইস স্ট্যাটাস' : 'Manual switches, timers, device status'}
+                  </p>
+                </a>
+                <a
+                  href="/automation"
+                  className="rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors px-4 py-3 text-center"
+                >
+                  <p className="text-sm font-bold text-primary">
+                    🤖 {language === 'bn' ? 'অটোমেশন ইঞ্জিন' : 'Automation Engine'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {language === 'bn' ? 'নিয়ম, থ্রেশহোল্ড, সেফটি ইঞ্জিন' : 'Rules, thresholds, safety engine'}
+                  </p>
+                </a>
+              </div>
 
               <div className={`rounded-xl border px-4 py-2 text-center ${
                 isManualMode
@@ -478,6 +432,7 @@ export function Dashboard() {
               </div>
               </TabLoadingWrapper>
             </TabsContent>
+
 
             {/* TAB 4: 🐔 ফ্লক / ব্যাচ */}
             <TabsContent value="flock" className="mt-3 space-y-3">
