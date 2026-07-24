@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Fan, Lightbulb, Bell, Flame, Droplets, Wind, Power,
-  CircleDot, CircleOff, Cpu
+  CircleDot, CircleOff
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
