@@ -133,9 +133,12 @@ const LAYER_DEVICES = [
 export function ControlPage() {
   const { language } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  const { selectedFarmId, farms, isLoading: farmsLoading } = useFarmContext();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
+  const farmNotReady = !selectedFarmId;
+
   // Canonical 4-role permissions (workers blocked from hardware/automation)
   const perms = usePermissions();
   const { sensorData } = useRealtimeSensorData();
