@@ -182,14 +182,17 @@ export function useSendDeviceCommand() {
       // Offline: command was queued to localStorage — skip ACK polling and
       // show a clear "queued" toast instead of a false confirmation.
       if ((result as any)?.queued) {
-        toast({
-          title: language === 'bn' ? '📴 অফলাইনে সংরক্ষিত' : '📴 Saved offline',
-          description: language === 'bn'
-            ? 'নেট এলে কমান্ড পাঠানো হবে'
-            : 'Command will be sent when online',
-        });
+        toast(
+          language === 'bn' ? '📴 অফলাইনে সংরক্ষিত' : '📴 Saved offline',
+          {
+            description: language === 'bn'
+              ? 'নেট এলে কমান্ড পাঠানো হবে'
+              : 'Command will be sent when online',
+          },
+        );
         return;
       }
+
 
 
       const commandNames: Record<CommandType, { en: string; bn: string }> = {
