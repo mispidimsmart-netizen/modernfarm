@@ -2084,15 +2084,23 @@ export type Database = {
           ceiling_fan_on: boolean
           circulation_fan_on: boolean | null
           curtain_position: string | null
+          desired_alarm_expires_at: string | null
           desired_alarm_on: boolean | null
+          desired_ceiling_fan_expires_at: string | null
           desired_ceiling_fan_on: boolean | null
+          desired_circulation_fan_expires_at: string | null
           desired_circulation_fan_on: boolean | null
+          desired_fan_expires_at: string | null
           desired_fan_on: boolean | null
           desired_fan_speed: string | null
+          desired_fogger_expires_at: string | null
           desired_fogger_on: boolean | null
+          desired_heater_expires_at: string | null
           desired_heater_on: boolean | null
+          desired_light_expires_at: string | null
           desired_light_on: boolean | null
           desired_manual_override: boolean | null
+          desired_sprinkler_expires_at: string | null
           desired_sprinkler_on: boolean | null
           device_id: string | null
           fan_on: boolean
@@ -2126,15 +2134,23 @@ export type Database = {
           ceiling_fan_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
+          desired_alarm_expires_at?: string | null
           desired_alarm_on?: boolean | null
+          desired_ceiling_fan_expires_at?: string | null
           desired_ceiling_fan_on?: boolean | null
+          desired_circulation_fan_expires_at?: string | null
           desired_circulation_fan_on?: boolean | null
+          desired_fan_expires_at?: string | null
           desired_fan_on?: boolean | null
           desired_fan_speed?: string | null
+          desired_fogger_expires_at?: string | null
           desired_fogger_on?: boolean | null
+          desired_heater_expires_at?: string | null
           desired_heater_on?: boolean | null
+          desired_light_expires_at?: string | null
           desired_light_on?: boolean | null
           desired_manual_override?: boolean | null
+          desired_sprinkler_expires_at?: string | null
           desired_sprinkler_on?: boolean | null
           device_id?: string | null
           fan_on?: boolean
@@ -2168,15 +2184,23 @@ export type Database = {
           ceiling_fan_on?: boolean
           circulation_fan_on?: boolean | null
           curtain_position?: string | null
+          desired_alarm_expires_at?: string | null
           desired_alarm_on?: boolean | null
+          desired_ceiling_fan_expires_at?: string | null
           desired_ceiling_fan_on?: boolean | null
+          desired_circulation_fan_expires_at?: string | null
           desired_circulation_fan_on?: boolean | null
+          desired_fan_expires_at?: string | null
           desired_fan_on?: boolean | null
           desired_fan_speed?: string | null
+          desired_fogger_expires_at?: string | null
           desired_fogger_on?: boolean | null
+          desired_heater_expires_at?: string | null
           desired_heater_on?: boolean | null
+          desired_light_expires_at?: string | null
           desired_light_on?: boolean | null
           desired_manual_override?: boolean | null
+          desired_sprinkler_expires_at?: string | null
           desired_sprinkler_on?: boolean | null
           device_id?: string | null
           fan_on?: boolean
@@ -8570,6 +8594,7 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      expire_desired_overrides: { Args: never; Returns: number }
       generate_license_expiry_notifications: { Args: never; Returns: Json }
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
