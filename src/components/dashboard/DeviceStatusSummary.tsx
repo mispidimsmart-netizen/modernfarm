@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { useDeviceStatus } from '@/hooks/useFarmData';
+import { useSelectedShed } from '@/hooks/useSheds';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DeviceItem {
@@ -18,7 +20,18 @@ interface DeviceItem {
 
 export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
   const { language } = useAuth();
-  const { status, isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
+  // Match ControlPage: scope to the currently selected shed so the summary
+  // reflects the exact same device_status row the control page reads from.
+  const { selectedShedId } = useSelectedShed();
+  const { isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
+  const { data: rawDeviceStatus } = useDeviceStatus(selectedShedId);
+
+  // ACTUAL hardware columns (what ESP32 reports the relay is doing right now).
+  // Hardware-as-Source-of-Truth: we deliberately ignore desired_* here so the
+  // summary shows the *real* on/off state of each relay, not the pending
+  // command. When offline we fall back to false (cannot trust stale flags).
+  const r = (rawDeviceStatus ?? {}) as Record<string, unknown>;
+  const actual = (col: string) => isDeviceOnline && !!r[col];
 
   const devices: DeviceItem[] = [
     {
