@@ -970,9 +970,11 @@ export function ControlPage() {
         onOpenChange={setTimerDialogOpen}
         deviceName={pendingDevice?.name || ''}
         deviceIcon={pendingDevice?.icon || null}
+        intent={pendingDevice?.intent || 'on'}
         onConfirm={handleTimerConfirm}
         onCancel={() => setPendingDevice(null)}
       />
+
 
       <BottomNav />
     </div>
