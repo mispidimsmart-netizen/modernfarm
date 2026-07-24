@@ -360,12 +360,13 @@ export function ControlPage() {
         .filter(([, p]) => now - p.startedAt > PENDING_TIMEOUT_MS)
         .map(([k]) => k);
       if (timedOut.length === 0) return;
-      // Revert optimistic UI state back to the actual hardware state — otherwise
-      // the card keeps showing "ON" even though ESP32 never confirmed and the
-      // relay is really OFF (misleads farmer into thinking the fan is running).
+      // FIX #3: on timeout, clear desired_* → null instead of writing
+      // desired_* = actual. Writing actual back into desired persists a
+      // stale intent (e.g. desired_fan_on=false) that overrides the user's
+      // ON request once ESP32 reconnects. Null-clearing releases the intent
+      // cleanly and lets automation / next user action decide.
       timedOut.forEach((k) => {
-        const actual = getActualStatus(k);
-        setDeviceStatus({ [k]: actual });
+        void clearDesiredColumn(k);
       });
       setPendingCommands((prev) => {
         const next = { ...prev };
@@ -374,7 +375,7 @@ export function ControlPage() {
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [pendingCommands, getActualStatus, setDeviceStatus]);
+  }, [pendingCommands, clearDesiredColumn]);
 
 
 
