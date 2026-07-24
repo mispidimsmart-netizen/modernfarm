@@ -570,29 +570,27 @@ export function useAddExpense() {
     mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
-      const { error } = await supabase
-        .from('expenses')
-        .insert({
-          ...data,
-          batch_id: data.batch_id ?? activeBatchId,
-          farm_mode: data.farm_mode ?? farmMode,
-          user_id: user!.id,
-          farm_id: selectedFarmId,
-        });
-      
-      if (error) throw error;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('expenses', {
+        ...(data as any),
+        batch_id: (data as any).batch_id ?? activeBatchId,
+        farm_mode: (data as any).farm_mode ?? farmMode,
+        user_id: user!.id,
+        farm_id: selectedFarmId,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
       queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      toast({ title: 'খরচ রেকর্ড হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'খরচ রেকর্ড হয়েছে' });
     },
     onError: (error: any) => {
       toast({ title: 'ত্রুটি হয়েছে', description: error?.message, variant: 'destructive' });
     },
   });
 }
+
 
 // Income Hooks
 export function useIncome(days: number = 30) {
