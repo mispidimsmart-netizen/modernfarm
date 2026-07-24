@@ -75,8 +75,10 @@ export function SettingsPage() {
   const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const { data: platformRole } = usePlatformRole();
   const isSuperAdmin = !!platformRole?.isSuperAdmin;
-  const isOrgAdmin = !!(platformRole?.isOrgOwner || platformRole?.isOrgAdmin);
-  const myOrgs = platformRole?.orgs || [];
+  const myOrgs = (platformRole?.orgs || []).filter(
+    (o) => o.my_role === 'org_owner' || o.my_role === 'org_admin'
+  );
+  const isOrgAdmin = myOrgs.length > 0;
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedFarmName, setEditedFarmName] = useState('');
