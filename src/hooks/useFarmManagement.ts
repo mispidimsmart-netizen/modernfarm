@@ -168,7 +168,7 @@ export function useAddEggProduction() {
       return res;
     },
 
-    onSuccess: async () => {
+    onSuccess: async (res) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['egg-production'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['today-summary'], refetchType: 'active' }),
@@ -176,8 +176,9 @@ export function useAddEggProduction() {
         queryClient.invalidateQueries({ queryKey: ['daily_reports'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['sensor-stats-today'], refetchType: 'active' }),
       ]);
-      toast({ title: 'ডিম উৎপাদন সংরক্ষণ হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'ডিম উৎপাদন সংরক্ষণ হয়েছে' });
     },
+
     onError: (error: any) => {
       toast({
         title: 'ত্রুটি হয়েছে',
