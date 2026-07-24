@@ -29,25 +29,15 @@ const SensorCharts = lazy(() =>
   import('@/components/dashboard/SensorCharts').then(m => ({ default: m.SensorCharts }))
 );
 
-import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
 import { SystemModeCard } from '@/components/dashboard/SystemModeCard';
 import { SafetyEngineStatusCard } from '@/components/dashboard/SafetyEngineStatusCard';
-import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { CoolingEfficiencyCard } from '@/components/dashboard/CoolingEfficiencyCard';
-import { SensorHealthCard } from '@/components/dashboard/SensorHealthCard';
 import { InsideOutsideDeltaCard } from '@/components/dashboard/InsideOutsideDeltaCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
-import { PowerOutageCard } from '@/components/device/PowerOutageCard';
-// BigFarmOverview removed from Details tab (duplicate of CoreMetricsRow)
-import { BroilerTempStatusCard } from '@/components/broiler/BroilerTempStatusCard';
-import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard';
-import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Industrial Dashboard Components
 import { EspConnectionBanner } from '@/components/dashboard/EspConnectionBanner';
@@ -55,11 +45,6 @@ import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner'
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { AirQualityCard } from '@/components/dashboard/AirQualityCard';
-
-import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
-import { ConnectionQualityCard } from '@/components/control/ConnectionQualityCard';
-import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
-import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 
 // Farmer-Friendly Assistant Components
 import { 
