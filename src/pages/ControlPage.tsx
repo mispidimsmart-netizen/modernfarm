@@ -565,7 +565,7 @@ export function ControlPage() {
                             <Switch
                               checked={active}
                               onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={isViewer || !canFullControl || sendCommand.isPending}
+                              disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending}
                               className={`scale-110 ${active ? 'data-[state=checked]:bg-emerald-500' : ''}`}
                             />
                             <span className={`text-[10px] font-bold tracking-wider ${
