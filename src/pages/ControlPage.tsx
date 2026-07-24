@@ -382,7 +382,9 @@ export function ControlPage() {
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: false });
+    markPending(deviceKey, false);
     setActiveTimers(prev => {
+
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
