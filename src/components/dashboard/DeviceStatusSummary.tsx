@@ -21,11 +21,48 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
   const { status, isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
 
   const devices: DeviceItem[] = [
-    { key: 'fan', icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: status.fan },
-    { key: 'heater', icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: status.heater },
-    { key: 'light', icon: Lightbulb, label: { bn: 'আলো', en: 'Light' }, isOn: status.light },
-    { key: 'circulation_fan', icon: Wind, label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation' }, isOn: status.circulation_fan },
-    { key: 'fogger', icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: status.fogger },
+    {
+      key: 'fan',
+      icon: Fan,
+      label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
+      description: { bn: 'অটোমেশন ও অভ্যন্তরীণ বায়ু চলাচল', en: 'Automation & ventilation' },
+      isOn: status.fan,
+    },
+    {
+      key: 'ceiling_fan',
+      icon: Wind,
+      label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+      description: { bn: 'তাপমাত্রা বেশি হলে বাড়তি বায়ু প্রবাহ', en: 'Extra airflow when hot' },
+      isOn: status.ceilingFan,
+    },
+    {
+      key: 'heater',
+      icon: Flame,
+      label: { bn: 'হিটার', en: 'Heater' },
+      description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in cold' },
+      isOn: status.heater,
+    },
+    {
+      key: 'fogger',
+      icon: Droplets,
+      label: { bn: 'ফগার', en: 'Fogger' },
+      description: { bn: 'পরিবেশ ঠাণ্ডা রাখে', en: 'Keeps environment cool' },
+      isOn: status.fogger,
+    },
+    {
+      key: 'sprinkler',
+      icon: CloudRain,
+      label: { bn: 'ছাদ স্প্রিংকলার', en: 'Ceiling Sprinkler' },
+      description: { bn: 'HSI নিয়ন্ত্রিত স্প্রিংকলার', en: 'HSI-controlled sprinkler' },
+      isOn: status.sprinkler,
+    },
+    {
+      key: 'light',
+      icon: Lightbulb,
+      label: { bn: 'লাইট', en: 'Light' },
+      description: { bn: 'তীব্র উপশমে সহায়ক', en: 'Aids intense relief' },
+      isOn: status.light,
+    },
   ];
 
   const title = language === 'bn' ? 'ডিভাইস অবস্থা' : 'Device Status';
