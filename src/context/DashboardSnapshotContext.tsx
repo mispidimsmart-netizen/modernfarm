@@ -2,7 +2,7 @@ import { createContext, useContext, ReactNode } from 'react';
 import { useDashboardSnapshot, type DashboardSnapshot } from '@/hooks/useDashboardSnapshot';
 
 interface SnapshotCtx {
-  snapshot: DashboardSnapshot | undefined;
+  snapshot: DashboardSnapshot | null | undefined;
   isLoading: boolean;
 }
 
