@@ -216,7 +216,7 @@ export function StateExplanationHeader() {
         })()}
 
         {/* Technical state — SECONDARY small line */}
-        <p className="text-[10px] sm:text-xs text-white/50 font-mono">
+        <p className="text-[10px] sm:text-xs lg:text-sm text-white/50 font-mono">
           System State: {currentState.systemLabel}
         </p>
       </div>
