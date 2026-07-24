@@ -5,8 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 interface SyncQueueItem {
   id: string;
   table_name: string;
-  operation: 'INSERT' | 'UPDATE' | 'DELETE';
+  operation: 'INSERT' | 'UPDATE' | 'DELETE' | 'UPSERT';
   record_data: Record<string, unknown>;
+  on_conflict?: string;
   created_at: string;
   retry_count?: number;
   max_age_minutes?: number;
@@ -15,6 +16,7 @@ interface SyncQueueItem {
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
 const DEFAULT_MAX_AGE_MIN = 24 * 60; // 24h TTL — Phase 3
 const MAX_RETRY_COUNT = 5;
+
 
 /** Phase 3: drop items older than max_age_minutes or with too many failed retries */
 function pruneExpired(queue: SyncQueueItem[]): { kept: SyncQueueItem[]; dropped: number } {
@@ -110,6 +112,16 @@ export function useOfflineSync() {
             ok = !error;
             break;
           }
+          case 'UPSERT': {
+            const { error } = await supabase
+              .from(item.table_name as 'egg_production')
+              .upsert(
+                { ...item.record_data, user_id: user.id } as any,
+                item.on_conflict ? { onConflict: item.on_conflict } : undefined,
+              );
+            ok = !error;
+            break;
+          }
           case 'UPDATE': {
             const { id: recordId, ...updateData } = item.record_data;
             const { error } = await supabase
@@ -136,6 +148,7 @@ export function useOfflineSync() {
       }
     }
 
+
     // Keep failed items (with bumped retry_count) for the next attempt
     saveLocalQueue(failed);
     setIsSyncing(false);
@@ -147,13 +160,20 @@ export function useOfflineSync() {
       setIsOnline(true);
       syncQueue();
     };
-    
+
     const handleOffline = () => {
       setIsOnline(false);
     };
 
+    const handleQueueChanged = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') setPendingCount(detail);
+      else setPendingCount(getLocalQueue().length);
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('offline-queue-changed', handleQueueChanged as EventListener);
 
     // Initial load
     setPendingCount(getLocalQueue().length);
@@ -161,8 +181,10 @@ export function useOfflineSync() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('offline-queue-changed', handleQueueChanged as EventListener);
     };
   }, [syncQueue, getLocalQueue]);
+
 
   // Auto sync when user logs in
   useEffect(() => {

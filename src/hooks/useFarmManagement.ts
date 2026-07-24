@@ -159,20 +159,16 @@ export function useAddEggProduction() {
     mutationFn: async (data: Omit<EggProduction, 'id' | 'user_id' | 'created_at'>) => {
       if (!user) throw new Error('লগইন করা নেই');
       if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
-      const { error } = await supabase
-        .from('egg_production')
-        .upsert(
-          {
-            ...data,
-            user_id: user.id,
-            farm_id: selectedFarmId,
-          } as any,
-          { onConflict: 'user_id,farm_id,production_date' }
-        );
-
-      if (error) throw error;
+      const { upsertOrQueue } = await import('@/lib/offlineQueue');
+      const res = await upsertOrQueue(
+        'egg_production',
+        { ...(data as any), user_id: user.id, farm_id: selectedFarmId },
+        'user_id,farm_id,production_date',
+      );
+      return res;
     },
-    onSuccess: async () => {
+
+    onSuccess: async (res) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['egg-production'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['today-summary'], refetchType: 'active' }),
@@ -180,8 +176,9 @@ export function useAddEggProduction() {
         queryClient.invalidateQueries({ queryKey: ['daily_reports'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['sensor-stats-today'], refetchType: 'active' }),
       ]);
-      toast({ title: 'ডিম উৎপাদন সংরক্ষণ হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'ডিম উৎপাদন সংরক্ষণ হয়েছে' });
     },
+
     onError: (error: any) => {
       toast({
         title: 'ত্রুটি হয়েছে',
@@ -514,29 +511,27 @@ export function useAddMortalityRecord() {
 
       const activeBatchId = isLayer ? (layerBatch as any)?.id ?? null : isBroiler ? (broilerBatch as any)?.id ?? null : null;
 
-      const { error } = await supabase
-        .from('mortality_records')
-        .insert({
-          ...data,
-          shed_id: shedId,
-          farm_id: selectedFarmId,
-          farm_mode: farmMode,
-          batch_id: data.batch_id ?? activeBatchId,
-          user_id: user!.id,
-        } as any);
-      
-      if (error) throw error;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('mortality_records', {
+        ...(data as any),
+        shed_id: shedId,
+        farm_id: selectedFarmId,
+        farm_mode: farmMode,
+        batch_id: (data as any).batch_id ?? activeBatchId,
+        user_id: user!.id,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['mortality-records'] });
       queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      toast({ title: 'মৃত্যু রেকর্ড সংরক্ষণ হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'মৃত্যু রেকর্ড সংরক্ষণ হয়েছে' });
     },
     onError: (e: any) => {
       toast({ title: 'ত্রুটি হয়েছে', description: e?.message, variant: 'destructive' });
     },
   });
 }
+
 
 // Expense Hooks
 export function useExpenses(days: number = 30) {
@@ -575,29 +570,27 @@ export function useAddExpense() {
     mutationFn: async (data: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'farm_mode'> & { farm_mode?: 'layer' | 'broiler' | null }) => {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
-      const { error } = await supabase
-        .from('expenses')
-        .insert({
-          ...data,
-          batch_id: data.batch_id ?? activeBatchId,
-          farm_mode: data.farm_mode ?? farmMode,
-          user_id: user!.id,
-          farm_id: selectedFarmId,
-        });
-      
-      if (error) throw error;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('expenses', {
+        ...(data as any),
+        batch_id: (data as any).batch_id ?? activeBatchId,
+        farm_mode: (data as any).farm_mode ?? farmMode,
+        user_id: user!.id,
+        farm_id: selectedFarmId,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
       queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      toast({ title: 'খরচ রেকর্ড হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'খরচ রেকর্ড হয়েছে' });
     },
     onError: (error: any) => {
       toast({ title: 'ত্রুটি হয়েছে', description: error?.message, variant: 'destructive' });
     },
   });
 }
+
 
 // Income Hooks
 export function useIncome(days: number = 30) {
@@ -637,30 +630,28 @@ export function useAddIncome() {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
       const source = data.source || data.category || 'other';
-      const { error } = await supabase
-        .from('income')
-        .insert({
-          ...data,
-          source,
-          batch_id: data.batch_id ?? activeBatchId,
-          farm_mode: data.farm_mode ?? farmMode,
-          user_id: user!.id,
-          farm_id: selectedFarmId,
-        });
-      
-      if (error) throw error;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('income', {
+        ...(data as any),
+        source,
+        batch_id: (data as any).batch_id ?? activeBatchId,
+        farm_mode: (data as any).farm_mode ?? farmMode,
+        user_id: user!.id,
+        farm_id: selectedFarmId,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['income'] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
       queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      toast({ title: 'আয় রেকর্ড হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'আয় রেকর্ড হয়েছে' });
     },
     onError: (error: any) => {
       toast({ title: 'ত্রুটি হয়েছে', description: error?.message, variant: 'destructive' });
     },
   });
 }
+
 
 // Flock Info Hooks
 export function useFlockInfo() {
