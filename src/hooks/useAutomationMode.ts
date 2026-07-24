@@ -33,6 +33,8 @@ export function useAutomationMode() {
   });
 }
 
+type SetModeInput = AutomationMode | { mode: AutomationMode; shedId?: string | null };
+
 export function useSetAutomationMode() {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
@@ -40,8 +42,10 @@ export function useSetAutomationMode() {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (mode: AutomationMode) => {
+    mutationFn: async (input: SetModeInput) => {
       if (!user) throw new Error('Not authenticated');
+      const mode: AutomationMode = typeof input === 'string' ? input : input.mode;
+      const shedId: string | null | undefined = typeof input === 'string' ? undefined : input.shedId;
 
       const isManual = mode === 'MANUAL';
 
