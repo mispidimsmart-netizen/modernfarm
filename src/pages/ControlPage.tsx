@@ -481,30 +481,40 @@ export function ControlPage() {
     if (!pendingDevice) return;
     if (!requireFarmSelected()) { setPendingDevice(null); setTimerDialogOpen(false); return; }
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-    sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
-
-    setDeviceStatus({ [pendingDevice.device]: true });
-    markPending(pendingDevice.device, true);
 
     const endTime = Date.now() + durationMinutes * 60000;
-    setActiveTimers(prev => ({
-      ...prev,
-      [pendingDevice.device]: { endTime, duration: durationMinutes },
-    }));
-
-    // Persist expiry to DB so the timer survives refresh / tab close.
-    // Server-side pg_cron `expire_desired_overrides()` nulls desired_* when
-    // this timestamp passes — device won't stay ON forever if browser dies.
+    const desiredCol = DESIRED_COL_MAP[pendingDevice.device];
     const expCol = EXPIRES_COL_MAP[pendingDevice.device];
-    if (expCol && user) {
+
+    // FIX #4: write desired_x AND desired_x_expires_at in ONE atomic update
+    // BEFORE the device_commands trigger fires. Previously we relied on the
+    // trigger to flip desired_x, then wrote expires_at separately — leaving a
+    // window where pg_cron / automation could observe an inconsistent pair
+    // (expires_at set but desired_x still null, or vice versa).
+    if (desiredCol && expCol && user) {
       let q = supabase
         .from('device_status')
-        .update({ [expCol]: new Date(endTime).toISOString(), updated_at: new Date().toISOString() } as any)
+        .update({
+          [desiredCol]: true,
+          [expCol]: new Date(endTime).toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any)
         .eq('user_id', user.id);
       if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
       if (selectedShedId) q = q.eq('shed_id', selectedShedId);
       await q;
     }
+
+    // Fire the device_commands row so ESP32 polls it in real-time.
+    sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
+
+    setDeviceStatus({ [pendingDevice.device]: true });
+    markPending(pendingDevice.device, true);
+
+    setActiveTimers(prev => ({
+      ...prev,
+      [pendingDevice.device]: { endTime, duration: durationMinutes },
+    }));
 
     toast({
       title: language === 'bn' ? '✅ সাময়িক চালু' : '✅ Temporarily Started',
