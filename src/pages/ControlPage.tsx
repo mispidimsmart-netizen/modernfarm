@@ -294,8 +294,9 @@ export function ControlPage() {
       // Safety guard: if a protection is forcing this device ON right now,
       // do NOT try to turn it off — safety engine will re-assert immediately
       // causing relay oscillation. Silently keep the device running.
-      const heatActive = sensorData.temperature > Number(farmSettings?.temperature_max ?? 32);
-      const gasActive = sensorData.ammonia > Number(farmSettings?.ammonia_max ?? 25);
+      const engineEnabled = (farmSettings as any)?.safety_engine_enabled !== false;
+      const heatActive = engineEnabled && sensorData.temperature > Number(farmSettings?.temperature_max ?? 32);
+      const gasActive = engineEnabled && sensorData.ammonia > Number(farmSettings?.ammonia_max ?? 25);
       const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
 
       // Side effect: clear desired_* → null so automation resumes.
@@ -866,8 +867,24 @@ export function ControlPage() {
               </Card>
             )}
 
-            {/* Safety Locked Devices */}
-            <SafetyLockedDevices protections={safetyProtections} />
+            {/* Safety Locked Devices — hidden when Safety Engine is OFF */}
+            {(farmSettings as any)?.safety_engine_enabled !== false && (
+              <SafetyLockedDevices protections={safetyProtections} />
+            )}
+            {(farmSettings as any)?.safety_engine_enabled === false && (
+              <Card className="border-amber-500/40 bg-amber-500/5">
+                <CardContent className="pt-3 pb-3 text-xs">
+                  <p className="font-semibold text-amber-700 dark:text-amber-400">
+                    {language === 'bn' ? '⚠️ স্মার্ট সেফটি ইঞ্জিন বন্ধ' : '⚠️ Smart Safety Engine OFF'}
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    {language === 'bn'
+                      ? 'ক্লাউড থেকে কোনো সেফটি ওভাররাইড আসবে না। শুধু ৪২°C+ হার্ড ফ্লোর ESP32-এ সক্রিয় থাকবে। সেটিংস থেকে আবার চালু করুন।'
+                      : 'No cloud safety overrides will fire. Only the 42°C+ hard floor stays active on ESP32. Re-enable from Settings.'}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Active Timers Summary */}
             {hasTemporaryOverrides && (
@@ -897,8 +914,10 @@ export function ControlPage() {
               {DEVICES.map((device) => {
                 // Safety lock: if a protection forces this device ON, user cannot stop it.
                 // Heat-stress or gas-purge → fans/circulation/fogger are locked ON.
-                const heatActive = sensorData.temperature > tempMax;
-                const gasActive = sensorData.ammonia > ammoniaMax;
+                // Client-side safety lock only applies when Safety Engine is ON.
+                const engineEnabled = (farmSettings as any)?.safety_engine_enabled !== false;
+                const heatActive = engineEnabled && sensorData.temperature > tempMax;
+                const gasActive = engineEnabled && sensorData.ammonia > ammoniaMax;
                 const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
                 const isSafetyLocked =
                   (heatActive && coolingDevices.includes(device.key)) ||

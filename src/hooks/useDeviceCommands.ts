@@ -323,17 +323,32 @@ export function useSendDeviceCommand() {
             }
 
             if (!isOffline) {
-              let sq: any = supabase
-                .from('device_status')
-                .select('safety_override,safety_override_reason')
-                .eq('user_id', user.id);
-              if (selectedFarmId) sq = sq.eq('farm_id', selectedFarmId);
-              if (variables.shedId) sq = sq.eq('shed_id', variables.shedId);
-              const { data: ss } = await sq
-                .order('updated_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (ss?.safety_override) safetyLocked = true;
+              // Respect the Settings → Smart Safety Engine toggle. When the
+              // farmer has turned the engine OFF, do NOT surface "blocked by
+              // Safety Engine" (would be misleading in both AUTO and MANUAL
+              // modes). We still fall through to the generic no-ack toast.
+              let engineEnabled = true;
+              if (selectedFarmId) {
+                const { data: fs } = await supabase
+                  .from('farm_settings')
+                  .select('safety_engine_enabled')
+                  .eq('farm_id', selectedFarmId)
+                  .maybeSingle();
+                if (fs && (fs as any).safety_engine_enabled === false) engineEnabled = false;
+              }
+              if (engineEnabled) {
+                let sq: any = supabase
+                  .from('device_status')
+                  .select('safety_override,safety_override_reason')
+                  .eq('user_id', user.id);
+                if (selectedFarmId) sq = sq.eq('farm_id', selectedFarmId);
+                if (variables.shedId) sq = sq.eq('shed_id', variables.shedId);
+                const { data: ss } = await sq
+                  .order('updated_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (ss?.safety_override) safetyLocked = true;
+              }
             }
           } catch {
             // ignore — fallback to generic message
