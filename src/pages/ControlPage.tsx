@@ -813,16 +813,8 @@ export function ControlPage() {
         ) : (
           /* ========== AUTO MODE: Timer-based Temporary Control ========== */
           <div className="rounded-2xl border-2 border-status-warning/40 bg-status-warning/10 p-4 space-y-3">
-            {/* Mode is now managed only from Settings → Devices. This banner
-                only displays the current status; toggling is disabled here. */}
-            <AutomationStatusBanner
-              automationEnabled={!isManualMode}
-              hasTemporaryOverrides={hasTemporaryOverrides}
-              onToggleAutomation={() => { /* disabled — change from Settings */ }}
-              canToggle={false}
-              overrideRemainingSeconds={boundedOverride.remainingSeconds}
-              isOutOfBioRange={boundedOverride.isOutOfBioRange}
-            />
+
+
 
 
             {/* Viewer restriction */}
