@@ -128,6 +128,7 @@ export function useSetAutomationMode() {
           .select('device_name')
           .eq('user_id', user.id);
         if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
+        if (shedId) nameQ = nameQ.eq('shed_id', shedId);
         const { data: ds } = await nameQ.limit(1).maybeSingle();
         if (ds?.device_name) deviceName = ds.device_name as string;
       } catch {
