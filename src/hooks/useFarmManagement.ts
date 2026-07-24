@@ -511,29 +511,27 @@ export function useAddMortalityRecord() {
 
       const activeBatchId = isLayer ? (layerBatch as any)?.id ?? null : isBroiler ? (broilerBatch as any)?.id ?? null : null;
 
-      const { error } = await supabase
-        .from('mortality_records')
-        .insert({
-          ...data,
-          shed_id: shedId,
-          farm_id: selectedFarmId,
-          farm_mode: farmMode,
-          batch_id: data.batch_id ?? activeBatchId,
-          user_id: user!.id,
-        } as any);
-      
-      if (error) throw error;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('mortality_records', {
+        ...(data as any),
+        shed_id: shedId,
+        farm_id: selectedFarmId,
+        farm_mode: farmMode,
+        batch_id: (data as any).batch_id ?? activeBatchId,
+        user_id: user!.id,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['mortality-records'] });
       queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      toast({ title: 'মৃত্যু রেকর্ড সংরক্ষণ হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'মৃত্যু রেকর্ড সংরক্ষণ হয়েছে' });
     },
     onError: (e: any) => {
       toast({ title: 'ত্রুটি হয়েছে', description: e?.message, variant: 'destructive' });
     },
   });
 }
+
 
 // Expense Hooks
 export function useExpenses(days: number = 30) {
