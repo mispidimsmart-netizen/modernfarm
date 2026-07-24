@@ -233,7 +233,7 @@ export function ControlPage() {
       case 'fogger': return !!status.fogger;
       case 'ceiling_fan': return !!status.ceilingFan;
       case 'sprinkler': return !!status.sprinkler;
-      case 'alarm': return !!(status as Record<string, unknown>).alarm;
+      case 'alarm': return !!(status as unknown as Record<string, unknown>).alarm;
       default: return false;
     }
   }, [status]);
