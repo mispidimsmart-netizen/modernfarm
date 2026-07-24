@@ -661,9 +661,10 @@ export function ControlPage() {
         </div>
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="w-full">
           <StateExplanationHeader />
         </div>
+
 
         {/* ===== 2. WHY FAN IS RUNNING (only in AUTO mode) ===== */}
         {!isManualMode && <WhyFanRunning />}
