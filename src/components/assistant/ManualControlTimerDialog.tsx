@@ -19,7 +19,10 @@ interface ManualControlTimerDialogProps {
   deviceIcon: React.ReactNode;
   onConfirm: (durationMinutes: number) => void;
   onCancel: () => void;
+  /** 'on' = temporarily start; 'off' = temporarily stop. Defaults to 'on'. */
+  intent?: 'on' | 'off';
 }
+
 
 const DURATION_OPTIONS = [
   { minutes: 10, label: { bn: '১০ মিনিট', en: '10 minutes' } },
@@ -34,8 +37,11 @@ export function ManualControlTimerDialog({
   deviceIcon,
   onConfirm,
   onCancel,
+  intent = 'on',
 }: ManualControlTimerDialogProps) {
   const { language } = useAuth();
+  const isOff = intent === 'off';
+
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
 
   const handleConfirm = () => {
@@ -62,7 +68,9 @@ export function ManualControlTimerDialog({
             </div>
             <div>
               <span className="block">
-                {language === 'bn' ? 'কতক্ষণ চালাবেন?' : 'Run for how long?'}
+                {isOff
+                  ? (language === 'bn' ? 'কতক্ষণ বন্ধ রাখবেন?' : 'Stop for how long?')
+                  : (language === 'bn' ? 'কতক্ষণ চালাবেন?' : 'Run for how long?')}
               </span>
               <span className="text-sm font-normal text-muted-foreground">
                 {deviceName}
@@ -72,10 +80,15 @@ export function ManualControlTimerDialog({
           <DialogDescription className="pt-2 flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <span>
-              {language === 'bn' 
-                ? 'নির্ধারিত সময় পর স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে' 
-                : 'Will automatically return to AUTO mode after the timer expires'}
+              {isOff
+                ? (language === 'bn'
+                    ? 'নির্ধারিত সময় পর্যন্ত ডিভাইস বন্ধ থাকবে, তারপর অটোমেশন ফিরে পাবে নিয়ন্ত্রণ'
+                    : 'Device stays OFF until the timer ends, then automation resumes control')
+                : (language === 'bn'
+                    ? 'নির্ধারিত সময় পর স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে'
+                    : 'Will automatically return to AUTO mode after the timer expires')}
             </span>
+
           </DialogDescription>
         </DialogHeader>
 
@@ -130,11 +143,15 @@ export function ManualControlTimerDialog({
           <Button
             onClick={handleConfirm}
             disabled={!selectedDuration}
+            variant={isOff ? 'destructive' : 'default'}
             className="flex-1"
           >
             <Clock className="h-4 w-4 mr-2" />
-            {language === 'bn' ? 'শুরু করুন' : 'Start Timer'}
+            {isOff
+              ? (language === 'bn' ? 'বন্ধ করুন' : 'Stop Timer')
+              : (language === 'bn' ? 'শুরু করুন' : 'Start Timer')}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>

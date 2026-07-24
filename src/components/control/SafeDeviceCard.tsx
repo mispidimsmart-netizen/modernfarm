@@ -6,8 +6,10 @@ import {
   Square, 
   Lock, 
   Zap,
+  Pause,
   LucideIcon 
 } from 'lucide-react';
+
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,14 +26,19 @@ interface SafeDeviceCardProps {
   remainingTime?: string | null;
   isSafetyLocked?: boolean;
   safetyReason?: { bn: string; en: string };
+  /** Open the timer dialog to temporarily START the device (AUTO mode). */
   onRunTemporarily: () => void;
+  /** Open the timer dialog to temporarily STOP the device (AUTO mode). */
   onStopTemporarily: () => void;
+  /** Cancel an active temporary override immediately (no timer). */
+  onCancelOverride?: () => void;
   disabled?: boolean;
   /** True only when the user placed a temporary override on this device. */
   hasOverride?: boolean;
   /** True when the farm is in AUTO mode (affects Stop button semantics). */
   isAutoMode?: boolean;
 }
+
 
 export function SafeDeviceCard({
   deviceKey,
@@ -45,9 +52,11 @@ export function SafeDeviceCard({
   safetyReason,
   onRunTemporarily,
   onStopTemporarily,
+  onCancelOverride,
   disabled,
   hasOverride,
   isAutoMode,
+
 }: SafeDeviceCardProps) {
   const { language } = useAuth();
 
@@ -137,13 +146,25 @@ export function SafeDeviceCard({
             {language === 'bn' ? 'সুরক্ষা সক্রিয় — বন্ধ করা যাবে না' : 'Safety active — cannot stop'}
           </span>
         </div>
+      ) : isAutoMode && hasOverride ? (
+        // AUTO + user override active: one button to cancel the override immediately.
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onCancelOverride}
+          disabled={disabled}
+          className="w-full gap-1"
+        >
+          <Square className="h-4 w-4" />
+          {language === 'bn' ? 'ওভাররাইড বাতিল' : 'Cancel Override'}
+        </Button>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant={isActive ? 'outline' : 'default'}
             size="sm"
             onClick={onRunTemporarily}
-            disabled={disabled || (isActive && !isAutoMode)}
+            disabled={disabled || isActive}
             className="gap-1"
           >
             <Play className="h-4 w-4" />
@@ -153,36 +174,25 @@ export function SafeDeviceCard({
             variant="outline"
             size="sm"
             onClick={onStopTemporarily}
-            // In AUTO mode, Stop only makes sense if the user has an active
-            // temporary override — otherwise automation is already in charge
-            // and pressing Stop does nothing meaningful.
-            disabled={
-              disabled ||
-              !isActive ||
-              (isAutoMode && !hasOverride)
-            }
-            title={
-              isAutoMode && !hasOverride
-                ? (language === 'bn'
-                    ? 'অটো মোডে চলছে — বন্ধ করতে ম্যানুয়াল মোডে যান (সেটিংস)'
-                    : 'Auto mode is running this — switch to Manual mode (Settings) to stop')
-                : undefined
-            }
+            disabled={disabled || !isActive}
             className="gap-1"
           >
-            <Square className="h-4 w-4" />
-            {language === 'bn' ? 'বন্ধ করুন' : 'Stop'}
+            <Pause className="h-4 w-4" />
+            {isAutoMode
+              ? (language === 'bn' ? 'সাময়িক বন্ধ' : 'Stop Temp')
+              : (language === 'bn' ? 'বন্ধ করুন' : 'Stop')}
           </Button>
         </div>
       )}
-      {/* Auto-mode hint when Stop is disabled because no user override exists */}
+      {/* Auto-mode hint explaining the timer-based Stop behavior */}
       {isAutoMode && isActive && !hasOverride && !isSafetyLocked && (
         <p className="mt-2 text-[11px] text-muted-foreground text-center">
           {language === 'bn'
-            ? 'অটোমেশন নিয়ন্ত্রণে — বন্ধ করতে ম্যানুয়াল মোডে যান'
-            : 'Under automation — switch to Manual mode to stop'}
+            ? 'অটোমেশন চালাচ্ছে — সাময়িক বন্ধে টাইমার শেষে অটো ফিরে পাবে'
+            : 'Automation is running this — Stop Temp uses a timer, then automation resumes'}
         </p>
       )}
+
     </motion.div>
   );
 }

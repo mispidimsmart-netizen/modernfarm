@@ -174,7 +174,9 @@ export function ControlPage() {
     device: string;
     icon: React.ReactNode;
     name: string;
+    intent: 'on' | 'off';
   } | null>(null);
+
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
   // ===== HARDWARE-CONFIRMATION PENDING STATE =====
@@ -452,23 +454,35 @@ export function ControlPage() {
       device: deviceKey,
       icon: <IconComponent className="h-6 w-6" />,
       name: deviceName[language],
+      intent: 'on',
     });
     setTimerDialogOpen(true);
   };
 
-  // AUTO-mode Stop: cancel the temporary override by clearing desired_* → null
-  // so automation can resume. Do NOT send a hardware OFF command (that would
-  // fight the automation engine and cause the relay to flicker).
-  const handleStop = async (deviceKey: string) => {
+  // AUTO-mode: open the timer dialog to temporarily STOP a device that
+  // automation is currently running. Similar to "Run Temp" but writes
+  // desired_x=false with an expiry; automation resumes after the timer ends.
+  const handleStopTemporarily = (deviceKey: string, deviceName: { bn: string; en: string }, icon: React.ElementType) => {
+    if (!requireFarmSelected()) return;
+    const IconComponent = icon;
+    setPendingDevice({
+      device: deviceKey,
+      icon: <IconComponent className="h-6 w-6" />,
+      name: deviceName[language],
+      intent: 'off',
+    });
+    setTimerDialogOpen(true);
+  };
+
+  // AUTO-mode Cancel: cancel the active temporary override by clearing
+  // desired_* → null so automation can resume immediately (no timer).
+  const handleCancelOverride = async (deviceKey: string) => {
     if (!requireFarmSelected()) return;
     setActiveTimers(prev => {
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
     });
-    // Only clear desired_* → null. Do NOT also setDeviceStatus(false):
-    // that would write desired_x = false and race with the null-clear,
-    // sometimes pinning the device OFF instead of releasing to automation.
     await clearDesiredColumn(deviceKey);
     toast({
       title: language === 'bn' ? '↩️ ওভাররাইড বাতিল' : '↩️ Override Cleared',
@@ -482,21 +496,19 @@ export function ControlPage() {
     if (!pendingDevice) return;
     if (!requireFarmSelected()) { setPendingDevice(null); setTimerDialogOpen(false); return; }
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
+    const targetValue = pendingDevice.intent === 'on';
 
     const endTime = Date.now() + durationMinutes * 60000;
     const desiredCol = DESIRED_COL_MAP[pendingDevice.device];
     const expCol = EXPIRES_COL_MAP[pendingDevice.device];
 
-    // FIX #4: write desired_x AND desired_x_expires_at in ONE atomic update
-    // BEFORE the device_commands trigger fires. Previously we relied on the
-    // trigger to flip desired_x, then wrote expires_at separately — leaving a
-    // window where pg_cron / automation could observe an inconsistent pair
-    // (expires_at set but desired_x still null, or vice versa).
+    // Atomic write: desired_x + desired_x_expires_at in one update so pg_cron
+    // / automation never sees an inconsistent pair.
     if (desiredCol && expCol && user) {
       let q = supabase
         .from('device_status')
         .update({
-          [desiredCol]: true,
+          [desiredCol]: targetValue,
           [expCol]: new Date(endTime).toISOString(),
           updated_at: new Date().toISOString(),
         } as any)
@@ -507,10 +519,10 @@ export function ControlPage() {
     }
 
     // Fire the device_commands row so ESP32 polls it in real-time.
-    sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
+    sendCommand.mutate({ commandType: cmdType, commandValue: targetValue, shedId: selectedShedId || undefined });
 
-    setDeviceStatus({ [pendingDevice.device]: true });
-    markPending(pendingDevice.device, true);
+    setDeviceStatus({ [pendingDevice.device]: targetValue });
+    markPending(pendingDevice.device, targetValue);
 
     setActiveTimers(prev => ({
       ...prev,
@@ -518,13 +530,20 @@ export function ControlPage() {
     }));
 
     toast({
-      title: language === 'bn' ? '✅ সাময়িক চালু' : '✅ Temporarily Started',
-      description: language === 'bn' 
-        ? `${pendingDevice.name} ${durationMinutes} মিনিট চলবে, তারপর অটো মোডে ফিরে যাবে` 
-        : `${pendingDevice.name} will run for ${durationMinutes} minutes then return to auto`,
+      title: targetValue
+        ? (language === 'bn' ? '✅ সাময়িক চালু' : '✅ Temporarily Started')
+        : (language === 'bn' ? '⏸️ সাময়িক বন্ধ' : '⏸️ Temporarily Stopped'),
+      description: targetValue
+        ? (language === 'bn'
+            ? `${pendingDevice.name} ${durationMinutes} মিনিট চলবে, তারপর অটো মোডে ফিরে যাবে`
+            : `${pendingDevice.name} will run for ${durationMinutes} minutes then return to auto`)
+        : (language === 'bn'
+            ? `${pendingDevice.name} ${durationMinutes} মিনিট বন্ধ থাকবে, তারপর অটো মোডে ফিরে যাবে`
+            : `${pendingDevice.name} will stay OFF for ${durationMinutes} minutes then return to auto`),
     });
     setPendingDevice(null);
   };
+
 
 
   const handleAutomationToggle = (enabled: boolean, reason?: string) => {
@@ -921,9 +940,11 @@ export function ControlPage() {
                     hasOverride={Boolean(activeTimers[device.key])}
                     isAutoMode={!isManualMode}
                     onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
-                    onStopTemporarily={() => handleStop(device.key)}
+                    onStopTemporarily={() => handleStopTemporarily(device.key, device.name, device.icon)}
+                    onCancelOverride={() => handleCancelOverride(device.key)}
                     disabled={farmNotReady || !canTemporaryControl}
                   />
+
                 );
               })}
             </div>
@@ -949,9 +970,11 @@ export function ControlPage() {
         onOpenChange={setTimerDialogOpen}
         deviceName={pendingDevice?.name || ''}
         deviceIcon={pendingDevice?.icon || null}
+        intent={pendingDevice?.intent || 'on'}
         onConfirm={handleTimerConfirm}
         onCancel={() => setPendingDevice(null)}
       />
+
 
       <BottomNav />
     </div>
