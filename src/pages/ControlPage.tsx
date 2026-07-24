@@ -867,8 +867,24 @@ export function ControlPage() {
               </Card>
             )}
 
-            {/* Safety Locked Devices */}
-            <SafetyLockedDevices protections={safetyProtections} />
+            {/* Safety Locked Devices — hidden when Safety Engine is OFF */}
+            {(farmSettings as any)?.safety_engine_enabled !== false && (
+              <SafetyLockedDevices protections={safetyProtections} />
+            )}
+            {(farmSettings as any)?.safety_engine_enabled === false && (
+              <Card className="border-amber-500/40 bg-amber-500/5">
+                <CardContent className="pt-3 pb-3 text-xs">
+                  <p className="font-semibold text-amber-700 dark:text-amber-400">
+                    {language === 'bn' ? '⚠️ স্মার্ট সেফটি ইঞ্জিন বন্ধ' : '⚠️ Smart Safety Engine OFF'}
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    {language === 'bn'
+                      ? 'ক্লাউড থেকে কোনো সেফটি ওভাররাইড আসবে না। শুধু ৪২°C+ হার্ড ফ্লোর ESP32-এ সক্রিয় থাকবে। সেটিংস থেকে আবার চালু করুন।'
+                      : 'No cloud safety overrides will fire. Only the 42°C+ hard floor stays active on ESP32. Re-enable from Settings.'}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Active Timers Summary */}
             {hasTemporaryOverrides && (
