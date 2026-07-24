@@ -5,8 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 interface SyncQueueItem {
   id: string;
   table_name: string;
-  operation: 'INSERT' | 'UPDATE' | 'DELETE';
+  operation: 'INSERT' | 'UPDATE' | 'DELETE' | 'UPSERT';
   record_data: Record<string, unknown>;
+  on_conflict?: string;
   created_at: string;
   retry_count?: number;
   max_age_minutes?: number;
@@ -15,6 +16,7 @@ interface SyncQueueItem {
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
 const DEFAULT_MAX_AGE_MIN = 24 * 60; // 24h TTL — Phase 3
 const MAX_RETRY_COUNT = 5;
+
 
 /** Phase 3: drop items older than max_age_minutes or with too many failed retries */
 function pruneExpired(queue: SyncQueueItem[]): { kept: SyncQueueItem[]; dropped: number } {
