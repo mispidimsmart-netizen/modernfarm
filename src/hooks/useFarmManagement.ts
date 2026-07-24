@@ -159,19 +159,15 @@ export function useAddEggProduction() {
     mutationFn: async (data: Omit<EggProduction, 'id' | 'user_id' | 'created_at'>) => {
       if (!user) throw new Error('লগইন করা নেই');
       if (!selectedFarmId) throw new Error('কোনো ফার্ম নির্বাচন করা নেই');
-      const { error } = await supabase
-        .from('egg_production')
-        .upsert(
-          {
-            ...data,
-            user_id: user.id,
-            farm_id: selectedFarmId,
-          } as any,
-          { onConflict: 'user_id,farm_id,production_date' }
-        );
-
-      if (error) throw error;
+      const { upsertOrQueue } = await import('@/lib/offlineQueue');
+      const res = await upsertOrQueue(
+        'egg_production',
+        { ...(data as any), user_id: user.id, farm_id: selectedFarmId },
+        'user_id,farm_id,production_date',
+      );
+      return res;
     },
+
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['egg-production'], refetchType: 'active' }),
