@@ -58,7 +58,7 @@ const SystemActivityCard = lazy(() =>
 );
 
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
-import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
+
 // QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
 // Flock tab — recharts-heavy widgets, lazy-load
 const LayerBatchCard = lazy(() =>
