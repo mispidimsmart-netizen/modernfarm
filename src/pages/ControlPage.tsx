@@ -167,6 +167,22 @@ export function ControlPage() {
   } | null>(null);
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
+  // ===== HARDWARE-CONFIRMATION PENDING STATE =====
+  // Tracks devices whose command was sent but ESP32 hasn't reported back yet.
+  // Cleared when device_status realtime update matches `desired`, or on timeout.
+  const PENDING_TIMEOUT_MS = 7000;
+  const [pendingCommands, setPendingCommands] = useState<
+    Record<string, { desired: boolean; startedAt: number }>
+  >({});
+
+  const markPending = useCallback((deviceKey: string, desired: boolean) => {
+    setPendingCommands((prev) => ({
+      ...prev,
+      [deviceKey]: { desired, startedAt: Date.now() },
+    }));
+  }, []);
+
+
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
