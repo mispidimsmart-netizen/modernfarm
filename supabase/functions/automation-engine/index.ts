@@ -428,6 +428,28 @@ Deno.serve(async (req) => {
         );
       }
 
+      // ========================================
+      // SAFETY ENGINE TOGGLE CHECK
+      // If farmer disabled Smart Safety Engine, cloud must NOT push
+      // safety-driven desired_* overrides (ammonia/heat/power → fan/alarm).
+      // ESP32 hardware invariants still enforce physical safety independently.
+      // Keeps behavior consistent with esp32-api /ingest gating.
+      // ========================================
+      const safetyEngineEnabled = (settings as any).safety_engine_enabled !== false;
+      if (!safetyEngineEnabled) {
+        console.log(`🛑 [SAFETY ENGINE OFF] Skipping cloud safety overrides for user ${user_id} farm ${farm_id}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: 'SAFETY_ENGINE_DISABLED',
+            message: 'Cloud safety automation off — hardware invariants still active on ESP32.',
+            timestamp: new Date().toISOString(),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // ★ FIX #1: Get latest sensor data from sensor_readings (the actual table ESP32 writes to)
       let sensorQuery = supabase
         .from('sensor_readings')
