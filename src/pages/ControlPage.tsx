@@ -223,6 +223,71 @@ export function ControlPage() {
     return () => clearInterval(interval);
   }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
 
+  // Map deviceKey → actual status boolean (used for pending reconciliation)
+  const getActualStatus = useCallback((deviceKey: string): boolean => {
+    switch (deviceKey) {
+      case 'fan': return !!status.fan;
+      case 'light': return !!status.light;
+      case 'heater': return !!status.heater;
+      case 'circulation_fan': return !!status.circulation_fan;
+      case 'fogger': return !!status.fogger;
+      case 'ceiling_fan': return !!status.ceilingFan;
+      case 'sprinkler': return !!status.sprinkler;
+      case 'alarm': return !!(status as Record<string, unknown>).alarm;
+      default: return false;
+    }
+  }, [status]);
+
+  // Reconcile: when ESP32 reports actual == desired, clear pending + success toast
+  useEffect(() => {
+    const confirmedKeys = Object.entries(pendingCommands)
+      .filter(([key, p]) => getActualStatus(key) === p.desired)
+      .map(([key]) => key);
+    if (confirmedKeys.length === 0) return;
+    setPendingCommands((prev) => {
+      const next = { ...prev };
+      confirmedKeys.forEach((k) => delete next[k]);
+      return next;
+    });
+    confirmedKeys.forEach((k) => {
+      toast({
+        title: language === 'bn' ? '✅ হার্ডওয়্যার কনফার্মড' : '✅ Hardware confirmed',
+        description: language === 'bn'
+          ? `${k} — ESP32 থেকে নিশ্চিতকরণ এসেছে`
+          : `${k} — confirmed by ESP32`,
+      });
+    });
+  }, [pendingCommands, getActualStatus, toast, language]);
+
+  // Timeout: if ESP32 doesn't confirm within PENDING_TIMEOUT_MS, warn user
+  useEffect(() => {
+    if (Object.keys(pendingCommands).length === 0) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const timedOut = Object.entries(pendingCommands)
+        .filter(([, p]) => now - p.startedAt > PENDING_TIMEOUT_MS)
+        .map(([k]) => k);
+      if (timedOut.length === 0) return;
+      setPendingCommands((prev) => {
+        const next = { ...prev };
+        timedOut.forEach((k) => delete next[k]);
+        return next;
+      });
+      timedOut.forEach((k) => {
+        toast({
+          title: language === 'bn' ? '⚠️ কনফার্মেশন আসেনি' : '⚠️ No hardware confirmation',
+          description: language === 'bn'
+            ? `${k} — ESP32 থেকে ${PENDING_TIMEOUT_MS / 1000} সেকেন্ডে কোনো উত্তর আসেনি। ডিভাইস অফলাইন থাকতে পারে।`
+            : `${k} — ESP32 did not respond in ${PENDING_TIMEOUT_MS / 1000}s. Device may be offline.`,
+          variant: 'destructive',
+        });
+      });
+    }, 500);
+    return () => clearInterval(interval);
+  }, [pendingCommands, toast, language]);
+
+
+
   const getRemainingTime = useCallback((device: string) => {
     const timer = activeTimers[device];
     if (!timer) return null;
