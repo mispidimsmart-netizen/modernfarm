@@ -468,7 +468,7 @@ export function ControlPage() {
     });
   };
 
-  const handleTimerConfirm = (durationMinutes: number) => {
+  const handleTimerConfirm = async (durationMinutes: number) => {
     if (!pendingDevice) return;
     if (!requireFarmSelected()) { setPendingDevice(null); setTimerDialogOpen(false); return; }
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
@@ -477,13 +477,26 @@ export function ControlPage() {
     setDeviceStatus({ [pendingDevice.device]: true });
     markPending(pendingDevice.device, true);
 
+    const endTime = Date.now() + durationMinutes * 60000;
     setActiveTimers(prev => ({
       ...prev,
-      [pendingDevice.device]: {
-        endTime: Date.now() + durationMinutes * 60000,
-        duration: durationMinutes,
-      },
+      [pendingDevice.device]: { endTime, duration: durationMinutes },
     }));
+
+    // Persist expiry to DB so the timer survives refresh / tab close.
+    // Server-side pg_cron `expire_desired_overrides()` nulls desired_* when
+    // this timestamp passes — device won't stay ON forever if browser dies.
+    const expCol = EXPIRES_COL_MAP[pendingDevice.device];
+    if (expCol && user) {
+      let q = supabase
+        .from('device_status')
+        .update({ [expCol]: new Date(endTime).toISOString(), updated_at: new Date().toISOString() } as any)
+        .eq('user_id', user.id);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      if (selectedShedId) q = q.eq('shed_id', selectedShedId);
+      await q;
+    }
+
     toast({
       title: language === 'bn' ? '✅ সাময়িক চালু' : '✅ Temporarily Started',
       description: language === 'bn' 
@@ -492,6 +505,7 @@ export function ControlPage() {
     });
     setPendingDevice(null);
   };
+
 
   const handleAutomationToggle = (enabled: boolean, reason?: string) => {
     // Defensive guard — UI gates this via canDisableAutomation, but RPC layer should too
