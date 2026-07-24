@@ -74,7 +74,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
         <Skeleton className="h-4 w-32 mb-3" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-xl" />
+            <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
       </div>
