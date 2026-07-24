@@ -5,18 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
-import { useRealtimeSensorData, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
-import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
-import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
-import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
-import { useBroilerEnvironment } from '@/hooks/useBroilerEnvironment';
+import { useRealtimeSensorData, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useBroilerWaterMonitor } from '@/hooks/useBroilerWaterMonitor';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useHeatStressRiskPrediction } from '@/hooks/useHeatStressRiskPrediction';
 import { useFoggerCooling } from '@/hooks/useFoggerCooling';
 import { useCoolingEfficiency } from '@/hooks/useCoolingEfficiency';
-import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 
 import { Header } from '@/components/Header';
@@ -34,25 +29,15 @@ const SensorCharts = lazy(() =>
   import('@/components/dashboard/SensorCharts').then(m => ({ default: m.SensorCharts }))
 );
 
-import { HeatStressStatusCard } from '@/components/dashboard/HeatStressStatusCard';
 import { SystemModeCard } from '@/components/dashboard/SystemModeCard';
 import { SafetyEngineStatusCard } from '@/components/dashboard/SafetyEngineStatusCard';
-import { FanSpeedCard } from '@/components/dashboard/FanSpeedCard';
 import { WaterAnomalyCard } from '@/components/dashboard/WaterAnomalyCard';
 import { AmmoniaTrendCard } from '@/components/dashboard/AmmoniaTrendCard';
 import { HeatStressRiskCard } from '@/components/dashboard/HeatStressRiskCard';
 import { CoolingEfficiencyCard } from '@/components/dashboard/CoolingEfficiencyCard';
-import { SensorHealthCard } from '@/components/dashboard/SensorHealthCard';
 import { InsideOutsideDeltaCard } from '@/components/dashboard/InsideOutsideDeltaCard';
 import { AutomationStatusCard } from '@/components/automation/AutomationStatusCard';
-import { PowerOutageCard } from '@/components/device/PowerOutageCard';
-// BigFarmOverview removed from Details tab (duplicate of CoreMetricsRow)
-import { BroilerTempStatusCard } from '@/components/broiler/BroilerTempStatusCard';
-import { BroilerTempCurveCard } from '@/components/broiler/BroilerTempCurveCard';
-import { BroilerAgeAutoModeCard } from '@/components/broiler/BroilerAgeAutoModeCard';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Industrial Dashboard Components
 import { EspConnectionBanner } from '@/components/dashboard/EspConnectionBanner';
@@ -60,11 +45,6 @@ import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner'
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { AirQualityCard } from '@/components/dashboard/AirQualityCard';
-
-import { DeviceConnectionStatus } from '@/components/dashboard/DeviceConnectionStatus';
-import { ConnectionQualityCard } from '@/components/control/ConnectionQualityCard';
-import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
-import { LightActionHistory } from '@/components/lighting/LightActionHistory';
 
 // Farmer-Friendly Assistant Components
 import { 
@@ -78,7 +58,7 @@ const SystemActivityCard = lazy(() =>
 );
 
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
-import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
+
 // QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
 // Flock tab — recharts-heavy widgets, lazy-load
 const LayerBatchCard = lazy(() =>
@@ -101,19 +81,14 @@ import {
   EnvironmentTabSkeleton,
   ControlTabSkeleton,
   FlockTabSkeleton,
-  SystemStatusCardsSkeleton,
 } from '@/components/dashboard/TabSkeletons';
-import { useIsFetching } from '@tanstack/react-query';
 import { DashboardSnapshotProvider } from '@/context/DashboardSnapshotContext';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
-  const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
-  
+
   const { data: automationMode } = useAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
-  const { data: deviceHealth } = useAllDeviceHealth();
-  const { selectedShedId } = useSelectedShed();
   const { isLayer, isBroiler } = useFarmType();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string>('summary');
@@ -128,60 +103,14 @@ export function Dashboard() {
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
-    // Show cached data instantly. Only background-refetch queries that are
-    // already stale — never force a full reload that triggers Skeletons.
     const keys = TAB_QUERY_KEYS[value] || [];
     keys.forEach((key) => {
-      queryClient.refetchQueries({
-        queryKey: [key],
-        type: 'active',
-        stale: true,
-      });
+      queryClient.refetchQueries({ queryKey: [key], type: 'active', stale: true });
     });
   }, [queryClient]);
 
-  // Track fetching state for System Status section cards (consistent skeleton on update)
-  const systemStatusFetching = useIsFetching({
-    predicate: (q) => {
-      const k = q.queryKey?.[0];
-      return typeof k === 'string' && [
-        'automation-status',
-        'safety_status',
-        'device_health',
-        'broiler-batch-active',
-        'broiler-environment',
-        'heat-stress',
-        'fan-speed',
-      ].includes(k);
-    },
-  });
-
   // Subscribe to realtime alerts
   useRealtimeAlerts();
-  
-  // Layer: Heat Stress Index automation
-  const hsiResult = useHeatStressAutomation({
-    temperature: sensorData.temperature,
-    humidity: sensorData.humidity,
-    shedId: selectedShedId,
-    enabled: isLayer,
-  });
-
-  // Layer: Fan Speed automation based on temperature
-  const fanSpeedResult = useFanSpeedAutomation({
-    temperature: sensorData.temperature,
-    shedId: selectedShedId,
-    enabled: isLayer && !manualOverride,
-  });
-
-  // Broiler: Complete environment automation
-  const broilerEnvResult = useBroilerEnvironment({
-    temperature: sensorData.temperature,
-    humidity: sensorData.humidity,
-    ammonia: sensorData.ammonia,
-    shedId: selectedShedId,
-    enabled: isBroiler,
-  });
 
   // Water usage monitoring
   const layerWaterAnomalyResult = useWaterAnomalyDetection(isLayer ? sensorData.waterUsage : null);
@@ -192,6 +121,7 @@ export function Dashboard() {
 
   // Tomorrow's heat stress risk prediction
   const heatStressRiskResult = useHeatStressRiskPrediction();
+
 
   // Fogger status for cooling efficiency detection
   const foggerStatus = useFoggerCooling({
@@ -366,23 +296,12 @@ export function Dashboard() {
                     : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
-                  {systemStatusFetching > 0 ? (
-                    <SystemStatusCardsSkeleton
-                      showHeatStress={false}
-                      showAutomation={!isManualMode}
-                      showBroiler={false}
-                      showFanSpeed={false}
-                    />
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="min-w-0"><SystemModeCard /></div>
-                        <div className="min-w-0"><SafetyEngineStatusCard /></div>
-                      </div>
-                      {!isManualMode && (
-                        <div className="min-w-0"><AutomationStatusCard /></div>
-                      )}
-                    </>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="min-w-0"><SystemModeCard /></div>
+                    <div className="min-w-0"><SafetyEngineStatusCard /></div>
+                  </div>
+                  {!isManualMode && (
+                    <div className="min-w-0"><AutomationStatusCard /></div>
                   )}
                 </div>
               </section>
