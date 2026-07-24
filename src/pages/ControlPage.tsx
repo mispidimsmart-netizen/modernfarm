@@ -413,7 +413,9 @@ export function ControlPage() {
       delete updated[deviceKey];
       return updated;
     });
-    setDeviceStatus({ [deviceKey]: false });
+    // Only clear desired_* → null. Do NOT also setDeviceStatus(false):
+    // that would write desired_x = false and race with the null-clear,
+    // sometimes pinning the device OFF instead of releasing to automation.
     await clearDesiredColumn(deviceKey);
     toast({
       title: language === 'bn' ? '↩️ ওভাররাইড বাতিল' : '↩️ Override Cleared',
