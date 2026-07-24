@@ -313,23 +313,12 @@ export function Dashboard() {
                     : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
-                  {systemStatusFetching > 0 ? (
-                    <SystemStatusCardsSkeleton
-                      showHeatStress={false}
-                      showAutomation={!isManualMode}
-                      showBroiler={false}
-                      showFanSpeed={false}
-                    />
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="min-w-0"><SystemModeCard /></div>
-                        <div className="min-w-0"><SafetyEngineStatusCard /></div>
-                      </div>
-                      {!isManualMode && (
-                        <div className="min-w-0"><AutomationStatusCard /></div>
-                      )}
-                    </>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="min-w-0"><SystemModeCard /></div>
+                    <div className="min-w-0"><SafetyEngineStatusCard /></div>
+                  </div>
+                  {!isManualMode && (
+                    <div className="min-w-0"><AutomationStatusCard /></div>
                   )}
                 </div>
               </section>
