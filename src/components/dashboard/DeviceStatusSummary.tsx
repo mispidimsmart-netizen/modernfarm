@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Fan, Lightbulb, Bell, Flame, Droplets, Wind, Power,
+  Fan, Lightbulb, Flame, Droplets, Wind, Power,
   CircleDot, CircleOff
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -20,10 +20,9 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
   const { status, isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
 
   const devices: DeviceItem[] = [
-    { key: 'fan', icon: Fan, label: { bn: 'ফ্যান', en: 'Fan' }, isOn: status.fan },
+    { key: 'fan', icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: status.fan },
     { key: 'heater', icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: status.heater },
     { key: 'light', icon: Lightbulb, label: { bn: 'আলো', en: 'Light' }, isOn: status.light },
-    { key: 'alarm', icon: Bell, label: { bn: 'অ্যালার্ম', en: 'Alarm' }, isOn: status.alarm },
     { key: 'circulation_fan', icon: Wind, label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation' }, isOn: status.circulation_fan },
     { key: 'fogger', icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: status.fogger },
   ];
