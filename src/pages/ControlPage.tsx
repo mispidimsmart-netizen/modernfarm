@@ -700,9 +700,11 @@ export function ControlPage() {
                 : '⚠️ Warning: Disabling automation may harm birds'}
             </p>
 
-            {/* Automation Master Status */}
+            {/* Automation Master Status — driven by farm_settings.automation_mode
+                (source of truth), NOT the device-side manual_override flag which
+                may lag behind or reflect a temporary override. */}
             <AutomationStatusBanner
-              automationEnabled={!manualOverride}
+              automationEnabled={automationMode !== 'MANUAL'}
               hasTemporaryOverrides={hasTemporaryOverrides}
               onToggleAutomation={handleAutomationToggle}
               canToggle={canDisableAutomation}
