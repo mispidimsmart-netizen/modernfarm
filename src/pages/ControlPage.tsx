@@ -477,7 +477,7 @@ export function ControlPage() {
     }
 
     const newMode = enabled ? 'AUTO' : 'MANUAL';
-    setAutomationMode.mutate(newMode);
+    setAutomationMode.mutate({ mode: newMode, shedId: selectedShedId });
 
     toast({
       title: enabled 
@@ -679,7 +679,7 @@ export function ControlPage() {
                             <Switch
                               checked={active}
                               onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending || isPending}
+                              disabled={farmNotReady || isViewer || !canFullControl || isPending}
                               className={`${!isPending ? c.switchOn : 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40'}`}
                             />
                             {isPending && (
@@ -836,7 +836,7 @@ export function ControlPage() {
                     safetyReason={safetyReason}
                     onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
                     onStopTemporarily={() => handleStop(device.key)}
-                    disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
+                    disabled={farmNotReady || !canTemporaryControl}
                   />
                 );
               })}
