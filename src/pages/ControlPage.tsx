@@ -402,6 +402,8 @@ export function ControlPage() {
     sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
 
     setDeviceStatus({ [pendingDevice.device]: true });
+    markPending(pendingDevice.device, true);
+
     setActiveTimers(prev => ({
       ...prev,
       [pendingDevice.device]: {
