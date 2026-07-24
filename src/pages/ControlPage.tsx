@@ -174,7 +174,9 @@ export function ControlPage() {
     device: string;
     icon: React.ReactNode;
     name: string;
+    intent: 'on' | 'off';
   } | null>(null);
+
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
   // ===== HARDWARE-CONFIRMATION PENDING STATE =====
