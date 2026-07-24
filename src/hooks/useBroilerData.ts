@@ -334,29 +334,27 @@ export function useAddFeed() {
       const farmId = selectedFarmId || farms[0]?.id;
       if (!farmId) throw new Error('No farm available.');
 
-      const { data, error } = await supabase
-        .from('broiler_feed')
-        .insert({
-          user_id: user.id,
-          farm_id: farmId,
-          batch_id: feed.batch_id!,
-          feed_date: feed.feed_date || new Date().toISOString().split('T')[0],
-          feed_type: feed.feed_type || 'starter',
-          quantity_kg: feed.quantity_kg || 0,
-          cost_per_kg: feed.cost_per_kg || 0,
-          notes: feed.notes || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('broiler_feed', {
+        user_id: user.id,
+        farm_id: farmId,
+        batch_id: feed.batch_id!,
+        feed_date: feed.feed_date || new Date().toISOString().split('T')[0],
+        feed_type: feed.feed_type || 'starter',
+        quantity_kg: feed.quantity_kg || 0,
+        cost_per_kg: feed.cost_per_kg || 0,
+        notes: feed.notes || null,
+      });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
       queryClient.invalidateQueries({ queryKey: ['broiler-feed', variables.batch_id] });
       toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'খাদ্য রেকর্ড যোগ হয়েছে' : 'Feed record added',
+        title: (res as any)?.queued
+          ? (language === 'bn' ? '📴 অফলাইনে সংরক্ষিত' : '📴 Saved offline')
+          : (language === 'bn' ? 'সফল!' : 'Success!'),
+        description: (res as any)?.queued
+          ? (language === 'bn' ? 'নেট এলে সিঙ্ক হবে' : 'Will sync when online')
+          : (language === 'bn' ? 'খাদ্য রেকর্ড যোগ হয়েছে' : 'Feed record added'),
       });
     },
     onError: (error) => {
@@ -368,6 +366,7 @@ export function useAddFeed() {
     },
   });
 }
+
 
 // Calculate batch statistics
 export function useBatchStats(batchId: string | undefined) {
