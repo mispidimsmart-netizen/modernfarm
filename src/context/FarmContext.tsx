@@ -12,6 +12,8 @@ export interface Farm {
   location: string | null;
   total_sheds: number | null;
   is_active: boolean | null;
+  organization_id?: string | null;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,27 +63,17 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, queryClient]);
 
-  // Fetch farms user has access to via farm_members
+  // Fetch farms the signed-in user can access. RLS already scopes this to
+  // owner/member/org-admin/super-admin access; querying only farm_members
+  // missed farm owners/org admins and left selectedFarmId null.
   const { data: farms = [], isLoading } = useQuery({
     queryKey: ['user-farms', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
-      // Get farm IDs from farm_members
-      const { data: memberships, error: memberError } = await supabase
-        .from('farm_members')
-        .select('farm_id')
-        .eq('user_id', user.id);
-      
-      if (memberError) throw memberError;
-      if (!memberships?.length) return [];
 
-      const farmIds = memberships.map(m => m.farm_id);
-      
       const { data: farmsData, error: farmsError } = await supabase
         .from('farms')
         .select('*')
-        .in('id', farmIds)
         .is('deleted_at', null)
         .order('created_at', { ascending: true });
       
@@ -91,9 +83,15 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     enabled: !!user,
   });
 
-  // Auto-select first farm
+  // Auto-select first accessible farm and clear stale selections after role/farm changes.
   useEffect(() => {
-    if (farms.length > 0 && !selectedFarmId) {
+    if (farms.length === 0) {
+      if (selectedFarmId) setSelectedFarmId(null);
+      return;
+    }
+
+    const selectedStillVisible = farms.some((farm) => farm.id === selectedFarmId);
+    if (!selectedFarmId || !selectedStillVisible) {
       setSelectedFarmId(farms[0].id);
     }
   }, [farms, selectedFarmId]);

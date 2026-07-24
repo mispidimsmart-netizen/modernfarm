@@ -96,15 +96,17 @@ export function useUpdateFarmSettings() {
 // Device status hooks
 export function useDeviceStatus(shedId?: string | null) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useQuery({
-    queryKey: ['device_status', user?.id, shedId],
+    queryKey: ['device_status', user?.id, selectedFarmId, shedId],
     queryFn: async () => {
-      if (!user) return null;
+      if (!user || !selectedFarmId) return null;
       let query = supabase
         .from('device_status')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId);
       
       if (shedId) {
         query = query.eq('shed_id', shedId);
@@ -118,7 +120,7 @@ export function useDeviceStatus(shedId?: string | null) {
       if (error) throw error;
       return data as DeviceStatus;
     },
-    enabled: !!user,
+    enabled: !!user && !!selectedFarmId,
     staleTime: 2000,
     refetchInterval: 5000,
   });
@@ -127,14 +129,17 @@ export function useDeviceStatus(shedId?: string | null) {
 export function useUpdateDeviceStatus(shedId?: string | null) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   
   return useMutation({
     mutationFn: async (status: Partial<DeviceStatus>) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) throw new Error('No farm selected');
       let query = supabase
         .from('device_status')
         .update(status)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId);
       
       if (shedId) {
         query = query.eq('shed_id', shedId);
