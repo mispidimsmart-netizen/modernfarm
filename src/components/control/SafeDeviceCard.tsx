@@ -26,14 +26,19 @@ interface SafeDeviceCardProps {
   remainingTime?: string | null;
   isSafetyLocked?: boolean;
   safetyReason?: { bn: string; en: string };
+  /** Open the timer dialog to temporarily START the device (AUTO mode). */
   onRunTemporarily: () => void;
+  /** Open the timer dialog to temporarily STOP the device (AUTO mode). */
   onStopTemporarily: () => void;
+  /** Cancel an active temporary override immediately (no timer). */
+  onCancelOverride?: () => void;
   disabled?: boolean;
   /** True only when the user placed a temporary override on this device. */
   hasOverride?: boolean;
   /** True when the farm is in AUTO mode (affects Stop button semantics). */
   isAutoMode?: boolean;
 }
+
 
 export function SafeDeviceCard({
   deviceKey,
