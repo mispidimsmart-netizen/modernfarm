@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Fan, Lightbulb, Flame, Droplets, Wind, Power,
+  Fan, Lightbulb, Flame, Droplets, Wind, CloudRain, Power,
   CircleDot, CircleOff
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +12,7 @@ interface DeviceItem {
   key: string;
   icon: React.ElementType;
   label: { bn: string; en: string };
+  description: { bn: string; en: string };
   isOn: boolean;
 }
 
@@ -20,11 +21,48 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
   const { status, isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
 
   const devices: DeviceItem[] = [
-    { key: 'fan', icon: Fan, label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' }, isOn: status.fan },
-    { key: 'heater', icon: Flame, label: { bn: 'হিটার', en: 'Heater' }, isOn: status.heater },
-    { key: 'light', icon: Lightbulb, label: { bn: 'আলো', en: 'Light' }, isOn: status.light },
-    { key: 'circulation_fan', icon: Wind, label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation' }, isOn: status.circulation_fan },
-    { key: 'fogger', icon: Droplets, label: { bn: 'ফগার', en: 'Fogger' }, isOn: status.fogger },
+    {
+      key: 'fan',
+      icon: Fan,
+      label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
+      description: { bn: 'অটোমেশন ও অভ্যন্তরীণ বায়ু চলাচল', en: 'Automation & ventilation' },
+      isOn: status.fan,
+    },
+    {
+      key: 'ceiling_fan',
+      icon: Wind,
+      label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
+      description: { bn: 'তাপমাত্রা বেশি হলে বাড়তি বায়ু প্রবাহ', en: 'Extra airflow when hot' },
+      isOn: status.ceilingFan,
+    },
+    {
+      key: 'heater',
+      icon: Flame,
+      label: { bn: 'হিটার', en: 'Heater' },
+      description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in cold' },
+      isOn: status.heater,
+    },
+    {
+      key: 'fogger',
+      icon: Droplets,
+      label: { bn: 'ফগার', en: 'Fogger' },
+      description: { bn: 'পরিবেশ ঠাণ্ডা রাখে', en: 'Keeps environment cool' },
+      isOn: status.fogger,
+    },
+    {
+      key: 'sprinkler',
+      icon: CloudRain,
+      label: { bn: 'ছাদ স্প্রিংকলার', en: 'Ceiling Sprinkler' },
+      description: { bn: 'HSI নিয়ন্ত্রিত স্প্রিংকলার', en: 'HSI-controlled sprinkler' },
+      isOn: status.sprinkler,
+    },
+    {
+      key: 'light',
+      icon: Lightbulb,
+      label: { bn: 'লাইট', en: 'Light' },
+      description: { bn: 'তীব্র উপশমে সহায়ক', en: 'Aids intense relief' },
+      isOn: status.light,
+    },
   ];
 
   const title = language === 'bn' ? 'ডিভাইস অবস্থা' : 'Device Status';
@@ -36,7 +74,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
         <Skeleton className="h-4 w-32 mb-3" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-xl" />
+            <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
       </div>
@@ -89,7 +127,10 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
                 <p className="text-xs font-medium text-foreground truncate">
                   {device.label[language]}
                 </p>
-                <div className="flex items-center gap-1 text-[11px] font-semibold">
+                <p className="text-[10px] text-muted-foreground truncate leading-tight">
+                  {device.description[language]}
+                </p>
+                <div className="flex items-center gap-1 text-[11px] font-semibold mt-0.5">
                   {isOn ? (
                     <>
                       <CircleDot className="h-2.5 w-2.5 text-emerald-500" />
