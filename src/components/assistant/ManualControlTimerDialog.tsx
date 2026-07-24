@@ -68,7 +68,9 @@ export function ManualControlTimerDialog({
             </div>
             <div>
               <span className="block">
-                {language === 'bn' ? 'কতক্ষণ চালাবেন?' : 'Run for how long?'}
+                {isOff
+                  ? (language === 'bn' ? 'কতক্ষণ বন্ধ রাখবেন?' : 'Stop for how long?')
+                  : (language === 'bn' ? 'কতক্ষণ চালাবেন?' : 'Run for how long?')}
               </span>
               <span className="text-sm font-normal text-muted-foreground">
                 {deviceName}
@@ -78,10 +80,15 @@ export function ManualControlTimerDialog({
           <DialogDescription className="pt-2 flex items-start gap-2">
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <span>
-              {language === 'bn' 
-                ? 'নির্ধারিত সময় পর স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে' 
-                : 'Will automatically return to AUTO mode after the timer expires'}
+              {isOff
+                ? (language === 'bn'
+                    ? 'নির্ধারিত সময় পর্যন্ত ডিভাইস বন্ধ থাকবে, তারপর অটোমেশন ফিরে পাবে নিয়ন্ত্রণ'
+                    : 'Device stays OFF until the timer ends, then automation resumes control')
+                : (language === 'bn'
+                    ? 'নির্ধারিত সময় পর স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে'
+                    : 'Will automatically return to AUTO mode after the timer expires')}
             </span>
+
           </DialogDescription>
         </DialogHeader>
 
