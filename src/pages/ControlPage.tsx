@@ -294,8 +294,9 @@ export function ControlPage() {
       // Safety guard: if a protection is forcing this device ON right now,
       // do NOT try to turn it off — safety engine will re-assert immediately
       // causing relay oscillation. Silently keep the device running.
-      const heatActive = sensorData.temperature > Number(farmSettings?.temperature_max ?? 32);
-      const gasActive = sensorData.ammonia > Number(farmSettings?.ammonia_max ?? 25);
+      const engineEnabled = (farmSettings as any)?.safety_engine_enabled !== false;
+      const heatActive = engineEnabled && sensorData.temperature > Number(farmSettings?.temperature_max ?? 32);
+      const gasActive = engineEnabled && sensorData.ammonia > Number(farmSettings?.ammonia_max ?? 25);
       const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
 
       // Side effect: clear desired_* → null so automation resumes.
