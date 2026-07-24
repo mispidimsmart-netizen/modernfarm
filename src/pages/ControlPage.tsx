@@ -3,14 +3,15 @@ import { motion } from 'framer-motion';
 import { 
   Fan, Lightbulb, Bell, Flame, Wind, Droplets,
   ShieldAlert, Timer, CloudDrizzle, CircleDot,
-  Hand, Bot, Settings, AlertTriangle,
+  Hand, Bot, Settings, AlertTriangle, Loader2,
 } from 'lucide-react';
+
 import { Link } from 'react-router-dom';
 import { useFarmContext } from '@/context/FarmContext';
 
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
-import { useFarmSettings } from '@/hooks/useFarmData';
+import { useFarmSettings, useDeviceStatus } from '@/hooks/useFarmData';
 import { useSendDeviceCommand } from '@/hooks/useDeviceCommands';
 import { useBoundedOverride } from '@/hooks/useBoundedOverride';
 // Migrated from legacy useUserPermissions to canonical 4-role usePermissions
@@ -135,6 +136,8 @@ export function ControlPage() {
   const { selectedShedId } = useSelectedShed();
   const { selectedFarmId, farms, isLoading: farmsLoading } = useFarmContext();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
+  const { data: rawDeviceStatus } = useDeviceStatus(selectedShedId);
+
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
   const farmNotReady = !selectedFarmId;
@@ -165,6 +168,22 @@ export function ControlPage() {
     name: string;
   } | null>(null);
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
+
+  // ===== HARDWARE-CONFIRMATION PENDING STATE =====
+  // Tracks devices whose command was sent but ESP32 hasn't reported back yet.
+  // Cleared when device_status realtime update matches `desired`, or on timeout.
+  const PENDING_TIMEOUT_MS = 7000;
+  const [pendingCommands, setPendingCommands] = useState<
+    Record<string, { desired: boolean; startedAt: number }>
+  >({});
+
+  const markPending = useCallback((deviceKey: string, desired: boolean) => {
+    setPendingCommands((prev) => ({
+      ...prev,
+      [deviceKey]: { desired, startedAt: Date.now() },
+    }));
+  }, []);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -205,6 +224,76 @@ export function ControlPage() {
 
     return () => clearInterval(interval);
   }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
+
+  // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
+  // `status` (which in manual mode already reflects desired_*). Pending is only
+  // cleared when ESP32 writes back the real actual_* column.
+  const getActualStatus = useCallback((deviceKey: string): boolean => {
+    if (!rawDeviceStatus) return false;
+    const r = rawDeviceStatus as Record<string, unknown>;
+    switch (deviceKey) {
+      case 'fan': return !!r.fan_on;
+      case 'light': return !!r.light_on;
+      case 'heater': return !!r.heater_on;
+      case 'circulation_fan': return !!r.circulation_fan_on;
+      case 'fogger': return !!r.fogger_on;
+      case 'ceiling_fan': return !!r.ceiling_fan_on;
+      case 'sprinkler': return !!r.sprinkler_on;
+      case 'alarm': return !!r.alarm_on;
+      default: return false;
+    }
+  }, [rawDeviceStatus]);
+
+
+  // Reconcile: when ESP32 reports actual == desired, clear pending + success toast
+  useEffect(() => {
+    const confirmedKeys = Object.entries(pendingCommands)
+      .filter(([key, p]) => getActualStatus(key) === p.desired)
+      .map(([key]) => key);
+    if (confirmedKeys.length === 0) return;
+    setPendingCommands((prev) => {
+      const next = { ...prev };
+      confirmedKeys.forEach((k) => delete next[k]);
+      return next;
+    });
+    confirmedKeys.forEach((k) => {
+      toast({
+        title: language === 'bn' ? '✅ হার্ডওয়্যার কনফার্মড' : '✅ Hardware confirmed',
+        description: language === 'bn'
+          ? `${k} — ESP32 থেকে নিশ্চিতকরণ এসেছে`
+          : `${k} — confirmed by ESP32`,
+      });
+    });
+  }, [pendingCommands, getActualStatus, toast, language]);
+
+  // Timeout: if ESP32 doesn't confirm within PENDING_TIMEOUT_MS, warn user
+  useEffect(() => {
+    if (Object.keys(pendingCommands).length === 0) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const timedOut = Object.entries(pendingCommands)
+        .filter(([, p]) => now - p.startedAt > PENDING_TIMEOUT_MS)
+        .map(([k]) => k);
+      if (timedOut.length === 0) return;
+      setPendingCommands((prev) => {
+        const next = { ...prev };
+        timedOut.forEach((k) => delete next[k]);
+        return next;
+      });
+      timedOut.forEach((k) => {
+        toast({
+          title: language === 'bn' ? '⚠️ কনফার্মেশন আসেনি' : '⚠️ No hardware confirmation',
+          description: language === 'bn'
+            ? `${k} — ESP32 থেকে ${PENDING_TIMEOUT_MS / 1000} সেকেন্ডে কোনো উত্তর আসেনি। ডিভাইস অফলাইন থাকতে পারে।`
+            : `${k} — ESP32 did not respond in ${PENDING_TIMEOUT_MS / 1000}s. Device may be offline.`,
+          variant: 'destructive',
+        });
+      });
+    }, 500);
+    return () => clearInterval(interval);
+  }, [pendingCommands, toast, language]);
+
+
 
   const getRemainingTime = useCallback((device: string) => {
     const timer = activeTimers[device];
@@ -266,12 +355,15 @@ export function ControlPage() {
     sendCommand.mutate({ commandType: cmdType, commandValue: newValue, shedId: selectedShedId || undefined });
 
     setDeviceStatus({ [deviceKey]: newValue });
+    markPending(deviceKey, newValue);
     toast({
-      title: newValue
-        ? (language === 'bn' ? '✅ চালু হয়েছে' : '✅ Turned On')
-        : (language === 'bn' ? '⏹️ বন্ধ হয়েছে' : '⏹️ Turned Off'),
+      title: language === 'bn' ? '📡 কমান্ড পাঠানো হয়েছে' : '📡 Command sent',
+      description: language === 'bn'
+        ? 'ESP32 থেকে নিশ্চিতকরণের অপেক্ষায়…'
+        : 'Waiting for ESP32 confirmation…',
     });
   };
+
 
   // ===== AUTO MODE: Timer-based temporary control =====
   const handleRunTemporarily = (deviceKey: string, deviceName: { bn: string; en: string }, icon: React.ElementType) => {
@@ -290,7 +382,9 @@ export function ControlPage() {
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: false });
+    markPending(deviceKey, false);
     setActiveTimers(prev => {
+
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
@@ -308,6 +402,8 @@ export function ControlPage() {
     sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
 
     setDeviceStatus({ [pendingDevice.device]: true });
+    markPending(pendingDevice.device, true);
+
     setActiveTimers(prev => ({
       ...prev,
       [pendingDevice.device]: {
@@ -528,6 +624,8 @@ export function ControlPage() {
               {DEVICES.map((device, index) => {
                 const active = isDeviceActive(device.key);
                 const Icon = device.icon;
+                const pending = pendingCommands[device.key];
+                const isPending = !!pending;
                 return (
                   <motion.div
                     key={device.key}
@@ -536,10 +634,13 @@ export function ControlPage() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <Card className={`border-2 transition-all duration-300 ${
-                      active
-                        ? 'border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-md shadow-emerald-500/10'
-                        : 'border-border/50 hover:border-border'
+                      isPending
+                        ? 'border-amber-500/60 bg-gradient-to-br from-amber-500/10 to-amber-600/5 shadow-md shadow-amber-500/10'
+                        : active
+                          ? 'border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-md shadow-emerald-500/10'
+                          : 'border-border/50 hover:border-border'
                     }`}>
+
                       <CardContent className="py-4 px-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -562,18 +663,30 @@ export function ControlPage() {
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-1.5">
-                            <Switch
-                              checked={active}
-                              onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending}
-                              className={`scale-110 ${active ? 'data-[state=checked]:bg-emerald-500' : ''}`}
-                            />
+                            <div className="relative">
+                              <Switch
+                                checked={active}
+                                onCheckedChange={(val) => handleManualToggle(device.key, val)}
+                                disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending || isPending}
+                                className={`scale-110 ${active && !isPending ? 'data-[state=checked]:bg-emerald-500' : ''} ${isPending ? 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40' : ''}`}
+                              />
+                              {isPending && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white shadow">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                </span>
+                              )}
+                            </div>
                             <span className={`text-[10px] font-bold tracking-wider ${
-                              active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                              isPending
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
                             }`}>
-                              {active ? 'ON' : 'OFF'}
+                              {isPending
+                                ? (language === 'bn' ? 'অপেক্ষায়…' : 'PENDING…')
+                                : (active ? 'ON' : 'OFF')}
                             </span>
                           </div>
+
                         </div>
                       </CardContent>
                     </Card>
