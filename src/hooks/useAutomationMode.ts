@@ -24,8 +24,14 @@ export function useAutomationMode() {
         query = query.eq('farm_id', selectedFarmId);
       }
       
-      const { data, error } = await query.single();
-      if (error) return 'AUTO';
+      // Use maybeSingle() — new farms may have 0 farm_settings rows, and
+      // .single() would throw and silently fall back to 'AUTO' even when
+      // MANUAL was set. maybeSingle returns null cleanly.
+      const { data, error } = await query.maybeSingle();
+      if (error) {
+        console.warn('[useAutomationMode] read failed:', error);
+        return 'AUTO';
+      }
       return (data?.automation_mode as AutomationMode) ?? 'AUTO';
     },
     enabled: !!user,
