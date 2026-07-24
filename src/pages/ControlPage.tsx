@@ -136,6 +136,8 @@ export function ControlPage() {
   const { selectedShedId } = useSelectedShed();
   const { selectedFarmId, farms, isLoading: farmsLoading } = useFarmContext();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
+  const { data: rawDeviceStatus } = useDeviceStatus(selectedShedId);
+
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
   const farmNotReady = !selectedFarmId;
