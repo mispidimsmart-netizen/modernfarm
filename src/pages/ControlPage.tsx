@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 import { 
   Fan, Lightbulb, Bell, Flame, Wind, Droplets,
   ShieldAlert, Timer, CloudDrizzle, CircleDot,
-  Hand, Bot, Settings,
+  Hand, Bot, Settings, AlertTriangle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useFarmContext } from '@/context/FarmContext';
+
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceControl } from '@/hooks/useSensorData';
 import { useFarmSettings } from '@/hooks/useFarmData';
@@ -131,9 +133,12 @@ const LAYER_DEVICES = [
 export function ControlPage() {
   const { language } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  const { selectedFarmId, farms, isLoading: farmsLoading } = useFarmContext();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
   const sendCommand = useSendDeviceCommand();
   const boundedOverride = useBoundedOverride();
+  const farmNotReady = !selectedFarmId;
+
   // Canonical 4-role permissions (workers blocked from hardware/automation)
   const perms = usePermissions();
   const { sensorData } = useRealtimeSensorData();
@@ -229,8 +234,23 @@ export function ControlPage() {
     }
   }, [status]);
 
+  const requireFarmSelected = (): boolean => {
+    if (!selectedFarmId) {
+      toast({
+        title: language === 'bn' ? '⚠️ ফার্ম নির্বাচন করুন' : '⚠️ Select a farm first',
+        description: language === 'bn'
+          ? 'কোনো ফার্ম সিলেক্ট করা নেই — কমান্ড পাঠানো যাবে না। উপরে ডান দিক থেকে ফার্ম বেছে নিন বা সেটিংস → ফার্মে যান।'
+          : 'No farm is selected — commands cannot be sent. Pick a farm from the top bar or go to Settings → Farm.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    return true;
+  };
+
   // ===== MANUAL MODE: Direct ON/OFF toggle =====
   const handleManualToggle = (deviceKey: string, newValue: boolean) => {
+    if (!requireFarmSelected()) return;
     // Worker / viewer guard — direct hardware toggle requires canChangeHardware
     if (!canFullControl) {
       toast({
@@ -244,6 +264,7 @@ export function ControlPage() {
     }
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: newValue, shedId: selectedShedId || undefined });
+
     setDeviceStatus({ [deviceKey]: newValue });
     toast({
       title: newValue
@@ -254,6 +275,7 @@ export function ControlPage() {
 
   // ===== AUTO MODE: Timer-based temporary control =====
   const handleRunTemporarily = (deviceKey: string, deviceName: { bn: string; en: string }, icon: React.ElementType) => {
+    if (!requireFarmSelected()) return;
     const IconComponent = icon;
     setPendingDevice({
       device: deviceKey,
@@ -264,6 +286,7 @@ export function ControlPage() {
   };
 
   const handleStop = (deviceKey: string) => {
+    if (!requireFarmSelected()) return;
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: false });
@@ -280,8 +303,10 @@ export function ControlPage() {
 
   const handleTimerConfirm = (durationMinutes: number) => {
     if (!pendingDevice) return;
+    if (!requireFarmSelected()) { setPendingDevice(null); setTimerDialogOpen(false); return; }
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
+
     setDeviceStatus({ [pendingDevice.device]: true });
     setActiveTimers(prev => ({
       ...prev,
@@ -362,7 +387,44 @@ export function ControlPage() {
       <Header />
 
       <main className="page-container px-4 space-y-4">
+        {/* ===== FARM-NOT-SELECTED GUARD BANNER ===== */}
+        {farmNotReady && (
+          <div
+            role="alert"
+            className="rounded-2xl border-2 border-destructive/60 bg-destructive/10 p-4 flex items-start gap-3"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/20 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-destructive">
+                {language === 'bn'
+                  ? '⚠️ কোনো ফার্ম নির্বাচন করা নেই — কমান্ড পাঠানো বন্ধ'
+                  : '⚠️ No farm selected — commands are disabled'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {farmsLoading
+                  ? (language === 'bn' ? 'ফার্ম লোড হচ্ছে…' : 'Loading farms…')
+                  : (farms && farms.length === 0
+                      ? (language === 'bn'
+                          ? 'আপনার কোনো ফার্ম নেই। সেটিংস → ফার্মে গিয়ে প্রথমে একটি ফার্ম তৈরি করুন।'
+                          : 'You do not have any farms yet. Create one from Settings → Farm.')
+                      : (language === 'bn'
+                          ? 'উপরের হেডার থেকে একটি ফার্ম বেছে নিন, নাহলে ডিভাইস কমান্ড ব্যাকএন্ড দ্বারা ব্লক হবে।'
+                          : 'Pick a farm from the header — without a valid farm the backend will reject device commands.'))}
+              </p>
+              <Link
+                to="/settings"
+                className="inline-block mt-2 text-xs font-semibold text-destructive underline underline-offset-2"
+              >
+                {language === 'bn' ? 'সেটিংস → ফার্মে যান' : 'Go to Settings → Farm'}
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* ===== MODE INDICATOR BANNER ===== */}
+
         <div className={`rounded-2xl border-2 p-3 flex items-center justify-between ${
           isManualMode
             ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/10 to-amber-600/5'
@@ -503,7 +565,7 @@ export function ControlPage() {
                             <Switch
                               checked={active}
                               onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={isViewer || !canFullControl || sendCommand.isPending}
+                              disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending}
                               className={`scale-110 ${active ? 'data-[state=checked]:bg-emerald-500' : ''}`}
                             />
                             <span className={`text-[10px] font-bold tracking-wider ${
@@ -621,7 +683,7 @@ export function ControlPage() {
                   remainingTime={getRemainingTime(device.key)}
                   onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
                   onStopTemporarily={() => handleStop(device.key)}
-                  disabled={!canTemporaryControl || sendCommand.isPending}
+                  disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
                 />
               ))}
             </div>
