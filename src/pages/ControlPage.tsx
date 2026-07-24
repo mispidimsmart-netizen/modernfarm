@@ -481,7 +481,7 @@ export function ControlPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="page-container px-4 space-y-4">
+      <main className="page-container px-3 sm:px-4 md:px-6 lg:px-8 space-y-4 max-w-7xl mx-auto">
         {/* ===== FARM-NOT-SELECTED GUARD BANNER ===== */}
         {farmNotReady && (
           <div
@@ -597,7 +597,7 @@ export function ControlPage() {
             )}
 
             {/* Direct Device Controls — 2 per row on mobile with device-specific color */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
               {DEVICES.map((device, index) => {
                 const active = isDeviceActive(device.key);
                 const Icon = device.icon;
@@ -780,7 +780,7 @@ export function ControlPage() {
             )}
 
             {/* Device Control Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {DEVICES.map((device) => (
                 <SafeDeviceCard
                   key={device.key}
