@@ -680,6 +680,54 @@ export function OrganizationsPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add existing farm to this org */}
+      {selectedOrgId && (
+        <Dialog open={addFarmOpen} onOpenChange={setAddFarmOpen}>
+          <AddFarmToOrgDialog
+            orgId={selectedOrgId}
+            currentOrgName={selectedOrg?.name || ''}
+            onAssigned={(farmId) => {
+              reassignFarm.mutate(
+                { farmId, newOrgId: selectedOrgId },
+                { onSuccess: () => setAddFarmOpen(false) },
+              );
+            }}
+            isPending={reassignFarm.isPending}
+          />
+        </Dialog>
+      )}
+
+      {/* Remove farm from org confirmation */}
+      <AlertDialog
+        open={!!confirmRemoveFarm}
+        onOpenChange={(o) => !o && !removeFarmFromOrg.isPending && setConfirmRemoveFarm(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-amber-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              ফার্ম এই অর্গ থেকে সরাবেন?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              <strong className="text-white">"{confirmRemoveFarm?.name}"</strong> এই অর্গানাইজেশন থেকে সরিয়ে unassigned করা হবে। ফার্ম মুছবে না — পরে অন্য অর্গে যোগ করা যাবে।
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeFarmFromOrg.isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeFarmFromOrg.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmRemoveFarm) removeFarmFromOrg.mutate(confirmRemoveFarm.id);
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {removeFarmFromOrg.isPending ? 'সরানো হচ্ছে...' : 'সরিয়ে দিন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
