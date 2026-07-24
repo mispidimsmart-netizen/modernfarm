@@ -593,74 +593,94 @@ export function ControlPage() {
               </Card>
             )}
 
-            {/* Direct Device Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Direct Device Controls — 2 per row on mobile with device-specific color */}
+            <div className="grid grid-cols-2 gap-2.5">
               {DEVICES.map((device, index) => {
                 const active = isDeviceActive(device.key);
                 const Icon = device.icon;
                 const pending = pendingCommands[device.key];
                 const isPending = !!pending;
+
+                // Per-device color scheme (icon bg + switch tint)
+                const colorMap: Record<string, { activeBg: string; activeShadow: string; switchOn: string; iconTint: string }> = {
+                  heater:          { activeBg: 'bg-orange-500',  activeShadow: 'shadow-orange-500/30',  switchOn: 'data-[state=checked]:bg-orange-500',  iconTint: 'text-orange-500' },
+                  fan:             { activeBg: 'bg-sky-500',     activeShadow: 'shadow-sky-500/30',     switchOn: 'data-[state=checked]:bg-sky-500',     iconTint: 'text-sky-500' },
+                  ceiling_fan:     { activeBg: 'bg-cyan-500',    activeShadow: 'shadow-cyan-500/30',    switchOn: 'data-[state=checked]:bg-cyan-500',    iconTint: 'text-cyan-500' },
+                  circulation_fan: { activeBg: 'bg-teal-500',    activeShadow: 'shadow-teal-500/30',    switchOn: 'data-[state=checked]:bg-teal-500',    iconTint: 'text-teal-500' },
+                  fogger:          { activeBg: 'bg-blue-500',    activeShadow: 'shadow-blue-500/30',    switchOn: 'data-[state=checked]:bg-blue-500',    iconTint: 'text-blue-500' },
+                  sprinkler:       { activeBg: 'bg-indigo-500',  activeShadow: 'shadow-indigo-500/30',  switchOn: 'data-[state=checked]:bg-indigo-500',  iconTint: 'text-indigo-500' },
+                  light:           { activeBg: 'bg-amber-500',   activeShadow: 'shadow-amber-500/30',   switchOn: 'data-[state=checked]:bg-amber-500',   iconTint: 'text-amber-500' },
+                };
+                const c = colorMap[device.key] ?? { activeBg: 'bg-emerald-500', activeShadow: 'shadow-emerald-500/30', switchOn: 'data-[state=checked]:bg-emerald-500', iconTint: 'text-emerald-500' };
+
                 return (
                   <motion.div
                     key={device.key}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    transition={{ delay: index * 0.04 }}
                   >
-                    <Card className={`border-2 transition-all duration-300 ${
+                    <Card className={`border-2 transition-all duration-300 h-full ${
                       isPending
-                        ? 'border-amber-500/60 bg-gradient-to-br from-amber-500/10 to-amber-600/5 shadow-md shadow-amber-500/10'
+                        ? 'border-amber-500/60 bg-amber-500/5'
                         : active
-                          ? 'border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-md shadow-emerald-500/10'
-                          : 'border-border/50 hover:border-border'
-                    }`}>
-
-                      <CardContent className="py-4 px-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-300 ${
-                              active
-                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              <Icon className={`h-5 w-5 ${active ? 'animate-pulse' : ''}`} />
-                              {active && (
-                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                                </span>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold">{device.name[language]}</p>
-                              <p className="text-[11px] text-muted-foreground leading-tight">{device.description[language]}</p>
-                            </div>
+                          ? 'border-current/40 shadow-md ' + c.activeShadow
+                          : 'border-border/50 hover:border-border bg-card'
+                    }`}
+                    style={active && !isPending ? { borderColor: 'transparent' } : undefined}
+                    >
+                      <CardContent className="py-3 px-3 flex flex-col gap-2.5">
+                        {/* Row 1: icon + switch */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
+                            active && !isPending
+                              ? `${c.activeBg} text-white shadow-lg ${c.activeShadow}`
+                              : isPending
+                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                                : `bg-muted ${c.iconTint}`
+                          }`}>
+                            <Icon className={`h-5 w-5 ${active && !isPending ? 'animate-pulse' : ''}`} />
+                            {active && !isPending && (
+                              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${c.activeBg} opacity-75`} />
+                                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${c.activeBg}`} />
+                              </span>
+                            )}
                           </div>
-                          <div className="flex flex-col items-center gap-1.5">
-                            <div className="relative">
-                              <Switch
-                                checked={active}
-                                onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                                disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending || isPending}
-                                className={`scale-110 ${active && !isPending ? 'data-[state=checked]:bg-emerald-500' : ''} ${isPending ? 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40' : ''}`}
-                              />
-                              {isPending && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white shadow">
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                </span>
-                              )}
-                            </div>
-                            <span className={`text-[10px] font-bold tracking-wider ${
-                              isPending
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
-                            }`}>
-                              {isPending
-                                ? (language === 'bn' ? 'অপেক্ষায়…' : 'PENDING…')
-                                : (active ? 'ON' : 'OFF')}
-                            </span>
+                          <div className="relative">
+                            <Switch
+                              checked={active}
+                              onCheckedChange={(val) => handleManualToggle(device.key, val)}
+                              disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending || isPending}
+                              className={`${!isPending ? c.switchOn : 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40'}`}
+                            />
+                            {isPending && (
+                              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white shadow">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              </span>
+                            )}
                           </div>
+                        </div>
 
+                        {/* Row 2: name + state pill */}
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <p className="text-sm font-bold leading-tight truncate">{device.name[language]}</p>
+                          <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">{device.description[language]}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                          <span className={`text-[10px] font-bold tracking-wider ${
+                            isPending
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : active ? c.iconTint : 'text-muted-foreground'
+                          }`}>
+                            {isPending
+                              ? (language === 'bn' ? 'অপেক্ষায়…' : 'PENDING…')
+                              : (active ? 'ON' : 'OFF')}
+                          </span>
+                          {active && !isPending && (
+                            <span className={`h-1.5 w-1.5 rounded-full ${c.activeBg} animate-pulse`} />
+                          )}
                         </div>
                       </CardContent>
                     </Card>
