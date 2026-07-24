@@ -26,7 +26,9 @@ export function usePlatformRole() {
   return useQuery<PlatformRoleInfo>({
     queryKey: ['platform_role', user?.id],
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     queryFn: async () => {
       const [superRes, orgsRes] = await Promise.all([
         supabase.rpc('is_super_admin' as any, { _user_id: user!.id }),
