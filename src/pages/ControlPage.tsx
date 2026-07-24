@@ -234,8 +234,23 @@ export function ControlPage() {
     }
   }, [status]);
 
+  const requireFarmSelected = (): boolean => {
+    if (!selectedFarmId) {
+      toast({
+        title: language === 'bn' ? '⚠️ ফার্ম নির্বাচন করুন' : '⚠️ Select a farm first',
+        description: language === 'bn'
+          ? 'কোনো ফার্ম সিলেক্ট করা নেই — কমান্ড পাঠানো যাবে না। উপরে ডান দিক থেকে ফার্ম বেছে নিন বা সেটিংস → ফার্মে যান।'
+          : 'No farm is selected — commands cannot be sent. Pick a farm from the top bar or go to Settings → Farm.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    return true;
+  };
+
   // ===== MANUAL MODE: Direct ON/OFF toggle =====
   const handleManualToggle = (deviceKey: string, newValue: boolean) => {
+    if (!requireFarmSelected()) return;
     // Worker / viewer guard — direct hardware toggle requires canChangeHardware
     if (!canFullControl) {
       toast({
@@ -249,6 +264,7 @@ export function ControlPage() {
     }
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: newValue, shedId: selectedShedId || undefined });
+
     setDeviceStatus({ [deviceKey]: newValue });
     toast({
       title: newValue
