@@ -103,12 +103,9 @@ import { DashboardSnapshotProvider } from '@/context/DashboardSnapshotContext';
 export function Dashboard() {
   const { language } = useAuth();
   const { sensorData } = useRealtimeSensorData();
-  const { status: deviceStatus, manualOverride } = useRealtimeDeviceStatus();
-  
+
   const { data: automationMode } = useAutomationMode();
   const isManualMode = automationMode === 'MANUAL';
-  const { data: deviceHealth } = useAllDeviceHealth();
-  const { selectedShedId } = useSelectedShed();
   const { isLayer, isBroiler } = useFarmType();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string>('summary');
@@ -123,64 +120,25 @@ export function Dashboard() {
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
-    // Show cached data instantly. Only background-refetch queries that are
-    // already stale — never force a full reload that triggers Skeletons.
     const keys = TAB_QUERY_KEYS[value] || [];
     keys.forEach((key) => {
-      queryClient.refetchQueries({
-        queryKey: [key],
-        type: 'active',
-        stale: true,
-      });
+      queryClient.refetchQueries({ queryKey: [key], type: 'active', stale: true });
     });
   }, [queryClient]);
 
-  // Track fetching state for System Status section cards (consistent skeleton on update)
-  const systemStatusFetching = useIsFetching({
-    predicate: (q) => {
-      const k = q.queryKey?.[0];
-      return typeof k === 'string' && [
-        'automation-status',
-        'safety_status',
-        'device_health',
-        'broiler-batch-active',
-        'broiler-environment',
-        'heat-stress',
-        'fan-speed',
-      ].includes(k);
-    },
-  });
-
   // Subscribe to realtime alerts
   useRealtimeAlerts();
-  
-  // Layer: Heat Stress Index automation
-  const hsiResult = useHeatStressAutomation({
-    temperature: sensorData.temperature,
-    humidity: sensorData.humidity,
-    shedId: selectedShedId,
-    enabled: isLayer,
-  });
-
-  // Layer: Fan Speed automation based on temperature
-  const fanSpeedResult = useFanSpeedAutomation({
-    temperature: sensorData.temperature,
-    shedId: selectedShedId,
-    enabled: isLayer && !manualOverride,
-  });
-
-  // Broiler: Complete environment automation
-  const broilerEnvResult = useBroilerEnvironment({
-    temperature: sensorData.temperature,
-    humidity: sensorData.humidity,
-    ammonia: sensorData.ammonia,
-    shedId: selectedShedId,
-    enabled: isBroiler,
-  });
 
   // Water usage monitoring
   const layerWaterAnomalyResult = useWaterAnomalyDetection(isLayer ? sensorData.waterUsage : null);
   const broilerWaterResult = useBroilerWaterMonitor(isBroiler ? sensorData.waterUsage : null);
+
+  // Ammonia rising trend detection
+  const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
+
+  // Tomorrow's heat stress risk prediction
+  const heatStressRiskResult = useHeatStressRiskPrediction();
+
 
   // Ammonia rising trend detection
   const ammoniaTrendResult = useAmmoniaTrendDetection(sensorData.ammonia);
