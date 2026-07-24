@@ -325,8 +325,7 @@ export function Dashboard() {
                   </p>
                   <WeatherCard />
                 </div>
-                <ComfortIndicators />
-                <CoreMetricsRow />
+                <ComfortIndicators>
                 <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
                   <SensorCharts />
                 </Suspense>
