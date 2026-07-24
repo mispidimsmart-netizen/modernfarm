@@ -155,10 +155,10 @@ export function StateExplanationHeader() {
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center py-6 px-5 text-center">
+      <div className="relative z-10 flex flex-col items-center justify-center py-4 px-3 sm:py-6 sm:px-5 md:py-8 md:px-6 text-center">
         {/* Live badge */}
-        <div className="absolute top-3 right-3">
-          <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+          <span className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[10px] sm:text-xs font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${isAnyDeviceOnline ? 'bg-white animate-pulse' : 'bg-red-300'}`} />
             {isAnyDeviceOnline
               ? (language === 'bn' ? 'লাইভ' : 'LIVE')
@@ -167,7 +167,7 @@ export function StateExplanationHeader() {
         </div>
 
         {/* Label */}
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70 mb-2">
+        <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-white/70 mb-1.5 sm:mb-2">
           {language === 'bn' ? 'বর্তমান খামারের অবস্থা' : 'Current Farm Condition'}
         </p>
 
@@ -175,13 +175,13 @@ export function StateExplanationHeader() {
         <motion.div
           animate={{ scale: isEmergency ? [1, 1.15, 1] : 1 }}
           transition={{ duration: 0.8, repeat: isEmergency ? Infinity : 0 }}
-          className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm mb-3"
+          className="flex h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm mb-2 sm:mb-3"
         >
-          <Icon className="h-9 w-9 text-white" />
+          <Icon className="h-6 w-6 sm:h-9 sm:w-9 md:h-11 md:w-11 text-white" />
         </motion.div>
 
         {/* Main explanation — PRIMARY */}
-        <h1 className="text-lg sm:text-xl font-bold text-white leading-tight mb-2">
+        <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-white leading-tight mb-1.5 sm:mb-2">
           {currentState.explanation[language]}
         </h1>
 
@@ -197,13 +197,13 @@ export function StateExplanationHeader() {
           if (activeDevices.length === 0) return null;
 
           return (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 mb-2">
+            <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 mb-1.5 sm:mb-2">
               {activeDevices.map((d, i) => {
                 const DIcon = d.icon;
                 return (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1 rounded-full bg-white/25 backdrop-blur-sm px-2 py-0.5 text-[11px] font-semibold text-white"
+                    className="inline-flex items-center gap-1 rounded-full bg-white/25 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[10px] sm:text-[11px] font-semibold text-white"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
                     <DIcon className="h-3 w-3" />
@@ -216,7 +216,7 @@ export function StateExplanationHeader() {
         })()}
 
         {/* Technical state — SECONDARY small line */}
-        <p className="text-[10px] text-white/50 font-mono">
+        <p className="text-[10px] sm:text-xs text-white/50 font-mono">
           System State: {currentState.systemLabel}
         </p>
       </div>
