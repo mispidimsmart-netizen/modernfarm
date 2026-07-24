@@ -5,18 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
-import { useRealtimeSensorData, useRealtimeDeviceStatus, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
-import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
-import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
-import { useFanSpeedAutomation } from '@/hooks/useFanSpeedAutomation';
-import { useBroilerEnvironment } from '@/hooks/useBroilerEnvironment';
+import { useRealtimeSensorData, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
 import { useBroilerWaterMonitor } from '@/hooks/useBroilerWaterMonitor';
 import { useWaterAnomalyDetection } from '@/hooks/useWaterAnomalyDetection';
 import { useAmmoniaTrendDetection } from '@/hooks/useAmmoniaTrendDetection';
 import { useHeatStressRiskPrediction } from '@/hooks/useHeatStressRiskPrediction';
 import { useFoggerCooling } from '@/hooks/useFoggerCooling';
 import { useCoolingEfficiency } from '@/hooks/useCoolingEfficiency';
-import { useSelectedShed } from '@/hooks/useSheds';
 import { translations } from '@/lib/translations';
 
 import { Header } from '@/components/Header';
