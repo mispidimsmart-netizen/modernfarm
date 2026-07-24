@@ -62,7 +62,42 @@ export function useSendDeviceCommand() {
           executed: false,
           farm_id: selectedFarmId,
         }, { maxAgeMinutes: 60 });
-        return { queued: true } as any;
+        return { queued: true, queuedReason: 'browser_offline' } as any;
+      }
+
+      // ===== DEVICE-OFFLINE PATH =====
+      // Browser is online but ESP32 is offline. Queue the command in a
+      // separate device-command queue so `useDeviceOnlineSync` can replay it
+      // the moment the ESP32 comes back online. Prevents "expired" toasts and
+      // lost intent while WiFi/power is being restored.
+      try {
+        let hq: any = supabase
+          .from('device_health')
+          .select('is_online,last_seen_at')
+          .eq('user_id', user.id)
+          .eq('farm_id', farmId);
+        const { data: dh } = await hq
+          .order('last_seen_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const lastSeen = dh?.last_seen_at ? new Date(dh.last_seen_at).getTime() : 0;
+        const stale = Date.now() - lastSeen > 90 * 1000;
+        const deviceOffline = dh ? (dh.is_online === false || stale) : true;
+        if (deviceOffline) {
+          const { enqueueDeviceCommand } = await import('@/lib/deviceCommandQueue');
+          enqueueDeviceCommand({
+            user_id: user.id,
+            farm_id: farmId,
+            shed_id: shedId ?? null,
+            device_name: deviceName,
+            command_type: commandType,
+            command_value: commandValue,
+          });
+          return { queued: true, queuedReason: 'device_offline' } as any;
+        }
+      } catch (e) {
+        // If we cannot determine online status, fall through to normal send.
+        console.warn('[useDeviceCommands] device-offline check failed', e);
       }
 
       const { data: cmdRow, error } = await supabase
