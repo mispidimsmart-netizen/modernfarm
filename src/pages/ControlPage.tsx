@@ -169,9 +169,11 @@ export function ControlPage() {
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
   // ===== HARDWARE-CONFIRMATION PENDING STATE =====
-  // Tracks devices whose command was sent but ESP32 hasn't reported back yet.
-  // Cleared when device_status realtime update matches `desired`, or on timeout.
-  const PENDING_TIMEOUT_MS = 7000;
+  // Visual-only "pending" spinner. The authoritative ACK/timeout toasts are
+  // emitted by useSendDeviceCommand (12s poller). We match its window here so
+  // the spinner clears at the same time the hook resolves — no duplicate toasts,
+  // no premature "no confirmation" flicker.
+  const PENDING_TIMEOUT_MS = 12000;
   const [pendingCommands, setPendingCommands] = useState<
     Record<string, { desired: boolean; startedAt: number }>
   >({});
@@ -183,6 +185,24 @@ export function ControlPage() {
     }));
   }, []);
 
+  // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
+  // `status` (which in manual mode already reflects desired_*). Pending is only
+  // cleared when ESP32 writes back the real actual_* column.
+  const getActualStatus = useCallback((deviceKey: string): boolean => {
+    if (!rawDeviceStatus) return false;
+    const r = rawDeviceStatus as Record<string, unknown>;
+    switch (deviceKey) {
+      case 'fan': return !!r.fan_on;
+      case 'light': return !!r.light_on;
+      case 'heater': return !!r.heater_on;
+      case 'circulation_fan': return !!r.circulation_fan_on;
+      case 'fogger': return !!r.fogger_on;
+      case 'ceiling_fan': return !!r.ceiling_fan_on;
+      case 'sprinkler': return !!r.sprinkler_on;
+      case 'alarm': return !!r.alarm_on;
+      default: return false;
+    }
+  }, [rawDeviceStatus]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -224,27 +244,8 @@ export function ControlPage() {
     return () => clearInterval(interval);
   }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
 
-  // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
-  // `status` (which in manual mode already reflects desired_*). Pending is only
-  // cleared when ESP32 writes back the real actual_* column.
-  const getActualStatus = useCallback((deviceKey: string): boolean => {
-    if (!rawDeviceStatus) return false;
-    const r = rawDeviceStatus as Record<string, unknown>;
-    switch (deviceKey) {
-      case 'fan': return !!r.fan_on;
-      case 'light': return !!r.light_on;
-      case 'heater': return !!r.heater_on;
-      case 'circulation_fan': return !!r.circulation_fan_on;
-      case 'fogger': return !!r.fogger_on;
-      case 'ceiling_fan': return !!r.ceiling_fan_on;
-      case 'sprinkler': return !!r.sprinkler_on;
-      case 'alarm': return !!r.alarm_on;
-      default: return false;
-    }
-  }, [rawDeviceStatus]);
-
-
-  // Reconcile: when ESP32 reports actual == desired, clear pending + success toast
+  // Reconcile: when ESP32 reports actual == desired, clear the pending spinner.
+  // NO toast here — success is already surfaced by useSendDeviceCommand.
   useEffect(() => {
     const confirmedKeys = Object.entries(pendingCommands)
       .filter(([key, p]) => getActualStatus(key) === p.desired)
@@ -255,17 +256,11 @@ export function ControlPage() {
       confirmedKeys.forEach((k) => delete next[k]);
       return next;
     });
-    confirmedKeys.forEach((k) => {
-      toast({
-        title: language === 'bn' ? '✅ হার্ডওয়্যার কনফার্মড' : '✅ Hardware confirmed',
-        description: language === 'bn'
-          ? `${k} — ESP32 থেকে নিশ্চিতকরণ এসেছে`
-          : `${k} — confirmed by ESP32`,
-      });
-    });
-  }, [pendingCommands, getActualStatus, toast, language]);
+  }, [pendingCommands, getActualStatus]);
 
-  // Timeout: if ESP32 doesn't confirm within PENDING_TIMEOUT_MS, warn user
+  // Timeout: silently clear the spinner after PENDING_TIMEOUT_MS. The hook
+  // already emits an offline / safety-lock / no-ack toast at the same window,
+  // so we do not double-toast from here.
   useEffect(() => {
     if (Object.keys(pendingCommands).length === 0) return;
     const interval = setInterval(() => {
@@ -279,18 +274,9 @@ export function ControlPage() {
         timedOut.forEach((k) => delete next[k]);
         return next;
       });
-      timedOut.forEach((k) => {
-        toast({
-          title: language === 'bn' ? '⚠️ কনফার্মেশন আসেনি' : '⚠️ No hardware confirmation',
-          description: language === 'bn'
-            ? `${k} — ESP32 থেকে ${PENDING_TIMEOUT_MS / 1000} সেকেন্ডে কোনো উত্তর আসেনি। ডিভাইস অফলাইন থাকতে পারে।`
-            : `${k} — ESP32 did not respond in ${PENDING_TIMEOUT_MS / 1000}s. Device may be offline.`,
-          variant: 'destructive',
-        });
-      });
     }, 500);
     return () => clearInterval(interval);
-  }, [pendingCommands, toast, language]);
+  }, [pendingCommands]);
 
 
 
