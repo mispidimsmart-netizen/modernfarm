@@ -939,6 +939,8 @@ export function ControlPage() {
                     remainingTime={getRemainingTime(device.key)}
                     isSafetyLocked={isSafetyLocked}
                     safetyReason={safetyReason}
+                    hasOverride={Boolean(activeTimers[device.key])}
+                    isAutoMode={!isManualMode}
                     onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
                     onStopTemporarily={() => handleStop(device.key)}
                     disabled={farmNotReady || !canTemporaryControl}
