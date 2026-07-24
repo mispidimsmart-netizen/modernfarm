@@ -217,12 +217,27 @@ export function useSendDeviceCommand() {
       // Offline: command was queued to localStorage — skip ACK polling and
       // show a clear "queued" toast instead of a false confirmation.
       if ((result as any)?.queued) {
+        const reason = (result as any)?.queuedReason as
+          | 'browser_offline'
+          | 'device_offline'
+          | undefined;
+        const isDeviceOffline = reason === 'device_offline';
         toast(
-          language === 'bn' ? '📴 অফলাইনে সংরক্ষিত' : '📴 Saved offline',
+          isDeviceOffline
+            ? language === 'bn'
+              ? '📡 ডিভাইস অফলাইন — কমান্ড কিউতে সংরক্ষিত'
+              : '📡 Device offline — command queued'
+            : language === 'bn'
+              ? '📴 অফলাইনে সংরক্ষিত'
+              : '📴 Saved offline',
           {
-            description: language === 'bn'
-              ? 'নেট এলে কমান্ড পাঠানো হবে'
-              : 'Command will be sent when online',
+            description: isDeviceOffline
+              ? language === 'bn'
+                ? 'ESP32 অনলাইন হলে স্বয়ংক্রিয়ভাবে পাঠানো হবে'
+                : 'Will auto-send when ESP32 comes back online'
+              : language === 'bn'
+                ? 'নেট এলে কমান্ড পাঠানো হবে'
+                : 'Command will be sent when online',
           },
         );
         return;
