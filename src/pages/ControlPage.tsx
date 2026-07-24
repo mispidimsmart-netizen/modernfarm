@@ -683,7 +683,7 @@ export function ControlPage() {
                   remainingTime={getRemainingTime(device.key)}
                   onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
                   onStopTemporarily={() => handleStop(device.key)}
-                  disabled={!canTemporaryControl || sendCommand.isPending}
+                  disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
                 />
               ))}
             </div>
