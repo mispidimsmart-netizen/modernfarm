@@ -204,15 +204,42 @@ export function useSendDeviceCommand() {
         }
 
         let actual: boolean | null = null;
-        let q: any = supabase.from('device_status').select(actualCol).eq('user_id', user.id);
+        let actualUpdatedAt: number | null = null;
+        let q: any = supabase
+          .from('device_status')
+          .select(`${actualCol},updated_at`)
+          .eq('user_id', user.id);
         if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
         if (variables.shedId) q = q.eq('shed_id', variables.shedId);
         const { data: ds } = await q.order('updated_at', { ascending: false }).limit(1).maybeSingle();
         if (ds && (ds as any)[actualCol] !== undefined && (ds as any)[actualCol] !== null) {
           actual = !!(ds as any)[actualCol];
+          const ts = (ds as any).updated_at;
+          actualUpdatedAt = ts ? new Date(ts).getTime() : null;
         }
 
-        if (actual === state || executed) {
+        // Check ESP32 online status — never confirm success while device is offline,
+        // even if the "actual" column happens to already match (stale/pre-offline value).
+        let isOnline = false;
+        try {
+          let hq: any = supabase
+            .from('device_health')
+            .select('is_online')
+            .eq('user_id', user.id);
+          if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
+          const { data: dh } = await hq.order('last_seen_at', { ascending: false }).limit(1).maybeSingle();
+          isOnline = !!dh?.is_online;
+        } catch {}
+
+        // Only accept actual-match if it was updated AFTER we sent the command
+        // (prevents false "confirmed" toast when device is offline and column is stale).
+        const freshActualMatch =
+          actual === state &&
+          isOnline &&
+          actualUpdatedAt !== null &&
+          actualUpdatedAt >= startedAt - 500;
+
+        if (executed || freshActualMatch) {
           toast.success(
             isBn
               ? `✅ ${name.bn} ${state ? 'চালু' : 'বন্ধ'} নিশ্চিত হয়েছে`
