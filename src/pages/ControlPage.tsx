@@ -32,17 +32,13 @@ import {
   SafeDeviceCard, 
   SafetyLockedDevices,
   DEFAULT_SAFETY_PROTECTIONS,
-  RealtimeLatencyBadge,
-  RealtimeLatencyTester,
   type DeviceMode 
 } from '@/components/control';
 
 // New industrial components
 import { StateExplanationHeader } from '@/components/control/StateExplanationHeader';
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
-import { LiveEnvironmentPanel } from '@/components/control/LiveEnvironmentPanel';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
-import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
 
 // Broiler-specific devices (heater is more important)
 const BROILER_DEVICES = [
