@@ -146,7 +146,15 @@ export function ControlPage() {
   const { data: automationMode } = useAutomationMode();
   const setAutomationMode = useSetAutomationMode();
   const { data: farmSettings } = useFarmSettings();
-  const isManualMode = automationMode === 'MANUAL';
+  // FIX #1 (split-brain): mirror useDeviceControl's manual-mode logic so the
+  // banner and the underlying resolveState agree. If ESP32 forced FAIL_SAFE
+  // (sets manual_override=true) the banner must show Manual too — otherwise
+  // switches show desired_* while banner claims Auto.
+  const rawStatus = rawDeviceStatus as Record<string, unknown> | undefined;
+  const isManualMode =
+    automationMode === 'MANUAL' ||
+    !!rawStatus?.desired_manual_override ||
+    !!rawStatus?.manual_override;
 
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
 
