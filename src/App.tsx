@@ -11,6 +11,7 @@ import { ShedProvider } from "./hooks/useSheds";
 import { FarmProvider } from "./context/FarmContext";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { OfflineMutationBadge } from "./components/OfflineMutationBadge";
+import { DeviceOnlineSyncMount } from "./components/DeviceOnlineSyncMount";
 import { PWAUpdateBanner } from "./components/pwa/PWAUpdateBanner";
 import { InstallPromptCard } from "./components/pwa/InstallPromptCard";
 import { RoleProtectedRoute, PlatformRoleGuard } from "./components/auth";
@@ -427,6 +428,7 @@ const App = () => {
               <div className="fixed right-3 top-3 z-[60]">
                 <OfflineMutationBadge />
               </div>
+              <DeviceOnlineSyncMount />
               <PWAUpdateBanner />
               <InstallPromptCard />
               <GlobalBatchEditQueue />
