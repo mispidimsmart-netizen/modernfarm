@@ -149,8 +149,9 @@ export function StateExplanationHeader() {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${currentState.gradient} shadow-xl border ${currentState.borderColor}`}
+      className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${currentState.gradient} shadow-xl border ${currentState.borderColor} w-full block`}
     >
+
       <div className="absolute inset-0 opacity-20">
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
       </div>
