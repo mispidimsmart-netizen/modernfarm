@@ -481,7 +481,7 @@ export function ControlPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="page-container px-4 space-y-4">
+      <main className="page-container px-3 sm:px-4 md:px-6 lg:px-8 space-y-4 max-w-7xl mx-auto">
         {/* ===== FARM-NOT-SELECTED GUARD BANNER ===== */}
         {farmNotReady && (
           <div
