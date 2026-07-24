@@ -225,20 +225,25 @@ export function ControlPage() {
     return () => clearInterval(interval);
   }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
 
-  // Map deviceKey → actual status boolean (used for pending reconciliation)
+  // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
+  // `status` (which in manual mode already reflects desired_*). Pending is only
+  // cleared when ESP32 writes back the real actual_* column.
   const getActualStatus = useCallback((deviceKey: string): boolean => {
+    if (!rawDeviceStatus) return false;
+    const r = rawDeviceStatus as Record<string, unknown>;
     switch (deviceKey) {
-      case 'fan': return !!status.fan;
-      case 'light': return !!status.light;
-      case 'heater': return !!status.heater;
-      case 'circulation_fan': return !!status.circulation_fan;
-      case 'fogger': return !!status.fogger;
-      case 'ceiling_fan': return !!status.ceilingFan;
-      case 'sprinkler': return !!status.sprinkler;
-      case 'alarm': return !!(status as unknown as Record<string, unknown>).alarm;
+      case 'fan': return !!r.fan_on;
+      case 'light': return !!r.light_on;
+      case 'heater': return !!r.heater_on;
+      case 'circulation_fan': return !!r.circulation_fan_on;
+      case 'fogger': return !!r.fogger_on;
+      case 'ceiling_fan': return !!r.ceiling_fan_on;
+      case 'sprinkler': return !!r.sprinkler_on;
+      case 'alarm': return !!r.alarm_on;
       default: return false;
     }
-  }, [status]);
+  }, [rawDeviceStatus]);
+
 
   // Reconcile: when ESP32 reports actual == desired, clear pending + success toast
   useEffect(() => {
