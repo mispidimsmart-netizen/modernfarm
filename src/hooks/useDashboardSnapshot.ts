@@ -17,10 +17,18 @@ export interface DashboardSnapshot {
     power_on: boolean;
     fan_on: boolean;
     heater_on: boolean;
-    water_pump_on: boolean;
     light_on: boolean;
-    safety_status: string | null;
+    alarm_on: boolean;
+    circulation_fan_on: boolean;
+    fogger_on: boolean;
+    ceiling_fan_on: boolean;
+    sprinkler_on: boolean;
+    mode: string | null;
+    safety_override: boolean | null;
+    state_mismatch: boolean | null;
     last_cloud_sync: string | null;
+    last_device_ack_at: string | null;
+    updated_at: string | null;
   } | null;
   flock_info: {
     total_birds: number;
@@ -57,7 +65,10 @@ export function useDashboardSnapshot() {
       const { data, error } = await supabase.rpc('get_farm_dashboard_snapshot' as any, {
         _farm_id: selectedFarmId,
       });
-      if (error) throw error;
+      if (error) {
+        console.warn('Dashboard snapshot unavailable; continuing with live dashboard queries.', error.message);
+        return null;
+      }
       return data as unknown as DashboardSnapshot;
     },
   });

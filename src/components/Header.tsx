@@ -83,7 +83,7 @@ export function Header() {
           
           {/* FarmEye Logo & Name */}
           <div className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0 overflow-hidden border-2 border-border bg-white">
-            <img src={farmeyeLogo} alt="FarmEye" fetchPriority="high" decoding="async" className="h-9 w-9 object-contain" />
+            <img src={farmeyeLogo} alt="FarmEye" decoding="async" className="h-9 w-9 object-contain" />
           </div>
           <span className="font-bold text-foreground text-base">FarmEye</span>
           

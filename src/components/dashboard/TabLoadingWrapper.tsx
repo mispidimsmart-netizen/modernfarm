@@ -37,7 +37,7 @@ export function TabLoadingWrapper({
   const fetchingCount = useIsFetching({
     predicate: (q) => {
       const k = q.queryKey?.[0];
-      return typeof k === 'string' && queryKeys.includes(k);
+      return typeof k === 'string' && queryKeys.includes(k) && q.state.status === 'pending';
     },
   });
 
