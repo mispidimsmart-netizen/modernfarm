@@ -792,23 +792,17 @@ export function ControlPage() {
         ) : (
           /* ========== AUTO MODE: Timer-based Temporary Control ========== */
           <div className="rounded-2xl border-2 border-status-warning/40 bg-status-warning/10 p-4 space-y-3">
-            <p className="text-sm font-semibold text-status-warning text-center">
-              {language === 'bn' 
-                ? '⚠️ সতর্কতা: অটোমেশন বন্ধ করলে মুরগির ক্ষতি হতে পারে'
-                : '⚠️ Warning: Disabling automation may harm birds'}
-            </p>
-
-            {/* Automation Master Status — driven by farm_settings.automation_mode
-                (source of truth), NOT the device-side manual_override flag which
-                may lag behind or reflect a temporary override. */}
+            {/* Mode is now managed only from Settings → Devices. This banner
+                only displays the current status; toggling is disabled here. */}
             <AutomationStatusBanner
               automationEnabled={!isManualMode}
               hasTemporaryOverrides={hasTemporaryOverrides}
-              onToggleAutomation={handleAutomationToggle}
-              canToggle={canDisableAutomation}
+              onToggleAutomation={() => { /* disabled — change from Settings */ }}
+              canToggle={false}
               overrideRemainingSeconds={boundedOverride.remainingSeconds}
               isOutOfBioRange={boundedOverride.isOutOfBioRange}
             />
+
 
             {/* Viewer restriction */}
             {isViewer && (
