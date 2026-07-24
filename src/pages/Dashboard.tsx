@@ -45,6 +45,8 @@ import { FailedCommandsBanner } from '@/components/control/FailedCommandsBanner'
 import { CurrentActionPanel } from '@/components/dashboard/CurrentActionPanel';
 import { LightSensorCard } from '@/components/dashboard/LightSensorCard';
 import { AirQualityCard } from '@/components/dashboard/AirQualityCard';
+import { DeviceStatusSummary } from '@/components/dashboard/DeviceStatusSummary';
+
 
 // Farmer-Friendly Assistant Components
 import { 
