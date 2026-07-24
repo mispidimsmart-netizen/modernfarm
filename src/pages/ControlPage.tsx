@@ -940,9 +940,11 @@ export function ControlPage() {
                     hasOverride={Boolean(activeTimers[device.key])}
                     isAutoMode={!isManualMode}
                     onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
-                    onStopTemporarily={() => handleStop(device.key)}
+                    onStopTemporarily={() => handleStopTemporarily(device.key, device.name, device.icon)}
+                    onCancelOverride={() => handleCancelOverride(device.key)}
                     disabled={farmNotReady || !canTemporaryControl}
                   />
+
                 );
               })}
             </div>
