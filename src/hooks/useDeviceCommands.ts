@@ -36,9 +36,15 @@ export function useSendDeviceCommand() {
   const mutation = useMutation({
     mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
-      if (!selectedFarmId) {
+      // Hard guard: farm_id MUST be a non-empty UUID. Without a valid farm_id
+      // the RLS policy on device_commands will silently reject the insert and
+      // the farmer only sees "কমান্ড পাঠাতে ব্যর্থ". Block here instead.
+      const farmId = typeof selectedFarmId === 'string' ? selectedFarmId.trim() : '';
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!farmId || !uuidRe.test(farmId)) {
         throw new Error('NO_FARM_SELECTED');
       }
+
 
       const { data: cmdRow, error } = await supabase
         .from('device_commands')
