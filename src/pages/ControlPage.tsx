@@ -205,30 +205,73 @@ export function ControlPage() {
     }
   }, [rawDeviceStatus]);
 
-  // Helper: clear a device's desired_* column (null-out) so automation resumes.
-  // Used by timer expiry AND handleStop — never sends a raw hardware OFF, which
-  // would race the automation engine.
+  // Column-name maps shared by clear + hydrate + timer-write helpers.
+  const DESIRED_COL_MAP: Record<string, string> = {
+    fan: 'desired_fan_on',
+    light: 'desired_light_on',
+    alarm: 'desired_alarm_on',
+    heater: 'desired_heater_on',
+    circulation_fan: 'desired_circulation_fan_on',
+    fogger: 'desired_fogger_on',
+    ceiling_fan: 'desired_ceiling_fan_on',
+    sprinkler: 'desired_sprinkler_on',
+  };
+  const EXPIRES_COL_MAP: Record<string, string> = {
+    fan: 'desired_fan_expires_at',
+    light: 'desired_light_expires_at',
+    alarm: 'desired_alarm_expires_at',
+    heater: 'desired_heater_expires_at',
+    circulation_fan: 'desired_circulation_fan_expires_at',
+    fogger: 'desired_fogger_expires_at',
+    ceiling_fan: 'desired_ceiling_fan_expires_at',
+    sprinkler: 'desired_sprinkler_expires_at',
+  };
+
+  // Helper: clear a device's desired_* column (null-out) + expires_at so
+  // automation resumes AND the server-side cron won't re-fire on stale timestamps.
   const clearDesiredColumn = useCallback(async (deviceKey: string) => {
-    const desiredColMap: Record<string, string> = {
-      fan: 'desired_fan_on',
-      light: 'desired_light_on',
-      alarm: 'desired_alarm_on',
-      heater: 'desired_heater_on',
-      circulation_fan: 'desired_circulation_fan_on',
-      fogger: 'desired_fogger_on',
-      ceiling_fan: 'desired_ceiling_fan_on',
-      sprinkler: 'desired_sprinkler_on',
-    };
-    const col = desiredColMap[deviceKey];
+    const col = DESIRED_COL_MAP[deviceKey];
+    const expCol = EXPIRES_COL_MAP[deviceKey];
     if (!col || !user) return;
     let q = supabase
       .from('device_status')
-      .update({ [col]: null, updated_at: new Date().toISOString() } as any)
+      .update({ [col]: null, [expCol]: null, updated_at: new Date().toISOString() } as any)
       .eq('user_id', user.id);
     if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
     if (selectedShedId) q = q.eq('shed_id', selectedShedId);
     await q;
   }, [user, selectedFarmId, selectedShedId]);
+
+  // ===== HYDRATE activeTimers FROM DB =====
+  // Persistent-timer safety: after a refresh / new tab, restore the countdown
+  // from device_status.desired_*_expires_at so the UI reflects the true
+  // remaining override window (server cron will null-out on expiry regardless).
+  useEffect(() => {
+    if (!rawDeviceStatus) return;
+    const r = rawDeviceStatus as Record<string, unknown>;
+    const now = Date.now();
+    const restored: Record<string, { endTime: number; duration: number }> = {};
+    Object.entries(EXPIRES_COL_MAP).forEach(([deviceKey, colName]) => {
+      const raw = r[colName];
+      if (!raw) return;
+      const end = new Date(raw as string).getTime();
+      if (!Number.isFinite(end) || end <= now) return;
+      restored[deviceKey] = { endTime: end, duration: Math.ceil((end - now) / 60000) };
+    });
+    setActiveTimers((prev) => {
+      // Merge: keep any local timers not yet flushed to DB, overwrite the rest
+      // from the authoritative server value.
+      const next = { ...prev, ...restored };
+      // Drop local-only entries whose DB row has no expires_at anymore (cleared elsewhere)
+      Object.keys(next).forEach((k) => {
+        const colName = EXPIRES_COL_MAP[k];
+        if (colName && !r[colName] && !restored[k]) delete next[k];
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawDeviceStatus]);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
