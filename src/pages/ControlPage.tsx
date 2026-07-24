@@ -3,8 +3,9 @@ import { motion } from 'framer-motion';
 import { 
   Fan, Lightbulb, Bell, Flame, Wind, Droplets,
   ShieldAlert, Timer, CloudDrizzle, CircleDot,
-  Hand, Bot, Settings, AlertTriangle,
+  Hand, Bot, Settings, AlertTriangle, Loader2,
 } from 'lucide-react';
+
 import { Link } from 'react-router-dom';
 import { useFarmContext } from '@/context/FarmContext';
 
