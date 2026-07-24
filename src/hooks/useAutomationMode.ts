@@ -103,6 +103,11 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         deviceQuery = deviceQuery.eq('farm_id', selectedFarmId);
       }
+      // Per-shed scoping so switching mode on one shed does not wipe
+      // desired_* on sibling sheds of the same farm.
+      if (shedId) {
+        deviceQuery = deviceQuery.eq('shed_id', shedId);
+      }
 
       const { error: deviceError } = await deviceQuery;
       if (deviceError) {
