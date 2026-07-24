@@ -248,7 +248,9 @@ export function ControlPage() {
       const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
 
       // Side effect: clear desired_* → null so automation resumes.
-      // Do NOT send a raw OFF command (would fight the automation engine).
+      // IMPORTANT: do NOT also call setDeviceStatus({[key]: false}) — that
+      // writes desired_x = false which races clearDesiredColumn(null) and
+      // ends up pinning the device OFF, blocking automation resume.
       expired.forEach((deviceKey) => {
         const safetyLocked =
           (heatActive && coolingDevices.includes(deviceKey)) ||
@@ -263,7 +265,6 @@ export function ControlPage() {
           return;
         }
         void clearDesiredColumn(deviceKey);
-        setDeviceStatus({ [deviceKey]: false });
         toast({
           title: language === 'bn' ? '⏰ টাইমার শেষ' : '⏰ Timer Expired',
           description: language === 'bn'
@@ -412,7 +413,9 @@ export function ControlPage() {
       delete updated[deviceKey];
       return updated;
     });
-    setDeviceStatus({ [deviceKey]: false });
+    // Only clear desired_* → null. Do NOT also setDeviceStatus(false):
+    // that would write desired_x = false and race with the null-clear,
+    // sometimes pinning the device OFF instead of releasing to automation.
     await clearDesiredColumn(deviceKey);
     toast({
       title: language === 'bn' ? '↩️ ওভাররাইড বাতিল' : '↩️ Override Cleared',
@@ -583,9 +586,29 @@ export function ControlPage() {
               </p>
             </div>
           </div>
-          <Link to="/settings" className="p-2 rounded-lg hover:bg-muted transition-colors">
-            <Settings className="h-4 w-4 text-muted-foreground" />
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Quick mode-switch — visible in BOTH modes so user is never
+                trapped in MANUAL without a way back to AUTO. */}
+            {canDisableAutomation && (
+              <button
+                type="button"
+                onClick={() => handleAutomationToggle(isManualMode)}
+                disabled={farmNotReady || setAutomationMode.isPending}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                  isManualMode
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isManualMode
+                  ? (language === 'bn' ? '🤖 অটোতে ফিরুন' : '🤖 Back to AUTO')
+                  : (language === 'bn' ? '✋ ম্যানুয়াল' : '✋ Manual')}
+              </button>
+            )}
+            <Link to="/settings" className="p-2 rounded-lg hover:bg-muted transition-colors">
+              <Settings className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          </div>
         </div>
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}

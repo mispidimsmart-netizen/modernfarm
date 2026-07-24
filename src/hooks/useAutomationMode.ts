@@ -33,6 +33,12 @@ export function useAutomationMode() {
   });
 }
 
+// NOTE: automation_mode is stored in farm_settings and is FARM-WIDE
+// (one row per farm). Accepting a shedId here would create a misleading
+// per-shed illusion — the mode change would still apply to every shed
+// of the farm. To keep behaviour honest, this mutation is farm-scoped
+// end-to-end: it wipes desired_* on ALL sheds of the farm so no shed is
+// left with a stale override after the mode flip.
 type SetModeInput = AutomationMode | { mode: AutomationMode; shedId?: string | null };
 
 export function useSetAutomationMode() {
@@ -45,12 +51,12 @@ export function useSetAutomationMode() {
     mutationFn: async (input: SetModeInput) => {
       if (!user) throw new Error('Not authenticated');
       const mode: AutomationMode = typeof input === 'string' ? input : input.mode;
-      const shedId: string | null | undefined = typeof input === 'string' ? undefined : input.shedId;
+      // shedId intentionally IGNORED — mode is farm-wide, see note above.
 
       const isManual = mode === 'MANUAL';
 
       // ═══════════════════════════════════════════════════════════
-      // STEP 1: Update farm_settings.automation_mode
+      // STEP 1: Update farm_settings.automation_mode (farm-wide)
       // ═══════════════════════════════════════════════════════════
       const updatePayload: Record<string, unknown> = {
         automation_mode: mode,
@@ -73,12 +79,9 @@ export function useSetAutomationMode() {
       }
 
       // ═══════════════════════════════════════════════════════════
-      // STEP 2: Update device_status — MUST include farm_id for RLS.
-      // On BOTH transitions we null out desired_* so:
-      //  • Switch to MANUAL → no stale desired_* from a previous session
-      //    forces relays the moment mode flips. User's next toggle is the
-      //    first real desired state.
-      //  • Switch to AUTO → clean slate for the automation engine.
+      // STEP 2: Clear desired_* on EVERY shed of this farm — mode is
+      // farm-wide, so leaving one shed with a stale desired_* would
+      // ghost-fire the moment the automation engine or ESP32 next reads it.
       // ═══════════════════════════════════════════════════════════
       const deviceUpdate: Record<string, any> = {
         desired_manual_override: isManual,
@@ -103,11 +106,6 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         deviceQuery = deviceQuery.eq('farm_id', selectedFarmId);
       }
-      // Per-shed scoping so switching mode on one shed does not wipe
-      // desired_* on sibling sheds of the same farm.
-      if (shedId) {
-        deviceQuery = deviceQuery.eq('shed_id', shedId);
-      }
 
       const { error: deviceError } = await deviceQuery;
       if (deviceError) {
@@ -128,7 +126,7 @@ export function useSetAutomationMode() {
           .select('device_name')
           .eq('user_id', user.id);
         if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
-        if (shedId) nameQ = nameQ.eq('shed_id', shedId);
+        // shedId ignored — pick any device row from this farm for its name.
         const { data: ds } = await nameQ.limit(1).maybeSingle();
         if (ds?.device_name) deviceName = ds.device_name as string;
       } catch {
@@ -168,9 +166,7 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         healthQuery = healthQuery.eq('farm_id', selectedFarmId);
       }
-      if (shedId) {
-        healthQuery = healthQuery.eq('shed_id', shedId);
-      }
+      // shedId ignored — mode is farm-wide, so update health rows for the whole farm.
 
       await healthQuery;
 
