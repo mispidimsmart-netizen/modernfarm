@@ -355,12 +355,15 @@ export function ControlPage() {
     sendCommand.mutate({ commandType: cmdType, commandValue: newValue, shedId: selectedShedId || undefined });
 
     setDeviceStatus({ [deviceKey]: newValue });
+    markPending(deviceKey, newValue);
     toast({
-      title: newValue
-        ? (language === 'bn' ? '✅ চালু হয়েছে' : '✅ Turned On')
-        : (language === 'bn' ? '⏹️ বন্ধ হয়েছে' : '⏹️ Turned Off'),
+      title: language === 'bn' ? '📡 কমান্ড পাঠানো হয়েছে' : '📡 Command sent',
+      description: language === 'bn'
+        ? 'ESP32 থেকে নিশ্চিতকরণের অপেক্ষায়…'
+        : 'Waiting for ESP32 confirmation…',
     });
   };
+
 
   // ===== AUTO MODE: Timer-based temporary control =====
   const handleRunTemporarily = (deviceKey: string, deviceName: { bn: string; en: string }, icon: React.ElementType) => {
