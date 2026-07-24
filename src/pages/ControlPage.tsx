@@ -308,6 +308,13 @@ export function ControlPage() {
         .filter(([, p]) => now - p.startedAt > PENDING_TIMEOUT_MS)
         .map(([k]) => k);
       if (timedOut.length === 0) return;
+      // Revert optimistic UI state back to the actual hardware state — otherwise
+      // the card keeps showing "ON" even though ESP32 never confirmed and the
+      // relay is really OFF (misleads farmer into thinking the fan is running).
+      timedOut.forEach((k) => {
+        const actual = getActualStatus(k);
+        setDeviceStatus({ [k]: actual });
+      });
       setPendingCommands((prev) => {
         const next = { ...prev };
         timedOut.forEach((k) => delete next[k]);
@@ -315,7 +322,7 @@ export function ControlPage() {
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [pendingCommands]);
+  }, [pendingCommands, getActualStatus, setDeviceStatus]);
 
 
 
