@@ -129,7 +129,7 @@ const LAYER_DEVICES = [
 ];
 
 export function ControlPage() {
-  const { language } = useAuth();
+  const { language, user } = useAuth();
   const { selectedShedId } = useSelectedShed();
   const { selectedFarmId, farms, isLoading: farmsLoading } = useFarmContext();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
