@@ -663,18 +663,30 @@ export function ControlPage() {
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-1.5">
-                            <Switch
-                              checked={active}
-                              onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending}
-                              className={`scale-110 ${active ? 'data-[state=checked]:bg-emerald-500' : ''}`}
-                            />
+                            <div className="relative">
+                              <Switch
+                                checked={active}
+                                onCheckedChange={(val) => handleManualToggle(device.key, val)}
+                                disabled={farmNotReady || isViewer || !canFullControl || sendCommand.isPending || isPending}
+                                className={`scale-110 ${active && !isPending ? 'data-[state=checked]:bg-emerald-500' : ''} ${isPending ? 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40' : ''}`}
+                              />
+                              {isPending && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white shadow">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                </span>
+                              )}
+                            </div>
                             <span className={`text-[10px] font-bold tracking-wider ${
-                              active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                              isPending
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
                             }`}>
-                              {active ? 'ON' : 'OFF'}
+                              {isPending
+                                ? (language === 'bn' ? 'অপেক্ষায়…' : 'PENDING…')
+                                : (active ? 'ON' : 'OFF')}
                             </span>
                           </div>
+
                         </div>
                       </CardContent>
                     </Card>
