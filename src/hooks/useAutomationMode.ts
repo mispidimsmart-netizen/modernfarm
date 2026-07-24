@@ -33,6 +33,8 @@ export function useAutomationMode() {
   });
 }
 
+type SetModeInput = AutomationMode | { mode: AutomationMode; shedId?: string | null };
+
 export function useSetAutomationMode() {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
@@ -40,8 +42,10 @@ export function useSetAutomationMode() {
   const { logAction } = useAuditLog();
 
   return useMutation({
-    mutationFn: async (mode: AutomationMode) => {
+    mutationFn: async (input: SetModeInput) => {
       if (!user) throw new Error('Not authenticated');
+      const mode: AutomationMode = typeof input === 'string' ? input : input.mode;
+      const shedId: string | null | undefined = typeof input === 'string' ? undefined : input.shedId;
 
       const isManual = mode === 'MANUAL';
 
@@ -99,6 +103,11 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         deviceQuery = deviceQuery.eq('farm_id', selectedFarmId);
       }
+      // Per-shed scoping so switching mode on one shed does not wipe
+      // desired_* on sibling sheds of the same farm.
+      if (shedId) {
+        deviceQuery = deviceQuery.eq('shed_id', shedId);
+      }
 
       const { error: deviceError } = await deviceQuery;
       if (deviceError) {
@@ -119,6 +128,7 @@ export function useSetAutomationMode() {
           .select('device_name')
           .eq('user_id', user.id);
         if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
+        if (shedId) nameQ = nameQ.eq('shed_id', shedId);
         const { data: ds } = await nameQ.limit(1).maybeSingle();
         if (ds?.device_name) deviceName = ds.device_name as string;
       } catch {
@@ -136,6 +146,7 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         commandPayload.farm_id = selectedFarmId;
       }
+      // NOTE: device_commands table has NO shed_id column — do not add it.
 
       const { error: cmdError } = await supabase
         .from('device_commands')
@@ -156,6 +167,9 @@ export function useSetAutomationMode() {
       
       if (selectedFarmId) {
         healthQuery = healthQuery.eq('farm_id', selectedFarmId);
+      }
+      if (shedId) {
+        healthQuery = healthQuery.eq('shed_id', shedId);
       }
 
       await healthQuery;
