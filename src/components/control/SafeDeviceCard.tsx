@@ -27,6 +27,10 @@ interface SafeDeviceCardProps {
   onRunTemporarily: () => void;
   onStopTemporarily: () => void;
   disabled?: boolean;
+  /** True only when the user placed a temporary override on this device. */
+  hasOverride?: boolean;
+  /** True when the farm is in AUTO mode (affects Stop button semantics). */
+  isAutoMode?: boolean;
 }
 
 export function SafeDeviceCard({
@@ -42,6 +46,8 @@ export function SafeDeviceCard({
   onRunTemporarily,
   onStopTemporarily,
   disabled,
+  hasOverride,
+  isAutoMode,
 }: SafeDeviceCardProps) {
   const { language } = useAuth();
 
