@@ -355,12 +355,6 @@ export function ControlPage() {
 
     setDeviceStatus({ [deviceKey]: newValue });
     markPending(deviceKey, newValue);
-    toast({
-      title: language === 'bn' ? '📡 কমান্ড পাঠানো হয়েছে' : '📡 Command sent',
-      description: language === 'bn'
-        ? 'ESP32 থেকে নিশ্চিতকরণের অপেক্ষায়…'
-        : 'Waiting for ESP32 confirmation…',
-    });
   };
 
 

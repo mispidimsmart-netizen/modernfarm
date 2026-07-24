@@ -172,16 +172,6 @@ export function useSendDeviceCommand() {
         sprinkler: { en: 'Roof Sprinkler', bn: 'ছাদ স্প্রিংকলার' },
       };
 
-      const name = commandNames[variables.commandType];
-      const state = variables.commandValue;
-      const isBn = language === 'bn';
-
-      toast.success(
-        isBn
-          ? `📡 ${name.bn} ${state ? 'চালু' : 'বন্ধ'} কমান্ড পাঠানো হয়েছে`
-          : `📡 ${name.en} ${state ? 'ON' : 'OFF'} command sent`
-      );
-
       // === ACK / READ-BACK VERIFICATION ===
       // After sending, poll device_status until ESP32 reports matching actual_state
       // OR the command row is marked executed=true. If neither happens within ~12s,
