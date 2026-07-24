@@ -179,6 +179,22 @@ export function OrganizationsPanel() {
     },
   });
 
+  const { data: farmOwners = [] } = useQuery({
+    queryKey: ['admin_org_farm_owners', selectedOrgId, orgFarms.map(f => f.owner_id).join(',')],
+    enabled: orgFarms.length > 0,
+    queryFn: async () => {
+      const ids = Array.from(new Set(orgFarms.map(f => f.owner_id)));
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, user_name, phone')
+        .in('id', ids);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; user_name: string | null; phone: string | null }>;
+    },
+  });
+  const ownerMap = new Map(farmOwners.map(o => [o.id, o]));
+
+
   const membersKey = ['admin_org_members', selectedOrgId] as const;
 
   const removeMember = useMutation({
