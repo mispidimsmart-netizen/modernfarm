@@ -77,6 +77,8 @@ export function OrganizationsPanel() {
   const [deleteOrgTarget, setDeleteOrgTarget] = useState<Org | null>(null);
   const [removeMemberTarget, setRemoveMemberTarget] = useState<MemberRow | null>(null);
   const [editMemberTarget, setEditMemberTarget] = useState<MemberRow | null>(null);
+  const [addFarmOpen, setAddFarmOpen] = useState(false);
+  const [confirmRemoveFarm, setConfirmRemoveFarm] = useState<{ id: string; name: string } | null>(null);
 
   const orgsKey = ['admin_organizations'] as const;
 
@@ -177,6 +179,22 @@ export function OrganizationsPanel() {
     },
   });
 
+  const { data: farmOwners = [] } = useQuery({
+    queryKey: ['admin_org_farm_owners', selectedOrgId, orgFarms.map(f => f.owner_id).join(',')],
+    enabled: orgFarms.length > 0,
+    queryFn: async () => {
+      const ids = Array.from(new Set(orgFarms.map(f => f.owner_id)));
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, user_name, phone')
+        .in('id', ids);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; user_name: string | null; phone: string | null }>;
+    },
+  });
+  const ownerMap = new Map(farmOwners.map(o => [o.id, o]));
+
+
   const membersKey = ['admin_org_members', selectedOrgId] as const;
 
   const removeMember = useMutation({
@@ -246,6 +264,44 @@ export function OrganizationsPanel() {
       qc.invalidateQueries({ queryKey: ['platform_role'] });
       qc.invalidateQueries({ queryKey: ['admin_organizations'] });
     },
+  });
+
+  const orgFarmsKey = ['admin_org_farms', selectedOrgId] as const;
+
+  const reassignFarm = useMutation({
+    mutationFn: async ({ farmId, newOrgId }: { farmId: string; newOrgId: string | null }) => {
+      const { error } = await supabase.rpc('super_admin_set_farm_organization' as any, {
+        _farm_id: farmId, _org_id: newOrgId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: orgFarmsKey, refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_available_farms'], refetchType: 'all' }),
+      ]);
+      toast({ title: 'ফার্মের অর্গানাইজেশন আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
+  const removeFarmFromOrg = useMutation({
+    mutationFn: async (farmId: string) => {
+      const { error } = await supabase.rpc('super_admin_set_farm_organization' as any, {
+        _farm_id: farmId, _org_id: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: orgFarmsKey, refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+      ]);
+      toast({ title: 'ফার্ম এই অর্গ থেকে সরানো হয়েছে' });
+      setConfirmRemoveFarm(null);
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
   });
 
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
@@ -434,30 +490,70 @@ export function OrganizationsPanel() {
 
               {/* Farms under this organization */}
               <div className="mt-5 pt-4 border-t border-white/10">
-                <div className="flex items-center gap-2 mb-2">
-                  <Warehouse className="w-4 h-4 text-cyan-400" />
-                  <span className="text-white text-sm font-medium">আওতাভুক্ত ফার্ম</span>
-                  <Badge variant="outline" className="border-cyan-400/40 text-cyan-300 text-[10px]">
-                    {orgFarms.length}
-                  </Badge>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Warehouse className="w-4 h-4 text-cyan-400" />
+                    <span className="text-white text-sm font-medium">আওতাভুক্ত ফার্ম</span>
+                    <Badge variant="outline" className="border-cyan-400/40 text-cyan-300 text-[10px]">
+                      {orgFarms.length}
+                    </Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 bg-cyan-600 hover:bg-cyan-700"
+                    onClick={() => setAddFarmOpen(true)}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> ফার্ম যোগ
+                  </Button>
                 </div>
                 {farmsLoading ? (
                   <p className="text-slate-400 text-xs">লোড হচ্ছে...</p>
                 ) : orgFarms.length === 0 ? (
-                  <p className="text-slate-400 text-xs">এই অর্গানাইজেশনের অধীনে কোনো ফার্ম নেই।</p>
+                  <p className="text-slate-400 text-xs">এই অর্গানাইজেশনের অধীনে কোনো ফার্ম নেই — "ফার্ম যোগ" চাপুন।</p>
                 ) : (
                   <div className="space-y-2">
-                    {orgFarms.map(f => (
-                      <div key={f.id} className="p-2.5 rounded-md bg-slate-800/40 border border-white/5">
-                        <div className="text-white text-sm truncate">{f.name}</div>
-                        <div className="text-[11px] text-slate-400 truncate">
-                          মালিক: {f.owner_id.slice(0, 8)}… · যোগদান: {new Date(f.created_at).toLocaleDateString('bn-BD')}
+                    {orgFarms.map(f => {
+                      const owner = ownerMap.get(f.owner_id);
+                      return (
+                        <div key={f.id} className="p-2.5 rounded-md bg-slate-800/40 border border-white/5 flex items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-white text-sm truncate">{f.name}</div>
+                            <div className="text-[11px] text-slate-400 truncate">
+                              মালিক: {owner?.user_name || owner?.phone || f.owner_id.slice(0, 8)}
+                            </div>
+                          </div>
+                          <Select
+                            value={selectedOrgId!}
+                            onValueChange={(v) => {
+                              if (v === selectedOrgId) return;
+                              reassignFarm.mutate({ farmId: f.id, newOrgId: v });
+                            }}
+                          >
+                            <SelectTrigger className="h-8 w-[150px] bg-slate-900 border-white/10 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {orgs.map(o => (
+                                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
+                            title="এই অর্গ থেকে সরান"
+                            onClick={() => setConfirmRemoveFarm({ id: f.id, name: f.name })}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
+
             </ScrollArea>
           )}
         </CardContent>
@@ -580,6 +676,54 @@ export function OrganizationsPanel() {
               className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-500"
             >
               {removeMember.isPending ? 'সরানো হচ্ছে...' : 'সরিয়ে দিন'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add existing farm to this org */}
+      {selectedOrgId && (
+        <Dialog open={addFarmOpen} onOpenChange={setAddFarmOpen}>
+          <AddFarmToOrgDialog
+            orgId={selectedOrgId}
+            currentOrgName={selectedOrg?.name || ''}
+            onAssigned={(farmId) => {
+              reassignFarm.mutate(
+                { farmId, newOrgId: selectedOrgId },
+                { onSuccess: () => setAddFarmOpen(false) },
+              );
+            }}
+            isPending={reassignFarm.isPending}
+          />
+        </Dialog>
+      )}
+
+      {/* Remove farm from org confirmation */}
+      <AlertDialog
+        open={!!confirmRemoveFarm}
+        onOpenChange={(o) => !o && !removeFarmFromOrg.isPending && setConfirmRemoveFarm(null)}
+      >
+        <AlertDialogContent className="bg-slate-900 border-amber-500/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              ফার্ম এই অর্গ থেকে সরাবেন?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              <strong className="text-white">"{confirmRemoveFarm?.name}"</strong> এই অর্গানাইজেশন থেকে সরিয়ে unassigned করা হবে। ফার্ম মুছবে না — পরে অন্য অর্গে যোগ করা যাবে।
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removeFarmFromOrg.isPending}>বাতিল</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removeFarmFromOrg.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmRemoveFarm) removeFarmFromOrg.mutate(confirmRemoveFarm.id);
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {removeFarmFromOrg.isPending ? 'সরানো হচ্ছে...' : 'সরিয়ে দিন'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1147,5 +1291,110 @@ function MemberRoleHistory({ memberId }: { memberId: string }) {
         </ScrollArea>
       )}
     </div>
+  );
+}
+
+/* ---------------- Add Farm to Org Dialog ---------------- */
+
+function AddFarmToOrgDialog({
+  orgId,
+  currentOrgName,
+  onAssigned,
+  isPending,
+}: {
+  orgId: string;
+  currentOrgName: string;
+  onAssigned: (farmId: string) => void;
+  isPending: boolean;
+}) {
+  const [search, setSearch] = useState('');
+
+  const { data: farms = [], isLoading } = useQuery({
+    queryKey: ['admin_available_farms', orgId],
+    queryFn: async () => {
+      // Load all active farms not already in this org
+      const { data, error } = await supabase
+        .from('farms')
+        .select('id, name, owner_id, organization_id')
+        .is('deleted_at', null)
+        .neq('organization_id', orgId)
+        .order('name');
+      if (error) throw error;
+      // Also include farms with no org (organization_id IS NULL is excluded by .neq above)
+      const { data: unassigned, error: e2 } = await supabase
+        .from('farms')
+        .select('id, name, owner_id, organization_id')
+        .is('deleted_at', null)
+        .is('organization_id', null)
+        .order('name');
+      if (e2) throw e2;
+      return [...(unassigned || []), ...(data || [])] as Array<{
+        id: string; name: string; owner_id: string; organization_id: string | null;
+      }>;
+    },
+  });
+
+  const { data: allOrgs = [] } = useQuery({
+    queryKey: ['admin_orgs_for_farm_picker'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('organizations').select('id, name');
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; name: string }>;
+    },
+  });
+  const orgNameMap = new Map(allOrgs.map(o => [o.id, o.name]));
+
+  const filtered = farms.filter(f =>
+    !search || f.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <DialogContent className="max-w-lg bg-slate-900 border-white/10 text-white">
+      <DialogHeader>
+        <DialogTitle>ফার্ম যোগ করুন → {currentOrgName}</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
+          <Input
+            className="pl-9 bg-slate-800 border-white/10"
+            placeholder="ফার্মের নাম খুঁজুন..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <ScrollArea className="h-[360px] pr-2">
+          {isLoading && <p className="text-slate-400 text-sm py-4">লোড হচ্ছে...</p>}
+          {!isLoading && filtered.length === 0 && (
+            <p className="text-slate-400 text-sm py-4 text-center">যোগ করার মতো কোনো ফার্ম নেই</p>
+          )}
+          <div className="space-y-2">
+            {filtered.map(f => (
+              <div
+                key={f.id}
+                className="p-2.5 rounded-md bg-slate-800/60 border border-white/5 flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-white text-sm truncate">{f.name}</div>
+                  <div className="text-[11px] text-slate-400 truncate">
+                    {f.organization_id
+                      ? `বর্তমানে: ${orgNameMap.get(f.organization_id) || f.organization_id.slice(0, 8)}`
+                      : 'কোনো অর্গে নেই'}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 bg-cyan-600 hover:bg-cyan-700"
+                  disabled={isPending}
+                  onClick={() => onAssigned(f.id)}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> যোগ
+                </Button>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </DialogContent>
   );
 }

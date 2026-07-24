@@ -1,35 +1,33 @@
 import { useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Crown, Building2, Tractor, HardHat, ShieldAlert, Lock, UserCog } from 'lucide-react';
+import { Crown, Building2, ShieldAlert, Lock, UserCog } from 'lucide-react';
 import { AdminManagementTab } from './AdminManagementTab';
 import { OrganizationsPanel } from './OrganizationsPanel';
-import { FarmsAdminPanel } from './FarmsAdminPanel';
-import { WorkersAdminPanel } from './WorkersAdminPanel';
 import { UnifiedRoleEditorPanel } from './UnifiedRoleEditorPanel';
 import { usePlatformRole, type PlatformRole } from '@/hooks/usePlatformRole';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface Props { language: 'bn' | 'en'; }
 
-type SubTabKey = 'roles' | 'admins' | 'orgs' | 'farms' | 'workers';
+// Simplified: 3 tabs instead of 5. Farms & Workers are now inside the
+// Organizations master-detail view.
+type SubTabKey = 'orgs' | 'roles' | 'admins';
 
-// Role-based access matrix per sub-tab. super_admin always implied.
 const ACCESS: Record<SubTabKey, PlatformRole[]> = {
+  orgs: ['super_admin', 'org_owner', 'org_admin'],
   roles: ['super_admin'],
   admins: ['super_admin'],
-  orgs: ['super_admin'],
-  farms: ['super_admin', 'org_owner', 'org_admin'],
-  workers: ['super_admin', 'org_owner', 'org_admin'],
 };
 
 const TAB_LABEL: Record<SubTabKey, string> = {
-  roles: 'রোল',
-  admins: 'অ্যাডমিন',
-  orgs: 'অর্গানাইজেশন',
-  farms: 'ফার্ম',
-  workers: 'ওয়ার্কার',
+  orgs: 'অর্গানাইজেশন ও ফার্ম',
+  roles: 'ইউজার রোল',
+  admins: 'সুপার এডমিন',
 };
+
+// Legacy sub-tab keys that used to exist — redirect them into the new orgs tab
+const LEGACY_TABS = new Set(['farms', 'workers']);
 
 function DeniedCard({ tab }: { tab: SubTabKey }) {
   return (
@@ -45,7 +43,7 @@ function DeniedCard({ tab }: { tab: SubTabKey }) {
   );
 }
 
-export function UserManagementTab({ language }: Props) {
+export function UserManagementTab({ language: _language }: Props) {
   const { data: role, isLoading } = usePlatformRole();
 
   const can = useMemo(() => {
@@ -53,24 +51,32 @@ export function UserManagementTab({ language }: Props) {
     return (key: SubTabKey) => ACCESS[key].includes(userRole);
   }, [role?.topRole]);
 
-  // Pick first allowed tab as default
   const firstAllowed: SubTabKey = useMemo(() => {
-    const order: SubTabKey[] = ['roles', 'admins', 'orgs', 'farms', 'workers'];
-    return order.find(can) ?? 'admins';
+    const order: SubTabKey[] = ['orgs', 'roles', 'admins'];
+    return order.find(can) ?? 'orgs';
   }, [can]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const urlTab = searchParams.get('subtab') as SubTabKey | null;
-  const active: SubTabKey = (urlTab && (['roles','admins','orgs','farms','workers'] as SubTabKey[]).includes(urlTab))
-    ? urlTab
+  const urlTab = searchParams.get('subtab');
+
+  // Redirect legacy subtabs (?subtab=farms|workers) into the new orgs view
+  useEffect(() => {
+    if (urlTab && LEGACY_TABS.has(urlTab)) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'users');
+      next.set('subtab', 'orgs');
+      setSearchParams(next, { replace: true });
+    }
+  }, [urlTab, searchParams, setSearchParams]);
+
+  const active: SubTabKey = (urlTab && (['orgs', 'roles', 'admins'] as SubTabKey[]).includes(urlTab as SubTabKey))
+    ? (urlTab as SubTabKey)
     : firstAllowed;
 
-  // If URL points to a sub-tab the user can't access, redirect to a deep-link guarded route
-  // so the route-level PlatformRoleGuard handles the denial uniformly.
   useEffect(() => {
     if (!role) return;
-    if (urlTab && !can(urlTab)) {
+    if (urlTab && ['orgs', 'roles', 'admins'].includes(urlTab) && !can(urlTab as SubTabKey)) {
       navigate(`/admin/users/${urlTab}`, { replace: true });
     }
   }, [urlTab, role, can, navigate]);
@@ -111,28 +117,27 @@ export function UserManagementTab({ language }: Props) {
 
   return (
     <Tabs value={active} onValueChange={(v) => setActive(v as SubTabKey)} className="w-full">
-      <TabsList className="bg-slate-900/80 border border-white/10 grid grid-cols-2 sm:grid-cols-5 gap-1 p-1.5 rounded-xl shadow-lg h-auto w-full">
+      <TabsList className="bg-slate-900/80 border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-1 p-1.5 rounded-xl shadow-lg h-auto w-full">
+        {renderTrigger('orgs', Building2, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('roles', UserCog, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
         {renderTrigger('admins', Crown, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
-        {renderTrigger('orgs', Building2, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
-        {renderTrigger('farms', Tractor, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
-        {renderTrigger('workers', HardHat, 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg')}
       </TabsList>
 
+      <TabsContent value="orgs" className="mt-4">
+        {can('orgs') ? (
+          <>
+            <div className="mb-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-400/20 text-xs text-emerald-200">
+              <strong>টিপ:</strong> বাঁদিকে অর্গানাইজেশন বেছে নিলে ডানপাশে তার সদস্য ও ফার্ম দেখতে পাবেন। ফার্ম যোগ, অন্য অর্গে সরানো বা বাদ দেওয়া — সবই এখান থেকে।
+            </div>
+            <OrganizationsPanel />
+          </>
+        ) : <DeniedCard tab="orgs" />}
+      </TabsContent>
       <TabsContent value="roles" className="mt-4">
         {can('roles') ? <UnifiedRoleEditorPanel /> : <DeniedCard tab="roles" />}
       </TabsContent>
       <TabsContent value="admins" className="mt-4">
-        {can('admins') ? <AdminManagementTab language={language} /> : <DeniedCard tab="admins" />}
-      </TabsContent>
-      <TabsContent value="orgs" className="mt-4">
-        {can('orgs') ? <OrganizationsPanel /> : <DeniedCard tab="orgs" />}
-      </TabsContent>
-      <TabsContent value="farms" className="mt-4">
-        {can('farms') ? <FarmsAdminPanel /> : <DeniedCard tab="farms" />}
-      </TabsContent>
-      <TabsContent value="workers" className="mt-4">
-        {can('workers') ? <WorkersAdminPanel /> : <DeniedCard tab="workers" />}
+        {can('admins') ? <AdminManagementTab language={_language} /> : <DeniedCard tab="admins" />}
       </TabsContent>
     </Tabs>
   );
