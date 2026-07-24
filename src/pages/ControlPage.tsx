@@ -782,21 +782,38 @@ export function ControlPage() {
 
             {/* Device Control Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-              {DEVICES.map((device) => (
-                <SafeDeviceCard
-                  key={device.key}
-                  deviceKey={device.key}
-                  icon={device.icon}
-                  name={device.name}
-                  description={device.description}
-                  isActive={isDeviceActive(device.key)}
-                  mode={getDeviceMode(device.key)}
-                  remainingTime={getRemainingTime(device.key)}
-                  onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
-                  onStopTemporarily={() => handleStop(device.key)}
-                  disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
-                />
-              ))}
+              {DEVICES.map((device) => {
+                // Safety lock: if a protection forces this device ON, user cannot stop it.
+                // Heat-stress or gas-purge → fans/circulation/fogger are locked ON.
+                const heatActive = sensorData.temperature > tempMax;
+                const gasActive = sensorData.ammonia > ammoniaMax;
+                const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
+                const isSafetyLocked =
+                  (heatActive && coolingDevices.includes(device.key)) ||
+                  (gasActive && (device.key === 'fan' || device.key === 'circulation_fan'));
+                const safetyReason = isSafetyLocked
+                  ? (heatActive
+                      ? { bn: '🔥 হিট স্ট্রেস সুরক্ষা সক্রিয় — ঠান্ডা রাখতে চালু থাকবে', en: '🔥 Heat stress protection active — must stay ON to cool' }
+                      : { bn: '💨 গ্যাস পার্জ সক্রিয় — অ্যামোনিয়া দূর করতে চালু থাকবে', en: '💨 Gas purge active — must stay ON to clear ammonia' })
+                  : undefined;
+                return (
+                  <SafeDeviceCard
+                    key={device.key}
+                    deviceKey={device.key}
+                    icon={device.icon}
+                    name={device.name}
+                    description={device.description}
+                    isActive={isDeviceActive(device.key)}
+                    mode={isSafetyLocked ? 'safety_lock' : getDeviceMode(device.key)}
+                    remainingTime={getRemainingTime(device.key)}
+                    isSafetyLocked={isSafetyLocked}
+                    safetyReason={safetyReason}
+                    onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
+                    onStopTemporarily={() => handleStop(device.key)}
+                    disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
