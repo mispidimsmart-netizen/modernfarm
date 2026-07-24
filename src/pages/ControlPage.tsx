@@ -704,7 +704,7 @@ export function ControlPage() {
                 (source of truth), NOT the device-side manual_override flag which
                 may lag behind or reflect a temporary override. */}
             <AutomationStatusBanner
-              automationEnabled={automationMode !== 'MANUAL'}
+              automationEnabled={!isManualMode}
               hasTemporaryOverrides={hasTemporaryOverrides}
               onToggleAutomation={handleAutomationToggle}
               canToggle={canDisableAutomation}
