@@ -95,11 +95,12 @@ export function Dashboard() {
 
   // Tab → query keys map: refetch relevant data when user switches tabs
   const TAB_QUERY_KEYS: Record<string, string[]> = {
-    summary: ['device_health', 'today-summary', 'farm-health-score', 'weather_cache', 'flock-info'],
+    summary: ['device_health', 'today-summary', 'farm-health-score', 'weather_cache', 'flock-info', 'sensor_history'],
     environment: ['sensor_history', 'weather_cache', 'inside_outside_delta', 'heat-risk', 'ammonia-trend'],
     control: ['device_health', 'automation-status', 'safety_status', 'light-status', 'light-action-history', 'power-outages', 'sensor-health'],
     flock: ['today-summary', 'layer-batch-active', 'layer-batches', 'broiler-batch-active', 'broiler-batches', 'water-anomaly', 'flock-info'],
   };
+
 
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
@@ -235,7 +236,16 @@ export function Dashboard() {
                     <SystemActivityCard />
                   </Suspense>
                 </div>
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    📈 {language === 'bn' ? 'সেন্সর ট্রেন্ড' : 'Sensor Trends'}
+                  </p>
+                  <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
+                    <SensorCharts />
+                  </Suspense>
+                </div>
               </TabLoadingWrapper>
+
             </TabsContent>
 
             {/* TAB 2: 🌡️ পরিবেশ */}
