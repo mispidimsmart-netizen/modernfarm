@@ -630,30 +630,28 @@ export function useAddIncome() {
       if (!selectedFarmId) throw new Error('কোন ফার্ম নির্বাচন করা হয়নি');
       const { activeBatchId, farmMode } = await resolveActiveScope(selectedFarmId);
       const source = data.source || data.category || 'other';
-      const { error } = await supabase
-        .from('income')
-        .insert({
-          ...data,
-          source,
-          batch_id: data.batch_id ?? activeBatchId,
-          farm_mode: data.farm_mode ?? farmMode,
-          user_id: user!.id,
-          farm_id: selectedFarmId,
-        });
-      
-      if (error) throw error;
+      const { insertOrQueue } = await import('@/lib/offlineQueue');
+      return await insertOrQueue('income', {
+        ...(data as any),
+        source,
+        batch_id: (data as any).batch_id ?? activeBatchId,
+        farm_mode: (data as any).farm_mode ?? farmMode,
+        user_id: user!.id,
+        farm_id: selectedFarmId,
+      });
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['income'] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary'] });
       queryClient.invalidateQueries({ queryKey: ['today-summary'] });
-      toast({ title: 'আয় রেকর্ড হয়েছে' });
+      toast({ title: (res as any)?.queued ? '📴 অফলাইনে সংরক্ষিত — নেট এলে সিঙ্ক হবে' : 'আয় রেকর্ড হয়েছে' });
     },
     onError: (error: any) => {
       toast({ title: 'ত্রুটি হয়েছে', description: error?.message, variant: 'destructive' });
     },
   });
 }
+
 
 // Flock Info Hooks
 export function useFlockInfo() {
