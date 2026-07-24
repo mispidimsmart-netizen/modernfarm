@@ -146,6 +146,9 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         commandPayload.farm_id = selectedFarmId;
       }
+      if (shedId) {
+        commandPayload.shed_id = shedId;
+      }
 
       const { error: cmdError } = await supabase
         .from('device_commands')
@@ -166,6 +169,9 @@ export function useSetAutomationMode() {
       
       if (selectedFarmId) {
         healthQuery = healthQuery.eq('farm_id', selectedFarmId);
+      }
+      if (shedId) {
+        healthQuery = healthQuery.eq('shed_id', shedId);
       }
 
       await healthQuery;
