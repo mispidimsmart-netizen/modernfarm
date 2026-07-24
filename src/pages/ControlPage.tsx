@@ -151,7 +151,10 @@ export function ControlPage() {
 
   // Capability mapping: workers get temp override only; hardware/automation toggles
   // require canChangeHardware (farm_owner / org_owner / super_admin).
-  const canTemporaryControl = perms.canTempOverride;
+  // Device ON/OFF is a hardware command even when it is temporary; keep the
+  // UI aligned with backend command RLS so workers/members do not hit a false
+  // "command failed" state.
+  const canTemporaryControl = perms.canChangeHardware;
   const canFullControl = perms.canChangeHardware;
   const canDisableAutomation = perms.canChangeHardware;
   const isViewer = perms.role === 'guest';
