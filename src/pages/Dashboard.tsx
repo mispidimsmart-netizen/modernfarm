@@ -412,8 +412,6 @@ export function Dashboard() {
                 <div className="space-y-3">
                   <LightStatusPanel />
                   <LightActionHistory />
-                  <LightSensorCard />
-                  <AirQualityCard />
                 </div>
               </section>
 
