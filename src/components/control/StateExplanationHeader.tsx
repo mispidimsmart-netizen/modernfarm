@@ -155,11 +155,11 @@ export function StateExplanationHeader() {
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center py-4 px-3 sm:py-6 sm:px-5 md:py-8 md:px-6 text-center">
+      <div className="relative z-10 flex flex-col items-center justify-center py-4 px-3 sm:py-6 sm:px-5 md:py-8 md:px-6 lg:py-10 lg:px-8 xl:py-12 xl:px-10 text-center w-full">
         {/* Live badge */}
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-          <span className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 text-[10px] sm:text-xs font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${isAnyDeviceOnline ? 'bg-white animate-pulse' : 'bg-red-300'}`} />
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-4 lg:right-4">
+          <span className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 lg:px-3 lg:py-1 text-[10px] sm:text-xs lg:text-sm font-semibold text-white ${isAnyDeviceOnline ? 'bg-white/20' : 'bg-red-500/40'}`}>
+            <span className={`h-1.5 w-1.5 lg:h-2 lg:w-2 rounded-full ${isAnyDeviceOnline ? 'bg-white animate-pulse' : 'bg-red-300'}`} />
             {isAnyDeviceOnline
               ? (language === 'bn' ? 'লাইভ' : 'LIVE')
               : (language === 'bn' ? 'অফলাইন' : 'OFFLINE')}
@@ -167,7 +167,7 @@ export function StateExplanationHeader() {
         </div>
 
         {/* Label */}
-        <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-white/70 mb-1.5 sm:mb-2">
+        <p className="text-[10px] sm:text-xs lg:text-sm font-semibold uppercase tracking-widest text-white/70 mb-1.5 sm:mb-2 lg:mb-3">
           {language === 'bn' ? 'বর্তমান খামারের অবস্থা' : 'Current Farm Condition'}
         </p>
 
@@ -175,9 +175,9 @@ export function StateExplanationHeader() {
         <motion.div
           animate={{ scale: isEmergency ? [1, 1.15, 1] : 1 }}
           transition={{ duration: 0.8, repeat: isEmergency ? Infinity : 0 }}
-          className="flex h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm mb-2 sm:mb-3"
+          className="flex h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 lg:h-24 lg:w-24 xl:h-28 xl:w-28 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm mb-2 sm:mb-3 lg:mb-4"
         >
-          <Icon className="h-6 w-6 sm:h-9 sm:w-9 md:h-11 md:w-11 text-white" />
+          <Icon className="h-6 w-6 sm:h-9 sm:w-9 md:h-11 md:w-11 lg:h-14 lg:w-14 xl:h-16 xl:w-16 text-white" />
         </motion.div>
 
         {/* Main explanation — PRIMARY */}
