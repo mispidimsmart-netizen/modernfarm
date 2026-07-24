@@ -250,6 +250,44 @@ export function OrganizationsPanel() {
     },
   });
 
+  const orgFarmsKey = ['admin_org_farms', selectedOrgId] as const;
+
+  const reassignFarm = useMutation({
+    mutationFn: async ({ farmId, newOrgId }: { farmId: string; newOrgId: string | null }) => {
+      const { error } = await supabase.rpc('super_admin_set_farm_organization' as any, {
+        _farm_id: farmId, _org_id: newOrgId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: orgFarmsKey, refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_available_farms'], refetchType: 'all' }),
+      ]);
+      toast({ title: 'ফার্মের অর্গানাইজেশন আপডেট হয়েছে' });
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
+  const removeFarmFromOrg = useMutation({
+    mutationFn: async (farmId: string) => {
+      const { error } = await supabase.rpc('super_admin_set_farm_organization' as any, {
+        _farm_id: farmId, _org_id: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: orgFarmsKey, refetchType: 'all' }),
+        qc.invalidateQueries({ queryKey: ['admin_all_farms'], refetchType: 'all' }),
+      ]);
+      toast({ title: 'ফার্ম এই অর্গ থেকে সরানো হয়েছে' });
+      setConfirmRemoveFarm(null);
+    },
+    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
+  });
+
   const selectedOrg = orgs.find(o => o.id === selectedOrgId);
 
   return (
