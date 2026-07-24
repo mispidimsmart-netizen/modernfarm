@@ -160,13 +160,20 @@ export function useOfflineSync() {
       setIsOnline(true);
       syncQueue();
     };
-    
+
     const handleOffline = () => {
       setIsOnline(false);
     };
 
+    const handleQueueChanged = (e: Event) => {
+      const detail = (e as CustomEvent<number>).detail;
+      if (typeof detail === 'number') setPendingCount(detail);
+      else setPendingCount(getLocalQueue().length);
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('offline-queue-changed', handleQueueChanged as EventListener);
 
     // Initial load
     setPendingCount(getLocalQueue().length);
@@ -174,8 +181,10 @@ export function useOfflineSync() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('offline-queue-changed', handleQueueChanged as EventListener);
     };
   }, [syncQueue, getLocalQueue]);
+
 
   // Auto sync when user logs in
   useEffect(() => {
