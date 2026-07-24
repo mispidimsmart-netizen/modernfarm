@@ -45,6 +45,25 @@ export function useSendDeviceCommand() {
         throw new Error('NO_FARM_SELECTED');
       }
 
+      // ===== OFFLINE PATH =====
+      // If the browser is offline we cannot reach the cloud at all — queue the
+      // command insert to localStorage and let useOfflineSync drain it when the
+      // network returns. We deliberately skip the desired_* status update and
+      // ACK polling (both need live cloud access); replay handles the insert
+      // and the ESP32 will pick it up from device_commands as normal.
+      // Short TTL (60 min) so a stale ON/OFF doesn't fire hours later.
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const { queueInsert } = await import('@/lib/offlineQueue');
+        queueInsert('device_commands', {
+          user_id: user.id,
+          device_name: deviceName,
+          command_type: commandType,
+          command_value: commandValue,
+          executed: false,
+          farm_id: selectedFarmId,
+        }, { maxAgeMinutes: 60 });
+        return { queued: true } as any;
+      }
 
       const { data: cmdRow, error } = await supabase
         .from('device_commands')
@@ -60,6 +79,7 @@ export function useSendDeviceCommand() {
         .single();
 
       if (error) throw error;
+
 
       // Update desired_state columns only (cloud never sets actual state)
       const desiredUpdate: Record<string, any> = {
