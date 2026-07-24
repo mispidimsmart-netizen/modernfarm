@@ -36,6 +36,9 @@ export function useSendDeviceCommand() {
   const mutation = useMutation({
     mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
+      if (!selectedFarmId) {
+        throw new Error('NO_FARM_SELECTED');
+      }
 
       const { data: cmdRow, error } = await supabase
         .from('device_commands')
@@ -115,9 +118,7 @@ export function useSendDeviceCommand() {
           .update(desiredUpdate)
           .eq('user_id', user.id);
 
-        if (selectedFarmId) {
-          query = query.eq('farm_id', selectedFarmId);
-        }
+        query = query.eq('farm_id', selectedFarmId);
 
         if (shedId) {
           query = query.eq('shed_id', shedId);
@@ -349,10 +350,15 @@ export function useSendDeviceCommand() {
     },
     onError: (error) => {
       console.error('Failed to send command:', error);
-      toast.error(
-        language === 'bn'
+      const message = error instanceof Error && error.message === 'NO_FARM_SELECTED'
+        ? (language === 'bn'
+          ? 'প্রথমে একটি ফার্ম নির্বাচন করুন'
+          : 'Select a farm first')
+        : (language === 'bn'
           ? 'কমান্ড পাঠাতে ব্যর্থ'
-          : 'Failed to send command'
+          : 'Failed to send command');
+      toast.error(
+        message
       );
     },
   });
