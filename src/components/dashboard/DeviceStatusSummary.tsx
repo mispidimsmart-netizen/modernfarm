@@ -12,6 +12,7 @@ interface DeviceItem {
   key: string;
   icon: React.ElementType;
   label: { bn: string; en: string };
+  description: { bn: string; en: string };
   isOn: boolean;
 }
 
