@@ -387,7 +387,44 @@ export function ControlPage() {
       <Header />
 
       <main className="page-container px-4 space-y-4">
+        {/* ===== FARM-NOT-SELECTED GUARD BANNER ===== */}
+        {farmNotReady && (
+          <div
+            role="alert"
+            className="rounded-2xl border-2 border-destructive/60 bg-destructive/10 p-4 flex items-start gap-3"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/20 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-destructive">
+                {language === 'bn'
+                  ? '⚠️ কোনো ফার্ম নির্বাচন করা নেই — কমান্ড পাঠানো বন্ধ'
+                  : '⚠️ No farm selected — commands are disabled'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {farmsLoading
+                  ? (language === 'bn' ? 'ফার্ম লোড হচ্ছে…' : 'Loading farms…')
+                  : (farms && farms.length === 0
+                      ? (language === 'bn'
+                          ? 'আপনার কোনো ফার্ম নেই। সেটিংস → ফার্মে গিয়ে প্রথমে একটি ফার্ম তৈরি করুন।'
+                          : 'You do not have any farms yet. Create one from Settings → Farm.')
+                      : (language === 'bn'
+                          ? 'উপরের হেডার থেকে একটি ফার্ম বেছে নিন, নাহলে ডিভাইস কমান্ড ব্যাকএন্ড দ্বারা ব্লক হবে।'
+                          : 'Pick a farm from the header — without a valid farm the backend will reject device commands.'))}
+              </p>
+              <Link
+                to="/settings"
+                className="inline-block mt-2 text-xs font-semibold text-destructive underline underline-offset-2"
+              >
+                {language === 'bn' ? 'সেটিংস → ফার্মে যান' : 'Go to Settings → Farm'}
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* ===== MODE INDICATOR BANNER ===== */}
+
         <div className={`rounded-2xl border-2 p-3 flex items-center justify-between ${
           isManualMode
             ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/10 to-amber-600/5'
