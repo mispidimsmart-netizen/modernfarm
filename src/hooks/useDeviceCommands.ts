@@ -172,6 +172,10 @@ export function useSendDeviceCommand() {
         sprinkler: { en: 'Roof Sprinkler', bn: 'ছাদ স্প্রিংকলার' },
       };
 
+      const name = commandNames[variables.commandType];
+      const state = variables.commandValue;
+      const isBn = language === 'bn';
+
       // === ACK / READ-BACK VERIFICATION ===
       // After sending, poll device_status until ESP32 reports matching actual_state
       // OR the command row is marked executed=true. If neither happens within ~12s,
