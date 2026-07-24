@@ -69,28 +69,27 @@ export function useSetAutomationMode() {
       }
 
       // ═══════════════════════════════════════════════════════════
-      // STEP 2: Update device_status — MUST include farm_id for RLS
-      // Sets desired_manual_override AND mode column
+      // STEP 2: Update device_status — MUST include farm_id for RLS.
+      // On BOTH transitions we null out desired_* so:
+      //  • Switch to MANUAL → no stale desired_* from a previous session
+      //    forces relays the moment mode flips. User's next toggle is the
+      //    first real desired state.
+      //  • Switch to AUTO → clean slate for the automation engine.
       // ═══════════════════════════════════════════════════════════
       const deviceUpdate: Record<string, any> = {
         desired_manual_override: isManual,
         mode: mode,
         updated_at: new Date().toISOString(),
+        desired_fan_on: null,
+        desired_light_on: null,
+        desired_alarm_on: null,
+        desired_heater_on: null,
+        desired_circulation_fan_on: null,
+        desired_fogger_on: null,
+        desired_ceiling_fan_on: null,
+        desired_sprinkler_on: null,
+        desired_fan_speed: null,
       };
-
-      // When switching to AUTO, clear all desired states
-      // so automation engine has clean slate
-      if (!isManual) {
-        deviceUpdate.desired_fan_on = null;
-        deviceUpdate.desired_light_on = null;
-        deviceUpdate.desired_alarm_on = null;
-        deviceUpdate.desired_heater_on = null;
-        deviceUpdate.desired_circulation_fan_on = null;
-        deviceUpdate.desired_fogger_on = null;
-        deviceUpdate.desired_ceiling_fan_on = null;
-        deviceUpdate.desired_sprinkler_on = null;
-        deviceUpdate.desired_fan_speed = null;
-      }
 
       let deviceQuery = supabase
         .from('device_status')
@@ -108,15 +107,29 @@ export function useSetAutomationMode() {
       }
 
       // ═══════════════════════════════════════════════════════════
-      // STEP 3: Send stop_automation command to ESP32
-      // ESP32 polls device_commands every 5 seconds
-      // MUST include farm_id for RLS policy to pass
+      // STEP 3: Send stop_automation command to ESP32.
+      // ESP32 polls device_commands every 1-5 seconds. Look up the
+      // farm-specific device_name from device_status so we don't
+      // hardcode 'ESP32_LAYER_001' for every farm.
       // ═══════════════════════════════════════════════════════════
+      let deviceName = 'Shed A';
+      try {
+        let nameQ: any = supabase
+          .from('device_status')
+          .select('device_name')
+          .eq('user_id', user.id);
+        if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
+        const { data: ds } = await nameQ.limit(1).maybeSingle();
+        if (ds?.device_name) deviceName = ds.device_name as string;
+      } catch {
+        // fall back to default
+      }
+
       const commandPayload: Record<string, any> = {
         user_id: user.id,
         command_type: 'stop_automation',
         command_value: isManual,
-        device_name: 'ESP32_LAYER_001',
+        device_name: deviceName,
         executed: false,
       };
 
