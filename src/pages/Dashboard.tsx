@@ -231,6 +231,14 @@ export function Dashboard() {
                 <FarmHealthScore />
                 <InsideOutsideDeltaCard />
                 <DeviceStatusSummary />
+                <div>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    📈 {language === 'bn' ? 'সেন্সর ট্রেন্ড' : 'Sensor Trends'}
+                  </p>
+                  <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
+                    <SensorCharts />
+                  </Suspense>
+                </div>
                 <TodayReadableSummary />
                 <div>
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -238,15 +246,6 @@ export function Dashboard() {
                   </p>
                   <Suspense fallback={<div className="h-32 rounded-xl bg-muted/40 animate-pulse" />}>
                     <SystemActivityCard />
-                  </Suspense>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    📈 {language === 'bn' ? 'সেন্সর ট্রেন্ড' : 'Sensor Trends'}
-                  </p>
-                  <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
-                    <SensorCharts />
                   </Suspense>
                 </div>
               </TabLoadingWrapper>
