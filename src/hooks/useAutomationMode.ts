@@ -166,9 +166,7 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         healthQuery = healthQuery.eq('farm_id', selectedFarmId);
       }
-      if (shedId) {
-        healthQuery = healthQuery.eq('shed_id', shedId);
-      }
+      // shedId ignored — mode is farm-wide, so update health rows for the whole farm.
 
       await healthQuery;
 
