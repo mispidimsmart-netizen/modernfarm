@@ -146,9 +146,7 @@ export function useSetAutomationMode() {
       if (selectedFarmId) {
         commandPayload.farm_id = selectedFarmId;
       }
-      if (shedId) {
-        commandPayload.shed_id = shedId;
-      }
+      // NOTE: device_commands table has NO shed_id column — do not add it.
 
       const { error: cmdError } = await supabase
         .from('device_commands')
