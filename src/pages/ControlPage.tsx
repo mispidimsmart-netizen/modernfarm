@@ -624,6 +624,8 @@ export function ControlPage() {
               {DEVICES.map((device, index) => {
                 const active = isDeviceActive(device.key);
                 const Icon = device.icon;
+                const pending = pendingCommands[device.key];
+                const isPending = !!pending;
                 return (
                   <motion.div
                     key={device.key}
@@ -632,10 +634,13 @@ export function ControlPage() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <Card className={`border-2 transition-all duration-300 ${
-                      active
-                        ? 'border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-md shadow-emerald-500/10'
-                        : 'border-border/50 hover:border-border'
+                      isPending
+                        ? 'border-amber-500/60 bg-gradient-to-br from-amber-500/10 to-amber-600/5 shadow-md shadow-amber-500/10'
+                        : active
+                          ? 'border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 shadow-md shadow-emerald-500/10'
+                          : 'border-border/50 hover:border-border'
                     }`}>
+
                       <CardContent className="py-4 px-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
