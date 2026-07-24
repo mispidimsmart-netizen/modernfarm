@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { useDeviceStatus } from '@/hooks/useFarmData';
+import { useSelectedShed } from '@/hooks/useSheds';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DeviceItem {
@@ -18,7 +20,18 @@ interface DeviceItem {
 
 export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
   const { language } = useAuth();
-  const { status, isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
+  // Match ControlPage: scope to the currently selected shed so the summary
+  // reflects the exact same device_status row the control page reads from.
+  const { selectedShedId } = useSelectedShed();
+  const { isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
+  const { data: rawDeviceStatus } = useDeviceStatus(selectedShedId);
+
+  // ACTUAL hardware columns (what ESP32 reports the relay is doing right now).
+  // Hardware-as-Source-of-Truth: we deliberately ignore desired_* here so the
+  // summary shows the *real* on/off state of each relay, not the pending
+  // command. When offline we fall back to false (cannot trust stale flags).
+  const r = (rawDeviceStatus ?? {}) as Record<string, unknown>;
+  const actual = (col: string) => isDeviceOnline && !!r[col];
 
   const devices: DeviceItem[] = [
     {
@@ -26,42 +39,42 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       icon: Fan,
       label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
       description: { bn: 'অটোমেশন ও অভ্যন্তরীণ বায়ু চলাচল', en: 'Automation & ventilation' },
-      isOn: status.fan,
+      isOn: actual('fan_on'),
     },
     {
       key: 'ceiling_fan',
       icon: Wind,
       label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
-      description: { bn: 'তাপমাত্রা বেশি হলে বাড়তি বায়ু প্রবাহ', en: 'Extra airflow when hot' },
-      isOn: status.ceilingFan,
+      description: { bn: 'তাপমাত্রা বেশি হলে বাড়তি বায়ু প্রবাহ', en: 'Extra airflow when hot' },
+      isOn: actual('ceiling_fan_on'),
     },
     {
       key: 'heater',
       icon: Flame,
       label: { bn: 'হিটার', en: 'Heater' },
-      description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in cold' },
-      isOn: status.heater,
+      description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in cold' },
+      isOn: actual('heater_on'),
     },
     {
       key: 'fogger',
       icon: Droplets,
       label: { bn: 'ফগার', en: 'Fogger' },
       description: { bn: 'পরিবেশ ঠাণ্ডা রাখে', en: 'Keeps environment cool' },
-      isOn: status.fogger,
+      isOn: actual('fogger_on'),
     },
     {
       key: 'sprinkler',
       icon: CloudRain,
       label: { bn: 'ছাদ স্প্রিংকলার', en: 'Ceiling Sprinkler' },
-      description: { bn: 'HSI নিয়ন্ত্রিত স্প্রিংকলার', en: 'HSI-controlled sprinkler' },
-      isOn: status.sprinkler,
+      description: { bn: 'HSI নিয়ন্ত্রিত স্প্রিংকলার', en: 'HSI-controlled sprinkler' },
+      isOn: actual('sprinkler_on'),
     },
     {
       key: 'light',
       icon: Lightbulb,
       label: { bn: 'লাইট', en: 'Light' },
-      description: { bn: 'তীব্র উপশমে সহায়ক', en: 'Aids intense relief' },
-      isOn: status.light,
+      description: { bn: 'তীব্র উপশমে সহায়ক', en: 'Aids intense relief' },
+      isOn: actual('light_on'),
     },
   ];
 
