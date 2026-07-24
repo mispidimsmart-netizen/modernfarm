@@ -127,7 +127,10 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
                 <p className="text-xs font-medium text-foreground truncate">
                   {device.label[language]}
                 </p>
-                <div className="flex items-center gap-1 text-[11px] font-semibold">
+                <p className="text-[10px] text-muted-foreground truncate leading-tight">
+                  {device.description[language]}
+                </p>
+                <div className="flex items-center gap-1 text-[11px] font-semibold mt-0.5">
                   {isOn ? (
                     <>
                       <CircleDot className="h-2.5 w-2.5 text-emerald-500" />
