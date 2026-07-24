@@ -248,7 +248,9 @@ export function ControlPage() {
       const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
 
       // Side effect: clear desired_* → null so automation resumes.
-      // Do NOT send a raw OFF command (would fight the automation engine).
+      // IMPORTANT: do NOT also call setDeviceStatus({[key]: false}) — that
+      // writes desired_x = false which races clearDesiredColumn(null) and
+      // ends up pinning the device OFF, blocking automation resume.
       expired.forEach((deviceKey) => {
         const safetyLocked =
           (heatActive && coolingDevices.includes(deviceKey)) ||
@@ -263,7 +265,6 @@ export function ControlPage() {
           return;
         }
         void clearDesiredColumn(deviceKey);
-        setDeviceStatus({ [deviceKey]: false });
         toast({
           title: language === 'bn' ? '⏰ টাইমার শেষ' : '⏰ Timer Expired',
           description: language === 'bn'
