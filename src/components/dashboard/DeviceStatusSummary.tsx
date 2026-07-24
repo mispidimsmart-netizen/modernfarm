@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Fan, Lightbulb, Bell, Flame, Droplets, Wind, Power,
+  Fan, Lightbulb, Flame, Droplets, Wind, Power,
   CircleDot, CircleOff
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
