@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useFarmContext } from '@/context/FarmContext';
 
 import { useAuth } from '@/context/AuthContext';
@@ -128,7 +129,7 @@ const LAYER_DEVICES = [
 ];
 
 export function ControlPage() {
-  const { language } = useAuth();
+  const { language, user } = useAuth();
   const { selectedShedId } = useSelectedShed();
   const { selectedFarmId, farms, isLoading: farmsLoading } = useFarmContext();
   const { status, manualOverride, setDeviceStatus, setManualOverride } = useDeviceControl(selectedShedId);
@@ -169,9 +170,11 @@ export function ControlPage() {
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
   // ===== HARDWARE-CONFIRMATION PENDING STATE =====
-  // Tracks devices whose command was sent but ESP32 hasn't reported back yet.
-  // Cleared when device_status realtime update matches `desired`, or on timeout.
-  const PENDING_TIMEOUT_MS = 7000;
+  // Visual-only "pending" spinner. The authoritative ACK/timeout toasts are
+  // emitted by useSendDeviceCommand (12s poller). We match its window here so
+  // the spinner clears at the same time the hook resolves — no duplicate toasts,
+  // no premature "no confirmation" flicker.
+  const PENDING_TIMEOUT_MS = 12000;
   const [pendingCommands, setPendingCommands] = useState<
     Record<string, { desired: boolean; startedAt: number }>
   >({});
@@ -183,6 +186,24 @@ export function ControlPage() {
     }));
   }, []);
 
+  // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
+  // `status` (which in manual mode already reflects desired_*). Pending is only
+  // cleared when ESP32 writes back the real actual_* column.
+  const getActualStatus = useCallback((deviceKey: string): boolean => {
+    if (!rawDeviceStatus) return false;
+    const r = rawDeviceStatus as Record<string, unknown>;
+    switch (deviceKey) {
+      case 'fan': return !!r.fan_on;
+      case 'light': return !!r.light_on;
+      case 'heater': return !!r.heater_on;
+      case 'circulation_fan': return !!r.circulation_fan_on;
+      case 'fogger': return !!r.fogger_on;
+      case 'ceiling_fan': return !!r.ceiling_fan_on;
+      case 'sprinkler': return !!r.sprinkler_on;
+      case 'alarm': return !!r.alarm_on;
+      default: return false;
+    }
+  }, [rawDeviceStatus]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -224,27 +245,8 @@ export function ControlPage() {
     return () => clearInterval(interval);
   }, [activeTimers, language, sendCommand, setDeviceStatus, toast, selectedShedId]);
 
-  // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
-  // `status` (which in manual mode already reflects desired_*). Pending is only
-  // cleared when ESP32 writes back the real actual_* column.
-  const getActualStatus = useCallback((deviceKey: string): boolean => {
-    if (!rawDeviceStatus) return false;
-    const r = rawDeviceStatus as Record<string, unknown>;
-    switch (deviceKey) {
-      case 'fan': return !!r.fan_on;
-      case 'light': return !!r.light_on;
-      case 'heater': return !!r.heater_on;
-      case 'circulation_fan': return !!r.circulation_fan_on;
-      case 'fogger': return !!r.fogger_on;
-      case 'ceiling_fan': return !!r.ceiling_fan_on;
-      case 'sprinkler': return !!r.sprinkler_on;
-      case 'alarm': return !!r.alarm_on;
-      default: return false;
-    }
-  }, [rawDeviceStatus]);
-
-
-  // Reconcile: when ESP32 reports actual == desired, clear pending + success toast
+  // Reconcile: when ESP32 reports actual == desired, clear the pending spinner.
+  // NO toast here — success is already surfaced by useSendDeviceCommand.
   useEffect(() => {
     const confirmedKeys = Object.entries(pendingCommands)
       .filter(([key, p]) => getActualStatus(key) === p.desired)
@@ -255,17 +257,11 @@ export function ControlPage() {
       confirmedKeys.forEach((k) => delete next[k]);
       return next;
     });
-    confirmedKeys.forEach((k) => {
-      toast({
-        title: language === 'bn' ? '✅ হার্ডওয়্যার কনফার্মড' : '✅ Hardware confirmed',
-        description: language === 'bn'
-          ? `${k} — ESP32 থেকে নিশ্চিতকরণ এসেছে`
-          : `${k} — confirmed by ESP32`,
-      });
-    });
-  }, [pendingCommands, getActualStatus, toast, language]);
+  }, [pendingCommands, getActualStatus]);
 
-  // Timeout: if ESP32 doesn't confirm within PENDING_TIMEOUT_MS, warn user
+  // Timeout: silently clear the spinner after PENDING_TIMEOUT_MS. The hook
+  // already emits an offline / safety-lock / no-ack toast at the same window,
+  // so we do not double-toast from here.
   useEffect(() => {
     if (Object.keys(pendingCommands).length === 0) return;
     const interval = setInterval(() => {
@@ -279,18 +275,9 @@ export function ControlPage() {
         timedOut.forEach((k) => delete next[k]);
         return next;
       });
-      timedOut.forEach((k) => {
-        toast({
-          title: language === 'bn' ? '⚠️ কনফার্মেশন আসেনি' : '⚠️ No hardware confirmation',
-          description: language === 'bn'
-            ? `${k} — ESP32 থেকে ${PENDING_TIMEOUT_MS / 1000} সেকেন্ডে কোনো উত্তর আসেনি। ডিভাইস অফলাইন থাকতে পারে।`
-            : `${k} — ESP32 did not respond in ${PENDING_TIMEOUT_MS / 1000}s. Device may be offline.`,
-          variant: 'destructive',
-        });
-      });
     }, 500);
     return () => clearInterval(interval);
-  }, [pendingCommands, toast, language]);
+  }, [pendingCommands]);
 
 
 
@@ -370,21 +357,42 @@ export function ControlPage() {
     setTimerDialogOpen(true);
   };
 
-  const handleStop = (deviceKey: string) => {
+  // AUTO-mode Stop: cancel the temporary override by clearing desired_* → null
+  // so automation can resume. Do NOT send a hardware OFF command (that would
+  // fight the automation engine and cause the relay to flicker).
+  const handleStop = async (deviceKey: string) => {
     if (!requireFarmSelected()) return;
-    const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-    sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
-    setDeviceStatus({ [deviceKey]: false });
-    markPending(deviceKey, false);
+    const desiredColMap: Record<string, string> = {
+      fan: 'desired_fan_on',
+      light: 'desired_light_on',
+      alarm: 'desired_alarm_on',
+      heater: 'desired_heater_on',
+      circulation_fan: 'desired_circulation_fan_on',
+      fogger: 'desired_fogger_on',
+      ceiling_fan: 'desired_ceiling_fan_on',
+      sprinkler: 'desired_sprinkler_on',
+    };
+    const col = desiredColMap[deviceKey];
     setActiveTimers(prev => {
-
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
     });
+    setDeviceStatus({ [deviceKey]: false });
+    if (col && user) {
+      let q = supabase
+        .from('device_status')
+        .update({ [col]: null, updated_at: new Date().toISOString() } as any)
+        .eq('user_id', user.id);
+      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      if (selectedShedId) q = q.eq('shed_id', selectedShedId);
+      await q;
+    }
     toast({
-      title: language === 'bn' ? '✅ বন্ধ হয়েছে' : '✅ Stopped',
-      description: language === 'bn' ? 'ডিভাইস অটো মোডে ফিরে গেছে' : 'Device returned to AUTO mode',
+      title: language === 'bn' ? '↩️ অটোতে ফিরল' : '↩️ Returned to AUTO',
+      description: language === 'bn'
+        ? 'সাময়িক ওভাররাইড বাতিল — অটোমেশন পুনরায় নিয়ন্ত্রণে'
+        : 'Temporary override cleared — automation back in control',
     });
   };
 
@@ -426,22 +434,19 @@ export function ControlPage() {
       return;
     }
     if (!enabled) {
-      // Switching to MANUAL mode
+      // Switching to MANUAL mode — cancel any timers so they don't ghost-fire
+      // OFF commands 5 minutes later while user is doing manual work.
       const currentTemp = sensorData.temperature;
       const isOutOfRange = !boundedOverride.isWithinBioLimits(currentTemp);
       boundedOverride.startOverride(
         { reason: reason || 'No reason provided', targetTemp: currentTemp },
         isOutOfRange,
       );
+      setActiveTimers({});
     } else {
-      // Switching to AUTO mode — clear all timers and send device OFF commands
+      // Switching to AUTO mode — cancel timers by clearing desired_* → null.
+      // Sending hardware OFF here would race the automation engine.
       boundedOverride.endOverride();
-      const timerDevices = Object.keys(activeTimers);
-      timerDevices.forEach((deviceKey) => {
-        const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
-        sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
-        setDeviceStatus({ [deviceKey]: false });
-      });
       setActiveTimers({});
     }
 
@@ -695,9 +700,11 @@ export function ControlPage() {
                 : '⚠️ Warning: Disabling automation may harm birds'}
             </p>
 
-            {/* Automation Master Status */}
+            {/* Automation Master Status — driven by farm_settings.automation_mode
+                (source of truth), NOT the device-side manual_override flag which
+                may lag behind or reflect a temporary override. */}
             <AutomationStatusBanner
-              automationEnabled={!manualOverride}
+              automationEnabled={!isManualMode}
               hasTemporaryOverrides={hasTemporaryOverrides}
               onToggleAutomation={handleAutomationToggle}
               canToggle={canDisableAutomation}
@@ -775,21 +782,38 @@ export function ControlPage() {
 
             {/* Device Control Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-              {DEVICES.map((device) => (
-                <SafeDeviceCard
-                  key={device.key}
-                  deviceKey={device.key}
-                  icon={device.icon}
-                  name={device.name}
-                  description={device.description}
-                  isActive={isDeviceActive(device.key)}
-                  mode={getDeviceMode(device.key)}
-                  remainingTime={getRemainingTime(device.key)}
-                  onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
-                  onStopTemporarily={() => handleStop(device.key)}
-                  disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
-                />
-              ))}
+              {DEVICES.map((device) => {
+                // Safety lock: if a protection forces this device ON, user cannot stop it.
+                // Heat-stress or gas-purge → fans/circulation/fogger are locked ON.
+                const heatActive = sensorData.temperature > tempMax;
+                const gasActive = sensorData.ammonia > ammoniaMax;
+                const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
+                const isSafetyLocked =
+                  (heatActive && coolingDevices.includes(device.key)) ||
+                  (gasActive && (device.key === 'fan' || device.key === 'circulation_fan'));
+                const safetyReason = isSafetyLocked
+                  ? (heatActive
+                      ? { bn: '🔥 হিট স্ট্রেস সুরক্ষা সক্রিয় — ঠান্ডা রাখতে চালু থাকবে', en: '🔥 Heat stress protection active — must stay ON to cool' }
+                      : { bn: '💨 গ্যাস পার্জ সক্রিয় — অ্যামোনিয়া দূর করতে চালু থাকবে', en: '💨 Gas purge active — must stay ON to clear ammonia' })
+                  : undefined;
+                return (
+                  <SafeDeviceCard
+                    key={device.key}
+                    deviceKey={device.key}
+                    icon={device.icon}
+                    name={device.name}
+                    description={device.description}
+                    isActive={isDeviceActive(device.key)}
+                    mode={isSafetyLocked ? 'safety_lock' : getDeviceMode(device.key)}
+                    remainingTime={getRemainingTime(device.key)}
+                    isSafetyLocked={isSafetyLocked}
+                    safetyReason={safetyReason}
+                    onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
+                    onStopTemporarily={() => handleStop(device.key)}
+                    disabled={farmNotReady || !canTemporaryControl || sendCommand.isPending}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
