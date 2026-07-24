@@ -76,7 +76,7 @@ import {
 const SystemActivityCard = lazy(() =>
   import('@/components/assistant/SystemActivityCard').then(m => ({ default: m.SystemActivityCard }))
 );
-import { SummaryQuickStats } from '@/components/dashboard/SummaryQuickStats';
+
 import { SevenDayForecastCard } from '@/components/assistant/SevenDayForecastCard';
 import { AIAccuracyCard } from '@/components/assistant/AIAccuracyCard';
 // QuickSensorDisplay replaced by IndustrialKpiGrid (S2.2 — compact 2x2 KPI grid)
