@@ -32,17 +32,13 @@ import {
   SafeDeviceCard, 
   SafetyLockedDevices,
   DEFAULT_SAFETY_PROTECTIONS,
-  RealtimeLatencyBadge,
-  RealtimeLatencyTester,
   type DeviceMode 
 } from '@/components/control';
 
 // New industrial components
 import { StateExplanationHeader } from '@/components/control/StateExplanationHeader';
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
-import { LiveEnvironmentPanel } from '@/components/control/LiveEnvironmentPanel';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
-import { LightStatusPanel } from '@/components/lighting/LightStatusPanel';
 
 // Broiler-specific devices (heater is more important)
 const BROILER_DEVICES = [
@@ -567,37 +563,15 @@ export function ControlPage() {
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <StateExplanationHeader />
-          <RealtimeLatencyBadge />
         </div>
-
-        {/* Latency tester (manual mode only) */}
-        {isManualMode && <RealtimeLatencyTester />}
 
         {/* ===== 2. WHY FAN IS RUNNING (only in AUTO mode) ===== */}
         {!isManualMode && <WhyFanRunning />}
-
-        {/* ===== 3. LIVE ENVIRONMENT + SENSOR HEALTH (always shown) ===== */}
-        <LiveEnvironmentPanel />
-
-        {/* ===== 💡 Light Status (single compact panel) ===== */}
-        <LightStatusPanel />
 
         {/* ===== 4. DEVICE CONTROL PANEL ===== */}
         {isManualMode ? (
           /* ========== MANUAL MODE: Direct ON/OFF Controls ========== */
           <div className="space-y-3">
-            {/* Safety reminder */}
-            <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-green-600 shrink-0" />
-                <p className="text-xs text-green-700 dark:text-green-400">
-                  {language === 'bn'
-                    ? '🛡️ সেফটি সিস্টেম (INV-1 থেকে INV-8) সবসময় সক্রিয় — জরুরি অবস্থায় সিস্টেম হস্তক্ষেপ করবে'
-                    : '🛡️ Safety system (INV-1 to INV-8) always active — system will intervene in emergencies'}
-                </p>
-              </div>
-            </div>
-
             {/* Viewer restriction */}
             {isViewer && (
               <Card className="border-destructive/30 bg-destructive/5">
