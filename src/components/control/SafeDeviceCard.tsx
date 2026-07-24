@@ -143,7 +143,7 @@ export function SafeDeviceCard({
             variant={isActive ? 'outline' : 'default'}
             size="sm"
             onClick={onRunTemporarily}
-            disabled={disabled || isActive}
+            disabled={disabled || (isActive && !isAutoMode)}
             className="gap-1"
           >
             <Play className="h-4 w-4" />
@@ -153,13 +153,35 @@ export function SafeDeviceCard({
             variant="outline"
             size="sm"
             onClick={onStopTemporarily}
-            disabled={disabled || !isActive}
+            // In AUTO mode, Stop only makes sense if the user has an active
+            // temporary override — otherwise automation is already in charge
+            // and pressing Stop does nothing meaningful.
+            disabled={
+              disabled ||
+              !isActive ||
+              (isAutoMode && !hasOverride)
+            }
+            title={
+              isAutoMode && !hasOverride
+                ? (language === 'bn'
+                    ? 'অটো মোডে চলছে — বন্ধ করতে ম্যানুয়াল মোডে যান (সেটিংস)'
+                    : 'Auto mode is running this — switch to Manual mode (Settings) to stop')
+                : undefined
+            }
             className="gap-1"
           >
             <Square className="h-4 w-4" />
             {language === 'bn' ? 'বন্ধ করুন' : 'Stop'}
           </Button>
         </div>
+      )}
+      {/* Auto-mode hint when Stop is disabled because no user override exists */}
+      {isAutoMode && isActive && !hasOverride && !isSafetyLocked && (
+        <p className="mt-2 text-[11px] text-muted-foreground text-center">
+          {language === 'bn'
+            ? 'অটোমেশন নিয়ন্ত্রণে — বন্ধ করতে ম্যানুয়াল মোডে যান'
+            : 'Under automation — switch to Manual mode to stop'}
+        </p>
       )}
     </motion.div>
   );
