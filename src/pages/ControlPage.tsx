@@ -275,6 +275,7 @@ export function ControlPage() {
 
   // ===== AUTO MODE: Timer-based temporary control =====
   const handleRunTemporarily = (deviceKey: string, deviceName: { bn: string; en: string }, icon: React.ElementType) => {
+    if (!requireFarmSelected()) return;
     const IconComponent = icon;
     setPendingDevice({
       device: deviceKey,
@@ -285,6 +286,7 @@ export function ControlPage() {
   };
 
   const handleStop = (deviceKey: string) => {
+    if (!requireFarmSelected()) return;
     const cmdType = deviceKey as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: false, shedId: selectedShedId || undefined });
     setDeviceStatus({ [deviceKey]: false });
@@ -301,8 +303,10 @@ export function ControlPage() {
 
   const handleTimerConfirm = (durationMinutes: number) => {
     if (!pendingDevice) return;
+    if (!requireFarmSelected()) { setPendingDevice(null); setTimerDialogOpen(false); return; }
     const cmdType = pendingDevice.device as 'fan' | 'light' | 'alarm' | 'heater' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
     sendCommand.mutate({ commandType: cmdType, commandValue: true, shedId: selectedShedId || undefined });
+
     setDeviceStatus({ [pendingDevice.device]: true });
     setActiveTimers(prev => ({
       ...prev,
