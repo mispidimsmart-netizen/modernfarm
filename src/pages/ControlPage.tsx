@@ -914,8 +914,10 @@ export function ControlPage() {
               {DEVICES.map((device) => {
                 // Safety lock: if a protection forces this device ON, user cannot stop it.
                 // Heat-stress or gas-purge → fans/circulation/fogger are locked ON.
-                const heatActive = sensorData.temperature > tempMax;
-                const gasActive = sensorData.ammonia > ammoniaMax;
+                // Client-side safety lock only applies when Safety Engine is ON.
+                const engineEnabled = (farmSettings as any)?.safety_engine_enabled !== false;
+                const heatActive = engineEnabled && sensorData.temperature > tempMax;
+                const gasActive = engineEnabled && sensorData.ammonia > ammoniaMax;
                 const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
                 const isSafetyLocked =
                   (heatActive && coolingDevices.includes(device.key)) ||
