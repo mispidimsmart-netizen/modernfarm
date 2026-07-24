@@ -143,11 +143,15 @@ export function ManualControlTimerDialog({
           <Button
             onClick={handleConfirm}
             disabled={!selectedDuration}
+            variant={isOff ? 'destructive' : 'default'}
             className="flex-1"
           >
             <Clock className="h-4 w-4 mr-2" />
-            {language === 'bn' ? 'শুরু করুন' : 'Start Timer'}
+            {isOff
+              ? (language === 'bn' ? 'বন্ধ করুন' : 'Stop Timer')
+              : (language === 'bn' ? 'শুরু করুন' : 'Start Timer')}
           </Button>
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
