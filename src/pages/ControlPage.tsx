@@ -407,37 +407,18 @@ export function ControlPage() {
   // fight the automation engine and cause the relay to flicker).
   const handleStop = async (deviceKey: string) => {
     if (!requireFarmSelected()) return;
-    const desiredColMap: Record<string, string> = {
-      fan: 'desired_fan_on',
-      light: 'desired_light_on',
-      alarm: 'desired_alarm_on',
-      heater: 'desired_heater_on',
-      circulation_fan: 'desired_circulation_fan_on',
-      fogger: 'desired_fogger_on',
-      ceiling_fan: 'desired_ceiling_fan_on',
-      sprinkler: 'desired_sprinkler_on',
-    };
-    const col = desiredColMap[deviceKey];
     setActiveTimers(prev => {
       const updated = { ...prev };
       delete updated[deviceKey];
       return updated;
     });
     setDeviceStatus({ [deviceKey]: false });
-    if (col && user) {
-      let q = supabase
-        .from('device_status')
-        .update({ [col]: null, updated_at: new Date().toISOString() } as any)
-        .eq('user_id', user.id);
-      if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
-      if (selectedShedId) q = q.eq('shed_id', selectedShedId);
-      await q;
-    }
+    await clearDesiredColumn(deviceKey);
     toast({
-      title: language === 'bn' ? '↩️ অটোতে ফিরল' : '↩️ Returned to AUTO',
+      title: language === 'bn' ? '↩️ ওভাররাইড বাতিল' : '↩️ Override Cleared',
       description: language === 'bn'
-        ? 'সাময়িক ওভাররাইড বাতিল — অটোমেশন পুনরায় নিয়ন্ত্রণে'
-        : 'Temporary override cleared — automation back in control',
+        ? 'অটোমেশন পরবর্তী চক্রে নিয়ন্ত্রণ নেবে (কয়েক সেকেন্ড লাগতে পারে)'
+        : 'Automation will take over on next cycle (may take a few seconds)',
     });
   };
 
