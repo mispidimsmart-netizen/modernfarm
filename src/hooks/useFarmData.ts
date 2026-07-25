@@ -121,8 +121,9 @@ export function useDeviceStatus(shedId?: string | null) {
       return data as DeviceStatus;
     },
     enabled: !!user && !!selectedFarmId,
-    staleTime: 2000,
-    refetchInterval: 5000,
+    staleTime: 1000,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
   });
 }
 
