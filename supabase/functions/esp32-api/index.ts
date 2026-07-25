@@ -553,18 +553,27 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
       // Allow legacy devices without farm_id for backward compatibility
       // but log for monitoring
     } else {
-      // Verify farm membership
-      const { data: farmMember, error: farmError } = await supabase
-        .from('farm_members')
-        .select('id')
-        .eq('farm_id', deviceFarmId)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Verify farm membership OR farm ownership
+      // Owner is not always duplicated in farm_members, so both must be accepted
+      const [{ data: farmMember, error: farmError }, { data: farmOwner }] = await Promise.all([
+        supabase
+          .from('farm_members')
+          .select('id')
+          .eq('farm_id', deviceFarmId)
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('farms')
+          .select('id')
+          .eq('id', deviceFarmId)
+          .eq('owner_id', userId)
+          .maybeSingle(),
+      ]);
 
-      if (farmError || !farmMember) {
-        console.error(`🚫 Cross-farm access blocked: user ${userId} not member of farm ${deviceFarmId}`);
+      if (farmError || (!farmMember && !farmOwner)) {
+        console.error(`🚫 Cross-farm access blocked: user ${userId} not member or owner of farm ${deviceFarmId}`);
         return new Response(
-          JSON.stringify({ error: 'Access denied: not a member of this farm', code: 'FARM_ACCESS_DENIED' }),
+          JSON.stringify({ error: 'Access denied: not authorized for this farm', code: 'FARM_ACCESS_DENIED' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
