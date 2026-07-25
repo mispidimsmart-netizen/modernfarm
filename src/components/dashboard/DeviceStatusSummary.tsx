@@ -17,6 +17,8 @@ interface DeviceItem {
   label: { bn: string; en: string };
   description: { bn: string; en: string };
   isOn: boolean;
+  /** Soft device-specific tint used when the relay is OFF (ON always uses status-normal). */
+  tint: { bg: string; text: string; border: string; iconBg: string };
 }
 
 function formatTimeAgo(date: Date | null, language: 'bn' | 'en'): string {
