@@ -62,7 +62,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'এক্সহস্ট ফ্যান', en: 'Exhaust Fan' },
       description: { bn: 'অটোমেশন ও অভ্যন্তরীণ বায়ু চলাচল', en: 'Automation & ventilation' },
       isOn: actual('fan_on'),
-      tint: { bg: 'bg-primary/10', text: 'text-primary/80', border: 'border-primary/20', iconBg: 'bg-primary/15' },
+      tint: { bg: 'bg-muted/40', text: 'text-muted-foreground/80', border: 'border-muted/30', iconBg: 'bg-muted/50' },
     },
     {
       key: 'ceiling_fan',
@@ -70,7 +70,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
       description: { bn: 'তাপমাত্রা বেশি হলে বাড়তি বায়ু প্রবাহ', en: 'Extra airflow when hot' },
       isOn: actual('ceiling_fan_on'),
-      tint: { bg: 'bg-secondary/10', text: 'text-secondary/80', border: 'border-secondary/20', iconBg: 'bg-secondary/15' },
+      tint: { bg: 'bg-muted/30', text: 'text-muted-foreground/80', border: 'border-muted/30', iconBg: 'bg-muted/40' },
     },
     {
       key: 'circulation_fan',
@@ -78,7 +78,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
       description: { bn: 'অভ্যন্তরীণ বায়ু সঞ্চালন', en: 'Internal air circulation' },
       isOn: actual('circulation_fan_on'),
-      tint: { bg: 'bg-accent/50', text: 'text-accent-foreground/80', border: 'border-accent/30', iconBg: 'bg-accent/60' },
+      tint: { bg: 'bg-card/60', text: 'text-muted-foreground/80', border: 'border-border/50', iconBg: 'bg-muted/50' },
     },
     {
       key: 'heater',
@@ -86,7 +86,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'হিটার', en: 'Heater' },
       description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in cold' },
       isOn: actual('heater_on'),
-      tint: { bg: 'bg-status-warning/10', text: 'text-status-warning/80', border: 'border-status-warning/20', iconBg: 'bg-status-warning/15' },
+      tint: { bg: 'bg-muted/35', text: 'text-muted-foreground/80', border: 'border-muted/30', iconBg: 'bg-muted/45' },
     },
     {
       key: 'fogger',
@@ -94,7 +94,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'ফগার', en: 'Fogger' },
       description: { bn: 'পরিবেশ ঠাণ্ডা রাখে', en: 'Keeps environment cool' },
       isOn: actual('fogger_on'),
-      tint: { bg: 'bg-sensor-water/10', text: 'text-sensor-water/80', border: 'border-sensor-water/20', iconBg: 'bg-sensor-water/15' },
+      tint: { bg: 'bg-card/50', text: 'text-muted-foreground/80', border: 'border-border/50', iconBg: 'bg-muted/50' },
     },
     {
       key: 'sprinkler',
@@ -102,7 +102,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'ছাদ স্প্রিংকলার', en: 'Ceiling Sprinkler' },
       description: { bn: 'HSI নিয়ন্ত্রিত স্প্রিংকলার', en: 'HSI-controlled sprinkler' },
       isOn: actual('sprinkler_on'),
-      tint: { bg: 'bg-sensor-humidity/10', text: 'text-sensor-humidity/80', border: 'border-sensor-humidity/20', iconBg: 'bg-sensor-humidity/15' },
+      tint: { bg: 'bg-muted/45', text: 'text-muted-foreground/80', border: 'border-muted/30', iconBg: 'bg-muted/55' },
     },
     {
       key: 'light',
@@ -110,7 +110,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       label: { bn: 'লাইট', en: 'Light' },
       description: { bn: 'তীব্র উপশমে সহায়ক', en: 'Aids intense relief' },
       isOn: actual('light_on'),
-      tint: { bg: 'bg-muted/40', text: 'text-muted-foreground/90', border: 'border-muted/30', iconBg: 'bg-muted/50' },
+      tint: { bg: 'bg-muted/50', text: 'text-muted-foreground/80', border: 'border-muted/30', iconBg: 'bg-muted/60' },
     },
   ];
 
