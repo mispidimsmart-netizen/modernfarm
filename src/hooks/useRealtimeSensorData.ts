@@ -313,6 +313,7 @@ export function useRealtimeDeviceStatus() {
     isDeviceOnline,
     lastAckAt,
     ageMs,
+    refreshDeviceStatus,
   };
 }
 
