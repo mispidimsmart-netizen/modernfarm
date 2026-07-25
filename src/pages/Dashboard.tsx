@@ -280,9 +280,6 @@ export function Dashboard() {
                   <LightSensorCard />
                 </div>
 
-                <Suspense fallback={<div className="h-48 rounded-xl bg-muted/40 animate-pulse" />}>
-                  <SensorCharts />
-                </Suspense>
                 <AmmoniaTrendCard result={ammoniaTrendResult} />
                 <CoolingEfficiencyCard result={coolingEfficiencyResult} />
               </TabLoadingWrapper>
