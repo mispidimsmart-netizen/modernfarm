@@ -1,14 +1,15 @@
-import { memo } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Fan, Lightbulb, Flame, Droplets, Wind, CloudRain, Power,
-  CircleDot, CircleOff, RotateCw
+  CircleDot, CircleOff, RotateCw, RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
 import { useDeviceStatus } from '@/hooks/useFarmData';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface DeviceItem {
   key: string;
@@ -18,13 +19,32 @@ interface DeviceItem {
   isOn: boolean;
 }
 
+function formatTimeAgo(date: Date | null, language: 'bn' | 'en'): string {
+  if (!date) return language === 'bn' ? 'অজানা' : 'Unknown';
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 5) return language === 'bn' ? 'এইমাত্র' : 'Just now';
+  if (seconds < 60) return language === 'bn' ? `${seconds} সেকেন্ড আগে` : `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return language === 'bn' ? `${minutes} মিনিট আগে` : `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return language === 'bn' ? `${hours} ঘণ্টা আগে` : `${hours}h ago`;
+}
+
 export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
   const { language } = useAuth();
   // Match ControlPage: scope to the currently selected shed so the summary
   // reflects the exact same device_status row the control page reads from.
   const { selectedShedId } = useSelectedShed();
-  const { isLoading, isDeviceOnline } = useRealtimeDeviceStatus();
+  const { isLoading, isDeviceOnline, lastAckAt, refreshDeviceStatus } = useRealtimeDeviceStatus();
   const { data: rawDeviceStatus } = useDeviceStatus(selectedShedId);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    refreshDeviceStatus();
+    // Keep spinner visible briefly so the user perceives the action.
+    setTimeout(() => setRefreshing(false), 600);
+  }, [refreshDeviceStatus]);
 
   // ACTUAL hardware columns (what ESP32 reports the relay is doing right now).
   // Hardware-as-Source-of-Truth: we deliberately ignore desired_* here so the
@@ -87,6 +107,8 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
 
   const title = language === 'bn' ? 'ডিভাইস অবস্থা' : 'Device Status';
   const offlineLabel = language === 'bn' ? 'অফলাইন' : 'Offline';
+  const liveLabel = language === 'bn' ? 'লাইভ' : 'Live';
+  const lastUpdatedLabel = language === 'bn' ? 'সর্বশেষ আপডেট' : 'Last updated';
 
   if (isLoading) {
     return (
@@ -112,11 +134,32 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
           <Power className="h-4 w-4 text-primary" />
           {title}
         </h3>
-        {!isDeviceOnline && (
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {offlineLabel}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {isDeviceOnline ? (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              {liveLabel}
+            </span>
+          ) : (
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+              {offlineLabel}
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-label={language === 'bn' ? 'রিফ্রেশ' : 'Refresh'}
+            title={language === 'bn' ? 'ডিভাইস ডেটা রিফ্রেশ করুন' : 'Refresh device data'}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${refreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -173,6 +216,12 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
             </motion.div>
           );
         })}
+      </div>
+
+      <div className="flex items-center justify-end mt-2.5">
+        <p className="text-[10px] text-muted-foreground">
+          {lastUpdatedLabel}: {formatTimeAgo(lastAckAt, language)}
+        </p>
       </div>
     </motion.div>
   );
