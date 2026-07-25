@@ -49,6 +49,13 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       isOn: actual('ceiling_fan_on'),
     },
     {
+      key: 'circulation_fan',
+      icon: RotateCw,
+      label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
+      description: { bn: 'অভ্যন্তরীণ বায়ু সঞ্চালন', en: 'Internal air circulation' },
+      isOn: actual('circulation_fan_on'),
+    },
+    {
       key: 'heater',
       icon: Flame,
       label: { bn: 'হিটার', en: 'Heater' },
