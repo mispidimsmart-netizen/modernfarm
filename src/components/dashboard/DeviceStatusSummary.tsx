@@ -184,29 +184,29 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
               transition={{ delay: idx * 0.05 }}
               className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
                 isOn
-                  ? 'bg-emerald-500/10 border-emerald-500/30'
+                  ? 'bg-status-normal border-status-normal shadow-sm'
                   : `${device.tint.bg} ${device.tint.border}`
               } ${dim ? 'opacity-70' : ''}`}
             >
               <div
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                  isOn ? 'bg-emerald-500/20 text-emerald-600' : `${device.tint.iconBg} ${device.tint.text}`
+                  isOn ? 'bg-primary-foreground/20 text-primary-foreground' : `${device.tint.iconBg} ${device.tint.text}`
                 }`}
               >
                 <Icon className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-foreground truncate">
+                <p className={`text-xs font-medium truncate ${isOn ? 'text-primary-foreground' : 'text-foreground'}`}>
                   {device.label[language]}
                 </p>
-                <p className="text-[10px] text-muted-foreground truncate leading-tight">
+                <p className={`text-[10px] truncate leading-tight ${isOn ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                   {device.description[language]}
                 </p>
                 <div className="flex items-center gap-1 text-[11px] font-semibold mt-0.5">
                   {isOn ? (
                     <>
-                      <CircleDot className="h-2.5 w-2.5 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">
+                      <CircleDot className="h-2.5 w-2.5 text-primary-foreground" />
+                      <span className="text-primary-foreground">
                         {language === 'bn' ? 'চালু' : 'ON'}
                       </span>
                     </>
