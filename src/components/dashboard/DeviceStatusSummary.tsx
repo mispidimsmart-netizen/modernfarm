@@ -185,12 +185,12 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
               className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
                 isOn
                   ? 'bg-emerald-500/10 border-emerald-500/30'
-                  : 'bg-muted/40 border-border/50'
+                  : `${device.tint.bg} ${device.tint.border}`
               } ${dim ? 'opacity-70' : ''}`}
             >
               <div
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                  isOn ? 'bg-emerald-500/20 text-emerald-600' : 'bg-muted text-muted-foreground'
+                  isOn ? 'bg-emerald-500/20 text-emerald-600' : `${device.tint.iconBg} ${device.tint.text}`
                 }`}
               >
                 <Icon className="h-4 w-4" />
