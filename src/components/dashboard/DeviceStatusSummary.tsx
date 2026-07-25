@@ -92,8 +92,8 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
     return (
       <div className="rounded-2xl bg-card p-4 shadow-card border border-border/50">
         <Skeleton className="h-4 w-32 mb-3" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
