@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Fan, Lightbulb, Flame, Droplets, Wind, CloudRain, Power,
-  CircleDot, CircleOff
+  CircleDot, CircleOff, RotateCw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
@@ -49,6 +49,13 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
       isOn: actual('ceiling_fan_on'),
     },
     {
+      key: 'circulation_fan',
+      icon: RotateCw,
+      label: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
+      description: { bn: 'অভ্যন্তরীণ বায়ু সঞ্চালন', en: 'Internal air circulation' },
+      isOn: actual('circulation_fan_on'),
+    },
+    {
       key: 'heater',
       icon: Flame,
       label: { bn: 'হিটার', en: 'Heater' },
@@ -85,8 +92,8 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
     return (
       <div className="rounded-2xl bg-card p-4 shadow-card border border-border/50">
         <Skeleton className="h-4 w-32 mb-3" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
@@ -112,7 +119,7 @@ export const DeviceStatusSummary = memo(function DeviceStatusSummary() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
         {devices.map((device, idx) => {
           const Icon = device.icon;
           const isOn = isDeviceOnline && device.isOn;
