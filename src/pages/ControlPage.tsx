@@ -103,6 +103,12 @@ const LAYER_DEVICES = [
     description: { bn: 'ঘরের ভেতর বাতাস চলাচল (≥25°C)', en: 'Indoor air circulation (≥25°C)' },
   },
   {
+    key: 'circulation_fan',
+    icon: Wind,
+    name: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
+    description: { bn: 'বাতাস সমভাবে ছড়িয়ে দেয় (ম্যানুয়াল)', en: 'Distributes air evenly (manual)' },
+  },
+  {
     key: 'heater',
     icon: Flame,
     name: { bn: 'হিটার', en: 'Heater' },
