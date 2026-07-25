@@ -29,7 +29,7 @@ export function SummaryTabSkeleton() {
   );
 }
 
-/** 🌡️ পরিবেশ — sensor grid + charts */
+/** 🌡️ পরিবেশ — weather/forecast + comfort + air quality + light sensor */
 export function EnvironmentTabSkeleton() {
   return (
     <div className="space-y-3 animate-in fade-in duration-200">
@@ -44,7 +44,7 @@ export function EnvironmentTabSkeleton() {
         <Skeleton className="h-24 rounded-2xl bg-muted/60" />
       </div>
       <Skeleton className="h-20 w-full rounded-2xl bg-muted/60" />
-      <Skeleton className="h-48 w-full rounded-2xl bg-muted/60" />
+      <Skeleton className="h-28 w-full rounded-2xl bg-muted/60" />
       <Skeleton className="h-28 w-full rounded-2xl bg-muted/60" />
       <LoadingHint bn="সেন্সর ও পরিবেশ ডেটা লোড হচ্ছে…" en="Loading environment data…" />
     </div>
