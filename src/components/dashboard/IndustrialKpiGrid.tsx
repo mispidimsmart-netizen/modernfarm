@@ -39,10 +39,10 @@ interface KpiTileProps {
   statusLabel?: string;
 }
 
-const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: string }> = {
-  normal:  { ring: 'ring-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  warning: { ring: 'ring-amber-500/30',   text: 'text-amber-600 dark:text-amber-400',   dot: 'bg-amber-500' },
-  danger:  { ring: 'ring-red-500/40',     text: 'text-red-600 dark:text-red-400',       dot: 'bg-red-500' },
+const STATUS_STYLES: Record<StatusLevel, { bg: string; text: string; dot: string; border: string; iconBg: string }> = {
+  normal:  { bg: 'bg-status-normal/15', text: 'text-status-normal', dot: 'bg-status-normal', border: 'border-status-normal/30', iconBg: 'bg-status-normal/20' },
+  warning: { bg: 'bg-status-warning/15', text: 'text-status-warning', dot: 'bg-status-warning', border: 'border-status-warning/30', iconBg: 'bg-status-warning/20' },
+  danger:  { bg: 'bg-status-danger/15', text: 'text-status-danger', dot: 'bg-status-danger', border: 'border-status-danger/30', iconBg: 'bg-status-danger/20' },
 };
 
 function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, statusLabel }: KpiTileProps) {
