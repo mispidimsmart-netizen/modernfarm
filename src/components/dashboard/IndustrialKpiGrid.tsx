@@ -39,10 +39,10 @@ interface KpiTileProps {
   statusLabel?: string;
 }
 
-const STATUS_STYLES: Record<StatusLevel, { ring: string; text: string; dot: string }> = {
-  normal:  { ring: 'ring-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  warning: { ring: 'ring-amber-500/30',   text: 'text-amber-600 dark:text-amber-400',   dot: 'bg-amber-500' },
-  danger:  { ring: 'ring-red-500/40',     text: 'text-red-600 dark:text-red-400',       dot: 'bg-red-500' },
+const STATUS_STYLES: Record<StatusLevel, { bg: string; text: string; dot: string; border: string; iconBg: string }> = {
+  normal:  { bg: 'bg-status-normal/15', text: 'text-status-normal', dot: 'bg-status-normal', border: 'border-status-normal/30', iconBg: 'bg-status-normal/20' },
+  warning: { bg: 'bg-status-warning/15', text: 'text-status-warning', dot: 'bg-status-warning', border: 'border-status-warning/30', iconBg: 'bg-status-warning/20' },
+  danger:  { bg: 'bg-status-danger/15', text: 'text-status-danger', dot: 'bg-status-danger', border: 'border-status-danger/30', iconBg: 'bg-status-danger/20' },
 };
 
 function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, statusLabel }: KpiTileProps) {
@@ -63,7 +63,7 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay }}
-        className="relative flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/30 p-2.5"
+        className="relative flex items-center gap-2 rounded-xl border border-muted-foreground/20 bg-muted/70 p-2.5"
         aria-busy="true"
       >
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/50">
@@ -85,15 +85,15 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
       role="group"
       aria-label={a11yLabel}
       className={cn(
-        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1 transition-[box-shadow,border-color,background-color] duration-500 ease-out',
-        isFresh ? s.ring : 'ring-border/40 border-dashed'
+        'relative flex flex-col gap-1 rounded-xl border p-2.5 transition-[box-shadow,border-color,background-color] duration-500 ease-out',
+        isFresh ? cn(s.bg, s.border) : 'bg-muted/60 border-muted-foreground/20'
       )}
     >
       <div className="flex items-center gap-2" aria-hidden="true">
         <div
           className={cn(
             'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
-            isFresh ? cn('bg-current/10', s.text) : 'bg-muted text-muted-foreground/60'
+            isFresh ? cn(s.iconBg, s.text) : 'bg-muted text-muted-foreground/60'
           )}
         >
           {icon}
