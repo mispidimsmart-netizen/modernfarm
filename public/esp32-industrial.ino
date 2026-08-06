@@ -641,6 +641,10 @@ bool waterAnomalyAlertSent = false;
 
 // --- Timing Trackers ---
 unsigned long lastSensorRead = 0, lastCloudSyncAttempt = 0;
+// Instant relay-change push (manual + auto) — see loop()
+#define RELAY_PUSH_MIN_INTERVAL 3000UL
+uint8_t       lastPushedRelaySignature = 0xFF;   // 0xFF = unknown → first push always fires
+unsigned long lastRelayPush = 0;
 unsigned long lastCommandCheck = 0, lastConfigFetch = 0;
 unsigned long lastStatusLog = 0, lastOnlineCheck = 0;
 unsigned long lastGsmQueueCheck = 0;
@@ -4483,6 +4487,32 @@ void loop() {
       relayManagerApply();
     }
   }
+
+  // --- Instant status push on ANY relay change (manual OR auto) ---
+  // Without this the cloud only learns the new relay states at the next
+  // CLOUD_SYNC_INTERVAL (30s), so the app's "Device Status" card lagged up to
+  // half a minute behind the real hardware. Throttled to 3s so a rapid burst
+  // of toggles cannot flood the backend.
+  if (wifiConnected) {
+    uint8_t relaySignature =
+      (fanOn             ? 1   : 0) |
+      (lightOn           ? 2   : 0) |
+      (alarmOn           ? 4   : 0) |
+      (heaterOn          ? 8   : 0) |
+      (foggerOn          ? 16  : 0) |
+      (circulationFanOn  ? 32  : 0) |
+      (ceilingFanOn      ? 64  : 0) |
+      (sprinklerOn       ? 128 : 0);
+    if (relaySignature != lastPushedRelaySignature &&
+        intervalPassed(now, lastRelayPush, RELAY_PUSH_MIN_INTERVAL)) {
+      lastPushedRelaySignature = relaySignature;
+      lastRelayPush = now;
+      lastCloudSyncAttempt = now;   // keep the periodic sync cadence aligned
+      Serial.println("⚡ Relay state changed → instant cloud status push");
+      syncWithCloud();
+    }
+  }
+
 
   // --- Config Fetch (overflow-safe) ---
   if (wifiConnected && intervalPassed(now, lastConfigFetch, CONFIG_FETCH_INTERVAL)) {
