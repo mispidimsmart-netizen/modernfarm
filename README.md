@@ -1,73 +1,100 @@
-# Welcome to your Lovable project
+# Farm Eye
 
-## Project info
+Build a mobile-first web application for a Layer Poultry Farm IoT Automation System.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+App Name: Smart Layer Farm IoT
+Language: Bangla (primary) + English (secondary)
+Target Users: Poultry farmers in Bangladesh
+Devices: ESP32-based IoT controllers
 
-## How can I edit this code?
+Core Features:
 
-There are several ways of editing your application.
+1. Authentication
+- Simple login system
+- One farm per user (single admin)
 
-**Use Lovable**
+2. Dashboard (Home Screen)
+- Live temperature (°C)
+- Live humidity (%)
+- Ammonia level (ppm)
+- Water consumption (liters/hour)
+- Power status (ON/OFF)
+- Fan status (ON/OFF)
+- Light status (ON/OFF)
+- Color indicators for normal / warning / danger
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+3. Automation Rules Screen
+- User can set threshold values:
+  - Temperature max/min
+  - Ammonia max level
+  - Humidity range
+- IF-THEN rule builder:
+  - IF temperature > X → Fan ON
+  - IF ammonia > Y → Alarm ON
+- Enable / Disable each rule
 
-Changes made via Lovable will be committed automatically to this repo.
+4. Lighting Schedule
+- Set daily lighting hours (14–16 hours)
+- Auto ON/OFF based on time
+- Manual override button
 
-**Use your preferred IDE**
+5. Manual Control Screen
+- Fan ON/OFF
+- Light ON/OFF
+- Alarm ON/OFF
+- Manual override disables automation temporarily
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+6. Alerts & Notifications
+- High temperature alert
+- High ammonia alert
+- Power failure alert
+- Low water usage alert
+- Alerts shown inside app (push-style UI)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+7. History & Reports
+- Last 24 hours sensor graph
+- Daily average temperature
+- Daily water usage
+- Egg production field (manual input)
 
-Follow these steps:
+8. Backend Assumptions
+- Uses REST API
+- JSON-based communication
+- Designed to work with ESP32 IoT devices
+- Mobile responsive UI (Android first)
+
+UI Design:
+- Very simple
+- Large buttons
+- Farmer-friendly
+- Minimal text
+- Icons preferred over text
+
+Please generate:
+- UI pages
+- API connection logic
+- State management
+- Error handling for offline data
+
+This project was built with [Lovable](https://lovable.dev).
+
+**Live app**: https://farmeye.lovable.app
+
+## Build with Lovable
+
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a).
+
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+
+## Development
+
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
+git clone <this-repository-url>
+cd <repository-name>
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
