@@ -85,15 +85,15 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
       role="group"
       aria-label={a11yLabel}
       className={cn(
-        'relative flex flex-col gap-1 rounded-xl border bg-card p-2.5 ring-1 transition-[box-shadow,border-color,background-color] duration-500 ease-out',
-        isFresh ? s.ring : 'ring-border/40 border-dashed'
+        'relative flex flex-col gap-1 rounded-xl border p-2.5 transition-[box-shadow,border-color,background-color] duration-500 ease-out',
+        isFresh ? cn(s.bg, s.border) : 'bg-muted/60 border-muted-foreground/20'
       )}
     >
       <div className="flex items-center gap-2" aria-hidden="true">
         <div
           className={cn(
             'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg',
-            isFresh ? cn('bg-current/10', s.text) : 'bg-muted text-muted-foreground/60'
+            isFresh ? cn(s.iconBg, s.text) : 'bg-muted text-muted-foreground/60'
           )}
         >
           {icon}
