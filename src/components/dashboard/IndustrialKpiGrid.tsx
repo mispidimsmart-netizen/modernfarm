@@ -63,7 +63,7 @@ function KpiTile({ icon, value, unit, label, status, state, trend, delay = 0, st
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay }}
-        className="relative flex items-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/30 p-2.5"
+        className="relative flex items-center gap-2 rounded-xl border border-muted-foreground/20 bg-muted/70 p-2.5"
         aria-busy="true"
       >
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/50">
