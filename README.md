@@ -406,6 +406,22 @@ Additional UI behaviour implemented in the repository: dark/light theming, offli
 
 ---
 
+## Screenshots
+
+> [!NOTE]
+> Screenshot files are not yet committed to the repository. The placeholders below reference `docs/screenshots/` and will render once the images are added.
+
+| Screen | Preview |
+| --- | --- |
+| Login (`/login`) | ![Login screen placeholder](docs/screenshots/login.png) |
+| Dashboard (`/`) | ![Dashboard placeholder](docs/screenshots/dashboard.png) |
+| Control Panel (`/control`) | ![Control panel placeholder](docs/screenshots/control.png) |
+| Automation (`/automation`) | ![Automation placeholder](docs/screenshots/automation.png) |
+| Reports (`/finance-report`) | ![Reports placeholder](docs/screenshots/reports.png) |
+| Mobile view (PWA) | ![Mobile view placeholder](docs/screenshots/mobile.png) |
+
+---
+
 ## Automation Features
 
 - **Server-side automation engine** evaluating heat-stress index, bird-age curves, weather and ammonia trend, writing only `desired_*` columns.
