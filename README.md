@@ -1,23 +1,42 @@
+<div align="center">
+
+<img src="public/pwa-512x512.png" alt="FarmEye logo" width="120" height="120" />
+
 # FarmEye
 
-**Industrial IoT automation platform for commercial poultry farms (layer & broiler), built for deployment in Bangladesh.**
+**Industrial IoT automation for commercial poultry farms — sensor telemetry, safety-first relay control and Bengali-language operations, from shed to cloud.**
 
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
-[![ESP32](https://img.shields.io/badge/Firmware-ESP32--WROOM--32-E7352C?logo=espressif&logoColor=white)](https://www.espressif.com)
-[![PWA](https://img.shields.io/badge/PWA-enabled-5A0FC8?logo=pwa&logoColor=white)](https://vite-pwa-org.netlify.app)
-[![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-Edge%20Functions-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-RLS-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![ESP32](https://img.shields.io/badge/ESP32--WROOM--32-Firmware-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)
+[![MQTT](https://img.shields.io/badge/MQTT-QoS%201-660066?style=for-the-badge&logo=mqtt&logoColor=white)](https://mqtt.org)
+[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://vite-pwa-org.netlify.app)
 
-**Live application:** https://farmeye.lovable.app · https://farmeye.pro.bd · https://modernfarm.pro.bd
+**Live application:** [farmeye.lovable.app](https://farmeye.lovable.app) · [farmeye.pro.bd](https://farmeye.pro.bd) · [modernfarm.pro.bd](https://modernfarm.pro.bd)
+
+</div>
+
+---
+
+## Quick Links
+
+| Resource | Link |
+| --- | --- |
+| Live application | https://farmeye.lovable.app |
+| Documentation index | [Documentation Index](#documentation-index) |
+| API documentation | [`public/openapi.yaml`](public/openapi.yaml) · in-app `/api-docs` |
+| Installation guide | In-app `/installation-guide` · [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
+| Lovable project | https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a |
 
 ---
 
 ## Table of Contents
 
 - [Project Overview](#project-overview)
+- [Project Information](#project-information)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
 - [Technology Stack](#technology-stack)
@@ -30,6 +49,7 @@
 - [Hardware](#hardware)
 - [Firmware](#firmware)
 - [Dashboard Features](#dashboard-features)
+- [Screenshots](#screenshots)
 - [Automation Features](#automation-features)
 - [Security Features](#security-features)
 - [Testing](#testing)
