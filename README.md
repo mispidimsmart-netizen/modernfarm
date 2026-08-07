@@ -495,8 +495,12 @@ No license file is present in this repository. All rights are reserved by the co
 
 **Nexiot Labs**
 
-- Web: https://farmeye.pro.bd · https://modernfarm.pro.bd
-- Application: https://farmeye.lovable.app
-- Lovable project: https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a
+| Channel | Address |
+| --- | --- |
+| Company | Nexiot Labs |
+| Official website | https://farmeye.pro.bd |
+| Official website | https://modernfarm.pro.bd |
+| Live application | https://farmeye.lovable.app |
+| Lovable project | https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a |
 
 © 2026 Nexiot Labs.
