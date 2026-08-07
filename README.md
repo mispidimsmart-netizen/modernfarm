@@ -95,6 +95,31 @@ The platform is designed around a **hardware-as-source-of-truth** control model:
 
 ## System Architecture
 
+### High-level view
+
+```mermaid
+flowchart LR
+  WEB[Web Dashboard]
+  PWA[Mobile PWA]
+  ESP[ESP32 Controllers]
+  REST[REST API<br/>esp32-api]
+  MQ[(MQTT Broker)]
+  SB[Supabase<br/>Auth · Realtime · Storage]
+  EF[Edge Functions]
+  PG[(PostgreSQL + RLS)]
+
+  WEB --> SB
+  PWA --> SB
+  ESP --> REST
+  ESP <--> MQ
+  MQ --> EF
+  REST --> PG
+  SB --> PG
+  EF --> PG
+```
+
+### Component view
+
 ```mermaid
 flowchart LR
   subgraph Shed["Poultry Shed"]
