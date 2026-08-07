@@ -74,6 +74,22 @@ The platform is designed around a **hardware-as-source-of-truth** control model:
 
 ---
 
+## Project Information
+
+| Field | Detail |
+| --- | --- |
+| Project type | Industrial IoT monitoring and control platform for poultry farms |
+| Architecture | Multi-tenant (organization → farm → shed), hardware-as-source-of-truth control model |
+| Frontend | React 18.3, TypeScript 5.8, Vite 5.4, Tailwind CSS 3.4, TanStack Query 5, React Router 6 |
+| Backend | Lovable Cloud (Supabase): Deno edge functions, Auth, Realtime, Storage |
+| Database | PostgreSQL with Row Level Security, 163 SQL migrations |
+| Firmware | Arduino C/C++ for ESP32-WROOM-32, revisions v8 and v10 |
+| Supported devices | ESP32-WROOM-32 38-pin DevKit V1 with 8-channel relay board; optional GSM SMS module |
+| Supported platforms | Web browsers, installable PWA, Capacitor 8 Android and iOS shells |
+| Languages | TypeScript, SQL, Arduino C/C++; Bengali-first UI with English product branding |
+
+---
+
 ## Key Features
 
 | Area | Capability |
