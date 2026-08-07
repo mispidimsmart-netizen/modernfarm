@@ -451,15 +451,45 @@ Existing suites cover safety invariants, control-mode gating, firmware verificat
 
 ## Documentation Index
 
+**Software**
+
 | Document | Location |
 | --- | --- |
-| Public API specification | [`public/openapi.yaml`](public/openapi.yaml) |
-| Smart lighting firmware notes | [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
-| Load-testing methodology | [`docs/load-testing/README.md`](docs/load-testing/README.md) |
-| End-to-end test notes | [`e2e/README.md`](e2e/README.md) |
-| PCB design brief (v8) | [`FarmEye_v8_PCB_Design_Brief.md`](FarmEye_v8_PCB_Design_Brief.md) |
 | Machine-readable app summary | [`public/llms.txt`](public/llms.txt) |
-| In-app documentation | `/api-docs`, `/installation-guide`, `/pin-map`, `/training` |
+| In-app documentation pages | `/installation-guide`, `/pin-map`, `/training` |
+
+**Hardware**
+
+| Document | Location |
+| --- | --- |
+| PCB design brief (v8) | [`FarmEye_v8_PCB_Design_Brief.md`](FarmEye_v8_PCB_Design_Brief.md) |
+
+**Firmware**
+
+| Document | Location |
+| --- | --- |
+| Smart lighting firmware notes | [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
+
+**API**
+
+| Document | Location |
+| --- | --- |
+| Public API specification (OpenAPI 3.1) | [`public/openapi.yaml`](public/openapi.yaml) |
+| In-app API reference | `/api-docs` |
+
+**Testing**
+
+| Document | Location |
+| --- | --- |
+| End-to-end test notes | [`e2e/README.md`](e2e/README.md) |
+| Load-testing methodology | [`docs/load-testing/README.md`](docs/load-testing/README.md) |
+
+**Deployment**
+
+| Document | Location |
+| --- | --- |
+| Edge function JWT verification settings | [`supabase/config.toml`](supabase/config.toml) |
+| Mobile shell configuration | [`capacitor.config.ts`](capacitor.config.ts) |
 
 ---
 
