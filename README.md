@@ -1,23 +1,42 @@
+<div align="center">
+
+<img src="public/pwa-512x512.png" alt="FarmEye logo" width="120" height="120" />
+
 # FarmEye
 
-**Industrial IoT automation platform for commercial poultry farms (layer & broiler), built for deployment in Bangladesh.**
+**Industrial IoT automation for commercial poultry farms — sensor telemetry, safety-first relay control and Bengali-language operations, from shed to cloud.**
 
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vite.dev)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
-[![ESP32](https://img.shields.io/badge/Firmware-ESP32--WROOM--32-E7352C?logo=espressif&logoColor=white)](https://www.espressif.com)
-[![PWA](https://img.shields.io/badge/PWA-enabled-5A0FC8?logo=pwa&logoColor=white)](https://vite-pwa-org.netlify.app)
-[![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-Edge%20Functions-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-RLS-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![ESP32](https://img.shields.io/badge/ESP32--WROOM--32-Firmware-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)
+[![MQTT](https://img.shields.io/badge/MQTT-QoS%201-660066?style=for-the-badge&logo=mqtt&logoColor=white)](https://mqtt.org)
+[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://vite-pwa-org.netlify.app)
 
-**Live application:** https://farmeye.lovable.app · https://farmeye.pro.bd · https://modernfarm.pro.bd
+**Live application:** [farmeye.lovable.app](https://farmeye.lovable.app) · [farmeye.pro.bd](https://farmeye.pro.bd) · [modernfarm.pro.bd](https://modernfarm.pro.bd)
+
+</div>
+
+---
+
+## Quick Links
+
+| Resource | Link |
+| --- | --- |
+| Live application | https://farmeye.lovable.app |
+| Documentation index | [Documentation Index](#documentation-index) |
+| API documentation | [`public/openapi.yaml`](public/openapi.yaml) · in-app `/api-docs` |
+| Installation guide | In-app `/installation-guide` · [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
+| Lovable project | https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a |
 
 ---
 
 ## Table of Contents
 
 - [Project Overview](#project-overview)
+- [Project Information](#project-information)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
 - [Technology Stack](#technology-stack)
@@ -30,6 +49,7 @@
 - [Hardware](#hardware)
 - [Firmware](#firmware)
 - [Dashboard Features](#dashboard-features)
+- [Screenshots](#screenshots)
 - [Automation Features](#automation-features)
 - [Security Features](#security-features)
 - [Testing](#testing)
@@ -54,6 +74,22 @@ The platform is designed around a **hardware-as-source-of-truth** control model:
 
 ---
 
+## Project Information
+
+| Field | Detail |
+| --- | --- |
+| Project type | Industrial IoT monitoring and control platform for poultry farms |
+| Architecture | Multi-tenant (organization → farm → shed), hardware-as-source-of-truth control model |
+| Frontend | React 18.3, TypeScript 5.8, Vite 5.4, Tailwind CSS 3.4, TanStack Query 5, React Router 6 |
+| Backend | Lovable Cloud (Supabase): Deno edge functions, Auth, Realtime, Storage |
+| Database | PostgreSQL with Row Level Security, 163 SQL migrations |
+| Firmware | Arduino C/C++ for ESP32-WROOM-32, revisions v8 and v10 |
+| Supported devices | ESP32-WROOM-32 38-pin DevKit V1 with 8-channel relay board; optional GSM SMS module |
+| Supported platforms | Web browsers, installable PWA, Capacitor 8 Android and iOS shells |
+| Languages | TypeScript, SQL, Arduino C/C++; Bengali-first UI with English product branding |
+
+---
+
 ## Key Features
 
 | Area | Capability |
@@ -74,6 +110,31 @@ The platform is designed around a **hardware-as-source-of-truth** control model:
 ---
 
 ## System Architecture
+
+### High-level view
+
+```mermaid
+flowchart LR
+  WEB[Web Dashboard]
+  PWA[Mobile PWA]
+  ESP[ESP32 Controllers]
+  REST[REST API<br/>esp32-api]
+  MQ[(MQTT Broker)]
+  SB[Supabase<br/>Auth · Realtime · Storage]
+  EF[Edge Functions]
+  PG[(PostgreSQL + RLS)]
+
+  WEB --> SB
+  PWA --> SB
+  ESP --> REST
+  ESP <--> MQ
+  MQ --> EF
+  REST --> PG
+  SB --> PG
+  EF --> PG
+```
+
+### Component view
 
 ```mermaid
 flowchart LR
@@ -361,6 +422,22 @@ Additional UI behaviour implemented in the repository: dark/light theming, offli
 
 ---
 
+## Screenshots
+
+> [!NOTE]
+> Screenshot files are not yet committed to the repository. The placeholders below reference `docs/screenshots/` and will render once the images are added.
+
+| Screen | Preview |
+| --- | --- |
+| Login (`/login`) | ![Login screen placeholder](docs/screenshots/login.png) |
+| Dashboard (`/`) | ![Dashboard placeholder](docs/screenshots/dashboard.png) |
+| Control Panel (`/control`) | ![Control panel placeholder](docs/screenshots/control.png) |
+| Automation (`/automation`) | ![Automation placeholder](docs/screenshots/automation.png) |
+| Reports (`/finance-report`) | ![Reports placeholder](docs/screenshots/reports.png) |
+| Mobile view (PWA) | ![Mobile view placeholder](docs/screenshots/mobile.png) |
+
+---
+
 ## Automation Features
 
 - **Server-side automation engine** evaluating heat-stress index, bird-age curves, weather and ammonia trend, writing only `desired_*` columns.
@@ -406,15 +483,45 @@ Existing suites cover safety invariants, control-mode gating, firmware verificat
 
 ## Documentation Index
 
+**Software**
+
 | Document | Location |
 | --- | --- |
-| Public API specification | [`public/openapi.yaml`](public/openapi.yaml) |
-| Smart lighting firmware notes | [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
-| Load-testing methodology | [`docs/load-testing/README.md`](docs/load-testing/README.md) |
-| End-to-end test notes | [`e2e/README.md`](e2e/README.md) |
-| PCB design brief (v8) | [`FarmEye_v8_PCB_Design_Brief.md`](FarmEye_v8_PCB_Design_Brief.md) |
 | Machine-readable app summary | [`public/llms.txt`](public/llms.txt) |
-| In-app documentation | `/api-docs`, `/installation-guide`, `/pin-map`, `/training` |
+| In-app documentation pages | `/installation-guide`, `/pin-map`, `/training` |
+
+**Hardware**
+
+| Document | Location |
+| --- | --- |
+| PCB design brief (v8) | [`FarmEye_v8_PCB_Design_Brief.md`](FarmEye_v8_PCB_Design_Brief.md) |
+
+**Firmware**
+
+| Document | Location |
+| --- | --- |
+| Smart lighting firmware notes | [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
+
+**API**
+
+| Document | Location |
+| --- | --- |
+| Public API specification (OpenAPI 3.1) | [`public/openapi.yaml`](public/openapi.yaml) |
+| In-app API reference | `/api-docs` |
+
+**Testing**
+
+| Document | Location |
+| --- | --- |
+| End-to-end test notes | [`e2e/README.md`](e2e/README.md) |
+| Load-testing methodology | [`docs/load-testing/README.md`](docs/load-testing/README.md) |
+
+**Deployment**
+
+| Document | Location |
+| --- | --- |
+| Edge function JWT verification settings | [`supabase/config.toml`](supabase/config.toml) |
+| Mobile shell configuration | [`capacitor.config.ts`](capacitor.config.ts) |
 
 ---
 
@@ -442,7 +549,9 @@ Changes made through the Lovable editor are committed to this repository, and pu
 
 ## License
 
-No license file is present in this repository. All rights are reserved by the copyright holder unless a license is added.
+This repository currently contains **no open-source license file** (`LICENSE` / `LICENSE.md` is absent). Consequently, no license is granted: all rights are reserved by the copyright holder, Nexiot Labs.
+
+Without an explicit license, third parties may not use, copy, modify, distribute or create derivative works from this source code. Licensing terms may be added later by including a license file in the repository root.
 
 ---
 
@@ -450,8 +559,12 @@ No license file is present in this repository. All rights are reserved by the co
 
 **Nexiot Labs**
 
-- Web: https://farmeye.pro.bd · https://modernfarm.pro.bd
-- Application: https://farmeye.lovable.app
-- Lovable project: https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a
+| Channel | Address |
+| --- | --- |
+| Company | Nexiot Labs |
+| Official website | https://farmeye.pro.bd |
+| Official website | https://modernfarm.pro.bd |
+| Live application | https://farmeye.lovable.app |
+| Lovable project | https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a |
 
 © 2026 Nexiot Labs.
