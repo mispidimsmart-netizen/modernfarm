@@ -487,7 +487,9 @@ Changes made through the Lovable editor are committed to this repository, and pu
 
 ## License
 
-No license file is present in this repository. All rights are reserved by the copyright holder unless a license is added.
+This repository currently contains **no open-source license file** (`LICENSE` / `LICENSE.md` is absent). Consequently, no license is granted: all rights are reserved by the copyright holder, Nexiot Labs.
+
+Without an explicit license, third parties may not use, copy, modify, distribute or create derivative works from this source code. Licensing terms may be added later by including a license file in the repository root.
 
 ---
 
