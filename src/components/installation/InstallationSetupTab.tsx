@@ -59,7 +59,7 @@ export function InstallationSetupTab({ copiedCode, onCopy, wifiConfigCode, onNav
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => copyToClipboard(wifiConfigCode, 'wifi')}
+              onClick={() => onCopy(wifiConfigCode, 'wifi')}
             >
               {copiedCode === 'wifi' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
@@ -106,7 +106,7 @@ export function InstallationSetupTab({ copiedCode, onCopy, wifiConfigCode, onNav
       {/* API Docs Link */}
       <Button 
         className="w-full"
-        onClick={() => navigate('/api-docs')}
+        onClick={() => onNavigate('/api-docs')}
       >
         API ডকুমেন্টেশন দেখুন
         <ExternalLink className="h-4 w-4 ml-2" />
