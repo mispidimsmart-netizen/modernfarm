@@ -25,11 +25,11 @@
 
 | Resource | Link |
 | --- | --- |
-| Live application | https://farmeye.lovable.app |
+| Live application | https://farmeye.pro.bd |
 | Documentation index | [Documentation Index](#documentation-index) |
 | API documentation | [`public/openapi.yaml`](public/openapi.yaml) · in-app `/api-docs` |
 | Installation guide | In-app `/installation-guide` · [`docs/firmware/SMART_LIGHTING.md`](docs/firmware/SMART_LIGHTING.md) |
-| Lovable project | https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a |
+
 
 ---
 
@@ -602,9 +602,7 @@ Without an explicit license, third parties may not use, copy, modify, distribute
 | Channel | Address |
 | --- | --- |
 | Company | Nexiot Labs |
-| Official website | https://farmeye.pro.bd |
-| Official website | https://modernfarm.pro.bd |
-| Live application | https://farmeye.lovable.app |
-| Lovable project | https://lovable.dev/projects/775899d0-e03c-4c5e-b9e0-fd88eee4e18a |
+| Live application | https://farmeye.pro.bd |
+
 
 © 2026 Nexiot Labs.
