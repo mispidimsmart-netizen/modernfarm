@@ -492,6 +492,15 @@ export function InstallationWiringTab() {
                     {'hasMcbContactorWiring' in sensor && sensor.hasMcbContactorWiring && 'mcbContactorInfo' in sensor && sensor.mcbContactorInfo && (
                       <McbContactorSection info={sensor.mcbContactorInfo as any} />
                     )}
+
+                    {/* Farm Type Relay Mapping Section */}
+                    {sensor.hasFarmTypeMapping && sensor.farmTypeMapping && (
+                      <FarmTypeMappingSection info={sensor.farmTypeMapping} />
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
                     </Accordion>
                   </AccordionContent>
                 </AccordionItem>
