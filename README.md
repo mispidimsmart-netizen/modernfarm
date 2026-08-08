@@ -51,6 +51,7 @@
 - [Dashboard Features](#dashboard-features)
 - [Screenshots](#screenshots)
 - [Automation Features](#automation-features)
+- [Safety Engine & Fail-Safe Mode](#safety-engine--fail-safe-mode)
 - [Security Features](#security-features)
 - [Testing](#testing)
 - [Documentation Index](#documentation-index)
