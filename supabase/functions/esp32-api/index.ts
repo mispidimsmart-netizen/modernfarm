@@ -1641,7 +1641,8 @@ async function handleDeviceState(
     if (desiredData) {
       const actualFan = statusUpdate.fan_on ?? body.fan_on ?? false;
       const actualLight = statusUpdate.light_on ?? body.light_on ?? false;
-      const actualAlarm = statusUpdate.alarm_on ?? (body.alarm === 'ON') ?? false;
+      // `body.alarm === 'ON'` is already a boolean, so no further fallback is needed.
+      const actualAlarm = statusUpdate.alarm_on ?? (body.alarm === 'ON');
       
       const hasMismatch = 
         (desiredData.desired_fan_on !== actualFan) ||
