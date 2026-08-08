@@ -56,10 +56,7 @@ export function OrganizationsPanel() {
         .order('created_at', { ascending: false });
       if (error) throw error;
       // Client-side belt-and-suspenders: any slug that *contains* "personal-" is excluded.
-      return ((data || []) as Org[]).filter(o => {
-        const s = (o.slug || '').trim().toLowerCase();
-        return s.length > 0 && !s.includes('personal-');
-      });
+      return ((data || []) as Org[]).filter(o => !isPersonalOrgSlug(o.slug));
     },
   });
 
