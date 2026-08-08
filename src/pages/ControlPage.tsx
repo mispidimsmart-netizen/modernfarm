@@ -489,102 +489,20 @@ export function ControlPage() {
       <main className="page-container px-3 sm:px-4 md:px-6 lg:px-8 space-y-4 max-w-7xl mx-auto">
         {/* ===== FARM-NOT-SELECTED GUARD BANNER ===== */}
         {farmNotReady && (
-          <div
-            role="alert"
-            className="rounded-2xl border-2 border-destructive/60 bg-destructive/10 p-4 flex items-start gap-3"
-          >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/20 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-destructive">
-                {language === 'bn'
-                  ? '⚠️ কোনো ফার্ম নির্বাচন করা নেই — কমান্ড পাঠানো বন্ধ'
-                  : '⚠️ No farm selected — commands are disabled'}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {farmsLoading
-                  ? (language === 'bn' ? 'ফার্ম লোড হচ্ছে…' : 'Loading farms…')
-                  : (farms && farms.length === 0
-                      ? (language === 'bn'
-                          ? 'আপনার কোনো ফার্ম নেই। সেটিংস → ফার্মে গিয়ে প্রথমে একটি ফার্ম তৈরি করুন।'
-                          : 'You do not have any farms yet. Create one from Settings → Farm.')
-                      : (language === 'bn'
-                          ? 'উপরের হেডার থেকে একটি ফার্ম বেছে নিন, নাহলে ডিভাইস কমান্ড ব্যাকএন্ড দ্বারা ব্লক হবে।'
-                          : 'Pick a farm from the header — without a valid farm the backend will reject device commands.'))}
-              </p>
-              <Link
-                to="/settings"
-                className="inline-block mt-2 text-xs font-semibold text-destructive underline underline-offset-2"
-              >
-                {language === 'bn' ? 'সেটিংস → ফার্মে যান' : 'Go to Settings → Farm'}
-              </Link>
-            </div>
-          </div>
+          <FarmGuardBanner
+            language={language}
+            farmsLoading={farmsLoading}
+            farmCount={farms?.length ?? 0}
+          />
         )}
 
         {/* ===== MODE INDICATOR BANNER ===== */}
-
-        <div className={`rounded-2xl border-2 p-3 flex items-center justify-between ${
-          isManualMode
-            ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/10 to-amber-600/5'
-            : 'border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-              isManualMode ? 'bg-amber-500/20 text-amber-600' : 'bg-primary/15 text-primary'
-            }`}>
-              {isManualMode ? <Hand className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold">
-                  {isManualMode
-                    ? (language === 'bn' ? '✋ ম্যানুয়াল মোড' : '✋ Manual Mode')
-                    : (language === 'bn' ? '🤖 অটো মোড' : '🤖 Auto Mode')
-                  }
-                </p>
-                <Badge variant="secondary" className={`text-[10px] ${
-                  isManualMode
-                    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
-                    : 'bg-primary/20 text-primary'
-                }`}>
-                  {isManualMode
-                    ? (language === 'bn' ? 'সরাসরি কন্ট্রোল' : 'Direct Control')
-                    : (language === 'bn' ? 'টাইমার কন্ট্রোল' : 'Timer Control')
-                  }
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {isManualMode
-                  ? (language === 'bn' ? 'আপনি সরাসরি ON/OFF করতে পারবেন' : 'You can directly toggle ON/OFF')
-                  : (language === 'bn' ? 'সাময়িক কন্ট্রোল — টাইমার শেষে অটো ফিরবে' : 'Temporary control — returns to auto after timer')
-                }
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Mode switching now lives on Settings page — this page only
-                reflects the current mode. Link users there instead. */}
-            <Link
-              to="/settings?tab=devices"
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
-              title={language === 'bn' ? 'সেটিংস থেকে মোড পরিবর্তন করুন' : 'Change mode from Settings'}
-            >
-              {language === 'bn' ? 'মোড পরিবর্তন → সেটিংস' : 'Change mode → Settings'}
-            </Link>
-            <Link to="/settings" className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          </div>
-
-        </div>
+        <ControlModeBanner language={language} isManualMode={isManualMode} />
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
         <div className="w-full">
           <StateExplanationHeader />
         </div>
-
 
         {/* ===== 2. WHY FAN IS RUNNING (only in AUTO mode) ===== */}
         {!isManualMode && <WhyFanRunning />}
@@ -593,177 +511,30 @@ export function ControlPage() {
         {isManualMode ? (
           /* ========== MANUAL MODE: Direct ON/OFF Controls ========== */
           <div className="space-y-3">
-            {/* Viewer restriction */}
-            {isViewer && (
-              <Card className="border-destructive/30 bg-destructive/5">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldAlert className="h-5 w-5 text-destructive" />
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View Only Access'}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {language === 'bn' 
-                          ? 'আপনি ভিউয়ার হিসেবে কোনো পরিবর্তন করতে পারবেন না'
-                          : 'As a viewer, you cannot make any changes'}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {isViewer && <ViewerRestrictionCard language={language} />}
 
-            {/* Direct Device Controls — 2 per row on mobile with device-specific color */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
-              {DEVICES.map((device, index) => {
-                const active = isDeviceActive(device.key);
-                const Icon = device.icon;
-                const pending = pendingCommands[device.key];
-                const isPending = !!pending;
-
-                // Per-device color scheme (icon bg + switch tint)
-                const colorMap: Record<string, { activeBg: string; activeShadow: string; switchOn: string; iconTint: string }> = {
-                  heater:          { activeBg: 'bg-orange-500',  activeShadow: 'shadow-orange-500/30',  switchOn: 'data-[state=checked]:bg-orange-500',  iconTint: 'text-orange-500' },
-                  fan:             { activeBg: 'bg-sky-500',     activeShadow: 'shadow-sky-500/30',     switchOn: 'data-[state=checked]:bg-sky-500',     iconTint: 'text-sky-500' },
-                  ceiling_fan:     { activeBg: 'bg-cyan-500',    activeShadow: 'shadow-cyan-500/30',    switchOn: 'data-[state=checked]:bg-cyan-500',    iconTint: 'text-cyan-500' },
-                  circulation_fan: { activeBg: 'bg-teal-500',    activeShadow: 'shadow-teal-500/30',    switchOn: 'data-[state=checked]:bg-teal-500',    iconTint: 'text-teal-500' },
-                  fogger:          { activeBg: 'bg-blue-500',    activeShadow: 'shadow-blue-500/30',    switchOn: 'data-[state=checked]:bg-blue-500',    iconTint: 'text-blue-500' },
-                  sprinkler:       { activeBg: 'bg-indigo-500',  activeShadow: 'shadow-indigo-500/30',  switchOn: 'data-[state=checked]:bg-indigo-500',  iconTint: 'text-indigo-500' },
-                  light:           { activeBg: 'bg-amber-500',   activeShadow: 'shadow-amber-500/30',   switchOn: 'data-[state=checked]:bg-amber-500',   iconTint: 'text-amber-500' },
-                };
-                const c = colorMap[device.key] ?? { activeBg: 'bg-emerald-500', activeShadow: 'shadow-emerald-500/30', switchOn: 'data-[state=checked]:bg-emerald-500', iconTint: 'text-emerald-500' };
-
-                return (
-                  <motion.div
-                    key={device.key}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                  >
-                    <Card className={`border-2 transition-all duration-300 h-full ${
-                      isPending
-                        ? 'border-amber-500/60 bg-amber-500/5'
-                        : active
-                          ? 'border-current/40 shadow-md ' + c.activeShadow
-                          : 'border-border/50 hover:border-border bg-card'
-                    }`}
-                    style={active && !isPending ? { borderColor: 'transparent' } : undefined}
-                    >
-                      <CardContent className="py-3 px-3 flex flex-col gap-2.5">
-                        {/* Row 1: icon + switch */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
-                            active && !isPending
-                              ? `${c.activeBg} text-white shadow-lg ${c.activeShadow}`
-                              : isPending
-                                ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
-                                : `bg-muted ${c.iconTint}`
-                          }`}>
-                            <Icon className={`h-5 w-5 ${active && !isPending ? 'animate-pulse' : ''}`} />
-                            {active && !isPending && (
-                              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${c.activeBg} opacity-75`} />
-                                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${c.activeBg}`} />
-                              </span>
-                            )}
-                          </div>
-                          <div className="relative">
-                            <Switch
-                              checked={active}
-                              onCheckedChange={(val) => handleManualToggle(device.key, val)}
-                              disabled={farmNotReady || isViewer || !canFullControl || isPending}
-                              className={`${!isPending ? c.switchOn : 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40'}`}
-                            />
-                            {isPending && (
-                              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white shadow">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Row 2: name + state pill */}
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <p className="text-sm font-bold leading-tight truncate">{device.name[language]}</p>
-                          <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">{device.description[language]}</p>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                          <span className={`text-[10px] font-bold tracking-wider ${
-                            isPending
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : active ? c.iconTint : 'text-muted-foreground'
-                          }`}>
-                            {isPending
-                              ? (language === 'bn' ? 'অপেক্ষায়…' : 'PENDING…')
-                              : (active ? 'ON' : 'OFF')}
-                          </span>
-                          {active && !isPending && (
-                            <span className={`h-1.5 w-1.5 rounded-full ${c.activeBg} animate-pulse`} />
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
+            <ManualDeviceGrid
+              devices={DEVICES}
+              language={language}
+              isDeviceActive={isDeviceActive}
+              pendingCommands={pendingCommands}
+              onToggle={handleManualToggle}
+              disabled={farmNotReady || isViewer || !canFullControl}
+            />
           </div>
         ) : (
           /* ========== AUTO MODE: Timer-based Temporary Control ========== */
           <div className="rounded-2xl border-2 border-status-warning/40 bg-status-warning/10 p-4 space-y-3">
+            {isViewer && <ViewerRestrictionCard language={language} />}
 
-
-
-
-            {/* Viewer restriction */}
-            {isViewer && (
-              <Card className="border-destructive/30 bg-destructive/5">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldAlert className="h-5 w-5 text-destructive" />
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {language === 'bn' ? 'শুধুমাত্র দেখার অনুমতি' : 'View Only Access'}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {language === 'bn' 
-                          ? 'আপনি ভিউয়ার হিসেবে কোনো পরিবর্তন করতে পারবেন না'
-                          : 'As a viewer, you cannot make any changes'}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Farmer (temporary only) notice */}
             {canTemporaryControl && !canFullControl && !isViewer && (
-              <Card className="border-amber-500/30 bg-amber-500/5">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldAlert className="h-5 w-5 text-amber-500" />
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {language === 'bn' ? 'সাময়িক কন্ট্রোল' : 'Temporary Control Only'}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {language === 'bn' 
-                          ? 'আপনি শুধুমাত্র সাময়িক কন্ট্রোল করতে পারবেন, স্থায়ী পরিবর্তন নয়'
-                          : 'You can only make temporary changes, not permanent ones'}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <TemporaryControlNoticeCard language={language} />
             )}
 
             {/* Safety Locked Devices — hidden when Safety Engine is OFF */}
             {(farmSettings as any)?.safety_engine_enabled !== false && (
               <SafetyLockedDevices protections={safetyProtections} />
             )}
-
 
             {/* Active Timers Summary */}
             {hasTemporaryOverrides && (
@@ -773,14 +544,14 @@ export function ControlPage() {
                     <div className="flex items-center gap-2 text-sm">
                       <Timer className="h-4 w-4 text-amber-500" />
                       <span className="font-medium text-amber-600 dark:text-amber-400">
-                        {language === 'bn' 
-                          ? `${Object.keys(activeTimers).length}টি ডিভাইসে সাময়িক কন্ট্রোল সক্রিয়` 
+                        {language === 'bn'
+                          ? `${Object.keys(activeTimers).length}টি ডিভাইসে সাময়িক কন্ট্রোল সক্রিয়`
                           : `${Object.keys(activeTimers).length} device(s) in temporary control`}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {language === 'bn' 
-                        ? 'টাইমার শেষে স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে' 
+                      {language === 'bn'
+                        ? 'টাইমার শেষে স্বয়ংক্রিয়ভাবে অটো মোডে ফিরে যাবে'
                         : 'Will return to AUTO mode when timer expires'}
                     </p>
                   </CardContent>
@@ -788,47 +559,22 @@ export function ControlPage() {
               </motion.div>
             )}
 
-            {/* Device Control Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-              {DEVICES.map((device) => {
-                // Safety lock: if a protection forces this device ON, user cannot stop it.
-                // Heat-stress or gas-purge → fans/circulation/fogger are locked ON.
-                // Client-side safety lock only applies when Safety Engine is ON.
-                const engineEnabled = (farmSettings as any)?.safety_engine_enabled !== false;
-                const heatActive = engineEnabled && sensorData.temperature > tempMax;
-                const gasActive = engineEnabled && sensorData.ammonia > ammoniaMax;
-                const coolingDevices = ['fan', 'circulation_fan', 'ceiling_fan', 'fogger', 'sprinkler'];
-                const isSafetyLocked =
-                  (heatActive && coolingDevices.includes(device.key)) ||
-                  (gasActive && (device.key === 'fan' || device.key === 'circulation_fan'));
-                const safetyReason = isSafetyLocked
-                  ? (heatActive
-                      ? { bn: '🔥 হিট স্ট্রেস সুরক্ষা সক্রিয় — ঠান্ডা রাখতে চালু থাকবে', en: '🔥 Heat stress protection active — must stay ON to cool' }
-                      : { bn: '💨 গ্যাস পার্জ সক্রিয় — অ্যামোনিয়া দূর করতে চালু থাকবে', en: '💨 Gas purge active — must stay ON to clear ammonia' })
-                  : undefined;
-                return (
-                  <SafeDeviceCard
-                    key={device.key}
-                    deviceKey={device.key}
-                    icon={device.icon}
-                    name={device.name}
-                    description={device.description}
-                    isActive={isDeviceActive(device.key)}
-                    mode={isSafetyLocked ? 'safety_lock' : getDeviceMode(device.key)}
-                    remainingTime={getRemainingTime(device.key)}
-                    isSafetyLocked={isSafetyLocked}
-                    safetyReason={safetyReason}
-                    hasOverride={Boolean(activeTimers[device.key])}
-                    isAutoMode={!isManualMode}
-                    onRunTemporarily={() => handleRunTemporarily(device.key, device.name, device.icon)}
-                    onStopTemporarily={() => handleStopTemporarily(device.key, device.name, device.icon)}
-                    onCancelOverride={() => handleCancelOverride(device.key)}
-                    disabled={farmNotReady || !canTemporaryControl}
-                  />
-
-                );
-              })}
-            </div>
+            <AutoDeviceGrid
+              devices={DEVICES}
+              isDeviceActive={isDeviceActive}
+              getDeviceMode={getDeviceMode}
+              getRemainingTime={getRemainingTime}
+              activeTimers={activeTimers}
+              temperature={sensorData.temperature}
+              ammonia={sensorData.ammonia}
+              tempMax={tempMax}
+              ammoniaMax={ammoniaMax}
+              engineEnabled={(farmSettings as any)?.safety_engine_enabled}
+              onRunTemporarily={(d) => handleRunTemporarily(d.key, d.name, d.icon)}
+              onStopTemporarily={(d) => handleStopTemporarily(d.key, d.name, d.icon)}
+              onCancelOverride={handleCancelOverride}
+              disabled={farmNotReady || !canTemporaryControl}
+            />
           </div>
         )}
 
@@ -836,13 +582,7 @@ export function ControlPage() {
         {!isManualMode && <AutomationDecisionLog />}
 
         {/* ===== 6. SAFETY FOOTER ===== */}
-        <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 text-center space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">
-            🛡️ {language === 'bn' 
-              ? 'নেট না থাকলেও খামার চলবে • সমস্ত ম্যানুয়াল অ্যাকশন স্বয়ংক্রিয়ভাবে মেয়াদ শেষ হয়'
-              : 'Farm runs without internet • All manual actions expire automatically'}
-          </p>
-        </div>
+        <ControlSafetyFooter language={language} />
       </main>
 
       {/* Timer Dialog (only used in AUTO mode) */}
@@ -856,8 +596,8 @@ export function ControlPage() {
         onCancel={() => setPendingDevice(null)}
       />
 
-
       <BottomNav />
     </div>
   );
 }
+
