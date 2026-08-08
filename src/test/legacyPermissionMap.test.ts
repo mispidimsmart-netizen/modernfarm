@@ -79,7 +79,7 @@ describe('toLegacyPermissions', () => {
   it('grants full farm control to farm owner', () => {
     const p = toLegacyPermissions(farmOwner);
     expect(p.canEditFarmSettings).toBe(true);
-    expect(p.canChangeHardwareEquivalent ?? p.canEditThresholds).toBe(true);
+    expect(p.canEditThresholds).toBe(true);
   });
 
   it('NEVER grants hardware capabilities to a worker', () => {
