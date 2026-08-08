@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { computeSensorStatusLevels } from '@/lib/sensorStatusLevels';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
@@ -365,41 +366,13 @@ export function useRealtimeAlerts() {
   }, [user?.id, selectedFarmId, queryClient, playSound]);
 }
 
-// Get status levels based on farm settings (same as before)
+// Get status levels based on farm settings (shared pure logic — see
+// src/lib/sensorStatusLevels.ts). Behaviour unchanged.
 export function useRealtimeStatusLevels(sensorData: SensorData) {
   const { data: settings } = useFarmSettings();
-
-  const getTemperatureStatus = useCallback((): StatusLevel => {
-    if (!settings) return 'normal';
-    if (sensorData.temperature > settings.temperature_max + 5) return 'danger';
-    if (sensorData.temperature > Number(settings.temperature_max) || sensorData.temperature < Number(settings.temperature_min)) return 'warning';
-    return 'normal';
-  }, [sensorData.temperature, settings]);
-
-  const getHumidityStatus = useCallback((): StatusLevel => {
-    if (!settings) return 'normal';
-    if (sensorData.humidity > Number(settings.humidity_max) + 10 || sensorData.humidity < Number(settings.humidity_min) - 10) return 'danger';
-    if (sensorData.humidity > Number(settings.humidity_max) || sensorData.humidity < Number(settings.humidity_min)) return 'warning';
-    return 'normal';
-  }, [sensorData.humidity, settings]);
-
-  const getAmmoniaStatus = useCallback((): StatusLevel => {
-    if (!settings) return 'normal';
-    if (sensorData.ammonia > Number(settings.ammonia_max) + 10) return 'danger';
-    if (sensorData.ammonia > Number(settings.ammonia_max)) return 'warning';
-    return 'normal';
-  }, [sensorData.ammonia, settings]);
-
-  const getWaterStatus = useCallback((): StatusLevel => {
-    if (sensorData.waterUsage < 10) return 'danger';
-    if (sensorData.waterUsage < 20) return 'warning';
-    return 'normal';
-  }, [sensorData.waterUsage]);
-
-  return {
-    temperature: getTemperatureStatus(),
-    humidity: getHumidityStatus(),
-    ammonia: getAmmoniaStatus(),
-    water: getWaterStatus(),
-  };
+  return useMemo(
+    () => computeSensorStatusLevels(sensorData, settings),
+    [sensorData.temperature, sensorData.humidity, sensorData.ammonia, sensorData.waterUsage, settings]
+  );
 }
+
