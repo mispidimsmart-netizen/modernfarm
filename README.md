@@ -385,7 +385,7 @@ Firmware sources are served from `public/` and downloaded through the in-app cod
 | `esp32-code.ino` | Baseline REST example |
 | `esp32-mqtt.ino` | MQTT transport variant |
 | `esp32-ota-signed.ino` | Signed OTA update client |
-| `esp32-failsafe.ino` | Fail-safe recovery build |
+| `esp32-failsafe.ino` | Legacy fail-safe build — **disabled**, kept for reference only (no hardware authority) |
 | `esp32-gsm-sms.ino` | GSM SMS failover module |
 | `esp32-phase9-sensors.ino` | Additional air-quality sensors (CO₂, PM2.5, PM10) |
 
@@ -451,6 +451,45 @@ Additional UI behaviour implemented in the repository: dark/light theming, offli
 - **AI-assisted insights** (forecasting, heat risk, water trend, anomaly detection) delivered as edge functions.
 
 ---
+
+## Safety Engine & Fail-Safe Mode
+
+Livestock safety is the highest-priority subsystem in FarmEye and is **never** delegated to the cloud. The on-device arbiter (`public/esp32-safety-engine.h`, Invariant-Based Safety Arbiter v3.0) runs every **500 ms**, writes GPIO pins directly — bypassing the relay manager — and cannot be suppressed by any mode, override, schedule or OTA operation.
+
+### The eight invariants
+
+| ID | Invariant | Enforcement |
+| --- | --- | --- |
+| INV-1 | Temperature above the lethal high limit (38 °C) forces all ventilation on | Arbiter drives fan pins directly, continuously |
+| INV-2 | Temperature below the lethal low limit (15 °C) allows heating regardless of mode | Heater permitted even in Manual/OFF |
+| INV-3 | Actuator protection timers may never block a safety reaction | Minimum on/off timers are bypassed by the arbiter |
+| INV-4 | Manual override can never disable safety evaluation | Override affects desired state only |
+| INV-5 | OTA updates can never pause the safety loop | Arbiter tick continues during flashing |
+| INV-6 | Two logical devices may never share one physical pin | GPIO map validated at boot |
+| INV-7 | A missing or unreliable sensor triggers the worst-case survival environment | Sensor stale > 20 s → survival mode |
+| INV-8 | Notification escalation is independent of connectivity | GSM/SMS path works with cloud offline |
+
+### Fail-safe behaviour
+
+| Condition | Fail-safe response |
+| --- | --- |
+| Cloud unreachable > 60 s | Autonomous local control; commands are queued client-side and drained on reconnect |
+| Sensor missing/implausible > 20 s | Emergency Survival Mode — worst-case assumptions, ventilation biased on, heater restricted |
+| Controller reboot / power recovery | Heater lockout 3 min, ventilation purge 3 min, ammonia alarm mute 5 min |
+| Firmware hang | Hardware watchdog (10 s timeout) resets the controller into the safe boot sequence |
+| Heater runs continuously > 5 min | Forced 2 min cooldown to prevent overheating and fire risk |
+| Actuator has no measurable effect within 6 min | Effect-validation flags a suspected relay/actuator fault and raises an alert |
+| Manual override left active | Bounded override expires automatically (20 min) and reconciles to automation |
+
+### Cloud role (audit mirror only)
+
+The `safety-engine` edge function re-evaluates the same invariants server-side purely for **auditing, alerting and reporting**. It writes `desired_*` columns and `safety_status`; it never overrides the controller's actual relay decision. The UI always renders `safety_status` reported by the hardware, so the dashboard reflects physical reality rather than intent.
+
+Regression coverage: `src/test/safety-invariants.test.ts` (invariant matrix) and `src/lib/controlModeGating.ts` tests (Auto/Manual × safety-engine-enabled/disabled gating).
+
+---
+
+
 
 ## Security Features
 
