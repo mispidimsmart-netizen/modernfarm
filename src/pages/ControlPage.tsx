@@ -40,6 +40,10 @@ import {
 import { StateExplanationHeader } from '@/components/control/StateExplanationHeader';
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
+import { FarmGuardBanner, ControlModeBanner, ControlSafetyFooter } from '@/components/control/ControlBanners';
+import { ViewerRestrictionCard, TemporaryControlNoticeCard } from '@/components/control/ControlNotices';
+import { ManualDeviceGrid } from '@/components/control/ManualDeviceGrid';
+import { AutoDeviceGrid } from '@/components/control/AutoDeviceGrid';
 
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
 import {
