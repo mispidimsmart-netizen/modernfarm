@@ -9,14 +9,8 @@ import {
   BROILER_TEMP_CURVE_DAYS 
 } from '@/hooks/useFarmType';
 
-// Inline function to avoid circular import.
-// MUST match useBirdAge.ts SSOT: floor(elapsed/24h), clamp to 0.
-function calculateBroilerAge(startDate: string): { days: number; weeks: number } {
-  const startMs = new Date(startDate).getTime();
-  const days = Math.max(0, Math.floor((Date.now() - startMs) / 86_400_000));
-  const weeks = Math.floor(days / 7);
-  return { days, weeks };
-}
+import { calculateBirdAge } from '@/lib/birdAge';
+
 
 export type BroilerAlertLevel = 'normal' | 'low_temp' | 'high_temp' | 'critical' | 'emergency';
 export type HumidityStatus = 'normal' | 'low' | 'high';
@@ -318,7 +312,7 @@ export function useBroilerEnvironment({
 
   // Calculate batch age
   const batchAge = activeBatch 
-    ? calculateBroilerAge(activeBatch.start_date) 
+    ? calculateBirdAge(activeBatch.start_date) 
     : { days: 1, weeks: 0 };
 
   useEffect(() => {

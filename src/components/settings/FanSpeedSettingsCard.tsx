@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Fan } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
-import { DEFAULT_FAN_SPEED_THRESHOLDS } from '@/hooks/useFanSpeedAutomation';
+import { DEFAULT_FAN_SPEED_THRESHOLDS } from '@/lib/fanSpeed';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';

@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Fan } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
-import { FanSpeed, getFanSpeedColor, getFanSpeedBgColor } from '@/hooks/useFanSpeedAutomation';
+import { FanSpeed, getFanSpeedColor, getFanSpeedBgColor } from '@/lib/fanSpeed';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
