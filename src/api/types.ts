@@ -107,3 +107,9 @@ export function daysAgoDate(days: number): string {
   d.setDate(d.getDate() - days);
   return d.toISOString().split('T')[0];
 }
+
+/** Today's ISO date (YYYY-MM-DD) — default for every day-log style insert. */
+export function today(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
