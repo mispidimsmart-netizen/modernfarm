@@ -312,7 +312,7 @@ export function useBroilerEnvironment({
 
   // Calculate batch age
   const batchAge = activeBatch 
-    ? calculateBroilerAge(activeBatch.start_date) 
+    ? calculateBirdAge(activeBatch.start_date) 
     : { days: 1, weeks: 0 };
 
   useEffect(() => {

@@ -46,7 +46,7 @@ export function useAutomationStatus() {
   // Calculate broiler age if applicable
   const broilerAge = useMemo(() => {
     if (!isBroiler || !activeBatch?.start_date) return null;
-    return calculateBroilerAge(activeBatch.start_date);
+    return calculateBirdAge(activeBatch.start_date);
   }, [isBroiler, activeBatch?.start_date]);
 
   const rules = useMemo<AutomationRule[]>(() => {
