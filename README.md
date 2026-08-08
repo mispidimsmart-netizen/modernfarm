@@ -15,7 +15,7 @@
 [![MQTT](https://img.shields.io/badge/MQTT-QoS%201-660066?style=for-the-badge&logo=mqtt&logoColor=white)](https://mqtt.org)
 [![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](https://vite-pwa-org.netlify.app)
 
-**Live application:** [farmeye.lovable.app](https://farmeye.lovable.app) · [farmeye.pro.bd](https://farmeye.pro.bd) · [modernfarm.pro.bd](https://modernfarm.pro.bd)
+**Live application:**  [farmeye.pro.bd](https://farmeye.pro.bd) 
 
 </div>
 
