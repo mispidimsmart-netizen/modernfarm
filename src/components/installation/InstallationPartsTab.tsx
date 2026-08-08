@@ -69,7 +69,5 @@ export function InstallationPartsTab() {
         </CardContent>
       </Card>
     </TabsContent>
-
-    {/* Wiring Tab */}
   );
 }

@@ -112,6 +112,5 @@ export function InstallationSetupTab({ copiedCode, onCopy, wifiConfigCode, onNav
         <ExternalLink className="h-4 w-4 ml-2" />
       </Button>
     </TabsContent>
-            </Tabs>
   );
 }

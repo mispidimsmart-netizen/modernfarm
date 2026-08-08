@@ -2017,7 +2017,5 @@ export function InstallationWiringTab() {
         </CardContent>
       </Card>
     </TabsContent>
-
-    {/* Setup Tab */}
   );
 }
