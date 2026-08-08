@@ -40,10 +40,16 @@ export interface ShedScope {
 export const MAX_BIRD_CAPACITY = 1_000_000;
 
 /** Pure validation shared by online mutations and the offline replay queue. */
-export function validateShedInput(input: Partial<ShedInput>): string | null {
-  const name = (input.name ?? '').trim();
-  if (!name) return 'শেডের নাম দিন';
-  if (name.length > 80) return 'শেডের নাম অনেক বড় (সর্বোচ্চ ৮০ অক্ষর)';
+export function validateShedInput(
+  input: Partial<ShedInput>,
+  options: { partial?: boolean } = {},
+): string | null {
+  // On partial (update) payloads only the supplied fields are checked.
+  if (!options.partial || input.name !== undefined) {
+    const name = (input.name ?? '').trim();
+    if (!name) return 'শেডের নাম দিন';
+    if (name.length > 80) return 'শেডের নাম অনেক বড় (সর্বোচ্চ ৮০ অক্ষর)';
+  }
 
   const capacity = input.bird_capacity;
   if (capacity !== undefined && capacity !== null) {
@@ -76,11 +82,8 @@ export async function createShed(scope: ShedScope, input: ShedInput): Promise<Sh
 }
 
 export async function updateShed(id: string, updates: Partial<Shed>): Promise<void> {
-  const invalid = validateShedInput(updates);
-  // Partial updates may omit the name entirely; only reject when it was supplied.
-  if (invalid && (updates.name !== undefined || updates.bird_capacity !== undefined)) {
-    throw new Error(invalid);
-  }
+  const invalid = validateShedInput(updates, { partial: true });
+  if (invalid) throw new Error(invalid);
 
   const { error } = await supabase.from('sheds').update(updates).eq('id', id);
   if (error) throw error;
