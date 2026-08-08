@@ -41,98 +41,15 @@ import { StateExplanationHeader } from '@/components/control/StateExplanationHea
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
 
-// Broiler-specific devices (heater is more important)
-const BROILER_DEVICES = [
-  {
-    key: 'heater',
-    icon: Flame,
-    name: { bn: 'হিটার', en: 'Heater' },
-    description: { bn: 'বাচ্চার তাপমাত্রা বজায় রাখে', en: 'Maintains chick temperature' },
-    priority: true,
-  },
-  {
-    key: 'fan',
-    icon: Fan,
-    name: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
-    description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
-  },
-  {
-    key: 'ceiling_fan',
-    icon: CircleDot,
-    name: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
-    description: { bn: 'ঘরের ভেতর বাতাস চলাচল', en: 'Indoor air circulation' },
-  },
-  {
-    key: 'circulation_fan',
-    icon: Wind,
-    name: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
-    description: { bn: 'বাতাস সমভাবে ছড়িয়ে দেয়', en: 'Distributes air evenly' },
-  },
-  {
-    key: 'fogger',
-    icon: Droplets,
-    name: { bn: 'ফগার', en: 'Fogger' },
-    description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress' },
-  },
-  {
-    key: 'sprinkler',
-    icon: CloudDrizzle,
-    name: { bn: 'ছাদ স্প্রিংকলার', en: 'Roof Sprinkler' },
-    description: { bn: 'ছাদ ঠান্ডা রাখে (HSI ভিত্তিক)', en: 'Cools roof (HSI based)' },
-  },
-  {
-    key: 'light',
-    icon: Lightbulb,
-    name: { bn: 'লাইট', en: 'Light' },
-    description: { bn: 'আলো নিয়ন্ত্রণ', en: 'Light control' },
-  },
-];
+import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
+import {
+  DESIRED_COL_MAP,
+  EXPIRES_COL_MAP,
+  readActualStatus,
+  restoreTimersFromRow,
+  formatRemaining,
+} from '@/lib/deviceColumns';
 
-// Layer-specific devices
-const LAYER_DEVICES = [
-  {
-    key: 'fan',
-    icon: Fan,
-    name: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
-    description: { bn: 'অ্যামোনিয়া ও আর্দ্রতা দূর করে', en: 'Removes ammonia and moisture' },
-  },
-  {
-    key: 'ceiling_fan',
-    icon: CircleDot,
-    name: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
-    description: { bn: 'ঘরের ভেতর বাতাস চলাচল (≥25°C)', en: 'Indoor air circulation (≥25°C)' },
-  },
-  {
-    key: 'circulation_fan',
-    icon: Wind,
-    name: { bn: 'সার্কুলেশন ফ্যান', en: 'Circulation Fan' },
-    description: { bn: 'বাতাস সমভাবে ছড়িয়ে দেয় (ম্যানুয়াল)', en: 'Distributes air evenly (manual)' },
-  },
-  {
-    key: 'heater',
-    icon: Flame,
-    name: { bn: 'হিটার', en: 'Heater' },
-    description: { bn: 'শীতে তাপ দেয়', en: 'Provides heat in winter' },
-  },
-  {
-    key: 'fogger',
-    icon: Droplets,
-    name: { bn: 'ফগার', en: 'Fogger' },
-    description: { bn: 'গরমে হিট স্ট্রেস কমায়', en: 'Reduces heat stress' },
-  },
-  {
-    key: 'sprinkler',
-    icon: CloudDrizzle,
-    name: { bn: 'ছাদ স্প্রিংকলার', en: 'Roof Sprinkler' },
-    description: { bn: 'ছাদ ঠান্ডা রাখে (HSI ভিত্তিক)', en: 'Cools roof (HSI based)' },
-  },
-  {
-    key: 'light',
-    icon: Lightbulb,
-    name: { bn: 'লাইট', en: 'Light' },
-    description: { bn: 'ডিম উৎপাদনে সহায়ক', en: 'Supports egg production' },
-  },
-];
 
 export function ControlPage() {
   const { language, user } = useAuth();
@@ -205,49 +122,17 @@ export function ControlPage() {
   // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
   // `status` (which in manual mode already reflects desired_*). Pending is only
   // cleared when ESP32 writes back the real actual_* column.
-  const getActualStatus = useCallback((deviceKey: string): boolean => {
-    if (!rawDeviceStatus) return false;
-    const r = rawDeviceStatus as Record<string, unknown>;
-    switch (deviceKey) {
-      case 'fan': return !!r.fan_on;
-      case 'light': return !!r.light_on;
-      case 'heater': return !!r.heater_on;
-      case 'circulation_fan': return !!r.circulation_fan_on;
-      case 'fogger': return !!r.fogger_on;
-      case 'ceiling_fan': return !!r.ceiling_fan_on;
-      case 'sprinkler': return !!r.sprinkler_on;
-      case 'alarm': return !!r.alarm_on;
-      default: return false;
-    }
-  }, [rawDeviceStatus]);
-
-  // Column-name maps shared by clear + hydrate + timer-write helpers.
-  const DESIRED_COL_MAP: Record<string, string> = {
-    fan: 'desired_fan_on',
-    light: 'desired_light_on',
-    alarm: 'desired_alarm_on',
-    heater: 'desired_heater_on',
-    circulation_fan: 'desired_circulation_fan_on',
-    fogger: 'desired_fogger_on',
-    ceiling_fan: 'desired_ceiling_fan_on',
-    sprinkler: 'desired_sprinkler_on',
-  };
-  const EXPIRES_COL_MAP: Record<string, string> = {
-    fan: 'desired_fan_expires_at',
-    light: 'desired_light_expires_at',
-    alarm: 'desired_alarm_expires_at',
-    heater: 'desired_heater_expires_at',
-    circulation_fan: 'desired_circulation_fan_expires_at',
-    fogger: 'desired_fogger_expires_at',
-    ceiling_fan: 'desired_ceiling_fan_expires_at',
-    sprinkler: 'desired_sprinkler_expires_at',
-  };
+  const getActualStatus = useCallback(
+    (deviceKey: string): boolean =>
+      readActualStatus(rawDeviceStatus as Record<string, unknown> | undefined, deviceKey),
+    [rawDeviceStatus],
+  );
 
   // Helper: clear a device's desired_* column (null-out) + expires_at so
   // automation resumes AND the server-side cron won't re-fire on stale timestamps.
   const clearDesiredColumn = useCallback(async (deviceKey: string) => {
-    const col = DESIRED_COL_MAP[deviceKey];
-    const expCol = EXPIRES_COL_MAP[deviceKey];
+    const col = DESIRED_COL_MAP[deviceKey as keyof typeof DESIRED_COL_MAP];
+    const expCol = EXPIRES_COL_MAP[deviceKey as keyof typeof EXPIRES_COL_MAP];
     if (!col || !user) return;
     let q = supabase
       .from('device_status')
@@ -265,22 +150,15 @@ export function ControlPage() {
   useEffect(() => {
     if (!rawDeviceStatus) return;
     const r = rawDeviceStatus as Record<string, unknown>;
-    const now = Date.now();
-    const restored: Record<string, { endTime: number; duration: number }> = {};
-    Object.entries(EXPIRES_COL_MAP).forEach(([deviceKey, colName]) => {
-      const raw = r[colName];
-      if (!raw) return;
-      const end = new Date(raw as string).getTime();
-      if (!Number.isFinite(end) || end <= now) return;
-      restored[deviceKey] = { endTime: end, duration: Math.ceil((end - now) / 60000) };
-    });
+    const restored = restoreTimersFromRow(r);
+
     setActiveTimers((prev) => {
       // Merge: keep any local timers not yet flushed to DB, overwrite the rest
       // from the authoritative server value.
       const next = { ...prev, ...restored };
       // Drop local-only entries whose DB row has no expires_at anymore (cleared elsewhere)
       Object.keys(next).forEach((k) => {
-        const colName = EXPIRES_COL_MAP[k];
+        const colName = EXPIRES_COL_MAP[k as keyof typeof EXPIRES_COL_MAP];
         if (colName && !r[colName] && !restored[k]) delete next[k];
       });
       return next;
@@ -388,14 +266,11 @@ export function ControlPage() {
 
 
 
-  const getRemainingTime = useCallback((device: string) => {
-    const timer = activeTimers[device];
-    if (!timer) return null;
-    const remaining = Math.max(0, timer.endTime - Date.now());
-    const minutes = Math.floor(remaining / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  }, [activeTimers]);
+  const getRemainingTime = useCallback(
+    (device: string) => formatRemaining(activeTimers[device]?.endTime),
+    [activeTimers],
+  );
+
 
   const getDeviceMode = useCallback((deviceKey: string): DeviceMode => {
     if (isManualMode) return 'temporary'; // In manual mode, all controls are direct
