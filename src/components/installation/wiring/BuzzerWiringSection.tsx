@@ -247,6 +247,5 @@ export function BuzzerWiringSection({ info }: { info: any }) {
             </div>
           </div>
         </div>
-      )}
   );
 }

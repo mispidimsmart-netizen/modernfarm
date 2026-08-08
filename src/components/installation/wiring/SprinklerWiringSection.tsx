@@ -197,6 +197,5 @@ export function SprinklerWiringSection({ info }: { info: any }) {
             </div>
           </div>
         </div>
-      )}
   );
 }

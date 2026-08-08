@@ -279,12 +279,5 @@ export function McbContactorSection({ info }: { info: any }) {
               </ul>
             </div>
           </div>
-        );
-      })()}
-
-      {/* Farm Type Relay Mapping Section */}
-      {sensor.hasFarmTypeMapping && sensor.farmTypeMapping && (
-        <div className="mt-6 space-y-4">
-          {/* Section Header */}
   );
 }

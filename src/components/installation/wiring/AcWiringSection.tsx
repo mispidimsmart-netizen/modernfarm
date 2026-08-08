@@ -244,6 +244,5 @@ export function AcWiringSection({ info }: { info: any }) {
             </p>
           </div>
         </div>
-      )}
   );
 }

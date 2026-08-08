@@ -280,6 +280,5 @@ export function FoggerWiringSection({ info }: { info: any }) {
             </div>
           </div>
         </div>
-      )}
   );
 }

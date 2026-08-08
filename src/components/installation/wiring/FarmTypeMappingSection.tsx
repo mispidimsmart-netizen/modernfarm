@@ -93,7 +93,5 @@ export function FarmTypeMappingSection({ info }: { info: any }) {
               </ul>
             </div>
           </div>
-        )}
-      </div>
   );
 }
