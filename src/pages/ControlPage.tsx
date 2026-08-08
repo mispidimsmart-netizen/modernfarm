@@ -122,49 +122,17 @@ export function ControlPage() {
   // Read ACTUAL hardware state (fan_on, heater_on, ...) — NOT the resolved
   // `status` (which in manual mode already reflects desired_*). Pending is only
   // cleared when ESP32 writes back the real actual_* column.
-  const getActualStatus = useCallback((deviceKey: string): boolean => {
-    if (!rawDeviceStatus) return false;
-    const r = rawDeviceStatus as Record<string, unknown>;
-    switch (deviceKey) {
-      case 'fan': return !!r.fan_on;
-      case 'light': return !!r.light_on;
-      case 'heater': return !!r.heater_on;
-      case 'circulation_fan': return !!r.circulation_fan_on;
-      case 'fogger': return !!r.fogger_on;
-      case 'ceiling_fan': return !!r.ceiling_fan_on;
-      case 'sprinkler': return !!r.sprinkler_on;
-      case 'alarm': return !!r.alarm_on;
-      default: return false;
-    }
-  }, [rawDeviceStatus]);
-
-  // Column-name maps shared by clear + hydrate + timer-write helpers.
-  const DESIRED_COL_MAP: Record<string, string> = {
-    fan: 'desired_fan_on',
-    light: 'desired_light_on',
-    alarm: 'desired_alarm_on',
-    heater: 'desired_heater_on',
-    circulation_fan: 'desired_circulation_fan_on',
-    fogger: 'desired_fogger_on',
-    ceiling_fan: 'desired_ceiling_fan_on',
-    sprinkler: 'desired_sprinkler_on',
-  };
-  const EXPIRES_COL_MAP: Record<string, string> = {
-    fan: 'desired_fan_expires_at',
-    light: 'desired_light_expires_at',
-    alarm: 'desired_alarm_expires_at',
-    heater: 'desired_heater_expires_at',
-    circulation_fan: 'desired_circulation_fan_expires_at',
-    fogger: 'desired_fogger_expires_at',
-    ceiling_fan: 'desired_ceiling_fan_expires_at',
-    sprinkler: 'desired_sprinkler_expires_at',
-  };
+  const getActualStatus = useCallback(
+    (deviceKey: string): boolean =>
+      readActualStatus(rawDeviceStatus as Record<string, unknown> | undefined, deviceKey),
+    [rawDeviceStatus],
+  );
 
   // Helper: clear a device's desired_* column (null-out) + expires_at so
   // automation resumes AND the server-side cron won't re-fire on stale timestamps.
   const clearDesiredColumn = useCallback(async (deviceKey: string) => {
-    const col = DESIRED_COL_MAP[deviceKey];
-    const expCol = EXPIRES_COL_MAP[deviceKey];
+    const col = DESIRED_COL_MAP[deviceKey as keyof typeof DESIRED_COL_MAP];
+    const expCol = EXPIRES_COL_MAP[deviceKey as keyof typeof EXPIRES_COL_MAP];
     if (!col || !user) return;
     let q = supabase
       .from('device_status')
@@ -182,15 +150,8 @@ export function ControlPage() {
   useEffect(() => {
     if (!rawDeviceStatus) return;
     const r = rawDeviceStatus as Record<string, unknown>;
-    const now = Date.now();
-    const restored: Record<string, { endTime: number; duration: number }> = {};
-    Object.entries(EXPIRES_COL_MAP).forEach(([deviceKey, colName]) => {
-      const raw = r[colName];
-      if (!raw) return;
-      const end = new Date(raw as string).getTime();
-      if (!Number.isFinite(end) || end <= now) return;
-      restored[deviceKey] = { endTime: end, duration: Math.ceil((end - now) / 60000) };
-    });
+    const restored = restoreTimersFromRow(r);
+
     setActiveTimers((prev) => {
       // Merge: keep any local timers not yet flushed to DB, overwrite the rest
       // from the authoritative server value.
