@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Cable, Settings, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Cable, Settings, ShoppingCart, Bird, Egg, Cpu, Thermometer, Wind, Droplets, Power, Fan } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
