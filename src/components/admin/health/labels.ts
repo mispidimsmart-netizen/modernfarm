@@ -106,4 +106,4 @@ export const healthLabels = {
 } as const;
 
 export type HealthLanguage = keyof typeof healthLabels;
-export type HealthLabels = (typeof healthLabels)['bn'];
+export type HealthLabels = Record<keyof (typeof healthLabels)['bn'], string>;
