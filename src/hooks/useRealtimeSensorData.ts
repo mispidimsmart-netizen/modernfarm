@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { computeSensorStatusLevels } from '@/lib/sensorStatusLevels';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
