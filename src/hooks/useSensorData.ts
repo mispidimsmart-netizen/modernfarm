@@ -6,118 +6,27 @@ import { useRealtimeSensorData } from './useRealtimeSensorData';
 import { computeSensorStatusLevels } from '@/lib/sensorStatusLevels';
 
 
-// Live sensor data from database — REAL ESP32 readings only, NO simulation
-export function useLiveSensorData() {
-  const { user } = useAuth();
-  const [sensorData, setSensorData] = useState<SensorData>({
-    temperature: 0,
-    humidity: 0,
-    ammonia: 0,
-    waterUsage: 0,
-    timestamp: new Date(),
-  });
-
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-
-    const fetchLatest = async () => {
-      const { data, error } = await supabase
-        .from('sensor_readings')
-        .select('temperature, humidity, ammonia, water_usage, recorded_at')
-        .eq('user_id', user.id)
-        .order('recorded_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (cancelled || error || !data) return;
-      setSensorData({
-        temperature: Number(data.temperature) || 0,
-        humidity: Number(data.humidity) || 0,
-        ammonia: Number(data.ammonia) || 0,
-        waterUsage: Number(data.water_usage) || 0,
-        timestamp: new Date(data.recorded_at),
-      });
-    };
-
-    fetchLatest();
-
-    const channel = supabase
-      .channel(`sensor_readings_${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'sensor_readings', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          const r: any = payload.new;
-          setSensorData({
-            temperature: Number(r.temperature) || 0,
-            humidity: Number(r.humidity) || 0,
-            ammonia: Number(r.ammonia) || 0,
-            waterUsage: Number(r.water_usage) || 0,
-            timestamp: new Date(r.recorded_at),
-          });
-        }
-      )
-      .subscribe();
-
-    const interval = setInterval(fetchLatest, 15000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
-
+/**
+ * Live sensor data — REAL ESP32 readings only, NO simulation.
+ *
+ * Thin adapter over `useRealtimeSensorData()` (the canonical realtime source:
+ * farm-scoped subscription + offline cache). Kept for the existing callers that
+ * only need the raw `SensorData` value.
+ */
+export function useLiveSensorData(): SensorData {
+  const { sensorData } = useRealtimeSensorData();
   return sensorData;
 }
 
-// Get status levels based on farm settings
+/** Status levels derived from farm thresholds (shared pure logic). */
 export function useStatusLevels(sensorData: SensorData) {
   const { data: settings } = useFarmSettings();
-
-  const getTemperatureStatus = useCallback((): StatusLevel => {
-    if (!settings) return 'normal';
-    const tMax = Number(settings.temperature_max);
-    const tMin = Number(settings.temperature_min);
-    const t = Number(sensorData.temperature);
-    if (t > tMax + 5) return 'danger';
-    if (t > tMax || t < tMin) return 'warning';
-    return 'normal';
-  }, [sensorData.temperature, settings]);
-
-  const getHumidityStatus = useCallback((): StatusLevel => {
-    if (!settings) return 'normal';
-    const hMax = Number(settings.humidity_max);
-    const hMin = Number(settings.humidity_min);
-    const h = Number(sensorData.humidity);
-    if (h > hMax + 10 || h < hMin - 10) return 'danger';
-    if (h > hMax || h < hMin) return 'warning';
-    return 'normal';
-  }, [sensorData.humidity, settings]);
-
-  const getAmmoniaStatus = useCallback((): StatusLevel => {
-    if (!settings) return 'normal';
-    const aMax = Number(settings.ammonia_max);
-    const a = Number(sensorData.ammonia);
-    if (a > aMax + 10) return 'danger';
-    if (a > aMax) return 'warning';
-    return 'normal';
-  }, [sensorData.ammonia, settings]);
-
-  const getWaterStatus = useCallback((): StatusLevel => {
-    const w = Number(sensorData.waterUsage);
-    if (w < 10) return 'danger';
-    if (w < 20) return 'warning';
-    return 'normal';
-  }, [sensorData.waterUsage]);
-
-  return {
-    temperature: getTemperatureStatus(),
-    humidity: getHumidityStatus(),
-    ammonia: getAmmoniaStatus(),
-    water: getWaterStatus(),
-  };
+  return useMemo(
+    () => computeSensorStatusLevels(sensorData, settings),
+    [sensorData.temperature, sensorData.humidity, sensorData.ammonia, sensorData.waterUsage, settings]
+  );
 }
+
 
 // Combined device control hook
 export function useDeviceControl(shedId?: string | null) {
