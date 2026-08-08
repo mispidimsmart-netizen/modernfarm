@@ -35,16 +35,16 @@ Deno.test("parseAction: valid and invalid actions", () => {
 Deno.test("computeQualityScore: penalties clamp to 0..100", () => {
   assertEquals(computeQualityScore(-50, 10, 0), 100);
   assertEquals(computeQualityScore(-70, 10, 0), 90);   // rssi -10
-  assertEquals(computeQualityScore(-90, 400, 6), 30);  // -40 -30 -30
+  assertEquals(computeQualityScore(-90, 400, 6), 0);   // -40 -30 -30 → clamped at 0
   assertEquals(computeQualityScore(null, 10, 0), 100); // unknown rssi = no penalty
   const worst = computeQualityScore(-100, 100000, 100);
   assert(worst >= 0 && worst <= 100);
 });
 
 Deno.test("calculateHSI: matches firmware Steadman formula", () => {
-  // 30 °C / 60 % RH → reference value shared with src/lib/heatStressIndex.ts
+  // 30 °C / 60 % RH → 79.84, the reference value shared with src/lib/heatStressIndex.ts
   const hsi = calculateHSI(30, 60);
-  assert(Math.abs(hsi - 74.68) < 0.05, `unexpected HSI ${hsi}`);
+  assert(Math.abs(hsi - 79.84) < 0.01, `unexpected HSI ${hsi}`);
   // Monotonic in both inputs.
   assert(calculateHSI(35, 60) > calculateHSI(30, 60));
   assert(calculateHSI(30, 80) > calculateHSI(30, 60));
