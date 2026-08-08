@@ -199,7 +199,9 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
             wifiConfigCode={wifiConfigCode}
             onNavigate={navigate}
           />
+        </Tabs>
       </div>
+
     </div>
   );
 }
