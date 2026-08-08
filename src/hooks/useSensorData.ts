@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
 import { useFarmSettings, useDeviceStatus, useUpdateDeviceStatus } from './useFarmData';
 import { useAutomationMode } from './useAutomationMode';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
+import { useRealtimeSensorData } from './useRealtimeSensorData';
+import { computeSensorStatusLevels } from '@/lib/sensorStatusLevels';
+
 
 // Live sensor data from database — REAL ESP32 readings only, NO simulation
 export function useLiveSensorData() {
