@@ -7,15 +7,8 @@ import { useLightingCurve } from '@/hooks/useLightingCurve';
 import { calculateHSI, DEFAULT_HSI_THRESHOLDS, HSIThresholds } from '@/lib/heatStressIndex';
 import { useFarmType, getBroilerTempRangeByDays, BROILER_THRESHOLDS } from '@/hooks/useFarmType';
 import { useActiveBatch } from '@/hooks/useBroilerData';
+import { calculateBirdAge } from '@/lib/birdAge';
 
-// Inline function to avoid circular import from useBroilerAutomation.
-// MUST match useBirdAge.ts SSOT: floor(elapsed/24h), clamp to 0.
-function calculateBroilerAge(startDate: string): { days: number; weeks: number } {
-  const startMs = new Date(startDate).getTime();
-  const days = Math.max(0, Math.floor((Date.now() - startMs) / 86_400_000));
-  const weeks = Math.floor(days / 7);
-  return { days, weeks };
-}
 
 export type AutomationRuleStatus = 'active' | 'triggered' | 'idle' | 'disabled';
 
