@@ -26,6 +26,23 @@ const anon = () =>
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+// After RPC hardening, `anon` may be denied outright (42501, because the farms
+// RLS policy calls is_super_admin) instead of being silently filtered.
+// Both outcomes are acceptable — what matters is that zero rows leak.
+const expectNoLeak = (
+  data: unknown[] | null,
+  error: { message?: string; code?: string } | null,
+) => {
+  if (error) {
+    expect(
+      error.code === '42501' ||
+        /permission denied|policy|row-level|not authorized/i.test(error.message ?? ''),
+    ).toBe(true);
+    return;
+  }
+  expect(data ?? []).toHaveLength(0);
+};
+
 describe('Org farms query — anon / unauthenticated', () => {
   const client = anon();
 
@@ -34,9 +51,7 @@ describe('Org farms query — anon / unauthenticated', () => {
       .from('farms')
       .select('id, name, organization_id')
       .eq('organization_id', FAKE_ORG);
-    // RLS quietly filters rather than throwing; both must indicate "no leak".
-    expect(error).toBeNull();
-    expect(data ?? []).toHaveLength(0);
+    expectNoLeak(data, error);
   });
 
   it('cannot enumerate any farms via organization filter on a real org', async () => {
@@ -49,19 +64,18 @@ describe('Org farms query — anon / unauthenticated', () => {
       .from('farms')
       .select('id, name, organization_id, owner_id')
       .eq('organization_id', orgId);
-    expect(error).toBeNull();
-    // Anon must not see any farms — even those tied to a visible org.
-    expect(data ?? []).toHaveLength(0);
+    expectNoLeak(data, error);
   });
 
   it('cannot read farms.owner_id (PII proxy) via the same query', async () => {
-    const { data } = await client
+    const { data, error } = await client
       .from('farms')
       .select('owner_id')
       .eq('organization_id', FAKE_ORG);
-    expect(data ?? []).toHaveLength(0);
+    expectNoLeak(data, error);
   });
 });
+
 
 describe('Org farms query — super-admin happy path (gated)', () => {
   const email = import.meta.env.TEST_SUPER_ADMIN_EMAIL as string | undefined;
