@@ -158,7 +158,7 @@ export function ControlPage() {
       const next = { ...prev, ...restored };
       // Drop local-only entries whose DB row has no expires_at anymore (cleared elsewhere)
       Object.keys(next).forEach((k) => {
-        const colName = EXPIRES_COL_MAP[k];
+        const colName = EXPIRES_COL_MAP[k as keyof typeof EXPIRES_COL_MAP];
         if (colName && !r[colName] && !restored[k]) delete next[k];
       });
       return next;
@@ -266,14 +266,11 @@ export function ControlPage() {
 
 
 
-  const getRemainingTime = useCallback((device: string) => {
-    const timer = activeTimers[device];
-    if (!timer) return null;
-    const remaining = Math.max(0, timer.endTime - Date.now());
-    const minutes = Math.floor(remaining / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  }, [activeTimers]);
+  const getRemainingTime = useCallback(
+    (device: string) => formatRemaining(activeTimers[device]?.endTime),
+    [activeTimers],
+  );
+
 
   const getDeviceMode = useCallback((deviceKey: string): DeviceMode => {
     if (isManualMode) return 'temporary'; // In manual mode, all controls are direct
