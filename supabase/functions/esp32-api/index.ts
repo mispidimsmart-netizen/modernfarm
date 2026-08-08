@@ -1,254 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { newObsCtx, recordObservability, type ObsCtx } from "./observability.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-token, x-timestamp, x-nonce, x-signature, x-secret-version',
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔐 Phase 1 — HMAC SIGNATURE VERIFICATION
-// Signature = HMAC-SHA256(secret, `${timestamp}.${nonce}.${rawBody}`)
-// Headers required when device.secret_version >= 1:
-//   X-Timestamp (unix seconds, ±300s window)
-//   X-Nonce     (random, unique per request, 5min replay window)
-//   X-Signature (hex)
-//   X-Secret-Version (optional, for clarity)
-// ═══════════════════════════════════════════════════════════════════════════
-async function hmacSha256Hex(secret: string, message: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
-  return Array.from(new Uint8Array(sig))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-interface SignatureCheckResult {
-  ok: boolean;
-  status?: number;
-  error?: string;
-  code?: string;
-}
-
-async function verifyDeviceSignature(
-  supabase: any,
-  device: { id: string; user_id: string; farm_id: string | null },
-  rawBody: string,
-  headers: Headers,
-): Promise<SignatureCheckResult> {
-  // Fetch secret + version
-  const { data: secretRow } = await supabase
-    .from('device_tokens')
-    .select('device_secret, previous_device_secret, previous_secret_expires_at, secret_version')
-    .eq('id', device.id)
-    .maybeSingle();
-
-  const version = secretRow?.secret_version ?? 0;
-  if (version < 1) {
-    // Legacy device — signature not required
-    return { ok: true };
-  }
-
-  const sigHeader = headers.get('x-signature');
-  const tsHeader = headers.get('x-timestamp');
-  const nonce = headers.get('x-nonce');
-
-  const audit = (reason: string) => supabase.rpc('log_security_event', {
-    _event_type: 'signature_invalid',
-    _user_id: device.user_id,
-    _farm_id: device.farm_id,
-    _device_token_id: device.id,
-    _success: false,
-    _details: { reason },
-  }).then(() => {}, () => {});
-
-  if (!sigHeader || !tsHeader || !nonce) {
-    audit('missing_signature_headers');
-    return { ok: false, status: 401, error: 'Missing signature headers', code: 'MISSING_SIGNATURE' };
-  }
-
-  const ts = parseInt(tsHeader, 10);
-  if (!Number.isFinite(ts)) {
-    audit('bad_timestamp');
-    return { ok: false, status: 401, error: 'Invalid timestamp', code: 'BAD_TIMESTAMP' };
-  }
-  const skew = Math.abs(Math.floor(Date.now() / 1000) - ts);
-  if (skew > 300) {
-    audit('timestamp_drift_' + skew + 's');
-    return { ok: false, status: 401, error: 'Timestamp out of window', code: 'TIMESTAMP_DRIFT' };
-  }
-
-  const message = `${tsHeader}.${nonce}.${rawBody}`;
-  const expectedCurrent = await hmacSha256Hex(secretRow!.device_secret || '', message);
-  let matched = secretRow!.device_secret && timingSafeEqual(expectedCurrent, sigHeader.toLowerCase());
-
-  if (!matched && secretRow!.previous_device_secret &&
-      secretRow!.previous_secret_expires_at &&
-      new Date(secretRow!.previous_secret_expires_at) > new Date()) {
-    const expectedPrev = await hmacSha256Hex(secretRow!.previous_device_secret, message);
-    matched = timingSafeEqual(expectedPrev, sigHeader.toLowerCase());
-  }
-
-  if (!matched) {
-    audit('signature_mismatch');
-    await supabase.from('device_tokens')
-      .update({ signature_failure_count: (await supabase.from('device_tokens')
-        .select('signature_failure_count').eq('id', device.id).single()).data?.signature_failure_count + 1 || 1 })
-      .eq('id', device.id);
-    return { ok: false, status: 401, error: 'Invalid signature', code: 'BAD_SIGNATURE' };
-  }
-
-  // Replay protection: consume nonce
-  const { data: nonceOk } = await supabase.rpc('consume_device_nonce', {
-    _device_token_id: device.id, _nonce: nonce,
-  });
-  if (!nonceOk) {
-    supabase.rpc('log_security_event', {
-      _event_type: 'nonce_reuse',
-      _user_id: device.user_id,
-      _farm_id: device.farm_id,
-      _device_token_id: device.id,
-      _success: false,
-      _details: { nonce },
-    }).then(() => {}, () => {});
-    return { ok: false, status: 409, error: 'Nonce already used', code: 'NONCE_REUSE' };
-  }
-
-  await supabase.from('device_tokens')
-    .update({ last_signature_at: new Date().toISOString() })
-    .eq('id', device.id);
-
-  return { ok: true };
-}
+import { corsHeaders } from "./http.ts";
+import { verifyDeviceSignature } from "./security.ts";
+import { calculateHSI, applyHSIAutomation } from "./hsi.ts";
+import { getBroilerTargetTemp, parseAction, computeQualityScore } from "./domain.ts";
+import { calculateCurrentBrightness } from "./lighting.ts";
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔥 HEAT STRESS INDEX (HSI) — THI FORMULA (aligned with firmware v8.0.0)
-// Formula: THI = 0.8 × Temp + (Humidity / 100) × (Temp − 14.4) + 46.4
-// 
-// | THI    | Status      | Action         |
-// |--------|-------------|----------------|
-// | < 75   | Normal      | Fan OFF        |
-// | 75-80  | Mild Stress | Fan LOW        |
-// | 80-85  | High Stress | Fan HIGH       |
-// | > 85   | Danger      | Fan HIGH+Alert |
-// ═══════════════════════════════════════════════════════════════════════════
-// Heat Stress Index — Steadman formula. MUST match firmware calcHSI() in
-// public/esp32-industrial-v10.ino (line ~250) and src/lib/heatStressIndex.ts
-// so cloud and device agree on a single number for the same inputs.
-function calculateHSI(temperature: number, humidity: number): number {
-  return (1.8 * temperature + 32) - ((0.55 - 0.0055 * humidity) * (1.8 * temperature - 26));
-}
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 🔥 HSI-BASED AUTOMATION (Cloud Side Rule Engine — THI aligned)
-// IF THI > 85 → fan = HIGH, alert = ON
-// Cloud থাকলে advanced decision
-// Cloud না থাকলেও ESP32 একই কাজ করবে (local rules)
-// ═══════════════════════════════════════════════════════════════════════════
-async function applyHSIAutomation(
-  supabase: any, 
-  userId: string, 
-  level: 'NORMAL' | 'MILD' | 'HIGH' | 'DANGER',
-  hsi: number,
-  shedId?: string | null
-): Promise<void> {
-  try {
-    // Check if HSI automation is enabled, automation_mode is AUTO, and not in manual override
-    const { data: settings } = await supabase
-      .from('farm_settings')
-      .select('hsi_automation_enabled, automation_mode')
-      .eq('user_id', userId)
-      .single();
-    
-    if (!settings?.hsi_automation_enabled) {
-      console.log('HSI automation disabled, skipping');
-      return;
-    }
 
-    // ★ CHECK automation_mode — skip if MANUAL
-    if (settings.automation_mode === 'MANUAL') {
-      console.log(`⏸️ [HSI] MANUAL mode active for user ${userId}, skipping HSI automation`);
-      return;
-    }
-    
-    // Build query for device_status - filter by shed if provided
-    let deviceQuery = supabase
-      .from('device_status')
-      .select('id, manual_override, desired_manual_override, shed_id')
-      .eq('user_id', userId);
-    
-    if (shedId) {
-      deviceQuery = deviceQuery.eq('shed_id', shedId);
-    }
-    
-    const { data: deviceStatus } = await deviceQuery.maybeSingle();
-    
-    // Check BOTH manual_override (set by ESP32) AND desired_manual_override (set by app)
-    if (deviceStatus?.manual_override || deviceStatus?.desired_manual_override) {
-      console.log(`Manual override active for shed ${shedId || 'default'}, skipping HSI automation`);
-      return;
-    }
-
-    // Apply automation based on HSI level
-    // IMPORTANT: Cloud writes to desired_* columns ONLY
-    // ESP32 is the single source of truth for actual relay state
-    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
-    
-    switch (level) {
-      case 'DANGER':
-        updates.desired_fan_on = true;
-        updates.desired_fan_speed = 'HIGH';
-        updates.desired_alarm_on = true;
-        console.log(`🚨 [Shed: ${shedId || 'default'}] HSI DANGER (${hsi.toFixed(1)}) → desired: Fan HIGH + Alarm ON`);
-        break;
-        
-      case 'HIGH':
-        updates.desired_fan_on = true;
-        updates.desired_fan_speed = 'HIGH';
-        console.log(`⚠️ [Shed: ${shedId || 'default'}] HSI HIGH (${hsi.toFixed(1)}) → desired: Fan HIGH`);
-        break;
-        
-      case 'MILD':
-        updates.desired_fan_on = true;
-        updates.desired_fan_speed = 'LOW';
-        console.log(`🌡️ [Shed: ${shedId || 'default'}] HSI MILD (${hsi.toFixed(1)}) → desired: Fan LOW`);
-        break;
-        
-      case 'NORMAL':
-        updates.desired_fan_on = false;
-        updates.desired_fan_speed = 'OFF';
-        updates.desired_alarm_on = false;
-        console.log(`✅ [Shed: ${shedId || 'default'}] HSI NORMAL (${hsi.toFixed(1)}) → desired: Fan OFF`);
-        break;
-    }
-    
-    // Update desired_state for specific shed or default
-    let updateQuery = supabase
-      .from('device_status')
-      .update(updates)
-      .eq('user_id', userId);
-    
-    if (shedId) {
-      updateQuery = updateQuery.eq('shed_id', shedId);
-    }
-    
-    await updateQuery;
-      
-  } catch (error) {
-    console.error('HSI automation error:', error);
-  }
-}
 
 interface SensorPayload {
   // Multi-shed support
@@ -1245,26 +1005,6 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
   }
 }
 
-// Helper: Get broiler target temperature based on age
-function getBroilerTargetTemp(ageDays: number): { min: number; max: number } {
-  const curve = [
-    { minDays: 1, maxDays: 3, minTemp: 33, maxTemp: 34 },
-    { minDays: 4, maxDays: 7, minTemp: 32, maxTemp: 32 },
-    { minDays: 8, maxDays: 14, minTemp: 30, maxTemp: 30 },
-    { minDays: 15, maxDays: 21, minTemp: 28, maxTemp: 28 },
-    { minDays: 22, maxDays: 28, minTemp: 26, maxTemp: 26 },
-    { minDays: 29, maxDays: 35, minTemp: 24, maxTemp: 24 },
-    { minDays: 36, maxDays: 999, minTemp: 22, maxTemp: 23 },
-  ];
-  
-  for (const range of curve) {
-    if (ageDays >= range.minDays && ageDays <= range.maxDays) {
-      return { min: range.minTemp, max: range.maxTemp };
-    }
-  }
-  
-  return { min: 22, max: 23 }; // Default for 36+ days
-}
 
 async function handleSensorData(body: SensorPayload, supabase: any, userId: string) {
   try {
@@ -2467,86 +2207,6 @@ async function getLightingSchedule(supabase: any, userId: string) {
   );
 }
 
-/**
- * Calculate current brightness based on lighting schedule and time
- * Uses smooth easing for gradual transitions
- */
-function calculateCurrentBrightness(schedule: any): { brightness: number; phase: string } {
-  if (!schedule) {
-    return { brightness: 0, phase: 'off' };
-  }
-
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  
-  // Parse times (format: "HH:MM:SS" or "HH:MM")
-  const startTime = schedule.start_time?.toString() || '05:00:00';
-  const endTime = schedule.end_time?.toString() || '21:00:00';
-  
-  const [startH, startM] = startTime.split(':').map(Number);
-  const [endH, endM] = endTime.split(':').map(Number);
-  
-  const startMinutes = startH * 60 + (startM || 0);
-  const endMinutes = endH * 60 + (endM || 0);
-  
-  const fadeInMinutes = schedule.fade_in_minutes || 30;
-  const fadeOutMinutes = schedule.fade_out_minutes || 30;
-  const minBrightness = schedule.min_brightness || 0;
-  const maxBrightness = schedule.max_brightness || 100;
-  const gradualEnabled = schedule.gradual_enabled !== false;
-
-  // If manual override, return max brightness
-  if (schedule.manual_override) {
-    return { brightness: maxBrightness, phase: 'manual' };
-  }
-
-  // If gradual is disabled, use simple ON/OFF
-  if (!gradualEnabled) {
-    const isActive = currentMinutes >= startMinutes && currentMinutes < endMinutes;
-    return {
-      brightness: isActive ? maxBrightness : minBrightness,
-      phase: isActive ? 'on' : 'off'
-    };
-  }
-
-  // Calculate phase boundaries
-  const fadeInEnd = startMinutes + fadeInMinutes;
-  const fadeOutStart = endMinutes - fadeOutMinutes;
-
-  // Ease-in-out quadratic function for smooth transitions
-  const easeInOutQuad = (t: number): number => {
-    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  };
-
-  // Before schedule starts (OFF)
-  if (currentMinutes < startMinutes) {
-    return { brightness: minBrightness, phase: 'off' };
-  }
-
-  // Fade-in phase (Morning: 0% → 100%)
-  if (currentMinutes >= startMinutes && currentMinutes < fadeInEnd) {
-    const progress = (currentMinutes - startMinutes) / fadeInMinutes;
-    const easedProgress = easeInOutQuad(progress);
-    const brightness = Math.round(minBrightness + (maxBrightness - minBrightness) * easedProgress);
-    return { brightness, phase: 'fade-in' };
-  }
-
-  // Full ON phase
-  if (currentMinutes >= fadeInEnd && currentMinutes < fadeOutStart) {
-    return { brightness: maxBrightness, phase: 'on' };
-  }
-
-  // Fade-out phase (Evening: 100% → 0%)
-  if (currentMinutes >= fadeOutStart && currentMinutes < endMinutes) {
-    const progress = (currentMinutes - fadeOutStart) / fadeOutMinutes;
-    const easedProgress = easeInOutQuad(progress);
-    const brightness = Math.round(maxBrightness - (maxBrightness - minBrightness) * easedProgress);
-    return { brightness, phase: 'fade-out' };
-  }
-
-  // After schedule ends (OFF)
-  return { brightness: minBrightness, phase: 'off' };
-}
 
 async function getDeviceCommands(supabase: any, userId: string, deviceName: string | null) {
   // Safety: only return commands fresher than 5 minutes.
@@ -3006,14 +2666,6 @@ const VALID_OPERATORS = ['>', '<', '>=', '<='];
 const VALID_DEVICES = ['fan', 'light', 'alarm'];
 const VALID_ACTIONS = ['fan_on', 'fan_off', 'light_on', 'light_off', 'alarm_on', 'alarm_off'];
 
-function parseAction(action: string): { device: string; state: boolean } | null {
-  const match = action.match(/^(fan|light|alarm)_(on|off)$/i);
-  if (!match) return null;
-  return {
-    device: match[1].toLowerCase(),
-    state: match[2].toLowerCase() === 'on'
-  };
-}
 
 async function createAutomationRule(body: AutomationRulePayload, supabase: any, userId: string) {
   // Normalize simplified format to standard format
@@ -4837,26 +4489,6 @@ async function handleSensorBatch(body: any, supabase: any, userId: string, devic
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 🆕 PHASE 3: CONNECTION QUALITY UPDATE
-// ═══════════════════════════════════════════════════════════════════════════
-function computeQualityScore(rssi: number | null, gapSec: number, failedSyncs: number): number {
-  let score = 100;
-  // RSSI penalty (best ~ -50, weak ~ -85)
-  if (rssi != null) {
-    if (rssi <= -85) score -= 40;
-    else if (rssi <= -75) score -= 25;
-    else if (rssi <= -65) score -= 10;
-  }
-  // Gap penalty (>60s starts hurting)
-  if (gapSec > 300) score -= 30;
-  else if (gapSec > 120) score -= 15;
-  else if (gapSec > 60) score -= 5;
-  // Failure streak
-  if (failedSyncs >= 5) score -= 30;
-  else if (failedSyncs >= 2) score -= 15;
-  return Math.max(0, Math.min(100, score));
-}
 
 async function handleQualityUpdate(body: any, supabase: any, userId: string, deviceToken: string) {
   try {
