@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { SensorData, DeviceStatus, StatusLevel } from '@/lib/types';
 import { useFarmSettings, useDeviceStatus, useUpdateDeviceStatus } from './useFarmData';
 import { useAutomationMode } from './useAutomationMode';
