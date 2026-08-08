@@ -1,204 +1,66 @@
 import { useState, useEffect } from 'react';
-import { Download, Eye, EyeOff, Sparkles, Wifi, Loader2, CheckCircle2, Settings, Cpu, CloudDownload, Info, Database, Home } from 'lucide-react';
+import { Download, Sparkles, Loader2, CheckCircle2, Cpu, CloudDownload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { supabase } from '@/integrations/supabase/client';
 import { verifyFirmwareContent } from '@/lib/firmwareVerifier';
-import { isDownloadAllowed, tryDownload } from '@/lib/firmwareDownloadGate';
-
-// Validation schema
-const configSchema = z.object({
-  ssid: z.string().trim().min(1, 'WiFi নাম দিন').max(32, 'WiFi নাম ৩২ অক্ষরের বেশি হতে পারবে না'),
-  password: z.string().min(8, 'পাসওয়ার্ড কমপক্ষে ৮ অক্ষর হতে হবে').max(64, 'পাসওয়ার্ড ৬৪ অক্ষরের বেশি হতে পারবে না'),
-  deviceToken: z.string().trim().min(10, 'সঠিক ডিভাইস টোকেন দিন').max(100, 'টোকেন সঠিক নয়'),
-  shedId: z.string().optional(),
-  shedName: z.string().optional(),
-  farmId: z.string().optional(),
-});
-
-// OTA mode doesn't require credentials
-const otaConfigSchema = z.object({
-  shedId: z.string().optional(),
-  shedName: z.string().optional(),
-});
-
-type FarmType = 'layer' | 'broiler';
-type FirmwareMode = 'hardcoded' | 'ota';
-type FirmwareVersion = 'v8' | 'v10';
-type HardwareVersion = 'v8' | 'v10' | 'unknown';
+import {
+  configSchema,
+  otaConfigSchema,
+  type FarmType,
+  type FirmwareMode,
+  type FirmwareVersion,
+  type HardwareVersion,
+  type Language,
+  type VerifyErrorState,
+} from './codegen/types';
+import { getCodegenLabels } from './codegen/labels';
+import { buildFilename, buildTemplateUrl, buildV10Firmware, buildV8Firmware } from './codegen/firmwareBuilder';
+import { fetchNoStore, triggerDownload } from './codegen/firmwareDownload';
+import { useFirmwareCredentials } from './codegen/useFirmwareCredentials';
+import { FarmSelectorSection } from './codegen/FarmSelectorSection';
+import { VersionSelectors } from './codegen/VersionSelectors';
+import { FirmwareModeSection } from './codegen/FirmwareModeSection';
+import { WifiTokenSection } from './codegen/WifiTokenSection';
+import { FarmTypeSafetySection } from './codegen/FarmTypeSafetySection';
+import { VerifyErrorGuide } from './codegen/VerifyErrorGuide';
+import { ConfirmDownloadDialog } from './codegen/ConfirmDownloadDialog';
 
 interface ESP32CodeGeneratorProps {
-  language?: 'bn' | 'en';
+  language?: Language;
   showFarmSelector?: boolean;
 }
 
-interface FarmOption {
-  id: string;
-  name: string;
-  name_en: string;
-  owner_id: string;
-  owner_phone?: string;
-}
-
+/**
+ * ESP32 firmware generator — orchestrates config state, verification and the
+ * gated download flow. Presentation lives in ./codegen/*, pure transforms in
+ * ./codegen/firmwareBuilder.ts.
+ */
 export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }: ESP32CodeGeneratorProps) {
   const [ssid, setSsid] = useState(() => localStorage.getItem('farmeye_wifi_ssid') || '');
   // SECURITY: WiFi password is intentionally NOT persisted (was vulnerable to XSS).
-  // User must re-enter on each session — acceptable tradeoff for infrequent ESP32 setup.
   const [password, setPassword] = useState('');
-  const [deviceToken, setDeviceToken] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDownloading, setIsDownloading] = useState(false);
   const [farmType, setFarmType] = useState<FarmType>('layer');
-  const [shedId, setShedId] = useState('');
-  const [shedName, setShedName] = useState('');
   const [firmwareMode, setFirmwareMode] = useState<FirmwareMode>('hardcoded');
   const [firmwareVersion, setFirmwareVersion] = useState<FirmwareVersion>('v8');
   const [hardwareVersion, setHardwareVersion] = useState<HardwareVersion>('unknown');
   const [mismatchAck, setMismatchAck] = useState(false);
-  const [farmId, setFarmId] = useState('');
-  const [autoLoaded, setAutoLoaded] = useState(false);
-  const [allFarms, setAllFarms] = useState<FarmOption[]>([]);
-  const [selectedFarmId, setSelectedFarmId] = useState('');
   const [includeSafetyEngine, setIncludeSafetyEngine] = useState(true);
-  const [verifyError, setVerifyError] = useState<{
-    expected: FirmwareVersion;
-    detected: FirmwareVersion | 'unknown';
-    url: string;
-  } | null>(null);
+  const [verifyError, setVerifyError] = useState<VerifyErrorState | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [finalAck, setFinalAck] = useState(false);
 
-  // Fetch all farms for admin selector
-  useEffect(() => {
-    if (!showFarmSelector) return;
-    const fetchAllFarms = async () => {
-      try {
-        const { data: farms } = await supabase
-          .from('farms')
-          .select('id, name, name_en, owner_id')
-          .eq('is_active', true)
-          .order('name');
-        if (farms && farms.length > 0) {
-          // Fetch owner emails from profiles - only farms with valid profiles
-          const ownerIds = [...new Set(farms.map(f => f.owner_id))];
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, phone, farm_name')
-            .in('id', ownerIds);
-          
-          const profileIds = new Set(profiles?.map(p => p.id) || []);
-          const phoneMap = new Map(profiles?.map(p => [p.id, p.phone]) || []);
-          const farmNameMap = new Map(profiles?.map(p => [p.id, p.farm_name]) || []);
-          // Filter: only show farms whose owner has a valid profile
-          const validFarms = farms.filter(f => profileIds.has(f.owner_id));
-          setAllFarms(validFarms.map(f => ({ 
-            ...f, 
-            name: farmNameMap.get(f.owner_id) || f.name,
-            owner_phone: phoneMap.get(f.owner_id) || '' 
-          })));
-        }
-      } catch (err) {
-        console.warn('Could not fetch farms:', err);
-      }
-    };
-    fetchAllFarms();
-  }, [showFarmSelector]);
+  const {
+    allFarms, selectedFarmId, selectFarm, farmId,
+    shedId, setShedId, shedName, setShedName,
+    deviceToken, setDeviceToken, autoLoaded,
+  } = useFirmwareCredentials(showFarmSelector);
 
-  // Load credentials for selected farm (admin) or own farm (regular user)
-  useEffect(() => {
-    const fetchCredentials = async (targetFarmId?: string) => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        let farm: { id: string; name: string } | null = null;
-
-        if (targetFarmId) {
-          // Admin selected a specific farm
-          const { data: farms } = await supabase
-            .from('farms')
-            .select('id, name')
-            .eq('id', targetFarmId)
-            .limit(1);
-          farm = farms?.[0] || null;
-        } else if (!showFarmSelector) {
-          // Regular user: fetch own farm
-          const { data: farms } = await supabase
-            .from('farms')
-            .select('id, name')
-            .eq('owner_id', user.id)
-            .eq('is_active', true)
-            .limit(1);
-          farm = farms?.[0] || null;
-        }
-
-        if (farm) {
-          setFarmId(farm.id);
-
-          // Fetch shed
-          const { data: sheds } = await supabase
-            .from('sheds')
-            .select('id, name')
-            .eq('farm_id', farm.id)
-            .limit(1);
-
-          if (sheds?.[0]) {
-            setShedId(sheds[0].id);
-            setShedName(sheds[0].name || '');
-          } else {
-            setShedId('');
-            setShedName('');
-          }
-
-          // Fetch device token
-          const { data: tokens } = await supabase
-            .from('device_tokens')
-            .select('token')
-            .eq('farm_id', farm.id)
-            .eq('is_active', true)
-            .limit(1);
-
-          if (tokens?.[0]) {
-            setDeviceToken(tokens[0].token);
-          } else {
-            setDeviceToken('');
-          }
-
-          setAutoLoaded(true);
-        }
-      } catch (err) {
-        console.warn('Could not auto-load credentials:', err);
-      }
-    };
-
-    if (showFarmSelector && selectedFarmId) {
-      fetchCredentials(selectedFarmId);
-    } else if (!showFarmSelector) {
-      fetchCredentials();
-    }
-  }, [showFarmSelector, selectedFarmId]);
-
-  // Save WiFi SSID to localStorage for auto-fill (password intentionally NOT stored)
+  // Auto-fill SSID next session (password intentionally NOT stored)
   useEffect(() => {
     if (ssid) localStorage.setItem('farmeye_wifi_ssid', ssid);
   }, [ssid]);
@@ -208,81 +70,19 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     localStorage.removeItem('farmeye_wifi_pass');
   }, []);
 
-  const t = {
-    title: language === 'bn' ? '🚀 ESP32 ফার্মওয়্যার জেনারেটর' : '🚀 ESP32 Firmware Generator',
-    subtitle: language === 'bn' 
-      ? 'আপনার WiFi, টোকেন ও ফার্মের ধরন দিন - সম্পূর্ণ ফার্মওয়্যার পাবেন' 
-      : 'Enter WiFi, token & farm type - get complete firmware',
-    wifiName: language === 'bn' ? 'WiFi নাম (SSID)' : 'WiFi Name (SSID)',
-    wifiNamePlaceholder: language === 'bn' ? 'আপনার WiFi নেটওয়ার্কের নাম' : 'Your WiFi network name',
-    wifiPassword: language === 'bn' ? 'WiFi পাসওয়ার্ড' : 'WiFi Password',
-    wifiPasswordPlaceholder: language === 'bn' ? 'আপনার WiFi পাসওয়ার্ড' : 'Your WiFi password',
-    deviceToken: language === 'bn' ? 'ডিভাইস টোকেন' : 'Device Token',
-    deviceTokenPlaceholder: language === 'bn' ? 'উপরে থেকে কপি করুন' : 'Copy from above',
-    downloadFirmware: language === 'bn' ? '📥 সম্পূর্ণ ফার্মওয়্যার ডাউনলোড করুন' : '📥 Download Complete Firmware',
-    downloadOTAFirmware: language === 'bn' ? '📥 OTA ফার্মওয়্যার ডাউনলোড করুন' : '📥 Download OTA Firmware',
-    downloading: language === 'bn' ? 'প্রস্তুত হচ্ছে...' : 'Preparing...',
-    fillAllFields: language === 'bn' ? 'সব তথ্য সঠিকভাবে পূরণ করুন' : 'Please fill all fields correctly',
-    downloadSuccess: language === 'bn' 
-      ? '✅ সম্পূর্ণ ফার্মওয়্যার ডাউনলোড হয়েছে! Arduino IDE তে Open করে Upload করুন' 
-      : '✅ Complete firmware downloaded! Open in Arduino IDE and Upload',
-    downloadOTASuccess: language === 'bn' 
-      ? '✅ OTA ফার্মওয়্যার ডাউনলোড হয়েছে! Compile করে .bin ফাইল OTA-তে আপলোড করুন' 
-      : '✅ OTA firmware downloaded! Compile to .bin and upload to OTA',
-    downloadFailed: language === 'bn' ? 'ডাউনলোড ব্যর্থ হয়েছে' : 'Download failed',
-    step1: language === 'bn' ? 'ধাপ ১: ফার্মওয়্যার মোড' : 'Step 1: Firmware Mode',
-    step2: language === 'bn' ? 'ধাপ ২: WiFi তথ্য' : 'Step 2: WiFi Info',
-    step3: language === 'bn' ? 'ধাপ ৩: ডিভাইস টোকেন' : 'Step 3: Device Token',
-    step4: language === 'bn' ? 'ধাপ ৪: খামারের ধরন' : 'Step 4: Farm Type',
-    step5: language === 'bn' ? 'ধাপ ৫: ডাউনলোড' : 'Step 5: Download',
-    readyToUpload: language === 'bn' 
-      ? '👆 এই ফাইল Arduino IDE তে সরাসরি Open → Upload করুন। কোনো কোড এডিটের প্রয়োজন নেই!' 
-      : '👆 Open this file in Arduino IDE → Upload. No code editing required!',
-    readyToOTA: language === 'bn' 
-      ? '👆 Arduino IDE → Sketch → Export Compiled Binary → .bin ফাইলটি OTA-তে আপলোড করুন' 
-      : '👆 Arduino IDE → Sketch → Export Compiled Binary → Upload .bin to OTA',
-    farmTypeLabel: language === 'bn' ? 'খামারের ধরন' : 'Farm Type',
-    layerFarm: language === 'bn' ? '🥚 লেয়ার (ডিম উৎপাদন)' : '🥚 Layer (Egg Production)',
-    broilerFarm: language === 'bn' ? '🐔 ব্রয়লার (মাংস উৎপাদন)' : '🐔 Broiler (Meat Production)',
-    shedIdLabel: language === 'bn' ? 'শেড ID (ঐচ্ছিক)' : 'Shed ID (Optional)',
-    shedIdPlaceholder: language === 'bn' ? 'যেমন: shed_001' : 'e.g., shed_001',
-    shedNameLabel: language === 'bn' ? 'শেডের নাম (ঐচ্ছিক)' : 'Shed Name (Optional)',
-    shedNamePlaceholder: language === 'bn' ? 'যেমন: শেড ক' : 'e.g., Shed A',
-    firmwareFeatures: language === 'bn' ? '✨ ফার্মওয়্যার ফিচার' : '✨ Firmware Features',
-    feature1: language === 'bn' ? '✓ অটোমেশন (HSI, তাপমাত্রা, অ্যামোনিয়া)' : '✓ Automation (HSI, Temperature, Ammonia)',
-    feature2: language === 'bn' ? '✓ অফলাইন ফেইল-সেফ মোড' : '✓ Offline Fail-Safe Mode',
-    feature3: language === 'bn' ? '✓ ৫০-রেকর্ড অফলাইন বাফার' : '✓ 50-Record Offline Buffer',
-    feature4: language === 'bn' ? '✓ স্মার্ট ওয়াটার মনিটরিং' : '✓ Smart Water Monitoring',
-    feature5: language === 'bn' ? '✓ পাওয়ার ফেইলার অ্যালার্ট' : '✓ Power Failure Alert',
-    feature6: language === 'bn' ? '✓ OTA আপডেট সাপোর্ট' : '✓ OTA Update Support',
-    hardcodedMode: language === 'bn' ? '🔒 হার্ডকোডেড (প্রথমবার সেটআপ)' : '🔒 Hardcoded (First-time Setup)',
-    otaMode: language === 'bn' ? '☁️ OTA-Ready (সব ডিভাইসে কাজ করবে)' : '☁️ OTA-Ready (Works on all devices)',
-    hardcodedDesc: language === 'bn' 
-      ? 'WiFi ও টোকেন কোডে এম্বেড থাকবে। প্রথমবার সেটআপের জন্য।' 
-      : 'WiFi & token embedded in code. For first-time setup.',
-    otaDesc: language === 'bn' 
-      ? 'NVS থেকে credentials পড়বে। একটি ফার্মওয়্যার সব ডিভাইসে OTA আপডেট হিসেবে কাজ করবে।' 
-      : 'Reads credentials from NVS. One firmware works as OTA update for all devices.',
-    firmwareModeLabel: language === 'bn' ? 'ফার্মওয়্যার মোড' : 'Firmware Mode',
-  };
+  const t = getCodegenLabels(language);
 
   const validateInputs = () => {
     try {
-      if (firmwareMode === 'ota') {
-        // OTA mode doesn't require WiFi/token
-        otaConfigSchema.parse({ shedId, shedName });
-      } else {
-        configSchema.parse({ ssid, password, deviceToken, shedId, shedName });
-      }
+      if (firmwareMode === 'ota') otaConfigSchema.parse({ shedId, shedName });
+      else configSchema.parse({ ssid, password, deviceToken, shedId, shedName });
       setErrors({});
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
         const newErrors: Record<string, string> = {};
-        error.issues.forEach(err => {
-          if (err.path[0]) {
-            newErrors[err.path[0] as string] = err.message;
-          }
+        error.issues.forEach((err) => {
+          if (err.path[0]) newErrors[err.path[0] as string] = err.message;
         });
         setErrors(newErrors);
       }
@@ -290,100 +90,71 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     }
   };
 
-  const isMismatch =
-    hardwareVersion !== 'unknown' && hardwareVersion !== firmwareVersion;
+  const isMismatch = hardwareVersion !== 'unknown' && hardwareVersion !== firmwareVersion;
 
-  const openConfirm = () => {
+  /** Shared pre-flight checks for both the confirm dialog and the actual download. */
+  const preflight = () => {
     if (!validateInputs()) {
       toast.error(t.fillAllFields);
-      return;
+      return false;
     }
     if (hardwareVersion === 'unknown') {
       toast.error(language === 'bn'
         ? 'প্রথমে device-এর hardware version (v8/v10) select করুন'
         : 'Please select the device hardware version (v8/v10) first');
-      return;
+      return false;
     }
     if (isMismatch && !mismatchAck) {
       toast.error(language === 'bn'
         ? `⚠️ Hardware ${hardwareVersion.toUpperCase()} কিন্তু firmware ${firmwareVersion.toUpperCase()} — mismatch! নিচের checkbox-এ tick দিয়ে confirm করুন।`
         : `⚠️ Hardware is ${hardwareVersion.toUpperCase()} but firmware is ${firmwareVersion.toUpperCase()} — mismatch! Tick the confirm checkbox.`,
         { duration: 7000 });
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const openConfirm = () => {
+    if (!preflight()) return;
     setFinalAck(false);
     setConfirmOpen(true);
   };
 
   const downloadPreparedFirmware = async () => {
-    if (!validateInputs()) {
-      toast.error(t.fillAllFields);
-      return;
-    }
-
-    if (hardwareVersion === 'unknown') {
-      toast.error(language === 'bn'
-        ? 'প্রথমে device-এর hardware version (v8/v10) select করুন'
-        : 'Please select the device hardware version (v8/v10) first');
-      return;
-    }
-
-    if (isMismatch && !mismatchAck) {
-      toast.error(language === 'bn'
-        ? `⚠️ Hardware ${hardwareVersion.toUpperCase()} কিন্তু firmware ${firmwareVersion.toUpperCase()} — mismatch! নিচের checkbox-এ tick দিয়ে confirm করুন বা সঠিক version select করুন।`
-        : `⚠️ Hardware is ${hardwareVersion.toUpperCase()} but firmware is ${firmwareVersion.toUpperCase()} — mismatch! Tick the confirm checkbox or select the matching version.`,
-        { duration: 7000 });
-      return;
-    }
+    if (!preflight()) return;
 
     setIsDownloading(true);
     setVerifyError(null);
     try {
-      // Fetch firmware template — branch on selected version
-      // v8 = esp32-industrial.ino (legacy stable, mass-deployed in field)
-      // v10 = esp32-industrial-v10.ino (Phase 9 sensors, new GPIO map, BETA)
-      // Cache-busting: unique query (timestamp + random) + no-store + explicit no-cache headers
-      // ensures the browser/SW/CDN never serves a stale .ino file.
-      const cacheBuster = `t=${Date.now()}&r=${Math.random().toString(36).slice(2, 10)}`;
-      const baseFile = firmwareVersion === 'v10'
-        ? '/esp32-industrial-v10.ino'
-        : '/esp32-industrial.ino';
-      const templateUrl = `${baseFile}?${cacheBuster}`;
-      const response = await fetch(templateUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-      });
+      // Cache-busted fetch so no stale .ino is ever served
+      const templateUrl = buildTemplateUrl(firmwareVersion);
+      const response = await fetchNoStore(templateUrl);
       if (!response.ok) throw new Error('Failed to fetch firmware template');
-      let firmwareCode = await response.text();
+      const template = await response.text();
 
-      // ════════════════════════════════════════════════════════════════
-      // CONTENT VERIFICATION — see src/lib/firmwareVerifier.ts.
-      // Shared with unit tests in src/test/firmwareVerifier.test.ts.
-      // ════════════════════════════════════════════════════════════════
-      const verify = verifyFirmwareContent(firmwareCode, firmwareVersion);
-      const detectedVersion = verify.detected;
-
+      // CONTENT VERIFICATION — see src/lib/firmwareVerifier.ts
+      const verify = verifyFirmwareContent(template, firmwareVersion);
       if (!verify.matches) {
-        setVerifyError({ expected: firmwareVersion, detected: detectedVersion, url: templateUrl });
+        setVerifyError({ expected: firmwareVersion, detected: verify.detected, url: templateUrl });
         toast.error(
           language === 'bn'
-            ? `❌ যাচাই ব্যর্থ — নিচের গাইড দেখুন এবং Retry চাপুন।`
-            : `❌ Verification failed — see the guide below and press Retry.`,
-          { duration: 6000 }
+            ? '❌ যাচাই ব্যর্থ — নিচের গাইড দেখুন এবং Retry চাপুন।'
+            : '❌ Verification failed — see the guide below and press Retry.',
+          { duration: 6000 },
         );
         setIsDownloading(false);
         return;
       }
-
-      // Verification passed — log signature so user/QA can confirm in console
       console.info(
-        `[FirmwareGen] ✓ Verified ${detectedVersion.toUpperCase()} content (${firmwareCode.length} bytes) from ${templateUrl}`
+        `[FirmwareGen] ✓ Verified ${verify.detected.toUpperCase()} content (${template.length} bytes) from ${templateUrl}`,
       );
 
-      // v10 has a simpler config block — handle separately and skip v8-only options
+      const buildOptions = {
+        ssid, password, deviceToken, shedId, shedName, farmId,
+        farmType, firmwareMode, includeSafetyEngine,
+      };
+
+      // ── v10 BETA path (hardcoded only) ────────────────────────────────
       if (firmwareVersion === 'v10') {
         if (firmwareMode === 'ota') {
           toast.error(language === 'bn'
@@ -392,57 +163,11 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           setIsDownloading(false);
           return;
         }
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+WIFI_SSID\s*=\s*"[^"]*"\s*;/,
-          `const char* WIFI_SSID      = "${ssid.trim()}";`
+        await triggerDownload(
+          buildV10Firmware(template, buildOptions),
+          buildFilename('v10', firmwareMode, farmType),
         );
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+WIFI_PASS\s*=\s*"[^"]*"\s*;/,
-          `const char* WIFI_PASS      = "${password}";`
-        );
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+DEVICE_TOKEN\s*=\s*"[^"]*"\s*;/,
-          `const char* DEVICE_TOKEN   = "${deviceToken.trim()}";`
-        );
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+SHED_ID\s*=\s*"[^"]*"\s*;/,
-          `const char* SHED_ID        = "${shedId.trim()}";`
-        );
-
-        const v10Header = `/*
- * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  🔧 AUTO-CONFIGURED BY FARMEYE GENERATOR — v10 BETA                  ║
- * ╠═══════════════════════════════════════════════════════════════════════╣
- * ║  Firmware: Industrial v10 (Phase 9 sensors, locked GPIO map)         ║
- * ║  WiFi SSID: ${ssid.trim().padEnd(54)}║
- * ║  Device Token: ${deviceToken.trim().substring(0, 50).padEnd(50)}...║
- * ║  Generated: ${new Date().toISOString().padEnd(53)}║
- * ╠═══════════════════════════════════════════════════════════════════════╣
- * ║  ⚠️ v10 BETA — only use on NEW v10 hardware (Exhaust=5, Heater=21).  ║
- * ║  ⚠️ DO NOT flash on existing v8 field devices.                       ║
- * ╚═══════════════════════════════════════════════════════════════════════╝
- */
-
-`;
-        firmwareCode = v10Header + firmwareCode;
-
-        const v10Filename = `farmeye-v10-beta-${Date.now()}.ino`;
-        await new Promise<void>((resolve) => {
-          const blob = new Blob([firmwareCode], { type: 'application/octet-stream' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = v10Filename;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            resolve();
-          }, 500);
-        });
-
+        setVerifyError(null);
         toast.success(language === 'bn'
           ? '✅ v10 Beta firmware ডাউনলোড হয়েছে! শুধুমাত্র নতুন v10 hardware-এ flash করুন।'
           : '✅ v10 Beta firmware downloaded! Flash only on new v10 hardware.',
@@ -451,153 +176,30 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
         return;
       }
 
+      // ── v8 STABLE path ────────────────────────────────────────────────
+      await triggerDownload(
+        buildV8Firmware(template, buildOptions),
+        buildFilename('v8', firmwareMode, farmType),
+      );
 
-      if (firmwareMode === 'hardcoded') {
-        // Mode 1: Hardcoded credentials (for first-time setup)
-        // Use regex to handle variable whitespace alignment in firmware template
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+WIFI_SSID\s*=\s*"YOUR_WIFI_SSID"\s*;/,
-          `const char* WIFI_SSID     = "${ssid.trim()}";`
-        );
-        
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+WIFI_PASSWORD\s*=\s*"YOUR_WIFI_PASSWORD"\s*;/,
-          `const char* WIFI_PASSWORD  = "${password}";`
-        );
-        
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+DEVICE_TOKEN\s*=\s*"YOUR_DEVICE_TOKEN"\s*;/,
-          `const char* DEVICE_TOKEN   = "${deviceToken.trim()}";  // Auto-configured`
-        );
-
-        // Replace Shed ID
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+SHED_ID\s*=\s*"YOUR_SHED_ID"\s*;/,
-          `const char* SHED_ID        = "${shedId.trim() || 'default_shed'}";`
-        );
-
-        // Replace Shed Name
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+SHED_NAME\s*=\s*"[^"]*"\s*;/,
-          `const char* SHED_NAME      = "${shedName.trim() || 'Shed A'}";`
-        );
-
-        // Replace Farm ID
-        firmwareCode = firmwareCode.replace(
-          /const\s+char\*\s+FARM_ID\s*=\s*"YOUR_FARM_ID"\s*;/,
-          `const char* FARM_ID        = "${farmId.trim() || 'default_farm'}";  // Auto-configured`
-        );
-        
-        // Keep USE_HARDCODED_TOKEN = true (default)
-      } else {
-        // Mode 2: OTA-ready firmware (reads from NVS)
-        firmwareCode = firmwareCode.replace(
-          '#define USE_HARDCODED_TOKEN true',
-          '#define USE_HARDCODED_TOKEN false  // OTA Mode: Reads credentials from NVS'
-        );
-      }
-
-      // Set default Farm Type in EEPROM default
-      if (farmType === 'broiler') {
-        // Update the default farmType to BROILER
-        firmwareCode = firmwareCode.replace(
-          '.farmType = FARM_PROFILE_LAYER,  // Default: Layer',
-          '.farmType = FARM_PROFILE_BROILER,  // Default: Broiler (auto-configured)'
-        );
-        
-        // Also set initial broiler age to Day 1
-        firmwareCode = firmwareCode.replace(
-          '.chickAgeDays = 1,                // Default: Day 1',
-          '.chickAgeDays = 1,                // Default: Day 1 (auto-configured for broiler)'
-        );
-      }
-
-      // Toggle default safety engine state baked into firmware
-      // (cloud /config can later override at runtime)
-      if (!includeSafetyEngine) {
-        firmwareCode = firmwareCode.replace(
-          /bool\s+safetyEngineEnabled\s*=\s*true\s*;[^\n]*/,
-          'bool safetyEngineEnabled = false;          // ⚠️ DISABLED at build time (Hard Floor 42°C still active)'
-        );
-      }
-
-      // Add a header comment showing the configuration
-      const modeLabel = firmwareMode === 'ota' ? 'OTA-READY (NVS Mode)' : 'HARDCODED (First-time Setup)';
-      const safetyLabel = includeSafetyEngine ? 'FULL SAFETY ENGINE' : 'LITE (Hard Floor only — 42°C)';
-      const configHeader = `
-/*
- * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  🔧 AUTO-CONFIGURED BY FARMEYE GENERATOR                             ║
- * ╠═══════════════════════════════════════════════════════════════════════╣
- * ║  Mode: ${modeLabel.padEnd(57)}║
- * ║  Farm Type: ${(farmType === 'layer' ? 'LAYER (Egg)' : 'BROILER (Meat)').padEnd(54)}║${firmwareMode === 'hardcoded' ? `
- * ║  WiFi SSID: ${ssid.trim().padEnd(54)}║
- * ║  Device Token: ${deviceToken.trim().substring(0, 50).padEnd(50)}...║
- * ║  Shed: ${(shedName || 'Default Shed').padEnd(58)}║` : `
- * ║  📦 Credentials will be loaded from NVS storage                       ║
- * ║  ⚠️ Device must be first provisioned with hardcoded firmware          ║`}
- * ║  Safety: ${safetyLabel.padEnd(55)}║
- * ║  Generated: ${new Date().toISOString().padEnd(53)}║
- * ╠═══════════════════════════════════════════════════════════════════════╣${firmwareMode === 'ota' ? `
- * ║  📋 OTA INSTRUCTIONS:                                                 ║
- * ║  1. Arduino IDE → Sketch → Export Compiled Binary                    ║
- * ║  2. Upload the .bin file to OTA Firmware section                     ║
- * ║  3. Push to devices - they'll auto-update!                           ║` : `
- * ║  ⚠️ এই ফাইল সরাসরি Arduino IDE তে Upload করুন!                       ║
- * ║  ⚠️ Upload this file directly in Arduino IDE!                        ║`}
- * ╚═══════════════════════════════════════════════════════════════════════╝
- */
-
-`;
-      firmwareCode = configHeader + firmwareCode;
-
-      // Helper to trigger a file download (robust: uses click + revokeObjectURL after delay)
-      const triggerDownload = (content: string, filename: string): Promise<void> => {
-        return new Promise((resolve) => {
-          const blob = new Blob([content], { type: 'application/octet-stream' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.style.display = 'none';
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            resolve();
-          }, 500);
-        });
-      };
-
-      // Download the .ino file first, then safety header sequentially
-      // Sequential downloads avoid pop-up blocker issues
-      const inoFilename = firmwareMode === 'ota' 
-        ? `farmeye-ota-${farmType}-${Date.now()}.ino`
-        : `farmeye-${farmType}-${Date.now()}.ino`;
-      
-      await triggerDownload(firmwareCode, inoFilename);
-
-      // Then download the required safety engine header file
+      // Then the required safety engine header (sequential — avoids popup blocking)
       try {
         const headerResponse = await fetch('/esp32-safety-engine.h?t=' + Date.now());
         if (headerResponse.ok) {
           const headerCode = await headerResponse.text();
-          // Wait a moment before second download to avoid browser blocking
-          await new Promise(r => setTimeout(r, 800));
+          await new Promise((r) => setTimeout(r, 800));
           await triggerDownload(headerCode, 'esp32-safety-engine.h');
         }
       } catch (headerErr) {
         console.warn('Could not download safety header:', headerErr);
       }
-      
+
       setVerifyError(null);
-      const successMsg = firmwareMode === 'ota' ? t.downloadOTASuccess : t.downloadSuccess;
       toast.success(
-        (language === 'bn' 
+        language === 'bn'
           ? '✅ ফার্মওয়্যার + Safety Engine হেডার ডাউনলোড হয়েছে! দুটি ফাইল একই ফোল্ডারে রাখুন।'
-          : '✅ Firmware + Safety Engine header downloaded! Keep both files in the same folder.'),
-        { duration: 6000 }
+          : '✅ Firmware + Safety Engine header downloaded! Keep both files in the same folder.',
+        { duration: 6000 },
       );
     } catch (error) {
       console.error('Download error:', error);
@@ -607,8 +209,8 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
     }
   };
 
-  const isValid = firmwareMode === 'ota' 
-    ? true  // OTA mode always valid
+  const isValid = firmwareMode === 'ota'
+    ? true
     : ssid.trim().length > 0 && password.length >= 8 && deviceToken.trim().length >= 10;
 
   return (
@@ -619,8 +221,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           {t.title}
         </CardTitle>
         <p className="text-xs text-muted-foreground">{t.subtitle}</p>
-        
-        {/* Firmware Features Summary */}
+
         <div className="mt-3 p-3 bg-muted/50 rounded-lg">
           <p className="text-xs font-medium mb-2 flex items-center gap-1">
             <Cpu className="h-3 w-3" />
@@ -636,410 +237,79 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
-        {/* Admin Farm Selector */}
         {showFarmSelector && (
-          <div className="space-y-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-            <div className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
-              <Home className="h-4 w-4" />
-              {language === 'bn' ? '🏠 খামার সিলেক্ট করুন' : '🏠 Select Farm'}
-            </div>
-            <Select
-              value={selectedFarmId}
-              onValueChange={(value) => {
-                setSelectedFarmId(value);
-                setAutoLoaded(false);
-                setDeviceToken('');
-                setShedId('');
-                setShedName('');
-                setFarmId('');
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={language === 'bn' ? 'একটি খামার বেছে নিন...' : 'Choose a farm...'} />
-              </SelectTrigger>
-              <SelectContent>
-                {allFarms.map((farm) => (
-                  <SelectItem key={farm.id} value={farm.id}>
-                    <div className="flex flex-col">
-                      <span>{farm.name}</span>
-                      {farm.owner_phone && (
-                        <span className="text-xs text-muted-foreground">{farm.owner_phone}</span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {allFarms.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'কোনো খামার পাওয়া যায়নি' : 'No farms found'}
-              </p>
-            )}
-            {selectedFarmId && !deviceToken && autoLoaded && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                ⚠️ {language === 'bn' 
-                  ? 'এই খামারে কোনো ডিভাইস টোকেন নেই। প্রথমে Setup Wizard সম্পন্ন করতে হবে।' 
-                  : 'No device token found for this farm. Setup Wizard must be completed first.'}
-              </p>
-            )}
-          </div>
+          <FarmSelectorSection
+            language={language}
+            allFarms={allFarms}
+            selectedFarmId={selectedFarmId}
+            onSelect={selectFarm}
+            deviceToken={deviceToken}
+            autoLoaded={autoLoaded}
+          />
         )}
 
-        {/* Hardware Version selector (asks user what device they have) */}
-        <div className="space-y-2 pb-2 border-b">
-          <Label className="text-sm flex items-center gap-2">
-            <Cpu className="h-3 w-3" />
-            {language === 'bn' ? 'এই device-এর Hardware Version' : 'This Device Hardware Version'}
-          </Label>
-          <Select value={hardwareVersion} onValueChange={(v) => { setHardwareVersion(v as HardwareVersion); setMismatchAck(false); }}>
-            <SelectTrigger>
-              <SelectValue placeholder={language === 'bn' ? 'নির্বাচন করুন...' : 'Select...'} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="unknown">
-                {language === 'bn' ? '— নির্বাচন করুন —' : '— Select —'}
-              </SelectItem>
-              <SelectItem value="v8">
-                v8 Hardware (Exhaust=25, Heater=14, DHT22, MQ-135)
-              </SelectItem>
-              <SelectItem value="v10">
-                v10 Hardware (Exhaust=5, Heater=21, SHT31/BH1750/ZE03)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-muted-foreground">
-            {language === 'bn'
-              ? 'বোর্ডের relay GPIO ও সেন্সর দেখে মিলিয়ে নিন। ভুল হলে relay উল্টো trigger হবে।'
-              : 'Match by relay GPIO + sensors on the board. Wrong choice will trigger relays incorrectly.'}
-          </p>
-        </div>
+        <VersionSelectors
+          language={language}
+          hardwareVersion={hardwareVersion}
+          setHardwareVersion={setHardwareVersion}
+          firmwareVersion={firmwareVersion}
+          setFirmwareVersion={setFirmwareVersion}
+          isMismatch={isMismatch}
+          mismatchAck={mismatchAck}
+          setMismatchAck={setMismatchAck}
+        />
 
-        {/* Firmware ↔ Hardware mismatch warning */}
-        {isMismatch && (
-          <div className="border-2 border-destructive bg-destructive/10 rounded-lg p-3 space-y-2">
-            <p className="text-sm font-semibold text-destructive flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              {language === 'bn' ? 'Mismatch সতর্কতা' : 'Mismatch Warning'}
-            </p>
-            <p className="text-xs text-foreground">
-              {language === 'bn'
-                ? `আপনার device hardware ${hardwareVersion.toUpperCase()}, কিন্তু firmware ${firmwareVersion.toUpperCase()} select করা। এই combination flash করলে relay/সেন্সর ভুল GPIO-তে কাজ করবে — fans হিটারের জায়গায়, light alarm-এর জায়গায় চলতে পারে।`
-                : `Your device hardware is ${hardwareVersion.toUpperCase()} but firmware ${firmwareVersion.toUpperCase()} is selected. Flashing this combination will route relays/sensors to wrong GPIOs — fans may toggle the heater, lights may trigger the alarm.`}
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                onClick={() => setFirmwareVersion(hardwareVersion as FirmwareVersion)}
-              >
-                {language === 'bn' ? `Firmware ${hardwareVersion.toUpperCase()}-এ পরিবর্তন করুন` : `Switch firmware to ${hardwareVersion.toUpperCase()}`}
-              </Button>
-              <label className="flex items-center gap-2 text-[11px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={mismatchAck}
-                  onChange={(e) => setMismatchAck(e.target.checked)}
-                  className="rounded"
-                />
-                {language === 'bn'
-                  ? 'আমি জানি, তবুও download করব (override)'
-                  : 'I understand, download anyway (override)'}
-              </label>
-            </div>
-          </div>
-        )}
+        <FirmwareModeSection
+          language={language}
+          t={t}
+          firmwareMode={firmwareMode}
+          setFirmwareMode={setFirmwareMode}
+        />
 
-        {/* Firmware Version selector (v8 Stable vs v10 Beta) */}
-        <div className="space-y-2 pb-2 border-b">
-          <Label className="text-sm flex items-center gap-2">
-            <Cpu className="h-3 w-3" />
-            {language === 'bn' ? 'ফার্মওয়্যার ভার্সন' : 'Firmware Version'}
-          </Label>
-          <Select value={firmwareVersion} onValueChange={(v) => setFirmwareVersion(v as FirmwareVersion)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="v8">
-                v8.0.0 — Stable (legacy GPIO: Exhaust=25, Heater=14)
-              </SelectItem>
-              <SelectItem value="v10">
-                v10.0.0-beta.1 — Beta (Phase 9 sensors, Exhaust=5, Heater=21)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          {firmwareVersion === 'v10' ? (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400">
-              {language === 'bn'
-                ? '⚠️ v10 Beta — শুধুমাত্র নতুন v10 hardware (Phase 9 pin map)। পুরাতন মাঠের device-এ flash করবেন না। OTA mode এখনো support নেই।'
-                : '⚠️ v10 Beta — only for new v10 hardware (Phase 9 pin map). Do NOT flash on existing field devices. OTA mode not yet supported.'}
-            </p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">
-              {language === 'bn'
-                ? 'মাঠে চলা সব device-এর জন্য নিরাপদ default।'
-                : 'Safe default for all field-deployed devices.'}
-            </p>
-          )}
-        </div>
-
-        {/* Step 1: Firmware Mode */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-primary">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">1</span>
-            {t.step1}
-          </div>
-          
-          <div className="pl-7 space-y-3">
-            <Label className="text-sm flex items-center gap-2">
-              <Settings className="h-3 w-3" />
-              {t.firmwareModeLabel}
-            </Label>
-            <div className="grid gap-2">
-              <button
-                type="button"
-                onClick={() => setFirmwareMode('hardcoded')}
-                className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
-                  firmwareMode === 'hardcoded' 
-                    ? 'border-primary bg-primary/10' 
-                    : 'border-border hover:bg-muted/50'
-                }`}
-              >
-                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                  firmwareMode === 'hardcoded' ? 'border-primary' : 'border-muted-foreground'
-                }`}>
-                  {firmwareMode === 'hardcoded' && <div className="w-2 h-2 rounded-full bg-primary" />}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{t.hardcodedMode}</p>
-                  <p className="text-xs text-muted-foreground">{t.hardcodedDesc}</p>
-                </div>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setFirmwareMode('ota')}
-                className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-colors ${
-                  firmwareMode === 'ota' 
-                    ? 'border-primary bg-primary/10' 
-                    : 'border-border hover:bg-muted/50'
-                }`}
-              >
-                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                  firmwareMode === 'ota' ? 'border-primary' : 'border-muted-foreground'
-                }`}>
-                  {firmwareMode === 'ota' && <div className="w-2 h-2 rounded-full bg-primary" />}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm flex items-center gap-1">
-                    {t.otaMode}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Info className="h-3 w-3 text-muted-foreground" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <p>{language === 'bn' 
-                            ? 'ডিভাইসে প্রথমবার হার্ডকোডেড ফার্মওয়্যার ফ্ল্যাশ করুন। তারপর এই OTA ফার্মওয়্যার সব ডিভাইসে আপডেট হিসেবে পাঠাতে পারবেন।'
-                            : 'First flash hardcoded firmware to device. Then this OTA firmware can be pushed as an update to all devices.'
-                          }</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </p>
-                  <p className="text-xs text-muted-foreground">{t.otaDesc}</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 2: WiFi Settings (only for hardcoded mode) */}
         {firmwareMode === 'hardcoded' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">2</span>
-              {t.step2}
-            </div>
-            
-            {/* WiFi SSID */}
-            <div className="space-y-2 pl-7">
-              <Label htmlFor="ssid" className="text-sm flex items-center gap-2">
-                <Wifi className="h-3 w-3" />
-                {t.wifiName}
-              </Label>
-              <Input
-                id="ssid"
-                value={ssid}
-                onChange={(e) => {
-                  setSsid(e.target.value);
-                  if (errors.ssid) setErrors(prev => ({ ...prev, ssid: '' }));
-                }}
-                placeholder={t.wifiNamePlaceholder}
-                className={errors.ssid ? 'border-destructive' : ''}
-                maxLength={32}
-              />
-              {errors.ssid && <p className="text-xs text-destructive">{errors.ssid}</p>}
-            </div>
-
-            {/* WiFi Password */}
-            <div className="space-y-2 pl-7">
-              <Label htmlFor="password" className="text-sm">
-                🔐 {t.wifiPassword}
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
-                  }}
-                  placeholder={t.wifiPasswordPlaceholder}
-                  className={`pr-10 ${errors.password ? 'border-destructive' : ''}`}
-                  maxLength={64}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
-            </div>
-          </div>
+          <WifiTokenSection
+            language={language}
+            t={t}
+            ssid={ssid}
+            setSsid={setSsid}
+            password={password}
+            setPassword={setPassword}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            deviceToken={deviceToken}
+            setDeviceToken={setDeviceToken}
+            errors={errors}
+            clearError={(key) => setErrors((prev) => ({ ...prev, [key]: '' }))}
+            autoLoaded={autoLoaded}
+          />
         )}
 
-        {/* Step 3: Device Token (only for hardcoded mode) */}
-        {firmwareMode === 'hardcoded' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">3</span>
-              {t.step3}
-            </div>
-            
-            <div className="space-y-2 pl-7">
-              <Label htmlFor="token" className="text-sm">
-                🔑 {t.deviceToken}
-              </Label>
-              <Input
-                id="token"
-                value={deviceToken}
-                onChange={(e) => {
-                  setDeviceToken(e.target.value);
-                  if (errors.deviceToken) setErrors(prev => ({ ...prev, deviceToken: '' }));
-                }}
-                placeholder={t.deviceTokenPlaceholder}
-                className={`font-mono text-sm ${errors.deviceToken ? 'border-destructive' : ''}`}
-                maxLength={100}
-              />
-              {errors.deviceToken && <p className="text-xs text-destructive">{errors.deviceToken}</p>}
-              {autoLoaded && (
-              <div className="flex items-center gap-1.5 p-2 bg-accent/50 border border-primary/30 rounded-lg">
-                  <Database className="h-3 w-3 text-primary" />
-                  <p className="text-xs text-primary">
-                    {language === 'bn' 
-                      ? '✅ ডিভাইস টোকেন, Farm ID ও Shed ID স্বয়ংক্রিয়ভাবে লোড হয়েছে!'
-                      : '✅ Device Token, Farm ID & Shed ID auto-loaded from database!'}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Farm Type & Shed */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-primary">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">{firmwareMode === 'hardcoded' ? '4' : '2'}</span>
-            {t.step4}
-          </div>
-          
-          <div className="pl-7 space-y-3">
-            <div className="space-y-2">
-              <Label className="text-sm flex items-center gap-2">
-                <Settings className="h-3 w-3" />
-                {t.farmTypeLabel}
-              </Label>
-              <Select value={farmType} onValueChange={(v: FarmType) => setFarmType(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="layer">{t.layerFarm}</SelectItem>
-                  <SelectItem value="broiler">{t.broilerFarm}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="shedName" className="text-xs">{t.shedNameLabel}</Label>
-                <Input
-                  id="shedName"
-                  value={shedName}
-                  onChange={(e) => setShedName(e.target.value)}
-                  placeholder={t.shedNamePlaceholder}
-                  className="text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="shedId" className="text-xs">{t.shedIdLabel}</Label>
-                <Input
-                  id="shedId"
-                  value={shedId}
-                  onChange={(e) => setShedId(e.target.value)}
-                  placeholder={t.shedIdPlaceholder}
-                  className="text-sm font-mono"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Safety Engine inclusion (Layer + Broiler) */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-primary">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">!</span>
-            {language === 'bn' ? 'সেফটি ইঞ্জিন' : 'Safety Engine'}
-          </div>
-          <div className={`pl-7`}>
-            <div className={`flex items-start justify-between gap-3 p-3 rounded-lg border ${includeSafetyEngine ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}`}>
-              <div className="flex-1">
-                <p className="text-sm font-medium">
-                  {includeSafetyEngine
-                    ? (language === 'bn' ? '🛡️ সম্পূর্ণ সেফটি ইঞ্জিন সহ' : '🛡️ Include Full Safety Engine')
-                    : (language === 'bn' ? '⚠️ সেফটি ইঞ্জিন ছাড়া (Lite)' : '⚠️ Without Safety Engine (Lite)')}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {language === 'bn'
-                    ? 'বন্ধ করলেও ৪২°C+ এ ফ্যান+অ্যালার্ম auto চালু হবে (Hard Floor)'
-                    : 'Even when off, fan + alarm auto-trigger at 42°C+ (Hard Floor stays active)'}
-                </p>
-              </div>
-              <Switch checked={includeSafetyEngine} onCheckedChange={setIncludeSafetyEngine} />
-            </div>
-          </div>
-        </div>
+        <FarmTypeSafetySection
+          language={language}
+          t={t}
+          firmwareMode={firmwareMode}
+          farmType={farmType}
+          setFarmType={setFarmType}
+          shedName={shedName}
+          setShedName={setShedName}
+          shedId={shedId}
+          setShedId={setShedId}
+          includeSafetyEngine={includeSafetyEngine}
+          setIncludeSafetyEngine={setIncludeSafetyEngine}
+        />
 
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">{firmwareMode === 'hardcoded' ? '5' : '3'}</span>
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs">
+              {firmwareMode === 'hardcoded' ? '5' : '3'}
+            </span>
             {t.step5}
           </div>
-          
+
           <div className="pl-7 space-y-3">
-            <Button 
-              className="w-full gap-2"
-              size="lg"
-              disabled={!isValid || isDownloading}
-              onClick={openConfirm}
-            >
+            <Button className="w-full gap-2" size="lg" disabled={!isValid || isDownloading} onClick={openConfirm}>
               {isDownloading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1054,144 +324,38 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
             </Button>
 
             {verifyError && (
-              <div className="space-y-2 p-3 bg-destructive/10 border border-destructive/40 rounded-lg">
-                <p className="text-sm font-semibold text-destructive">
-                  {language === 'bn'
-                    ? `❌ যাচাই ব্যর্থ — প্রত্যাশিত ${verifyError.expected.toUpperCase()}, পাওয়া গেছে ${verifyError.detected === 'unknown' ? 'অজানা' : verifyError.detected.toUpperCase()}`
-                    : `❌ Verification failed — expected ${verifyError.expected.toUpperCase()}, got ${verifyError.detected === 'unknown' ? 'unknown' : verifyError.detected.toUpperCase()}`}
-                </p>
-                <ol className="text-xs text-destructive/90 list-decimal pl-5 space-y-1">
-                  <li>
-                    {language === 'bn'
-                      ? 'Browser cache clear করুন (Ctrl+Shift+R বা Cmd+Shift+R দিয়ে hard reload)।'
-                      : 'Clear browser cache (hard reload with Ctrl+Shift+R or Cmd+Shift+R).'}
-                  </li>
-                  <li>
-                    {language === 'bn'
-                      ? 'Service Worker disable / unregister করুন (DevTools → Application → Service Workers → Unregister)।'
-                      : 'Unregister service worker (DevTools → Application → Service Workers → Unregister).'}
-                  </li>
-                  <li>
-                    {language === 'bn'
-                      ? `নিশ্চিত করুন hardware ও firmware version মিলেছে (এখন: ${verifyError.expected.toUpperCase()})।`
-                      : `Confirm hardware and firmware versions match (now: ${verifyError.expected.toUpperCase()}).`}
-                  </li>
-                  <li>
-                    {language === 'bn'
-                      ? 'নিচের Retry বোতাম চাপুন — fresh fetch হবে।'
-                      : 'Press Retry below — a fresh fetch will run.'}
-                  </li>
-                  <li>
-                    {language === 'bn'
-                      ? 'এখনও fail করলে অন্য network/incognito tab থেকে চেষ্টা করুন বা support-কে জানান।'
-                      : 'If it still fails, try another network/incognito tab or contact support.'}
-                  </li>
-                </ol>
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={isDownloading}
-                    onClick={() => { setVerifyError(null); openConfirm(); }}
-                  >
-                    {isDownloading ? (
-                      <><Loader2 className="h-3 w-3 animate-spin" /> {t.downloading}</>
-                    ) : (
-                      <>🔄 {language === 'bn' ? 'পুনরায় চেষ্টা করুন (Retry)' : 'Retry'}</>
-                    )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setVerifyError(null)}
-                  >
-                    {language === 'bn' ? 'বন্ধ করুন' : 'Dismiss'}
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground break-all pt-1">
-                  URL: {verifyError.url}
-                </p>
-              </div>
+              <VerifyErrorGuide
+                language={language}
+                t={t}
+                verifyError={verifyError}
+                isDownloading={isDownloading}
+                onRetry={() => { setVerifyError(null); openConfirm(); }}
+                onDismiss={() => setVerifyError(null)}
+              />
             )}
+
             {isValid && (
               <div className="flex items-start gap-2 p-3 bg-primary/10 border border-primary/30 rounded-lg">
                 <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-primary">
-                  {firmwareMode === 'ota' ? t.readyToOTA : t.readyToUpload}
-                </p>
+                <p className="text-xs text-primary">{firmwareMode === 'ota' ? t.readyToOTA : t.readyToUpload}</p>
               </div>
             )}
           </div>
         </div>
       </CardContent>
 
-      <AlertDialog open={confirmOpen} onOpenChange={(o) => { if (!isDownloading) setConfirmOpen(o); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              {language === 'bn' ? 'ডাউনলোডের আগে নিশ্চিত করুন' : 'Confirm before download'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {language === 'bn'
-                ? 'ডাউনলোডের পরে ফাইলের version tag ও GPIO map auto-verify হবে।'
-                : 'After fetch, the file\'s version tag and GPIO map will be auto-verified.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-2 rounded-md border p-2">
-              <div>
-                <div className="text-xs text-muted-foreground">{language === 'bn' ? 'হার্ডওয়্যার' : 'Hardware'}</div>
-                <div className="font-semibold">{hardwareVersion.toUpperCase()}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">{language === 'bn' ? 'ফার্মওয়্যার' : 'Firmware'}</div>
-                <div className="font-semibold">{firmwareVersion.toUpperCase()}</div>
-              </div>
-            </div>
-            {isMismatch && (
-              <p className="text-destructive font-medium">
-                {language === 'bn'
-                  ? '⚠️ Hardware ও Firmware version মেলেনি — ভুল আপলোড করলে রিলে/সেন্সর কাজ করবে না।'
-                  : '⚠️ Hardware and firmware versions do not match — wrong upload will break relays/sensors.'}
-              </p>
-            )}
-            <label className="flex items-start gap-2 cursor-pointer pt-1">
-              <Checkbox checked={finalAck} onCheckedChange={(v) => setFinalAck(v === true)} />
-              <span className="text-sm">
-                {language === 'bn'
-                  ? `আমি নিশ্চিত আমার ESP32 wiring ${firmwareVersion.toUpperCase()} অনুযায়ী এবং আমি ${firmwareVersion.toUpperCase()} ফার্মওয়্যার আপলোড করতে চাই।`
-                  : `I confirm my ESP32 wiring matches ${firmwareVersion.toUpperCase()} and I want to upload ${firmwareVersion.toUpperCase()} firmware.`}
-              </span>
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDownloading}>
-              {language === 'bn' ? 'বাতিল' : 'Cancel'}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!isDownloadAllowed({ confirmOpen, finalAck, isDownloading })}
-              onClick={(e) => {
-                e.preventDefault();
-                const ran = tryDownload(
-                  { confirmOpen, finalAck, isDownloading },
-                  () => {
-                    setConfirmOpen(false);
-                    downloadPreparedFirmware();
-                  },
-                );
-                if (!ran) {
-                  toast.error(language === 'bn'
-                    ? 'নিশ্চিতকরণ চেকবক্স টিক দিন'
-                    : 'Please tick the confirmation checkbox');
-                }
-              }}
-            >
-              {language === 'bn' ? 'Verify ও ডাউনলোড' : 'Verify & Download'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDownloadDialog
+        language={language}
+        open={confirmOpen}
+        setOpen={setConfirmOpen}
+        isDownloading={isDownloading}
+        finalAck={finalAck}
+        setFinalAck={setFinalAck}
+        hardwareVersion={hardwareVersion}
+        firmwareVersion={firmwareVersion}
+        isMismatch={isMismatch}
+        onConfirmed={downloadPreparedFirmware}
+      />
     </Card>
   );
 }
