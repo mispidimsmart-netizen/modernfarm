@@ -84,6 +84,15 @@ export function BatchQrSection() {
   const { data = [], isLoading } = useBatchTracePages(selectedFarmId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [filter, setFilter] = useState<string>('active');
+
+  const activeCount = data.filter((p) => p.isActive).length;
+
+  const visible = useMemo(() => {
+    if (filter === 'all') return data;
+    if (filter === 'active') return activeCount ? data.filter((p) => p.isActive) : data;
+    return data.filter((p) => p.batch_id === filter);
+  }, [data, filter, activeCount]);
 
   const onToggle = async (page: BatchPage, next: boolean) => {
     const { error } = await supabase.from('batch_public_pages').update({ is_published: next }).eq('id', page.id);
@@ -107,12 +116,35 @@ export function BatchQrSection() {
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="h-8 w-[220px] text-xs">
+              <SelectValue placeholder="ব্যাচ নির্বাচন" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
+              <SelectItem value="all">সব ব্যাচ</SelectItem>
+              {data.map((p) => (
+                <SelectItem key={p.batch_id} value={p.batch_id}>
+                  {p.batchName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {filter === 'active' && !activeCount && !!data.length && (
+          <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
+        )}
+
         {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
-        {!isLoading && !data.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
-        {data.map((p) => (
+        {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
+        {visible.map((p) => (
           <QrCard key={p.id} page={p} onToggle={onToggle} />
         ))}
       </CardContent>
     </Card>
   );
 }
+
