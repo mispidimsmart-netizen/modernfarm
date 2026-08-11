@@ -176,68 +176,27 @@ export function SettingsPage() {
             <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-primary-foreground/10" />
             
             <div className="relative flex items-center gap-4">
-              <ProfileAvatarUpload />
+              <ProfileAvatarUpload readOnly />
               <div className="flex-1 min-w-0">
-                {isEditingName ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={editedFarmName}
-                      onChange={(e) => setEditedFarmName(e.target.value)}
-                      className="h-8 bg-primary-foreground/20 border-primary-foreground/30 text-primary-foreground placeholder:text-primary-foreground/50 text-lg font-bold"
-                      placeholder={language === 'bn' ? 'ফার্মের নাম' : 'Farm name'}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveName();
-                        if (e.key === 'Escape') handleCancelEdit();
-                      }}
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={handleSaveName}
-                      disabled={updateProfile.isPending}
-                      className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
-                    >
-                      <Check size={16} />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={handleCancelEdit}
-                      className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="text-lg font-bold text-primary-foreground truncate">{profile?.farm_name || 'Smart Farm'}</p>
-                    {isOwner && (
-                      <button
-                        onClick={handleEditName}
-                        className="p-1 rounded-md hover:bg-primary-foreground/20 transition-colors"
-                      >
-                        <Pencil size={14} className="text-primary-foreground/80" />
-                      </button>
-                    )}
-                    <Badge 
-                      className={`text-xs shrink-0 ${
-                        isSuperAdmin 
-                          ? 'bg-purple-500/20 text-purple-100 border-purple-400/30'
-                          : isOwner 
-                            ? 'bg-green-500/20 text-green-100 border-green-400/30' 
-                            : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/30'
-                      }`}
-                    >
-                      <Shield className="h-3 w-3 mr-1" />
-                      {isSuperAdmin 
-                        ? (language === 'bn' ? 'অ্যাডমিন' : 'Admin')
+                <div className="flex items-center gap-2">
+                  <p className="text-lg font-bold text-primary-foreground truncate">{profile?.farm_name || 'Smart Farm'}</p>
+                  <Badge 
+                    className={`text-xs shrink-0 ${
+                      isSuperAdmin 
+                        ? 'bg-purple-500/20 text-purple-100 border-purple-400/30'
                         : isOwner 
-                          ? t.owner[language] 
-                          : t.worker[language]}
-                    </Badge>
-                  </div>
-                )}
+                          ? 'bg-green-500/20 text-green-100 border-green-400/30' 
+                          : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/30'
+                    }`}
+                  >
+                    <Shield className="h-3 w-3 mr-1" />
+                    {isSuperAdmin 
+                      ? (language === 'bn' ? 'অ্যাডমিন' : 'Admin')
+                      : isOwner 
+                        ? t.owner[language] 
+                        : t.worker[language]}
+                  </Badge>
+                </div>
                 {profile?.user_name && (
                   <p className="text-sm text-primary-foreground/90 truncate">
                     <User size={12} className="inline mr-1 -mt-0.5" />
