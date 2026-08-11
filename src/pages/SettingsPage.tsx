@@ -238,6 +238,12 @@ export function SettingsPage() {
                     </Badge>
                   </div>
                 )}
+                {profile?.user_name && (
+                  <p className="text-sm text-primary-foreground/90 truncate">
+                    <User size={12} className="inline mr-1 -mt-0.5" />
+                    {profile.user_name}
+                  </p>
+                )}
                 <p className="text-sm text-primary-foreground/80">
                   {profile?.phone || displayPhone || (language === 'bn' ? 'মোবাইল নং যোগ করুন' : 'Add mobile number')}
                 </p>
