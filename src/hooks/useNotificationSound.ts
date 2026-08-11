@@ -123,7 +123,7 @@ export const useNotificationSound = () => {
           played++;
           // Small gap between repeats so danger triple-beep is intelligible.
           setTimeout(() => {
-            try { el.currentTime = 0; el.play().catch(() => {}); } catch {}
+            try { el.currentTime = 0; el.play().catch(() => undefined); } catch { /* autoplay blocked */ }
           }, type === 'danger' ? 250 : 150);
         } else {
           el.removeEventListener('ended', onEnded);

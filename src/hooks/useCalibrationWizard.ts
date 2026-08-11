@@ -367,7 +367,7 @@ export function useCalibrationWizard(deviceTokenId?: string, shedId?: string) {
     });
 
     // Sample for 30 seconds
-    let samples: number[] = [currentNH3];
+    const samples: number[] = [currentNH3];
     for (let i = 0; i <= 30; i++) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       setTestProgress((i / 30) * 100);

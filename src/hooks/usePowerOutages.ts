@@ -181,12 +181,3 @@ export function formatDuration(seconds: number, language: 'bn' | 'en' = 'en'): s
     ? `${days} দিন ${remainingHours} ঘণ্টা` 
     : `${days}d ${remainingHours}h`;
 }
-
-// Calculate ongoing outage duration
-export function useOngoingOutageDuration(outage: PowerOutage | null) {
-  if (!outage) return 0;
-  
-  const startTime = new Date(outage.started_at).getTime();
-  const now = Date.now();
-  return Math.floor((now - startTime) / 1000);
-}

@@ -71,7 +71,7 @@ export function useSendDeviceCommand() {
       // the moment the ESP32 comes back online. Prevents "expired" toasts and
       // lost intent while WiFi/power is being restored.
       try {
-        let hq: any = supabase
+        const hq: any = supabase
           .from('device_health')
           .select('is_online,last_seen_at')
           .eq('user_id', user.id)
@@ -274,7 +274,7 @@ export function useSendDeviceCommand() {
       const startedAt = Date.now();
       const timeoutMs = 12000;
       const pollMs = 1500;
-      let cancelled = false;
+      const cancelled = false;
 
       const poll = async () => {
         if (cancelled) return;
@@ -315,7 +315,7 @@ export function useSendDeviceCommand() {
           if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
           const { data: dh } = await hq.order('last_seen_at', { ascending: false }).limit(1).maybeSingle();
           isOnline = !!dh?.is_online;
-        } catch {}
+        } catch { /* health lookup is best-effort */ }
 
         // Only accept actual-match if it was updated AFTER we sent the command
         // (prevents false "confirmed" toast when device is offline and column is stale).

@@ -113,21 +113,3 @@ export function usePermissions(): PermissionsState {
     };
   }, [platform, legacyRole, farmChecks]);
 }
-
-/** Imperative check for an arbitrary farm id (e.g., in lists). */
-export async function checkCanManageFarm(userId: string, farmId: string): Promise<boolean> {
-  const { data } = await supabase.rpc('can_manage_farm' as any, {
-    _user_id: userId,
-    _farm_id: farmId,
-  });
-  return !!data;
-}
-
-/** Imperative check for org-level management. */
-export async function checkCanManageOrg(userId: string, orgId: string): Promise<boolean> {
-  const { data } = await supabase.rpc('can_manage_org' as any, {
-    _user_id: userId,
-    _org_id: orgId,
-  });
-  return !!data;
-}

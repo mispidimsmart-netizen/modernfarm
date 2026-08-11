@@ -157,27 +157,6 @@ export function useAllDeviceHealth() {
   return query;
 }
 
-// Fetch device health for a specific shed
-export function useDeviceHealthByShed(shedId: string | null) {
-  const { user } = useAuth();
-  
-  return useQuery({
-    queryKey: ['device_health', 'shed', shedId],
-    queryFn: async () => {
-      if (!user || !shedId) return [];
-      const { data, error } = await supabase
-        .from('device_health')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('shed_id', shedId);
-      if (error) throw error;
-      return data as DeviceHealth[];
-    },
-    enabled: !!user && !!shedId,
-  });
-}
-
-// Add a new device token
 export function useAddDeviceToken() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
