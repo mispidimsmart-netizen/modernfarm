@@ -84,6 +84,8 @@ export function DataTraceSection() {
           </>
         )}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
