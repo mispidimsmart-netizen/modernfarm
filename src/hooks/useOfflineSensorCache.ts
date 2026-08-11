@@ -1,54 +1,35 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { SensorData } from '@/lib/types';
+import {
+  classifyFreshness,
+  deserializeSensorCache,
+  sensorCacheKey,
+  serializeSensorCache,
+  type CachedSensorData,
+  type SensorFreshness,
+} from '@/lib/sensorCache';
 
 /**
- * Offline-first sensor cache.
+ * Offline-first sensor cache (React adapter).
  *
  * - Persists the last known SensorData per user to localStorage so the UI can
  *   show the most recent reading even when:
  *     • the browser itself is offline (no network), OR
  *     • the ESP32 is offline (no fresh INSERT into sensor_readings).
- * - On reconnect (browser online + new realtime row arriving) the live hook
- *   will replace the cached value automatically and re-cache it.
+ * - On reconnect the live hook replaces the cached value and re-caches it.
  *
- * Note: this is a UI-only resilience layer. Actual safety decisions are made
- * by the ESP32 (Hardware-as-Source-of-Truth invariant).
+ * Pure serialization/freshness logic lives in @/lib/sensorCache.
+ * UI-only resilience layer — safety decisions stay on the ESP32.
  */
 
-const KEY_PREFIX = 'farm_sensor_cache_v1::';
-
-export interface CachedSensorData extends SensorData {
-  cachedAt: number; // epoch ms when written to localStorage
-}
-
-interface SerializedCache {
-  temperature: number;
-  humidity: number;
-  ammonia: number;
-  waterUsage: number;
-  timestamp: string; // ISO
-  cachedAt: number;
-}
-
-function storageKey(userId: string | null | undefined) {
-  return userId ? `${KEY_PREFIX}${userId}` : null;
-}
+export type { CachedSensorData, SensorFreshness };
+export { classifyFreshness };
 
 export function readCachedSensorData(userId: string | null | undefined): CachedSensorData | null {
-  const key = storageKey(userId);
+  const key = sensorCacheKey(userId);
   if (!key || typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed: SerializedCache = JSON.parse(raw);
-    return {
-      temperature: parsed.temperature,
-      humidity: parsed.humidity,
-      ammonia: parsed.ammonia,
-      waterUsage: parsed.waterUsage,
-      timestamp: new Date(parsed.timestamp),
-      cachedAt: parsed.cachedAt,
-    };
+    return deserializeSensorCache(window.localStorage.getItem(key));
   } catch {
     return null;
   }
@@ -58,18 +39,10 @@ export function writeCachedSensorData(
   userId: string | null | undefined,
   data: SensorData
 ): void {
-  const key = storageKey(userId);
+  const key = sensorCacheKey(userId);
   if (!key || typeof window === 'undefined') return;
   try {
-    const payload: SerializedCache = {
-      temperature: Number(data.temperature) || 0,
-      humidity: Number(data.humidity) || 0,
-      ammonia: Number(data.ammonia) || 0,
-      waterUsage: Number(data.waterUsage) || 0,
-      timestamp: (data.timestamp instanceof Date ? data.timestamp : new Date(data.timestamp)).toISOString(),
-      cachedAt: Date.now(),
-    };
-    window.localStorage.setItem(key, JSON.stringify(payload));
+    window.localStorage.setItem(key, JSON.stringify(serializeSensorCache(data)));
   } catch {
     // Storage full / disabled — silently ignore (cache is best-effort).
   }
@@ -95,22 +68,6 @@ export function useBrowserOnline(): boolean {
     };
   }, []);
   return online;
-}
-
-/**
- * Sensor freshness classification based on age of the latest reading.
- * - fresh:   < 60s  (live)
- * - stale:   60s – 5m (probably ok, slight delay)
- * - offline: > 5m  (ESP32 likely down)
- */
-export type SensorFreshness = 'fresh' | 'stale' | 'offline' | 'unknown';
-
-export function classifyFreshness(timestamp: Date | null | undefined, now: number = Date.now()): SensorFreshness {
-  if (!timestamp) return 'unknown';
-  const age = now - timestamp.getTime();
-  if (age < 60_000) return 'fresh';
-  if (age < 5 * 60_000) return 'stale';
-  return 'offline';
 }
 
 /**
