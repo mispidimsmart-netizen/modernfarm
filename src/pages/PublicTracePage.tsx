@@ -41,19 +41,36 @@ export default function PublicTracePage() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['public-trace', slug],
+  // 1) Fast first paint: header/farm/batch only (skips feed, medicine & sensor aggregates)
+  const summaryQuery = useQuery({
+    queryKey: ['public-trace', slug, 'summary'],
     enabled: !!slug,
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<TraceData> => {
+      const { data, error } = await supabase.rpc('get_public_batch_trace', { _slug: slug, _summary: true });
+      if (error) throw error;
+      return (data ?? { found: false }) as unknown as TraceData;
+    },
+  });
 
+  // 2) Heavy details fetched right after, merged in when ready
+  const detailQuery = useQuery({
+    queryKey: ['public-trace', slug, 'full'],
+    enabled: !!slug && summaryQuery.data?.found === true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<TraceData> => {
       const { data, error } = await supabase.rpc('get_public_batch_trace', { _slug: slug });
       if (error) throw error;
       return (data ?? { found: false }) as unknown as TraceData;
     },
   });
+
+  const data = detailQuery.data ?? summaryQuery.data;
+  const isLoading = summaryQuery.isLoading;
+  const detailsLoading = detailQuery.isLoading && summaryQuery.data?.found === true;
+
 
   const capture = async () => {
     if (!sheetRef.current) return null;
