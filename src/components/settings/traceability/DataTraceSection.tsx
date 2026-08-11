@@ -35,18 +35,25 @@ export function DataTraceSection() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Radio className="h-4 w-4 text-primary" />
-            ১. ডেটা ট্রেসিবিলিটি
-          </CardTitle>
-          <Button size="sm" variant="outline" onClick={handleExport} disabled={!data.length}>
-            <Download className="mr-1 h-4 w-4" /> এক্সেল
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস/সেন্সর থেকে কতটি রিডিং এসেছে</p>
-      </CardHeader>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
+              <CardTitle className="flex flex-1 items-center gap-2 text-base">
+                <Radio className="h-4 w-4 text-primary" />
+                ১. ডেটা ট্রেসিবিলিটি
+              </CardTitle>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+            </CollapsibleTrigger>
+            {open && (
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={!data.length}>
+                <Download className="mr-1 h-4 w-4" /> এক্সেল
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস/সেন্সর থেকে কতটি রিডিং এসেছে</p>
+        </CardHeader>
+        <CollapsibleContent>
       <CardContent className="space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
         {!isLoading && !data.length && <p className="text-sm text-muted-foreground">এই সময়ে কোনো সেন্সর ডেটা নেই।</p>}
