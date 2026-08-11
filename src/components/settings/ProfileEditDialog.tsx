@@ -57,6 +57,8 @@ export function ProfileEditDialog() {
     setBrandName(farm?.brand_name || profile?.farm_name || farm?.name || '');
     setPhone(profile?.phone || '');
     setRegNo(farm?.reg_no || '');
+    setRegDate(farm?.reg_date ? String(farm.reg_date).slice(0, 10) : '');
+
   }, [open, profile, farm]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
