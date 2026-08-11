@@ -41,19 +41,36 @@ export default function PublicTracePage() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['public-trace', slug],
+  // 1) Fast first paint: header/farm/batch only (skips feed, medicine & sensor aggregates)
+  const summaryQuery = useQuery({
+    queryKey: ['public-trace', slug, 'summary'],
     enabled: !!slug,
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    queryFn: async (): Promise<TraceData> => {
+      const { data, error } = await supabase.rpc('get_public_batch_trace', { _slug: slug, _summary: true });
+      if (error) throw error;
+      return (data ?? { found: false }) as unknown as TraceData;
+    },
+  });
 
+  // 2) Heavy details fetched right after, merged in when ready
+  const detailQuery = useQuery({
+    queryKey: ['public-trace', slug, 'full'],
+    enabled: !!slug && summaryQuery.data?.found === true,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<TraceData> => {
       const { data, error } = await supabase.rpc('get_public_batch_trace', { _slug: slug });
       if (error) throw error;
       return (data ?? { found: false }) as unknown as TraceData;
     },
   });
+
+  const data = detailQuery.data ?? summaryQuery.data;
+  const isLoading = summaryQuery.isLoading;
+  const detailsLoading = detailQuery.isLoading && summaryQuery.data?.found === true;
+
 
   const capture = async () => {
     if (!sheetRef.current) return null;
@@ -189,7 +206,7 @@ export default function PublicTracePage() {
               title="খাবারের তথ্য"
               icon={<Wheat className="h-4 w-4 text-primary" />}
               tone="primary"
-              empty="কোনো ফিড রেকর্ড নেই"
+              empty={detailsLoading ? 'লোড হচ্ছে…' : 'কোনো ফিড রেকর্ড নেই'}
             >
               {feed.slice(0, 20).map((f, i) => (
                 <li key={i} className="flex justify-between gap-2 border-b border-primary/10 py-1.5 text-sm last:border-0">
@@ -204,7 +221,7 @@ export default function PublicTracePage() {
               title="ঔষধ / ভ্যাকসিনের তথ্য"
               icon={<Syringe className="h-4 w-4 text-secondary" />}
               tone="secondary"
-              empty="কোনো ঔষধ/ভ্যাকসিনের রেকর্ড নেই"
+              empty={detailsLoading ? 'লোড হচ্ছে…' : 'কোনো ঔষধ/ভ্যাকসিনের রেকর্ড নেই'}
             >
               {medicine.slice(0, 20).map((m, i) => (
                 <li key={i} className="flex justify-between gap-2 border-b border-secondary/10 py-1.5 text-sm last:border-0">
@@ -213,6 +230,7 @@ export default function PublicTracePage() {
                 </li>
               ))}
             </TraceList>
+
 
             <footer className="mt-6 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
               ট্রেস আইডি: {data.slug} · তৈরি: {data.generated_at ? new Date(data.generated_at).toLocaleString('bn-BD') : ''}
@@ -224,12 +242,13 @@ export default function PublicTracePage() {
 
         <Card className="border-primary/20">
           <CardContent className="flex flex-wrap justify-center gap-2 p-3">
-            <Button onClick={downloadPdf} disabled={busy}>
+            <Button onClick={downloadPdf} disabled={busy || detailsLoading}>
               <FileText className="mr-1 h-4 w-4" /> PDF ডাউনলোড
             </Button>
-            <Button variant="outline" onClick={downloadPng} disabled={busy}>
+            <Button variant="outline" onClick={downloadPng} disabled={busy || detailsLoading}>
               <Download className="mr-1 h-4 w-4" /> ছবি ডাউনলোড
             </Button>
+
           </CardContent>
         </Card>
       </div>

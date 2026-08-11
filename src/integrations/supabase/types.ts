@@ -8886,7 +8886,9 @@ export type Database = {
           sample_count: number
         }[]
       }
-      get_public_batch_trace: { Args: { _slug: string }; Returns: Json }
+      get_public_batch_trace:
+        | { Args: { _slug: string }; Returns: Json }
+        | { Args: { _slug: string; _summary?: boolean }; Returns: Json }
       get_sensor_history: {
         Args: { _farm_id: string; _hours?: number }
         Returns: {
