@@ -181,6 +181,8 @@ export function BatchQrSection() {
           <QrCard key={p.id} page={p} onToggle={onToggle} />
         ))}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
