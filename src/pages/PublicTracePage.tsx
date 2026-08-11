@@ -54,14 +54,20 @@ export default function PublicTracePage() {
     },
   });
 
-  // 2) Heavy details fetched right after, merged in when ready
+  // 2) Heavy details fetched right after, merged in when ready.
+  //    Only the sections this page actually renders are requested from the server.
+  const detailFields = DETAIL_FIELDS;
   const detailQuery = useQuery({
-    queryKey: ['public-trace', slug, 'full'],
+    queryKey: ['public-trace', slug, 'full', detailFields.join(',')],
     enabled: !!slug && summaryQuery.data?.found === true,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<TraceData> => {
-      const { data, error } = await supabase.rpc('get_public_batch_trace', { _slug: slug });
+      const { data, error } = await supabase.rpc('get_public_batch_trace', {
+        _slug: slug,
+        _summary: false,
+        _fields: detailFields,
+      });
       if (error) throw error;
       return (data ?? { found: false }) as unknown as TraceData;
     },
