@@ -100,34 +100,6 @@ export function SettingsPage() {
     }
   };
 
-  const handleEditName = () => {
-    setEditedFarmName(profile?.farm_name || '');
-    setIsEditingName(true);
-  };
-
-  const handleSaveName = async () => {
-    if (!editedFarmName.trim()) return;
-    
-    try {
-      await updateProfile.mutateAsync({ farm_name: editedFarmName.trim() });
-      toast({
-        title: language === 'bn' ? 'সেভ হয়েছে!' : 'Saved!',
-        description: language === 'bn' ? 'ফার্মের নাম আপডেট হয়েছে' : 'Farm name updated',
-      });
-      setIsEditingName(false);
-    } catch (error) {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'আবার চেষ্টা করুন' : 'Please try again',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingName(false);
-    setEditedFarmName('');
-  };
 
   const t = {
     settings: { bn: 'সেটিংস', en: 'Settings' },
