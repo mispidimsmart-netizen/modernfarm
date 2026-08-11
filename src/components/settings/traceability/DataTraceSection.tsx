@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 export function DataTraceSection() {
   const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
   const { data = [], isLoading } = useDataTrace(selectedFarmId, 7);
 
   const total = data.reduce((s, r) => s + r.readings, 0);
