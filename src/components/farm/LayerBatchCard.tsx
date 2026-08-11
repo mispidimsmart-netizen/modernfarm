@@ -50,23 +50,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { EditCompletedBatchDialog } from '@/components/farm/EditCompletedBatchDialog';
 
 
-function formatDateBn(iso: string | null) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('bn-BD', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function ageWeeksFromBatch(b: LayerBatch, todayIso?: string) {
-  const start = new Date(b.start_date);
-  const today = todayIso ? new Date(todayIso) : new Date();
-  const days = Math.floor((today.getTime() - start.getTime()) / 86400000);
-  return b.age_at_start_weeks + Math.floor(days / 7);
-}
 
 export function LayerBatchCard() {
   const { language } = useAuth();
