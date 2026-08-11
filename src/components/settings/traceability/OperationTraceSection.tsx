@@ -65,7 +65,6 @@ export function OperationTraceSection() {
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
         {!isLoading && !rows.length && <p className="text-sm text-muted-foreground">এই সময়ে কোনো ডিভাইস কমান্ড নেই।</p>}
         {rows.map((r) => (
           <div key={r.deviceName} className="rounded-lg border p-3">
