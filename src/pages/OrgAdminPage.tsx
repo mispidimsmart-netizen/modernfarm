@@ -1,20 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useRef, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { Building2, Crown, Shield, UserPlus, Trash2, Tractor, Users, Calendar, Mail, X, Clock, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { LicenseAuditLog } from '@/components/admin/LicenseAuditLog';
 import { PaymentRequestPanel } from '@/components/billing/PaymentRequestPanel';
@@ -22,38 +9,24 @@ import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
 import { LicenseExpiryBanner } from '@/components/billing/LicenseExpiryBanner';
 import { TrialStatusBanner } from '@/components/billing/TrialStatusBanner';
 import { OrgActivityAuditLog } from '@/components/admin/OrgActivityAuditLog';
-import { AddMemberDialog } from '@/components/admin/org/AddMemberDialog';
-import {
-  roleLabel, licenseLabel, ORG_PAGE_SIZE, filterSortFarms, filterSortMembers, paginate,
-  type OrgRole, type LicenseType, type MyOrg, type MemberRow, type FarmRow,
-  type FarmSort, type MemberSort,
-} from '@/lib/orgAdmin';
-
+import { OrgSummaryCards } from '@/components/admin/org/OrgSummaryCards';
+import { OrgFarmsCard } from '@/components/admin/org/OrgFarmsCard';
+import { OrgMembersCard } from '@/components/admin/org/OrgMembersCard';
+import { OrgInvitationsCard } from '@/components/admin/org/OrgInvitationsCard';
+import { useOrgAdmin } from '@/hooks/useOrgAdmin';
+import type { FarmSort, MemberSort } from '@/lib/orgAdmin';
 
 export default function OrgAdminPage() {
-  const qc = useQueryClient();
-  const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
   const [farmSearch, setFarmSearch] = useState('');
   const [farmPage, setFarmPage] = useState(1);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
   const [farmSort, setFarmSort] = useState<FarmSort>('date_asc');
   const [memberSort, setMemberSort] = useState<MemberSort>('role');
-  const PAGE_SIZE = ORG_PAGE_SIZE;
 
-  const { data: orgs = [], isLoading } = useQuery({
-    queryKey: ['my_organizations'],
-    queryFn: async (): Promise<MyOrg[]> => {
-      const { data, error } = await supabase.rpc('get_my_organizations' as any);
-      if (error) throw error;
-      return (data || []) as MyOrg[];
-    },
-  });
-
-  const selected = orgs.find(o => o.id === selectedId) || orgs[0];
-  const activeId = selected?.id || null;
+  const [orgsPlaceholder] = useState(null); // keeps hook order stable across renders
+  void orgsPlaceholder;
 
   // Deeplink support: ?section=billing[&action=upgrade][&org=<id>]
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,14 +36,29 @@ export default function OrgAdminPage() {
   const billingRef = useRef<HTMLDivElement | null>(null);
   const [autoOpenUpgrade, setAutoOpenUpgrade] = useState(false);
 
-  // Apply ?org= preselection
+  const preliminaryId = selectedId;
+  const {
+    orgs, isLoading, members, farms, invitations,
+    removeMember, setRole, cancelInvite, invalidateAfterMemberAdd,
+  } = useOrgAdmin(
+    // resolve active org after orgs load; hook tolerates null
+    preliminaryId
+  );
+
+  const selected = orgs.find(o => o.id === selectedId) || orgs[0];
+  const activeId = selected?.id || null;
+
+  // Ensure queries follow the resolved default org
+  useEffect(() => {
+    if (!selectedId && activeId) setSelectedId(activeId);
+  }, [selectedId, activeId]);
+
   useEffect(() => {
     if (orgParam && orgs.some(o => o.id === orgParam) && selectedId !== orgParam) {
       setSelectedId(orgParam);
     }
   }, [orgParam, orgs, selectedId]);
 
-  // Scroll to billing section + auto-open dialog when ?action=upgrade
   useEffect(() => {
     if (!activeId) return;
     if (section === 'billing' || action === 'upgrade') {
@@ -78,9 +66,7 @@ export default function OrgAdminPage() {
         billingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
-    if (action === 'upgrade') {
-      setAutoOpenUpgrade(true);
-    }
+    if (action === 'upgrade') setAutoOpenUpgrade(true);
   }, [section, action, activeId]);
 
   const goToBilling = (opts?: { upgrade?: boolean }) => {
@@ -90,107 +76,6 @@ export default function OrgAdminPage() {
     if (activeId) next.set('org', activeId);
     setSearchParams(next, { replace: false });
   };
-
-  const { data: members = [] } = useQuery({
-    queryKey: ['org_members', activeId],
-    enabled: !!activeId,
-    queryFn: async (): Promise<MemberRow[]> => {
-      const { data, error } = await supabase
-        .from('organization_members')
-        .select('id, user_id, role')
-        .eq('organization_id', activeId!);
-      if (error) throw error;
-      const rows = (data || []) as MemberRow[];
-      if (rows.length === 0) return rows;
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('id, user_name, phone, email')
-        .in('id', rows.map(r => r.user_id));
-      const map = new Map((profs || []).map((p: any) => [p.id, p]));
-      return rows.map(r => ({ ...r, profile: map.get(r.user_id) as any }));
-    },
-  });
-
-  const { data: farms = [] } = useQuery({
-    queryKey: ['org_farms', activeId],
-    enabled: !!activeId,
-    queryFn: async (): Promise<FarmRow[]> => {
-      const { data, error } = await supabase
-        .from('farms')
-        .select('id, name, name_en, owner_id, created_at')
-        .eq('organization_id', activeId!)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return (data || []) as FarmRow[];
-    },
-  });
-
-  const removeMember = useMutation({
-    mutationFn: async (uid: string) => {
-      const { error } = await supabase.rpc('org_admin_remove_member' as any, {
-        _org_id: activeId, _user_id: uid,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['org_members', activeId] });
-      toast({ title: 'সদস্য সরানো হয়েছে' });
-    },
-    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
-  });
-
-  const setRole = useMutation({
-    mutationFn: async ({ uid, role }: { uid: string; role: OrgRole }) => {
-      const { error } = await supabase.rpc('org_admin_set_member_role' as any, {
-        _org_id: activeId, _user_id: uid, _role: role,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['org_members', activeId] });
-      toast({ title: 'রোল আপডেট হয়েছে' });
-    },
-    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
-  });
-
-  const { data: invitations = [] } = useQuery({
-    queryKey: ['org_invitations', activeId],
-    enabled: !!activeId,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('org_admin_list_invitations' as any, { _org_id: activeId });
-      if (error) throw error;
-      return (data || []) as Array<{
-        id: string; invited_email: string | null; invited_phone: string | null;
-        role: OrgRole; status: string; expires_at: string; created_at: string;
-      }>;
-    },
-  });
-
-  const cancelInvite = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('org_admin_cancel_invitation' as any, { _invitation_id: id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['org_invitations', activeId] });
-      toast({ title: 'আমন্ত্রণ বাতিল হয়েছে' });
-    },
-    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
-  });
-  // Search + sort + pagination for farms
-  const filteredFarms = useMemo(() => filterSortFarms(farms, farmSearch, farmSort), [farms, farmSearch, farmSort]);
-  const farmPageData = paginate(filteredFarms, farmPage, PAGE_SIZE);
-  const farmTotalPages = farmPageData.totalPages;
-  const farmCurPage = farmPageData.page;
-  const pagedFarms = farmPageData.items;
-
-  // Search + sort + pagination for members
-  const filteredMembers = useMemo(() => filterSortMembers(members, memberSearch, memberSort), [members, memberSearch, memberSort]);
-  const memberPageData = paginate(filteredMembers, memberPage, PAGE_SIZE);
-  const memberTotalPages = memberPageData.totalPages;
-  const memberCurPage = memberPageData.page;
-  const pagedMembers = memberPageData.items;
-
 
   if (isLoading) {
     return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">লোড হচ্ছে...</div>;
@@ -236,7 +121,6 @@ export default function OrgAdminPage() {
           </Button>
         </div>
 
-        {/* Org tabs (if multiple) */}
         {orgs.length > 1 && (
           <div className="flex flex-wrap gap-2">
             {orgs.map(o => (
@@ -257,78 +141,20 @@ export default function OrgAdminPage() {
 
         {selected && (
           <>
-            {/* License status banner */}
-            <Card className={`border ${selected.license_valid ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-rose-500/10 border-rose-500/40'}`}>
-              <CardContent className="p-4 flex flex-wrap items-center gap-4 justify-between">
-                <div className="flex items-center gap-3">
-                  {selected.my_role === 'org_owner'
-                    ? <Crown className="w-5 h-5 text-amber-400" />
-                    : <Shield className="w-5 h-5 text-emerald-400" />}
-                  <div>
-                    <div className="font-semibold">{selected.name}</div>
-                    <div className="text-xs text-slate-400">{selected.name_en} · /{selected.slug} · {roleLabel[selected.my_role]}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className={selected.license_valid ? 'border-emerald-400/40 text-emerald-300' : 'border-rose-400/40 text-rose-300'}>
-                    {licenseLabel[selected.license_type]}
-                  </Badge>
-                  {selected.license_expires_at && (
-                    <Badge variant="outline" className="border-amber-400/40 text-amber-300">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {new Date(selected.license_expires_at).toLocaleDateString('bn-BD')}
-                    </Badge>
-                  )}
-                  {!selected.license_valid && (
-                    <span className="text-xs text-rose-300">⚠ লাইসেন্স অবৈধ — অ্যাকসেস বন্ধ</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <OrgSummaryCards selected={selected} />
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Card className="bg-slate-900/80 border-white/10">
-                <CardContent className="p-4">
-                  <div className="text-xs text-slate-400 flex items-center gap-1"><Tractor className="w-3.5 h-3.5" />ফার্ম</div>
-                  <div className="text-2xl font-bold mt-1">{selected.farm_count} <span className="text-sm text-slate-500">/ {selected.max_farms}</span></div>
-                </CardContent>
-              </Card>
-              <Card className="bg-slate-900/80 border-white/10">
-                <CardContent className="p-4">
-                  <div className="text-xs text-slate-400 flex items-center gap-1"><Users className="w-3.5 h-3.5" />সদস্য</div>
-                  <div className="text-2xl font-bold mt-1">{selected.member_count} <span className="text-sm text-slate-500">/ {selected.max_users}</span></div>
-                </CardContent>
-              </Card>
-              <Card className="bg-slate-900/80 border-white/10">
-                <CardContent className="p-4">
-                  <div className="text-xs text-slate-400">আপনার রোল</div>
-                  <div className="text-lg font-bold mt-1">{roleLabel[selected.my_role]}</div>
-                </CardContent>
-              </Card>
-            </div>
+            <TrialStatusBanner
+              licenseType={selected.license_type}
+              licenseExpiresAt={selected.license_expires_at}
+              onUpgrade={() => goToBilling({ upgrade: true })}
+            />
 
-            {/* Trial status (when on trial license) */}
-            {selected && (
-              <TrialStatusBanner
-                licenseType={selected.license_type}
-                licenseExpiresAt={selected.license_expires_at}
-                onUpgrade={() => goToBilling({ upgrade: true })}
-              />
-            )}
-
-            {/* License expiry alerts (threshold-based notifications) */}
             {activeId && (
-              <LicenseExpiryBanner
-                orgId={activeId}
-                onRenew={() => goToBilling({ upgrade: true })}
-              />
+              <LicenseExpiryBanner orgId={activeId} onRenew={() => goToBilling({ upgrade: true })} />
             )}
 
-            {/* Usage analytics */}
             {activeId && <OrgUsageAnalytics orgId={activeId} />}
 
-            {/* Payment & license renewal */}
             {activeId && (
               <div id="payment-request-panel" ref={billingRef}>
                 <PaymentRequestPanel
@@ -344,277 +170,41 @@ export default function OrgAdminPage() {
               </div>
             )}
 
-            {/* License audit history */}
             {activeId && <LicenseAuditLog orgId={activeId} />}
-
-            {/* Org & member activity audit with filters + CSV */}
             {activeId && <OrgActivityAuditLog orgId={activeId} />}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Farms */}
-              <Card className="bg-slate-900/80 border-white/10">
-                <CardHeader className="pb-3 space-y-2">
-                  <CardTitle className="text-base flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2">
-                      <Tractor className="w-4 h-4 text-emerald-400" /> ফার্মসমূহ
-                    </span>
-                    <span className="text-xs font-normal text-slate-400">
-                      {filteredFarms.length}{farmSearch ? ` / ${farms.length}` : ''}
-                    </span>
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                      <Input
-                        value={farmSearch}
-                        onChange={(e) => { setFarmSearch(e.target.value); setFarmPage(1); }}
-                        placeholder="ফার্ম খুঁজুন..."
-                        className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
-                      />
-                    </div>
-                    <Select value={farmSort} onValueChange={(v: typeof farmSort) => setFarmSort(v)}>
-                      <SelectTrigger className="h-8 w-[140px] bg-slate-900 border-white/10 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="date_asc">তারিখ (পুরোনো)</SelectItem>
-                        <SelectItem value="date_desc">তারিখ (নতুন)</SelectItem>
-                        <SelectItem value="name_asc">নাম (অ→হ)</SelectItem>
-                        <SelectItem value="name_desc">নাম (হ→অ)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[320px] pr-2">
-                    {filteredFarms.length === 0 ? (
-                      <p className="text-sm text-slate-400">{farmSearch ? 'কোনো ফার্ম পাওয়া যায়নি।' : 'কোনো ফার্ম নেই।'}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {pagedFarms.map(f => (
-                          <div key={f.id} className="p-3 rounded-lg bg-slate-800/50 border border-white/5">
-                            <div className="font-medium">{f.name}</div>
-                            <div className="text-[11px] text-slate-400">{f.name_en} · {new Date(f.created_at).toLocaleDateString('bn-BD')}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-                  {farmTotalPages > 1 && (
-                    <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
-                      <span>পৃষ্ঠা {farmCurPage} / {farmTotalPages}</span>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="h-7 px-2 border-white/10"
-                          disabled={farmCurPage <= 1}
-                          onClick={() => setFarmPage(p => Math.max(1, p - 1))}>
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 px-2 border-white/10"
-                          disabled={farmCurPage >= farmTotalPages}
-                          onClick={() => setFarmPage(p => Math.min(farmTotalPages, p + 1))}>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Members */}
-              <Card className="bg-slate-900/80 border-white/10">
-                <CardHeader className="pb-3 space-y-2">
-                  <div className="flex flex-row items-center justify-between gap-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Users className="w-4 h-4 text-amber-400" /> সদস্য
-                      <span className="text-xs font-normal text-slate-400">
-                        ({filteredMembers.length}{memberSearch ? `/${members.length}` : ''})
-                      </span>
-                    </CardTitle>
-                    <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                          <UserPlus className="w-4 h-4 mr-1" /> যোগ
-                        </Button>
-                      </DialogTrigger>
-                      {activeId && (
-                        <AddMemberDialog
-                          orgId={activeId}
-                          onAdded={() => {
-                            setAddOpen(false);
-                            qc.invalidateQueries({ queryKey: ['org_members', activeId] });
-                            qc.invalidateQueries({ queryKey: ['org_invitations', activeId] });
-                            qc.invalidateQueries({ queryKey: ['my_organizations'] });
-                          }}
-                        />
-                      )}
-                    </Dialog>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                      <Input
-                        value={memberSearch}
-                        onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
-                        placeholder="নাম, ফোন, ইমেইল..."
-                        className="h-8 pl-8 bg-slate-900 border-white/10 text-xs"
-                      />
-                    </div>
-                    <Select value={memberSort} onValueChange={(v: typeof memberSort) => setMemberSort(v)}>
-                      <SelectTrigger className="h-8 w-[130px] bg-slate-900 border-white/10 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="role">রোল অনুযায়ী</SelectItem>
-                        <SelectItem value="name_asc">নাম (অ→হ)</SelectItem>
-                        <SelectItem value="name_desc">নাম (হ→অ)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[320px] pr-2">
-                    {filteredMembers.length === 0 ? (
-                      <p className="text-sm text-slate-400">{memberSearch ? 'কোনো সদস্য পাওয়া যায়নি।' : 'কোনো সদস্য নেই।'}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {pagedMembers.map(m => (
-                          <div key={m.id} className="p-3 rounded-lg bg-slate-800/50 border border-white/5 flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm flex items-center gap-2">
-                                {m.role === 'org_owner' && <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-                                {m.profile?.user_name || m.profile?.phone || m.user_id.slice(0, 8)}
-                              </div>
-                              <div className="text-[11px] text-slate-400 truncate">
-                                {m.profile?.phone || ''} {m.profile?.email ? `· ${m.profile.email}` : ''}
-                              </div>
-                            </div>
-                            {m.role === 'org_owner' ? (
-                              <Badge variant="outline" className="border-amber-400/40 text-amber-300 text-[10px]">
-                                {roleLabel.org_owner}
-                              </Badge>
-                            ) : (
-                              <>
-                                <Select
-                                  value={m.role}
-                                  onValueChange={(v: OrgRole) => setRole.mutate({ uid: m.user_id, role: v })}
-                                >
-                                  <SelectTrigger className="h-8 w-[110px] bg-slate-900 border-white/10 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="org_admin">{roleLabel.org_admin}</SelectItem>
-                                    <SelectItem value="member">{roleLabel.member}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                                  onClick={() => {
-                                    if (confirm('এই সদস্যকে সরাতে চান?')) {
-                                      removeMember.mutate(m.user_id);
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-                  {memberTotalPages > 1 && (
-                    <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
-                      <span>পৃষ্ঠা {memberCurPage} / {memberTotalPages}</span>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="h-7 px-2 border-white/10"
-                          disabled={memberCurPage <= 1}
-                          onClick={() => setMemberPage(p => Math.max(1, p - 1))}>
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 px-2 border-white/10"
-                          disabled={memberCurPage >= memberTotalPages}
-                          onClick={() => setMemberPage(p => Math.min(memberTotalPages, p + 1))}>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <OrgFarmsCard
+                farms={farms}
+                search={farmSearch}
+                onSearch={(v) => { setFarmSearch(v); setFarmPage(1); }}
+                sort={farmSort}
+                onSort={setFarmSort}
+                page={farmPage}
+                onPage={setFarmPage}
+              />
+              <OrgMembersCard
+                orgId={activeId}
+                members={members}
+                search={memberSearch}
+                onSearch={(v) => { setMemberSearch(v); setMemberPage(1); }}
+                sort={memberSort}
+                onSort={setMemberSort}
+                page={memberPage}
+                onPage={setMemberPage}
+                onSetRole={(uid, role) => setRole.mutate({ uid, role })}
+                onRemove={(uid) => removeMember.mutate(uid)}
+                onMemberAdded={invalidateAfterMemberAdd}
+              />
             </div>
 
-            {/* Pending Invitations */}
-            <Card className="bg-slate-900/80 border-white/10">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-sky-400" /> আমন্ত্রণ ({invitations.filter(i => i.status === 'pending').length} টি বাকি)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {invitations.length === 0 ? (
-                  <p className="text-sm text-slate-400">কোনো আমন্ত্রণ পাঠানো হয়নি।</p>
-                ) : (
-                  <ScrollArea className="max-h-[280px] pr-2">
-                    <div className="space-y-2">
-                      {invitations.map(inv => {
-                        const isPending = inv.status === 'pending';
-                        const statusColor = isPending ? 'text-sky-300 border-sky-400/40'
-                          : inv.status === 'accepted' ? 'text-emerald-300 border-emerald-400/40'
-                          : inv.status === 'declined' ? 'text-rose-300 border-rose-400/40'
-                          : 'text-slate-400 border-slate-500/40';
-                        const statusLabel: Record<string, string> = {
-                          pending: 'অপেক্ষমান', accepted: 'গৃহীত', declined: 'প্রত্যাখ্যাত',
-                          expired: 'মেয়াদোত্তীর্ণ', cancelled: 'বাতিল',
-                        };
-                        return (
-                          <div key={inv.id} className="p-3 rounded-lg bg-slate-800/50 border border-white/5 flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm flex items-center gap-2">
-                                <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span className="truncate">{inv.invited_email || inv.invited_phone}</span>
-                              </div>
-                              <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                <span>রোল: {roleLabel[inv.role]}</span>
-                                {isPending && (
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {new Date(inv.expires_at).toLocaleDateString('bn-BD')} পর্যন্ত
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <Badge variant="outline" className={`text-[10px] ${statusColor}`}>
-                              {statusLabel[inv.status] || inv.status}
-                            </Badge>
-                            {isPending && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-rose-400 hover:bg-rose-500/10"
-                                onClick={() => {
-                                  if (confirm('এই আমন্ত্রণ বাতিল করতে চান?')) {
-                                    cancelInvite.mutate(inv.id);
-                                  }
-                                }}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </Card>
+            <OrgInvitationsCard
+              invitations={invitations}
+              onCancel={(id) => cancelInvite.mutate(id)}
+            />
           </>
         )}
       </div>
     </div>
   );
 }
-
