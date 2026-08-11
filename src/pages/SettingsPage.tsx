@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
-import { FarmBrandingDialog } from '@/components/settings/FarmBrandingDialog';
+import { ProfileEditDialog } from '@/components/settings/ProfileEditDialog';
 import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
@@ -85,6 +85,11 @@ export function SettingsPage() {
   const isOrgAdmin = myOrgs.length > 0;
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
+  // Phone-based logins get a synthetic e-mail (0170...@phone.layerfarm.app).
+  // Never show it — fall back to the number encoded in it instead.
+  const displayPhone = user?.email?.endsWith('@phone.layerfarm.app')
+    ? user.email.split('@')[0]
+    : '';
   const [editedFarmName, setEditedFarmName] = useState('');
   const [activeTab, setActiveTab] = useState('farm-setup');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
