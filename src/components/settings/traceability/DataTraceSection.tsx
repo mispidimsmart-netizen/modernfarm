@@ -54,7 +54,7 @@ export function DataTraceSection() {
           <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস/সেন্সর থেকে কতটি রিডিং এসেছে</p>
         </CardHeader>
         <CollapsibleContent>
-      <CardContent className="space-y-2">
+          <CardContent className="space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
         {!isLoading && !data.length && <p className="text-sm text-muted-foreground">এই সময়ে কোনো সেন্সর ডেটা নেই।</p>}
         {!!data.length && (
