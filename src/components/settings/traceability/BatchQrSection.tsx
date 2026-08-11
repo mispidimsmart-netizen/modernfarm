@@ -32,7 +32,7 @@ function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, 
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `qr-${page.batchName}-${page.public_slug}.png`;
+    a.download = `qr-${page.batch_kind}-${page.batchName}-${page.public_slug}.png`;
     a.click();
   };
 
