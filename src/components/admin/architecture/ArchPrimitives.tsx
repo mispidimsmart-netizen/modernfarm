@@ -44,10 +44,11 @@ export function BulletList({ items, color }: { items: { label: string; value: st
     <div className="space-y-2">
       {items.map((item, i) => (
         <div key={i} className="flex items-start gap-2">
-          <span className={`mt-0.5 flex-shrink-0 ${color}`}>✔</span>
+          <CheckCircle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${color}`} />
           <span className="text-slate-300 text-xs"><strong className="text-slate-200">{item.label}:</strong> {item.value}</span>
         </div>
       ))}
     </div>
   );
 }
+
