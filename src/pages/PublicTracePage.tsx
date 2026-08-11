@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -22,7 +22,7 @@ interface TraceData {
   };
   farmer?: { name?: string; avatar_url?: string; phone?: string };
   batch?: {
-    kind: string; name?: string; breed?: string; start_date?: string; end_date?: string;
+    id?: string; kind: string; name?: string; breed?: string; start_date?: string; end_date?: string;
     age_days?: number; initial_bird_count?: number; current_bird_count?: number; status?: string;
   };
   feed?: { date: string; feed_type: string; quantity_kg: number }[];
@@ -34,6 +34,9 @@ const bnDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('bn-BD
 
 export default function PublicTracePage() {
   const { slug = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const expectedKind = searchParams.get('kind');
+  const expectedBatchId = searchParams.get('batch');
   const sheetRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -100,10 +103,18 @@ export default function PublicTracePage() {
   const medicine = data.medicine ?? [];
   const isLayer = b.kind === 'layer';
   const avatar = data.farmer?.avatar_url || data.farm?.photo_url;
+  const mismatch =
+    (!!expectedKind && expectedKind !== b.kind) ||
+    (!!expectedBatchId && !!b.id && expectedBatchId !== b.id);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-secondary/10 p-3 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-3">
+        {mismatch && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            সতর্কতা: QR কোডের ব্যাচ তথ্য এই পেজের ব্যাচের সাথে মিলছে না। অনুগ্রহ করে খামারির কাছ থেকে নতুন QR নিন।
+          </div>
+        )}
         <div ref={sheetRef} className="overflow-hidden rounded-2xl border border-primary/20 bg-background shadow-lg">
           {/* Brand header */}
           <header className="relative bg-gradient-to-r from-primary via-primary to-secondary px-5 py-6 text-primary-foreground">
