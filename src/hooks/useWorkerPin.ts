@@ -8,12 +8,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useFarmContext } from '@/context/FarmContext';
+import { workerUnlockKey, setFlag, clearFlag, isFlagSet } from '@/lib/localFlags';
 
-const LS_UNLOCKED_PREFIX = 'worker_mode_unlocked:';
-
-export function workerUnlockKey(farmId: string) {
-  return `${LS_UNLOCKED_PREFIX}${farmId}`;
-}
+export { workerUnlockKey } from '@/lib/localFlags';
 
 /** Returns whether the given farm has a PIN configured (just checks for non-null hash). */
 export function useFarmHasWorkerPin(farmId?: string | null) {
@@ -50,7 +47,7 @@ export function useSetWorkerPin() {
       qc.invalidateQueries({ queryKey: ['farm-has-worker-pin', vars.farmId] });
       // Clearing PIN should also revoke any existing unlock on this device.
       if (!vars.pin) {
-        try { localStorage.removeItem(workerUnlockKey(vars.farmId)); } catch { /* noop */ }
+        clearFlag(workerUnlockKey(vars.farmId));
       }
     },
   });
@@ -67,7 +64,7 @@ export function useVerifyWorkerPin() {
       if (error) throw error;
       const ok = !!data;
       if (ok) {
-        try { localStorage.setItem(workerUnlockKey(farmId), '1'); } catch { /* noop */ }
+        setFlag(workerUnlockKey(farmId));
       }
       return ok;
     },
@@ -78,14 +75,10 @@ export function useVerifyWorkerPin() {
 export function useIsWorkerUnlocked() {
   const { selectedFarmId } = useFarmContext();
   if (!selectedFarmId) return false;
-  try {
-    return localStorage.getItem(workerUnlockKey(selectedFarmId)) === '1';
-  } catch {
-    return false;
-  }
+  return isFlagSet(workerUnlockKey(selectedFarmId));
 }
 
 /** Lock the device again (forget the unlock token). */
 export function lockWorkerDevice(farmId: string) {
-  try { localStorage.removeItem(workerUnlockKey(farmId)); } catch { /* noop */ }
+  clearFlag(workerUnlockKey(farmId));
 }

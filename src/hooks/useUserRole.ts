@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
+import { generateInviteCode, normalizeInviteCode } from '@/lib/inviteCodes';
 
 export type AppRole = 'owner' | 'worker' | 'super_admin' | 'viewer' | 'farmer' | 'admin' | 'manager' | 'technician';
 
@@ -144,8 +145,8 @@ export function useCreateInvitation() {
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
 
-      // Generate a random 8-character invite code
-      const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      // Generate a random 8-character invite code (SSOT: src/lib/inviteCodes.ts)
+      const inviteCode = generateInviteCode();
 
       const { data, error } = await supabase
         .from('worker_invitations')
@@ -187,7 +188,7 @@ export function useJoinFarm() {
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase.rpc('redeem_invitation', {
-        _code: inviteCode.toUpperCase().trim(),
+        _code: normalizeInviteCode(inviteCode),
       });
 
       if (error) {
