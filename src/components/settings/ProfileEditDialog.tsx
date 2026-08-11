@@ -29,9 +29,10 @@ export function ProfileEditDialog() {
   const updateProfile = useUpdateProfile();
   const farmCtx = useFarmContextSafe();
   const farm = farmCtx?.currentFarm as
-    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null })
+    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null; reg_date?: string | null })
     | null
     | undefined;
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +45,8 @@ export function ProfileEditDialog() {
   const [brandName, setBrandName] = useState('');
   const [phone, setPhone] = useState('');
   const [regNo, setRegNo] = useState('');
+  const [regDate, setRegDate] = useState('');
+
 
   const bn = language === 'bn';
 
@@ -54,6 +57,8 @@ export function ProfileEditDialog() {
     setBrandName(farm?.brand_name || profile?.farm_name || farm?.name || '');
     setPhone(profile?.phone || '');
     setRegNo(farm?.reg_no || '');
+    setRegDate(farm?.reg_date ? String(farm.reg_date).slice(0, 10) : '');
+
   }, [open, profile, farm]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,6 +107,8 @@ export function ProfileEditDialog() {
             brand_name: brandName.trim() || null,
             name: brandName.trim() || farm.name,
             reg_no: regNo.trim() || null,
+            reg_date: regDate || null,
+
           })
           .eq('id', farm.id);
         if (error) throw error;
@@ -197,6 +204,15 @@ export function ProfileEditDialog() {
               {bn ? 'খালি রাখলে স্বয়ংক্রিয় নিবন্ধন নং দেখাবে।' : 'Leave empty for the auto-generated number.'}
             </p>
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="reg-date">{bn ? 'নিবন্ধনের তারিখ' : 'Registration date'}</Label>
+            <Input id="reg-date" type="date" value={regDate} onChange={(e) => setRegDate(e.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              {bn ? 'খালি রাখলে অ্যাকাউন্ট তৈরির তারিখ দেখাবে।' : 'Leave empty to show the account creation date.'}
+            </p>
+          </div>
+
 
           <Button onClick={handleSave} disabled={saving || uploading} className="w-full">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

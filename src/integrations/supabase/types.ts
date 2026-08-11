@@ -3097,6 +3097,7 @@ export type Database = {
           organization_id: string | null
           owner_id: string
           photo_url: string | null
+          reg_date: string | null
           reg_no: string | null
           total_sheds: number | null
           updated_at: string
@@ -3114,6 +3115,7 @@ export type Database = {
           organization_id?: string | null
           owner_id: string
           photo_url?: string | null
+          reg_date?: string | null
           reg_no?: string | null
           total_sheds?: number | null
           updated_at?: string
@@ -3131,6 +3133,7 @@ export type Database = {
           organization_id?: string | null
           owner_id?: string
           photo_url?: string | null
+          reg_date?: string | null
           reg_no?: string | null
           total_sheds?: number | null
           updated_at?: string
