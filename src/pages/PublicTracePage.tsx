@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
+import { isTraceMatch } from '@/lib/traceQr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -103,9 +104,7 @@ export default function PublicTracePage() {
   const medicine = data.medicine ?? [];
   const isLayer = b.kind === 'layer';
   const avatar = data.farmer?.avatar_url || data.farm?.photo_url;
-  const mismatch =
-    (!!expectedKind && expectedKind !== b.kind) ||
-    (!!expectedBatchId && !!b.id && expectedBatchId !== b.id);
+  const mismatch = !isTraceMatch({ kind: expectedKind, batchId: expectedBatchId }, { kind: b.kind, id: b.id });
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-secondary/10 p-3 sm:p-6">
