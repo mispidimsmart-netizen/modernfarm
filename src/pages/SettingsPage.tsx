@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2
+  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2, QrCode
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -326,7 +326,7 @@ export function SettingsPage() {
           <div className={!canEditSettings ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={!canEditSettings}>
           {(canEditSettings || !permissionsLoading) && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl">
+              <TabsList className="grid w-full grid-cols-6 mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl">
                 <TabsTrigger 
                   value="farm-setup" 
                   className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
@@ -362,7 +362,15 @@ export function SettingsPage() {
                   <Cpu className="h-4 w-4 shrink-0" />
                   <span>{language === 'bn' ? 'ডিভাইস' : 'Device'}</span>
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="traceability" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <QrCode className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'ট্রেস' : 'Trace'}</span>
+                </TabsTrigger>
               </TabsList>
+
 
               <TabsContent value="farm-setup">
                 <Suspense fallback={<TabFallback />}><FarmSetupTab /></Suspense>
@@ -383,6 +391,11 @@ export function SettingsPage() {
               <TabsContent value="device">
                 <Suspense fallback={<TabFallback />}><DeviceSystemTab /></Suspense>
               </TabsContent>
+
+              <TabsContent value="traceability">
+                <Suspense fallback={<TabFallback />}><TraceabilityTab /></Suspense>
+              </TabsContent>
+
             </Tabs>
           )}
           </div>
