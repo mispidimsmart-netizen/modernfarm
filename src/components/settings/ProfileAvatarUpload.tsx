@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
-export function ProfileAvatarUpload() {
+export function ProfileAvatarUpload({ readOnly = false }: { readOnly?: boolean } = {}) {
   const { language, user } = useAuth();
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
