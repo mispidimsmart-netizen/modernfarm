@@ -178,51 +178,18 @@ export default function OrgAdminPage() {
     onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
   });
   // Search + sort + pagination for farms
-  const filteredFarms = useMemo(() => {
-    const q = farmSearch.trim().toLowerCase();
-    const base = !q ? [...farms] : farms.filter(f =>
-      (f.name || '').toLowerCase().includes(q) ||
-      (f.name_en || '').toLowerCase().includes(q)
-    );
-    base.sort((a, b) => {
-      switch (farmSort) {
-        case 'name_asc':  return (a.name || '').localeCompare(b.name || '', 'bn');
-        case 'name_desc': return (b.name || '').localeCompare(a.name || '', 'bn');
-        case 'date_desc': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'date_asc':
-        default:          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-    });
-    return base;
-  }, [farms, farmSearch, farmSort]);
-  const farmTotalPages = Math.max(1, Math.ceil(filteredFarms.length / PAGE_SIZE));
-  const farmCurPage = Math.min(farmPage, farmTotalPages);
-  const pagedFarms = filteredFarms.slice((farmCurPage - 1) * PAGE_SIZE, farmCurPage * PAGE_SIZE);
+  const filteredFarms = useMemo(() => filterSortFarms(farms, farmSearch, farmSort), [farms, farmSearch, farmSort]);
+  const farmPageData = paginate(filteredFarms, farmPage, PAGE_SIZE);
+  const farmTotalPages = farmPageData.totalPages;
+  const farmCurPage = farmPageData.page;
+  const pagedFarms = farmPageData.items;
 
   // Search + sort + pagination for members
-  const filteredMembers = useMemo(() => {
-    const q = memberSearch.trim().toLowerCase();
-    const base = !q ? [...members] : members.filter(m =>
-      (m.profile?.user_name || '').toLowerCase().includes(q) ||
-      (m.profile?.phone || '').toLowerCase().includes(q) ||
-      (m.profile?.email || '').toLowerCase().includes(q) ||
-      (roleLabel[m.role] || '').toLowerCase().includes(q)
-    );
-    const roleRank: Record<OrgRole, number> = { org_owner: 0, org_admin: 1, member: 2 };
-    const nameOf = (m: MemberRow) => (m.profile?.user_name || m.profile?.phone || m.profile?.email || m.user_id);
-    base.sort((a, b) => {
-      switch (memberSort) {
-        case 'name_asc':  return nameOf(a).localeCompare(nameOf(b), 'bn');
-        case 'name_desc': return nameOf(b).localeCompare(nameOf(a), 'bn');
-        case 'role':
-        default:          return roleRank[a.role] - roleRank[b.role] || nameOf(a).localeCompare(nameOf(b), 'bn');
-      }
-    });
-    return base;
-  }, [members, memberSearch, memberSort]);
-  const memberTotalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
-  const memberCurPage = Math.min(memberPage, memberTotalPages);
-  const pagedMembers = filteredMembers.slice((memberCurPage - 1) * PAGE_SIZE, memberCurPage * PAGE_SIZE);
+  const filteredMembers = useMemo(() => filterSortMembers(members, memberSearch, memberSort), [members, memberSearch, memberSort]);
+  const memberPageData = paginate(filteredMembers, memberPage, PAGE_SIZE);
+  const memberTotalPages = memberPageData.totalPages;
+  const memberCurPage = memberPageData.page;
+  const pagedMembers = memberPageData.items;
 
 
   if (isLoading) {
@@ -651,57 +618,3 @@ export default function OrgAdminPage() {
   );
 }
 
-function AddMemberDialog({ orgId, onAdded }: { orgId: string; onAdded: () => void }) {
-  const { toast } = useToast();
-  const [identifier, setIdentifier] = useState('');
-  const [role, setRole] = useState<OrgRole>('member');
-
-  const add = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc('org_admin_create_invitation' as any, {
-        _org_id: orgId, _identifier: identifier.trim(), _role: role, _expires_days: 14,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'আমন্ত্রণ পাঠানো হয়েছে', description: 'ব্যবহারকারী লগইন করলে গ্রহণ/প্রত্যাখ্যান করতে পারবেন।' });
-      onAdded();
-    },
-    onError: (e: any) => toast({ title: 'ত্রুটি', description: e.message, variant: 'destructive' }),
-  });
-
-  return (
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>সদস্য আমন্ত্রণ পাঠান</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div>
-          <Label>ফোন বা ইমেইল</Label>
-          <Input value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="01700000000 বা user@example.com" />
-          <p className="text-[11px] text-slate-500 mt-1">আমন্ত্রণ ১৪ দিনের জন্য বৈধ থাকবে।</p>
-        </div>
-        <div>
-          <Label>রোল</Label>
-          <Select value={role} onValueChange={(v: OrgRole) => setRole(v)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="org_admin">{roleLabel.org_admin}</SelectItem>
-              <SelectItem value="member">{roleLabel.member}</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-slate-500 mt-1">মালিক (Owner) শুধু সুপার অ্যাডমিন সেট করতে পারেন।</p>
-        </div>
-      </div>
-      <DialogFooter>
-        <Button
-          onClick={() => add.mutate()}
-          disabled={!identifier || add.isPending}
-          className="bg-amber-600 hover:bg-amber-700"
-        >
-          {add.isPending ? 'পাঠানো হচ্ছে...' : 'আমন্ত্রণ পাঠান'}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  );
-}
