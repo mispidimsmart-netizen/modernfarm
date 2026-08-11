@@ -233,10 +233,12 @@ export function SettingsPage() {
                     </Badge>
                   </div>
                 )}
-                <p className="text-sm text-primary-foreground/80">{user?.email}</p>
+                <p className="text-sm text-primary-foreground/80">
+                  {profile?.phone || displayPhone || (language === 'bn' ? 'মোবাইল নং যোগ করুন' : 'Add mobile number')}
+                </p>
                 {isOwner && (
                   <div className="mt-2">
-                    <FarmBrandingDialog />
+                    <ProfileEditDialog />
                   </div>
                 )}
                 {!isOwner && (
