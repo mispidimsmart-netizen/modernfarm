@@ -83,12 +83,6 @@ export function useIsOwner() {
   return data?.role === 'owner';
 }
 
-export function useFarmOwnerId() {
-  const { user } = useAuth();
-  const { data } = useUserRole();
-  return data?.farmOwnerId || user?.id;
-}
-
 export function useWorkers() {
   const { user } = useAuth();
   const isOwner = useIsOwner();

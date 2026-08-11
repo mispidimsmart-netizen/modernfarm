@@ -67,11 +67,3 @@ export function useCostAnalytics(days: number = 30): CostAnalytics {
     days,
   });
 }
-
-/** Cost rate settings (can later be persisted per farm). */
-export function useCostRates() {
-  return {
-    electricityPerKwh: DEFAULT_RATES.electricityPerKwh,
-    waterPerLiter: DEFAULT_RATES.waterPerLiter,
-  };
-}

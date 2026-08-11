@@ -22,23 +22,3 @@ export function useUserPermissions() {
 
   return { data, isLoading: false, isError: false as const };
 }
-
-export function useIsAdmin() {
-  const { data } = useUserPermissions();
-  return data.role === 'admin';
-}
-
-export function useIsFarmer() {
-  const { data } = useUserPermissions();
-  return data.role === 'farmer' || data.role === 'admin';
-}
-
-export function useIsViewer() {
-  const { data } = useUserPermissions();
-  return data.role === 'viewer';
-}
-
-export function useCanAccess(permission: keyof Omit<UserPermissions, 'role'>) {
-  const { data } = useUserPermissions();
-  return data[permission] ?? false;
-}

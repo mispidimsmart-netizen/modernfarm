@@ -17,7 +17,6 @@ const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
 const DEFAULT_MAX_AGE_MIN = 24 * 60; // 24h TTL — Phase 3
 const MAX_RETRY_COUNT = 5;
 
-
 /** Phase 3: drop items older than max_age_minutes or with too many failed retries */
 function pruneExpired(queue: SyncQueueItem[]): { kept: SyncQueueItem[]; dropped: number } {
   const now = Date.now();
@@ -34,7 +33,6 @@ function pruneExpired(queue: SyncQueueItem[]): { kept: SyncQueueItem[]; dropped:
   }
   return { kept, dropped };
 }
-
 
 export function useOfflineSync() {
   const { user } = useAuth();
@@ -148,7 +146,6 @@ export function useOfflineSync() {
       }
     }
 
-
     // Keep failed items (with bumped retry_count) for the next attempt
     saveLocalQueue(failed);
     setIsSyncing(false);
@@ -185,7 +182,6 @@ export function useOfflineSync() {
     };
   }, [syncQueue, getLocalQueue]);
 
-
   // Auto sync when user logs in
   useEffect(() => {
     if (user && isOnline) {
@@ -200,82 +196,4 @@ export function useOfflineSync() {
     addToQueue,
     syncQueue,
   };
-}
-
-// Hook to use offline-capable mutations
-export function useOfflineMutation<T extends Record<string, unknown>>(
-  tableName: string,
-  options?: {
-    onSuccess?: () => void;
-    onError?: (error: Error) => void;
-  }
-) {
-  const { user } = useAuth();
-  const { isOnline, addToQueue } = useOfflineSync();
-
-  const insert = useCallback(async (data: T) => {
-    if (!user) throw new Error('Not authenticated');
-
-    if (isOnline) {
-      const { error } = await supabase
-        .from(tableName as 'egg_production')
-        .insert({ ...data, user_id: user.id });
-      
-      if (error) {
-        // If online insert fails, queue for later
-        addToQueue(tableName, 'INSERT', data);
-        options?.onError?.(new Error(error.message));
-      } else {
-        options?.onSuccess?.();
-      }
-    } else {
-      // Queue for sync when back online
-      addToQueue(tableName, 'INSERT', data);
-      options?.onSuccess?.();
-    }
-  }, [user, isOnline, tableName, addToQueue, options]);
-
-  const update = useCallback(async (id: string, data: Partial<T>) => {
-    if (!user) throw new Error('Not authenticated');
-
-    if (isOnline) {
-      const { error } = await supabase
-        .from(tableName as 'egg_production')
-        .update(data)
-        .eq('id', id);
-      
-      if (error) {
-        addToQueue(tableName, 'UPDATE', { id, ...data });
-        options?.onError?.(new Error(error.message));
-      } else {
-        options?.onSuccess?.();
-      }
-    } else {
-      addToQueue(tableName, 'UPDATE', { id, ...data });
-      options?.onSuccess?.();
-    }
-  }, [user, isOnline, tableName, addToQueue, options]);
-
-  const remove = useCallback(async (id: string) => {
-    if (!user) throw new Error('Not authenticated');
-
-    if (isOnline) {
-      const { error } = await supabase
-        .from(tableName as 'egg_production')
-        .delete()
-        .eq('id', id);
-      
-      if (error) {
-        addToQueue(tableName, 'DELETE', { id });
-        options?.onError?.(new Error(error.message));
-      } else {
-        options?.onSuccess?.();
-      }
-    } else {
-      addToQueue(tableName, 'DELETE', { id });
-      options?.onSuccess?.();
-    }
-  }, [user, isOnline, tableName, addToQueue, options]);
-
-  return { insert, update, remove, isOnline };
 }

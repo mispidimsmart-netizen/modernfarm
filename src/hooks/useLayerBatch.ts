@@ -100,34 +100,6 @@ export function useDeleteLayerBatch() {
   });
 }
 
-// Update batch
-export function useUpdateLayerBatch() {
-  const queryClient = useQueryClient();
-  const { language } = useAuth();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: ({ id, ...updates }: Partial<LayerBatch> & { id: string }) =>
-      layerApi.updateLayerBatch(id, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['layer-batches'] });
-      queryClient.invalidateQueries({ queryKey: ['layer-batch-active'] });
-      toast({
-        title: language === 'bn' ? 'সফল!' : 'Success!',
-        description: language === 'bn' ? 'ব্যাচ আপডেট হয়েছে' : 'Batch updated',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-}
-
-// Close batch + create summary snapshot
 export function useCloseLayerBatch() {
   const queryClient = useQueryClient();
   const { user, language } = useAuth();

@@ -126,23 +126,6 @@ export function useMultiShedData() {
   });
 }
 
-// Get HSI color class based on level
-export function getHSIColorClass(level: ShedOverview['hsiLevel']): string {
-  switch (level) {
-    case 'emergency':
-      return 'bg-red-500';
-    case 'severe':
-      return 'bg-orange-500';
-    case 'moderate':
-      return 'bg-amber-500';
-    case 'mild':
-      return 'bg-yellow-400';
-    default:
-      return 'bg-status-normal';
-  }
-}
-
-// Get HSI emoji based on level
 export function getHSIEmoji(level: ShedOverview['hsiLevel']): string {
   switch (level) {
     case 'emergency':

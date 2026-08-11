@@ -160,15 +160,6 @@ export function getBroilerTempRangeByDays(ageDays: number): {
 }
 
 /**
- * Get recommended temperature range for broilers based on age in WEEKS (legacy)
- */
-export function getBroilerTempRange(ageWeeks: number): { minTemp: number; maxTemp: number } {
-  const ageDays = ageWeeks * 7 + 1; // Convert to days (start of week)
-  const range = getBroilerTempRangeByDays(ageDays);
-  return { minTemp: range.minTemp, maxTemp: range.maxTemp };
-}
-
-/**
  * Calculate target weight for broilers based on age (in grams)
  * Using typical Cobb 500 / Ross 308 growth curves
  */
