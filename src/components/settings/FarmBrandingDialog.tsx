@@ -53,7 +53,7 @@ export function FarmBrandingDialog() {
         .eq('id', farm.id);
       if (error) throw error;
 
-      await queryClient.invalidateQueries({ queryKey: ['farms'] });
+      await queryClient.invalidateQueries({ queryKey: ['user-farms'] });
       toast({ title: bn ? 'সেভ হয়েছে!' : 'Saved!', description: bn ? 'QR পেজে আপডেট হবে' : 'Public QR page updated' });
       setOpen(false);
     } catch (e) {
