@@ -137,7 +137,6 @@ export function BatchQrSection() {
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
