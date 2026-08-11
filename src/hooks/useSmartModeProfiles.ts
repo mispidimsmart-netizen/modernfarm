@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { SMART_MODE_PROFILES } from '@/lib/smartModeProfiles';
+import { SMART_MODE_PROFILES, type SmartModeType } from '@/lib/smartModeProfiles';
 
 // Re-exported for backward compatibility; canonical source is @/lib/smartModeProfiles
 export { SMART_MODE_PROFILES };
