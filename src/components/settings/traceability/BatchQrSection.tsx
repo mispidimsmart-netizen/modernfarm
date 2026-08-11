@@ -11,9 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useBatchTracePages, type BatchPage } from '@/hooks/useTraceability';
 import { useFarmContext } from '@/context/FarmContext';
 
+const PUBLIC_TRACE_BASE_URL = 'https://farmeye.pro.bd';
+
 function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, next: boolean) => void }) {
   const [dataUrl, setDataUrl] = useState<string>('');
-  const url = useMemo(() => `${window.location.origin}/trace/${page.public_slug}`, [page.public_slug]);
+  const url = useMemo(() => `${PUBLIC_TRACE_BASE_URL}/trace/${page.public_slug}`, [page.public_slug]);
   const { toast } = useToast();
 
   useEffect(() => {
