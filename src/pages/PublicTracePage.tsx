@@ -242,12 +242,13 @@ export default function PublicTracePage() {
 
         <Card className="border-primary/20">
           <CardContent className="flex flex-wrap justify-center gap-2 p-3">
-            <Button onClick={downloadPdf} disabled={busy}>
+            <Button onClick={downloadPdf} disabled={busy || detailsLoading}>
               <FileText className="mr-1 h-4 w-4" /> PDF ডাউনলোড
             </Button>
-            <Button variant="outline" onClick={downloadPng} disabled={busy}>
+            <Button variant="outline" onClick={downloadPng} disabled={busy || detailsLoading}>
               <Download className="mr-1 h-4 w-4" /> ছবি ডাউনলোড
             </Button>
+
           </CardContent>
         </Card>
       </div>
