@@ -44,6 +44,10 @@ export default function PublicTracePage() {
   const { data, isLoading } = useQuery({
     queryKey: ['public-trace', slug],
     enabled: !!slug,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+
     queryFn: async (): Promise<TraceData> => {
       const { data, error } = await supabase.rpc('get_public_batch_trace', { _slug: slug });
       if (error) throw error;
