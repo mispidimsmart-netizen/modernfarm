@@ -29,9 +29,10 @@ export function ProfileEditDialog() {
   const updateProfile = useUpdateProfile();
   const farmCtx = useFarmContextSafe();
   const farm = farmCtx?.currentFarm as
-    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null })
+    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null; reg_date?: string | null })
     | null
     | undefined;
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
