@@ -179,7 +179,7 @@ export function BatchQrSection() {
         {visible.map((p) => (
           <QrCard key={p.id} page={p} onToggle={onToggle} />
         ))}
-      </CardContent>
+          </CardContent>
         </CollapsibleContent>
       </Collapsible>
     </Card>
