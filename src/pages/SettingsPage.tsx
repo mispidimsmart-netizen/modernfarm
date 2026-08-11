@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2, QrCode
+  Bell, BellOff, Settings, User, Shield, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2, QrCode
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
