@@ -315,7 +315,7 @@ export function useSendDeviceCommand() {
           if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
           const { data: dh } = await hq.order('last_seen_at', { ascending: false }).limit(1).maybeSingle();
           isOnline = !!dh?.is_online;
-        } catch {}
+        } catch { /* health lookup is best-effort */ }
 
         // Only accept actual-match if it was updated AFTER we sent the command
         // (prevents false "confirmed" toast when device is offline and column is stale).

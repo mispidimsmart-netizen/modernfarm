@@ -16,7 +16,7 @@ import { useFarmContext } from '@/context/FarmContext';
 
 // Helper: prefer farm-scoped realtime filter when a farm is selected, else
 // fall back to user-scoped (legacy / no-farm-context callers).
-function safeSelectedFarmId(): string | null {
+function useSafeSelectedFarmId(): string | null {
   try { return useFarmContext().selectedFarmId; } catch { return null; }
 }
 
@@ -25,7 +25,7 @@ export function useRealtimeSensorData() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
-  const selectedFarmId = safeSelectedFarmId();
+  const selectedFarmId = useSafeSelectedFarmId();
 
   // Seed initial state from localStorage so the UI shows the last known values
   // immediately on mount — even before the first network round-trip succeeds,
@@ -172,7 +172,7 @@ export function useRealtimeDeviceStatus() {
   const { data: initialStatus, isLoading } = useDeviceStatus();
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
-  const selectedFarmId = safeSelectedFarmId();
+  const selectedFarmId = useSafeSelectedFarmId();
 
   // Tick every 15s so `ageMs`/`isDeviceOnline` recompute and the UI flips
   // from "অফলাইন" → "লাইভ" (or vice-versa) automatically as time passes,
@@ -324,7 +324,7 @@ export function useRealtimeAlerts() {
   const queryClient = useQueryClient();
   const { playSound } = useNotificationSound();
   const lastAlertIdRef = useRef<string | null>(null);
-  const selectedFarmId = safeSelectedFarmId();
+  const selectedFarmId = useSafeSelectedFarmId();
 
   useEffect(() => {
     if (!user?.id) return;
