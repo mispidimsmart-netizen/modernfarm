@@ -32,7 +32,7 @@ export function useDataTrace(farmId: string | null, days = 7) {
       const map = new Map<string, DataTraceRow & { _t: number[]; _h: number[] }>();
       for (const r of data ?? []) {
         const deviceId = r.device_id ?? 'unknown';
-        const source = r.sensor_source ?? 'unknown';
+        const source = r.sensor_source == null ? 'unknown' : String(r.sensor_source);
         const key = `${deviceId}|${source}|${r.shed_id ?? ''}`;
         let row = map.get(key);
         if (!row) {
