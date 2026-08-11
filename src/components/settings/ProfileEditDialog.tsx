@@ -198,6 +198,15 @@ export function ProfileEditDialog() {
             </p>
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="reg-date">{bn ? 'নিবন্ধনের তারিখ' : 'Registration date'}</Label>
+            <Input id="reg-date" type="date" value={regDate} onChange={(e) => setRegDate(e.target.value)} />
+            <p className="text-xs text-muted-foreground">
+              {bn ? 'খালি রাখলে অ্যাকাউন্ট তৈরির তারিখ দেখাবে।' : 'Leave empty to show the account creation date.'}
+            </p>
+          </div>
+
+
           <Button onClick={handleSave} disabled={saving || uploading} className="w-full">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {bn ? 'সেভ করুন' : 'Save'}
