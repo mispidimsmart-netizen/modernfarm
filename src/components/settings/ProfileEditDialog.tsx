@@ -110,7 +110,10 @@ export function ProfileEditDialog() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['profile'] }),
         queryClient.invalidateQueries({ queryKey: ['user-farms'] }),
+        queryClient.invalidateQueries({ queryKey: ['public-trace'] }),
+        queryClient.invalidateQueries({ queryKey: ['batch-trace-pages'] }),
       ]);
+
 
       toast({
         title: bn ? 'সেভ হয়েছে!' : 'Saved!',
