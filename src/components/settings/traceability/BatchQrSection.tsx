@@ -17,7 +17,11 @@ const PUBLIC_TRACE_BASE_URL = 'https://farmeye.pro.bd';
 
 function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, next: boolean) => void }) {
   const [dataUrl, setDataUrl] = useState<string>('');
-  const url = useMemo(() => `${PUBLIC_TRACE_BASE_URL}/trace/${page.public_slug}`, [page.public_slug]);
+  const url = useMemo(
+    () =>
+      `${PUBLIC_TRACE_BASE_URL}/trace/${page.public_slug}?kind=${page.batch_kind}&batch=${page.batch_id}`,
+    [page.public_slug, page.batch_kind, page.batch_id],
+  );
   const { toast } = useToast();
 
   useEffect(() => {
@@ -28,7 +32,7 @@ function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, 
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `qr-${page.batchName}-${page.public_slug}.png`;
+    a.download = `qr-${page.batch_kind}-${page.batchName}-${page.public_slug}.png`;
     a.click();
   };
 
