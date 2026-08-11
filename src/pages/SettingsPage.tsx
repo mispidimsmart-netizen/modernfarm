@@ -378,8 +378,90 @@ export function SettingsPage() {
               </TabsList>
 
 
-              <TabsContent value="farm-setup">
+              <TabsContent value="farm-setup" className="space-y-4">
                 <Suspense fallback={<TabFallback />}><FarmSetupTab /></Suspense>
+
+                {/* Notifications — only inside the Farm tab */}
+                <Collapsible open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardContent className="pt-6 pb-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                              <Bell size={20} />
+                            </div>
+                            <div>
+                              <p className="font-semibold">{language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {isSubscribed
+                                  ? (language === 'bn' ? '✓ সক্রিয়' : '✓ Active')
+                                  : (language === 'bn' ? 'অ্যালার্ট ও আপডেট' : 'Alerts & updates')}
+                              </p>
+                            </div>
+                          </div>
+                          <motion.div
+                            animate={{ rotate: isNotificationsOpen ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          </motion.div>
+                        </div>
+                      </CardContent>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 pb-6 space-y-4">
+                        {/* Push Notifications */}
+                        <div className="rounded-xl bg-muted/50 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {isSubscribed ? (
+                                <Bell className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <BellOff className="h-5 w-5 text-muted-foreground" />
+                              )}
+                              <div>
+                                <p className="font-medium">
+                                  {language === 'bn' ? 'পুশ নোটিফিকেশন' : 'Push Notifications'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {!isSupported
+                                    ? (language === 'bn' ? 'সমর্থিত নয়' : 'Not supported')
+                                    : permission === 'granted'
+                                      ? (language === 'bn' ? 'অনুমতি দেওয়া হয়েছে' : 'Permission granted')
+                                      : permission === 'denied'
+                                        ? (language === 'bn' ? 'অনুমতি প্রত্যাখ্যাত' : 'Permission denied')
+                                        : (language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission required')
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
+                              {isSupported && (
+                                <Switch
+                                  checked={isSubscribed}
+                                  onCheckedChange={handlePushToggle}
+                                  disabled={pushLoading || permission === 'denied'}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <NotificationPriorityCard />
+                        <QuietHoursAndSnoozeCard />
+                        <TestNotificationCard />
+                        <NotificationSoundCard />
+                        {isOwner && <SmsAlertSettingsCard />}
+                        <AlertRulesCard />
+                        <MeshNetworkCard />
+                        {isOwner && <GsmFallbackCard />}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
               </TabsContent>
 
               <TabsContent value="operation">
