@@ -3086,6 +3086,7 @@ export type Database = {
       }
       farms: {
         Row: {
+          brand_name: string | null
           created_at: string
           deleted_at: string | null
           id: string
@@ -3096,11 +3097,13 @@ export type Database = {
           organization_id: string | null
           owner_id: string
           photo_url: string | null
+          reg_no: string | null
           total_sheds: number | null
           updated_at: string
           worker_pin_hash: string | null
         }
         Insert: {
+          brand_name?: string | null
           created_at?: string
           deleted_at?: string | null
           id?: string
@@ -3111,11 +3114,13 @@ export type Database = {
           organization_id?: string | null
           owner_id: string
           photo_url?: string | null
+          reg_no?: string | null
           total_sheds?: number | null
           updated_at?: string
           worker_pin_hash?: string | null
         }
         Update: {
+          brand_name?: string | null
           created_at?: string
           deleted_at?: string | null
           id?: string
@@ -3126,6 +3131,7 @@ export type Database = {
           organization_id?: string | null
           owner_id?: string
           photo_url?: string | null
+          reg_no?: string | null
           total_sheds?: number | null
           updated_at?: string
           worker_pin_hash?: string | null
