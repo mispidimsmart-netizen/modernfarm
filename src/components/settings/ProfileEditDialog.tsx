@@ -107,6 +107,8 @@ export function ProfileEditDialog() {
             brand_name: brandName.trim() || null,
             name: brandName.trim() || farm.name,
             reg_no: regNo.trim() || null,
+            reg_date: regDate || null,
+
           })
           .eq('id', farm.id);
         if (error) throw error;
