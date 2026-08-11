@@ -13,7 +13,10 @@ interface TraceData {
   found: boolean;
   slug?: string;
   generated_at?: string;
-  farm?: { name?: string; name_en?: string; location?: string; photo_url?: string };
+  farm?: {
+    id?: string; code?: string; name?: string; name_en?: string; location?: string;
+    photo_url?: string; registered_at?: string; total_sheds?: number;
+  };
   farmer?: { name?: string; avatar_url?: string };
   batch?: {
     kind: string; name?: string; breed?: string; start_date?: string; end_date?: string;
