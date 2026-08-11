@@ -18,6 +18,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DEFAULT_AUTOMATION, validateAutomationDefaults, isBlockingWarning } from '@/lib/calibration';
+
 
 const STEPS: { id: CalibrationStep; icon: React.ElementType; label: { bn: string; en: string } }[] = [
   { id: 'dimensions', icon: Ruler, label: { bn: 'মাত্রা', en: 'Dimensions' } },
@@ -47,80 +49,20 @@ export function CalibrationWizard({ deviceTokenId, shedId, onComplete }: Calibra
   const [height, setHeight] = useState('');
   const [waterPulse, setWaterPulse] = useState('');
   
-  // Automation defaults state
-  const DEFAULT_AUTOMATION: AutomationDefaults = {
-    temp_min: 18,
-    temp_max: 32,
-    humidity_min: 40,
-    humidity_max: 80,
-    ammonia_max: 25,
-    fan_low_temp_min: 28,
-    fan_low_temp_max: 30,
-    fan_medium_temp_min: 30,
-    fan_medium_temp_max: 33,
-    fan_high_temp_min: 33,
-    heater_on_temp: 20,
-    heater_off_temp: 24,
-  };
-  
+  // Automation defaults state (SSOT + validation live in src/lib/calibration.ts)
   const [automationDefaults, setAutomationDefaults] = useState<AutomationDefaults>(DEFAULT_AUTOMATION);
 
-  // Validation warnings
-  const validationWarnings = useMemo(() => {
-    const warnings: string[] = [];
-    const d = automationDefaults;
-    
-    // Temperature range checks
-    if (d.temp_min < 10 || d.temp_min > 25) {
-      warnings.push(language === 'bn' ? '⚠️ সর্বনিম্ন তাপমাত্রা ১০-২৫°C এর মধ্যে হওয়া উচিত' : '⚠️ Min temp should be 10-25°C');
-    }
-    if (d.temp_max < 28 || d.temp_max > 40) {
-      warnings.push(language === 'bn' ? '⚠️ সর্বোচ্চ তাপমাত্রা ২৮-৪০°C এর মধ্যে হওয়া উচিত' : '⚠️ Max temp should be 28-40°C');
-    }
-    if (d.temp_min >= d.temp_max) {
-      warnings.push(language === 'bn' ? '❌ সর্বনিম্ন তাপমাত্রা সর্বোচ্চের চেয়ে কম হতে হবে' : '❌ Min temp must be less than max');
-    }
-    
-    // Humidity checks
-    if (d.humidity_min < 30 || d.humidity_min > 60) {
-      warnings.push(language === 'bn' ? '⚠️ আর্দ্রতা সর্বনিম্ন ৩০-৬০% হওয়া উচিত' : '⚠️ Humidity min should be 30-60%');
-    }
-    if (d.humidity_max < 70 || d.humidity_max > 95) {
-      warnings.push(language === 'bn' ? '⚠️ আর্দ্রতা সর্বোচ্চ ৭০-৯৫% হওয়া উচিত' : '⚠️ Humidity max should be 70-95%');
-    }
-    
-    // Ammonia check
-    if (d.ammonia_max < 15 || d.ammonia_max > 35) {
-      warnings.push(language === 'bn' ? '⚠️ অ্যামোনিয়া সীমা ১৫-৩৫ ppm হওয়া উচিত' : '⚠️ Ammonia limit should be 15-35 ppm');
-    }
-    
-    // Fan speed order check
-    if (d.fan_low_temp_min >= d.fan_low_temp_max) {
-      warnings.push(language === 'bn' ? '❌ ফ্যান Low রেঞ্জ ভুল' : '❌ Fan Low range is invalid');
-    }
-    if (d.fan_medium_temp_min >= d.fan_medium_temp_max) {
-      warnings.push(language === 'bn' ? '❌ ফ্যান Medium রেঞ্জ ভুল' : '❌ Fan Medium range is invalid');
-    }
-    if (d.fan_low_temp_max > d.fan_medium_temp_min) {
-      warnings.push(language === 'bn' ? '⚠️ ফ্যান স্পিড রেঞ্জ ওভারল্যাপ করছে' : '⚠️ Fan speed ranges overlap');
-    }
-    
-    // Heater check
-    if (d.heater_on_temp >= d.heater_off_temp) {
-      warnings.push(language === 'bn' ? '❌ হিটার ON তাপমাত্রা OFF এর চেয়ে কম হতে হবে' : '❌ Heater ON must be less than OFF');
-    }
-    if (d.heater_on_temp < 15 || d.heater_on_temp > 28) {
-      warnings.push(language === 'bn' ? '⚠️ হিটার ON তাপমাত্রা ১৫-২৮°C হওয়া উচিত' : '⚠️ Heater ON should be 15-28°C');
-    }
-    
-    return warnings;
-  }, [automationDefaults, language]);
+  const validationWarnings = useMemo(
+    () => validateAutomationDefaults(automationDefaults, language === 'bn' ? 'bn' : 'en'),
+    [automationDefaults, language],
+  );
 
-  const hasErrors = validationWarnings.some(w => w.includes('❌'));
+  const hasErrors = validationWarnings.some(isBlockingWarning);
 
   const resetToDefaults = () => {
     setAutomationDefaults(DEFAULT_AUTOMATION);
   };
+
 
   // Pre-fill from existing data
   useEffect(() => {
