@@ -3,7 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export type NotificationPriority = 'normal' | 'important' | 'urgent' | 'critical';
+import {
+  mapAlertLevelToPriority,
+  mapEmergencyPriority,
+  type NotificationPriority,
+} from '@/lib/alertPolicy';
+
+// Pure priority mapping lives in src/lib/alertPolicy.ts (SSOT).
+export { mapAlertLevelToPriority, mapEmergencyPriority };
+export type { NotificationPriority };
 
 export interface EscalationConfig {
   id: string;
@@ -64,26 +72,6 @@ export const PRIORITY_CHANNELS: Record<NotificationPriority, { push: boolean; sm
   urgent: { push: true, sms: true, webhook: false, repeat: true },
   critical: { push: true, sms: true, webhook: true, repeat: true },
 };
-
-// Map old alert levels to new priorities
-export function mapAlertLevelToPriority(level: string): NotificationPriority {
-  switch (level) {
-    case 'info': return 'normal';
-    case 'warning': return 'important';
-    case 'danger': return 'critical';
-    default: return 'normal';
-  }
-}
-
-export function mapEmergencyPriority(priority: string): NotificationPriority {
-  switch (priority) {
-    case 'INFO': return 'normal';
-    case 'WARNING': return 'important';
-    case 'CRITICAL': return 'urgent';
-    case 'LIFE_THREATENING': return 'critical';
-    default: return 'normal';
-  }
-}
 
 export function useEscalationConfig() {
   const { user } = useAuth();

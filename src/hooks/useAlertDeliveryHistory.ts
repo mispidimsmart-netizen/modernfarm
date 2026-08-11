@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
+import { filterRowsByChannelStatus, type DeliveryChannelStatus } from '@/lib/alertPolicy';
 
 export interface DeliveryRow {
   id: string;
@@ -29,7 +30,7 @@ export interface AlertHistoryRow {
 export interface HistoryFilters {
   severity?: string; // 'all' | 'low' | 'medium' | 'high' | 'critical'
   acknowledged?: 'all' | 'yes' | 'no';
-  channelStatus?: 'all' | 'failed' | 'sent' | 'skipped';
+  channelStatus?: DeliveryChannelStatus;
   hours?: number;
 }
 
@@ -81,17 +82,8 @@ export function useAlertDeliveryHistory(filters: HistoryFilters = {}) {
         deliveries: byAlert.get(a.id) ?? [],
       }));
 
-      if (filters.channelStatus && filters.channelStatus !== 'all') {
-        rows = rows.filter((r) =>
-          r.deliveries.some((d) =>
-            filters.channelStatus === 'failed'
-              ? d.status === 'failed'
-              : filters.channelStatus === 'sent'
-              ? d.status === 'sent'
-              : d.status.startsWith('skipped')
-          )
-        );
-      }
+      rows = filterRowsByChannelStatus(rows, filters.channelStatus);
+
       return rows;
     },
   });
