@@ -1,23 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Ruler, Wind, Thermometer, Flame, Droplets, CheckCircle2, 
-  AlertTriangle, ArrowRight, ArrowLeft, RotateCcw, Play, 
-  Check, X, Loader2, Gauge, Settings2, RefreshCw, AlertCircle
+import {
+  Ruler, Wind, Thermometer, Flame, Droplets, CheckCircle2,
+  ArrowRight, Check, Loader2, Gauge, Settings2
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCalibrationWizard, CalibrationStep, AutomationDefaults } from '@/hooks/useCalibrationWizard';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Slider } from '@/components/ui/slider';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEFAULT_AUTOMATION, validateAutomationDefaults, isBlockingWarning } from '@/lib/calibration';
 import { AutomationDefaultsStep } from './steps/AutomationDefaultsStep';
 import { SensorTestSteps } from './steps/SensorTestSteps';
