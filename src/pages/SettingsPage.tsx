@@ -173,14 +173,14 @@ export function SettingsPage() {
                     {profile.user_name}
                   </p>
                 )}
-                <p className="text-sm text-primary-foreground/80">
-                  {profile?.phone || displayPhone || (language === 'bn' ? 'মোবাইল নং যোগ করুন' : 'Add mobile number')}
-                </p>
                 {isOwner && (
-                  <div className="mt-2">
+                  <div className="mt-1">
                     <ProfileEditDialog />
                   </div>
                 )}
+                <p className="text-sm text-primary-foreground/80">
+                  {profile?.phone || displayPhone || (language === 'bn' ? 'মোবাইল নং যোগ করুন' : 'Add mobile number')}
+                </p>
                 {!isOwner && (
                   <p className="mt-1 text-xs text-yellow-200">
                     ⚠️ {t.viewOnly[language]}
