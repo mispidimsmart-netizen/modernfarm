@@ -1,14 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { toSensorHistoryPoints, type SensorHistoryPoint } from '@/lib/sensorHistory';
 
-interface SensorHistoryPoint {
-  time: string;
-  temperature: number;
-  humidity: number;
-  ammonia: number;
-  water_usage: number;
-}
+export type { SensorHistoryPoint };
 
 export function useSensorHistory(hours: number = 24) {
   const { user } = useAuth();
@@ -21,7 +16,7 @@ export function useSensorHistory(hours: number = 24) {
       const startTime = new Date();
       startTime.setHours(startTime.getHours() - hours);
 
-      // Get most recent 100 records (DESC), then reverse for chart display (oldest first)
+      // Most recent 100 records (DESC); the transform reverses for chart display
       const { data, error } = await supabase
         .from('sensor_readings')
         .select('temperature, humidity, ammonia, water_usage, recorded_at')
@@ -32,21 +27,7 @@ export function useSensorHistory(hours: number = 24) {
 
       if (error) throw error;
 
-      // Filter out zero-value readings (sensor not connected) and reverse for chronological order
-      const validData = (data || [])
-        .filter(r => r.temperature !== 0 || r.humidity !== 0 || r.ammonia !== 0)
-        .reverse();
-
-      return validData.map(reading => ({
-        time: new Date(reading.recorded_at).toLocaleTimeString('bn-BD', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        temperature: Number(reading.temperature),
-        humidity: Number(reading.humidity),
-        ammonia: Number(reading.ammonia),
-        water_usage: Number(reading.water_usage),
-      }));
+      return toSensorHistoryPoints(data);
     },
     enabled: !!user,
     refetchInterval: 60000, // Refresh every minute
