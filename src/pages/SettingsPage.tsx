@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
+import { FarmBrandingDialog } from '@/components/settings/FarmBrandingDialog';
 import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
 import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
 import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
