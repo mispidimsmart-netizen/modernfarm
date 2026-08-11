@@ -22,52 +22,13 @@ import { OrgUsageAnalytics } from '@/components/admin/OrgUsageAnalytics';
 import { LicenseExpiryBanner } from '@/components/billing/LicenseExpiryBanner';
 import { TrialStatusBanner } from '@/components/billing/TrialStatusBanner';
 import { OrgActivityAuditLog } from '@/components/admin/OrgActivityAuditLog';
+import { AddMemberDialog } from '@/components/admin/org/AddMemberDialog';
+import {
+  roleLabel, licenseLabel, ORG_PAGE_SIZE, filterSortFarms, filterSortMembers, paginate,
+  type OrgRole, type LicenseType, type MyOrg, type MemberRow, type FarmRow,
+  type FarmSort, type MemberSort,
+} from '@/lib/orgAdmin';
 
-type OrgRole = 'org_owner' | 'org_admin' | 'member';
-type LicenseType = 'trial' | 'lifetime' | 'subscription' | 'suspended';
-
-interface MyOrg {
-  id: string;
-  name: string;
-  name_en: string;
-  slug: string;
-  license_type: LicenseType;
-  license_expires_at: string | null;
-  max_farms: number;
-  max_users: number;
-  my_role: OrgRole;
-  farm_count: number;
-  member_count: number;
-  license_valid: boolean;
-}
-
-interface MemberRow {
-  id: string;
-  user_id: string;
-  role: OrgRole;
-  profile?: { user_name: string | null; phone: string | null; email: string | null };
-}
-
-interface FarmRow {
-  id: string;
-  name: string;
-  name_en: string | null;
-  owner_id: string;
-  created_at: string;
-}
-
-const roleLabel: Record<OrgRole, string> = {
-  org_owner: 'মালিক',
-  org_admin: 'অ্যাডমিন',
-  member: 'সদস্য',
-};
-
-const licenseLabel: Record<LicenseType, string> = {
-  trial: 'ট্রায়াল',
-  lifetime: 'লাইফটাইম',
-  subscription: 'সাবস্ক্রিপশন',
-  suspended: 'স্থগিত',
-};
 
 export default function OrgAdminPage() {
   const qc = useQueryClient();
@@ -78,9 +39,9 @@ export default function OrgAdminPage() {
   const [farmPage, setFarmPage] = useState(1);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
-  const [farmSort, setFarmSort] = useState<'name_asc' | 'name_desc' | 'date_desc' | 'date_asc'>('date_asc');
-  const [memberSort, setMemberSort] = useState<'name_asc' | 'name_desc' | 'role'>('role');
-  const PAGE_SIZE = 10;
+  const [farmSort, setFarmSort] = useState<FarmSort>('date_asc');
+  const [memberSort, setMemberSort] = useState<MemberSort>('role');
+  const PAGE_SIZE = ORG_PAGE_SIZE;
 
   const { data: orgs = [], isLoading } = useQuery({
     queryKey: ['my_organizations'],
