@@ -72,6 +72,7 @@ const WorkerPage = lazyRetry(() => import("./pages/WorkerPage"));
 const MembersPage = lazyRetry(() => import("./pages/MembersPage"));
 const SentryTestPage = lazyRetry(() => import("./pages/SentryTestPage"));
 const PinMapPage = lazyRetry(() => import("./pages/PinMapPage"));
+const PublicTracePage = lazyRetry(() => import("./pages/PublicTracePage"));
 const OAuthConsentPage = lazyRetry(() => import("./pages/OAuthConsentPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
