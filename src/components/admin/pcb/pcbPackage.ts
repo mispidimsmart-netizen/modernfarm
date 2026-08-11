@@ -7,13 +7,13 @@ function csvEscape(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function buildBomCsv(): string {
+export function buildBomCsv(): string {
   const head = ['Ref', 'Qty', 'Part', 'Specification', 'Package', 'Notes'];
   const rows = BOM.map((b) => [b.ref, b.qty, b.part, b.spec, b.package, b.notes].map(csvEscape).join(','));
   return [head.join(','), ...rows].join('\n');
 }
 
-function buildConnectorCsv(): string {
+export function buildConnectorCsv(): string {
   const head = ['Connector', 'Title', 'Pin', 'Signal', 'WireColourHex', 'WireColourName', 'AWG', 'Notes'];
   const rows: string[] = [];
   CONNECTOR_MAP.forEach((g) => {
@@ -24,7 +24,7 @@ function buildConnectorCsv(): string {
   return [head.join(','), ...rows].join('\n');
 }
 
-function buildGpioCsv(): string {
+export function buildGpioCsv(): string {
   const head = ['GPIO', 'Function', 'Direction', 'Notes'];
   const rows = GPIO_MAP.map((g) => g.map(csvEscape).join(','));
   return [head.join(','), ...rows].join('\n');

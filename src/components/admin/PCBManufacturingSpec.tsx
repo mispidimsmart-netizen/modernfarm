@@ -11,7 +11,8 @@ import {
   MAINS_TERMINALS, RELAY_OUTPUTS, WIRING_RULES, CONNECTOR_MAP,
 } from './pcb/pcbData';
 import { generateDocx, generateWiringDocx } from './pcb/pcbDocx';
-import { generateGerberZip } from './pcb/pcbPackage';
+import { generateGerberZip, buildBomCsv, buildGpioCsv, buildConnectorCsv } from './pcb/pcbPackage';
+import { saveAs } from 'file-saver';
 
 export function PCBManufacturingSpec() {
   const [busy, setBusy] = useState(false);
