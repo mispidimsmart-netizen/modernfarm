@@ -25,8 +25,8 @@ export default function OrgAdminPage() {
   const [farmSort, setFarmSort] = useState<FarmSort>('date_asc');
   const [memberSort, setMemberSort] = useState<MemberSort>('role');
 
-  const [orgsPlaceholder] = useState(null); // keeps hook order stable across renders
-  void orgsPlaceholder;
+
+
 
   // Deeplink support: ?section=billing[&action=upgrade][&org=<id>]
   const [searchParams, setSearchParams] = useSearchParams();
