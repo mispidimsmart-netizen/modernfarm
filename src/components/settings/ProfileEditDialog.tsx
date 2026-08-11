@@ -45,6 +45,8 @@ export function ProfileEditDialog() {
   const [brandName, setBrandName] = useState('');
   const [phone, setPhone] = useState('');
   const [regNo, setRegNo] = useState('');
+  const [regDate, setRegDate] = useState('');
+
 
   const bn = language === 'bn';
 
