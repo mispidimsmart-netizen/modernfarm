@@ -137,48 +137,49 @@ export function BatchQrSection() {
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-[200px] text-xs">
-                <SelectValue placeholder="ব্যাচ নির্বাচন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
-                <SelectItem value="all">সব ব্যাচ</SelectItem>
-                {data.map((p) => (
-                  <SelectItem key={p.batch_id} value={p.batch_id}>
-                    {p.batchName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <SelectValue placeholder="ব্যাচ নির্বাচন" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
+                    <SelectItem value="all">সব ব্যাচ</SelectItem>
+                    {data.map((p) => (
+                      <SelectItem key={p.batch_id} value={p.batch_id}>
+                        {p.batchName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">ধরন</span>
-            <Select value={kindFilter} onValueChange={setKindFilter}>
-              <SelectTrigger className="h-8 w-[140px] text-xs">
-                <SelectValue placeholder="সব ধরন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব ধরন</SelectItem>
-                <SelectItem value="layer">লেয়ার</SelectItem>
-                <SelectItem value="broiler">ব্রয়লার</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">ধরন</span>
+                <Select value={kindFilter} onValueChange={setKindFilter}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="সব ধরন" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব ধরন</SelectItem>
+                    <SelectItem value="layer">লেয়ার</SelectItem>
+                    <SelectItem value="broiler">ব্রয়লার</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-        {statusFilter === 'active' && !activeCount && !!data.length && (
-          <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
-        )}
+            {statusFilter === 'active' && !activeCount && !!data.length && (
+              <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
+            )}
 
-        {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
-        {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
-        {visible.map((p) => (
-          <QrCard key={p.id} page={p} onToggle={onToggle} />
-        ))}
+            {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
+            {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
+            {visible.map((p) => (
+              <QrCard key={p.id} page={p} onToggle={onToggle} />
+            ))}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
