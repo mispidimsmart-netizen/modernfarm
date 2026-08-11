@@ -18,6 +18,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DEFAULT_AUTOMATION, validateAutomationDefaults, isBlockingWarning } from '@/lib/calibration';
+
 
 const STEPS: { id: CalibrationStep; icon: React.ElementType; label: { bn: string; en: string } }[] = [
   { id: 'dimensions', icon: Ruler, label: { bn: 'মাত্রা', en: 'Dimensions' } },
