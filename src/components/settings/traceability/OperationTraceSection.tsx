@@ -84,6 +84,8 @@ export function OperationTraceSection() {
           </div>
         ))}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
