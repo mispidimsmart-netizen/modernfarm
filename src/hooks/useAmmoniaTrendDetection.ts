@@ -111,8 +111,8 @@ function detectRisingTrend(
 
   // Check for continuous rise (hour 0 is most recent)
   let risingHours = 0;
-  let firstValue = validHours[validHours.length - 1]?.avg || 0;
-  let lastValue = validHours[0]?.avg || 0;
+  const firstValue = validHours[validHours.length - 1]?.avg || 0;
+  const lastValue = validHours[0]?.avg || 0;
 
   for (let i = 0; i < validHours.length - 1; i++) {
     const current = validHours[i];
