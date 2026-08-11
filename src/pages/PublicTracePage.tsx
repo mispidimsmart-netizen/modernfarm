@@ -33,6 +33,9 @@ interface TraceData {
 
 const bnDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('bn-BD') : '—');
 
+/** Only the detail sections this page renders — keeps the server payload minimal. */
+const DETAIL_FIELDS = ['feed', 'medicine', 'environment'] as const satisfies readonly string[];
+
 export default function PublicTracePage() {
   const { slug = '' } = useParams();
   const [searchParams] = useSearchParams();
