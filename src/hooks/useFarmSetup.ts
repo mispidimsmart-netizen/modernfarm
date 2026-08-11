@@ -2,20 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
+import { deriveSetupState } from '@/lib/onboarding';
 
-export type SetupStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-
-export const SETUP_STEPS = [
-  { step: 1, key: 'step_farm_created', icon: '🏠', en: 'Create Farm', bn: 'খামার তৈরি' },
-  { step: 2, key: 'step_shed_added', icon: '🏗️', en: 'Add Shed', bn: 'শেড যোগ করুন' },
-  { step: 3, key: 'step_controller_registered', icon: '📱', en: 'Register Controller', bn: 'কন্ট্রোলার সংযোগ' },
-  { step: 4, key: 'step_relays_tested', icon: '🔌', en: 'Test Relays', bn: 'রিলে পরীক্ষা' },
-  { step: 5, key: 'step_sensors_calibrated', icon: '🌡️', en: 'Calibrate Sensors', bn: 'সেন্সর ক্যালিব্রেশন' },
-  { step: 6, key: 'step_chick_age_set', icon: '🐣', en: 'Set Chick Age', bn: 'বাচ্চার বয়স সেট' },
-  { step: 7, key: 'step_automation_profile_selected', icon: '⚙️', en: 'Automation Profile', bn: 'অটোমেশন প্রোফাইল' },
-  { step: 8, key: 'hardware_validation_passed', icon: '🔧', en: 'Hardware Validation', bn: 'হার্ডওয়্যার ভ্যালিডেশন' },
-  { step: 9, key: 'step_simulation_passed', icon: '🧪', en: 'Simulation Test', bn: 'সিমুলেশন টেস্ট' },
-] as const;
+// Step definitions & progress math live in the pure SSOT module.
+export { SETUP_STEPS, deriveSetupState, setupProgressPercent, completedStepCount, nextSetupStep } from '@/lib/onboarding';
+export type { SetupStep, SetupStepDef } from '@/lib/onboarding';
 
 export function useFarmSetupStatus() {
   const { user } = useAuth();
@@ -63,9 +54,13 @@ export function useUpdateSetupStep() {
 
 export function useIsSetupComplete() {
   const { data: status, isLoading } = useFarmSetupStatus();
+  const derived = deriveSetupState(status as Record<string, unknown> | null);
   return {
-    isComplete: status?.setup_completed ?? true, // default true for backward compat
-    isHardwareValidated: status?.hardware_validation_passed ?? false,
+    // Missing row => complete (backward compat with pre-wizard farms).
+    isComplete: status ? (status.setup_completed ?? true) : true,
+    isHardwareValidated: derived.isHardwareValidated,
+    progressPercent: derived.percent,
+    nextStep: derived.nextStep,
     isLoading,
     status,
   };
