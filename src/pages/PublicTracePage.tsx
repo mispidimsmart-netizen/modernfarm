@@ -206,7 +206,7 @@ export default function PublicTracePage() {
               title="খাবারের তথ্য"
               icon={<Wheat className="h-4 w-4 text-primary" />}
               tone="primary"
-              empty="কোনো ফিড রেকর্ড নেই"
+              empty={detailsLoading ? 'লোড হচ্ছে…' : 'কোনো ফিড রেকর্ড নেই'}
             >
               {feed.slice(0, 20).map((f, i) => (
                 <li key={i} className="flex justify-between gap-2 border-b border-primary/10 py-1.5 text-sm last:border-0">
@@ -221,7 +221,7 @@ export default function PublicTracePage() {
               title="ঔষধ / ভ্যাকসিনের তথ্য"
               icon={<Syringe className="h-4 w-4 text-secondary" />}
               tone="secondary"
-              empty="কোনো ঔষধ/ভ্যাকসিনের রেকর্ড নেই"
+              empty={detailsLoading ? 'লোড হচ্ছে…' : 'কোনো ঔষধ/ভ্যাকসিনের রেকর্ড নেই'}
             >
               {medicine.slice(0, 20).map((m, i) => (
                 <li key={i} className="flex justify-between gap-2 border-b border-secondary/10 py-1.5 text-sm last:border-0">
@@ -230,6 +230,7 @@ export default function PublicTracePage() {
                 </li>
               ))}
             </TraceList>
+
 
             <footer className="mt-6 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
               ট্রেস আইডি: {data.slug} · তৈরি: {data.generated_at ? new Date(data.generated_at).toLocaleString('bn-BD') : ''}
