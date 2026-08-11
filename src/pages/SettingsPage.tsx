@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Bell, BellOff, Settings, User, Shield, Pencil, Check, X, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2, QrCode
+  Bell, BellOff, Settings, User, Shield, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2, QrCode
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -84,13 +84,11 @@ export function SettingsPage() {
   );
   const isOrgAdmin = myOrgs.length > 0;
   const { toast } = useToast();
-  const [isEditingName, setIsEditingName] = useState(false);
   // Phone-based logins get a synthetic e-mail (0170...@phone.layerfarm.app).
   // Never show it — fall back to the number encoded in it instead.
   const displayPhone = user?.email?.endsWith('@phone.layerfarm.app')
     ? user.email.split('@')[0]
     : '';
-  const [editedFarmName, setEditedFarmName] = useState('');
   const [activeTab, setActiveTab] = useState('farm-setup');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
@@ -102,34 +100,6 @@ export function SettingsPage() {
     }
   };
 
-  const handleEditName = () => {
-    setEditedFarmName(profile?.farm_name || '');
-    setIsEditingName(true);
-  };
-
-  const handleSaveName = async () => {
-    if (!editedFarmName.trim()) return;
-    
-    try {
-      await updateProfile.mutateAsync({ farm_name: editedFarmName.trim() });
-      toast({
-        title: language === 'bn' ? 'সেভ হয়েছে!' : 'Saved!',
-        description: language === 'bn' ? 'ফার্মের নাম আপডেট হয়েছে' : 'Farm name updated',
-      });
-      setIsEditingName(false);
-    } catch (error) {
-      toast({
-        title: language === 'bn' ? 'ত্রুটি' : 'Error',
-        description: language === 'bn' ? 'আবার চেষ্টা করুন' : 'Please try again',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingName(false);
-    setEditedFarmName('');
-  };
 
   const t = {
     settings: { bn: 'সেটিংস', en: 'Settings' },
