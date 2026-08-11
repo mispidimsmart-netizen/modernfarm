@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-import { QrCode, Download, Copy, ExternalLink } from 'lucide-react';
+import { QrCode, Download, Copy, ExternalLink, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -92,6 +93,7 @@ function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, 
 
 export function BatchQrSection() {
   const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
   const { data = [], isLoading } = useBatchTracePages(selectedFarmId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -120,60 +122,67 @@ export function BatchQrSection() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <QrCode className="h-4 w-4 text-primary" />
-          ৩. ব্যাচ ট্রেসিবিলিটি ও QR
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          QR স্ক্যান করে যে কেউ (লগইন ছাড়াই) ব্যাচের তথ্য দেখতে ও PDF/ছবি ডাউনলোড করতে পারবে। খরচ, আয় বা ফোন নম্বর দেখানো হয় না।
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-[200px] text-xs">
-                <SelectValue placeholder="ব্যাচ নির্বাচন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
-                <SelectItem value="all">সব ব্যাচ</SelectItem>
-                {data.map((p) => (
-                  <SelectItem key={p.batch_id} value={p.batch_id}>
-                    {p.batchName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-left">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <QrCode className="h-4 w-4 text-primary" />
+              ৩. ব্যাচ ট্রেসিবিলিটি ও QR
+            </CardTitle>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <p className="text-xs text-muted-foreground">
+            QR স্ক্যান করে যে কেউ (লগইন ছাড়াই) ব্যাচের তথ্য দেখতে ও PDF/ছবি ডাউনলোড করতে পারবে। খরচ, আয় বা ফোন নম্বর দেখানো হয় না।
+          </p>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <SelectValue placeholder="ব্যাচ নির্বাচন" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
+                    <SelectItem value="all">সব ব্যাচ</SelectItem>
+                    {data.map((p) => (
+                      <SelectItem key={p.batch_id} value={p.batch_id}>
+                        {p.batchName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">ধরন</span>
-            <Select value={kindFilter} onValueChange={setKindFilter}>
-              <SelectTrigger className="h-8 w-[140px] text-xs">
-                <SelectValue placeholder="সব ধরন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব ধরন</SelectItem>
-                <SelectItem value="layer">লেয়ার</SelectItem>
-                <SelectItem value="broiler">ব্রয়লার</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">ধরন</span>
+                <Select value={kindFilter} onValueChange={setKindFilter}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="সব ধরন" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব ধরন</SelectItem>
+                    <SelectItem value="layer">লেয়ার</SelectItem>
+                    <SelectItem value="broiler">ব্রয়লার</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-        {statusFilter === 'active' && !activeCount && !!data.length && (
-          <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
-        )}
+            {statusFilter === 'active' && !activeCount && !!data.length && (
+              <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
+            )}
 
-        {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
-        {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
-        {visible.map((p) => (
-          <QrCard key={p.id} page={p} onToggle={onToggle} />
-        ))}
-      </CardContent>
+            {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
+            {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
+            {visible.map((p) => (
+              <QrCard key={p.id} page={p} onToggle={onToggle} />
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

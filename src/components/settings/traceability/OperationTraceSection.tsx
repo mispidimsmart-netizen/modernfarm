@@ -1,13 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, Activity } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Download, Activity, ChevronDown } from 'lucide-react';
 import { useOperationTrace } from '@/hooks/useTraceability';
 import { downloadSheet, formatDuration } from '@/lib/traceExcel';
 import { useFarmContext } from '@/context/FarmContext';
+import { useState } from 'react';
 
 export function OperationTraceSection() {
   const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
   const { data, isLoading } = useOperationTrace(selectedFarmId, 7);
   const rows = data?.rows ?? [];
   const events = data?.events ?? [];
@@ -42,20 +45,26 @@ export function OperationTraceSection() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4 text-primary" />
-            ২. অপারেশন ট্রেসিবিলিটি
-          </CardTitle>
-          <Button size="sm" variant="outline" onClick={handleExport} disabled={!rows.length}>
-            <Download className="mr-1 h-4 w-4" /> এক্সেল
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস কতক্ষণ চলেছে, ম্যানুয়াল না অটো</p>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
+              <CardTitle className="flex flex-1 items-center gap-2 text-base">
+                <Activity className="h-4 w-4 text-primary" />
+                ২. অপারেশন ট্রেসিবিলিটি
+              </CardTitle>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+            </CollapsibleTrigger>
+            {open && (
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={!rows.length}>
+                <Download className="mr-1 h-4 w-4" /> এক্সেল
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস কতক্ষণ চলেছে, ম্যানুয়াল না অটো</p>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-2">
         {!isLoading && !rows.length && <p className="text-sm text-muted-foreground">এই সময়ে কোনো ডিভাইস কমান্ড নেই।</p>}
         {rows.map((r) => (
           <div key={r.deviceName} className="rounded-lg border p-3">
@@ -74,6 +83,8 @@ export function OperationTraceSection() {
           </div>
         ))}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

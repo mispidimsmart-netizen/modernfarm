@@ -1,13 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, Radio } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Download, Radio, ChevronDown } from 'lucide-react';
 import { useDataTrace } from '@/hooks/useTraceability';
 import { downloadSheet } from '@/lib/traceExcel';
 import { useFarmContext } from '@/context/FarmContext';
+import { useState } from 'react';
 
 export function DataTraceSection() {
   const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
   const { data = [], isLoading } = useDataTrace(selectedFarmId, 7);
 
   const total = data.reduce((s, r) => s + r.readings, 0);
@@ -32,19 +35,26 @@ export function DataTraceSection() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Radio className="h-4 w-4 text-primary" />
-            ১. ডেটা ট্রেসিবিলিটি
-          </CardTitle>
-          <Button size="sm" variant="outline" onClick={handleExport} disabled={!data.length}>
-            <Download className="mr-1 h-4 w-4" /> এক্সেল
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস/সেন্সর থেকে কতটি রিডিং এসেছে</p>
-      </CardHeader>
-      <CardContent className="space-y-2">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2">
+            <CollapsibleTrigger className="flex flex-1 items-center gap-2 text-left">
+              <CardTitle className="flex flex-1 items-center gap-2 text-base">
+                <Radio className="h-4 w-4 text-primary" />
+                ১. ডেটা ট্রেসিবিলিটি
+              </CardTitle>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+            </CollapsibleTrigger>
+            {open && (
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={!data.length}>
+                <Download className="mr-1 h-4 w-4" /> এক্সেল
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">গত ৭ দিনে কোন ডিভাইস/সেন্সর থেকে কতটি রিডিং এসেছে</p>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
         {!isLoading && !data.length && <p className="text-sm text-muted-foreground">এই সময়ে কোনো সেন্সর ডেটা নেই।</p>}
         {!!data.length && (
@@ -74,6 +84,8 @@ export function DataTraceSection() {
           </>
         )}
       </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
