@@ -140,10 +140,9 @@ export function ProfileEditDialog() {
         <button
           type="button"
           aria-label={bn ? 'প্রোফাইল এডিট' : 'Edit profile'}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-primary-foreground/90 bg-primary-foreground/15 hover:bg-primary-foreground/25 transition-colors"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 transition-colors"
         >
-          <Pencil size={12} />
-          {bn ? 'প্রোফাইল এডিট' : 'Edit profile'}
+          <Pencil size={14} />
         </button>
       </DialogTrigger>
 
