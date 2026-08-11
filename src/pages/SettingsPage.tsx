@@ -233,6 +233,11 @@ export function SettingsPage() {
                   </div>
                 )}
                 <p className="text-sm text-primary-foreground/80">{user?.email}</p>
+                {isOwner && (
+                  <div className="mt-2">
+                    <FarmBrandingDialog />
+                  </div>
+                )}
                 {!isOwner && (
                   <p className="mt-1 text-xs text-yellow-200">
                     ⚠️ {t.viewOnly[language]}
