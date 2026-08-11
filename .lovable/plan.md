@@ -1,63 +1,50 @@
-# সম্পূর্ণ সফটওয়্যার অডিট — স্টেপ বাই স্টেপ
+# ট্রেসিবিলিটি মডিউল (ডেটা / অপারেশন / ব্যাচ + পাবলিক QR)
 
-আমি পুরো সিস্টেম সূক্ষ্মভাবে যাচাই করব এবং প্রতিটি ধাপে রিপোর্ট দেব। বড় কাজ — তাই **৭ ফেজে** ভাগ করে চালাব। প্রতিটি ফেজ শেষে আপনাকে findings + fixes দেখাব, এরপর পরের ফেজে যাব।
+তিন স্তরের ট্রেসিবিলিটি যোগ করা হবে। ব্যাচের জন্য অটো QR কোড তৈরি হবে, যা স্ক্যান করলে যেকেউ (লগইন ছাড়াই) ফার্ম ও ব্যাচের পাবলিক তথ্য দেখতে পারবে।
 
-## ফেজগুলো
+## ১. ডেটা ট্রেসিবিলিটি (সেন্সর উৎস)
 
-### Phase 1 — Auth, Roles & Routing
-- LoginPage, OrgSignup, ResetPassword flow
-- 4-role guards: super_admin / org_owner / farm_owner / worker
-- RoleProtectedRoute, PlatformRoleGuard, WorkerLockScreen
-- usePermissions vs legacy useUserPermissions/useUserRole inconsistency
-- Route table in App.tsx — প্রতিটি route-এ সঠিক guard আছে কিনা
+ডেটাবেসে `sensor_readings`-এ ইতিমধ্যেই `device_id`, `farm_id`, `shed_id`, `sensor_source`, `recorded_at` আছে — নতুন টেবিল লাগবে না। শুধু দৃশ্যমান করা হবে:
 
-### Phase 2 — Dashboard, Sensors & Sheds
-- Dashboard cards (SensorCard, AlertCard, BroilerDashboardWidget, WeatherCard)
-- useSensorData / useRealtimeSensorData / useSafetyStatus
-- ShedSelector + multi-shed isolation (farm_id filter)
-- Phase 9 sensors mapping (DHT22/SHT31, MQ-137/ZE03-NH3, GSM)
+- সেটিংস → ডেটা ট্রেস নামে নতুন প্যানেল: সর্বশেষ রিডিংগুলোর তালিকা — সময়, ফার্ম, শেড, ডিভাইস আইডি, সোর্স (ESP32 / MQTT / ম্যানুয়াল), মান।
+- ফিল্টার: শেড, ডিভাইস, সময়সীমা (২৪ঘ / ৭দিন) + CSV এক্সপোর্ট।
+- ড্যাশবোর্ডের সেন্সর কার্ডে ছোট "উৎস" টুলটিপ (কোন ডিভাইস, কত সেকেন্ড আগে)।
 
-### Phase 3 — Automation & Control (Manual / Auto / Broiler / Layer)
-- AutomationPage — RBAC gates (verify আগের fix কাজ করছে)
-- ControlPage — temp override, 20m timeout, canChangeHardware
-- BroilerAgeAutoModeCard, BroilerTempCurveCard — day-based curve
-- 8 hardware invariants vs cloud mirror (heatStressIndex)
-- Layer mode: ceiling fan, sprinkler thresholds
-- AutomationEngineDashboard, AutomationStatusCard
+## ২. অপারেশন ট্রেসিবিলিটি (কে/কখন/কতক্ষণ)
 
-### Phase 4 — Broiler & Layer Mode Specifics
-- BroilerBatch/Feed/Weight sheets, FCR
-- LayerBatch flock_info SSOT trigger
-- Lighting curve + age-based suggestion
-- Active batch → flock_info auto-sync verification
+নতুন টেবিল `device_runtime_sessions` — প্রতিটি ডিভাইস অন→অফ একটি সেশন:
+`farm_id, shed_id, device_name, started_at, ended_at, duration_seconds, trigger_source (manual/auto/safety/schedule), triggered_by (user_id), mode (AUTO/MANUAL), reason`
 
-### Phase 5 — Finance, Reports & Analytics
-- FinanceReportPage — batch_id scope filter
-- FinanceAuditPanel hidden from farm page (constraint)
-- Reports, Analytics, Phase9Report, BroilerCost
+- ESP32 স্ট্যাটাস সিঙ্ক (esp32-api) যখন কোনো রিলে স্টেট বদল দেখে, তখন আগের সেশন ক্লোজ করে নতুন সেশন খুলবে — অর্থাৎ হার্ডওয়্যারই সত্যের উৎস, অটো/সেফটি পরিবর্তনও ধরা পড়বে।
+- ম্যানুয়াল কমান্ড পাঠানোর সময় `device_commands` থেকে `triggered_by` মিলিয়ে সেশনে বসানো হবে।
+- নতুন পেজ `/traceability` (অথবা বিদ্যমান অডিট লগ পেজে ট্যাব): ডিভাইসভিত্তিক টাইমলাইন, মোট রানটাইম (আজ/৭দিন/৩০দিন), কে চালু করেছে, CSV এক্সপোর্ট।
+- ভবিষ্যৎ ডেটা থেকে গণনা শুরু হবে (পুরোনো ডেটা পূর্ণাঙ্গ নয়)।
 
-### Phase 6 — Admin & Org Panel
-- AdminPage tabs (User, Role editor, Farm soft-delete/restore)
-- OrgAdminPage — org member management
-- Role auto-sync triggers + test_role_sync_invariants RPC
-- Newly added test_role_write_invariants RPC button
+## ৩. ফিনান্স/ব্যাচ ট্রেসিবিলিটি + পাবলিক QR
 
-### Phase 7 — Hardware/Edge Integration & Alerts
-- esp32-api edge function — desired_* writes only
-- safety-engine, automation-engine, ai-forecast
-- Alert pipeline: SmartAlerts, AlertDispatcher, SMS/Push
-- Device commands (no shed_id), device_status RLS
+- ব্যাচ ট্রেস প্যানেল (লগইন করা মালিকের জন্য): এক ব্যাচের সব খরচ, আয়, ফিড, মৃত্যু, ওষুধ — এক জায়গায় (batch_id দিয়ে ইতিমধ্যেই স্কোপড)।
+- সাপ্লায়ার ফিল্ড এখন যোগ করা হবে না (আপনার সিদ্ধান্ত অনুযায়ী)।
+- নতুন টেবিল `batch_public_pages`: `batch_id, batch_kind (layer/broiler), farm_id, public_slug (ছোট র‍্যান্ডম কোড), is_published, published_fields, created_at`।
+  ব্যাচ তৈরি হলে ট্রিগারে অটো একটি slug তৈরি হবে।
+- পাবলিক রুট `/t/:slug` — লগইন ছাড়াই খোলে। ডেটা আসবে একটি `security definer` RPC `get_public_batch_trace(slug)` থেকে, যা শুধু অনুমোদিত ফিল্ড রিটার্ন করে (কোনো টাকা/খরচ/ইউজার আইডি/ফোন কখনো নয়):
+  - ফার্মের নাম, ছবি, লোকেশন, খামারির নাম
+  - ব্যাচ: জাত, বয়স, শুরুর তারিখ, পাখির সংখ্যা
+  - ফিড ও ওষুধ/ভ্যাকসিন রেকর্ড (তারিখসহ, দাম ছাড়া)
+  - পরিবেশ: ব্যাচকালীন গড় তাপমাত্রা/আর্দ্রতা
+- ফার্মের ছবি ও খামারির ছবির জন্য পাবলিক স্টোরেজ বাকেট `farm-public` (শুধু মালিক আপলোড, সবাই পড়তে পারবে); ফার্ম সেটিংসে আপলোড ফিল্ড।
+- অ্যাপে ব্যাচ কার্ডে "QR দেখুন" — QR প্রিভিউ, PNG ডাউনলোড, লিংক কপি, এবং "পাবলিক করুন / বন্ধ করুন" টগল (ডিফল্ট: বন্ধ, মালিক চালু করবে)।
+- পাবলিক পেজ ব্র্যান্ডিং-রেডি: FarmEye/আপনার ব্র্যান্ড হেডার, বাংলা UI, মোবাইল-ফার্স্ট, SEO ট্যাগ।
 
-## প্রতিটি ফেজে যা করব
-1. সংশ্লিষ্ট ফাইলগুলো পড়ব (parallel)
-2. কোড vs memory rules vs DB schema cross-check
-3. বাগ/inconsistency পেলে fix proposal লিখব
-4. user-approved হলে fix apply করব
-5. সংক্ষিপ্ত findings table দেব
+## টেকনিক্যাল বিবরণ
 
-## টেকনিক্যাল নোট
-- পড়া-শোনা প্রধান কাজ, code edits শুধু confirmed bugs-এ
-- Memory rules কঠোরভাবে মানা হবে (Bengali UI, hardware SSOT, no overwriting actual_* columns, ইত্যাদি)
-- প্রতিটি ফেজ শেষে stop → আপনার সম্মতি নিয়ে পরের ফেজ
+- মাইগ্রেশন: `device_runtime_sessions` (RLS: farm-scoped, GRANT authenticated + service_role), `batch_public_pages` (RLS: মালিক ম্যানেজ; পাবলিক অ্যাক্সেস শুধু RPC-র মাধ্যমে, সরাসরি anon SELECT নয়), slug জেনারেটর ট্রিগার, RPC `get_public_batch_trace(text)` (`security definer`, `search_path=public`, publish বন্ধ থাকলে খালি রিটার্ন)।
+- এজ ফাংশন `esp32-api`-তে ছোট additive হুক: রিলে স্টেট ট্রানজিশনে সেশন ওপেন/ক্লোজ (বিদ্যমান লজিক অপরিবর্তিত)।
+- ফ্রন্টএন্ড: `qrcode` লাইব্রেরি যোগ, নতুন পেজ `PublicBatchTracePage.tsx` (`/t/:slug`, ProtectedRoute ছাড়া), `TraceabilityPage.tsx`, হুক `useRuntimeSessions`, `useBatchTrace`, `useBatchPublicPage`।
+- সব কিছু additive — বিদ্যমান টেবিল/এপিআই পরিবর্তন হবে না, লাইভ ফার্মে ঝুঁকি নেই।
 
-**শুরু করব Phase 1 দিয়ে?** নাকি কোনো নির্দিষ্ট ফেজ আগে চান (যেমন সরাসরি Phase 3 — Automation/Control)?
+## ধাপ
+
+1. মাইগ্রেশন (দুই টেবিল + RPC + স্টোরেজ বাকেট)
+2. অপারেশন ট্রেসিবিলিটি (esp32-api হুক + `/traceability` পেজ)
+3. ডেটা ট্রেস প্যানেল + এক্সপোর্ট
+4. ব্যাচ ট্রেস + QR জেনারেশন + পাবলিক `/t/:slug` পেজ
