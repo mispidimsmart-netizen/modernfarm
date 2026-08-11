@@ -1,4 +1,4 @@
-import { Cable, CheckCircle2, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Cable, CheckCircle2, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -244,6 +244,3 @@ export function WiringChecklistCard() {
   );
 }
 
-export function WiringWarningIcon() {
-  return <AlertTriangle className="h-4 w-4" />;
-}
