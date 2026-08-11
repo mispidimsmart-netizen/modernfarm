@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 export function OperationTraceSection() {
   const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
   const { data, isLoading } = useOperationTrace(selectedFarmId, 7);
   const rows = data?.rows ?? [];
   const events = data?.events ?? [];

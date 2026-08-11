@@ -93,6 +93,7 @@ function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, 
 
 export function BatchQrSection() {
   const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
   const { data = [], isLoading } = useBatchTracePages(selectedFarmId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
