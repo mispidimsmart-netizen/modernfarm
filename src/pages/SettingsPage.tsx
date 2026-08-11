@@ -53,6 +53,9 @@ const DeviceSystemTab = lazy(() =>
 const LightingTab = lazy(() =>
   import('@/components/settings/tabs/LightingTab').then(m => ({ default: m.LightingTab }))
 );
+const TraceabilityTab = lazy(() =>
+  import('@/components/settings/traceability/TraceabilityTab').then(m => ({ default: m.TraceabilityTab }))
+);
 
 function TabFallback() {
   return (
