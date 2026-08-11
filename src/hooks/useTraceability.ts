@@ -148,6 +148,8 @@ export interface BatchPage {
   batchName: string;
   breed: string | null;
   startDate: string | null;
+  status: string | null;
+  isActive: boolean;
 }
 
 /** ৩নং — ব্যাচ/QR ট্রেসিবিলিটি */
@@ -164,19 +166,30 @@ export function useBatchTracePages(farmId: string | null) {
       if (!pages?.length) return [];
 
       const [layers, broilers] = await Promise.all([
-        supabase.from('layer_batches').select('id, batch_name, batch_name_bn, breed, start_date').eq('farm_id', farmId!),
-        supabase.from('broiler_batches').select('id, batch_name, batch_name_bn, breed, start_date').eq('farm_id', farmId!),
+        supabase.from('layer_batches').select('id, batch_name, batch_name_bn, breed, start_date, status').eq('farm_id', farmId!),
+        supabase.from('broiler_batches').select('id, batch_name, batch_name_bn, breed, start_date, status').eq('farm_id', farmId!),
       ]);
-      const info = new Map<string, { name: string; breed: string | null; start: string | null }>();
+      const info = new Map<string, { name: string; breed: string | null; start: string | null; status: string | null }>();
       for (const b of [...(layers.data ?? []), ...(broilers.data ?? [])]) {
-        info.set(b.id, { name: b.batch_name_bn || b.batch_name, breed: b.breed ?? null, start: b.start_date ?? null });
+        info.set(b.id, {
+          name: b.batch_name_bn || b.batch_name,
+          breed: b.breed ?? null,
+          start: b.start_date ?? null,
+          status: (b as any).status ?? null,
+        });
       }
-      return pages.map((p) => ({
-        ...(p as any),
-        batchName: info.get(p.batch_id)?.name ?? p.batch_id.slice(0, 8),
-        breed: info.get(p.batch_id)?.breed ?? null,
-        startDate: info.get(p.batch_id)?.start ?? null,
-      }));
+      return pages.map((p) => {
+        const meta = info.get(p.batch_id);
+        return {
+          ...(p as any),
+          batchName: meta?.name ?? p.batch_id.slice(0, 8),
+          breed: meta?.breed ?? null,
+          startDate: meta?.start ?? null,
+          status: meta?.status ?? null,
+          isActive: (meta?.status ?? '').toLowerCase() === 'active',
+        };
+      });
     },
   });
 }
+
