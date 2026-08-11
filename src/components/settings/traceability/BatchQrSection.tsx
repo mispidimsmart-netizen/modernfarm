@@ -122,16 +122,21 @@ export function BatchQrSection() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <QrCode className="h-4 w-4 text-primary" />
-          ৩. ব্যাচ ট্রেসিবিলিটি ও QR
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          QR স্ক্যান করে যে কেউ (লগইন ছাড়াই) ব্যাচের তথ্য দেখতে ও PDF/ছবি ডাউনলোড করতে পারবে। খরচ, আয় বা ফোন নম্বর দেখানো হয় না।
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-left">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <QrCode className="h-4 w-4 text-primary" />
+              ৩. ব্যাচ ট্রেসিবিলিটি ও QR
+            </CardTitle>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <p className="text-xs text-muted-foreground">
+            QR স্ক্যান করে যে কেউ (লগইন ছাড়াই) ব্যাচের তথ্য দেখতে ও PDF/ছবি ডাউনলোড করতে পারবে। খরচ, আয় বা ফোন নম্বর দেখানো হয় না।
+          </p>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
