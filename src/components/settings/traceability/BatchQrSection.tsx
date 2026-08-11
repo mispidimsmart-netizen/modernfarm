@@ -12,14 +12,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useBatchTracePages, type BatchPage } from '@/hooks/useTraceability';
 import { useFarmContext } from '@/context/FarmContext';
+import { buildTraceUrl, type BatchKind } from '@/lib/traceQr';
 
-const PUBLIC_TRACE_BASE_URL = 'https://farmeye.pro.bd';
+
 
 function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, next: boolean) => void }) {
   const [dataUrl, setDataUrl] = useState<string>('');
   const url = useMemo(
     () =>
-      `${PUBLIC_TRACE_BASE_URL}/trace/${page.public_slug}?kind=${page.batch_kind}&batch=${page.batch_id}`,
+      buildTraceUrl({
+        slug: page.public_slug,
+        kind: page.batch_kind as BatchKind,
+        batchId: page.batch_id,
+      }),
     [page.public_slug, page.batch_kind, page.batch_id],
   );
   const { toast } = useToast();
