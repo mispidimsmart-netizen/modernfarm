@@ -153,6 +153,18 @@ export function ProfileAvatarUpload({ readOnly = false }: { readOnly?: boolean }
 
   const displayUrl = previewUrl || profile?.avatar_url;
 
+  if (readOnly) {
+    return (
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm overflow-hidden">
+        {displayUrl ? (
+          <img src={displayUrl} alt="Profile" className="h-full w-full object-cover" />
+        ) : (
+          <User size={32} className="text-white" />
+        )}
+      </div>
+    );
+  }
+
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
