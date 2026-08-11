@@ -1,10 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, Activity } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Download, Activity, ChevronDown } from 'lucide-react';
 import { useOperationTrace } from '@/hooks/useTraceability';
 import { downloadSheet, formatDuration } from '@/lib/traceExcel';
 import { useFarmContext } from '@/context/FarmContext';
+import { useState } from 'react';
 
 export function OperationTraceSection() {
   const { selectedFarmId } = useFarmContext();
