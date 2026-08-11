@@ -13,7 +13,10 @@ interface TraceData {
   found: boolean;
   slug?: string;
   generated_at?: string;
-  farm?: { name?: string; name_en?: string; location?: string; photo_url?: string };
+  farm?: {
+    id?: string; code?: string; name?: string; name_en?: string; location?: string;
+    photo_url?: string; registered_at?: string; total_sheds?: number;
+  };
   farmer?: { name?: string; avatar_url?: string };
   batch?: {
     kind: string; name?: string; breed?: string; start_date?: string; end_date?: string;
@@ -96,21 +99,33 @@ export default function PublicTracePage() {
       <div className="mx-auto max-w-2xl space-y-3">
         <div ref={sheetRef} className="rounded-xl bg-background p-5">
           <header className="flex items-center gap-3 border-b pb-4">
-            {data.farm?.photo_url ? (
-              <img src={data.farm.photo_url} alt={`${data.farm?.name} খামারের ছবি`} className="h-16 w-16 rounded-xl object-cover" />
+            {data.farmer?.avatar_url || data.farm?.photo_url ? (
+              <img
+                src={data.farmer?.avatar_url || data.farm?.photo_url}
+                alt={`${data.farmer?.name || data.farm?.name} — খামারির ছবি`}
+                className="h-20 w-20 rounded-xl border object-cover"
+                crossOrigin="anonymous"
+              />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <ShieldCheck className="h-7 w-7" />
+              <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ShieldCheck className="h-8 w-8" />
               </div>
             )}
             <div className="min-w-0">
               <h1 className="truncate text-lg font-bold">{data.farm?.name}</h1>
+              {data.farm?.name_en && <p className="truncate text-xs text-muted-foreground">{data.farm.name_en}</p>}
               {data.farm?.location && (
                 <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" /> {data.farm.location}
                 </p>
               )}
-              <p className="mt-0.5 text-xs text-muted-foreground">খামারি: {data.farmer?.name || '—'}</p>
+              <p className="mt-0.5 text-xs font-medium">খামারি: {data.farmer?.name || '—'}</p>
+              <p className="text-[11px] text-muted-foreground">
+                ফার্ম কোড: {data.farm?.code || '—'}
+                {data.farm?.registered_at
+                  ? ` · নিবন্ধন: ${new Date(data.farm.registered_at).toLocaleDateString('bn-BD')}`
+                  : ''}
+              </p>
             </div>
           </header>
 
@@ -120,6 +135,7 @@ export default function PublicTracePage() {
               <Badge variant="secondary">{b.kind === 'layer' ? 'লেয়ার' : 'ব্রয়লার'}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <Info label="শেড সংখ্যা" value={String(data.farm?.total_sheds ?? '—')} />
               <Info label="জাত" value={b.breed || '—'} />
               <Info label="শুরুর তারিখ" value={b.start_date ? new Date(b.start_date).toLocaleDateString('bn-BD') : '—'} />
               <Info label="বয়স" value={`${b.age_days ?? 0} দিন`} />
