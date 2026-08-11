@@ -46,6 +46,11 @@ function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, 
             <Switch checked={page.is_published} onCheckedChange={(v) => onToggle(page, v)} aria-label="পাবলিক করুন" />
             <span className="text-xs">{page.is_published ? 'পাবলিক চালু' : 'পাবলিক বন্ধ'}</span>
           </div>
+          {!page.is_published && (
+            <p className="mt-1 text-[11px] text-destructive">
+              পাবলিক বন্ধ থাকলে QR স্ক্যান করে কেউ তথ্য দেখতে পাবে না — আগে চালু করুন।
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
