@@ -721,6 +721,39 @@ export type Database = {
           },
         ]
       }
+      batch_public_pages: {
+        Row: {
+          batch_id: string
+          batch_kind: string
+          created_at: string
+          farm_id: string | null
+          id: string
+          is_published: boolean
+          public_slug: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          batch_kind: string
+          created_at?: string
+          farm_id?: string | null
+          id?: string
+          is_published?: boolean
+          public_slug: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          batch_kind?: string
+          created_at?: string
+          farm_id?: string | null
+          id?: string
+          is_published?: boolean
+          public_slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       broiler_batches: {
         Row: {
           actual_end_date: string | null
@@ -2032,6 +2065,57 @@ export type Database = {
         }
         Relationships: []
       }
+      device_runtime_sessions: {
+        Row: {
+          created_at: string
+          device_name: string
+          duration_seconds: number | null
+          ended_at: string | null
+          farm_id: string
+          id: string
+          mode: string | null
+          reason: string | null
+          shed_id: string | null
+          started_at: string
+          trigger_source: string
+          triggered_by: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_name: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          farm_id: string
+          id?: string
+          mode?: string | null
+          reason?: string | null
+          shed_id?: string | null
+          started_at?: string
+          trigger_source?: string
+          triggered_by?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_name?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          farm_id?: string
+          id?: string
+          mode?: string | null
+          reason?: string | null
+          shed_id?: string | null
+          started_at?: string
+          trigger_source?: string
+          triggered_by?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       device_sensor_inventory: {
         Row: {
           calibration_offset: number | null
@@ -3011,6 +3095,7 @@ export type Database = {
           name_en: string
           organization_id: string | null
           owner_id: string
+          photo_url: string | null
           total_sheds: number | null
           updated_at: string
           worker_pin_hash: string | null
@@ -3025,6 +3110,7 @@ export type Database = {
           name_en?: string
           organization_id?: string | null
           owner_id: string
+          photo_url?: string | null
           total_sheds?: number | null
           updated_at?: string
           worker_pin_hash?: string | null
@@ -3039,6 +3125,7 @@ export type Database = {
           name_en?: string
           organization_id?: string | null
           owner_id?: string
+          photo_url?: string | null
           total_sheds?: number | null
           updated_at?: string
           worker_pin_hash?: string | null
@@ -8595,6 +8682,7 @@ export type Database = {
         Returns: Json
       }
       expire_desired_overrides: { Args: never; Returns: number }
+      generate_batch_public_slug: { Args: never; Returns: string }
       generate_license_expiry_notifications: { Args: never; Returns: Json }
       generate_mesh_pairing_code: {
         Args: { _primary_device_token_id: string }
@@ -8789,6 +8877,7 @@ export type Database = {
           sample_count: number
         }[]
       }
+      get_public_batch_trace: { Args: { _slug: string }; Returns: Json }
       get_sensor_history: {
         Args: { _farm_id: string; _hours?: number }
         Returns: {
