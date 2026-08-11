@@ -167,17 +167,26 @@ export function SettingsPage() {
                         : t.worker[language]}
                   </Badge>
                 </div>
-                {profile?.user_name && (
+                {isOwner ? (
+                  <div className="flex items-center justify-between gap-2">
+                    {profile?.user_name ? (
+                      <p className="text-sm text-primary-foreground/90 truncate">
+                        <User size={12} className="inline mr-1 -mt-0.5" />
+                        {profile.user_name}
+                      </p>
+                    ) : (
+                      <span className="text-sm text-primary-foreground/60">
+                        {language === 'bn' ? 'মালিকের নাম যোগ করুন' : 'Add owner name'}
+                      </span>
+                    )}
+                    <ProfileEditDialog />
+                  </div>
+                ) : profile?.user_name ? (
                   <p className="text-sm text-primary-foreground/90 truncate">
                     <User size={12} className="inline mr-1 -mt-0.5" />
                     {profile.user_name}
                   </p>
-                )}
-                {isOwner && (
-                  <div className="mt-1">
-                    <ProfileEditDialog />
-                  </div>
-                )}
+                ) : null}
                 <p className="text-sm text-primary-foreground/80">
                   {profile?.phone || displayPhone || (language === 'bn' ? 'মোবাইল নং যোগ করুন' : 'Add mobile number')}
                 </p>
