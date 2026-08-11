@@ -86,15 +86,18 @@ export function BatchQrSection() {
   const { data = [], isLoading } = useBatchTracePages(selectedFarmId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [filter, setFilter] = useState<string>('active');
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [kindFilter, setKindFilter] = useState<string>('all');
 
   const activeCount = data.filter((p) => p.isActive).length;
 
   const visible = useMemo(() => {
-    if (filter === 'all') return data;
-    if (filter === 'active') return activeCount ? data.filter((p) => p.isActive) : data;
-    return data.filter((p) => p.batch_id === filter);
-  }, [data, filter, activeCount]);
+    let rows = data;
+    if (kindFilter !== 'all') rows = rows.filter((p) => p.batch_kind === kindFilter);
+    if (statusFilter === 'all') return rows;
+    if (statusFilter === 'active') return activeCount ? rows.filter((p) => p.isActive) : rows;
+    return rows.filter((p) => p.batch_id === statusFilter);
+  }, [data, statusFilter, kindFilter, activeCount]);
 
   const onToggle = async (page: BatchPage, next: boolean) => {
     const { error } = await supabase.from('batch_public_pages').update({ is_published: next }).eq('id', page.id);
@@ -118,25 +121,41 @@ export function BatchQrSection() {
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="h-8 w-[220px] text-xs">
-              <SelectValue placeholder="ব্যাচ নির্বাচন" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
-              <SelectItem value="all">সব ব্যাচ</SelectItem>
-              {data.map((p) => (
-                <SelectItem key={p.batch_id} value={p.batch_id}>
-                  {p.batchName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-[200px] text-xs">
+                <SelectValue placeholder="ব্যাচ নির্বাচন" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
+                <SelectItem value="all">সব ব্যাচ</SelectItem>
+                {data.map((p) => (
+                  <SelectItem key={p.batch_id} value={p.batch_id}>
+                    {p.batchName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">ধরন</span>
+            <Select value={kindFilter} onValueChange={setKindFilter}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="সব ধরন" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">সব ধরন</SelectItem>
+                <SelectItem value="layer">লেয়ার</SelectItem>
+                <SelectItem value="broiler">ব্রয়লার</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {filter === 'active' && !activeCount && !!data.length && (
+        {statusFilter === 'active' && !activeCount && !!data.length && (
           <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
         )}
 
