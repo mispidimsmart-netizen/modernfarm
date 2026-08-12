@@ -280,28 +280,29 @@ export default function PublicTracePage() {
 
 
             {/* Project branding — same default for every farm */}
-            <section className="mt-6 rounded-xl border border-primary/20 bg-muted/40 p-3">
+            <section className="mt-6 rounded-xl border border-primary/20 bg-muted/40 p-3 sm:p-4">
               {/* Top: project logo + name */}
-              <div className="flex flex-col items-center gap-1 border-b border-primary/15 pb-3 text-center">
-                <img src={smartLogo.url} alt="SMART Project লোগো" className="h-12 w-auto object-contain" crossOrigin="anonymous" />
-                <p className="text-[11px] font-semibold leading-snug text-foreground">
+              <div className="flex flex-col items-center gap-1.5 border-b border-primary/15 pb-3 text-center">
+                <img src={smartLogo.url} alt="SMART Project লোগো" className="h-10 w-auto max-w-[70%] object-contain sm:h-14" crossOrigin="anonymous" />
+                <p className="text-[10px] font-semibold leading-snug text-foreground sm:text-xs">
                   Sustainable Microenterprise and Resilient Transformation (SMART) Project
                 </p>
               </div>
               {/* Bottom: PKSF (left) · Pidim Foundation (right) */}
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="flex flex-col items-center gap-1 text-center">
-                  <img src={pksfLogo.url} alt="পিকেএসএফ লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
-                  <p className="text-[10px] text-muted-foreground">সহযোগীতায়</p>
-                  <p className="text-[11px] font-semibold text-foreground">পিকেএসএফ</p>
+              <div className="mt-3 grid grid-cols-2 items-start gap-2 sm:gap-4">
+                <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+                  <img src={pksfLogo.url} alt="পিকেএসএফ লোগো" className="h-8 w-auto max-w-full object-contain sm:h-11" crossOrigin="anonymous" />
+                  <p className="text-[9px] leading-tight text-muted-foreground sm:text-[10px]">সহযোগীতায়</p>
+                  <p className="break-words text-[10px] font-semibold leading-tight text-foreground sm:text-[11px]">পিকেএসএফ</p>
                 </div>
-                <div className="flex flex-col items-center gap-1 text-center">
-                  <img src={pidimLogo.url} alt="পিদিম ফাউন্ডেশন লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
-                  <p className="text-[10px] text-muted-foreground">বাস্তবায়নে</p>
-                  <p className="text-[11px] font-semibold text-foreground">পিদিম ফাউন্ডেশন</p>
+                <div className="flex min-w-0 flex-col items-center gap-1 text-center">
+                  <img src={pidimLogo.url} alt="পিদিম ফাউন্ডেশন লোগো" className="h-8 w-auto max-w-full object-contain sm:h-11" crossOrigin="anonymous" />
+                  <p className="text-[9px] leading-tight text-muted-foreground sm:text-[10px]">বাস্তবায়নে</p>
+                  <p className="break-words text-[10px] font-semibold leading-tight text-foreground sm:text-[11px]">পিদিম ফাউন্ডেশন</p>
                 </div>
               </div>
             </section>
+
 
 
             <footer className="mt-3 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
