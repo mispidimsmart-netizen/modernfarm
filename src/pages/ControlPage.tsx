@@ -51,6 +51,11 @@ export function ControlPage() {
               isDeviceActive={c.isDeviceActive}
               pendingCommands={c.pendingCommands}
               onToggle={c.handleManualToggle}
+              temperature={c.sensorData.temperature}
+              ammonia={c.sensorData.ammonia}
+              tempMax={c.tempMax}
+              ammoniaMax={c.ammoniaMax}
+              engineEnabled={(c.farmSettings as any)?.safety_engine_enabled}
               disabled={c.farmNotReady || c.isViewer || !c.canFullControl}
             />
           </div>
