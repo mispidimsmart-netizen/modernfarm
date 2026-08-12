@@ -59,6 +59,7 @@ export function ProfileEditDialog() {
     setPhone(profile?.phone || '');
     setRegNo(farm?.reg_no || '');
     setRegDate(farm?.reg_date ? String(farm.reg_date).slice(0, 10) : '');
+    setLocation(farm?.location || '');
 
   }, [open, profile, farm]);
 
