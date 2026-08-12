@@ -12,6 +12,7 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode, useSetAutomationMode } from '@/hooks/useAutomationMode';
 import { useToast } from '@/hooks/use-toast';
+import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
 import {
@@ -243,6 +244,8 @@ export function useControlPageState() {
   };
 
   // ===== MANUAL MODE: Direct ON/OFF toggle =====
+  // Fully manual: no automation runs. Safety Engine ON still enforces the
+  // hard protections (heat/gas) — OFF gives raw, unrestricted control.
   const handleManualToggle = (deviceKey: string, newValue: boolean) => {
     if (!requireFarmSelected()) return;
     if (!canFullControl) {
@@ -255,6 +258,26 @@ export function useControlPageState() {
       });
       return;
     }
+
+    if (!newValue) {
+      const { isSafetyLocked, reason } = evaluateSafetyLock({
+        deviceKey,
+        temperature: sensorData.temperature,
+        ammonia: sensorData.ammonia,
+        tempMax: Number(farmSettings?.temperature_max ?? 32),
+        ammoniaMax: Number(farmSettings?.ammonia_max ?? 25),
+        engineEnabled: (farmSettings as any)?.safety_engine_enabled,
+      });
+      if (isSafetyLocked) {
+        toast({
+          title: language === 'bn' ? '🛡️ সেফটি ইঞ্জিন সক্রিয়' : '🛡️ Safety Engine active',
+          description: reason ? reason[language] : undefined,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const cmdType = deviceKey as CommandType;
     sendCommand.mutate({ commandType: cmdType, commandValue: newValue, shedId: selectedShedId || undefined });
 
