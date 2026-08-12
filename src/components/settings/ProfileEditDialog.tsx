@@ -110,6 +110,7 @@ export function ProfileEditDialog() {
             name: brandName.trim() || farm.name,
             reg_no: regNo.trim() || null,
             reg_date: regDate || null,
+            location: location.trim() || null,
 
           })
           .eq('id', farm.id);
