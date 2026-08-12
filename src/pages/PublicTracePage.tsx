@@ -137,6 +137,21 @@ export default function PublicTracePage() {
   const feed = data.feed ?? [];
   const medicine = data.medicine ?? [];
   const isLayer = b.kind === 'layer';
+  /** Poultry-type theme: eggs for layer batches, chicken for broiler batches. */
+  const theme = isLayer
+    ? {
+        page: 'bg-gradient-to-b from-secondary/20 via-background to-secondary/10',
+        header: 'bg-gradient-to-r from-secondary via-secondary to-primary text-secondary-foreground',
+        icon: Egg,
+        label: '🥚 লেয়ার খামার',
+      }
+    : {
+        page: 'bg-gradient-to-b from-primary/15 via-background to-primary/10',
+        header: 'bg-gradient-to-r from-primary via-primary to-secondary text-primary-foreground',
+        icon: Drumstick,
+        label: '🐔 ব্রয়লার খামার',
+      };
+  const ThemeIcon = theme.icon;
   const avatar = data.farmer?.avatar_url || data.farm?.photo_url;
   const mismatch = !isTraceMatch(
     { kind: expectedKind, batchId: expectedBatchId, farmId: expectedFarmId },
@@ -144,7 +159,7 @@ export default function PublicTracePage() {
   );
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-secondary/10 p-3 sm:p-6">
+    <main className={`min-h-screen p-3 sm:p-6 ${theme.page}`}>
       <div className="mx-auto max-w-2xl space-y-3">
         {mismatch && (
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -153,8 +168,14 @@ export default function PublicTracePage() {
         )}
         <div ref={sheetRef} className="overflow-hidden rounded-2xl border border-primary/20 bg-background shadow-lg">
           {/* Brand header */}
-          <header className="relative bg-gradient-to-r from-primary via-primary to-secondary px-5 py-6 text-primary-foreground">
-            <div className="flex items-center gap-4">
+          <header className={`relative overflow-hidden px-5 py-6 ${theme.header}`}>
+            <div className="pointer-events-none absolute -right-6 -top-6 opacity-15" aria-hidden="true">
+              <ThemeIcon className="h-32 w-32" />
+            </div>
+            <div className="pointer-events-none absolute -bottom-5 right-16 opacity-10" aria-hidden="true">
+              <ThemeIcon className="h-20 w-20" />
+            </div>
+            <div className="relative flex items-center gap-4">
               {avatar ? (
                 <img
                   src={avatar}
@@ -168,7 +189,7 @@ export default function PublicTracePage() {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-widest opacity-80">Verified Farm Profile</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest opacity-90">{theme.label}</p>
                 <h1 className="truncate text-xl font-extrabold leading-tight">{data.brand_name || data.farm?.name}</h1>
                 <p className="mt-0.5 truncate text-sm font-medium opacity-95">খামারি: {data.farmer?.name || '—'}</p>
                 {data.farmer?.phone && (
@@ -184,7 +205,7 @@ export default function PublicTracePage() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="relative mt-4 grid grid-cols-3 gap-2">
               <Chip icon={<Hash className="h-3 w-3" />} label="ফার্ম কোড" value={data.farm?.code || '—'} />
               <Chip icon={<BadgeCheck className="h-3 w-3" />} label="নিবন্ধন নং" value={data.farm?.reg_no || '—'} />
               <Chip icon={<CalendarDays className="h-3 w-3" />} label="নিবন্ধনের তারিখ" value={bnDate(data.farm?.registered_at)} />
