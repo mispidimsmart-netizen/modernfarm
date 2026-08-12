@@ -255,11 +255,27 @@ export default function PublicTracePage() {
             </TraceList>
 
 
-            <footer className="mt-6 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
+            {/* Project branding — same default for every farm */}
+            <section className="mt-6 rounded-xl border border-primary/20 bg-muted/40 p-3 text-center">
+              <div className="flex items-center justify-center gap-4">
+                <img src={smartLogo.url} alt="SMART Project লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+                <img src={pksfLogo.url} alt="পিকেএসএফ লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+                <img src={pidimLogo.url} alt="পিদিম ফাউন্ডেশন লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+              </div>
+              <p className="mt-2 text-[11px] font-semibold leading-snug text-foreground">
+                Sustainable Microenterprise and Resilient Transformation (SMART) Project
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                সহযোগীতায়: পিকেএসএফ · বাস্তবায়নে: পিদিম ফাউন্ডেশন
+              </p>
+            </section>
+
+            <footer className="mt-3 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
               ট্রেস আইডি: {data.slug} · তৈরি: {data.generated_at ? new Date(data.generated_at).toLocaleString('bn-BD') : ''}
               <br />
               <span className="font-semibold text-foreground">Powered by FarmEye — Nexiot Labs</span>
             </footer>
+
           </div>
         </div>
 
