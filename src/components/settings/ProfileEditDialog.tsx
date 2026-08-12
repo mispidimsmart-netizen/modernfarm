@@ -200,6 +200,22 @@ export function ProfileEditDialog() {
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="farm-location">{bn ? 'ফার্মের ঠিকানা' : 'Farm address'}</Label>
+            <Input
+              id="farm-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              maxLength={160}
+              placeholder={bn ? 'গ্রাম, ইউনিয়ন, উপজেলা, জেলা' : 'Village, union, upazila, district'}
+            />
+            <p className="text-xs text-muted-foreground">
+              {bn ? 'QR পাবলিক পেজে ঠিকানা হিসেবে দেখাবে।' : 'Shown as the address on the public QR page.'}
+            </p>
+          </div>
+
+
+
+          <div className="space-y-1.5">
             <Label htmlFor="reg-no">{bn ? 'নিবন্ধন নং' : 'Registration no.'}</Label>
             <Input id="reg-no" value={regNo} onChange={(e) => setRegNo(e.target.value)} maxLength={40} />
             <p className="text-xs text-muted-foreground">
