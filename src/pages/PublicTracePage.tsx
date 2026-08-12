@@ -188,30 +188,41 @@ export default function PublicTracePage() {
           </header>
 
           <div className="p-5">
-            {/* Batch banner */}
+            {/* Batch banner — poultry themed */}
             <section
-              className={`rounded-xl border p-4 ${
+              className={`relative overflow-hidden rounded-xl border p-4 ${
                 isLayer ? 'border-secondary/30 bg-secondary/10' : 'border-primary/30 bg-primary/10'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Bird className={`h-5 w-5 ${isLayer ? 'text-secondary' : 'text-primary'}`} />
+              {/* watermark: egg for layer, chicken for broiler */}
+              <div className="pointer-events-none absolute -right-3 -top-3 opacity-10">
+                {isLayer ? <Egg className="h-24 w-24 text-secondary" /> : <Drumstick className="h-24 w-24 text-primary" />}
+              </div>
+              <div className="relative flex items-center gap-2">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                    isLayer ? 'bg-secondary/20 text-secondary' : 'bg-primary/20 text-primary'
+                  }`}
+                >
+                  {isLayer ? <Egg className="h-5 w-5" /> : <Bird className="h-5 w-5" />}
+                </span>
                 <h2 className="text-base font-bold">{b.name || 'ব্যাচ'}</h2>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     isLayer ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'
                   }`}
                 >
-                  {isLayer ? 'লেয়ার' : 'ব্রয়লার'}
+                  {isLayer ? '🥚 লেয়ার' : '🐔 ব্রয়লার'}
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="relative mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Info label="জাত" value={b.breed || '—'} />
                 <Info label="শুরুর তারিখ" value={bnDate(b.start_date)} />
                 <Info label="বয়স" value={`${b.age_days ?? 0} দিন`} />
-                <Info label="বর্তমান পাখি" value={String(b.current_bird_count ?? '—')} />
+                <Info label={isLayer ? 'বর্তমান লেয়ার' : 'বর্তমান মুরগি'} value={String(b.current_bird_count ?? '—')} />
               </div>
             </section>
+
 
             {/* Feed */}
             <TraceList
