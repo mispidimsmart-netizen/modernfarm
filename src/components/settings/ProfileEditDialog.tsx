@@ -46,6 +46,7 @@ export function ProfileEditDialog() {
   const [phone, setPhone] = useState('');
   const [regNo, setRegNo] = useState('');
   const [regDate, setRegDate] = useState('');
+  const [location, setLocation] = useState('');
 
 
   const bn = language === 'bn';
