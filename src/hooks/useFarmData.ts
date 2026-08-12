@@ -57,18 +57,28 @@ export function useUpdateProfile() {
 // Farm settings hooks
 export function useFarmSettings() {
   const { user } = useAuth();
-  
+  const { selectedFarmId } = useFarmContext();
+
   return useQuery({
-    queryKey: ['farm_settings', user?.id],
+    queryKey: ['farm_settings', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      let query = supabase
         .from('farm_settings')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
+      // Scope to the selected farm; legacy rows may have farm_id NULL.
+      if (selectedFarmId) {
+        query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+      }
+      const { data, error } = await query.order('farm_id', {
+        ascending: false,
+        nullsFirst: false,
+      });
       if (error) throw error;
-      return data as FarmSettings;
+      const rows = (data ?? []) as FarmSettings[];
+      const exact = rows.find((r) => r.farm_id === selectedFarmId);
+      return (exact ?? rows[0] ?? null) as FarmSettings | null;
     },
     enabled: !!user,
   });
@@ -77,14 +87,28 @@ export function useFarmSettings() {
 export function useUpdateFarmSettings() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
+  const { selectedFarmId } = useFarmContext();
+
   return useMutation({
     mutationFn: async (settings: Partial<FarmSettings>) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
-        .from('farm_settings')
-        .update(settings)
-        .eq('user_id', user.id);
+      // Resolve the exact settings row for the selected farm to avoid
+      // updating every farm of a multi-farm account.
+      const current = queryClient.getQueryData<FarmSettings | null>([
+        'farm_settings',
+        user.id,
+        selectedFarmId,
+      ]);
+      let query = supabase.from('farm_settings').update(settings);
+      if (current?.id) {
+        query = query.eq('id', current.id);
+      } else {
+        query = query.eq('user_id', user.id);
+        if (selectedFarmId) {
+          query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+        }
+      }
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -158,16 +182,20 @@ export function useUpdateDeviceStatus(shedId?: string | null) {
 // Automation rules hooks
 export function useAutomationRules() {
   const { user } = useAuth();
-  
+  const { selectedFarmId } = useFarmContext();
+
   return useQuery({
-    queryKey: ['automation_rules', user?.id],
+    queryKey: ['automation_rules', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('automation_rules')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id);
+      if (selectedFarmId) {
+        query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data as AutomationRule[];
     },
@@ -274,6 +302,7 @@ export function useUpdateLightingSchedule() {
 // Alerts hooks
 export function useAlerts() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
 
   // Multi-shed scoping: when account has >1 shed AND a specific shed is selected,
   // filter alerts to that shed (plus farm-wide alerts where shed_id IS NULL).
@@ -283,13 +312,16 @@ export function useAlerts() {
   const scopeShedId = sheds.length > 1 && selectedShedId ? selectedShedId : null;
 
   return useQuery({
-    queryKey: ['alerts', user?.id, scopeShedId],
+    queryKey: ['alerts', user?.id, selectedFarmId, scopeShedId],
     queryFn: async () => {
       if (!user) return [];
       let q = supabase
         .from('alerts')
         .select('*')
         .eq('user_id', user.id);
+      if (selectedFarmId) {
+        q = q.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+      }
       if (scopeShedId) {
         q = q.or(`shed_id.eq.${scopeShedId},shed_id.is.null`);
       }
@@ -305,13 +337,16 @@ export function useAlerts() {
 
 export function useAcknowledgeAlert() {
   const queryClient = useQueryClient();
-  
+  const { user } = useAuth();
+
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!user) throw new Error('Not authenticated');
       const { error } = await supabase
         .from('alerts')
         .update({ acknowledged: true })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -323,18 +358,22 @@ export function useAcknowledgeAlert() {
 // Sensor readings hooks
 export function useSensorReadings(hours: number = 24) {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-  
+
   return useQuery({
-    queryKey: ['sensor_readings', user?.id, hours],
+    queryKey: ['sensor_readings', user?.id, selectedFarmId, hours],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('sensor_readings')
         .select('*')
         .eq('user_id', user.id)
-        .gte('recorded_at', since)
-        .order('recorded_at', { ascending: true });
+        .gte('recorded_at', since);
+      if (selectedFarmId) {
+        query = query.eq('farm_id', selectedFarmId);
+      }
+      const { data, error } = await query.order('recorded_at', { ascending: true });
       if (error) throw error;
       return data as SensorReading[];
     },

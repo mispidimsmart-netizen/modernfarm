@@ -376,6 +376,7 @@ export function useControlPageState() {
   };
 
   const handleAutomationToggle = (enabled: boolean, reason?: string) => {
+    if (!requireFarmSelected()) return;
     if (!canDisableAutomation) {
       toast({
         title: language === 'bn' ? 'অনুমতি নেই' : 'Permission denied',
