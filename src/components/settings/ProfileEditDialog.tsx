@@ -29,7 +29,7 @@ export function ProfileEditDialog() {
   const updateProfile = useUpdateProfile();
   const farmCtx = useFarmContextSafe();
   const farm = farmCtx?.currentFarm as
-    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null; reg_date?: string | null })
+    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null; reg_date?: string | null; location?: string | null })
     | null
     | undefined;
 
@@ -46,6 +46,7 @@ export function ProfileEditDialog() {
   const [phone, setPhone] = useState('');
   const [regNo, setRegNo] = useState('');
   const [regDate, setRegDate] = useState('');
+  const [location, setLocation] = useState('');
 
 
   const bn = language === 'bn';
@@ -58,6 +59,7 @@ export function ProfileEditDialog() {
     setPhone(profile?.phone || '');
     setRegNo(farm?.reg_no || '');
     setRegDate(farm?.reg_date ? String(farm.reg_date).slice(0, 10) : '');
+    setLocation(farm?.location || '');
 
   }, [open, profile, farm]);
 
@@ -108,6 +110,7 @@ export function ProfileEditDialog() {
             name: brandName.trim() || farm.name,
             reg_no: regNo.trim() || null,
             reg_date: regDate || null,
+            location: location.trim() || null,
 
           })
           .eq('id', farm.id);
@@ -195,6 +198,22 @@ export function ProfileEditDialog() {
             <Label htmlFor="phone">{bn ? 'মোবাইল নং' : 'Mobile number'}</Label>
             <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" maxLength={20} />
           </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="farm-location">{bn ? 'ফার্মের ঠিকানা' : 'Farm address'}</Label>
+            <Input
+              id="farm-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              maxLength={160}
+              placeholder={bn ? 'গ্রাম, ইউনিয়ন, উপজেলা, জেলা' : 'Village, union, upazila, district'}
+            />
+            <p className="text-xs text-muted-foreground">
+              {bn ? 'QR পাবলিক পেজে ঠিকানা হিসেবে দেখাবে।' : 'Shown as the address on the public QR page.'}
+            </p>
+          </div>
+
+
 
           <div className="space-y-1.5">
             <Label htmlFor="reg-no">{bn ? 'নিবন্ধন নং' : 'Registration no.'}</Label>

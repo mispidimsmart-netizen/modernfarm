@@ -7,9 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { isTraceMatch } from '@/lib/traceQr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import smartLogo from '@/assets/smart-logo.png.asset.json';
+import pksfLogo from '@/assets/pksf-logo.png.asset.json';
+import pidimLogo from '@/assets/pidim-logo.png.asset.json';
 import {
   Download, FileText, ShieldCheck, MapPin, Phone, CalendarDays,
-  BadgeCheck, Wheat, Syringe, Bird, Hash,
+  BadgeCheck, Wheat, Syringe, Bird, Hash, Egg, Drumstick,
 } from 'lucide-react';
 
 interface TraceData {
@@ -185,30 +188,41 @@ export default function PublicTracePage() {
           </header>
 
           <div className="p-5">
-            {/* Batch banner */}
+            {/* Batch banner — poultry themed */}
             <section
-              className={`rounded-xl border p-4 ${
+              className={`relative overflow-hidden rounded-xl border p-4 ${
                 isLayer ? 'border-secondary/30 bg-secondary/10' : 'border-primary/30 bg-primary/10'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Bird className={`h-5 w-5 ${isLayer ? 'text-secondary' : 'text-primary'}`} />
+              {/* watermark: egg for layer, chicken for broiler */}
+              <div className="pointer-events-none absolute -right-3 -top-3 opacity-10">
+                {isLayer ? <Egg className="h-24 w-24 text-secondary" /> : <Drumstick className="h-24 w-24 text-primary" />}
+              </div>
+              <div className="relative flex items-center gap-2">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                    isLayer ? 'bg-secondary/20 text-secondary' : 'bg-primary/20 text-primary'
+                  }`}
+                >
+                  {isLayer ? <Egg className="h-5 w-5" /> : <Bird className="h-5 w-5" />}
+                </span>
                 <h2 className="text-base font-bold">{b.name || 'ব্যাচ'}</h2>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     isLayer ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'
                   }`}
                 >
-                  {isLayer ? 'লেয়ার' : 'ব্রয়লার'}
+                  {isLayer ? '🥚 লেয়ার' : '🐔 ব্রয়লার'}
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="relative mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <Info label="জাত" value={b.breed || '—'} />
                 <Info label="শুরুর তারিখ" value={bnDate(b.start_date)} />
                 <Info label="বয়স" value={`${b.age_days ?? 0} দিন`} />
-                <Info label="বর্তমান পাখি" value={String(b.current_bird_count ?? '—')} />
+                <Info label={isLayer ? 'বর্তমান লেয়ার' : 'বর্তমান মুরগি'} value={String(b.current_bird_count ?? '—')} />
               </div>
             </section>
+
 
             {/* Feed */}
             <TraceList
@@ -241,11 +255,27 @@ export default function PublicTracePage() {
             </TraceList>
 
 
-            <footer className="mt-6 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
+            {/* Project branding — same default for every farm */}
+            <section className="mt-6 rounded-xl border border-primary/20 bg-muted/40 p-3 text-center">
+              <div className="flex items-center justify-center gap-4">
+                <img src={smartLogo.url} alt="SMART Project লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+                <img src={pksfLogo.url} alt="পিকেএসএফ লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+                <img src={pidimLogo.url} alt="পিদিম ফাউন্ডেশন লোগো" className="h-10 w-auto object-contain" crossOrigin="anonymous" />
+              </div>
+              <p className="mt-2 text-[11px] font-semibold leading-snug text-foreground">
+                Sustainable Microenterprise and Resilient Transformation (SMART) Project
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                সহযোগীতায়: পিকেএসএফ · বাস্তবায়নে: পিদিম ফাউন্ডেশন
+              </p>
+            </section>
+
+            <footer className="mt-3 rounded-lg bg-muted/60 p-3 text-center text-[11px] text-muted-foreground">
               ট্রেস আইডি: {data.slug} · তৈরি: {data.generated_at ? new Date(data.generated_at).toLocaleString('bn-BD') : ''}
               <br />
               <span className="font-semibold text-foreground">Powered by FarmEye — Nexiot Labs</span>
             </footer>
+
           </div>
         </div>
 
