@@ -12,6 +12,7 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode, useSetAutomationMode } from '@/hooks/useAutomationMode';
 import { useToast } from '@/hooks/use-toast';
+import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
 import {
