@@ -176,11 +176,11 @@ export default function PublicTracePage() {
                     <Phone className="h-3 w-3" /> {data.farmer.phone}
                   </p>
                 )}
-                {data.farm?.location && (
-                  <p className="flex items-center gap-1 truncate text-xs opacity-90">
-                    <MapPin className="h-3 w-3" /> {data.farm.location}
-                  </p>
-                )}
+                <p className="flex items-start gap-1 text-xs opacity-90">
+                  <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span className="line-clamp-2">{data.farm?.location || 'ঠিকানা যোগ করা হয়নি'}</span>
+                </p>
+
               </div>
             </div>
 
