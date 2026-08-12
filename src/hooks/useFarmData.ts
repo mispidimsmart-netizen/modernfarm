@@ -182,16 +182,20 @@ export function useUpdateDeviceStatus(shedId?: string | null) {
 // Automation rules hooks
 export function useAutomationRules() {
   const { user } = useAuth();
-  
+  const { selectedFarmId } = useFarmContext();
+
   return useQuery({
-    queryKey: ['automation_rules', user?.id],
+    queryKey: ['automation_rules', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('automation_rules')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id);
+      if (selectedFarmId) {
+        query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data as AutomationRule[];
     },
