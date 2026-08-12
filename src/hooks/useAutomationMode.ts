@@ -56,6 +56,8 @@ export function useSetAutomationMode() {
   return useMutation({
     mutationFn: async (input: SetModeInput) => {
       if (!user) throw new Error('Not authenticated');
+      // Hard guard: never run an unscoped farm-wide update across every farm.
+      if (!selectedFarmId) throw new Error('NO_FARM_SELECTED');
       const mode: AutomationMode = typeof input === 'string' ? input : input.mode;
       // shedId intentionally IGNORED — mode is farm-wide, see note above.
 
