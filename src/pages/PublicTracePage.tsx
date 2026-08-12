@@ -255,12 +255,12 @@ export default function PublicTracePage() {
               tone="primary"
               empty={detailsLoading ? 'লোড হচ্ছে…' : 'কোনো ফিড রেকর্ড নেই'}
             >
-              {feed.slice(0, 20).map((f, i) => (
-                <li key={i} className="flex justify-between gap-2 border-b border-primary/10 py-1.5 text-sm last:border-0">
-                  <span className="font-medium">{f.feed_type}</span>
-                  <span className="text-muted-foreground">{bnDate(f.date)}</span>
+              {Array.from(new Set(feed.map((f) => f.feed_type).filter(Boolean))).slice(0, 20).map((type, i) => (
+                <li key={i} className="border-b border-primary/10 py-1.5 text-sm last:border-0">
+                  <span className="font-medium">{type}</span>
                 </li>
               ))}
+
             </TraceList>
 
             {/* Medicine */}
