@@ -44,6 +44,7 @@ export default function PublicTracePage() {
   const [searchParams] = useSearchParams();
   const expectedKind = searchParams.get('kind');
   const expectedBatchId = searchParams.get('batch');
+  const expectedFarmId = searchParams.get('farm');
   const sheetRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -137,7 +138,10 @@ export default function PublicTracePage() {
   const medicine = data.medicine ?? [];
   const isLayer = b.kind === 'layer';
   const avatar = data.farmer?.avatar_url || data.farm?.photo_url;
-  const mismatch = !isTraceMatch({ kind: expectedKind, batchId: expectedBatchId }, { kind: b.kind, id: b.id });
+  const mismatch = !isTraceMatch(
+    { kind: expectedKind, batchId: expectedBatchId, farmId: expectedFarmId },
+    { kind: b.kind, id: b.id, farmId: data.farm?.id },
+  );
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-secondary/10 p-3 sm:p-6">
