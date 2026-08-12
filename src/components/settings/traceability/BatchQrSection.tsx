@@ -17,7 +17,7 @@ import { buildTraceUrl, type BatchKind } from '@/lib/traceQr';
 
 
 
-function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, next: boolean) => void }) {
+function QrCard({ page, farmId, onToggle }: { page: BatchPage; farmId: string; onToggle: (p: BatchPage, next: boolean) => void }) {
   const [dataUrl, setDataUrl] = useState<string>('');
   const url = useMemo(
     () =>
@@ -25,8 +25,9 @@ function QrCard({ page, onToggle }: { page: BatchPage; onToggle: (p: BatchPage, 
         slug: page.public_slug,
         kind: page.batch_kind as BatchKind,
         batchId: page.batch_id,
+        farmId,
       }),
-    [page.public_slug, page.batch_kind, page.batch_id],
+    [page.public_slug, page.batch_kind, page.batch_id, farmId],
   );
   const { toast } = useToast();
 
@@ -178,7 +179,7 @@ export function BatchQrSection() {
             {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
             {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
             {visible.map((p) => (
-              <QrCard key={p.id} page={p} onToggle={onToggle} />
+              <QrCard key={p.id} page={p} farmId={selectedFarmId ?? ''} onToggle={onToggle} />
             ))}
           </CardContent>
         </CollapsibleContent>
