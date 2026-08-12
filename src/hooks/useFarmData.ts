@@ -57,18 +57,28 @@ export function useUpdateProfile() {
 // Farm settings hooks
 export function useFarmSettings() {
   const { user } = useAuth();
-  
+  const { selectedFarmId } = useFarmContext();
+
   return useQuery({
-    queryKey: ['farm_settings', user?.id],
+    queryKey: ['farm_settings', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return null;
-      const { data, error } = await supabase
+      let query = supabase
         .from('farm_settings')
         .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
+      // Scope to the selected farm; legacy rows may have farm_id NULL.
+      if (selectedFarmId) {
+        query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+      }
+      const { data, error } = await query.order('farm_id', {
+        ascending: false,
+        nullsFirst: false,
+      });
       if (error) throw error;
-      return data as FarmSettings;
+      const rows = (data ?? []) as FarmSettings[];
+      const exact = rows.find((r) => r.farm_id === selectedFarmId);
+      return (exact ?? rows[0] ?? null) as FarmSettings | null;
     },
     enabled: !!user,
   });
@@ -77,14 +87,28 @@ export function useFarmSettings() {
 export function useUpdateFarmSettings() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
+  const { selectedFarmId } = useFarmContext();
+
   return useMutation({
     mutationFn: async (settings: Partial<FarmSettings>) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
-        .from('farm_settings')
-        .update(settings)
-        .eq('user_id', user.id);
+      // Resolve the exact settings row for the selected farm to avoid
+      // updating every farm of a multi-farm account.
+      const current = queryClient.getQueryData<FarmSettings | null>([
+        'farm_settings',
+        user.id,
+        selectedFarmId,
+      ]);
+      let query = supabase.from('farm_settings').update(settings);
+      if (current?.id) {
+        query = query.eq('id', current.id);
+      } else {
+        query = query.eq('user_id', user.id);
+        if (selectedFarmId) {
+          query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+        }
+      }
+      const { error } = await query;
       if (error) throw error;
     },
     onSuccess: () => {
