@@ -7,9 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { isTraceMatch } from '@/lib/traceQr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import smartLogo from '@/assets/smart-logo.png.asset.json';
+import pksfLogo from '@/assets/pksf-logo.png.asset.json';
+import pidimLogo from '@/assets/pidim-logo.png.asset.json';
 import {
   Download, FileText, ShieldCheck, MapPin, Phone, CalendarDays,
-  BadgeCheck, Wheat, Syringe, Bird, Hash,
+  BadgeCheck, Wheat, Syringe, Bird, Hash, Egg, Drumstick,
 } from 'lucide-react';
 
 interface TraceData {
