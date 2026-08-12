@@ -9,14 +9,21 @@ export interface TraceQrPayload {
   slug: string;
   kind: BatchKind;
   batchId: string;
+  /** Farm the batch belongs to — lets the public page verify it renders the right farm. */
+  farmId: string;
+  /** Optional QR revision, bumped when branding/data changes so old prints are traceable. */
+  version?: number;
 }
 
 /** Builds the canonical public trace URL embedded in a QR code. */
-export function buildTraceUrl({ slug, kind, batchId }: TraceQrPayload): string {
+export function buildTraceUrl({ slug, kind, batchId, farmId, version }: TraceQrPayload): string {
   if (!slug) throw new Error('slug is required');
   if (kind !== 'layer' && kind !== 'broiler') throw new Error('invalid batch kind');
   if (!batchId) throw new Error('batchId is required');
-  return `${PUBLIC_TRACE_BASE_URL}/trace/${encodeURIComponent(slug)}?kind=${kind}&batch=${encodeURIComponent(batchId)}`;
+  if (!farmId) throw new Error('farmId is required');
+  const params = new URLSearchParams({ kind, batch: batchId, farm: farmId });
+  if (version != null) params.set('v', String(version));
+  return `${PUBLIC_TRACE_BASE_URL}/trace/${encodeURIComponent(slug)}?${params.toString()}`;
 }
 
 export interface ParsedTraceUrl {
@@ -25,6 +32,8 @@ export interface ParsedTraceUrl {
   slug?: string;
   kind?: BatchKind;
   batchId?: string;
+  farmId?: string;
+  version?: number;
 }
 
 /** Parses/validates a scanned QR link. Legacy links (no kind/batch) are reported as invalid. */
@@ -46,19 +55,23 @@ export function parseTraceUrl(raw: string): ParsedTraceUrl {
   const slug = decodeURIComponent(match[1]);
   const kind = url.searchParams.get('kind');
   const batchId = url.searchParams.get('batch');
+  const farmId = url.searchParams.get('farm') ?? undefined;
+  const rawVersion = url.searchParams.get('v');
+  const version = rawVersion && !Number.isNaN(Number(rawVersion)) ? Number(rawVersion) : undefined;
 
-  if (!kind || !batchId) return { valid: false, reason: 'legacy-missing-params', slug };
-  if (kind !== 'layer' && kind !== 'broiler') return { valid: false, reason: 'bad-kind', slug };
+  if (!kind || !batchId) return { valid: false, reason: 'legacy-missing-params', slug, farmId };
+  if (kind !== 'layer' && kind !== 'broiler') return { valid: false, reason: 'bad-kind', slug, farmId };
 
-  return { valid: true, slug, kind, batchId };
+  return { valid: true, slug, kind, batchId, farmId, version };
 }
 
 /** True when the page data matches what the scanned QR claimed. */
 export function isTraceMatch(
-  expected: { kind?: string | null; batchId?: string | null },
-  actual: { kind?: string | null; id?: string | null },
+  expected: { kind?: string | null; batchId?: string | null; farmId?: string | null },
+  actual: { kind?: string | null; id?: string | null; farmId?: string | null },
 ): boolean {
   if (expected.kind && actual.kind && expected.kind !== actual.kind) return false;
   if (expected.batchId && actual.id && expected.batchId !== actual.id) return false;
+  if (expected.farmId && actual.farmId && expected.farmId !== actual.farmId) return false;
   return true;
 }
