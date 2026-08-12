@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { getDeviceColors } from '@/data/deviceColors';
 import type { ControlDeviceMeta } from '@/data/controlDevices';
+import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 
 interface Props {
   devices: ControlDeviceMeta[];
@@ -12,6 +13,12 @@ interface Props {
   pendingCommands: Record<string, { desired: boolean; startedAt: number }>;
   onToggle: (deviceKey: string, next: boolean) => void;
   disabled: boolean;
+  /** Live safety context — Safety Engine still applies in MANUAL mode when ON. */
+  temperature?: number;
+  ammonia?: number;
+  tempMax?: number;
+  ammoniaMax?: number;
+  engineEnabled?: boolean | null;
 }
 
 /**
@@ -25,6 +32,11 @@ export function ManualDeviceGrid({
   pendingCommands,
   onToggle,
   disabled,
+  temperature = 0,
+  ammonia = 0,
+  tempMax = 32,
+  ammoniaMax = 25,
+  engineEnabled,
 }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
@@ -33,6 +45,14 @@ export function ManualDeviceGrid({
         const Icon = device.icon;
         const isPending = !!pendingCommands[device.key];
         const c = getDeviceColors(device.key);
+        const { isSafetyLocked, reason } = evaluateSafetyLock({
+          deviceKey: device.key,
+          temperature,
+          ammonia,
+          tempMax,
+          ammoniaMax,
+          engineEnabled,
+        });
 
         return (
           <motion.div
@@ -73,7 +93,7 @@ export function ManualDeviceGrid({
                     <Switch
                       checked={active}
                       onCheckedChange={(val) => onToggle(device.key, val)}
-                      disabled={disabled || isPending}
+                      disabled={disabled || isPending || (isSafetyLocked && active)}
                       className={`${!isPending ? c.switchOn : 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40'}`}
                     />
                     {isPending && (
@@ -89,6 +109,13 @@ export function ManualDeviceGrid({
                   <p className="text-sm font-bold leading-tight truncate">{device.name[language]}</p>
                   <p className="text-[10px] text-muted-foreground leading-tight line-clamp-2">{device.description[language]}</p>
                 </div>
+
+                {isSafetyLocked && reason && (
+                  <div className="flex items-start gap-1.5 rounded-md bg-red-500/10 border border-red-500/30 px-2 py-1">
+                    <ShieldAlert className="h-3 w-3 text-red-600 mt-0.5 shrink-0" />
+                    <p className="text-[10px] leading-tight text-muted-foreground">{reason[language]}</p>
+                  </div>
+                )}
 
                 {/* Row 3: state pill */}
                 <div className="flex items-center justify-between pt-1 border-t border-border/40">
