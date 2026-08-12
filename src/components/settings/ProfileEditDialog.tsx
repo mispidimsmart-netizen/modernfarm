@@ -29,7 +29,7 @@ export function ProfileEditDialog() {
   const updateProfile = useUpdateProfile();
   const farmCtx = useFarmContextSafe();
   const farm = farmCtx?.currentFarm as
-    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null; reg_date?: string | null })
+    | ({ id: string; name: string; brand_name?: string | null; reg_no?: string | null; reg_date?: string | null; location?: string | null })
     | null
     | undefined;
 
