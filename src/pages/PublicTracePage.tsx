@@ -240,11 +240,10 @@ export default function PublicTracePage() {
                   {isLayer ? '🥚 লেয়ার' : '🐔 ব্রয়লার'}
                 </span>
               </div>
-              <div className="relative mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="relative mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <Info label="জাত" value={b.breed || '—'} />
                 <Info label="শুরুর তারিখ" value={bnDate(b.start_date)} />
                 <Info label="বয়স" value={`${b.age_days ?? 0} দিন`} />
-                <Info label={isLayer ? 'বর্তমান লেয়ার' : 'বর্তমান মুরগি'} value={String(b.current_bird_count ?? '—')} />
               </div>
             </section>
 
@@ -259,7 +258,7 @@ export default function PublicTracePage() {
               {feed.slice(0, 20).map((f, i) => (
                 <li key={i} className="flex justify-between gap-2 border-b border-primary/10 py-1.5 text-sm last:border-0">
                   <span className="font-medium">{f.feed_type}</span>
-                  <span className="text-muted-foreground">{bnDate(f.date)} · {f.quantity_kg} কেজি</span>
+                  <span className="text-muted-foreground">{bnDate(f.date)}</span>
                 </li>
               ))}
             </TraceList>
