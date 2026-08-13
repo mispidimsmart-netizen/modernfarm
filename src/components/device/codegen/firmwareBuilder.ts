@@ -154,13 +154,20 @@ export function buildTemplateUrl(version: 'v8' | 'v10', now = Date.now(), rand =
   return `${baseFile}?${cacheBuster}`;
 }
 
-/** Output .ino filename. */
+/**
+ * Output .ino filename.
+ * Arduino IDE requires the sketch file name to match its folder name and to
+ * contain only [A-Za-z0-9_]; timestamps/dashes cause "Unable to find executable
+ * file ... .ino.elf" build errors. So we emit short, underscore-only names.
+ */
 export function buildFilename(
   version: 'v8' | 'v10',
   mode: FirmwareMode,
   farmType: FarmType,
-  now = Date.now(),
+  _now = Date.now(),
 ): string {
-  if (version === 'v10') return `farmeye-v10-beta-${now}.ino`;
-  return mode === 'ota' ? `farmeye-ota-${farmType}-${now}.ino` : `farmeye-${farmType}-${now}.ino`;
+  const type = String(farmType).replace(/[^A-Za-z0-9]/g, '_');
+  if (version === 'v10') return `farmeye_v10_beta.ino`;
+  return mode === 'ota' ? `farmeye_ota_${type}.ino` : `farmeye_${type}.ino`;
 }
+
