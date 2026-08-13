@@ -120,8 +120,16 @@ describe('firmwareBuilder — urls and filenames', () => {
   });
 
   it('names output files by version and mode', () => {
-    expect(buildFilename('v8', 'hardcoded', 'layer', 5)).toBe('farmeye-layer-5.ino');
-    expect(buildFilename('v8', 'ota', 'broiler', 5)).toBe('farmeye-ota-broiler-5.ino');
-    expect(buildFilename('v10', 'hardcoded', 'layer', 5)).toBe('farmeye-v10-beta-5.ino');
+    expect(buildFilename('v8', 'hardcoded', 'layer', 5)).toBe('farmeye_layer.ino');
+    expect(buildFilename('v8', 'ota', 'broiler', 5)).toBe('farmeye_ota_broiler.ino');
+    expect(buildFilename('v10', 'hardcoded', 'layer', 5)).toBe('farmeye_v10_beta.ino');
+    // Arduino-safe: no spaces, dashes or timestamps
+    for (const f of [
+      buildFilename('v8', 'hardcoded', 'layer'),
+      buildFilename('v8', 'ota', 'broiler'),
+      buildFilename('v10', 'hardcoded', 'layer'),
+    ]) {
+      expect(f).toMatch(/^[A-Za-z0-9_]+\.ino$/);
+    }
   });
 });
