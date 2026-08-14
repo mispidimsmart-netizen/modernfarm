@@ -165,6 +165,7 @@ export function buildV8Header(o: BuildOptions): string {
  * ║  📦 Credentials will be loaded from NVS storage                       ║
  * ║  ⚠️ Device must be first provisioned with hardcoded firmware          ║`}
  * ║  Safety: ${safetyLabel.padEnd(55)}║
+ * ║  Display: ${displayLabel.padEnd(54)}║
  * ║  Generated: ${(o.generatedAt ?? new Date().toISOString()).padEnd(53)}║
  * ╠═══════════════════════════════════════════════════════════════════════╣${o.firmwareMode === 'ota' ? `
  * ║  📋 OTA INSTRUCTIONS:                                                 ║
