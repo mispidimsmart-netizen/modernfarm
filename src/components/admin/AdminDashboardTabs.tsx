@@ -64,6 +64,10 @@ export function AdminDashboardTabs({ language }: AdminDashboardTabsProps) {
           <Cpu className="w-4 h-4 mr-2" />
           ফার্মওয়্যার ও PCB
         </TabsTrigger>
+        <TabsTrigger value="pcb-design" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-fuchsia-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
+          <CircuitBoard className="w-4 h-4 mr-2" />
+          PCB ডিজাইন (Flux.ai)
+        </TabsTrigger>
         <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
           পেমেন্ট
         </TabsTrigger>
