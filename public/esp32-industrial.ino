@@ -801,6 +801,11 @@ uint32_t calculateStreamCRC32(const esp_partition_t* partition, size_t size);
 
 // GSM
 void gsmInit();
+
+// Display (read-only status panel)
+void displayInit();
+void displayManagerTick();
+
 void gsmQueueAlert(String alertType, String message);
 void gsmProcessQueue();
 bool gsmSendSMS(String phone, String message);
