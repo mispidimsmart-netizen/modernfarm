@@ -15,9 +15,12 @@ export interface BuildOptions {
   farmType: FarmType;
   firmwareMode: FirmwareMode;
   includeSafetyEngine: boolean;
+  /** v8 only — board has the optional ILI9341 TFT panel wired (21/22/17/5). */
+  hasDisplay?: boolean;
   /** Injected for deterministic tests. */
   generatedAt?: string;
 }
+
 
 /** v10 BETA: simpler config block, hardcoded mode only. */
 export function buildV10Firmware(template: string, o: BuildOptions): string {
