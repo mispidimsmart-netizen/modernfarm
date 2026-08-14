@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Cpu, Activity, Bell, TrendingUp, BookOpen, Shield } from 'lucide-react';
+import { Users, Cpu, Activity, Bell, TrendingUp, BookOpen, Shield, CircuitBoard } from 'lucide-react';
 import { SystemHealthCard } from '@/components/admin/SystemHealthCard';
 import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
@@ -28,6 +28,7 @@ import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboar
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
+import { FluxPcbDesignGuide } from '@/components/admin/FluxPcbDesignGuide';
 
 interface AdminDashboardTabsProps {
   language: 'bn' | 'en';
@@ -62,6 +63,10 @@ export function AdminDashboardTabs({ language }: AdminDashboardTabsProps) {
         <TabsTrigger value="firmware" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
           <Cpu className="w-4 h-4 mr-2" />
           ফার্মওয়্যার ও PCB
+        </TabsTrigger>
+        <TabsTrigger value="pcb-design" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-fuchsia-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
+          <CircuitBoard className="w-4 h-4 mr-2" />
+          PCB ডিজাইন (Flux.ai)
         </TabsTrigger>
         <TabsTrigger value="payments" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-green-600 data-[state=active]:text-white text-slate-300 hover:text-white rounded-lg">
           পেমেন্ট
@@ -116,6 +121,11 @@ export function AdminDashboardTabs({ language }: AdminDashboardTabsProps) {
         <PhaseCRoadmapPanel />
         <TechnicalArchitectureReport />
       </TabsContent>
+
+      <TabsContent value="pcb-design" className="mt-4">
+        <FluxPcbDesignGuide />
+      </TabsContent>
+
 
       <TabsContent value="payments" className="mt-4">
         <PaymentApprovalPanel />
