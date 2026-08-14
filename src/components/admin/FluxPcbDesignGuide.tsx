@@ -658,6 +658,7 @@ export function FluxPcbDesignGuide() {
             <FileDown className="w-3.5 h-3.5 mr-1.5" />
             টেস্ট প্ল্যান (প্রিন্টযোগ্য) ডাউনলোড
           </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
