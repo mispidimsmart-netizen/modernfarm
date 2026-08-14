@@ -48,8 +48,10 @@
  * ║    GPIO 18: YF-S201 Water Flow                                        ║
  * ║    GPIO 19: GSM RX (SIM800L TX)                                       ║
  * ║    GPIO 23: GSM TX (SIM800L RX)                                       ║
- * ║    GPIO 5:  GSM RST (optional)                                        ║
+ * ║    GPIO 5:  TFT DC  (SIM800L RST → 10k pull-up to 3V3, soft reset)    ║
+ * ║    GPIO 21/22/17: TFT SCK / MOSI / CS (ILI9341 2.4"-2.8" SPI)         ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
+
  */
 
 #include <WiFi.h>
