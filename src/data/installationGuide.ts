@@ -87,8 +87,8 @@ export const partsList = [
     ]
   },
   {
-    category: '🖥️ TFT ডিসপ্লে (v8.3.0) — GPIO 21/22/17/5',
-    categoryEn: 'TFT Display (v8.3.0) — GPIO 21/22/17/5',
+    category: '🖥️ TFT ডিসপ্লে (v8.3.0) — সম্পূর্ণ ঐচ্ছিক, GPIO 21/22/17/5',
+    categoryEn: 'TFT Display (v8.3.0) — OPTIONAL, GPIO 21/22/17/5',
     items: [
       { name: 'ILI9341 SPI TFT ডিসপ্লে 2.4"/2.8" (240×320)', nameEn: 'ILI9341 SPI TFT 2.4"/2.8" (240x320)', quantity: 1, price: '৳৭৫০-১২০০', priceRange: [750, 1200], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: false },
       { name: 'ফিমেল হেডার + ফ্ল্যাট রিবন কেবল (ডিসপ্লে বক্সের ঢাকনায় বসাতে)', nameEn: 'Female header + ribbon cable for display', quantity: 1, price: '৳৫০-১২০', priceRange: [50, 120], shop: 'টেকশপ বিডি', essential: false },
@@ -1142,8 +1142,8 @@ export const detailedWiringGuide = [
   // ─────── v8.3.0 প্যানেল ডিসপ্লে ও ইন্ডিকেটর LED ───────
   {
     id: 'tft-display',
-    name: '🖥️ ILI9341 TFT ডিসপ্লে (v8.3.0 — বোর্ডের উপরে লাইভ স্ট্যাটাস)',
-    nameEn: 'ILI9341 SPI TFT Display (v8.3.0 on-board status)',
+    name: '🖥️ ILI9341 TFT ডিসপ্লে — ঐচ্ছিক (v8.3.0, বোর্ডের উপরে লাইভ স্ট্যাটাস)',
+    nameEn: 'ILI9341 SPI TFT Display — OPTIONAL (v8.3.0 on-board status)',
     icon: Cpu,
     color: 'text-fuchsia-500',
     bgColor: 'bg-fuchsia-500/10',
@@ -1158,7 +1158,7 @@ export const detailedWiringGuide = [
       { sensorPin: 'LED (ব্যাকলাইট)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 LED/BLK পিন → 3.3V (সবসময় চালু)। ডিম করতে চাইলে 100Ω সিরিজ রেজিস্টর দিন', warning: null },
       { sensorPin: 'MISO (SDO)', esp32Pin: '— (খালি)', wireColor: '—', wireNameEn: 'NONE', instruction: '⬜ MISO খালি রাখুন — ফার্মওয়্যার শুধু লেখে, পড়ে না', warning: null },
     ],
-    extraNote: '🖥️ v8.3.0 ফার্মওয়্যারে `displayManagerTick()` নন-ব্লকিংভাবে প্রতি ২ সেকেন্ডে স্ক্রিন আপডেট করে — তাপমাত্রা, আর্দ্রতা, অ্যামোনিয়া, ৮টি রিলের অবস্থা, WiFi/GSM সিগন্যাল ও সেফটি স্ট্যাটাস দেখায়। ডিসপ্লে না লাগালেও কন্ট্রোলার স্বাভাবিকভাবে চলবে (auto-skip)।',
+    extraNote: '🖥️ v8.3.0 ফার্মওয়্যারে `displayManagerTick()` নন-ব্লকিংভাবে প্রতি ২ সেকেন্ডে স্ক্রিন আপডেট করে — তাপমাত্রা, আর্দ্রতা, অ্যামোনিয়া, ৮টি রিলের অবস্থা, WiFi/GSM সিগন্যাল ও সেফটি স্ট্যাটাস দেখায়। \n\n✅ **ঐচ্ছিক:** ডিসপ্লে এখন না লাগালেও কোনো সমস্যা নেই। ফার্মওয়্যার জেনারেটরে “বোর্ডে TFT ডিসপ্লে আছে” সুইচটি বন্ধ রাখুন (ডিফল্ট) — তখন `DISPLAY_ENABLED false` থাকে, Adafruit GFX/ILI9341 লাইব্রেরি লাগে না এবং রিলে/সেফটি লজিক হুবহু একই থাকে। পরে ডিসপ্লে বসিয়ে সুইচ চালু করে আবার ফার্মওয়্যার জেনারেট ও ফ্ল্যাশ করলেই হবে।',
     resistorNote: '📍 SPI তার ২০ সেন্টিমিটারের বেশি লম্বা হলে SCK ও MOSI লাইনে ৩৩Ω সিরিজ রেজিস্টর দিন — নয়েজ কমবে।',
     tips: [
       '📦 IP65 বক্সের ঢাকনায় অ্যাক্রিলিক উইন্ডো কেটে ডিসপ্লে বসান',
@@ -1169,8 +1169,8 @@ export const detailedWiringGuide = [
   },
   {
     id: 'panel-led',
-    name: '💡 প্যানেল ইন্ডিকেটর LED ×৮ (ULN2803A ড্রাইভার)',
-    nameEn: 'Panel Indicator LEDs x8 (ULN2803A driver)',
+    name: '💡 প্যানেল ইন্ডিকেটর LED ×৮ — ঐচ্ছিক (ULN2803A ড্রাইভার)',
+    nameEn: 'Panel Indicator LEDs x8 — OPTIONAL (ULN2803A driver)',
     icon: Lightbulb,
     color: 'text-lime-500',
     bgColor: 'bg-lime-500/10',
@@ -1187,7 +1187,7 @@ export const detailedWiringGuide = [
       { sensorPin: 'GND (পিন 9)', esp32Pin: 'কমন GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ULN2803A এর GND → ESP32 ও 12V সাপ্লাইয়ের কমন GND', warning: null },
       { sensorPin: 'LED অ্যানোড (+)', esp32Pin: '12V (1kΩ সিরিজ)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 প্রতিটি প্যানেল LED এর (+) → 1kΩ রেজিস্টর → 12V রেল', warning: null },
     ],
-    extraNote: '💡 এই LED গুলো রিলে সিগন্যালের সমান্তরালে চলে — ESP32 এর GPIO সরাসরি LED চালায় না (ULN2803A কারেন্ট নেয়), তাই রিলের সিগন্যাল দুর্বল হয় না। প্যানেলের দিকে তাকিয়েই বোঝা যাবে কোন ডিভাইস চালু আছে।',
+    extraNote: '💡 এই LED গুলো রিলে সিগন্যালের সমান্তরালে চলে — ESP32 এর GPIO সরাসরি LED চালায় না (ULN2803A কারেন্ট নেয়), তাই রিলের সিগন্যাল দুর্বল হয় না। প্যানেলের দিকে তাকিয়েই বোঝা যাবে কোন ডিভাইস চালু আছে।\n\n✅ **ঐচ্ছিক:** এই LED গুলো সম্পূর্ণ প্যাসিভ — ফার্মওয়্যারে কোনো সেটিং লাগে না। না লাগালে কন্ট্রোলার ও অ্যাপ আগের মতোই কাজ করবে; যেকোনো সময় পরে যোগ করা যাবে (ফার্মওয়্যার পরিবর্তন ছাড়াই)।',
     resistorNote: '📍 12V রেলে 1kΩ, 5V রেলে 330Ω সিরিজ রেজিস্টর ব্যবহার করুন (প্রতি LED ~10mA)।',
     tips: [
       '🎨 রঙ পরিকল্পনা: ফ্যান=নীল, লাইট=সাদা, হিটার=কমলা, ফগার/স্প্রিংকলার=সবুজ, অ্যালার্ম=লাল',

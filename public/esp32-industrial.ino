@@ -71,12 +71,16 @@
 #include "mbedtls/md.h"
 
 // ═══════════════════════════════════════════════════════════════════════
-// ON-BOARD TFT DISPLAY (optional, read-only status panel)
-// Set DISPLAY_ENABLED to false for boards without a display — the rest of
-// the firmware behaves identically (display code never touches relays).
-// Libraries: "Adafruit GFX Library" + "Adafruit ILI9341" (Library Manager)
+// ON-BOARD TFT DISPLAY (OPTIONAL, read-only status panel)
+// ঐচ্ছিক: ডিসপ্লে না থাকলে কিছুই করতে হবে না — ডিফল্ট false।
+// ডিসপ্লে (ILI9341) বসালে নিচের মানটি true করুন এবং Library Manager থেকে
+// "Adafruit GFX Library" + "Adafruit ILI9341" ইনস্টল করুন।
+// পিন: SCK=21, MOSI=22, CS=17, DC=5 (GPIO5 v8.3-এ GSM_RST থেকে মুক্ত)।
+// প্যানেল LED (ULN2803A) সম্পূর্ণ প্যাসিভ — ফার্মওয়্যারে কোনো সেটিং লাগে না।
+// Display code never touches relays / safety logic.
 // ═══════════════════════════════════════════════════════════════════════
-#define DISPLAY_ENABLED true
+#define DISPLAY_ENABLED false
+
 
 #if DISPLAY_ENABLED
   #include <SPI.h>
@@ -3999,6 +4003,9 @@ void setup() {
   Serial.println("║    PATCH: SVL downward-safe + manual GPIO direct apply        ║");
   Serial.println("║    State Machine Architecture | Single Authority Relays        ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+  Serial.printf("🖥️  Display: %s | Panel LEDs: passive (no firmware setting)\n",
+                DISPLAY_ENABLED ? "ENABLED (ILI9341 on 21/22/17/5)" : "DISABLED (optional — safe)");
+
 
   // --- Credentials ---
   // ALWAYS provision from hardcoded on boot to ensure latest values are used

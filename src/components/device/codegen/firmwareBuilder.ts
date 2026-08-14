@@ -15,9 +15,12 @@ export interface BuildOptions {
   farmType: FarmType;
   firmwareMode: FirmwareMode;
   includeSafetyEngine: boolean;
+  /** v8 only — board has the optional ILI9341 TFT panel wired (21/22/17/5). */
+  hasDisplay?: boolean;
   /** Injected for deterministic tests. */
   generatedAt?: string;
 }
+
 
 /** v10 BETA: simpler config block, hardcoded mode only. */
 export function buildV10Firmware(template: string, o: BuildOptions): string {
@@ -122,6 +125,13 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
   }
 
 
+  // Optional TFT display: template default is DISABLED (no extra libraries
+  // required). Enable only when the board actually has the ILI9341 panel.
+  code = code.replace(
+    /#define\s+DISPLAY_ENABLED\s+(true|false)/,
+    `#define DISPLAY_ENABLED ${o.hasDisplay ? 'true' : 'false'}`,
+  );
+
   // Build-time safety engine toggle (cloud /config can override at runtime)
   if (!o.includeSafetyEngine) {
     code = code.replace(
@@ -130,6 +140,7 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
     );
   }
 
+
   return buildV8Header(o) + code;
 }
 
@@ -137,6 +148,10 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
 export function buildV8Header(o: BuildOptions): string {
   const modeLabel = o.firmwareMode === 'ota' ? 'OTA-READY (NVS Mode)' : 'HARDCODED (First-time Setup)';
   const safetyLabel = o.includeSafetyEngine ? 'FULL SAFETY ENGINE' : 'LITE (Hard Floor only — 42°C)';
+  const displayLabel = o.hasDisplay
+    ? 'ON — install Adafruit GFX + ILI9341 libs (SCK21/MOSI22/CS17/DC5)'
+    : 'OFF — optional, no extra libraries needed';
+
   return `
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
@@ -150,6 +165,7 @@ export function buildV8Header(o: BuildOptions): string {
  * ║  📦 Credentials will be loaded from NVS storage                       ║
  * ║  ⚠️ Device must be first provisioned with hardcoded firmware          ║`}
  * ║  Safety: ${safetyLabel.padEnd(55)}║
+ * ║  Display: ${displayLabel.padEnd(54)}║
  * ║  Generated: ${(o.generatedAt ?? new Date().toISOString()).padEnd(53)}║
  * ╠═══════════════════════════════════════════════════════════════════════╣${o.firmwareMode === 'ota' ? `
  * ║  📋 OTA INSTRUCTIONS:                                                 ║

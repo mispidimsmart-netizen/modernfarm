@@ -50,6 +50,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const [hardwareVersion, setHardwareVersion] = useState<HardwareVersion>('unknown');
   const [mismatchAck, setMismatchAck] = useState(false);
   const [includeSafetyEngine, setIncludeSafetyEngine] = useState(true);
+  const [hasDisplay, setHasDisplay] = useState(false);
   const [verifyError, setVerifyError] = useState<VerifyErrorState | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [finalAck, setFinalAck] = useState(false);
@@ -151,8 +152,9 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
 
       const buildOptions = {
         ssid, password, deviceToken, shedId, shedName, farmId,
-        farmType, firmwareMode, includeSafetyEngine,
+        farmType, firmwareMode, includeSafetyEngine, hasDisplay,
       };
+
 
       // ── v10 BETA path (hardcoded only) ────────────────────────────────
       if (firmwareVersion === 'v10') {
@@ -298,7 +300,11 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           setShedId={setShedId}
           includeSafetyEngine={includeSafetyEngine}
           setIncludeSafetyEngine={setIncludeSafetyEngine}
+          showDisplayOption={firmwareVersion === 'v8'}
+          hasDisplay={hasDisplay}
+          setHasDisplay={setHasDisplay}
         />
+
 
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
