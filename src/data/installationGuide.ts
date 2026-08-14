@@ -203,7 +203,19 @@ export const wiringConnections = [
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'Relay IN6 (GPIO 13)', color: 'bg-amber-500', note: '🔔 পিজো বাজার (রিলে দিয়ে কন্ট্রোল)' },
+  { component: 'TFT ILI9341', pin: 'SCK', esp32Pin: 'GPIO 21', color: 'bg-fuchsia-500', note: '🖥️ SPI ক্লক (v8.3.0)' },
+  { component: 'TFT ILI9341', pin: 'MOSI (SDI)', esp32Pin: 'GPIO 22', color: 'bg-fuchsia-500', note: '🖥️ SPI ডেটা' },
+  { component: 'TFT ILI9341', pin: 'CS', esp32Pin: 'GPIO 17', color: 'bg-fuchsia-400', note: '🖥️ চিপ সিলেক্ট' },
+  { component: 'TFT ILI9341', pin: 'DC (RS)', esp32Pin: 'GPIO 5', color: 'bg-fuchsia-400', note: '🖥️ ডেটা/কমান্ড (আগের GSM_RST পিন)' },
+  { component: 'TFT ILI9341', pin: 'RESET', esp32Pin: 'ESP32 EN (3.3V)', color: 'bg-gray-500', note: 'আলাদা GPIO লাগে না' },
+  { component: 'TFT ILI9341', pin: 'VCC / LED', esp32Pin: '3.3V', color: 'bg-red-500', note: 'ব্যাকলাইট সরাসরি 3.3V' },
+  { component: 'TFT ILI9341', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
+  { component: 'ULN2803A', pin: 'IN1..IN8', esp32Pin: 'রিলে GPIO 25,26,27,14,12,13,15,33', color: 'bg-emerald-500', note: '💡 রিলে সিগন্যালের সমান্তরালে প্যানেল LED' },
+  { component: 'ULN2803A', pin: 'COM (pin 10)', esp32Pin: '12V (+)', color: 'bg-red-500', note: 'LED সাপ্লাই ও ফ্লাইব্যাক ক্ল্যাম্প' },
+  { component: 'ULN2803A', pin: 'GND (pin 9)', esp32Pin: 'কমন GND', color: 'bg-gray-700', note: '' },
+  { component: 'Panel LED ×8', pin: 'Anode (+)', esp32Pin: '12V (1kΩ সিরিজ)', color: 'bg-lime-500', note: 'Cathode → ULN2803A OUT পিন' },
 ];
+
 
 // Detailed step-by-step wiring guide for each sensor
 export const detailedWiringGuide = [
