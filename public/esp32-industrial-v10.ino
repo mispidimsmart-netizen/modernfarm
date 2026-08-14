@@ -75,7 +75,7 @@ static const char* DEVICE_TOKEN = "PASTE_DEVICE_TOKEN_HERE";
 static const char* DEVICE_ID    = "FE-DEMO-001";
 static const char* SHED_ID      = "";   // optional, blank = farm default
 
-#define FW_VERSION  "10.1.0"
+#define FW_VERSION  "10.1.1"
 #define FW_CHANNEL  "stable"
 
 // ════════════════════════════════════════════════════════════════════════════
