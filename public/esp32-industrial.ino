@@ -2539,14 +2539,13 @@ unsigned long nvsReadOutageDuration() {
 
 void gsmInit() {
   Serial.println("📱 Initializing GSM module (SIM800L)...");
-  pinMode(GSM_RST_PIN, OUTPUT);
-  digitalWrite(GSM_RST_PIN, HIGH);
-  // Non-blocking hardware reset
-  digitalWrite(GSM_RST_PIN, LOW);
-  unsigned long w = millis(); while(millis()-w < 100) yield();
-  digitalWrite(GSM_RST_PIN, HIGH);
-  // Wait for module boot (non-blocking in subsequent ticks)
+  // NOTE (v8 + TFT): GPIO5 is now the TFT DC line, so the SIM800L RST pin is
+  // NOT driven by the MCU anymore. Tie SIM800L RST to 3V3 via a 10k pull-up on
+  // the PCB; module reset is done in software with AT+CFUN=1,1 below.
   gsmSerial.begin(GSM_BAUD, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
+  gsmSerial.println("AT+CFUN=1,1");   // soft reset (replaces hardware RST pulse)
+  { unsigned long w = millis(); while (millis() - w < 1500) { while (gsmSerial.available()) gsmSerial.read(); yield(); } }
+
   
   // Quick AT test (with short timeout)
   gsmSerial.println("AT");
