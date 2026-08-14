@@ -42,6 +42,7 @@ const char* SHED_ID        = "YOUR_SHED_ID";
 const char* SHED_NAME      = "Shed A";
 const char* FARM_ID        = "YOUR_FARM_ID";
 #define USE_HARDCODED_TOKEN  true
+#define DISPLAY_ENABLED false
 FarmConfig farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };
     if (farmConfig.farmType < 0 || farmConfig.farmType > 1) farmConfig.farmType = FARM_PROFILE_LAYER;
     farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };
@@ -54,6 +55,28 @@ const char* WIFI_PASS      = "";
 const char* DEVICE_TOKEN   = "";
 const char* SHED_ID        = "";
 `;
+
+describe('firmwareBuilder — optional TFT display', () => {
+  it('keeps DISPLAY_ENABLED false when the board has no display', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, base);
+    expect(out).toContain('#define DISPLAY_ENABLED false');
+    expect(out).not.toContain('#define DISPLAY_ENABLED true');
+    expect(out).toContain('Display: OFF');
+  });
+
+  it('sets DISPLAY_ENABLED true when the board has the TFT panel', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, { ...base, hasDisplay: true });
+    expect(out).toContain('#define DISPLAY_ENABLED true');
+    expect(out).toContain('Display: ON');
+  });
+
+  it('display flag does not alter relay/safety logic lines', () => {
+    const off = buildV8Firmware(V8_REAL_TEMPLATE, base);
+    const on = buildV8Firmware(V8_REAL_TEMPLATE, { ...base, hasDisplay: true });
+    expect(off).toContain('bool safetyEngineEnabled = true;');
+    expect(on).toContain('bool safetyEngineEnabled = true;');
+  });
+});
 
 describe('firmwareBuilder — v8', () => {
   it('injects trimmed credentials in hardcoded mode', () => {
