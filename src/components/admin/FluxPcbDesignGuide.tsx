@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Copy, Check, CircuitBoard, ListChecks, FileDown, Cpu, Wrench, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Copy, Check, CircuitBoard, ListChecks, FileDown, Cpu, Wrench, ExternalLink, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   FLUX_BOARD,
@@ -14,9 +14,12 @@ import {
   COMPONENTS,
   EXPORT_FILES,
   FINAL_CHECKLIST,
+  COMPLIANCE_CHECKLIST,
   PROMPTS,
   type PinRow,
+  type ComplianceSeverity,
 } from '@/data/fluxPcbGuide';
+
 
 const groupOrder: PinRow['group'][] = ['relay', 'sensor', 'gsm', 'display', 'misc'];
 
@@ -28,9 +31,31 @@ const groupTone: Record<PinRow['group'], string> = {
   misc: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
 };
 
+const severityTone: Record<ComplianceSeverity, string> = {
+  blocker: 'bg-rose-500/15 text-rose-200 border-rose-500/40',
+  major: 'bg-amber-500/15 text-amber-200 border-amber-500/40',
+  advisory: 'bg-slate-500/15 text-slate-300 border-slate-500/40',
+};
+
+const severityLabel: Record<ComplianceSeverity, string> = {
+  blocker: 'বাধ্যতামূলক',
+  major: 'গুরুত্বপূর্ণ',
+  advisory: 'পরামর্শ',
+};
+
+const ALL_ITEMS = COMPLIANCE_CHECKLIST.flatMap((s) => s.items);
 
 export function FluxPcbDesignGuide() {
   const [copied, setCopied] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  const toggleItem = (id: string) =>
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const totalCount = ALL_ITEMS.length;
+  const doneCount = ALL_ITEMS.filter((i) => checked[i.id]).length;
+  const blockersLeft = ALL_ITEMS.filter((i) => i.severity === 'blocker' && !checked[i.id]).length;
+
 
   const copy = async (id: string, text: string) => {
     try {
@@ -265,8 +290,93 @@ export function FluxPcbDesignGuide() {
           ))}
         </CardContent>
       </Card>
+
+      {/* Professional compliance checklist */}
+      <Card className="bg-slate-900/80 border-white/10">
+        <CardHeader className="border-b border-white/5">
+          <CardTitle className="text-white text-base flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-rose-400" />
+            প্রফেশনাল কমপ্লায়েন্স চেকলিস্ট — ERC/DRC, ক্লিয়ারেন্স, আর্থিং, কোটিং, টেস্ট পয়েন্ট
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+              অর্ডার দেওয়ার আগে প্রতিটি লাইন যাচাই করে টিক দিন। <b className="text-rose-300">বাধ্যতামূলক</b> চিহ্নিত
+              কোনো আইটেম বাকি থাকলে বোর্ড ম্যানুফ্যাকচারে পাঠাবেন না।
+            </p>
+            <Badge variant="outline" className="border-teal-500/40 text-teal-200 text-[11px]">
+              {doneCount}/{totalCount} সম্পন্ন
+            </Badge>
+          </div>
+
+          <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all"
+              style={{ width: `${totalCount ? (doneCount / totalCount) * 100 : 0}%` }}
+            />
+          </div>
+
+          {blockersLeft > 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3">
+              <AlertTriangle className="w-4 h-4 text-rose-300 mt-0.5 shrink-0" />
+              <p className="text-xs text-rose-100 leading-relaxed">
+                এখনো <b>{blockersLeft}টি</b> বাধ্যতামূলক আইটেম বাকি — এগুলো শেষ না করে Gerber পাঠানো ঝুঁকিপূর্ণ।
+              </p>
+            </div>
+          )}
+
+          <Accordion type="multiple" className="w-full">
+            {COMPLIANCE_CHECKLIST.map((section) => {
+              const secDone = section.items.filter((i) => checked[i.id]).length;
+              return (
+                <AccordionItem key={section.id} value={section.id} className="border-white/10">
+                  <AccordionTrigger className="text-sm text-white hover:no-underline">
+                    <span className="flex items-center gap-2 text-left">
+                      {section.title}
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] shrink-0 ${
+                          secDone === section.items.length
+                            ? 'border-teal-500/40 text-teal-200'
+                            : 'border-white/15 text-slate-300'
+                        }`}
+                      >
+                        {secDone}/{section.items.length}
+                      </Badge>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-2">
+                    <p className="text-xs text-slate-400 leading-relaxed mb-2">{section.summary}</p>
+                    {section.items.map((item) => (
+                      <label
+                        key={item.id}
+                        className="flex items-start gap-2.5 rounded-lg border border-white/10 bg-slate-800/40 p-3 cursor-pointer hover:border-white/20"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!!checked[item.id]}
+                          onChange={() => toggleItem(item.id)}
+                          className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+                        />
+                        <span className="flex-1 text-sm text-slate-300 leading-relaxed">
+                          {item.text}
+                        </span>
+                        <Badge variant="outline" className={`shrink-0 text-[10px] ${severityTone[item.severity]}`}>
+                          {severityLabel[item.severity]}
+                        </Badge>
+                      </label>
+                    ))}
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
 
 export default FluxPcbDesignGuide;
