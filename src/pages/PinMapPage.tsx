@@ -20,14 +20,14 @@ interface SensorRow {
 
 const RELAYS: Record<Version, RelayRow[]> = {
   v8: [
-    { ch: 'IN1', gpio: 'GPIO 25', use: '🌀 ফ্যান (FAN_RELAY_PIN)' },
-    { ch: 'IN2', gpio: 'GPIO 26', use: '💡 লাইট (LIGHT_RELAY_PIN)' },
-    { ch: 'IN3', gpio: 'GPIO 27', use: '💦 ফগার (FOGGER_RELAY_PIN)' },
+    { ch: 'IN1', gpio: 'GPIO 25', use: '🌀 এক্সহস্ট ফ্যান (FAN_RELAY_PIN)' },
+    { ch: 'IN2', gpio: 'GPIO 26', use: '🌀 সিলিং ফ্যান (CEILING_FAN_RELAY_PIN)' },
+    { ch: 'IN3', gpio: 'GPIO 27', use: '💡 লাইট (LIGHT_RELAY_PIN)' },
     { ch: 'IN4', gpio: 'GPIO 14', use: '🔥 হিটার (HEATER_RELAY_PIN)' },
-    { ch: 'IN5', gpio: 'GPIO 12', use: '🚪 কার্টেন আপ (CURTAIN_UP)' },
-    { ch: 'IN6', gpio: 'GPIO 13', use: '🚪 কার্টেন ডাউন (CURTAIN_DOWN)' },
-    { ch: 'IN7', gpio: 'GPIO 15', use: '🔔 অ্যালার্ম (ALARM_RELAY_PIN)' },
-    { ch: 'IN8', gpio: 'GPIO 33', use: '💨 সার্কুলেশন (CIRCULATION_RELAY_PIN)' },
+    { ch: 'IN5', gpio: 'GPIO 12', use: '💦 ফগার (FOGGER_RELAY_PIN)' },
+    { ch: 'IN6', gpio: 'GPIO 13', use: '🔔 অ্যালার্ম (ALARM_RELAY_PIN)' },
+    { ch: 'IN7', gpio: 'GPIO 15', use: '🚿 রুফ স্প্রিংকলার (SPRINKLER_RELAY_PIN)' },
+    { ch: 'IN8', gpio: 'GPIO 33', use: '💨 সার্কুলেশন ফ্যান (CIRCULATION_RELAY_PIN)' },
   ],
   v10: [
     { ch: 'IN1', gpio: 'GPIO 5', use: '🌀 এক্সহস্ট ফ্যান (PIN_FAN_EXHAUST)' },
@@ -43,28 +43,28 @@ const RELAYS: Record<Version, RelayRow[]> = {
 
 const SENSORS: Record<Version, SensorRow[]> = {
   v8: [
-    { name: 'DHT22 #1 (তাপ/আর্দ্রতা)', pins: 'DATA = GPIO 4' },
-    { name: 'DHT22 #2 (backup)', pins: 'DATA = GPIO 16' },
-    { name: 'MQ-137 (অ্যামোনিয়া)', pins: 'AO = GPIO 34 (analog)' },
-    { name: 'ZMPT101B (ভোল্টেজ)', pins: 'AO = GPIO 35 (analog)' },
-    { name: 'Water Flow', pins: 'PULSE = GPIO 32' },
-    { name: 'LDR (আলো)', pins: 'AO = GPIO 39 (analog)' },
-    { name: 'Manual Override Switch', pins: 'GPIO 23 (INPUT_PULLUP)' },
-    { name: 'Status LED', pins: 'GPIO 2 (onboard)' },
+    { name: 'DHT22 #1 (তাপ/আর্দ্রতা)', pins: 'DATA = GPIO 4', note: '10kΩ পুল-আপ 3.3V এ' },
+    { name: 'DHT22 #2 (দ্বিতীয় জোন)', pins: 'DATA = GPIO 16 (DHT2_PIN)' },
+    { name: 'MQ-137 (অ্যামোনিয়া)', pins: 'AO = GPIO 34 (analog, input-only)' },
+    { name: 'ZMPT101B (ভোল্টেজ)', pins: 'OUT = GPIO 35 (analog, input-only)' },
+    { name: 'YF-S201 ওয়াটার ফ্লো', pins: 'PULSE = GPIO 18 (WATER_FLOW_PIN)' },
+    { name: 'LDR (আলো, ঐচ্ছিক)', pins: 'AO = GPIO 36 / VP (analog, input-only)' },
+    { name: 'Manual Override বাটন', pins: 'GPIO 32 (INPUT_PULLUP)' },
+    { name: 'Status LED', pins: 'GPIO 2 (onboard, 330Ω)' },
+    { name: 'SIM800L GSM (UART)', pins: 'ESP32 TX = GPIO 23, RX = GPIO 19', note: 'RST 10kΩ দিয়ে 3V3 এ — কোনো GPIO নয়' },
     { name: 'TFT ডিসপ্লে (ILI9341 SPI)', pins: 'SCK = GPIO 21, MOSI = GPIO 22, CS = GPIO 17, DC = GPIO 5', note: 'RST → ESP32 EN; v8.3+ ফার্মওয়্যারে বোর্ডের উপরের ডিসপ্লে' },
     { name: 'প্যানেল ইন্ডিকেটর LED (৮টি)', pins: 'ULN2803A IN1–IN8 ← রিলে কন্ট্রোল নেট', note: 'বাক্সের ঢাকনায় LED — সরাসরি GPIO থেকে নয়' },
-
   ],
   v10: [
     { name: 'SHT31 (তাপ/আর্দ্রতা, I²C 0x44)', pins: 'SDA = GPIO 16, SCL = GPIO 17', note: 'DHT22 replace করে' },
     { name: 'BH1750 (আলো, I²C 0x23)', pins: 'SDA = GPIO 16, SCL = GPIO 17 (shared)', note: 'LDR replace করে' },
     { name: 'SCD41 (CO₂, I²C 0x62)', pins: 'SDA = GPIO 16, SCL = GPIO 17 (shared)', note: 'Premium tier' },
-    { name: 'ZE03-NH3 (অ্যামোনিয়া, UART2)', pins: 'RX = GPIO 32, TX = GPIO 4', note: 'MQ-135 replace করে' },
+    { name: 'ZE03-NH3 (অ্যামোনিয়া, UART2)', pins: 'RX = GPIO 32, TX = GPIO 4', note: 'MQ-135 replace করে; GPIO 4 DHT22-র সাথে শেয়ার — একসাথে দুটি নয়' },
     { name: 'PMS5003 (PM2.5/PM10, UART1)', pins: 'RX = GPIO 13, TX = GPIO 33' },
-    { name: 'DHT22 (fallback)', pins: 'DATA = GPIO 4', note: 'SHT31 না থাকলে auto-enable' },
+    { name: 'DHT22 (fallback)', pins: 'DATA = GPIO 4', note: 'SHT31/ZE03 না থাকলে auto-enable' },
     { name: 'MQ-135 (fallback)', pins: 'AO = GPIO 34', note: 'ZE03 না থাকলে auto-enable' },
     { name: 'LDR (fallback)', pins: 'AO = GPIO 35', note: 'BH1750 না থাকলে auto-enable' },
-    { name: 'Manual Override Switch', pins: 'GPIO 27 (INPUT_PULLUP)' },
+    { name: 'SIM800L GSM (UART2 শেয়ার্ড)', pins: 'ESP32 RX = GPIO 27, TX = GPIO 14', note: 'ZE03-NH3 লাগানো থাকলে GSM নিষ্ক্রিয় (একই UART2)' },
   ],
 };
 
