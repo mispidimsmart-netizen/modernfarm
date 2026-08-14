@@ -269,4 +269,98 @@ export const PROMPTS: { id: string; title: string; hint: string; text: string }[
   { id: 'schematic', title: '১. স্কিম্যাটিক নেট-লিস্ট প্রম্পট', hint: 'ধাপ ২ — Copilot চ্যাটে প্রথমে এটি পেস্ট করুন', text: PROMPT_SCHEMATIC },
   { id: 'layout', title: '২. লেআউট ও রাউটিং প্রম্পট', hint: 'ধাপ ৫ — স্কিম্যাটিক ঠিক হওয়ার পর', text: PROMPT_LAYOUT },
   { id: 'review', title: '৩. প্রফেশনাল রিভিউ ও DRC প্রম্পট', hint: 'ধাপ ৬ — অর্ডারের আগে বাধ্যতামূলক', text: PROMPT_REVIEW },
+  { id: 'compliance', title: '৪. কমপ্লায়েন্স অডিট প্রম্পট (ERC/DRC, ক্রীপেজ, আর্থিং, কোটিং, টেস্ট পয়েন্ট)', hint: 'ধাপ ৭ — ফাইনাল গো/নো-গো রিপোর্টের জন্য', text: PROMPT_COMPLIANCE },
 ];
+
+// ─────────────────────────────────────────────────────────────
+// প্রফেশনাল কমপ্লায়েন্স চেকলিস্ট (অর্ডারের ঠিক আগে ধাপে ধাপে টিক করুন)
+// ─────────────────────────────────────────────────────────────
+
+export type ComplianceSeverity = 'blocker' | 'major' | 'advisory';
+
+export interface ComplianceItem {
+  id: string;
+  text: string;
+  severity: ComplianceSeverity;
+}
+
+export interface ComplianceSection {
+  id: string;
+  title: string;
+  summary: string;
+  items: ComplianceItem[];
+}
+
+export const COMPLIANCE_CHECKLIST: ComplianceSection[] = [
+  {
+    id: 'erc-drc',
+    title: 'ERC / DRC যাচাই',
+    summary: 'সার্কিট ও লেআউটের স্বয়ংক্রিয় ভুল-পরীক্ষা — এখানে ০ error না হলে কোনোভাবেই অর্ডার নয়।',
+    items: [
+      { id: 'erc-run', text: 'Flux-এ ERC (Electrical Rule Check) চালানো হয়েছে এবং রিপোর্টে ০টি error আছে।', severity: 'blocker' },
+      { id: 'drc-run', text: 'DRC (Design Rule Check) চালানো হয়েছে এবং ০টি error আছে (warning গুলো একটি একটি করে ব্যাখ্যা করা হয়েছে)।', severity: 'blocker' },
+      { id: 'erc-float', text: 'কোনো unconnected বা floating নেট/পিন নেই; ব্যবহার না-করা ইনপুট পিন পুল-আপ/পুল-ডাউনে বাঁধা।', severity: 'blocker' },
+      { id: 'erc-inputonly', text: 'GPIO 34 / 35 / 36 শুধু ইনপুট — কোনো আউটপুট বা রিলে ওই পিনে ড্রাইভ করছে না।', severity: 'blocker' },
+      { id: 'erc-strap', text: 'বুট-স্ট্র্যাপিং যাচাই: GPIO12 বুটে LOW, GPIO15 HIGH, GPIO5 (TFT_DC) HIGH, GPIO2 বুটের সময় LED দিয়ে HIGH হয়ে যায় না।', severity: 'blocker' },
+      { id: 'erc-netname', text: 'ডুপ্লিকেট বা সাংঘর্ষিক নেট-নাম নেই; প্রতিটি নেটের নামে কাজ বোঝা যায় (যেমন RLY_EXHAUST_GPIO25, TFT_DC_GPIO5)।', severity: 'major' },
+      { id: 'drc-dfm', text: 'DFM: minimum trace/space, annular ring, silkscreen-over-pad, solder-mask sliver — সব প্রস্তুতকারকের ক্ষমতার ভিতরে।', severity: 'major' },
+      { id: 'drc-export', text: 'ERC ও DRC রিপোর্ট PDF আকারে সংরক্ষণ করা হয়েছে (রেকর্ড ও প্রস্তুতকারককে দেওয়ার জন্য)।', severity: 'advisory' },
+    ],
+  },
+  {
+    id: 'clearance',
+    title: 'ক্লিয়ারেন্স ও ক্রীপেজ (২২০V নিরাপত্তা)',
+    summary: 'মেইনস ও লো-ভোল্টেজ অংশের মাঝে ফাঁক — জীবন-নিরাপত্তার সবচেয়ে গুরুত্বপূর্ণ অংশ (IPC-2221)।',
+    items: [
+      { id: 'cl-air', text: 'মেইনস নেট ও লো-ভোল্টেজ নেটের মাঝে ন্যূনতম ৩ mm ক্লিয়ারেন্স (বাতাসের ফাঁক) আছে।', severity: 'blocker' },
+      { id: 'cl-creep', text: 'বোর্ডের গায়ে ন্যূনতম ৮ mm ক্রীপেজ (250VAC, pollution degree 2) আছে — খামারের ধুলা/আর্দ্রতার কারণে কম নয়।', severity: 'blocker' },
+      { id: 'cl-slot', text: 'অপ্টো-কাপলারগুলোর নিচে মিল্ড স্লট (routed cutout) কাটা আছে।', severity: 'blocker' },
+      { id: 'cl-nocopper', text: 'ESP32, সেন্সর কানেক্টর, TFT হেডার ও GSM মডিউলের নিচে কোনো AC কপার/ট্র্যাক নেই।', severity: 'blocker' },
+      { id: 'cl-track', text: 'AC ট্র্যাকের প্রস্থ ≥ ২.৫ mm (১০A), সোল্ডার-মাস্ক খোলা রেখে টিন করার নির্দেশ সিল্কস্ক্রিন/README-তে আছে।', severity: 'blocker' },
+      { id: 'cl-terminal', text: 'পাশাপাশি রিলে টার্মিনালের মধ্যে যথেষ্ট দূরত্ব; স্ক্রু টার্মিনালের ভোল্টেজ রেটিং ≥ 300V, কারেন্ট ≥ 10A।', severity: 'major' },
+      { id: 'cl-zone', text: 'বোর্ড স্পষ্টভাবে দুই জোনে ভাগ (ডানে মেইনস, বামে লো-ভোল্টেজ) এবং সিল্কস্ক্রিনে জোনের সীমানা আঁকা।', severity: 'major' },
+    ],
+  },
+  {
+    id: 'protection',
+    title: 'ফিউজ / MOV / আর্থিং',
+    summary: 'শর্ট, বজ্রপাত ও লিকেজ থেকে বোর্ড এবং মানুষ — দুটোকেই বাঁচানোর ব্যবস্থা।',
+    items: [
+      { id: 'pr-fuse', text: 'লাইনের একদম শুরুতে 10A ফিউজ হোল্ডার (সবকিছুর আগে) বসানো আছে।', severity: 'blocker' },
+      { id: 'pr-mov', text: 'MOV 275V ফিউজের পরে লাইন-নিউট্রালের মাঝে বসানো — ফিউজের আগে নয়।', severity: 'blocker' },
+      { id: 'pr-earth', text: 'আলাদা আর্থ (PE) টার্মিনাল আছে এবং ধাতব এনক্লোজারের সাথে বন্ড করার ব্যবস্থা আছে।', severity: 'blocker' },
+      { id: 'pr-gndsep', text: 'মেইনস আর্থ ও DC GND আলাদা — কোনো অনিচ্ছাকৃত সংযোগ নেই (একটিমাত্র নির্ধারিত টাই পয়েন্ট বা সম্পূর্ণ আইসোলেটেড)।', severity: 'blocker' },
+      { id: 'pr-star', text: 'DC অংশে star-point গ্রাউন্ড; পাওয়ার জ্যাকের কাছে কমন পয়েন্ট।', severity: 'major' },
+      { id: 'pr-label', text: 'সিল্কস্ক্রিনে L / N / PE লেখা, উচ্চ-ভোল্টেজ ওয়ার্নিং ত্রিভুজ এবং ফিউজের রেটিং (10A) ছাপা আছে।', severity: 'major' },
+      { id: 'pr-snubber', text: 'ইনডাক্টিভ লোডের (ফ্যান/মোটর) জন্য রিলে কন্টাক্টে RC snubber বা ক্যাপাসিটর প্যাড রাখা হয়েছে।', severity: 'advisory' },
+    ],
+  },
+  {
+    id: 'coating',
+    title: 'কনফরমাল কোটিং (অ্যামোনিয়া ও আর্দ্রতা সুরক্ষা)',
+    summary: 'পোল্ট্রি হাউসের অ্যামোনিয়া গ্যাস তামা ও সোল্ডার খেয়ে ফেলে — কোটিং ছাড়া বোর্ড কয়েক মাসেই নষ্ট হয়।',
+    items: [
+      { id: 'cc-type', text: 'কোটিংয়ের ধরন নির্ধারিত: অ্যাক্রিলিক (AR) — মেরামতযোগ্য; বেশি আর্দ্রতায় সিলিকন (SR)। সিদ্ধান্ত ডকুমেন্টে লেখা আছে।', severity: 'major' },
+      { id: 'cc-clean', text: 'কোটিংয়ের আগে বোর্ড ফ্লাক্স-মুক্ত করে পরিষ্কার ও সম্পূর্ণ শুকানো হবে — এই নির্দেশ অ্যাসেম্বলি নোটে আছে।', severity: 'blocker' },
+      { id: 'cc-mask', text: 'মাস্কিং তালিকা তৈরি: সব স্ক্রু টার্মিনাল, রিলে কন্টাক্ট, TFT হেডার, LED হেডার, SIM কার্ড হোল্ডার, ফিউজ হোল্ডার, প্রোগ্রামিং হেডার ও সব টেস্ট পয়েন্ট।', severity: 'blocker' },
+      { id: 'cc-sensor', text: 'DHT22 / MQ-137 সেন্সর নিজে কোটিং করা হবে না (কোটিং করলে সেন্সর অন্ধ হয়ে যায়) — শুধু বোর্ড সাইড।', severity: 'blocker' },
+      { id: 'cc-antenna', text: 'GSM অ্যান্টেনা প্যাড ও তার কীপ-আউট এলাকায় কোটিং/কপার নেই।', severity: 'major' },
+      { id: 'cc-note', text: 'Gerber-এর সাথে একটি "coating & masking" নোট ফাইল প্রস্তুতকারককে দেওয়া হয়েছে।', severity: 'advisory' },
+    ],
+  },
+  {
+    id: 'testpoints',
+    title: 'টেস্ট পয়েন্ট ও ব্রিং-আপ',
+    summary: 'বোর্ড বানানোর পরে মাল্টিমিটার দিয়ে ধাপে ধাপে যাচাই করার ব্যবস্থা — সমস্যা হলে দ্রুত ধরা পড়বে।',
+    items: [
+      { id: 'tp-power', text: 'লেবেলযুক্ত টেস্ট প্যাড আছে: 5V, 3V3, 4.0V (GSM রেল) এবং একাধিক GND।', severity: 'blocker' },
+      { id: 'tp-relay', text: '৮টি রিলে কন্ট্রোল নেটে (GPIO 25/26/27/14/12/13/15/33) প্রোব করার প্যাড আছে।', severity: 'major' },
+      { id: 'tp-display', text: 'TFT SPI নেটে (SCK 21 / MOSI 22 / CS 17 / DC 5) টেস্ট প্যাড আছে।', severity: 'major' },
+      { id: 'tp-uart', text: 'GSM UART TX (GPIO23) ও RX (GPIO19) লাইনে প্যাড আছে — মডেম ডিবাগ করার জন্য।', severity: 'major' },
+      { id: 'tp-adc', text: 'অ্যানালগ নেটে (GPIO 34 / 35 / 36) ডিভাইডারের পরে টেস্ট প্যাড আছে যাতে ৩.৩V অতিক্রম না করা যাচাই করা যায়।', severity: 'blocker' },
+      { id: 'tp-size', text: 'টেস্ট প্যাডের ব্যাস ≥ ১.৫ mm এবং সিল্কস্ক্রিনে নাম লেখা (প্রোব রাখা সহজ)।', severity: 'advisory' },
+      { id: 'tp-bringup', text: 'ব্রিং-আপ ধাপ লেখা আছে: প্রথমে সব মডিউল খুলে শুধু পাওয়ার দিয়ে রেল মাপা → তারপর ESP32 → তারপর সেন্সর/TFT → সবশেষে GSM ও AC লোড।', severity: 'blocker' },
+    ],
+  },
+];
+
