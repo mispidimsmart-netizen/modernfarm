@@ -122,6 +122,11 @@ export function AdminDashboardTabs({ language }: AdminDashboardTabsProps) {
         <TechnicalArchitectureReport />
       </TabsContent>
 
+      <TabsContent value="pcb-design" className="mt-4">
+        <FluxPcbDesignGuide />
+      </TabsContent>
+
+
       <TabsContent value="payments" className="mt-4">
         <PaymentApprovalPanel />
       </TabsContent>
