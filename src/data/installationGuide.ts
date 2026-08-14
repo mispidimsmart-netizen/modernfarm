@@ -80,8 +80,22 @@ export const partsList = [
     categoryEn: 'Alarm & Indicator',
     items: [
       { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — রিলে IN6 / GPIO 13', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — Relay IN6 / GPIO 13', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'ULN2803A ড্রাইভার IC (DIP-18) — ৮টি প্যানেল LED চালানোর জন্য', nameEn: 'ULN2803A Driver IC (DIP-18) — 8 panel LEDs', quantity: 1, price: '৳৪০-৮০', priceRange: [40, 80], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
+      { name: '১৮ পিন IC সকেট (ULN2803A এর জন্য)', nameEn: '18-pin IC Socket', quantity: 1, price: '৳১৫-২৫', priceRange: [15, 25], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
+      { name: 'প্যানেল মাউন্ট LED 5mm 12V (৮ রঙ — প্রতি রিলের জন্য একটি)', nameEn: 'Panel Mount LED 5mm 12V (8 pcs)', quantity: 8, price: '৳২০-৩০/পিস', priceRange: [160, 240], shop: 'ইলেকট্রিক্যাল দোকান', essential: false },
+      { name: '1kΩ রেজিস্টর (LED সিরিজ, 12V এর জন্য)', nameEn: '1k Resistor (LED series for 12V)', quantity: 8, price: '৳২-৫/পিস', priceRange: [16, 40], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
     ]
   },
+  {
+    category: '🖥️ TFT ডিসপ্লে (v8.3.0) — GPIO 21/22/17/5',
+    categoryEn: 'TFT Display (v8.3.0) — GPIO 21/22/17/5',
+    items: [
+      { name: 'ILI9341 SPI TFT ডিসপ্লে 2.4"/2.8" (240×320)', nameEn: 'ILI9341 SPI TFT 2.4"/2.8" (240x320)', quantity: 1, price: '৳৭৫০-১২০০', priceRange: [750, 1200], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: false },
+      { name: 'ফিমেল হেডার + ফ্ল্যাট রিবন কেবল (ডিসপ্লে বক্সের ঢাকনায় বসাতে)', nameEn: 'Female header + ribbon cable for display', quantity: 1, price: '৳৫০-১২০', priceRange: [50, 120], shop: 'টেকশপ বিডি', essential: false },
+      { name: 'অ্যাক্রিলিক/পলিকার্বনেট উইন্ডো (IP65 বক্সে ডিসপ্লে দেখার জন্য)', nameEn: 'Acrylic window for IP65 box', quantity: 1, price: '৳১০০-২০০', priceRange: [100, 200], shop: 'হার্ডওয়্যার দোকান', essential: false },
+    ]
+  },
+
   {
     category: 'সুইচিং ও প্রোটেকশন',
     categoryEn: 'Switching & Protection',
@@ -189,7 +203,19 @@ export const wiringConnections = [
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'Relay IN6 (GPIO 13)', color: 'bg-amber-500', note: '🔔 পিজো বাজার (রিলে দিয়ে কন্ট্রোল)' },
+  { component: 'TFT ILI9341', pin: 'SCK', esp32Pin: 'GPIO 21', color: 'bg-fuchsia-500', note: '🖥️ SPI ক্লক (v8.3.0)' },
+  { component: 'TFT ILI9341', pin: 'MOSI (SDI)', esp32Pin: 'GPIO 22', color: 'bg-fuchsia-500', note: '🖥️ SPI ডেটা' },
+  { component: 'TFT ILI9341', pin: 'CS', esp32Pin: 'GPIO 17', color: 'bg-fuchsia-400', note: '🖥️ চিপ সিলেক্ট' },
+  { component: 'TFT ILI9341', pin: 'DC (RS)', esp32Pin: 'GPIO 5', color: 'bg-fuchsia-400', note: '🖥️ ডেটা/কমান্ড (আগের GSM_RST পিন)' },
+  { component: 'TFT ILI9341', pin: 'RESET', esp32Pin: 'ESP32 EN (3.3V)', color: 'bg-gray-500', note: 'আলাদা GPIO লাগে না' },
+  { component: 'TFT ILI9341', pin: 'VCC / LED', esp32Pin: '3.3V', color: 'bg-red-500', note: 'ব্যাকলাইট সরাসরি 3.3V' },
+  { component: 'TFT ILI9341', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
+  { component: 'ULN2803A', pin: 'IN1..IN8', esp32Pin: 'রিলে GPIO 25,26,27,14,12,13,15,33', color: 'bg-emerald-500', note: '💡 রিলে সিগন্যালের সমান্তরালে প্যানেল LED' },
+  { component: 'ULN2803A', pin: 'COM (pin 10)', esp32Pin: '12V (+)', color: 'bg-red-500', note: 'LED সাপ্লাই ও ফ্লাইব্যাক ক্ল্যাম্প' },
+  { component: 'ULN2803A', pin: 'GND (pin 9)', esp32Pin: 'কমন GND', color: 'bg-gray-700', note: '' },
+  { component: 'Panel LED ×8', pin: 'Anode (+)', esp32Pin: '12V (1kΩ সিরিজ)', color: 'bg-lime-500', note: 'Cathode → ULN2803A OUT পিন' },
 ];
+
 
 // Detailed step-by-step wiring guide for each sensor
 export const detailedWiringGuide = [
@@ -1113,7 +1139,65 @@ export const detailedWiringGuide = [
     resistorNote: null,
     tips: ['Fan-side বিপরীতে বসান (clean intake side)', 'প্রতি ৬ মাসে fan মুছুন — ধুলো জমলে accuracy কমে', 'PM2.5 > 75 µg/m³ হলে exhaust auto-trigger'],
   },
+  // ─────── v8.3.0 প্যানেল ডিসপ্লে ও ইন্ডিকেটর LED ───────
+  {
+    id: 'tft-display',
+    name: '🖥️ ILI9341 TFT ডিসপ্লে (v8.3.0 — বোর্ডের উপরে লাইভ স্ট্যাটাস)',
+    nameEn: 'ILI9341 SPI TFT Display (v8.3.0 on-board status)',
+    icon: Cpu,
+    color: 'text-fuchsia-500',
+    bgColor: 'bg-fuchsia-500/10',
+    pins: [
+      { sensorPin: 'VCC', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ডিসপ্লের VCC → ESP32 এর 3.3V পিন', warning: '⚡ 5V দেবেন না — ILI9341 লজিক 3.3V।' },
+      { sensorPin: 'GND', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ডিসপ্লের GND → ESP32 GND (কমন গ্রাউন্ড)', warning: null },
+      { sensorPin: 'SCK (CLK)', esp32Pin: 'GPIO 21', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 SCK → ESP32 GPIO 21 (HSPI রিম্যাপ ক্লক)', warning: null },
+      { sensorPin: 'MOSI (SDI)', esp32Pin: 'GPIO 22', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 MOSI/SDI → ESP32 GPIO 22 (ডেটা লাইন)', warning: null },
+      { sensorPin: 'CS', esp32Pin: 'GPIO 17', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ CS (চিপ সিলেক্ট) → ESP32 GPIO 17', warning: null },
+      { sensorPin: 'DC (RS)', esp32Pin: 'GPIO 5', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 DC/RS → ESP32 GPIO 5', warning: '📌 GPIO 5 আগে GSM_RST ছিল — এখন SIM800L এর RST 10kΩ পুল-আপে 3.3V তে বাঁধুন, রিসেট হবে AT+CFUN=1,1 কমান্ডে।' },
+      { sensorPin: 'RESET', esp32Pin: 'ESP32 EN / 3.3V', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 RESET → ESP32 এর EN পিন (বা 10kΩ দিয়ে 3.3V) — আলাদা GPIO খরচ হবে না', warning: null },
+      { sensorPin: 'LED (ব্যাকলাইট)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 LED/BLK পিন → 3.3V (সবসময় চালু)। ডিম করতে চাইলে 100Ω সিরিজ রেজিস্টর দিন', warning: null },
+      { sensorPin: 'MISO (SDO)', esp32Pin: '— (খালি)', wireColor: '—', wireNameEn: 'NONE', instruction: '⬜ MISO খালি রাখুন — ফার্মওয়্যার শুধু লেখে, পড়ে না', warning: null },
+    ],
+    extraNote: '🖥️ v8.3.0 ফার্মওয়্যারে `displayManagerTick()` নন-ব্লকিংভাবে প্রতি ২ সেকেন্ডে স্ক্রিন আপডেট করে — তাপমাত্রা, আর্দ্রতা, অ্যামোনিয়া, ৮টি রিলের অবস্থা, WiFi/GSM সিগন্যাল ও সেফটি স্ট্যাটাস দেখায়। ডিসপ্লে না লাগালেও কন্ট্রোলার স্বাভাবিকভাবে চলবে (auto-skip)।',
+    resistorNote: '📍 SPI তার ২০ সেন্টিমিটারের বেশি লম্বা হলে SCK ও MOSI লাইনে ৩৩Ω সিরিজ রেজিস্টর দিন — নয়েজ কমবে।',
+    tips: [
+      '📦 IP65 বক্সের ঢাকনায় অ্যাক্রিলিক উইন্ডো কেটে ডিসপ্লে বসান',
+      '🔌 ফ্ল্যাট রিবন কেবল ব্যবহার করুন যাতে ঢাকনা খোলা-বন্ধে তার না ছেঁড়ে',
+      '☀️ সরাসরি রোদে ডিসপ্লে রাখবেন না — LCD কালো হয়ে যেতে পারে',
+      '⛔ GPIO 21/22 এখন ডিসপ্লের — এখানে I²C সেন্সর লাগাবেন না',
+    ],
+  },
+  {
+    id: 'panel-led',
+    name: '💡 প্যানেল ইন্ডিকেটর LED ×৮ (ULN2803A ড্রাইভার)',
+    nameEn: 'Panel Indicator LEDs x8 (ULN2803A driver)',
+    icon: Lightbulb,
+    color: 'text-lime-500',
+    bgColor: 'bg-lime-500/10',
+    pins: [
+      { sensorPin: 'IN1 → OUT1', esp32Pin: 'GPIO 25 (এক্সহস্ট ফ্যান)', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ ESP32 GPIO 25 → ULN2803A IN1। OUT1 (পিন 18) → LED#1 এর ক্যাথোড (−)', warning: null },
+      { sensorPin: 'IN2 → OUT2', esp32Pin: 'GPIO 26 (সিলিং ফ্যান)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 GPIO 26 → IN2, OUT2 → LED#2 ক্যাথোড', warning: null },
+      { sensorPin: 'IN3 → OUT3', esp32Pin: 'GPIO 27 (লাইট)', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 GPIO 27 → IN3, OUT3 → LED#3 ক্যাথোড', warning: null },
+      { sensorPin: 'IN4 → OUT4', esp32Pin: 'GPIO 14 (হিটার)', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 GPIO 14 → IN4, OUT4 → LED#4 ক্যাথোড', warning: null },
+      { sensorPin: 'IN5 → OUT5', esp32Pin: 'GPIO 12 (ফগার)', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 GPIO 12 → IN5, OUT5 → LED#5 ক্যাথোড', warning: '⚠️ GPIO 12 বুট স্ট্র্যাপিং পিন — এখানে 10kΩ পুল-ডাউন রাখুন, নইলে ESP32 বুট নাও করতে পারে।' },
+      { sensorPin: 'IN6 → OUT6', esp32Pin: 'GPIO 13 (অ্যালার্ম)', wireColor: 'বেগুনি', wireNameEn: 'PURPLE', instruction: '🟣 GPIO 13 → IN6, OUT6 → LED#6 (লাল) ক্যাথোড', warning: null },
+      { sensorPin: 'IN7 → OUT7', esp32Pin: 'GPIO 15 (স্প্রিংকলার)', wireColor: 'আসমানি', wireNameEn: 'LIGHT BLUE', instruction: '🔵 GPIO 15 → IN7, OUT7 → LED#7 ক্যাথোড', warning: null },
+      { sensorPin: 'IN8 → OUT8', esp32Pin: 'GPIO 33 (সার্কুলেশন ফ্যান)', wireColor: 'ধূসর', wireNameEn: 'GREY', instruction: '⬜ GPIO 33 → IN8, OUT8 → LED#8 ক্যাথোড', warning: null },
+      { sensorPin: 'COM (পিন 10)', esp32Pin: '12V (+)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ULN2803A এর COM পিন → 12V (+) — ভেতরের ফ্লাইব্যাক ডায়োড কাজ করবে', warning: null },
+      { sensorPin: 'GND (পিন 9)', esp32Pin: 'কমন GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ULN2803A এর GND → ESP32 ও 12V সাপ্লাইয়ের কমন GND', warning: null },
+      { sensorPin: 'LED অ্যানোড (+)', esp32Pin: '12V (1kΩ সিরিজ)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 প্রতিটি প্যানেল LED এর (+) → 1kΩ রেজিস্টর → 12V রেল', warning: null },
+    ],
+    extraNote: '💡 এই LED গুলো রিলে সিগন্যালের সমান্তরালে চলে — ESP32 এর GPIO সরাসরি LED চালায় না (ULN2803A কারেন্ট নেয়), তাই রিলের সিগন্যাল দুর্বল হয় না। প্যানেলের দিকে তাকিয়েই বোঝা যাবে কোন ডিভাইস চালু আছে।',
+    resistorNote: '📍 12V রেলে 1kΩ, 5V রেলে 330Ω সিরিজ রেজিস্টর ব্যবহার করুন (প্রতি LED ~10mA)।',
+    tips: [
+      '🎨 রঙ পরিকল্পনা: ফ্যান=নীল, লাইট=সাদা, হিটার=কমলা, ফগার/স্প্রিংকলার=সবুজ, অ্যালার্ম=লাল',
+      '🏷️ প্রতিটি LED এর পাশে লেবেল লাগান (এক্সহস্ট/সিলিং/লাইট...)',
+      '🔩 ULN2803A সরাসরি সোল্ডার না করে ১৮ পিন সকেটে বসান',
+      '✅ টেস্ট: ম্যানুয়াল মোডে এক এক করে ডিভাইস ON করুন — সংশ্লিষ্ট LED জ্বলবে ও রিলে ক্লিক করবে',
+    ],
+  },
 ];
+
 
 // Group sensors by measurement / function — single collapsible per category
 export const wiringCategories = [
@@ -1127,6 +1211,8 @@ export const wiringCategories = [
   { id: 'output', name: '🎛️ রিলে আউটপুট ও MCB / কন্ট্যাক্টর', nameEn: 'Relay Output & Switching', icon: ToggleLeft, color: 'text-purple-500', bgColor: 'bg-purple-500/10', sensorIds: ['relay', 'mcb-contactor'] },
   { id: 'actuators', name: '💦 অ্যাকচুয়েটর (ফগার / স্প্রিংকলার / বাজার / পাম্প)', nameEn: 'Actuators (Fogger / Sprinkler / Buzzer / Pump)', icon: Droplets, color: 'text-blue-500', bgColor: 'bg-blue-500/10', sensorIds: ['fogger', 'sprinkler', 'buzzer', 'shared-pump'] },
   { id: 'gsm', name: '📡 GSM মডিউল (ঐচ্ছিক)', nameEn: 'GSM Module (Optional)', icon: Wifi, color: 'text-violet-500', bgColor: 'bg-violet-500/10', sensorIds: ['sim800l'] },
+  { id: 'display-indicator', name: '🖥️ ডিসপ্লে ও প্যানেল LED (v8.3.0)', nameEn: 'Display & Panel LEDs (v8.3.0)', icon: Cpu, color: 'text-fuchsia-500', bgColor: 'bg-fuchsia-500/10', sensorIds: ['tft-display', 'panel-led'] },
+
 ];
 
 export const setupSteps = [
