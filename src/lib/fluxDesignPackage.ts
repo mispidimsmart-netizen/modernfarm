@@ -74,6 +74,8 @@ export function buildReadme(): string {
     '- `02_PinMap/netlist_hints.txt` — Flux.ai এ নেট বানানোর গাইড',
     '- `03_Prompts/flux_prompts.txt` — Schematic / Layout / Review / Compliance প্রম্পট',
     '- `04_Compliance/compliance_checklist.md` — ERC/DRC, clearance, protection, coating, test point',
+    '- `04_Compliance/protection_test_plan.md` — আর্থিং/ফিউজ/MOV/কনফরমাল কোটিং স্টেপ-বাই-স্টেপ টেস্ট প্ল্যান',
+
     '- `05_Manufacturing/required_outputs.md` — ফ্যাব হাউসে যে ফাইলগুলো পাঠাতে হবে',
     '- `05_Manufacturing/assembly_notes.md` — অ্যাসেম্বলি নির্দেশনা',
     '',
