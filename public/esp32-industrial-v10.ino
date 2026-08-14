@@ -162,7 +162,12 @@ HardwareSerial    ZE03Serial(2);
 PMS               pms(PMSSerial);
 PMS::DATA         pmsData;
 DHT               dht22(pins::DHT22, DHT22);
-HardwareSerial    GSMSerial(0);
+// FIX (v10.1.1): GSM must NOT use UART0 — UART0 is the USB debug console.
+// ESP32 has 3 UARTs: 0 = Serial (logs), 1 = PMS5003, 2 = ZE03 / GSM (shared).
+// ZE03 and SIM800L are mutually exclusive on UART2: GSM is enabled only when
+// no ZE03-NH3 sensor is detected at boot.
+HardwareSerial&   GSMSerial = ZE03Serial;
+bool              gsmAvailable = false;
 Preferences       prefs;
 
 struct SensorPresence {
@@ -234,6 +239,10 @@ static void detectSensors() {
     }
     esp_task_wdt_reset();
   }
+
+  // FIX (v10.1.1): UART2 keeps GPIO4 as its TX pin. Release it before the
+  // DHT22 fallback, otherwise DHT22 on the shared GPIO4 can never be read.
+  if (!sensors.ze03) ZE03Serial.end();
 
   if (!sensors.sht31 && !sensors.ze03) {
     dht22.begin();
