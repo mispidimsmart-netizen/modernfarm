@@ -59,6 +59,29 @@ const ALL_ITEMS = COMPLIANCE_CHECKLIST.flatMap((s) => s.items);
 export function FluxPcbDesignGuide() {
   const [copied, setCopied] = useState<string | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [packing, setPacking] = useState(false);
+
+  const handleDownloadPackage = async () => {
+    setPacking(true);
+    try {
+      const name = await downloadFluxPackage();
+      toast.success(`প্যাকেজ ডাউনলোড শুরু হয়েছে — ${name}`);
+    } catch {
+      toast.error('প্যাকেজ তৈরি করা যায়নি — আবার চেষ্টা করুন');
+    } finally {
+      setPacking(false);
+    }
+  };
+
+  const singleFiles: { name: string; label: string; make: () => string; mime?: string }[] = [
+    { name: 'bom_full.csv', label: 'BOM (CSV)', make: bomToCsv, mime: 'text/csv;charset=utf-8' },
+    { name: 'pin_map.csv', label: 'পিন ম্যাপ (CSV)', make: buildPinMapCsv, mime: 'text/csv;charset=utf-8' },
+    { name: 'netlist_hints.txt', label: 'নেটলিস্ট হিন্ট', make: buildNetlistHints },
+    { name: 'flux_prompts.txt', label: 'সব প্রম্পট', make: buildPromptsText },
+    { name: 'compliance_checklist.md', label: 'কমপ্লায়েন্স চেকলিস্ট', make: buildComplianceMarkdown, mime: 'text/markdown;charset=utf-8' },
+    { name: 'README.md', label: 'README', make: buildReadme, mime: 'text/markdown;charset=utf-8' },
+  ];
+
 
   const toggleItem = (id: string) =>
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
