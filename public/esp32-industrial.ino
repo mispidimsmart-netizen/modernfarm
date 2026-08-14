@@ -4406,6 +4406,141 @@ void recordRelayMismatch() {
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  SECTION 16.9: ON-BOARD TFT DISPLAY (read-only status panel)          ║
+// ║  Non-blocking. Never writes relays, never changes automation state.   ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+#if DISPLAY_ENABLED
+SPIClass tftSPI(HSPI);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(&tftSPI, TFT_DC_PIN, TFT_CS_PIN, -1);
+bool displayReady = false;
+uint8_t displayPage = 0;                 // 0 = sensors, 1 = devices, 2 = system
+unsigned long lastDisplayRefresh = 0;
+unsigned long lastDisplayPageSwap = 0;
+int lastHeaderState = -1;
+bool displayPageDirty = true;
+
+static uint16_t displayHeaderColor() {
+  if (currentState >= STATE_DANGER || emergencySurvivalMode) return ILI9341_RED;
+  if (currentState == STATE_WARNING || currentState == STATE_SENSOR_FAIL) return ILI9341_YELLOW;
+  return ILI9341_DARKGREEN;
+}
+
+static void displayDrawHeader() {
+  uint16_t bg = displayHeaderColor();
+  tft.fillRect(0, 0, 320, 26, bg);
+  tft.setTextColor(bg == ILI9341_YELLOW ? ILI9341_BLACK : ILI9341_WHITE, bg);
+  tft.setTextSize(2);
+  tft.setCursor(4, 5);
+  tft.print("FarmEye ");
+  tft.print(stateNames[currentState]);
+  tft.setTextSize(1);
+  tft.setCursor(250, 10);
+  tft.print(wifiConnected ? "WiFi OK" : "WiFi --");
+}
+
+static void displayDrawRow(int y, const char* label, const String& value) {
+  tft.setTextSize(2);
+  tft.setTextColor(ILI9341_CYAN, ILI9341_BLACK);
+  tft.setCursor(8, y);
+  tft.print(label);
+  tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
+  tft.fillRect(170, y, 145, 18, ILI9341_BLACK);
+  tft.setCursor(174, y);
+  tft.print(value);
+}
+
+static void displayDrawChip(int x, int y, const char* label, bool on) {
+  uint16_t c = on ? ILI9341_GREEN : 0x2104;   // green when running, dark grey when off
+  tft.fillRoundRect(x, y, 150, 30, 5, c);
+  tft.setTextColor(on ? ILI9341_BLACK : ILI9341_LIGHTGREY, c);
+  tft.setTextSize(1);
+  tft.setCursor(x + 8, y + 7);
+  tft.print(label);
+  tft.setCursor(x + 8, y + 18);
+  tft.print(on ? "ON" : "OFF");
+}
+
+static void displayPageSensors() {
+  displayDrawRow(40,  "Temp",   String(temperature, 1) + " C");
+  displayDrawRow(66,  "Humidity", String(humidity, 0) + " %");
+  displayDrawRow(92,  "Ammonia", String(ammonia, 1) + " ppm");
+  displayDrawRow(118, "HSI",    String(currentHSI, 1));
+  displayDrawRow(144, "Water",  String(waterFlow, 1) + " L/m");
+  displayDrawRow(170, "Temp 2", dht2Available ? String(temperature2, 1) + " C" : String("--"));
+  displayDrawRow(196, "Sensors", sensorErrorMode ? String("FAULT") : String("OK"));
+}
+
+static void displayPageDevices() {
+  displayDrawChip(6,   38, "EXHAUST FAN",  fanOn);
+  displayDrawChip(164, 38, "CEILING FAN",  ceilingFanOn);
+  displayDrawChip(6,   74, "CIRCULATION",  circulationFanOn);
+  displayDrawChip(164, 74, "LIGHT",        lightOn);
+  displayDrawChip(6,  110, "HEATER",       heaterOn);
+  displayDrawChip(164,110, "FOGGER",       foggerOn);
+  displayDrawChip(6,  146, "SPRINKLER",    sprinklerOn);
+  displayDrawChip(164,146, "ALARM",        alarmOn);
+  displayDrawRow(190, "Fan speed", fanSpeed);
+}
+
+static void displayPageSystem() {
+  displayDrawRow(40,  "Mode",    localManualOverride ? String("MANUAL") : String("AUTO"));
+  displayDrawRow(66,  "Safety",  safetyEngineEnabled ? String("ON") : String("OFF"));
+  displayDrawRow(92,  "Farm",    getFarmTypeStr());
+  displayDrawRow(118, "Age",     String(farmConfig.chickAgeDays) + " d");
+  displayDrawRow(144, "Cloud",   cloudConnected ? String("ONLINE") : String("OFFLINE"));
+  displayDrawRow(170, "GSM",     gsmInitialized ? (gsmNetworkReady ? String("READY") : String("NO NET")) : String("N/A"));
+  displayDrawRow(196, "Uptime",  String(millis() / 60000UL) + " min");
+}
+
+void displayInit() {
+  tftSPI.begin(TFT_SCK_PIN, -1, TFT_MOSI_PIN, TFT_CS_PIN);
+  tft.begin();
+  tft.setRotation(1);                 // landscape 320x240
+  tft.fillScreen(ILI9341_BLACK);
+  displayReady = true;
+  displayDrawHeader();
+  lastHeaderState = (int)currentState;
+  Serial.println("🖥️  TFT display initialized (ILI9341 320x240)");
+}
+
+void displayManagerTick() {
+  if (!displayReady) return;
+  unsigned long now = millis();
+
+  if (intervalPassed(now, lastDisplayPageSwap, DISPLAY_PAGE_MS)) {
+    lastDisplayPageSwap = now;
+    displayPage = (displayPage + 1) % 3;
+    displayPageDirty = true;
+  }
+
+  if (!displayPageDirty && !intervalPassed(now, lastDisplayRefresh, DISPLAY_REFRESH_MS)) return;
+  lastDisplayRefresh = now;
+
+  if (lastHeaderState != (int)currentState) {
+    lastHeaderState = (int)currentState;
+    displayDrawHeader();
+  }
+
+  if (displayPageDirty) {
+    displayPageDirty = false;
+    tft.fillRect(0, 27, 320, 213, ILI9341_BLACK);   // clear body only, header stays
+    displayDrawHeader();
+  }
+
+  switch (displayPage) {
+    case 0: displayPageSensors(); break;
+    case 1: displayPageDevices(); break;
+    default: displayPageSystem(); break;
+  }
+}
+#else
+void displayInit() {}
+void displayManagerTick() {}
+#endif
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+
 // ║  SECTION 17: MAIN LOOP (non-blocking, millis-based)                   ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
