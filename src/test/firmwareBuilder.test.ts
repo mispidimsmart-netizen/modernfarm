@@ -87,6 +87,19 @@ describe('firmwareBuilder — v8', () => {
     expect(out).toContain('BROILER (Meat)');
   });
 
+  it('sets broiler profile in the real v8.3 template shape', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, { ...base, farmType: 'broiler' });
+    expect(out).toContain('FarmConfig farmConfig = { FARM_PROFILE_BROILER, 1, 0.0f, 0.0f };');
+    expect(out).toContain('farmConfig = { FARM_PROFILE_BROILER, 1, 0.0f, 0.0f };');
+    expect(out).not.toContain('FARM_PROFILE_LAYER');
+  });
+
+  it('leaves the real v8.3 template on layer for layer farms', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, base);
+    expect(out).toContain('FarmConfig farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };');
+    expect(out).not.toContain('FARM_PROFILE_BROILER');
+  });
+
   it('keeps layer profile untouched for layer farms', () => {
     const out = buildV8Firmware(V8_TEMPLATE, base);
     expect(out).toContain('.farmType = FARM_PROFILE_LAYER');
