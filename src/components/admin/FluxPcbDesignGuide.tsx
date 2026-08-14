@@ -634,6 +634,18 @@ export function FluxPcbDesignGuide() {
             })}
           </Accordion>
 
+          <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => {
+              downloadEvidenceReport({ tested, evidence: evidenceRows, urls: evidenceUrls });
+              toast.success(`প্রমাণসহ রিপোর্ট ডাউনলোড হয়েছে (${evidenceRows.length}টি ফাইল)`);
+            }}
+          >
+            <FileText className="w-3.5 h-3.5 mr-1.5" />
+            প্রমাণসহ টেস্ট রিপোর্ট ডাউনলোড
+          </Button>
           <Button
             variant="outline"
             size="sm"
