@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Cpu, Activity, Bell, TrendingUp, BookOpen, Shield } from 'lucide-react';
+import { Users, Cpu, Activity, Bell, TrendingUp, BookOpen, Shield, CircuitBoard } from 'lucide-react';
 import { SystemHealthCard } from '@/components/admin/SystemHealthCard';
 import { AdminNotificationSender } from '@/components/admin/AdminNotificationSender';
 import { AdminSensorCharts } from '@/components/admin/AdminSensorCharts';
