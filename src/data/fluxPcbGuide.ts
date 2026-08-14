@@ -254,6 +254,16 @@ Check specifically:
 
 Then run DRC and list every clearance violation in the mains section with its coordinates.`;
 
+export const PROMPT_COMPLIANCE = `Act as a compliance and manufacturing-readiness auditor for the "FarmEye Controller v8" PCB (ESP32 based, 8 x 230VAC 10A relays, SIM800L GSM, ILI9341 SPI TFT, ULN2803A LED driver, external 5V/3A adapter — no on-board AC/DC). Audit the design in these five areas and report every finding as BLOCKER / MAJOR / ADVISORY with the reference designator or net name.
+
+1. ERC / DRC — run both. Report unconnected pins, floating inputs, duplicate or conflicting net names, outputs driven onto ESP32 input-only pins (GPIO34/35/36), boot-strapping pin states (GPIO12 LOW, GPIO15 HIGH, GPIO5/TFT_DC HIGH, GPIO2 not held HIGH), minimum trace/space, annular ring, silkscreen over pads, and any DFM warning. Target: 0 errors.
+2. Clearance & creepage — verify the mains zone against IPC-2221 for 250VAC pollution degree 2: >= 3 mm clearance and >= 8 mm creepage between mains and low-voltage nets, milled slot under the optocouplers, spacing between adjacent relay terminals, AC track width >= 2.5 mm with mask opened and tinned, and no AC copper under the ESP32, sensors, TFT header or GSM module.
+3. Fuse / MOV / earthing — 10A fuse holder in the line before everything else, MOV 275V across line-neutral after the fuse, dedicated PE (earth) terminal bonded to the enclosure, DC star ground, mains earth kept separate from DC GND (single defined tie or fully isolated), and clear silkscreen labels plus a high-voltage warning triangle.
+4. Conformal coating — the board runs in a humid, ammonia-rich poultry house. Recommend the coating type and list every area that must be masked before coating: screw terminals, relay contacts, TFT header, SIM card holder, antenna pad, fuse holder, programming header and all test points. Confirm cleaning before coating and RF keep-out around the antenna.
+5. Test points & bring-up — confirm labelled test pads exist for 5V, 3V3, 4.0V (GSM rail), GND (multiple), each of the 8 relay control nets, the TFT SPI nets, the GSM UART TX/RX and the ADC nets (GPIO34/35/36). Check pad size is probe friendly (>= 1.5 mm) and give a safe power-on bring-up order with all modules unplugged first.
+
+Finish with a go / no-go verdict for manufacturing.`;
+
 
 export const PROMPTS: { id: string; title: string; hint: string; text: string }[] = [
   { id: 'schematic', title: '১. স্কিম্যাটিক নেট-লিস্ট প্রম্পট', hint: 'ধাপ ২ — Copilot চ্যাটে প্রথমে এটি পেস্ট করুন', text: PROMPT_SCHEMATIC },
