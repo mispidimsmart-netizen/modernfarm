@@ -21,6 +21,12 @@ import {
 } from '@/data/fluxPcbGuide';
 import { BOM_ITEMS, BOM_REVISION, BOM_TOTAL_QTY, bomToCsv } from '@/data/fluxBom';
 import {
+  PROTECTION_TEST_PLAN,
+  TEST_PLAN_ALL_STEPS,
+  TEST_PLAN_SAFETY_RULES,
+  testPlanToMarkdown,
+} from '@/data/fluxTestPlan';
+import {
   downloadFluxPackage,
   downloadSingleFile,
   buildPinMapCsv,
@@ -60,6 +66,12 @@ export function FluxPcbDesignGuide() {
   const [copied, setCopied] = useState<string | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [packing, setPacking] = useState(false);
+  const [tested, setTested] = useState<Record<string, boolean>>({});
+
+  const toggleTest = (id: string) => setTested((prev) => ({ ...prev, [id]: !prev[id] }));
+  const testTotal = TEST_PLAN_ALL_STEPS.length;
+  const testDone = TEST_PLAN_ALL_STEPS.filter((s) => tested[s.id]).length;
+  const testBlockersLeft = TEST_PLAN_ALL_STEPS.filter((s) => s.severity === 'blocker' && !tested[s.id]).length;
 
   const handleDownloadPackage = async () => {
     setPacking(true);
@@ -79,6 +91,7 @@ export function FluxPcbDesignGuide() {
     { name: 'netlist_hints.txt', label: 'নেটলিস্ট হিন্ট', make: buildNetlistHints },
     { name: 'flux_prompts.txt', label: 'সব প্রম্পট', make: buildPromptsText },
     { name: 'compliance_checklist.md', label: 'কমপ্লায়েন্স চেকলিস্ট', make: buildComplianceMarkdown, mime: 'text/markdown;charset=utf-8' },
+    { name: 'protection_test_plan.md', label: 'টেস্ট প্ল্যান', make: testPlanToMarkdown, mime: 'text/markdown;charset=utf-8' },
     { name: 'README.md', label: 'README', make: buildReadme, mime: 'text/markdown;charset=utf-8' },
   ];
 
@@ -427,7 +440,7 @@ export function FluxPcbDesignGuide() {
             <Badge variant="outline" className="border-emerald-500/40 text-emerald-200">রিভিশন: {BOM_REVISION}</Badge>
             <Badge variant="outline" className="border-teal-500/40 text-teal-200">BOM লাইন: {BOM_ITEMS.length}</Badge>
             <Badge variant="outline" className="border-sky-500/40 text-sky-200">মোট পার্টস: {BOM_TOTAL_QTY}</Badge>
-            <Badge variant="outline" className="border-amber-500/40 text-amber-200">ফাইল: ৯টি</Badge>
+            <Badge variant="outline" className="border-amber-500/40 text-amber-200">ফাইল: ১০টি</Badge>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -494,9 +507,130 @@ export function FluxPcbDesignGuide() {
           </div>
         </CardContent>
       </Card>
+
+      {/* সুরক্ষা টেস্ট প্ল্যান */}
+      <Card className="bg-slate-900/80 border-rose-500/25">
+        <CardHeader className="border-b border-rose-500/10">
+          <CardTitle className="text-white text-base flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-rose-400" />
+            আর্থিং / ফিউজ / MOV / কনফরমাল কোটিং — স্টেপ-বাই-স্টেপ টেস্ট প্ল্যান
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5 space-y-4 text-sm">
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3">
+            <div className="flex items-center gap-2 text-rose-200 font-medium mb-2">
+              <AlertTriangle className="w-4 h-4" />
+              শুরুর আগে নিরাপত্তা নিয়ম
+            </div>
+            <ul className="space-y-1.5 text-slate-300 text-[13px] leading-relaxed list-disc pl-5">
+              {TEST_PLAN_SAFETY_RULES.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-300">
+                টেস্ট সম্পন্ন: <b className="text-white">{testDone}</b> / {testTotal}
+              </span>
+              <span className={testBlockersLeft > 0 ? 'text-rose-300' : 'text-emerald-300'}>
+                {testBlockersLeft > 0 ? `${testBlockersLeft}টি বাধ্যতামূলক টেস্ট বাকি` : 'সব বাধ্যতামূলক টেস্ট পাস ✓'}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+              <div
+                className={`h-full transition-all ${testBlockersLeft > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${testTotal ? (testDone / testTotal) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+
+          <Accordion type="multiple" className="space-y-2">
+            {PROTECTION_TEST_PLAN.map((section) => {
+              const done = section.steps.filter((s) => tested[s.id]).length;
+              return (
+                <AccordionItem
+                  key={section.id}
+                  value={section.id}
+                  className="border border-white/10 rounded-lg bg-slate-800/30 px-3"
+                >
+                  <AccordionTrigger className="text-slate-200 hover:no-underline text-sm">
+                    <span className="flex items-center gap-2 text-left">
+                      {section.title}
+                      <Badge variant="outline" className="text-[10px] border-white/15 text-slate-300">
+                        {done}/{section.steps.length}
+                      </Badge>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 pb-4">
+                    <p className="text-slate-400 text-[13px]">{section.intro}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {section.tools.map((t) => (
+                        <Badge key={t} variant="outline" className="text-[10px] border-sky-500/30 text-sky-200">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                    <ol className="space-y-2">
+                      {section.steps.map((step, idx) => (
+                        <li key={step.id}>
+                          <label className="flex items-start gap-2.5 rounded-lg border border-white/10 bg-slate-900/50 p-3 cursor-pointer hover:border-white/20">
+                            <input
+                              type="checkbox"
+                              checked={!!tested[step.id]}
+                              onChange={() => toggleTest(step.id)}
+                              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
+                            />
+                            <span className="flex-1 space-y-1">
+                              <span className="block text-slate-100 font-medium text-[13px]">
+                                ধাপ {idx + 1}: {step.title}
+                              </span>
+                              <span className="block text-slate-400 text-[12px] leading-relaxed">
+                                <b className="text-slate-300">কীভাবে:</b> {step.how}
+                              </span>
+                              <span className="block text-emerald-300/90 text-[12px] leading-relaxed">
+                                <b>পাস শর্ত:</b> {step.pass}
+                              </span>
+                            </span>
+                            <span className="flex flex-col items-end gap-1 shrink-0">
+                              <Badge variant="outline" className={`text-[10px] ${severityTone[step.severity]}`}>
+                                {severityLabel[step.severity]}
+                              </Badge>
+                              {step.danger && (
+                                <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-200">
+                                  AC লাইভ
+                                </Badge>
+                              )}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ol>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/15 text-slate-200 hover:bg-white/5"
+            onClick={() => {
+              downloadSingleFile('protection_test_plan.md', testPlanToMarkdown(), 'text/markdown;charset=utf-8');
+              toast.success('টেস্ট প্ল্যান ডাউনলোড হয়েছে');
+            }}
+          >
+            <FileDown className="w-3.5 h-3.5 mr-1.5" />
+            টেস্ট প্ল্যান (প্রিন্টযোগ্য) ডাউনলোড
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
 
 
 
