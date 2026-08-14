@@ -148,6 +148,10 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
 export function buildV8Header(o: BuildOptions): string {
   const modeLabel = o.firmwareMode === 'ota' ? 'OTA-READY (NVS Mode)' : 'HARDCODED (First-time Setup)';
   const safetyLabel = o.includeSafetyEngine ? 'FULL SAFETY ENGINE' : 'LITE (Hard Floor only — 42°C)';
+  const displayLabel = o.hasDisplay
+    ? 'ON — install Adafruit GFX + ILI9341 libs (SCK21/MOSI22/CS17/DC5)'
+    : 'OFF — optional, no extra libraries needed';
+
   return `
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
