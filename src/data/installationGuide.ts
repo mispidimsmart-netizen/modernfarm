@@ -340,11 +340,11 @@ export const detailedWiringGuide = [
     bgColor: 'bg-teal-500/10',
     pins: [
       { sensorPin: 'পিন ১: VCC (+)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: DHT22 #২ এর VCC → ESP32 এর 3.3V (প্রথম সেন্সরের সাথে শেয়ার করতে পারেন)', warning: null },
-      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 15', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 15 (Phase 9 I²C clash এড়াতে)', warning: '⛔ GPIO 16/17 ব্যবহার করবেন না — সেগুলো v10-এ I²C bus 2 (SHT31/BH1750/SCD41 শেয়ার্ড) হিসেবে locked।' },
+      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 16 (v8) / SHT31 I²C (v10)', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 16 (v8 ফার্মওয়্যারের DHT2_PIN)', warning: '⛔ v8-এ GPIO 15 ব্যবহার করবেন না — সেটি রিলে IN7 (স্প্রিংকলার)। ⛔ v10 বোর্ডে GPIO 16/17 = I²C bus 2 (SHT31/BH1750/SCD41), তাই v10-এ দ্বিতীয় DHT22 লাগাবেন না — SHT31 ব্যবহার করুন।' },
       { sensorPin: 'পিন ৪: GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: DHT22 #২ এর GND → ESP32 এর GND (প্রথমটির সাথে শেয়ার করা যায়)', warning: null },
     ],
-    extraNote: '📌 v10 আপডেট: DHT22 #২ আগে GPIO 16-এ ছিল কিন্তু সেটি এখন I²C SDA (Phase 9 sensors)। তাই DATA pin **GPIO 15**-এ সরানো হয়েছে। GPIO 15-এ boot-strap pull-up প্রয়োজন হয় — 10K pull-up রেজিস্টর সেই কাজও করে। SHT31 ইনস্টল থাকলে DHT22 #২ এর প্রয়োজন নেই।',
-    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 15) ↔ VCC (3.3V) — boot strap-ও satisfy করে।',
+    extraNote: '📌 ভার্সন অনুযায়ী: **v8 (esp32-industrial.ino)** — DHT22 #২ এর DATA = **GPIO 16** (`DHT2_PIN`)। **v10 (esp32-industrial-v10.ino)** — GPIO 16/17 I²C বাসের জন্য সংরক্ষিত, তাই দ্বিতীয় জোনের তাপমাত্রা/আর্দ্রতা SHT31 (I²C) দিয়ে নিতে হবে; সেখানে দ্বিতীয় DHT22 সাপোর্টেড নয়।',
+    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 16) ↔ VCC (3.3V)।',
     tips: ['শেডের এক প্রান্তে প্রথম এবং অপর প্রান্তে দ্বিতীয় সেন্সর লাগান'],
   },
   {
