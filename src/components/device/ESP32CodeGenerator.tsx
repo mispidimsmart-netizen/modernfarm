@@ -152,8 +152,9 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
 
       const buildOptions = {
         ssid, password, deviceToken, shedId, shedName, farmId,
-        farmType, firmwareMode, includeSafetyEngine,
+        farmType, firmwareMode, includeSafetyEngine, hasDisplay,
       };
+
 
       // ── v10 BETA path (hardcoded only) ────────────────────────────────
       if (firmwareVersion === 'v10') {
