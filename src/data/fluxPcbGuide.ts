@@ -229,24 +229,31 @@ Rules:
 - Place the 1000uF bulk cap within 10 mm of the SIM800L supply pins; keep GSM RF away from analog sensor traces.
 - Keep the analog nets (GPIO34/35/36) short, away from relay traces and from the buck converter switch node.
 - Place sensor screw terminals on the board edge far from the relay/heat area.
-- Silkscreen: label every terminal in plain words (EXHAUST FAN, CEILING FAN, LIGHT, HEATER, FOGGER, ALARM, SPRINKLER, CIRCULATION), mark AC danger with a warning triangle, print "FarmEye Controller v8 — Nexiot Labs".
+- Put the 8-pin TFT header and the 10-pin indicator-LED header on the TOP edge of the low-voltage zone so the ribbon cables reach the enclosure lid without crossing the mains zone.
+- Route the TFT SPI nets (GPIO21/22/17/5) as a tight group with a ground return trace beside them; keep them under 60 mm on board and away from the relay drivers.
+- Place the ULN2803A indicator driver next to the relay-control nets, with its 470R resistor array beside the LED header.
+- Silkscreen: label every terminal in plain words (EXHAUST FAN, CEILING FAN, LIGHT, HEATER, FOGGER, ALARM, SPRINKLER, CIRCULATION), label the TFT header pins (SCK/MOSI/CS/DC/RST/VCC/GND/LED) and the LED header order, mark AC danger with a warning triangle, print "FarmEye Controller v8 — Nexiot Labs".
+- Provide a mechanical drawing note for the enclosure lid: TFT window cutout 2.8" module = 50 x 38 mm visible area, plus ten 5 mm LED holes in a row 12 mm apart.
 - 4x M3 mounting holes 5 mm from each corner, keep-out 6 mm radius.`;
 
 export const PROMPT_REVIEW = `Act as an independent senior PCB review engineer and audit this "FarmEye Controller v8" design before manufacturing. Report findings as a numbered list with severity (BLOCKER / MAJOR / MINOR).
 
 Check specifically:
-1. Every ESP32 GPIO assignment against this list: relays 25,26,27,14,12,13,15,33; sensors DHT22=4 and 16, MQ-137=34, ZMPT101B=35, LDR=36, flow=18; GSM TX=23, RX=19, RST=5; LED=2; override button=32. Flag any conflict or duplicate.
+1. Every ESP32 GPIO assignment against this list: relays 25,26,27,14,12,13,15,33; sensors DHT22=4 and 16, MQ-137=34, ZMPT101B=35, LDR=36, flow=18; GSM TX=23, RX=19 (no MCU-driven GSM reset); TFT SCK=21, MOSI=22, CS=17, DC=5; LED=2; override button=32. Flag any conflict or duplicate.
 2. GPIO34/35/36 are input-only — confirm nothing drives them.
-3. Boot strapping pins: GPIO12 must be LOW at boot, GPIO15/GPIO5 HIGH, GPIO2 must not be held HIGH by the LED circuit during boot.
+3. Boot strapping pins: GPIO12 must be LOW at boot, GPIO15 HIGH, GPIO5 (TFT DC) must be HIGH at boot, GPIO2 must not be held HIGH by the LED circuit during boot.
 4. Mains clearance and creepage >= 3 mm, AC trace ampacity for 10A, fuse and MOV placement.
-5. SIM800L supply: 4.0V rail, bulk capacitance, inrush handling, level shifting on the UART.
+5. SIM800L supply: 4.0V rail, bulk capacitance, inrush handling, level shifting on the UART; confirm RST is pulled up to 3V3 and not connected to any GPIO.
 6. ADC input protection: no node can exceed 3.3V.
 7. Flyback diodes and opto isolation present on all 8 relay channels.
-8. Thermal: relay coil heat and buck converter heat away from DHT22/MQ-137 terminals.
-9. Ground strategy, decoupling, and EMI on the switching node.
-10. DFM: minimum trace/space, annular ring, silkscreen over pads, footprint availability at LCSC.
+8. Indicator LEDs: confirm they are driven through the ULN2803A (not directly from ESP32 GPIOs) and that each has a current-limiting resistor.
+9. Display: SPI signal integrity, series damping resistors, backlight current budget (~100 mA), and total 5V budget including the 2A GSM peak.
+10. Thermal: relay coil heat and buck converter heat away from DHT22/MQ-137 terminals.
+11. Ground strategy, decoupling, and EMI on the switching node.
+12. DFM: minimum trace/space, annular ring, silkscreen over pads, footprint availability at LCSC.
 
 Then run DRC and list every clearance violation in the mains section with its coordinates.`;
+
 
 export const PROMPTS: { id: string; title: string; hint: string; text: string }[] = [
   { id: 'schematic', title: '১. স্কিম্যাটিক নেট-লিস্ট প্রম্পট', hint: 'ধাপ ২ — Copilot চ্যাটে প্রথমে এটি পেস্ট করুন', text: PROMPT_SCHEMATIC },
