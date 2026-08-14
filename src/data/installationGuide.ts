@@ -1139,7 +1139,65 @@ export const detailedWiringGuide = [
     resistorNote: null,
     tips: ['Fan-side বিপরীতে বসান (clean intake side)', 'প্রতি ৬ মাসে fan মুছুন — ধুলো জমলে accuracy কমে', 'PM2.5 > 75 µg/m³ হলে exhaust auto-trigger'],
   },
+  // ─────── v8.3.0 প্যানেল ডিসপ্লে ও ইন্ডিকেটর LED ───────
+  {
+    id: 'tft-display',
+    name: '🖥️ ILI9341 TFT ডিসপ্লে (v8.3.0 — বোর্ডের উপরে লাইভ স্ট্যাটাস)',
+    nameEn: 'ILI9341 SPI TFT Display (v8.3.0 on-board status)',
+    icon: Cpu,
+    color: 'text-fuchsia-500',
+    bgColor: 'bg-fuchsia-500/10',
+    pins: [
+      { sensorPin: 'VCC', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ডিসপ্লের VCC → ESP32 এর 3.3V পিন', warning: '⚡ 5V দেবেন না — ILI9341 লজিক 3.3V।' },
+      { sensorPin: 'GND', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ডিসপ্লের GND → ESP32 GND (কমন গ্রাউন্ড)', warning: null },
+      { sensorPin: 'SCK (CLK)', esp32Pin: 'GPIO 21', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 SCK → ESP32 GPIO 21 (HSPI রিম্যাপ ক্লক)', warning: null },
+      { sensorPin: 'MOSI (SDI)', esp32Pin: 'GPIO 22', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 MOSI/SDI → ESP32 GPIO 22 (ডেটা লাইন)', warning: null },
+      { sensorPin: 'CS', esp32Pin: 'GPIO 17', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ CS (চিপ সিলেক্ট) → ESP32 GPIO 17', warning: null },
+      { sensorPin: 'DC (RS)', esp32Pin: 'GPIO 5', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 DC/RS → ESP32 GPIO 5', warning: '📌 GPIO 5 আগে GSM_RST ছিল — এখন SIM800L এর RST 10kΩ পুল-আপে 3.3V তে বাঁধুন, রিসেট হবে AT+CFUN=1,1 কমান্ডে।' },
+      { sensorPin: 'RESET', esp32Pin: 'ESP32 EN / 3.3V', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 RESET → ESP32 এর EN পিন (বা 10kΩ দিয়ে 3.3V) — আলাদা GPIO খরচ হবে না', warning: null },
+      { sensorPin: 'LED (ব্যাকলাইট)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 LED/BLK পিন → 3.3V (সবসময় চালু)। ডিম করতে চাইলে 100Ω সিরিজ রেজিস্টর দিন', warning: null },
+      { sensorPin: 'MISO (SDO)', esp32Pin: '— (খালি)', wireColor: '—', wireNameEn: 'NONE', instruction: '⬜ MISO খালি রাখুন — ফার্মওয়্যার শুধু লেখে, পড়ে না', warning: null },
+    ],
+    extraNote: '🖥️ v8.3.0 ফার্মওয়্যারে `displayManagerTick()` নন-ব্লকিংভাবে প্রতি ২ সেকেন্ডে স্ক্রিন আপডেট করে — তাপমাত্রা, আর্দ্রতা, অ্যামোনিয়া, ৮টি রিলের অবস্থা, WiFi/GSM সিগন্যাল ও সেফটি স্ট্যাটাস দেখায়। ডিসপ্লে না লাগালেও কন্ট্রোলার স্বাভাবিকভাবে চলবে (auto-skip)।',
+    resistorNote: '📍 SPI তার ২০ সেন্টিমিটারের বেশি লম্বা হলে SCK ও MOSI লাইনে ৩৩Ω সিরিজ রেজিস্টর দিন — নয়েজ কমবে।',
+    tips: [
+      '📦 IP65 বক্সের ঢাকনায় অ্যাক্রিলিক উইন্ডো কেটে ডিসপ্লে বসান',
+      '🔌 ফ্ল্যাট রিবন কেবল ব্যবহার করুন যাতে ঢাকনা খোলা-বন্ধে তার না ছেঁড়ে',
+      '☀️ সরাসরি রোদে ডিসপ্লে রাখবেন না — LCD কালো হয়ে যেতে পারে',
+      '⛔ GPIO 21/22 এখন ডিসপ্লের — এখানে I²C সেন্সর লাগাবেন না',
+    ],
+  },
+  {
+    id: 'panel-led',
+    name: '💡 প্যানেল ইন্ডিকেটর LED ×৮ (ULN2803A ড্রাইভার)',
+    nameEn: 'Panel Indicator LEDs x8 (ULN2803A driver)',
+    icon: Lightbulb,
+    color: 'text-lime-500',
+    bgColor: 'bg-lime-500/10',
+    pins: [
+      { sensorPin: 'IN1 → OUT1', esp32Pin: 'GPIO 25 (এক্সহস্ট ফ্যান)', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ ESP32 GPIO 25 → ULN2803A IN1। OUT1 (পিন 18) → LED#1 এর ক্যাথোড (−)', warning: null },
+      { sensorPin: 'IN2 → OUT2', esp32Pin: 'GPIO 26 (সিলিং ফ্যান)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 GPIO 26 → IN2, OUT2 → LED#2 ক্যাথোড', warning: null },
+      { sensorPin: 'IN3 → OUT3', esp32Pin: 'GPIO 27 (লাইট)', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 GPIO 27 → IN3, OUT3 → LED#3 ক্যাথোড', warning: null },
+      { sensorPin: 'IN4 → OUT4', esp32Pin: 'GPIO 14 (হিটার)', wireColor: 'কমলা', wireNameEn: 'ORANGE', instruction: '🟠 GPIO 14 → IN4, OUT4 → LED#4 ক্যাথোড', warning: null },
+      { sensorPin: 'IN5 → OUT5', esp32Pin: 'GPIO 12 (ফগার)', wireColor: 'নীল', wireNameEn: 'BLUE', instruction: '🔵 GPIO 12 → IN5, OUT5 → LED#5 ক্যাথোড', warning: '⚠️ GPIO 12 বুট স্ট্র্যাপিং পিন — এখানে 10kΩ পুল-ডাউন রাখুন, নইলে ESP32 বুট নাও করতে পারে।' },
+      { sensorPin: 'IN6 → OUT6', esp32Pin: 'GPIO 13 (অ্যালার্ম)', wireColor: 'বেগুনি', wireNameEn: 'PURPLE', instruction: '🟣 GPIO 13 → IN6, OUT6 → LED#6 (লাল) ক্যাথোড', warning: null },
+      { sensorPin: 'IN7 → OUT7', esp32Pin: 'GPIO 15 (স্প্রিংকলার)', wireColor: 'আসমানি', wireNameEn: 'LIGHT BLUE', instruction: '🔵 GPIO 15 → IN7, OUT7 → LED#7 ক্যাথোড', warning: null },
+      { sensorPin: 'IN8 → OUT8', esp32Pin: 'GPIO 33 (সার্কুলেশন ফ্যান)', wireColor: 'ধূসর', wireNameEn: 'GREY', instruction: '⬜ GPIO 33 → IN8, OUT8 → LED#8 ক্যাথোড', warning: null },
+      { sensorPin: 'COM (পিন 10)', esp32Pin: '12V (+)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 ULN2803A এর COM পিন → 12V (+) — ভেতরের ফ্লাইব্যাক ডায়োড কাজ করবে', warning: null },
+      { sensorPin: 'GND (পিন 9)', esp32Pin: 'কমন GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ ULN2803A এর GND → ESP32 ও 12V সাপ্লাইয়ের কমন GND', warning: null },
+      { sensorPin: 'LED অ্যানোড (+)', esp32Pin: '12V (1kΩ সিরিজ)', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 প্রতিটি প্যানেল LED এর (+) → 1kΩ রেজিস্টর → 12V রেল', warning: null },
+    ],
+    extraNote: '💡 এই LED গুলো রিলে সিগন্যালের সমান্তরালে চলে — ESP32 এর GPIO সরাসরি LED চালায় না (ULN2803A কারেন্ট নেয়), তাই রিলের সিগন্যাল দুর্বল হয় না। প্যানেলের দিকে তাকিয়েই বোঝা যাবে কোন ডিভাইস চালু আছে।',
+    resistorNote: '📍 12V রেলে 1kΩ, 5V রেলে 330Ω সিরিজ রেজিস্টর ব্যবহার করুন (প্রতি LED ~10mA)।',
+    tips: [
+      '🎨 রঙ পরিকল্পনা: ফ্যান=নীল, লাইট=সাদা, হিটার=কমলা, ফগার/স্প্রিংকলার=সবুজ, অ্যালার্ম=লাল',
+      '🏷️ প্রতিটি LED এর পাশে লেবেল লাগান (এক্সহস্ট/সিলিং/লাইট...)',
+      '🔩 ULN2803A সরাসরি সোল্ডার না করে ১৮ পিন সকেটে বসান',
+      '✅ টেস্ট: ম্যানুয়াল মোডে এক এক করে ডিভাইস ON করুন — সংশ্লিষ্ট LED জ্বলবে ও রিলে ক্লিক করবে',
+    ],
+  },
 ];
+
 
 // Group sensors by measurement / function — single collapsible per category
 export const wiringCategories = [
