@@ -37,7 +37,12 @@ export const PIN_MAP: PinRow[] = [
   // ── GSM (SIM800L) ──
   { gpio: 23, define: 'GSM_TX_PIN', role: 'ESP32 TX → SIM800L RX', group: 'gsm', note: 'লেভেল শিফট/ডিভাইডার দিয়ে ~2.8V' },
   { gpio: 19, define: 'GSM_RX_PIN', role: 'ESP32 RX ← SIM800L TX', group: 'gsm' },
-  { gpio: 5, define: 'GSM_RST_PIN', role: 'SIM800L রিসেট (ঐচ্ছিক)', group: 'gsm', note: 'বুট স্ট্র্যাপিং পিন — বুটে HIGH' },
+
+  // ── TFT ডিসপ্লে (ILI9341, HSPI রিম্যাপ) ──
+  { gpio: 21, define: 'TFT_SCK_PIN', role: 'TFT SCK (SPI ক্লক)', group: 'display' },
+  { gpio: 22, define: 'TFT_MOSI_PIN', role: 'TFT MOSI (SPI ডেটা)', group: 'display' },
+  { gpio: 17, define: 'TFT_CS_PIN', role: 'TFT CS (চিপ সিলেক্ট)', group: 'display' },
+  { gpio: 5, define: 'TFT_DC_PIN', role: 'TFT DC (ডেটা/কমান্ড)', group: 'display', note: 'আগে GSM_RST ছিল — এখন SIM800L RST 10kΩ পুল-আপে 3V3 এ বাঁধা, রিসেট হয় AT+CFUN=1,1 দিয়ে' },
 
   // ── অন্যান্য ──
   { gpio: 2, define: 'STATUS_LED_PIN', role: 'স্ট্যাটাস LED', group: 'misc', note: '330Ω সিরিজ রেজিস্টর' },
@@ -48,8 +53,10 @@ export const GROUP_LABELS: Record<PinRow['group'], string> = {
   relay: '৮-চ্যানেল রিলে আউটপুট',
   sensor: 'সেন্সর ইনপুট',
   gsm: 'GSM মডিউল (SIM800L)',
+  display: 'TFT ডিসপ্লে (ILI9341 2.4"/2.8")',
   misc: 'অন্যান্য',
 };
+
 
 export type StepItem = { title: string; what: string; done: string };
 
