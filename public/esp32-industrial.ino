@@ -4725,6 +4725,10 @@ void loop() {
   // --- Status LED ---
   updateStatusLED();
 
+  // --- On-board TFT display (read-only, non-blocking) ---
+  displayManagerTick();
+
+
   // --- Manual Override Button Check (overflow-safe) ---
   static unsigned long btnPressStart = 0;
   static bool btnWasPressed = false;
