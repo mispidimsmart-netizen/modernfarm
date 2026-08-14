@@ -4149,6 +4149,10 @@ void setup() {
   // --- GSM ---
   gsmInit();
 
+  // --- On-board TFT display (optional, read-only) ---
+  displayInit();
+
+
   // --- Watchdog ---
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
