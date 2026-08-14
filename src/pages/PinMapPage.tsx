@@ -51,6 +51,9 @@ const SENSORS: Record<Version, SensorRow[]> = {
     { name: 'LDR (আলো)', pins: 'AO = GPIO 39 (analog)' },
     { name: 'Manual Override Switch', pins: 'GPIO 23 (INPUT_PULLUP)' },
     { name: 'Status LED', pins: 'GPIO 2 (onboard)' },
+    { name: 'TFT ডিসপ্লে (ILI9341 SPI)', pins: 'SCK = GPIO 21, MOSI = GPIO 22, CS = GPIO 17, DC = GPIO 5', note: 'RST → ESP32 EN; v8.3+ ফার্মওয়্যারে বোর্ডের উপরের ডিসপ্লে' },
+    { name: 'প্যানেল ইন্ডিকেটর LED (৮টি)', pins: 'ULN2803A IN1–IN8 ← রিলে কন্ট্রোল নেট', note: 'বাক্সের ঢাকনায় LED — সরাসরি GPIO থেকে নয়' },
+
   ],
   v10: [
     { name: 'SHT31 (তাপ/আর্দ্রতা, I²C 0x44)', pins: 'SDA = GPIO 16, SCL = GPIO 17', note: 'DHT22 replace করে' },
