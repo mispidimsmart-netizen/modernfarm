@@ -26,6 +26,9 @@ import {
   TEST_PLAN_SAFETY_RULES,
   testPlanToMarkdown,
 } from '@/data/fluxTestPlan';
+import { usePcbTestEvidence } from '@/hooks/usePcbTestEvidence';
+import { TestStepEvidence } from '@/components/admin/TestStepEvidence';
+import { downloadEvidenceReport } from '@/lib/pcbTestReport';
 import {
   downloadFluxPackage,
   downloadSingleFile,
@@ -67,6 +70,14 @@ export function FluxPcbDesignGuide() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [packing, setPacking] = useState(false);
   const [tested, setTested] = useState<Record<string, boolean>>({});
+  const {
+    rows: evidenceRows,
+    urls: evidenceUrls,
+    uploadingStep,
+    upload: uploadEvidence,
+    remove: removeEvidence,
+    byStep,
+  } = usePcbTestEvidence();
 
   const toggleTest = (id: string) => setTested((prev) => ({ ...prev, [id]: !prev[id] }));
   const testTotal = TEST_PLAN_ALL_STEPS.length;
