@@ -18,14 +18,16 @@ import {
   type PinRow,
 } from '@/data/fluxPcbGuide';
 
-const groupOrder: PinRow['group'][] = ['relay', 'sensor', 'gsm', 'misc'];
+const groupOrder: PinRow['group'][] = ['relay', 'sensor', 'gsm', 'display', 'misc'];
 
 const groupTone: Record<PinRow['group'], string> = {
   relay: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
   sensor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   gsm: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+  display: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
   misc: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
 };
+
 
 export function FluxPcbDesignGuide() {
   const [copied, setCopied] = useState<string | null>(null);
