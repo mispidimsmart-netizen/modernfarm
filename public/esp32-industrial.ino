@@ -70,6 +70,21 @@
 #include "esp32-safety-engine.h"
 #include "mbedtls/md.h"
 
+// ═══════════════════════════════════════════════════════════════════════
+// ON-BOARD TFT DISPLAY (optional, read-only status panel)
+// Set DISPLAY_ENABLED to false for boards without a display — the rest of
+// the firmware behaves identically (display code never touches relays).
+// Libraries: "Adafruit GFX Library" + "Adafruit ILI9341" (Library Manager)
+// ═══════════════════════════════════════════════════════════════════════
+#define DISPLAY_ENABLED true
+
+#if DISPLAY_ENABLED
+  #include <SPI.h>
+  #include <Adafruit_GFX.h>
+  #include <Adafruit_ILI9341.h>
+#endif
+
+
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 1: CONFIGURATION & CONSTANTS                                 ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
