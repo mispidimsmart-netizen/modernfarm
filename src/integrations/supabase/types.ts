@@ -5271,6 +5271,45 @@ export type Database = {
           },
         ]
       }
+      pcb_test_evidence: {
+        Row: {
+          board_serial: string | null
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          note: string | null
+          size_bytes: number | null
+          step_id: string
+          user_id: string
+        }
+        Insert: {
+          board_serial?: string | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          note?: string | null
+          size_bytes?: number | null
+          step_id: string
+          user_id: string
+        }
+        Update: {
+          board_serial?: string | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          note?: string | null
+          size_bytes?: number | null
+          step_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       performance_metrics: {
         Row: {
           created_at: string

@@ -26,6 +26,9 @@ import {
   TEST_PLAN_SAFETY_RULES,
   testPlanToMarkdown,
 } from '@/data/fluxTestPlan';
+import { usePcbTestEvidence } from '@/hooks/usePcbTestEvidence';
+import { TestStepEvidence } from '@/components/admin/TestStepEvidence';
+import { downloadEvidenceReport } from '@/lib/pcbTestReport';
 import {
   downloadFluxPackage,
   downloadSingleFile,
@@ -67,6 +70,14 @@ export function FluxPcbDesignGuide() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [packing, setPacking] = useState(false);
   const [tested, setTested] = useState<Record<string, boolean>>({});
+  const {
+    rows: evidenceRows,
+    urls: evidenceUrls,
+    uploadingStep,
+    upload: uploadEvidence,
+    remove: removeEvidence,
+    byStep,
+  } = usePcbTestEvidence();
 
   const toggleTest = (id: string) => setTested((prev) => ({ ...prev, [id]: !prev[id] }));
   const testTotal = TEST_PLAN_ALL_STEPS.length;
@@ -575,35 +586,45 @@ export function FluxPcbDesignGuide() {
                     <ol className="space-y-2">
                       {section.steps.map((step, idx) => (
                         <li key={step.id}>
-                          <label className="flex items-start gap-2.5 rounded-lg border border-white/10 bg-slate-900/50 p-3 cursor-pointer hover:border-white/20">
-                            <input
-                              type="checkbox"
-                              checked={!!tested[step.id]}
-                              onChange={() => toggleTest(step.id)}
-                              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
-                            />
-                            <span className="flex-1 space-y-1">
-                              <span className="block text-slate-100 font-medium text-[13px]">
-                                ধাপ {idx + 1}: {step.title}
+                          <div className="rounded-lg border border-white/10 bg-slate-900/50 p-3 hover:border-white/20">
+                            <label className="flex items-start gap-2.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!!tested[step.id]}
+                                onChange={() => toggleTest(step.id)}
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
+                              />
+                              <span className="flex-1 space-y-1">
+                                <span className="block text-slate-100 font-medium text-[13px]">
+                                  ধাপ {idx + 1}: {step.title}
+                                </span>
+                                <span className="block text-slate-400 text-[12px] leading-relaxed">
+                                  <b className="text-slate-300">কীভাবে:</b> {step.how}
+                                </span>
+                                <span className="block text-emerald-300/90 text-[12px] leading-relaxed">
+                                  <b>পাস শর্ত:</b> {step.pass}
+                                </span>
                               </span>
-                              <span className="block text-slate-400 text-[12px] leading-relaxed">
-                                <b className="text-slate-300">কীভাবে:</b> {step.how}
-                              </span>
-                              <span className="block text-emerald-300/90 text-[12px] leading-relaxed">
-                                <b>পাস শর্ত:</b> {step.pass}
-                              </span>
-                            </span>
-                            <span className="flex flex-col items-end gap-1 shrink-0">
-                              <Badge variant="outline" className={`text-[10px] ${severityTone[step.severity]}`}>
-                                {severityLabel[step.severity]}
-                              </Badge>
-                              {step.danger && (
-                                <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-200">
-                                  AC লাইভ
+                              <span className="flex flex-col items-end gap-1 shrink-0">
+                                <Badge variant="outline" className={`text-[10px] ${severityTone[step.severity]}`}>
+                                  {severityLabel[step.severity]}
                                 </Badge>
-                              )}
-                            </span>
-                          </label>
+                                {step.danger && (
+                                  <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-200">
+                                    AC লাইভ
+                                  </Badge>
+                                )}
+                              </span>
+                            </label>
+                            <TestStepEvidence
+                              stepId={step.id}
+                              files={byStep(step.id)}
+                              urls={evidenceUrls}
+                              uploading={uploadingStep === step.id}
+                              onUpload={uploadEvidence}
+                              onRemove={removeEvidence}
+                            />
+                          </div>
                         </li>
                       ))}
                     </ol>
@@ -613,6 +634,18 @@ export function FluxPcbDesignGuide() {
             })}
           </Accordion>
 
+          <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => {
+              downloadEvidenceReport({ tested, evidence: evidenceRows, urls: evidenceUrls });
+              toast.success(`প্রমাণসহ রিপোর্ট ডাউনলোড হয়েছে (${evidenceRows.length}টি ফাইল)`);
+            }}
+          >
+            <FileText className="w-3.5 h-3.5 mr-1.5" />
+            প্রমাণসহ টেস্ট রিপোর্ট ডাউনলোড
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -625,6 +658,7 @@ export function FluxPcbDesignGuide() {
             <FileDown className="w-3.5 h-3.5 mr-1.5" />
             টেস্ট প্ল্যান (প্রিন্টযোগ্য) ডাউনলোড
           </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
