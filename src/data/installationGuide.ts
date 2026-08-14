@@ -80,8 +80,22 @@ export const partsList = [
     categoryEn: 'Alarm & Indicator',
     items: [
       { name: 'SFM-27 পিজো বাজার (DC 3-24V, হাই ডেসিবেল) — রিলে IN6 / GPIO 13', nameEn: 'SFM-27 Piezo Buzzer (DC 3-24V) — Relay IN6 / GPIO 13', quantity: 1, price: '৳৮০-১৫০', priceRange: [80, 150], shop: 'ইলেকট্রনিক্স দোকান', essential: true },
+      { name: 'ULN2803A ড্রাইভার IC (DIP-18) — ৮টি প্যানেল LED চালানোর জন্য', nameEn: 'ULN2803A Driver IC (DIP-18) — 8 panel LEDs', quantity: 1, price: '৳৪০-৮০', priceRange: [40, 80], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
+      { name: '১৮ পিন IC সকেট (ULN2803A এর জন্য)', nameEn: '18-pin IC Socket', quantity: 1, price: '৳১৫-২৫', priceRange: [15, 25], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
+      { name: 'প্যানেল মাউন্ট LED 5mm 12V (৮ রঙ — প্রতি রিলের জন্য একটি)', nameEn: 'Panel Mount LED 5mm 12V (8 pcs)', quantity: 8, price: '৳২০-৩০/পিস', priceRange: [160, 240], shop: 'ইলেকট্রিক্যাল দোকান', essential: false },
+      { name: '1kΩ রেজিস্টর (LED সিরিজ, 12V এর জন্য)', nameEn: '1k Resistor (LED series for 12V)', quantity: 8, price: '৳২-৫/পিস', priceRange: [16, 40], shop: 'ইলেকট্রনিক্স দোকান', essential: false },
     ]
   },
+  {
+    category: '🖥️ TFT ডিসপ্লে (v8.3.0) — GPIO 21/22/17/5',
+    categoryEn: 'TFT Display (v8.3.0) — GPIO 21/22/17/5',
+    items: [
+      { name: 'ILI9341 SPI TFT ডিসপ্লে 2.4"/2.8" (240×320)', nameEn: 'ILI9341 SPI TFT 2.4"/2.8" (240x320)', quantity: 1, price: '৳৭৫০-১২০০', priceRange: [750, 1200], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: false },
+      { name: 'ফিমেল হেডার + ফ্ল্যাট রিবন কেবল (ডিসপ্লে বক্সের ঢাকনায় বসাতে)', nameEn: 'Female header + ribbon cable for display', quantity: 1, price: '৳৫০-১২০', priceRange: [50, 120], shop: 'টেকশপ বিডি', essential: false },
+      { name: 'অ্যাক্রিলিক/পলিকার্বনেট উইন্ডো (IP65 বক্সে ডিসপ্লে দেখার জন্য)', nameEn: 'Acrylic window for IP65 box', quantity: 1, price: '৳১০০-২০০', priceRange: [100, 200], shop: 'হার্ডওয়্যার দোকান', essential: false },
+    ]
+  },
+
   {
     category: 'সুইচিং ও প্রোটেকশন',
     categoryEn: 'Switching & Protection',
