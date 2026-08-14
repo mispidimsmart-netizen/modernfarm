@@ -125,6 +125,13 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
   }
 
 
+  // Optional TFT display: template default is DISABLED (no extra libraries
+  // required). Enable only when the board actually has the ILI9341 panel.
+  code = code.replace(
+    /#define\s+DISPLAY_ENABLED\s+(true|false)/,
+    `#define DISPLAY_ENABLED ${o.hasDisplay ? 'true' : 'false'}`,
+  );
+
   // Build-time safety engine toggle (cloud /config can override at runtime)
   if (!o.includeSafetyEngine) {
     code = code.replace(
@@ -132,6 +139,7 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
       'bool safetyEngineEnabled = false;          // ⚠️ DISABLED at build time (Hard Floor 42°C still active)',
     );
   }
+
 
   return buildV8Header(o) + code;
 }
