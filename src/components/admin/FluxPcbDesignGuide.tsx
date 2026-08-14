@@ -575,35 +575,45 @@ export function FluxPcbDesignGuide() {
                     <ol className="space-y-2">
                       {section.steps.map((step, idx) => (
                         <li key={step.id}>
-                          <label className="flex items-start gap-2.5 rounded-lg border border-white/10 bg-slate-900/50 p-3 cursor-pointer hover:border-white/20">
-                            <input
-                              type="checkbox"
-                              checked={!!tested[step.id]}
-                              onChange={() => toggleTest(step.id)}
-                              className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
-                            />
-                            <span className="flex-1 space-y-1">
-                              <span className="block text-slate-100 font-medium text-[13px]">
-                                ধাপ {idx + 1}: {step.title}
+                          <div className="rounded-lg border border-white/10 bg-slate-900/50 p-3 hover:border-white/20">
+                            <label className="flex items-start gap-2.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!!tested[step.id]}
+                                onChange={() => toggleTest(step.id)}
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
+                              />
+                              <span className="flex-1 space-y-1">
+                                <span className="block text-slate-100 font-medium text-[13px]">
+                                  ধাপ {idx + 1}: {step.title}
+                                </span>
+                                <span className="block text-slate-400 text-[12px] leading-relaxed">
+                                  <b className="text-slate-300">কীভাবে:</b> {step.how}
+                                </span>
+                                <span className="block text-emerald-300/90 text-[12px] leading-relaxed">
+                                  <b>পাস শর্ত:</b> {step.pass}
+                                </span>
                               </span>
-                              <span className="block text-slate-400 text-[12px] leading-relaxed">
-                                <b className="text-slate-300">কীভাবে:</b> {step.how}
-                              </span>
-                              <span className="block text-emerald-300/90 text-[12px] leading-relaxed">
-                                <b>পাস শর্ত:</b> {step.pass}
-                              </span>
-                            </span>
-                            <span className="flex flex-col items-end gap-1 shrink-0">
-                              <Badge variant="outline" className={`text-[10px] ${severityTone[step.severity]}`}>
-                                {severityLabel[step.severity]}
-                              </Badge>
-                              {step.danger && (
-                                <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-200">
-                                  AC লাইভ
+                              <span className="flex flex-col items-end gap-1 shrink-0">
+                                <Badge variant="outline" className={`text-[10px] ${severityTone[step.severity]}`}>
+                                  {severityLabel[step.severity]}
                                 </Badge>
-                              )}
-                            </span>
-                          </label>
+                                {step.danger && (
+                                  <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-200">
+                                    AC লাইভ
+                                  </Badge>
+                                )}
+                              </span>
+                            </label>
+                            <TestStepEvidence
+                              stepId={step.id}
+                              files={byStep(step.id)}
+                              urls={evidenceUrls}
+                              uploading={uploadingStep === step.id}
+                              onUpload={uploadEvidence}
+                              onRemove={removeEvidence}
+                            />
+                          </div>
                         </li>
                       ))}
                     </ol>
