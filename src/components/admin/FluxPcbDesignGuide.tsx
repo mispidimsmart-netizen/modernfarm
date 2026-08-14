@@ -31,9 +31,31 @@ const groupTone: Record<PinRow['group'], string> = {
   misc: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
 };
 
+const severityTone: Record<ComplianceSeverity, string> = {
+  blocker: 'bg-rose-500/15 text-rose-200 border-rose-500/40',
+  major: 'bg-amber-500/15 text-amber-200 border-amber-500/40',
+  advisory: 'bg-slate-500/15 text-slate-300 border-slate-500/40',
+};
+
+const severityLabel: Record<ComplianceSeverity, string> = {
+  blocker: 'বাধ্যতামূলক',
+  major: 'গুরুত্বপূর্ণ',
+  advisory: 'পরামর্শ',
+};
+
+const ALL_ITEMS = COMPLIANCE_CHECKLIST.flatMap((s) => s.items);
 
 export function FluxPcbDesignGuide() {
   const [copied, setCopied] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  const toggleItem = (id: string) =>
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const totalCount = ALL_ITEMS.length;
+  const doneCount = ALL_ITEMS.filter((i) => checked[i.id]).length;
+  const blockersLeft = ALL_ITEMS.filter((i) => i.severity === 'blocker' && !checked[i.id]).length;
+
 
   const copy = async (id: string, text: string) => {
     try {
