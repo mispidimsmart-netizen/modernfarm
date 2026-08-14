@@ -87,8 +87,8 @@ export const partsList = [
     ]
   },
   {
-    category: '🖥️ TFT ডিসপ্লে (v8.3.0) — GPIO 21/22/17/5',
-    categoryEn: 'TFT Display (v8.3.0) — GPIO 21/22/17/5',
+    category: '🖥️ TFT ডিসপ্লে (v8.3.0) — সম্পূর্ণ ঐচ্ছিক, GPIO 21/22/17/5',
+    categoryEn: 'TFT Display (v8.3.0) — OPTIONAL, GPIO 21/22/17/5',
     items: [
       { name: 'ILI9341 SPI TFT ডিসপ্লে 2.4"/2.8" (240×320)', nameEn: 'ILI9341 SPI TFT 2.4"/2.8" (240x320)', quantity: 1, price: '৳৭৫০-১২০০', priceRange: [750, 1200], shop: 'টেকশপ বিডি, রোবটিক্স বিডি', essential: false },
       { name: 'ফিমেল হেডার + ফ্ল্যাট রিবন কেবল (ডিসপ্লে বক্সের ঢাকনায় বসাতে)', nameEn: 'Female header + ribbon cable for display', quantity: 1, price: '৳৫০-১২০', priceRange: [50, 120], shop: 'টেকশপ বিডি', essential: false },
@@ -1142,8 +1142,8 @@ export const detailedWiringGuide = [
   // ─────── v8.3.0 প্যানেল ডিসপ্লে ও ইন্ডিকেটর LED ───────
   {
     id: 'tft-display',
-    name: '🖥️ ILI9341 TFT ডিসপ্লে (v8.3.0 — বোর্ডের উপরে লাইভ স্ট্যাটাস)',
-    nameEn: 'ILI9341 SPI TFT Display (v8.3.0 on-board status)',
+    name: '🖥️ ILI9341 TFT ডিসপ্লে — ঐচ্ছিক (v8.3.0, বোর্ডের উপরে লাইভ স্ট্যাটাস)',
+    nameEn: 'ILI9341 SPI TFT Display — OPTIONAL (v8.3.0 on-board status)',
     icon: Cpu,
     color: 'text-fuchsia-500',
     bgColor: 'bg-fuchsia-500/10',
@@ -1169,8 +1169,8 @@ export const detailedWiringGuide = [
   },
   {
     id: 'panel-led',
-    name: '💡 প্যানেল ইন্ডিকেটর LED ×৮ (ULN2803A ড্রাইভার)',
-    nameEn: 'Panel Indicator LEDs x8 (ULN2803A driver)',
+    name: '💡 প্যানেল ইন্ডিকেটর LED ×৮ — ঐচ্ছিক (ULN2803A ড্রাইভার)',
+    nameEn: 'Panel Indicator LEDs x8 — OPTIONAL (ULN2803A driver)',
     icon: Lightbulb,
     color: 'text-lime-500',
     bgColor: 'bg-lime-500/10',
