@@ -8,9 +8,10 @@ export type PinRow = {
   gpio: number;
   define: string;
   role: string;      // বাংলা ব্যাখ্যা
-  group: 'relay' | 'sensor' | 'gsm' | 'misc';
+  group: 'relay' | 'sensor' | 'gsm' | 'display' | 'misc';
   note?: string;
 };
+
 
 export const FLUX_BOARD = 'ESP32-WROOM-32 DevKit V1 (38-pin)';
 
@@ -36,7 +37,12 @@ export const PIN_MAP: PinRow[] = [
   // ── GSM (SIM800L) ──
   { gpio: 23, define: 'GSM_TX_PIN', role: 'ESP32 TX → SIM800L RX', group: 'gsm', note: 'লেভেল শিফট/ডিভাইডার দিয়ে ~2.8V' },
   { gpio: 19, define: 'GSM_RX_PIN', role: 'ESP32 RX ← SIM800L TX', group: 'gsm' },
-  { gpio: 5, define: 'GSM_RST_PIN', role: 'SIM800L রিসেট (ঐচ্ছিক)', group: 'gsm', note: 'বুট স্ট্র্যাপিং পিন — বুটে HIGH' },
+
+  // ── TFT ডিসপ্লে (ILI9341, HSPI রিম্যাপ) ──
+  { gpio: 21, define: 'TFT_SCK_PIN', role: 'TFT SCK (SPI ক্লক)', group: 'display' },
+  { gpio: 22, define: 'TFT_MOSI_PIN', role: 'TFT MOSI (SPI ডেটা)', group: 'display' },
+  { gpio: 17, define: 'TFT_CS_PIN', role: 'TFT CS (চিপ সিলেক্ট)', group: 'display' },
+  { gpio: 5, define: 'TFT_DC_PIN', role: 'TFT DC (ডেটা/কমান্ড)', group: 'display', note: 'আগে GSM_RST ছিল — এখন SIM800L RST 10kΩ পুল-আপে 3V3 এ বাঁধা, রিসেট হয় AT+CFUN=1,1 দিয়ে' },
 
   // ── অন্যান্য ──
   { gpio: 2, define: 'STATUS_LED_PIN', role: 'স্ট্যাটাস LED', group: 'misc', note: '330Ω সিরিজ রেজিস্টর' },
@@ -47,8 +53,10 @@ export const GROUP_LABELS: Record<PinRow['group'], string> = {
   relay: '৮-চ্যানেল রিলে আউটপুট',
   sensor: 'সেন্সর ইনপুট',
   gsm: 'GSM মডিউল (SIM800L)',
+  display: 'TFT ডিসপ্লে (ILI9341 2.4"/2.8")',
   misc: 'অন্যান্য',
 };
+
 
 export type StepItem = { title: string; what: string; done: string };
 
@@ -108,8 +116,13 @@ export const COMPONENTS: ComponentItem[] = [
   { name: 'MOV 275V (ভ্যারিস্টর)', qty: '১', why: 'বজ্রপাত/স্পাইক ভোল্টেজ থেকে বোর্ড বাঁচায়।' },
   { name: 'স্ট্যাটাস LED (সবুজ) + 330Ω', qty: '১', why: 'বোর্ড চলছে কিনা এক নজরে বোঝার জন্য।' },
   { name: 'পুশ বাটন (ম্যানুয়াল ওভাররাইড) + 100nF', qty: '১', why: 'ইন্টারনেট না থাকলে হাতে ফ্যান/লাইট চালু করার জন্য।' },
+  { name: 'ILI9341 2.4"/2.8" SPI TFT (৩২০×২৪০) + 2.54mm ফিমেল হেডার', qty: '১', why: 'বাক্সের ঢাকনায় বসিয়ে সেন্সর ডেটা, মোড, চলমান ডিভাইস ও ফার্মের অবস্থা দেখার জন্য।' },
+  { name: 'প্যানেল-মাউন্ট LED 5mm (হোল্ডারসহ) + 470Ω', qty: '১০', why: 'রিলে বোর্ডের আলো বাক্সের ভিতরে থাকে — ঢাকনার এই LED গুলো দিয়ে বাইরে থেকেই কোন ডিভাইস চলছে দেখা যায় (৮টি রিলে + পাওয়ার + ক্লাউড)।' },
+  { name: 'ULN2803A (DIP-18) + সকেট — ইন্ডিকেটর ড্রাইভার', qty: '১', why: 'প্যানেল LED গুলো ESP32 পিন থেকে না টেনে ড্রাইভার IC থেকে চালানো হয়, ফলে GPIO-তে বাড়তি লোড পড়ে না।' },
+  { name: '2.54mm ১০-পিন IDC হেডার + রিবন তার (LED প্যানেলের জন্য)', qty: '১', why: 'ঢাকনার LED বোর্ড খুলে-লাগানো সহজ করে।' },
   { name: 'মাউন্টিং হোল M3', qty: '৪', why: 'বোর্ড বাক্সে স্ক্রু দিয়ে আটকানোর জন্য।' },
 ];
+
 
 export const EXPORT_FILES: { file: string; why: string }[] = [
   { file: 'Gerber ZIP (RS-274X) — সব লেয়ার', why: 'বোর্ডের "নকশা"। প্রস্তুতকারক এটা দিয়েই তামার লাইন ছাপে। সবচেয়ে জরুরি ফাইল।' },
@@ -124,14 +137,19 @@ export const EXPORT_FILES: { file: string; why: string }[] = [
 export const FINAL_CHECKLIST: string[] = [
   'প্রতিটি GPIO নম্বর পিন ম্যাপ টেবিলের সাথে হুবহু মিলেছে, কোনো পিন দুইবার ব্যবহার হয়নি।',
   'GPIO 34/35/36 শুধু ইনপুট — ওখানে কোনো আউটপুট/রিলে সংযুক্ত করা হয়নি।',
-  'GPIO 12 এ পুল-ডাউন আছে (বুটে LOW), GPIO 15 ও GPIO 5 বুটে HIGH থাকে।',
+  'GPIO 12 এ পুল-ডাউন আছে (বুটে LOW), GPIO 15 বুটে HIGH থাকে।',
+  'GPIO 5 এখন TFT DC — বুটে HIGH থাকে; SIM800L RST পিন 10kΩ দিয়ে 3V3 এ টানা (MCU চালায় না)।',
+  'TFT হেডারে SCK=21, MOSI=22, CS=17, DC=5; RST → ESP32 EN; LED (ব্যাকলাইট) → 3V3 + 100Ω।',
+  'প্যানেল LED গুলো ULN2803A দিয়ে চালানো — সরাসরি ESP32 পিন থেকে নয়; প্রতিটিতে 470Ω।',
   'MQ-137 ও LDR-এর অ্যানালগ লাইনে ভোল্টেজ ডিভাইডার আছে (৩.৩V এর বেশি নয়)।',
   'প্রতিটি রিলেতে ফ্লাইব্যাক ডায়োড ও অপ্টো আইসোলেশন আছে।',
   'AC (২২০V) ট্র্যাক ও DC অংশের মাঝে ন্যূনতম ৩ mm ফাঁক এবং কাটা স্লট আছে।',
   'AC ট্র্যাকের প্রস্থ ≥ ২.৫ mm (১০A এর জন্য), সোল্ডার মাস্ক খোলা রেখে টিন করার ব্যবস্থা।',
   'SIM800L এর পাশে 1000µF ক্যাপ আছে এবং সরবরাহ 4.0V (5V নয়)।',
+  '5V সাপ্লাই হিসাব: TFT ব্যাকলাইট ~100mA + GSM পিক ২A — অ্যাডাপ্টার ন্যূনতম 5V/3A।',
   'সেন্সর কানেক্টর পাওয়ার সাপ্লাই/রিলের তাপ থেকে দূরে বসানো হয়েছে।',
   'সিল্কস্ক্রিনে বোর্ডের নাম, সংস্করণ (v8) এবং "Nexiot Labs" লেখা আছে।',
+
   'DRC রিপোর্টে ০টি error।',
 ];
 
@@ -163,10 +181,28 @@ GPIO12 must have a 10k pull-down (boot strapping pin). GPIO15 and GPIO5 must idl
 === GSM MODULE (SIM800L) ===
 - ESP32 GPIO23 (TX) -> SIM800L RXD through 1k/2k divider (3.3V -> ~2.8V)
 - SIM800L TXD -> ESP32 GPIO19 (RX) direct
-- ESP32 GPIO5 -> SIM800L RST
+- SIM800L RST is NOT driven by the MCU: tie it to 3V3 through a 10k pull-up (firmware resets the modem with AT+CFUN=1,1)
 - SIM800L VCC from a dedicated MP1584 buck set to 4.0V / 2A fed from the 5V input
 - Add 1000uF/16V electrolytic + 100uF + 100nF right at the SIM800L supply pins
 - Provide a 2.54mm header for the SIM800L module and an SMA/IPEX antenna pad
+
+=== ON-BOARD TFT DISPLAY (ILI9341 2.4"/2.8", 320x240, SPI) ===
+- Provide a 2.54mm 8-pin female header for the display module (lid-mounted, connected by ribbon cable, max 20 cm)
+- TFT SCK  <- ESP32 GPIO21
+- TFT MOSI <- ESP32 GPIO22
+- TFT CS   <- ESP32 GPIO17
+- TFT DC   <- ESP32 GPIO5
+- TFT RESET -> ESP32 EN net (no dedicated GPIO)
+- TFT VCC -> 3V3 (module has its own regulator; also route 5V to an adjacent unpopulated pad)
+- TFT LED (backlight) -> 3V3 through 100R, add a 2-pin jumper so the backlight can be disabled
+- MISO not connected. Add 33R series resistors on SCK and MOSI to damp ringing.
+
+=== FRONT-PANEL INDICATOR LEDS (8 relay states + power + cloud) ===
+- ULN2803A driver: IN1..IN8 driven in parallel from the same relay control nets GPIO25, 26, 27, 14, 12, 13, 15, 33
+- Each ULN2803A output sinks one 5mm panel LED whose anode goes to 5V through a 470R resistor
+- Bring the 8 LED cathodes + 5V + GND out on a 10-pin 2.54mm IDC header for the lid-mounted LED panel
+- Silkscreen the header pins: EXHAUST, CEILING, LIGHT, HEATER, FOGGER, ALARM, SPRINKLER, CIRCULATION
+- Separate power LED (green) directly on the 5V rail with 1k, and a cloud/WiFi LED buffered from GPIO2 (status LED net) with 470R
 
 === MISC ===
 - Status LED (green) on GPIO2 with 330R
@@ -174,7 +210,8 @@ GPIO12 must have a 10k pull-down (boot strapping pin). GPIO15 and GPIO5 must idl
 - 100nF decoupling near every IC; common GND star point near the barrel jack
 - 4x M3 mounting holes, board size 120 x 100 mm
 
-Constraints: do NOT reassign any GPIO. Every net name must state the function (e.g. RLY_EXHAUST_GPIO25). Use parts that are in stock at LCSC/JLCPCB. Add a title block: "FarmEye Controller v8 — Nexiot Labs".`;
+Constraints: do NOT reassign any GPIO. GPIO5 is the TFT DC line and must not be used for GSM reset. Every net name must state the function (e.g. RLY_EXHAUST_GPIO25, TFT_DC_GPIO5). Use parts that are in stock at LCSC/JLCPCB. Add a title block: "FarmEye Controller v8 — Nexiot Labs".`;
+
 
 export const PROMPT_LAYOUT = `Now lay out the PCB for "FarmEye Controller v8" like a professional EMC-aware industrial design.
 
@@ -192,24 +229,31 @@ Rules:
 - Place the 1000uF bulk cap within 10 mm of the SIM800L supply pins; keep GSM RF away from analog sensor traces.
 - Keep the analog nets (GPIO34/35/36) short, away from relay traces and from the buck converter switch node.
 - Place sensor screw terminals on the board edge far from the relay/heat area.
-- Silkscreen: label every terminal in plain words (EXHAUST FAN, CEILING FAN, LIGHT, HEATER, FOGGER, ALARM, SPRINKLER, CIRCULATION), mark AC danger with a warning triangle, print "FarmEye Controller v8 — Nexiot Labs".
+- Put the 8-pin TFT header and the 10-pin indicator-LED header on the TOP edge of the low-voltage zone so the ribbon cables reach the enclosure lid without crossing the mains zone.
+- Route the TFT SPI nets (GPIO21/22/17/5) as a tight group with a ground return trace beside them; keep them under 60 mm on board and away from the relay drivers.
+- Place the ULN2803A indicator driver next to the relay-control nets, with its 470R resistor array beside the LED header.
+- Silkscreen: label every terminal in plain words (EXHAUST FAN, CEILING FAN, LIGHT, HEATER, FOGGER, ALARM, SPRINKLER, CIRCULATION), label the TFT header pins (SCK/MOSI/CS/DC/RST/VCC/GND/LED) and the LED header order, mark AC danger with a warning triangle, print "FarmEye Controller v8 — Nexiot Labs".
+- Provide a mechanical drawing note for the enclosure lid: TFT window cutout 2.8" module = 50 x 38 mm visible area, plus ten 5 mm LED holes in a row 12 mm apart.
 - 4x M3 mounting holes 5 mm from each corner, keep-out 6 mm radius.`;
 
 export const PROMPT_REVIEW = `Act as an independent senior PCB review engineer and audit this "FarmEye Controller v8" design before manufacturing. Report findings as a numbered list with severity (BLOCKER / MAJOR / MINOR).
 
 Check specifically:
-1. Every ESP32 GPIO assignment against this list: relays 25,26,27,14,12,13,15,33; sensors DHT22=4 and 16, MQ-137=34, ZMPT101B=35, LDR=36, flow=18; GSM TX=23, RX=19, RST=5; LED=2; override button=32. Flag any conflict or duplicate.
+1. Every ESP32 GPIO assignment against this list: relays 25,26,27,14,12,13,15,33; sensors DHT22=4 and 16, MQ-137=34, ZMPT101B=35, LDR=36, flow=18; GSM TX=23, RX=19 (no MCU-driven GSM reset); TFT SCK=21, MOSI=22, CS=17, DC=5; LED=2; override button=32. Flag any conflict or duplicate.
 2. GPIO34/35/36 are input-only — confirm nothing drives them.
-3. Boot strapping pins: GPIO12 must be LOW at boot, GPIO15/GPIO5 HIGH, GPIO2 must not be held HIGH by the LED circuit during boot.
+3. Boot strapping pins: GPIO12 must be LOW at boot, GPIO15 HIGH, GPIO5 (TFT DC) must be HIGH at boot, GPIO2 must not be held HIGH by the LED circuit during boot.
 4. Mains clearance and creepage >= 3 mm, AC trace ampacity for 10A, fuse and MOV placement.
-5. SIM800L supply: 4.0V rail, bulk capacitance, inrush handling, level shifting on the UART.
+5. SIM800L supply: 4.0V rail, bulk capacitance, inrush handling, level shifting on the UART; confirm RST is pulled up to 3V3 and not connected to any GPIO.
 6. ADC input protection: no node can exceed 3.3V.
 7. Flyback diodes and opto isolation present on all 8 relay channels.
-8. Thermal: relay coil heat and buck converter heat away from DHT22/MQ-137 terminals.
-9. Ground strategy, decoupling, and EMI on the switching node.
-10. DFM: minimum trace/space, annular ring, silkscreen over pads, footprint availability at LCSC.
+8. Indicator LEDs: confirm they are driven through the ULN2803A (not directly from ESP32 GPIOs) and that each has a current-limiting resistor.
+9. Display: SPI signal integrity, series damping resistors, backlight current budget (~100 mA), and total 5V budget including the 2A GSM peak.
+10. Thermal: relay coil heat and buck converter heat away from DHT22/MQ-137 terminals.
+11. Ground strategy, decoupling, and EMI on the switching node.
+12. DFM: minimum trace/space, annular ring, silkscreen over pads, footprint availability at LCSC.
 
 Then run DRC and list every clearance violation in the mains section with its coordinates.`;
+
 
 export const PROMPTS: { id: string; title: string; hint: string; text: string }[] = [
   { id: 'schematic', title: '১. স্কিম্যাটিক নেট-লিস্ট প্রম্পট', hint: 'ধাপ ২ — Copilot চ্যাটে প্রথমে এটি পেস্ট করুন', text: PROMPT_SCHEMATIC },

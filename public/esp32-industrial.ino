@@ -48,8 +48,10 @@
  * ║    GPIO 18: YF-S201 Water Flow                                        ║
  * ║    GPIO 19: GSM RX (SIM800L TX)                                       ║
  * ║    GPIO 23: GSM TX (SIM800L RX)                                       ║
- * ║    GPIO 5:  GSM RST (optional)                                        ║
+ * ║    GPIO 5:  TFT DC  (SIM800L RST → 10k pull-up to 3V3, soft reset)    ║
+ * ║    GPIO 21/22/17: TFT SCK / MOSI / CS (ILI9341 2.4"-2.8" SPI)         ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
+
  */
 
 #include <WiFi.h>
@@ -68,6 +70,21 @@
 #include "esp32-safety-engine.h"
 #include "mbedtls/md.h"
 
+// ═══════════════════════════════════════════════════════════════════════
+// ON-BOARD TFT DISPLAY (optional, read-only status panel)
+// Set DISPLAY_ENABLED to false for boards without a display — the rest of
+// the firmware behaves identically (display code never touches relays).
+// Libraries: "Adafruit GFX Library" + "Adafruit ILI9341" (Library Manager)
+// ═══════════════════════════════════════════════════════════════════════
+#define DISPLAY_ENABLED true
+
+#if DISPLAY_ENABLED
+  #include <SPI.h>
+  #include <Adafruit_GFX.h>
+  #include <Adafruit_ILI9341.h>
+#endif
+
+
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  SECTION 1: CONFIGURATION & CONSTANTS                                 ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
@@ -85,7 +102,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.2.0-reliability-phase3";
+const char* FIRMWARE_VERSION = "8.3.0-display-panel";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -135,8 +152,19 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 // --- GSM Pins (moved from 16/17 due to sensor remapping) ---
 #define GSM_TX_PIN           23
 #define GSM_RX_PIN           19
-#define GSM_RST_PIN          5
+// GSM_RST_PIN removed in v8.3 — GPIO5 is now TFT_DC.
+// SIM800L RST must be tied to 3V3 through a 10k pull-up on the PCB;
+// module reset is issued in software (AT+CFUN=1,1).
 #define GSM_BAUD             9600
+
+// --- TFT Display Pins (ILI9341, HSPI remap; RST tied to ESP32 EN) ---
+#define TFT_SCK_PIN          21
+#define TFT_MOSI_PIN         22
+#define TFT_CS_PIN           17
+#define TFT_DC_PIN           5
+#define DISPLAY_REFRESH_MS   1000UL   // redraw values once per second
+#define DISPLAY_PAGE_MS      5000UL   // auto-rotate pages every 5 seconds
+
 
 // --- Watchdog ---
 #define WDT_TIMEOUT          8
@@ -773,6 +801,11 @@ uint32_t calculateStreamCRC32(const esp_partition_t* partition, size_t size);
 
 // GSM
 void gsmInit();
+
+// Display (read-only status panel)
+void displayInit();
+void displayManagerTick();
+
 void gsmQueueAlert(String alertType, String message);
 void gsmProcessQueue();
 bool gsmSendSMS(String phone, String message);
@@ -2539,14 +2572,13 @@ unsigned long nvsReadOutageDuration() {
 
 void gsmInit() {
   Serial.println("📱 Initializing GSM module (SIM800L)...");
-  pinMode(GSM_RST_PIN, OUTPUT);
-  digitalWrite(GSM_RST_PIN, HIGH);
-  // Non-blocking hardware reset
-  digitalWrite(GSM_RST_PIN, LOW);
-  unsigned long w = millis(); while(millis()-w < 100) yield();
-  digitalWrite(GSM_RST_PIN, HIGH);
-  // Wait for module boot (non-blocking in subsequent ticks)
+  // NOTE (v8 + TFT): GPIO5 is now the TFT DC line, so the SIM800L RST pin is
+  // NOT driven by the MCU anymore. Tie SIM800L RST to 3V3 via a 10k pull-up on
+  // the PCB; module reset is done in software with AT+CFUN=1,1 below.
   gsmSerial.begin(GSM_BAUD, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
+  gsmSerial.println("AT+CFUN=1,1");   // soft reset (replaces hardware RST pulse)
+  { unsigned long w = millis(); while (millis() - w < 1500) { while (gsmSerial.available()) gsmSerial.read(); yield(); } }
+
   
   // Quick AT test (with short timeout)
   gsmSerial.println("AT");
@@ -4117,6 +4149,10 @@ void setup() {
   // --- GSM ---
   gsmInit();
 
+  // --- On-board TFT display (optional, read-only) ---
+  displayInit();
+
+
   // --- Watchdog ---
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
@@ -4379,6 +4415,141 @@ void recordRelayMismatch() {
 }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  SECTION 16.9: ON-BOARD TFT DISPLAY (read-only status panel)          ║
+// ║  Non-blocking. Never writes relays, never changes automation state.   ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+#if DISPLAY_ENABLED
+SPIClass tftSPI(HSPI);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(&tftSPI, TFT_DC_PIN, TFT_CS_PIN, -1);
+bool displayReady = false;
+uint8_t displayPage = 0;                 // 0 = sensors, 1 = devices, 2 = system
+unsigned long lastDisplayRefresh = 0;
+unsigned long lastDisplayPageSwap = 0;
+int lastHeaderState = -1;
+bool displayPageDirty = true;
+
+static uint16_t displayHeaderColor() {
+  if (currentState >= STATE_DANGER || emergencySurvivalMode) return ILI9341_RED;
+  if (currentState == STATE_WARNING || currentState == STATE_SENSOR_FAIL) return ILI9341_YELLOW;
+  return ILI9341_DARKGREEN;
+}
+
+static void displayDrawHeader() {
+  uint16_t bg = displayHeaderColor();
+  tft.fillRect(0, 0, 320, 26, bg);
+  tft.setTextColor(bg == ILI9341_YELLOW ? ILI9341_BLACK : ILI9341_WHITE, bg);
+  tft.setTextSize(2);
+  tft.setCursor(4, 5);
+  tft.print("FarmEye ");
+  tft.print(stateNames[currentState]);
+  tft.setTextSize(1);
+  tft.setCursor(250, 10);
+  tft.print(wifiConnected ? "WiFi OK" : "WiFi --");
+}
+
+static void displayDrawRow(int y, const char* label, const String& value) {
+  tft.setTextSize(2);
+  tft.setTextColor(ILI9341_CYAN, ILI9341_BLACK);
+  tft.setCursor(8, y);
+  tft.print(label);
+  tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
+  tft.fillRect(170, y, 145, 18, ILI9341_BLACK);
+  tft.setCursor(174, y);
+  tft.print(value);
+}
+
+static void displayDrawChip(int x, int y, const char* label, bool on) {
+  uint16_t c = on ? ILI9341_GREEN : 0x2104;   // green when running, dark grey when off
+  tft.fillRoundRect(x, y, 150, 30, 5, c);
+  tft.setTextColor(on ? ILI9341_BLACK : ILI9341_LIGHTGREY, c);
+  tft.setTextSize(1);
+  tft.setCursor(x + 8, y + 7);
+  tft.print(label);
+  tft.setCursor(x + 8, y + 18);
+  tft.print(on ? "ON" : "OFF");
+}
+
+static void displayPageSensors() {
+  displayDrawRow(40,  "Temp",   String(temperature, 1) + " C");
+  displayDrawRow(66,  "Humidity", String(humidity, 0) + " %");
+  displayDrawRow(92,  "Ammonia", String(ammonia, 1) + " ppm");
+  displayDrawRow(118, "HSI",    String(currentHSI, 1));
+  displayDrawRow(144, "Water",  String(waterFlow, 1) + " L/m");
+  displayDrawRow(170, "Temp 2", dht2Available ? String(temperature2, 1) + " C" : String("--"));
+  displayDrawRow(196, "Sensors", sensorErrorMode ? String("FAULT") : String("OK"));
+}
+
+static void displayPageDevices() {
+  displayDrawChip(6,   38, "EXHAUST FAN",  fanOn);
+  displayDrawChip(164, 38, "CEILING FAN",  ceilingFanOn);
+  displayDrawChip(6,   74, "CIRCULATION",  circulationFanOn);
+  displayDrawChip(164, 74, "LIGHT",        lightOn);
+  displayDrawChip(6,  110, "HEATER",       heaterOn);
+  displayDrawChip(164,110, "FOGGER",       foggerOn);
+  displayDrawChip(6,  146, "SPRINKLER",    sprinklerOn);
+  displayDrawChip(164,146, "ALARM",        alarmOn);
+  displayDrawRow(190, "Fan speed", fanSpeed);
+}
+
+static void displayPageSystem() {
+  displayDrawRow(40,  "Mode",    localManualOverride ? String("MANUAL") : String("AUTO"));
+  displayDrawRow(66,  "Safety",  safetyEngineEnabled ? String("ON") : String("OFF"));
+  displayDrawRow(92,  "Farm",    getFarmTypeStr());
+  displayDrawRow(118, "Age",     String(farmConfig.chickAgeDays) + " d");
+  displayDrawRow(144, "Cloud",   cloudConnected ? String("ONLINE") : String("OFFLINE"));
+  displayDrawRow(170, "GSM",     gsmInitialized ? (gsmNetworkReady ? String("READY") : String("NO NET")) : String("N/A"));
+  displayDrawRow(196, "Uptime",  String(millis() / 60000UL) + " min");
+}
+
+void displayInit() {
+  tftSPI.begin(TFT_SCK_PIN, -1, TFT_MOSI_PIN, TFT_CS_PIN);
+  tft.begin();
+  tft.setRotation(1);                 // landscape 320x240
+  tft.fillScreen(ILI9341_BLACK);
+  displayReady = true;
+  displayDrawHeader();
+  lastHeaderState = (int)currentState;
+  Serial.println("🖥️  TFT display initialized (ILI9341 320x240)");
+}
+
+void displayManagerTick() {
+  if (!displayReady) return;
+  unsigned long now = millis();
+
+  if (intervalPassed(now, lastDisplayPageSwap, DISPLAY_PAGE_MS)) {
+    lastDisplayPageSwap = now;
+    displayPage = (displayPage + 1) % 3;
+    displayPageDirty = true;
+  }
+
+  if (!displayPageDirty && !intervalPassed(now, lastDisplayRefresh, DISPLAY_REFRESH_MS)) return;
+  lastDisplayRefresh = now;
+
+  if (lastHeaderState != (int)currentState) {
+    lastHeaderState = (int)currentState;
+    displayDrawHeader();
+  }
+
+  if (displayPageDirty) {
+    displayPageDirty = false;
+    tft.fillRect(0, 27, 320, 213, ILI9341_BLACK);   // clear body only, header stays
+    displayDrawHeader();
+  }
+
+  switch (displayPage) {
+    case 0: displayPageSensors(); break;
+    case 1: displayPageDevices(); break;
+    default: displayPageSystem(); break;
+  }
+}
+#else
+void displayInit() {}
+void displayManagerTick() {}
+#endif
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+
 // ║  SECTION 17: MAIN LOOP (non-blocking, millis-based)                   ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
@@ -4553,6 +4724,10 @@ void loop() {
 
   // --- Status LED ---
   updateStatusLED();
+
+  // --- On-board TFT display (read-only, non-blocking) ---
+  displayManagerTick();
+
 
   // --- Manual Override Button Check (overflow-safe) ---
   static unsigned long btnPressStart = 0;
