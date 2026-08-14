@@ -4003,6 +4003,9 @@ void setup() {
   Serial.println("║    PATCH: SVL downward-safe + manual GPIO direct apply        ║");
   Serial.println("║    State Machine Architecture | Single Authority Relays        ║");
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
+  Serial.printf("🖥️  Display: %s | Panel LEDs: passive (no firmware setting)\n",
+                DISPLAY_ENABLED ? "ENABLED (ILI9341 on 21/22/17/5)" : "DISABLED (optional — safe)");
+
 
   // --- Credentials ---
   // ALWAYS provision from hardcoded on boot to ensure latest values are used
