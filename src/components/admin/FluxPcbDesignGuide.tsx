@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Copy, Check, CircuitBoard, ListChecks, FileDown, Cpu, Wrench, ExternalLink, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Copy, Check, CircuitBoard, ListChecks, FileDown, Cpu, Wrench, ExternalLink, AlertTriangle, ShieldCheck, Package, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   FLUX_BOARD,
@@ -19,6 +19,17 @@ import {
   type PinRow,
   type ComplianceSeverity,
 } from '@/data/fluxPcbGuide';
+import { BOM_ITEMS, BOM_REVISION, BOM_TOTAL_QTY, bomToCsv } from '@/data/fluxBom';
+import {
+  downloadFluxPackage,
+  downloadSingleFile,
+  buildPinMapCsv,
+  buildNetlistHints,
+  buildPromptsText,
+  buildComplianceMarkdown,
+  buildReadme,
+} from '@/lib/fluxDesignPackage';
+
 
 
 const groupOrder: PinRow['group'][] = ['relay', 'sensor', 'gsm', 'display', 'misc'];
