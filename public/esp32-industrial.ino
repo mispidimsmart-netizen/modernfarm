@@ -152,8 +152,19 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 // --- GSM Pins (moved from 16/17 due to sensor remapping) ---
 #define GSM_TX_PIN           23
 #define GSM_RX_PIN           19
-#define GSM_RST_PIN          5
+// GSM_RST_PIN removed in v8.3 — GPIO5 is now TFT_DC.
+// SIM800L RST must be tied to 3V3 through a 10k pull-up on the PCB;
+// module reset is issued in software (AT+CFUN=1,1).
 #define GSM_BAUD             9600
+
+// --- TFT Display Pins (ILI9341, HSPI remap; RST tied to ESP32 EN) ---
+#define TFT_SCK_PIN          21
+#define TFT_MOSI_PIN         22
+#define TFT_CS_PIN           17
+#define TFT_DC_PIN           5
+#define DISPLAY_REFRESH_MS   1000UL   // redraw values once per second
+#define DISPLAY_PAGE_MS      5000UL   // auto-rotate pages every 5 seconds
+
 
 // --- Watchdog ---
 #define WDT_TIMEOUT          8
