@@ -102,7 +102,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.2.0-reliability-phase3";
+const char* FIRMWARE_VERSION = "8.3.0-display-panel";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
