@@ -52,8 +52,8 @@ const SENSORS: Record<Version, SensorRow[]> = {
     { name: 'Manual Override বাটন', pins: 'GPIO 32 (INPUT_PULLUP)' },
     { name: 'Status LED', pins: 'GPIO 2 (onboard, 330Ω)' },
     { name: 'SIM800L GSM (UART)', pins: 'ESP32 TX = GPIO 23, RX = GPIO 19', note: 'RST 10kΩ দিয়ে 3V3 এ — কোনো GPIO নয়' },
-    { name: 'TFT ডিসপ্লে (ILI9341 SPI)', pins: 'SCK = GPIO 21, MOSI = GPIO 22, CS = GPIO 17, DC = GPIO 5', note: 'RST → ESP32 EN; v8.3+ ফার্মওয়্যারে বোর্ডের উপরের ডিসপ্লে' },
-    { name: 'প্যানেল ইন্ডিকেটর LED (৮টি)', pins: 'ULN2803A IN1–IN8 ← রিলে কন্ট্রোল নেট', note: 'বাক্সের ঢাকনায় LED — সরাসরি GPIO থেকে নয়' },
+    { name: 'TFT ডিসপ্লে (ILI9341 SPI) — ঐচ্ছিক', pins: 'SCK = GPIO 21, MOSI = GPIO 22, CS = GPIO 17, DC = GPIO 5', note: 'না লাগালে DISPLAY_ENABLED false (ডিফল্ট) — কিছুই বদলায় না' },
+    { name: 'প্যানেল ইন্ডিকেটর LED (৮টি) — ঐচ্ছিক', pins: 'ULN2803A IN1–IN8 ← রিলে কন্ট্রোল নেট', note: 'সম্পূর্ণ প্যাসিভ, ফার্মওয়্যারে কোনো সেটিং লাগে না' },
   ],
   v10: [
     { name: 'SHT31 (তাপ/আর্দ্রতা, I²C 0x44)', pins: 'SDA = GPIO 16, SCL = GPIO 17', note: 'DHT22 replace করে' },
@@ -196,6 +196,32 @@ export default function PinMapPage() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Optional hardware + live-farm upgrade checklist */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-primary" />
+            ডিসপ্লে/LED ঐচ্ছিক + লাইভ ফার্মে v8.2 → v8.3 আপগ্রেড
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 pt-0 space-y-2 text-[11px] leading-relaxed">
+          <p>
+            <strong>ডিসপ্লে বা প্যানেল LED না থাকলে কোনো সমস্যা নেই।</strong> জেনারেটরে
+            “বোর্ডে TFT ডিসপ্লে আছে” সুইচটি বন্ধ রাখুন — তখন <code>DISPLAY_ENABLED false</code> থাকে,
+            কোনো অতিরিক্ত লাইব্রেরি লাগে না এবং রিলে/সেফটি লজিক হুবহু একই থাকে। পরে ডিসপ্লে বসিয়ে
+            আবার ফার্মওয়্যার জেনারেট করলেই চলবে।
+          </p>
+          <p className="font-medium">লাইভ ফার্মে আপডেটের আগে যাচাই করুন:</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>GPIO 5 আর GSM_RST নয় — SIM800L RST তারটি খুলে 10kΩ দিয়ে 3V3-এ টানুন (নাহলে মডেম রিসেটে আটকে থাকতে পারে)।</li>
+            <li>৮টি রিলে GPIO (25/26/27/14/12/13/15/33) অপরিবর্তিত — কোনো রিওয়্যারিং লাগবে না।</li>
+            <li>GSM TX = 23, RX = 19 আগের মতোই আছে কিনা দেখুন।</li>
+            <li>ফ্ল্যাশের পরে Serial Monitor (115200)-এ boot banner-এ ভার্সন ও “Display: DISABLED/ENABLED” লাইনটি মিলিয়ে নিন।</li>
+            <li>প্রথমে ম্যানুয়াল মোডে প্রতিটি রিলে একবার ON/OFF করে লোড যাচাই করুন, তারপর অটো মোডে দিন।</li>
+          </ol>
         </CardContent>
       </Card>
 
