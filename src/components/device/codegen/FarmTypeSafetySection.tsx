@@ -1,4 +1,4 @@
-import { Settings } from 'lucide-react';
+import { Settings, MonitorSmartphone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +18,10 @@ interface Props {
   setShedId: (v: string) => void;
   includeSafetyEngine: boolean;
   setIncludeSafetyEngine: (v: boolean) => void;
+  /** v8 only — the optional TFT display toggle. */
+  showDisplayOption?: boolean;
+  hasDisplay?: boolean;
+  setHasDisplay?: (v: boolean) => void;
 }
 
 /** Step 4 — farm type / shed, plus build-time safety engine toggle. */
@@ -33,6 +37,9 @@ export function FarmTypeSafetySection({
   setShedId,
   includeSafetyEngine,
   setIncludeSafetyEngine,
+  showDisplayOption = false,
+  hasDisplay = false,
+  setHasDisplay,
 }: Props) {
   return (
     <>
@@ -115,6 +122,31 @@ export function FarmTypeSafetySection({
             </div>
             <Switch checked={includeSafetyEngine} onCheckedChange={setIncludeSafetyEngine} />
           </div>
+
+          {showDisplayOption && (
+            <div
+              className={`mt-3 flex items-start justify-between gap-3 p-3 rounded-lg border ${
+                hasDisplay ? 'border-primary/30 bg-primary/5' : 'border-border bg-muted/40'
+              }`}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <MonitorSmartphone className="h-4 w-4" />
+                  {language === 'bn' ? 'বোর্ডে TFT ডিসপ্লে আছে (ঐচ্ছিক)' : 'Board has TFT display (optional)'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {hasDisplay
+                    ? language === 'bn'
+                      ? '⚠️ Arduino IDE-তে "Adafruit GFX Library" ও "Adafruit ILI9341" ইনস্টল করতে হবে। পিন: SCK 21, MOSI 22, CS 17, DC 5।'
+                      : '⚠️ Install "Adafruit GFX Library" + "Adafruit ILI9341". Pins: SCK 21, MOSI 22, CS 17, DC 5.'
+                    : language === 'bn'
+                      ? 'ডিসপ্লে/প্যানেল LED না থাকলে বন্ধ রাখুন — কোনো লাইব্রেরি লাগবে না, রিলে/সেফটি লজিক একই থাকে। পরে ডিসপ্লে বসিয়ে আবার জেনারেট করলেই চলবে।'
+                      : 'Keep off if you have no display — no extra libraries, relay/safety logic unchanged. Add it later and re-generate.'}
+                </p>
+              </div>
+              <Switch checked={hasDisplay} onCheckedChange={(v) => setHasDisplay?.(v)} />
+            </div>
+          )}
         </div>
       </div>
     </>
