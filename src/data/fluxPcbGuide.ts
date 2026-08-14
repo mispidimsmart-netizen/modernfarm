@@ -181,10 +181,28 @@ GPIO12 must have a 10k pull-down (boot strapping pin). GPIO15 and GPIO5 must idl
 === GSM MODULE (SIM800L) ===
 - ESP32 GPIO23 (TX) -> SIM800L RXD through 1k/2k divider (3.3V -> ~2.8V)
 - SIM800L TXD -> ESP32 GPIO19 (RX) direct
-- ESP32 GPIO5 -> SIM800L RST
+- SIM800L RST is NOT driven by the MCU: tie it to 3V3 through a 10k pull-up (firmware resets the modem with AT+CFUN=1,1)
 - SIM800L VCC from a dedicated MP1584 buck set to 4.0V / 2A fed from the 5V input
 - Add 1000uF/16V electrolytic + 100uF + 100nF right at the SIM800L supply pins
 - Provide a 2.54mm header for the SIM800L module and an SMA/IPEX antenna pad
+
+=== ON-BOARD TFT DISPLAY (ILI9341 2.4"/2.8", 320x240, SPI) ===
+- Provide a 2.54mm 8-pin female header for the display module (lid-mounted, connected by ribbon cable, max 20 cm)
+- TFT SCK  <- ESP32 GPIO21
+- TFT MOSI <- ESP32 GPIO22
+- TFT CS   <- ESP32 GPIO17
+- TFT DC   <- ESP32 GPIO5
+- TFT RESET -> ESP32 EN net (no dedicated GPIO)
+- TFT VCC -> 3V3 (module has its own regulator; also route 5V to an adjacent unpopulated pad)
+- TFT LED (backlight) -> 3V3 through 100R, add a 2-pin jumper so the backlight can be disabled
+- MISO not connected. Add 33R series resistors on SCK and MOSI to damp ringing.
+
+=== FRONT-PANEL INDICATOR LEDS (8 relay states + power + cloud) ===
+- ULN2803A driver: IN1..IN8 driven in parallel from the same relay control nets GPIO25, 26, 27, 14, 12, 13, 15, 33
+- Each ULN2803A output sinks one 5mm panel LED whose anode goes to 5V through a 470R resistor
+- Bring the 8 LED cathodes + 5V + GND out on a 10-pin 2.54mm IDC header for the lid-mounted LED panel
+- Silkscreen the header pins: EXHAUST, CEILING, LIGHT, HEATER, FOGGER, ALARM, SPRINKLER, CIRCULATION
+- Separate power LED (green) directly on the 5V rail with 1k, and a cloud/WiFi LED buffered from GPIO2 (status LED net) with 470R
 
 === MISC ===
 - Status LED (green) on GPIO2 with 330R
@@ -192,7 +210,8 @@ GPIO12 must have a 10k pull-down (boot strapping pin). GPIO15 and GPIO5 must idl
 - 100nF decoupling near every IC; common GND star point near the barrel jack
 - 4x M3 mounting holes, board size 120 x 100 mm
 
-Constraints: do NOT reassign any GPIO. Every net name must state the function (e.g. RLY_EXHAUST_GPIO25). Use parts that are in stock at LCSC/JLCPCB. Add a title block: "FarmEye Controller v8 — Nexiot Labs".`;
+Constraints: do NOT reassign any GPIO. GPIO5 is the TFT DC line and must not be used for GSM reset. Every net name must state the function (e.g. RLY_EXHAUST_GPIO25, TFT_DC_GPIO5). Use parts that are in stock at LCSC/JLCPCB. Add a title block: "FarmEye Controller v8 — Nexiot Labs".`;
+
 
 export const PROMPT_LAYOUT = `Now lay out the PCB for "FarmEye Controller v8" like a professional EMC-aware industrial design.
 
