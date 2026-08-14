@@ -33,6 +33,21 @@ const char* FARM_ID        = "YOUR_FARM_ID";
 bool safetyEngineEnabled = true;   // full engine
 `;
 
+/** Mirrors the real v8.3 template shape (plain aggregate initializer). */
+const V8_REAL_TEMPLATE = `
+const char* WIFI_SSID     = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
+const char* DEVICE_TOKEN   = "YOUR_DEVICE_TOKEN";
+const char* SHED_ID        = "YOUR_SHED_ID";
+const char* SHED_NAME      = "Shed A";
+const char* FARM_ID        = "YOUR_FARM_ID";
+#define USE_HARDCODED_TOKEN  true
+FarmConfig farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };
+    if (farmConfig.farmType < 0 || farmConfig.farmType > 1) farmConfig.farmType = FARM_PROFILE_LAYER;
+    farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };
+bool safetyEngineEnabled = true;            // default ON
+`;
+
 const V10_TEMPLATE = `
 const char* WIFI_SSID      = "";
 const char* WIFI_PASS      = "";
@@ -70,6 +85,19 @@ describe('firmwareBuilder — v8', () => {
     const out = buildV8Firmware(V8_TEMPLATE, { ...base, farmType: 'broiler' });
     expect(out).toContain('.farmType = FARM_PROFILE_BROILER');
     expect(out).toContain('BROILER (Meat)');
+  });
+
+  it('sets broiler profile in the real v8.3 template shape', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, { ...base, farmType: 'broiler' });
+    expect(out).toContain('FarmConfig farmConfig = { FARM_PROFILE_BROILER, 1, 0.0f, 0.0f };');
+    expect(out).toContain('farmConfig = { FARM_PROFILE_BROILER, 1, 0.0f, 0.0f };');
+    expect(out).not.toContain('FARM_PROFILE_LAYER');
+  });
+
+  it('leaves the real v8.3 template on layer for layer farms', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, base);
+    expect(out).toContain('FarmConfig farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };');
+    expect(out).not.toContain('FARM_PROFILE_BROILER');
   });
 
   it('keeps layer profile untouched for layer farms', () => {

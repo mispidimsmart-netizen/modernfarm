@@ -95,6 +95,7 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
   }
 
   if (o.farmType === 'broiler') {
+    // Legacy designated-initializer form (older templates)
     code = code.replace(
       '.farmType = FARM_PROFILE_LAYER,  // Default: Layer',
       '.farmType = FARM_PROFILE_BROILER,  // Default: Broiler (auto-configured)',
@@ -103,7 +104,23 @@ export function buildV8Firmware(template: string, o: BuildOptions): string {
       '.chickAgeDays = 1,                // Default: Day 1',
       '.chickAgeDays = 1,                // Default: Day 1 (auto-configured for broiler)',
     );
+    // Current v8.3 template form:
+    //   FarmConfig farmConfig = { FARM_PROFILE_LAYER, 1, 0.0f, 0.0f };
+    // Also patched inside the factory-reset branch so a reset keeps the profile.
+    code = code.replace(
+      /(FarmConfig\s+farmConfig\s*=\s*\{\s*)FARM_PROFILE_LAYER/g,
+      '$1FARM_PROFILE_BROILER',
+    );
+    code = code.replace(
+      /(farmConfig\s*=\s*\{\s*)FARM_PROFILE_LAYER/g,
+      '$1FARM_PROFILE_BROILER',
+    );
+    code = code.replace(
+      /(farmConfig\.farmType\s*>\s*1\)\s*farmConfig\.farmType\s*=\s*)FARM_PROFILE_LAYER/g,
+      '$1FARM_PROFILE_BROILER',
+    );
   }
+
 
   // Build-time safety engine toggle (cloud /config can override at runtime)
   if (!o.includeSafetyEngine) {
