@@ -8,9 +8,10 @@ export type PinRow = {
   gpio: number;
   define: string;
   role: string;      // বাংলা ব্যাখ্যা
-  group: 'relay' | 'sensor' | 'gsm' | 'misc';
+  group: 'relay' | 'sensor' | 'gsm' | 'display' | 'misc';
   note?: string;
 };
+
 
 export const FLUX_BOARD = 'ESP32-WROOM-32 DevKit V1 (38-pin)';
 
