@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Copy, Check, CircuitBoard, ListChecks, FileDown, Cpu, Wrench, ExternalLink, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Copy, Check, CircuitBoard, ListChecks, FileDown, Cpu, Wrench, ExternalLink, AlertTriangle, ShieldCheck, Package, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   FLUX_BOARD,
@@ -19,6 +19,17 @@ import {
   type PinRow,
   type ComplianceSeverity,
 } from '@/data/fluxPcbGuide';
+import { BOM_ITEMS, BOM_REVISION, BOM_TOTAL_QTY, bomToCsv } from '@/data/fluxBom';
+import {
+  downloadFluxPackage,
+  downloadSingleFile,
+  buildPinMapCsv,
+  buildNetlistHints,
+  buildPromptsText,
+  buildComplianceMarkdown,
+  buildReadme,
+} from '@/lib/fluxDesignPackage';
+
 
 
 const groupOrder: PinRow['group'][] = ['relay', 'sensor', 'gsm', 'display', 'misc'];
@@ -48,6 +59,29 @@ const ALL_ITEMS = COMPLIANCE_CHECKLIST.flatMap((s) => s.items);
 export function FluxPcbDesignGuide() {
   const [copied, setCopied] = useState<string | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [packing, setPacking] = useState(false);
+
+  const handleDownloadPackage = async () => {
+    setPacking(true);
+    try {
+      const name = await downloadFluxPackage();
+      toast.success(`প্যাকেজ ডাউনলোড শুরু হয়েছে — ${name}`);
+    } catch {
+      toast.error('প্যাকেজ তৈরি করা যায়নি — আবার চেষ্টা করুন');
+    } finally {
+      setPacking(false);
+    }
+  };
+
+  const singleFiles: { name: string; label: string; make: () => string; mime?: string }[] = [
+    { name: 'bom_full.csv', label: 'BOM (CSV)', make: bomToCsv, mime: 'text/csv;charset=utf-8' },
+    { name: 'pin_map.csv', label: 'পিন ম্যাপ (CSV)', make: buildPinMapCsv, mime: 'text/csv;charset=utf-8' },
+    { name: 'netlist_hints.txt', label: 'নেটলিস্ট হিন্ট', make: buildNetlistHints },
+    { name: 'flux_prompts.txt', label: 'সব প্রম্পট', make: buildPromptsText },
+    { name: 'compliance_checklist.md', label: 'কমপ্লায়েন্স চেকলিস্ট', make: buildComplianceMarkdown, mime: 'text/markdown;charset=utf-8' },
+    { name: 'README.md', label: 'README', make: buildReadme, mime: 'text/markdown;charset=utf-8' },
+  ];
+
 
   const toggleItem = (id: string) =>
     setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -374,9 +408,96 @@ export function FluxPcbDesignGuide() {
           </Accordion>
         </CardContent>
       </Card>
+
+      {/* সম্পূর্ণ ডিজাইন প্যাকেজ */}
+      <Card className="bg-gradient-to-br from-emerald-950/40 via-slate-900/90 to-teal-950/30 border-emerald-500/25">
+        <CardHeader className="border-b border-emerald-500/10">
+          <CardTitle className="text-white text-base flex items-center gap-2">
+            <Package className="w-4 h-4 text-emerald-400" />
+            সম্পূর্ণ ডিজাইন প্যাকেজ ডাউনলোড (BOM + ফুটপ্রিন্ট + সব ফাইল)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-5 space-y-5 text-sm">
+          <p className="text-slate-300 leading-relaxed">
+            একটি ZIP ফাইলে Flux.ai-এর জন্য দরকারি সব ইনপুট (BOM, পিন ম্যাপ, নেটলিস্ট হিন্ট, প্রম্পট) এবং
+            আউটপুট নির্দেশনা (কমপ্লায়েন্স চেকলিস্ট, ম্যানুফ্যাকচারিং ফাইল তালিকা, অ্যাসেম্বলি নোট) একসাথে পাবেন।
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-200">রিভিশন: {BOM_REVISION}</Badge>
+            <Badge variant="outline" className="border-teal-500/40 text-teal-200">BOM লাইন: {BOM_ITEMS.length}</Badge>
+            <Badge variant="outline" className="border-sky-500/40 text-sky-200">মোট পার্টস: {BOM_TOTAL_QTY}</Badge>
+            <Badge variant="outline" className="border-amber-500/40 text-amber-200">ফাইল: ৯টি</Badge>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={handleDownloadPackage}
+              disabled={packing}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              {packing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+              {packing ? 'প্যাকেজ তৈরি হচ্ছে…' : 'সম্পূর্ণ প্যাকেজ (ZIP) ডাউনলোড'}
+            </Button>
+            {singleFiles.map((f) => (
+              <Button
+                key={f.name}
+                size="sm"
+                variant="outline"
+                className="border-white/15 text-slate-200 hover:bg-white/5"
+                onClick={() => {
+                  downloadSingleFile(f.name, f.make(), f.mime);
+                  toast.success(`${f.label} ডাউনলোড হয়েছে`);
+                }}
+              >
+                <FileText className="w-3.5 h-3.5 mr-1.5" />
+                {f.label}
+              </Button>
+            ))}
+          </div>
+
+          <Separator className="bg-white/10" />
+
+          <div>
+            <h4 className="text-white font-medium mb-2">BOM — পার্ট নম্বর ও ফুটপ্রিন্ট</h4>
+            <div className="overflow-x-auto rounded-lg border border-white/10">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-800/70 text-slate-300">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Ref</th>
+                    <th className="px-3 py-2 text-left font-medium">Qty</th>
+                    <th className="px-3 py-2 text-left font-medium">বর্ণনা</th>
+                    <th className="px-3 py-2 text-left font-medium">MPN</th>
+                    <th className="px-3 py-2 text-left font-medium">Footprint</th>
+                    <th className="px-3 py-2 text-left font-medium">Supplier PN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {BOM_ITEMS.map((i) => (
+                    <tr key={i.ref} className="border-t border-white/5 align-top">
+                      <td className="px-3 py-2 font-mono text-emerald-300 whitespace-nowrap">{i.ref}</td>
+                      <td className="px-3 py-2 text-slate-300">{i.qty}</td>
+                      <td className="px-3 py-2 text-slate-200">
+                        {i.value}
+                        <span className="block text-[11px] text-slate-400 mt-0.5">{i.note}</span>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-slate-300 whitespace-nowrap">{i.mpn}</td>
+                      <td className="px-3 py-2 font-mono text-slate-400 text-[11px]">{i.footprint}</td>
+                      <td className="px-3 py-2 font-mono text-slate-400 whitespace-nowrap">
+                        {i.supplier} {i.supplierPn}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
 
 
 export default FluxPcbDesignGuide;
