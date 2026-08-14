@@ -50,6 +50,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const [hardwareVersion, setHardwareVersion] = useState<HardwareVersion>('unknown');
   const [mismatchAck, setMismatchAck] = useState(false);
   const [includeSafetyEngine, setIncludeSafetyEngine] = useState(true);
+  const [hasDisplay, setHasDisplay] = useState(false);
   const [verifyError, setVerifyError] = useState<VerifyErrorState | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [finalAck, setFinalAck] = useState(false);
