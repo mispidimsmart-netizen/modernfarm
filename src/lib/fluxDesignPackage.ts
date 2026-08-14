@@ -14,6 +14,7 @@ import {
   COMPLIANCE_CHECKLIST,
   PROMPTS,
 } from '@/data/fluxPcbGuide';
+import { testPlanToMarkdown } from '@/data/fluxTestPlan';
 import { BOM_ITEMS, BOM_REVISION, BOM_BOARD_NAME, BOM_TOTAL_QTY, bomToCsv } from '@/data/fluxBom';
 
 const stamp = () => new Date().toISOString().slice(0, 10);
@@ -138,6 +139,7 @@ export async function buildFluxPackageBlob(): Promise<Blob> {
   zip.file('02_PinMap/netlist_hints.txt', buildNetlistHints());
   zip.file('03_Prompts/flux_prompts.txt', buildPromptsText());
   zip.file('04_Compliance/compliance_checklist.md', buildComplianceMarkdown());
+  zip.file('04_Compliance/protection_test_plan.md', testPlanToMarkdown());
   zip.file('05_Manufacturing/required_outputs.md', buildRequiredOutputs());
   zip.file('05_Manufacturing/assembly_notes.md', buildAssemblyNotes());
   return zip.generateAsync({ type: 'blob' });
