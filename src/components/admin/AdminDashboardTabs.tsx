@@ -28,6 +28,7 @@ import { ObservabilityDashboard } from '@/components/admin/ObservabilityDashboar
 import { PerformanceDashboardTab } from '@/components/admin/PerformanceDashboardTab';
 import { FarmBenchmarkingTab } from '@/components/admin/FarmBenchmarkingTab';
 import { UserManagementTab } from '@/components/admin/UserManagementTab';
+import { FluxPcbDesignGuide } from '@/components/admin/FluxPcbDesignGuide';
 
 interface AdminDashboardTabsProps {
   language: 'bn' | 'en';
