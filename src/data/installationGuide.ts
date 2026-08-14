@@ -340,11 +340,11 @@ export const detailedWiringGuide = [
     bgColor: 'bg-teal-500/10',
     pins: [
       { sensorPin: 'পিন ১: VCC (+)', esp32Pin: '3.3V', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: DHT22 #২ এর VCC → ESP32 এর 3.3V (প্রথম সেন্সরের সাথে শেয়ার করতে পারেন)', warning: null },
-      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 15', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 15 (Phase 9 I²C clash এড়াতে)', warning: '⛔ GPIO 16/17 ব্যবহার করবেন না — সেগুলো v10-এ I²C bus 2 (SHT31/BH1750/SCD41 শেয়ার্ড) হিসেবে locked।' },
+      { sensorPin: 'পিন ২: DATA (Signal)', esp32Pin: 'GPIO 16 (v8) / SHT31 I²C (v10)', wireColor: 'সাদা', wireNameEn: 'WHITE', instruction: '⚪ সাদা তার: DHT22 #২ এর DATA → ESP32 এর GPIO 16 (v8 ফার্মওয়্যারের DHT2_PIN)', warning: '⛔ v8-এ GPIO 15 ব্যবহার করবেন না — সেটি রিলে IN7 (স্প্রিংকলার)। ⛔ v10 বোর্ডে GPIO 16/17 = I²C bus 2 (SHT31/BH1750/SCD41), তাই v10-এ দ্বিতীয় DHT22 লাগাবেন না — SHT31 ব্যবহার করুন।' },
       { sensorPin: 'পিন ৪: GND (-)', esp32Pin: 'GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: DHT22 #২ এর GND → ESP32 এর GND (প্রথমটির সাথে শেয়ার করা যায়)', warning: null },
     ],
-    extraNote: '📌 v10 আপডেট: DHT22 #২ আগে GPIO 16-এ ছিল কিন্তু সেটি এখন I²C SDA (Phase 9 sensors)। তাই DATA pin **GPIO 15**-এ সরানো হয়েছে। GPIO 15-এ boot-strap pull-up প্রয়োজন হয় — 10K pull-up রেজিস্টর সেই কাজও করে। SHT31 ইনস্টল থাকলে DHT22 #২ এর প্রয়োজন নেই।',
-    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 15) ↔ VCC (3.3V) — boot strap-ও satisfy করে।',
+    extraNote: '📌 ভার্সন অনুযায়ী: **v8 (esp32-industrial.ino)** — DHT22 #২ এর DATA = **GPIO 16** (`DHT2_PIN`)। **v10 (esp32-industrial-v10.ino)** — GPIO 16/17 I²C বাসের জন্য সংরক্ষিত, তাই দ্বিতীয় জোনের তাপমাত্রা/আর্দ্রতা SHT31 (I²C) দিয়ে নিতে হবে; সেখানে দ্বিতীয় DHT22 সাপোর্টেড নয়।',
+    resistorNote: '📍 10K পুল-আপ রেজিস্টর: DATA (GPIO 16) ↔ VCC (3.3V)।',
     tips: ['শেডের এক প্রান্তে প্রথম এবং অপর প্রান্তে দ্বিতীয় সেন্সর লাগান'],
   },
   {
@@ -1045,12 +1045,12 @@ export const detailedWiringGuide = [
     pins: [
       { sensorPin: 'VCC (4.2V পাওয়ার)', esp32Pin: 'পৃথক 4.2V 2A সাপ্লাই', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 লাল তার: SIM800L এর VCC → পৃথক 4.2V 2A পাওয়ার সাপ্লাই (ESP32 থেকে নয়!)', warning: '⚠️ ESP32 এর 3.3V বা VIN থেকে পাওয়ার দিবেন না! পৃথক পাওয়ার সোর্স লাগবে।' },
       { sensorPin: 'GND (গ্রাউন্ড)', esp32Pin: 'GND (কমন)', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ কালো তার: SIM800L এর GND → ESP32 এর GND ও পাওয়ার সাপ্লাই GND (তিনটা একসাথে)', warning: null },
-      { sensorPin: 'TXD (ট্রান্সমিট)', esp32Pin: 'GPIO 27 (RX)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: SIM800L এর TXD → ESP32 এর GPIO 27 (UART RX, ক্রস কানেকশন)', warning: '⛔ GPIO 19/23 ব্যবহার করবেন না — সেগুলো v10 locked relay (Light/Alarm)। GPIO 16/17 = I²C bus (SHT31/BH1750/SCD41)।' },
-      { sensorPin: 'RXD (রিসিভ)', esp32Pin: 'GPIO 14 (TX)', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: SIM800L এর RXD → ESP32 এর GPIO 14 (UART TX, ক্রস কানেকশন)', warning: '⚠️ GPIO 14-এ 1K+2K voltage divider লাগান (ESP32 3.3V → SIM800L safe input)।' },
+      { sensorPin: 'TXD (ট্রান্সমিট)', esp32Pin: 'v8: GPIO 19 (RX) | v10: GPIO 27 (RX)', wireColor: 'সবুজ', wireNameEn: 'GREEN', instruction: '🟢 সবুজ তার: SIM800L এর TXD → ESP32 এর GPIO 19 (v8 ফার্মওয়্যার) অথবা GPIO 27 (v10 ফার্মওয়্যার) — ক্রস কানেকশন', warning: '⛔ আপনার বোর্ডের ফার্মওয়্যার ভার্সন অনুযায়ী পিন নিন। v8-এ GPIO 27 = রিলে IN3 (লাইট) এবং GPIO 14 = রিলে IN4 (হিটার) — ওখানে GSM লাগালে রিলে ভুলভাবে চলবে।' },
+      { sensorPin: 'RXD (রিসিভ)', esp32Pin: 'v8: GPIO 23 (TX) | v10: GPIO 14 (TX)', wireColor: 'হলুদ', wireNameEn: 'YELLOW', instruction: '🟡 হলুদ তার: SIM800L এর RXD → ESP32 এর GPIO 23 (v8) অথবা GPIO 14 (v10) — ক্রস কানেকশন', warning: '⚠️ ESP32 TX পিনে 1K+2K ভোল্টেজ ডিভাইডার লাগান (3.3V → ~2.8V, SIM800L safe input)।' },
     ],
-    extraNote: '⚠️ এই মডিউলের জন্য পৃথক 3.7V-4.2V 2A পাওয়ার সোর্স লাগবে (18650 ব্যাটারি + TP4056 চার্জার)। ESP32 থেকে পাওয়ার দিলে কাজ করবে না এবং ESP32 ক্ষতিগ্রস্ত হতে পারে!\n\n📌 v10 GPIO ম্যাপিং (corrected): SIM800L এখন **GPIO 27 (RX) + GPIO 14 (TX)** ব্যবহার করে। পুরাতন firmware-এ GPIO 19/23 ছিল কিন্তু সেগুলো এখন v10 locked relay (Light=19, Alarm=23) — clash এড়াতে UART নতুন পিনে সরানো হয়েছে। GPIO 16/17 = I²C, GPIO 32/4 = ZE03, GPIO 13/33 = PMS5003 — কোনোটাই GSM-এ ব্যবহার করবেন না।',
-    resistorNote: '📍 RXD (GPIO 14) পিনে ভোল্টেজ ডিভাইডার প্রয়োজন (1K সিরিজ + 2K গ্রাউন্ডে) কারণ SIM800L ৩.৩V tolerant হলেও ESP32 GPIO 3.3V output সরাসরি দিলে long-term ক্ষতি হতে পারে।',
-    tips: ['সিম কার্ড ঢোকানোর আগে পাওয়ার বন্ধ রাখুন', 'নেটওয়ার্ক পেতে ১-২ মিনিট সময় লাগে - LED ব্লিংক দেখুন', 'সিম কার্ডে ব্যালেন্স আছে কিনা নিশ্চিত করুন', '📌 v10 pins: GPIO 27 (RX) ও GPIO 14 (TX) — relay GPIO 19/23 ব্যবহার করবেন না!'],
+    extraNote: '⚠️ এই মডিউলের জন্য পৃথক 3.7V-4.2V 2A পাওয়ার সোর্স লাগবে (18650 ব্যাটারি + TP4056 চার্জার)। ESP32 থেকে পাওয়ার দিলে কাজ করবে না এবং ESP32 ক্ষতিগ্রস্ত হতে পারে!\n\n📌 ভার্সনভিত্তিক GPIO:\n• **v8 (esp32-industrial.ino)** — GSM_RX = **GPIO 19**, GSM_TX = **GPIO 23**। SIM800L RST পিন MCU-তে যায় না; 10kΩ দিয়ে 3V3 এ টানা (রিসেট হয় AT+CFUN=1,1 দিয়ে), কারণ GPIO 5 এখন TFT DC।\n• **v10 (esp32-industrial-v10.ino)** — GSM_RX = **GPIO 27**, GSM_TX = **GPIO 14** (UART2, ZE03-NH3 না থাকলে সক্রিয়)। v10-এ GPIO 19/23 = রিলে (Light/Alarm), GPIO 16/17 = I²C, GPIO 32/4 = ZE03, GPIO 13/33 = PMS5003 — এগুলো GSM-এ ব্যবহার করবেন না।',
+    resistorNote: '📍 ESP32 TX (v8: GPIO 23 / v10: GPIO 14) পিনে ভোল্টেজ ডিভাইডার প্রয়োজন (1K সিরিজ + 2K গ্রাউন্ডে)।',
+    tips: ['সিম কার্ড ঢোকানোর আগে পাওয়ার বন্ধ রাখুন', 'নেটওয়ার্ক পেতে ১-২ মিনিট সময় লাগে - LED ব্লিংক দেখুন', 'সিম কার্ডে ব্যালেন্স আছে কিনা নিশ্চিত করুন', '📌 v8 pins: GPIO 19 (RX) / GPIO 23 (TX) — v10 pins: GPIO 27 (RX) / GPIO 14 (TX)', '📌 v10-এ ZE03-NH3 সেন্সর লাগানো থাকলে GSM নিষ্ক্রিয় থাকে (উভয়ে UART2 শেয়ার করে)'],
   },
   // ─────── Phase 9 (v10) Premium Sensors — Auto-detect at boot ───────
   {

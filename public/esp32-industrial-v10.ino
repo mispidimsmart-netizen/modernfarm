@@ -75,7 +75,7 @@ static const char* DEVICE_TOKEN = "PASTE_DEVICE_TOKEN_HERE";
 static const char* DEVICE_ID    = "FE-DEMO-001";
 static const char* SHED_ID      = "";   // optional, blank = farm default
 
-#define FW_VERSION  "10.1.0"
+#define FW_VERSION  "10.1.1"
 #define FW_CHANNEL  "stable"
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -162,7 +162,12 @@ HardwareSerial    ZE03Serial(2);
 PMS               pms(PMSSerial);
 PMS::DATA         pmsData;
 DHT               dht22(pins::DHT22, DHT22);
-HardwareSerial    GSMSerial(0);
+// FIX (v10.1.1): GSM must NOT use UART0 — UART0 is the USB debug console.
+// ESP32 has 3 UARTs: 0 = Serial (logs), 1 = PMS5003, 2 = ZE03 / GSM (shared).
+// ZE03 and SIM800L are mutually exclusive on UART2: GSM is enabled only when
+// no ZE03-NH3 sensor is detected at boot.
+HardwareSerial&   GSMSerial = ZE03Serial;
+bool              gsmAvailable = false;
 Preferences       prefs;
 
 struct SensorPresence {
@@ -234,6 +239,10 @@ static void detectSensors() {
     }
     esp_task_wdt_reset();
   }
+
+  // FIX (v10.1.1): UART2 keeps GPIO4 as its TX pin. Release it before the
+  // DHT22 fallback, otherwise DHT22 on the shared GPIO4 can never be read.
+  if (!sensors.ze03) ZE03Serial.end();
 
   if (!sensors.sht31 && !sensors.ze03) {
     dht22.begin();
@@ -546,6 +555,7 @@ static bool gsmRateOk(GsmAlertClass c) {
 }
 
 static void sendGsmSms(GsmAlertClass c, const String& msg) {
+  if (!gsmAvailable) return;                     // UART2 owned by ZE03-NH3
   if (gsmPhone.length() < 6) return;             // B6 — no phone configured
   if (!gsmRateOk(c)) return;
   GSMSerial.println("AT+CMGF=1");          delay(100);
@@ -642,9 +652,20 @@ void setup() {
   prefs.end();
   if (gsmPhone.length() > 0) Serial.printf("[GSM] phone configured: %s\n", gsmPhone.c_str());
 
-  GSMSerial.begin(9600, SERIAL_8N1, pins::GSM_RX, pins::GSM_TX);
   initRelays();
   detectSensors();
+
+  // FIX (v10.1.1): start GSM only after sensor detection, and only when UART2
+  // is free (no ZE03-NH3). Never on UART0 — that would corrupt the debug log
+  // and push log text into the SIM800L.
+  if (!sensors.ze03) {
+    GSMSerial.begin(9600, SERIAL_8N1, pins::GSM_RX, pins::GSM_TX);
+    gsmAvailable = true;
+    Serial.println("[GSM] SIM800L on UART2 (GPIO27 RX / GPIO14 TX)");
+  } else {
+    Serial.println("[GSM] disabled — UART2 in use by ZE03-NH3");
+  }
+
   if (!LittleFS.begin(true)) Serial.println("[FS] LittleFS mount failed");
   wifiBeginAttempt();
   lastSensorOkAt = millis();
