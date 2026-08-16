@@ -101,8 +101,8 @@ export function VersionSelectors({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="v8">v8.0.0 — Stable (legacy GPIO: Exhaust=25, Heater=14)</SelectItem>
-            <SelectItem value="v10">v10.0.0-beta.1 — Beta (Phase 9 sensors, Exhaust=5, Heater=21)</SelectItem>
+            <SelectItem value="v8">v8.3.0 — Stable (v8 GPIO: Exhaust=25, Heater=14 · TFT optional)</SelectItem>
+            <SelectItem value="v10">v10.1.1-beta — Beta (Phase 9 sensors, Exhaust=5, Heater=21)</SelectItem>
           </SelectContent>
         </Select>
         {firmwareVersion === 'v10' ? (
