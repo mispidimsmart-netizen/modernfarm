@@ -106,7 +106,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.3.0-display-panel";
+const char* FIRMWARE_VERSION = "8.3.1-config-sync";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -629,6 +629,7 @@ bool lightingAlertActive = false;
 
 // --- Time ---
 int currentHour = 12, currentMinute = 0;
+int syncedBaseMinuteOfDay = -1;      // minute-of-day captured at last cloud time sync
 unsigned long lastTimeSync = 0;
 bool timeValid = false;
 
@@ -948,8 +949,12 @@ void estimateLocalTime() {
     currentHour = est / 60;
     currentMinute = est % 60;
   } else {
-    unsigned long sinceSyncMin = (millis() - lastTimeSync) / 60000;
-    int total = (currentHour * 60 + currentMinute + sinceSyncMin) % 1440;
+    // Always project from the SYNCED base, never from the already-advanced
+    // value — otherwise every tick re-adds the elapsed minutes and the clock
+    // runs far too fast (broke layer light schedules).
+    if (syncedBaseMinuteOfDay < 0) syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
+    unsigned long sinceSyncMin = (millis() - lastTimeSync) / 60000UL;
+    int total = (int)((syncedBaseMinuteOfDay + (long)sinceSyncMin) % 1440);
     currentHour = total / 60;
     currentMinute = total % 60;
   }
@@ -1709,7 +1714,16 @@ void updateHysteresisThresholds() {
     hystFan.stages[1] = {LAYER_TEMP_FAN_HIGH, LAYER_TEMP_FAN_HIGH-2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
     hystFan.stages[2] = {LAYER_TEMP_ALARM, LAYER_TEMP_ALARM-2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
     hystFan.stageCount = 3;
-    hystHeater.stages[0] = {rules.tempHeaterOn, rules.tempHeaterOn+2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
+    // Layer heater: use the cloud-configured ON/OFF temps (advanced_automation)
+    // instead of the fixed LAYER_TEMP_HEATER constant. Sanity-clamped so a bad
+    // config can never invert the deadband.
+    {
+      float hOn  = heaterSettings.layerOnTemp;
+      float hOff = heaterSettings.layerOffTemp;
+      if (!(hOn > 0) || hOn < 5 || hOn > 30) hOn = rules.tempHeaterOn;
+      if (!(hOff > hOn + 0.5f) || hOff > 32) hOff = hOn + 2.0f;
+      hystHeater.stages[0] = {hOn, hOff, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
+    }
     hystHeater.stageCount = 1;
     hystAlarm.stages[0] = {LAYER_TEMP_ALARM, LAYER_TEMP_ALARM-2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
     hystAlarm.stageCount = 1;
@@ -2978,7 +2992,9 @@ void handleCloudResponse(String response) {
   }
 
   if (doc.containsKey("current_hour")) {
-    currentHour = doc["current_hour"]; currentMinute = doc["current_minute"] | 0;
+    currentHour = ((int)doc["current_hour"] % 24 + 24) % 24;
+    currentMinute = constrain((int)(doc["current_minute"] | 0), 0, 59);
+    syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
     lastTimeSync = millis(); timeValid = true;
   }
   if (doc.containsKey("lighting_schedule")) {
