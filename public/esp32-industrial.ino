@@ -2958,6 +2958,117 @@ void syncWithCloud() {
   http.end();
 }
 
+// ─── Shared cloud-config appliers ───────────────────────────────────────
+// The cloud speaks two shapes: /sync sends snake_case ("settings",
+// "advanced_automation", "lighting"), /config sends camelCase ("thresholds",
+// "heater", "lighting"). Both are accepted here so layer AUTO mode always
+// receives the user's configured thresholds instead of silently falling back
+// to the hardcoded LAYER_* constants.
+
+void applyLightingObject(JsonObject ls) {
+  if (ls.isNull()) return;
+  lightSchedule.enabled = ls["enabled"] | true;
+  lightSchedule.startHour = ls["start_hour"] | 5;
+  lightSchedule.startMinute = ls["start_minute"] | 0;
+  lightSchedule.endHour = ls["end_hour"] | 21;
+  lightSchedule.endMinute = ls["end_minute"] | 0;
+  lightSchedule.fadeInMinutes = ls["fade_in_minutes"] | 30;
+  lightSchedule.fadeOutMinutes = ls["fade_out_minutes"] | 30;
+  lightSchedule.minBrightness = ls["min_brightness"] | 0;
+  lightSchedule.maxBrightness = ls["max_brightness"] | 100;
+  // LDR settings
+  lightSchedule.ldrEnabled = ls["ldr_enabled"] | false;
+  lightSchedule.ldrThresholdLux = ls["ldr_threshold_lux"] | 50.0f;
+  lightSchedule.ldrHysteresisLux = ls["ldr_hysteresis_lux"] | 20.0f;
+  const char* mode = ls["ldr_mode"] | "hybrid";
+  if (strcmp(mode, "schedule_only") == 0) lightSchedule.ldrMode = 0;
+  else if (strcmp(mode, "sensor_only") == 0) lightSchedule.ldrMode = 2;
+  else lightSchedule.ldrMode = 1; // hybrid
+  // Smart Lighting v2 — flock-aware schedule + power-save
+  lightSchedule.ldrDaylightOffLux = ls["ldr_daylight_off_lux"] | 300.0f;
+  lightSchedule.fadeCircuits      = constrain((int)(ls["fade_circuits"] | 2), 1, 3);
+  lightSchedule.fadeStepGapMinutes= constrain((int)(ls["fade_step_gap_minutes"] | 5), 1, 30);
+  const char* flock = ls["flock_type"] | "layer";
+  lightSchedule.flockTypeBroiler  = (strcmp(flock, "broiler") == 0);
+  lightSchedule.layerDarkHours    = constrain((int)(ls["layer_dark_hours"] | 9), 4, 16);
+  lightSchedule.broilerAgeAuto    = ls["broiler_age_auto"] | true;
+  // Times come as "HH:MM:SS" strings — parse to minutes-of-day
+  auto parseHHMM = [](const char* s, int fallback) -> int {
+    if (!s) return fallback;
+    int h = 0, m = 0;
+    if (sscanf(s, "%d:%d", &h, &m) >= 1) return (h * 60 + m) % 1440;
+    return fallback;
+  };
+  lightSchedule.broilerDarkStartMin = parseHHMM(ls["broiler_dark_start"] | (const char*)nullptr, 23 * 60);
+  lightSchedule.broilerDarkEndMin   = parseHHMM(ls["broiler_dark_end"]   | (const char*)nullptr, 5 * 60);
+  // NOTE: Do NOT reset lightSchedule.manualOverride here
+  // Manual override state is managed by commands only
+}
+
+void applyFarmSettingsObject(JsonObject st) {
+  if (st.isNull()) return;
+  if (st.containsKey("temperature_min")) rules.tempMin = st["temperature_min"];
+  if (st.containsKey("temperature_max")) rules.tempMax = st["temperature_max"];
+  if (st.containsKey("ammonia_max")) rules.ammoniaFan = st["ammonia_max"];
+  if (st.containsKey("fan_high_temp_min")) rules.tempFanHigh = st["fan_high_temp_min"];
+  if (st.containsKey("humidity_min")) rules.humidityLow = st["humidity_min"];
+  if (st.containsKey("humidity_max")) rules.humidityHigh = st["humidity_max"];
+  if (st.containsKey("hsi_mild_threshold")) rules.hsiFanLow = st["hsi_mild_threshold"];
+  if (st.containsKey("hsi_moderate_threshold")) rules.hsiFanHigh = st["hsi_moderate_threshold"];
+  if (st.containsKey("hsi_severe_threshold")) rules.hsiEmergency = st["hsi_severe_threshold"];
+  if (st.containsKey("hsi_emergency_threshold")) rules.hsiCritical = st["hsi_emergency_threshold"];
+  updateHysteresisThresholds();
+}
+
+void applyAdvancedAutomationObject(JsonObject adv) {
+  if (adv.isNull()) return;
+  if (adv.containsKey("min_vent")) {
+    JsonObject mv = adv["min_vent"];
+    minVentSettings.enabled = mv["enabled"] | minVentSettings.enabled;
+    minVentSettings.tempThreshold = mv["temp_threshold"] | minVentSettings.tempThreshold;
+    minVentSettings.cycleSeconds = mv["cycle_seconds"] | minVentSettings.cycleSeconds;
+    minVentSettings.intervalMinutes = mv["interval_minutes"] | minVentSettings.intervalMinutes;
+    minVentSettings.ceilingFanAlwaysOn = mv["ceiling_fan_always_on"] | minVentSettings.ceilingFanAlwaysOn;
+  }
+  if (adv.containsKey("heater")) {
+    JsonObject ht = adv["heater"];
+    heaterSettings.enabled = ht["enabled"] | heaterSettings.enabled;
+    heaterSettings.layerOnTemp = ht["on_temp"] | heaterSettings.layerOnTemp;
+    heaterSettings.layerOffTemp = ht["off_temp"] | heaterSettings.layerOffTemp;
+    heaterSettings.tolerance = ht["tolerance"] | heaterSettings.tolerance;
+  }
+  if (adv.containsKey("fogger")) {
+    JsonObject fg = adv["fogger"];
+    foggerSettings.enabled = fg["enabled"] | foggerSettings.enabled;
+    foggerSettings.startTemp = fg["start_temp"] | foggerSettings.startTemp;
+    foggerSettings.startHumidityMax = fg["start_humidity_max"] | foggerSettings.startHumidityMax;
+    foggerSettings.stopTemp = fg["stop_temp"] | foggerSettings.stopTemp;
+    foggerSettings.stopHumidity = fg["stop_humidity"] | foggerSettings.stopHumidity;
+    foggerSettings.onSeconds = fg["on_seconds"] | foggerSettings.onSeconds;
+    foggerSettings.pauseSeconds = fg["pause_seconds"] | foggerSettings.pauseSeconds;
+  }
+  if (adv.containsKey("airflow")) {
+    JsonObject af = adv["airflow"];
+    airflowSettings.enabled = af["enabled"] | airflowSettings.enabled;
+    airflowSettings.earlyAgeDays = af["early_age_days"] | airflowSettings.earlyAgeDays;
+    airflowSettings.midAgeDays = af["mid_age_days"] | airflowSettings.midAgeDays;
+    airflowSettings.midOnSeconds = af["mid_on_seconds"] | airflowSettings.midOnSeconds;
+    airflowSettings.midIntervalMinutes = af["mid_interval_minutes"] | airflowSettings.midIntervalMinutes;
+    airflowSettings.nightOnSeconds = af["night_on_seconds"] | airflowSettings.nightOnSeconds;
+    airflowSettings.nightIntervalMinutes = af["night_interval_minutes"] | airflowSettings.nightIntervalMinutes;
+  }
+  updateHysteresisThresholds();
+}
+
+void applyCloudFarmType(const String& ft) {
+  int newType = (ft == "BROILER" || ft == "broiler") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
+  if (newType != farmConfig.farmType) {
+    farmConfig.farmType = newType; saveFarmProfile();
+    if (isLayer()) loadLayerRules(); else loadBroilerRules();
+    Serial.printf("🐔 Farm profile switched from cloud → %s\n", getFarmTypeStr().c_str());
+  }
+}
+
 void handleCloudResponse(String response) {
   DynamicJsonDocument doc(2048);
   if (deserializeJson(doc, response) != DeserializationError::Ok) return;
@@ -2997,45 +3108,11 @@ void handleCloudResponse(String response) {
     syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
     lastTimeSync = millis(); timeValid = true;
   }
-  if (doc.containsKey("lighting_schedule")) {
-    JsonObject ls = doc["lighting_schedule"];
-    lightSchedule.enabled = ls["enabled"] | true;
-    lightSchedule.startHour = ls["start_hour"] | 5;
-    lightSchedule.startMinute = ls["start_minute"] | 0;
-    lightSchedule.endHour = ls["end_hour"] | 21;
-    lightSchedule.endMinute = ls["end_minute"] | 0;
-    lightSchedule.fadeInMinutes = ls["fade_in_minutes"] | 30;
-    lightSchedule.fadeOutMinutes = ls["fade_out_minutes"] | 30;
-    lightSchedule.minBrightness = ls["min_brightness"] | 0;
-    lightSchedule.maxBrightness = ls["max_brightness"] | 100;
-    // LDR settings
-    lightSchedule.ldrEnabled = ls["ldr_enabled"] | false;
-    lightSchedule.ldrThresholdLux = ls["ldr_threshold_lux"] | 50.0f;
-    lightSchedule.ldrHysteresisLux = ls["ldr_hysteresis_lux"] | 20.0f;
-    const char* mode = ls["ldr_mode"] | "hybrid";
-    if (strcmp(mode, "schedule_only") == 0) lightSchedule.ldrMode = 0;
-    else if (strcmp(mode, "sensor_only") == 0) lightSchedule.ldrMode = 2;
-    else lightSchedule.ldrMode = 1; // hybrid
-    // Smart Lighting v2 — flock-aware schedule + power-save
-    lightSchedule.ldrDaylightOffLux = ls["ldr_daylight_off_lux"] | 300.0f;
-    lightSchedule.fadeCircuits      = constrain((int)(ls["fade_circuits"] | 2), 1, 3);
-    lightSchedule.fadeStepGapMinutes= constrain((int)(ls["fade_step_gap_minutes"] | 5), 1, 30);
-    const char* flock = ls["flock_type"] | "layer";
-    lightSchedule.flockTypeBroiler  = (strcmp(flock, "broiler") == 0);
-    lightSchedule.layerDarkHours    = constrain((int)(ls["layer_dark_hours"] | 9), 4, 16);
-    lightSchedule.broilerAgeAuto    = ls["broiler_age_auto"] | true;
-    // Times come as "HH:MM:SS" strings — parse to minutes-of-day
-    auto parseHHMM = [](const char* s, int fallback) -> int {
-      if (!s) return fallback;
-      int h = 0, m = 0;
-      if (sscanf(s, "%d:%d", &h, &m) >= 1) return (h * 60 + m) % 1440;
-      return fallback;
-    };
-    lightSchedule.broilerDarkStartMin = parseHHMM(ls["broiler_dark_start"] | (const char*)nullptr, 23 * 60);
-    lightSchedule.broilerDarkEndMin   = parseHHMM(ls["broiler_dark_end"]   | (const char*)nullptr, 5 * 60);
-    // NOTE: Do NOT reset lightSchedule.manualOverride here
-    // Manual override state is managed by commands only
-  }
+  if (doc.containsKey("lighting_schedule")) applyLightingObject(doc["lighting_schedule"]);
+  if (doc.containsKey("lighting")) applyLightingObject(doc["lighting"]);
+  if (doc.containsKey("farm_type")) applyCloudFarmType(doc["farm_type"].as<String>());
+  if (doc.containsKey("settings")) applyFarmSettingsObject(doc["settings"]);
+  if (doc.containsKey("advanced_automation")) applyAdvancedAutomationObject(doc["advanced_automation"]);
   if (doc.containsKey("broiler_age_days") && isBroiler()) {
     updateAgeFromServer(doc["broiler_age_days"]);
   }
