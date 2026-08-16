@@ -3088,7 +3088,8 @@ void applyCloudFarmType(const String& ft) {
 }
 
 void handleCloudResponse(String response) {
-  DynamicJsonDocument doc(2048);
+  // 8 KB: /sync may include settings + advanced_automation + lighting blocks
+  DynamicJsonDocument doc(8192);
   if (deserializeJson(doc, response) != DeserializationError::Ok) return;
   
   // ═══════════════════════════════════════════════════════════════
@@ -3226,7 +3227,8 @@ void fetchConfig() {
 
   String resp = http.getString();
   http.end();
-  DynamicJsonDocument doc(2048);
+  // 8 KB: /config payload carries thresholds + all module configs
+  DynamicJsonDocument doc(8192);
   DeserializationError jerr = deserializeJson(doc, resp);
   if (jerr) {
     configFetchFailStreak++;
