@@ -751,6 +751,20 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
         minBrightness: lighting?.min_brightness ?? 0,
         maxBrightness: lighting?.max_brightness ?? 100,
         fadeDurationMinutes: advanced?.lighting_fade_duration_minutes ?? 10,
+        // Smart Lighting v2 (flock-aware) — required by layer AUTO mode
+        manual_override: (lighting as any)?.manual_override ?? false,
+        ldr_enabled: (lighting as any)?.ldr_enabled ?? false,
+        ldr_threshold_lux: (lighting as any)?.ldr_threshold_lux ?? 50,
+        ldr_hysteresis_lux: (lighting as any)?.ldr_hysteresis_lux ?? 20,
+        ldr_mode: (lighting as any)?.ldr_mode ?? 'hybrid',
+        ldr_daylight_off_lux: (lighting as any)?.ldr_daylight_off_lux ?? 300,
+        fade_circuits: (lighting as any)?.fade_circuits ?? 2,
+        fade_step_gap_minutes: (lighting as any)?.fade_step_gap_minutes ?? 5,
+        flock_type: (lighting as any)?.flock_type ?? (isBroiler ? 'broiler' : 'layer'),
+        layer_dark_hours: (lighting as any)?.layer_dark_hours ?? 9,
+        broiler_dark_start: (lighting as any)?.broiler_dark_start ?? '23:00:00',
+        broiler_dark_end: (lighting as any)?.broiler_dark_end ?? '05:00:00',
+        broiler_age_auto: (lighting as any)?.broiler_age_auto ?? true,
       },
 
       // === Fan Speed Ranges ===
@@ -763,8 +777,11 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
       },
 
       // === Time Sync ===
-      currentHour: now.getUTCHours() + 6, // Bangladesh = UTC+6
-      currentMinute: now.getMinutes(),
+      // Bangladesh = UTC+6 — must wrap, otherwise 20:00 UTC became hour 26
+      currentHour: (now.getUTCHours() + 6) % 24,
+      currentMinute: now.getUTCMinutes(),
+      current_hour: (now.getUTCHours() + 6) % 24,
+      current_minute: now.getUTCMinutes(),
       timestamp: now.toISOString(),
 
       // === Safety Engine Toggle ===

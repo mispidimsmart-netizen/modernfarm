@@ -106,7 +106,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.3.0-display-panel";
+const char* FIRMWARE_VERSION = "8.3.1-config-sync";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -629,6 +629,7 @@ bool lightingAlertActive = false;
 
 // --- Time ---
 int currentHour = 12, currentMinute = 0;
+int syncedBaseMinuteOfDay = -1;      // minute-of-day captured at last cloud time sync
 unsigned long lastTimeSync = 0;
 bool timeValid = false;
 
@@ -948,8 +949,12 @@ void estimateLocalTime() {
     currentHour = est / 60;
     currentMinute = est % 60;
   } else {
-    unsigned long sinceSyncMin = (millis() - lastTimeSync) / 60000;
-    int total = (currentHour * 60 + currentMinute + sinceSyncMin) % 1440;
+    // Always project from the SYNCED base, never from the already-advanced
+    // value — otherwise every tick re-adds the elapsed minutes and the clock
+    // runs far too fast (broke layer light schedules).
+    if (syncedBaseMinuteOfDay < 0) syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
+    unsigned long sinceSyncMin = (millis() - lastTimeSync) / 60000UL;
+    int total = (int)((syncedBaseMinuteOfDay + (long)sinceSyncMin) % 1440);
     currentHour = total / 60;
     currentMinute = total % 60;
   }
@@ -1709,7 +1714,16 @@ void updateHysteresisThresholds() {
     hystFan.stages[1] = {LAYER_TEMP_FAN_HIGH, LAYER_TEMP_FAN_HIGH-2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
     hystFan.stages[2] = {LAYER_TEMP_ALARM, LAYER_TEMP_ALARM-2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
     hystFan.stageCount = 3;
-    hystHeater.stages[0] = {rules.tempHeaterOn, rules.tempHeaterOn+2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
+    // Layer heater: use the cloud-configured ON/OFF temps (advanced_automation)
+    // instead of the fixed LAYER_TEMP_HEATER constant. Sanity-clamped so a bad
+    // config can never invert the deadband.
+    {
+      float hOn  = heaterSettings.layerOnTemp;
+      float hOff = heaterSettings.layerOffTemp;
+      if (!(hOn > 0) || hOn < 5 || hOn > 30) hOn = rules.tempHeaterOn;
+      if (!(hOff > hOn + 0.5f) || hOff > 32) hOff = hOn + 2.0f;
+      hystHeater.stages[0] = {hOn, hOff, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
+    }
     hystHeater.stageCount = 1;
     hystAlarm.stages[0] = {LAYER_TEMP_ALARM, LAYER_TEMP_ALARM-2, false, 0, 0, HYST_MIN_ON_MS, HYST_MIN_OFF_MS};
     hystAlarm.stageCount = 1;
@@ -2944,8 +2958,138 @@ void syncWithCloud() {
   http.end();
 }
 
+// ─── Shared cloud-config appliers ───────────────────────────────────────
+// The cloud speaks two shapes: /sync sends snake_case ("settings",
+// "advanced_automation", "lighting"), /config sends camelCase ("thresholds",
+// "heater", "lighting"). Both are accepted here so layer AUTO mode always
+// receives the user's configured thresholds instead of silently falling back
+// to the hardcoded LAYER_* constants.
+
+void applyLightingObject(JsonObject ls) {
+  if (ls.isNull()) return;
+  lightSchedule.enabled = ls["enabled"] | true;
+  lightSchedule.startHour = ls["start_hour"] | 5;
+  lightSchedule.startMinute = ls["start_minute"] | 0;
+  lightSchedule.endHour = ls["end_hour"] | 21;
+  lightSchedule.endMinute = ls["end_minute"] | 0;
+  lightSchedule.fadeInMinutes = ls["fade_in_minutes"] | 30;
+  lightSchedule.fadeOutMinutes = ls["fade_out_minutes"] | 30;
+  lightSchedule.minBrightness = ls["min_brightness"] | 0;
+  lightSchedule.maxBrightness = ls["max_brightness"] | 100;
+  // LDR settings
+  lightSchedule.ldrEnabled = ls["ldr_enabled"] | false;
+  lightSchedule.ldrThresholdLux = ls["ldr_threshold_lux"] | 50.0f;
+  lightSchedule.ldrHysteresisLux = ls["ldr_hysteresis_lux"] | 20.0f;
+  const char* mode = ls["ldr_mode"] | "hybrid";
+  if (strcmp(mode, "schedule_only") == 0) lightSchedule.ldrMode = 0;
+  else if (strcmp(mode, "sensor_only") == 0) lightSchedule.ldrMode = 2;
+  else lightSchedule.ldrMode = 1; // hybrid
+  // Smart Lighting v2 — flock-aware schedule + power-save
+  lightSchedule.ldrDaylightOffLux = ls["ldr_daylight_off_lux"] | 300.0f;
+  lightSchedule.fadeCircuits      = constrain((int)(ls["fade_circuits"] | 2), 1, 3);
+  lightSchedule.fadeStepGapMinutes= constrain((int)(ls["fade_step_gap_minutes"] | 5), 1, 30);
+  const char* flock = ls["flock_type"] | "layer";
+  lightSchedule.flockTypeBroiler  = (strcmp(flock, "broiler") == 0);
+  lightSchedule.layerDarkHours    = constrain((int)(ls["layer_dark_hours"] | 9), 4, 16);
+  lightSchedule.broilerAgeAuto    = ls["broiler_age_auto"] | true;
+  // Times come as "HH:MM:SS" strings — parse to minutes-of-day
+  auto parseHHMM = [](const char* s, int fallback) -> int {
+    if (!s) return fallback;
+    int h = 0, m = 0;
+    if (sscanf(s, "%d:%d", &h, &m) >= 1) return (h * 60 + m) % 1440;
+    return fallback;
+  };
+  lightSchedule.broilerDarkStartMin = parseHHMM(ls["broiler_dark_start"] | (const char*)nullptr, 23 * 60);
+  lightSchedule.broilerDarkEndMin   = parseHHMM(ls["broiler_dark_end"]   | (const char*)nullptr, 5 * 60);
+  // Cloud also sends "start_time"/"end_time" ("HH:MM:SS") and "gradual_enabled"
+  if (ls.containsKey("start_time")) {
+    int m = parseHHMM(ls["start_time"] | (const char*)nullptr, lightSchedule.startHour * 60 + lightSchedule.startMinute);
+    lightSchedule.startHour = m / 60; lightSchedule.startMinute = m % 60;
+  }
+  if (ls.containsKey("end_time")) {
+    int m = parseHHMM(ls["end_time"] | (const char*)nullptr, lightSchedule.endHour * 60 + lightSchedule.endMinute);
+    lightSchedule.endHour = m / 60; lightSchedule.endMinute = m % 60;
+  }
+  if (ls.containsKey("gradual_enabled")) lightSchedule.enabled = ls["gradual_enabled"] | true;
+  if (ls.containsKey("startHour")) lightSchedule.startHour = ls["startHour"];
+  if (ls.containsKey("startMinute")) lightSchedule.startMinute = ls["startMinute"];
+  if (ls.containsKey("endHour")) lightSchedule.endHour = ls["endHour"];
+  if (ls.containsKey("endMinute")) lightSchedule.endMinute = ls["endMinute"];
+  if (ls.containsKey("fadeInMinutes")) lightSchedule.fadeInMinutes = ls["fadeInMinutes"];
+  if (ls.containsKey("fadeOutMinutes")) lightSchedule.fadeOutMinutes = ls["fadeOutMinutes"];
+  if (ls.containsKey("minBrightness")) lightSchedule.minBrightness = ls["minBrightness"];
+  if (ls.containsKey("maxBrightness")) lightSchedule.maxBrightness = ls["maxBrightness"];
+  // NOTE: Do NOT reset lightSchedule.manualOverride here
+  // Manual override state is managed by commands only
+}
+
+void applyFarmSettingsObject(JsonObject st) {
+  if (st.isNull()) return;
+  if (st.containsKey("temperature_min")) rules.tempMin = st["temperature_min"];
+  if (st.containsKey("temperature_max")) rules.tempMax = st["temperature_max"];
+  if (st.containsKey("ammonia_max")) rules.ammoniaFan = st["ammonia_max"];
+  if (st.containsKey("fan_high_temp_min")) rules.tempFanHigh = st["fan_high_temp_min"];
+  if (st.containsKey("humidity_min")) rules.humidityLow = st["humidity_min"];
+  if (st.containsKey("humidity_max")) rules.humidityHigh = st["humidity_max"];
+  if (st.containsKey("hsi_mild_threshold")) rules.hsiFanLow = st["hsi_mild_threshold"];
+  if (st.containsKey("hsi_moderate_threshold")) rules.hsiFanHigh = st["hsi_moderate_threshold"];
+  if (st.containsKey("hsi_severe_threshold")) rules.hsiEmergency = st["hsi_severe_threshold"];
+  if (st.containsKey("hsi_emergency_threshold")) rules.hsiCritical = st["hsi_emergency_threshold"];
+  updateHysteresisThresholds();
+}
+
+void applyAdvancedAutomationObject(JsonObject adv) {
+  if (adv.isNull()) return;
+  if (adv.containsKey("min_vent")) {
+    JsonObject mv = adv["min_vent"];
+    minVentSettings.enabled = mv["enabled"] | minVentSettings.enabled;
+    minVentSettings.tempThreshold = mv["temp_threshold"] | minVentSettings.tempThreshold;
+    minVentSettings.cycleSeconds = mv["cycle_seconds"] | minVentSettings.cycleSeconds;
+    minVentSettings.intervalMinutes = mv["interval_minutes"] | minVentSettings.intervalMinutes;
+    minVentSettings.ceilingFanAlwaysOn = mv["ceiling_fan_always_on"] | minVentSettings.ceilingFanAlwaysOn;
+  }
+  if (adv.containsKey("heater")) {
+    JsonObject ht = adv["heater"];
+    heaterSettings.enabled = ht["enabled"] | heaterSettings.enabled;
+    heaterSettings.layerOnTemp = ht["on_temp"] | heaterSettings.layerOnTemp;
+    heaterSettings.layerOffTemp = ht["off_temp"] | heaterSettings.layerOffTemp;
+    heaterSettings.tolerance = ht["tolerance"] | heaterSettings.tolerance;
+  }
+  if (adv.containsKey("fogger")) {
+    JsonObject fg = adv["fogger"];
+    foggerSettings.enabled = fg["enabled"] | foggerSettings.enabled;
+    foggerSettings.startTemp = fg["start_temp"] | foggerSettings.startTemp;
+    foggerSettings.startHumidityMax = fg["start_humidity_max"] | foggerSettings.startHumidityMax;
+    foggerSettings.stopTemp = fg["stop_temp"] | foggerSettings.stopTemp;
+    foggerSettings.stopHumidity = fg["stop_humidity"] | foggerSettings.stopHumidity;
+    foggerSettings.onSeconds = fg["on_seconds"] | foggerSettings.onSeconds;
+    foggerSettings.pauseSeconds = fg["pause_seconds"] | foggerSettings.pauseSeconds;
+  }
+  if (adv.containsKey("airflow")) {
+    JsonObject af = adv["airflow"];
+    airflowSettings.enabled = af["enabled"] | airflowSettings.enabled;
+    airflowSettings.earlyAgeDays = af["early_age_days"] | airflowSettings.earlyAgeDays;
+    airflowSettings.midAgeDays = af["mid_age_days"] | airflowSettings.midAgeDays;
+    airflowSettings.midOnSeconds = af["mid_on_seconds"] | airflowSettings.midOnSeconds;
+    airflowSettings.midIntervalMinutes = af["mid_interval_minutes"] | airflowSettings.midIntervalMinutes;
+    airflowSettings.nightOnSeconds = af["night_on_seconds"] | airflowSettings.nightOnSeconds;
+    airflowSettings.nightIntervalMinutes = af["night_interval_minutes"] | airflowSettings.nightIntervalMinutes;
+  }
+  updateHysteresisThresholds();
+}
+
+void applyCloudFarmType(const String& ft) {
+  int newType = (ft == "BROILER" || ft == "broiler") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
+  if (newType != farmConfig.farmType) {
+    farmConfig.farmType = newType; saveFarmProfile();
+    if (isLayer()) loadLayerRules(); else loadBroilerRules();
+    Serial.printf("🐔 Farm profile switched from cloud → %s\n", getFarmTypeStr().c_str());
+  }
+}
+
 void handleCloudResponse(String response) {
-  DynamicJsonDocument doc(2048);
+  // 8 KB: /sync may include settings + advanced_automation + lighting blocks
+  DynamicJsonDocument doc(8192);
   if (deserializeJson(doc, response) != DeserializationError::Ok) return;
   
   // ═══════════════════════════════════════════════════════════════
@@ -2978,48 +3122,16 @@ void handleCloudResponse(String response) {
   }
 
   if (doc.containsKey("current_hour")) {
-    currentHour = doc["current_hour"]; currentMinute = doc["current_minute"] | 0;
+    currentHour = ((int)doc["current_hour"] % 24 + 24) % 24;
+    currentMinute = constrain((int)(doc["current_minute"] | 0), 0, 59);
+    syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
     lastTimeSync = millis(); timeValid = true;
   }
-  if (doc.containsKey("lighting_schedule")) {
-    JsonObject ls = doc["lighting_schedule"];
-    lightSchedule.enabled = ls["enabled"] | true;
-    lightSchedule.startHour = ls["start_hour"] | 5;
-    lightSchedule.startMinute = ls["start_minute"] | 0;
-    lightSchedule.endHour = ls["end_hour"] | 21;
-    lightSchedule.endMinute = ls["end_minute"] | 0;
-    lightSchedule.fadeInMinutes = ls["fade_in_minutes"] | 30;
-    lightSchedule.fadeOutMinutes = ls["fade_out_minutes"] | 30;
-    lightSchedule.minBrightness = ls["min_brightness"] | 0;
-    lightSchedule.maxBrightness = ls["max_brightness"] | 100;
-    // LDR settings
-    lightSchedule.ldrEnabled = ls["ldr_enabled"] | false;
-    lightSchedule.ldrThresholdLux = ls["ldr_threshold_lux"] | 50.0f;
-    lightSchedule.ldrHysteresisLux = ls["ldr_hysteresis_lux"] | 20.0f;
-    const char* mode = ls["ldr_mode"] | "hybrid";
-    if (strcmp(mode, "schedule_only") == 0) lightSchedule.ldrMode = 0;
-    else if (strcmp(mode, "sensor_only") == 0) lightSchedule.ldrMode = 2;
-    else lightSchedule.ldrMode = 1; // hybrid
-    // Smart Lighting v2 — flock-aware schedule + power-save
-    lightSchedule.ldrDaylightOffLux = ls["ldr_daylight_off_lux"] | 300.0f;
-    lightSchedule.fadeCircuits      = constrain((int)(ls["fade_circuits"] | 2), 1, 3);
-    lightSchedule.fadeStepGapMinutes= constrain((int)(ls["fade_step_gap_minutes"] | 5), 1, 30);
-    const char* flock = ls["flock_type"] | "layer";
-    lightSchedule.flockTypeBroiler  = (strcmp(flock, "broiler") == 0);
-    lightSchedule.layerDarkHours    = constrain((int)(ls["layer_dark_hours"] | 9), 4, 16);
-    lightSchedule.broilerAgeAuto    = ls["broiler_age_auto"] | true;
-    // Times come as "HH:MM:SS" strings — parse to minutes-of-day
-    auto parseHHMM = [](const char* s, int fallback) -> int {
-      if (!s) return fallback;
-      int h = 0, m = 0;
-      if (sscanf(s, "%d:%d", &h, &m) >= 1) return (h * 60 + m) % 1440;
-      return fallback;
-    };
-    lightSchedule.broilerDarkStartMin = parseHHMM(ls["broiler_dark_start"] | (const char*)nullptr, 23 * 60);
-    lightSchedule.broilerDarkEndMin   = parseHHMM(ls["broiler_dark_end"]   | (const char*)nullptr, 5 * 60);
-    // NOTE: Do NOT reset lightSchedule.manualOverride here
-    // Manual override state is managed by commands only
-  }
+  if (doc.containsKey("lighting_schedule")) applyLightingObject(doc["lighting_schedule"]);
+  if (doc.containsKey("lighting")) applyLightingObject(doc["lighting"]);
+  if (doc.containsKey("farm_type")) applyCloudFarmType(doc["farm_type"].as<String>());
+  if (doc.containsKey("settings")) applyFarmSettingsObject(doc["settings"]);
+  if (doc.containsKey("advanced_automation")) applyAdvancedAutomationObject(doc["advanced_automation"]);
   if (doc.containsKey("broiler_age_days") && isBroiler()) {
     updateAgeFromServer(doc["broiler_age_days"]);
   }
@@ -3115,7 +3227,8 @@ void fetchConfig() {
 
   String resp = http.getString();
   http.end();
-  DynamicJsonDocument doc(2048);
+  // 8 KB: /config payload carries thresholds + all module configs
+  DynamicJsonDocument doc(8192);
   DeserializationError jerr = deserializeJson(doc, resp);
   if (jerr) {
     configFetchFailStreak++;
@@ -3151,13 +3264,59 @@ void fetchConfig() {
       }
     }
   }
-  if (doc.containsKey("farm_type")) {
-    String ft = doc["farm_type"] | "LAYER";
-    int newType = (ft == "BROILER") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
-    if (newType != farmConfig.farmType) {
-      farmConfig.farmType = newType; saveFarmProfile();
-      if (isLayer()) loadLayerRules(); else loadBroilerRules();
-    }
+  // /config sends camelCase "farmType"; /sync sends "farm_type" — accept both
+  if (doc.containsKey("farm_type")) applyCloudFarmType(doc["farm_type"].as<String>());
+  else if (doc.containsKey("farmType")) applyCloudFarmType(doc["farmType"].as<String>());
+
+  // Nested camelCase blocks from /config
+  if (doc.containsKey("thresholds")) {
+    JsonObject th = doc["thresholds"];
+    if (th.containsKey("tempMin")) rules.tempMin = th["tempMin"];
+    if (th.containsKey("tempMax")) rules.tempMax = th["tempMax"];
+    if (th.containsKey("tempFanHigh")) rules.tempFanHigh = th["tempFanHigh"];
+    if (th.containsKey("humidityMin")) rules.humidityLow = th["humidityMin"];
+    if (th.containsKey("humidityMax")) rules.humidityHigh = th["humidityMax"];
+    if (th.containsKey("ammoniaMax")) rules.ammoniaFan = th["ammoniaMax"];
+    if (th.containsKey("ammoniaAlarm")) rules.ammoniaAlarm = th["ammoniaAlarm"];
+  }
+  if (doc.containsKey("hsi")) {
+    JsonObject h = doc["hsi"];
+    if (h.containsKey("mild")) rules.hsiFanLow = h["mild"];
+    if (h.containsKey("moderate")) rules.hsiFanHigh = h["moderate"];
+    if (h.containsKey("severe")) rules.hsiEmergency = h["severe"];
+    if (h.containsKey("emergency")) rules.hsiCritical = h["emergency"];
+  }
+  if (doc.containsKey("heater")) {
+    JsonObject ht = doc["heater"];
+    heaterSettings.enabled = ht["enabled"] | heaterSettings.enabled;
+    heaterSettings.layerOnTemp = ht["onTemp"] | heaterSettings.layerOnTemp;
+    heaterSettings.layerOffTemp = ht["offTemp"] | heaterSettings.layerOffTemp;
+    heaterSettings.tolerance = ht["tolerance"] | heaterSettings.tolerance;
+  }
+  if (doc.containsKey("minVent")) {
+    JsonObject mv = doc["minVent"];
+    minVentSettings.enabled = mv["enabled"] | minVentSettings.enabled;
+    minVentSettings.tempThreshold = mv["tempThreshold"] | minVentSettings.tempThreshold;
+    minVentSettings.cycleSeconds = mv["cycleSeconds"] | minVentSettings.cycleSeconds;
+    minVentSettings.intervalMinutes = mv["intervalMinutes"] | minVentSettings.intervalMinutes;
+    minVentSettings.ceilingFanAlwaysOn = mv["ceilingFanAlwaysOn"] | minVentSettings.ceilingFanAlwaysOn;
+  }
+  if (doc.containsKey("fogger")) {
+    JsonObject fg = doc["fogger"];
+    foggerSettings.enabled = fg["enabled"] | foggerSettings.enabled;
+    foggerSettings.startTemp = fg["startTemp"] | foggerSettings.startTemp;
+    foggerSettings.startHumidityMax = fg["startHumidityMax"] | foggerSettings.startHumidityMax;
+    foggerSettings.stopTemp = fg["stopTemp"] | foggerSettings.stopTemp;
+    foggerSettings.stopHumidity = fg["stopHumidity"] | foggerSettings.stopHumidity;
+    foggerSettings.onSeconds = fg["onSeconds"] | foggerSettings.onSeconds;
+    foggerSettings.pauseSeconds = fg["pauseSeconds"] | foggerSettings.pauseSeconds;
+  }
+  if (doc.containsKey("lighting")) applyLightingObject(doc["lighting"]);
+  if (doc.containsKey("currentHour")) {
+    currentHour = ((int)doc["currentHour"] % 24 + 24) % 24;
+    currentMinute = constrain((int)(doc["currentMinute"] | 0), 0, 59);
+    syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
+    lastTimeSync = millis(); timeValid = true;
   }
   if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
   if (doc.containsKey("temperature_min")) rules.tempMin = doc["temperature_min"];

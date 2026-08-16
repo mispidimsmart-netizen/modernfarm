@@ -329,6 +329,11 @@ export async function handleFailsafeSync(
       // ⚡ Authoritative automation mode from farm_settings
       // ESP32 MUST respect this — if cloud says MANUAL, ESP32 must stay in MANUAL
       automation_mode: cloudAutomationMode,
+
+      // ⏰ Server clock (Bangladesh, UTC+6) — ESP32 has no RTC and layer
+      // lighting schedules depend on it.
+      current_hour: (new Date().getUTCHours() + 6) % 24,
+      current_minute: new Date().getUTCMinutes(),
       force_manual_override: isCloudManual,
       
       // 🐔 Farm type and broiler age for ESP32 auto-config (per-shed)
