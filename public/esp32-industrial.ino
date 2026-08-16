@@ -3001,6 +3001,24 @@ void applyLightingObject(JsonObject ls) {
   };
   lightSchedule.broilerDarkStartMin = parseHHMM(ls["broiler_dark_start"] | (const char*)nullptr, 23 * 60);
   lightSchedule.broilerDarkEndMin   = parseHHMM(ls["broiler_dark_end"]   | (const char*)nullptr, 5 * 60);
+  // Cloud also sends "start_time"/"end_time" ("HH:MM:SS") and "gradual_enabled"
+  if (ls.containsKey("start_time")) {
+    int m = parseHHMM(ls["start_time"] | (const char*)nullptr, lightSchedule.startHour * 60 + lightSchedule.startMinute);
+    lightSchedule.startHour = m / 60; lightSchedule.startMinute = m % 60;
+  }
+  if (ls.containsKey("end_time")) {
+    int m = parseHHMM(ls["end_time"] | (const char*)nullptr, lightSchedule.endHour * 60 + lightSchedule.endMinute);
+    lightSchedule.endHour = m / 60; lightSchedule.endMinute = m % 60;
+  }
+  if (ls.containsKey("gradual_enabled")) lightSchedule.enabled = ls["gradual_enabled"] | true;
+  if (ls.containsKey("startHour")) lightSchedule.startHour = ls["startHour"];
+  if (ls.containsKey("startMinute")) lightSchedule.startMinute = ls["startMinute"];
+  if (ls.containsKey("endHour")) lightSchedule.endHour = ls["endHour"];
+  if (ls.containsKey("endMinute")) lightSchedule.endMinute = ls["endMinute"];
+  if (ls.containsKey("fadeInMinutes")) lightSchedule.fadeInMinutes = ls["fadeInMinutes"];
+  if (ls.containsKey("fadeOutMinutes")) lightSchedule.fadeOutMinutes = ls["fadeOutMinutes"];
+  if (ls.containsKey("minBrightness")) lightSchedule.minBrightness = ls["minBrightness"];
+  if (ls.containsKey("maxBrightness")) lightSchedule.maxBrightness = ls["maxBrightness"];
   // NOTE: Do NOT reset lightSchedule.manualOverride here
   // Manual override state is managed by commands only
 }
@@ -3244,13 +3262,59 @@ void fetchConfig() {
       }
     }
   }
-  if (doc.containsKey("farm_type")) {
-    String ft = doc["farm_type"] | "LAYER";
-    int newType = (ft == "BROILER") ? FARM_PROFILE_BROILER : FARM_PROFILE_LAYER;
-    if (newType != farmConfig.farmType) {
-      farmConfig.farmType = newType; saveFarmProfile();
-      if (isLayer()) loadLayerRules(); else loadBroilerRules();
-    }
+  // /config sends camelCase "farmType"; /sync sends "farm_type" — accept both
+  if (doc.containsKey("farm_type")) applyCloudFarmType(doc["farm_type"].as<String>());
+  else if (doc.containsKey("farmType")) applyCloudFarmType(doc["farmType"].as<String>());
+
+  // Nested camelCase blocks from /config
+  if (doc.containsKey("thresholds")) {
+    JsonObject th = doc["thresholds"];
+    if (th.containsKey("tempMin")) rules.tempMin = th["tempMin"];
+    if (th.containsKey("tempMax")) rules.tempMax = th["tempMax"];
+    if (th.containsKey("tempFanHigh")) rules.tempFanHigh = th["tempFanHigh"];
+    if (th.containsKey("humidityMin")) rules.humidityLow = th["humidityMin"];
+    if (th.containsKey("humidityMax")) rules.humidityHigh = th["humidityMax"];
+    if (th.containsKey("ammoniaMax")) rules.ammoniaFan = th["ammoniaMax"];
+    if (th.containsKey("ammoniaAlarm")) rules.ammoniaAlarm = th["ammoniaAlarm"];
+  }
+  if (doc.containsKey("hsi")) {
+    JsonObject h = doc["hsi"];
+    if (h.containsKey("mild")) rules.hsiFanLow = h["mild"];
+    if (h.containsKey("moderate")) rules.hsiFanHigh = h["moderate"];
+    if (h.containsKey("severe")) rules.hsiEmergency = h["severe"];
+    if (h.containsKey("emergency")) rules.hsiCritical = h["emergency"];
+  }
+  if (doc.containsKey("heater")) {
+    JsonObject ht = doc["heater"];
+    heaterSettings.enabled = ht["enabled"] | heaterSettings.enabled;
+    heaterSettings.layerOnTemp = ht["onTemp"] | heaterSettings.layerOnTemp;
+    heaterSettings.layerOffTemp = ht["offTemp"] | heaterSettings.layerOffTemp;
+    heaterSettings.tolerance = ht["tolerance"] | heaterSettings.tolerance;
+  }
+  if (doc.containsKey("minVent")) {
+    JsonObject mv = doc["minVent"];
+    minVentSettings.enabled = mv["enabled"] | minVentSettings.enabled;
+    minVentSettings.tempThreshold = mv["tempThreshold"] | minVentSettings.tempThreshold;
+    minVentSettings.cycleSeconds = mv["cycleSeconds"] | minVentSettings.cycleSeconds;
+    minVentSettings.intervalMinutes = mv["intervalMinutes"] | minVentSettings.intervalMinutes;
+    minVentSettings.ceilingFanAlwaysOn = mv["ceilingFanAlwaysOn"] | minVentSettings.ceilingFanAlwaysOn;
+  }
+  if (doc.containsKey("fogger")) {
+    JsonObject fg = doc["fogger"];
+    foggerSettings.enabled = fg["enabled"] | foggerSettings.enabled;
+    foggerSettings.startTemp = fg["startTemp"] | foggerSettings.startTemp;
+    foggerSettings.startHumidityMax = fg["startHumidityMax"] | foggerSettings.startHumidityMax;
+    foggerSettings.stopTemp = fg["stopTemp"] | foggerSettings.stopTemp;
+    foggerSettings.stopHumidity = fg["stopHumidity"] | foggerSettings.stopHumidity;
+    foggerSettings.onSeconds = fg["onSeconds"] | foggerSettings.onSeconds;
+    foggerSettings.pauseSeconds = fg["pauseSeconds"] | foggerSettings.pauseSeconds;
+  }
+  if (doc.containsKey("lighting")) applyLightingObject(doc["lighting"]);
+  if (doc.containsKey("currentHour")) {
+    currentHour = ((int)doc["currentHour"] % 24 + 24) % 24;
+    currentMinute = constrain((int)(doc["currentMinute"] | 0), 0, 59);
+    syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
+    lastTimeSync = millis(); timeValid = true;
   }
   if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
   if (doc.containsKey("temperature_min")) rules.tempMin = doc["temperature_min"];
