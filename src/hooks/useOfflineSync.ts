@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { resolveQueueAttribution } from '@/lib/offlineAttribution';
+import { getQueueFarmId } from '@/lib/offlineQueue';
 
 interface SyncQueueItem {
   id: string;
@@ -14,6 +15,8 @@ interface SyncQueueItem {
   max_age_minutes?: number;
   /** Author captured at enqueue time (see src/lib/offlineQueue.ts). */
   queued_by?: string;
+  /** Selected farm captured at enqueue time. */
+  queued_farm_id?: string;
 }
 
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
@@ -73,6 +76,7 @@ export function useOfflineSync() {
       record_data: recordData,
       created_at: new Date().toISOString(),
       queued_by: user?.id,
+      queued_farm_id: getQueueFarmId() ?? undefined,
     };
     queue.push(newItem);
     saveLocalQueue(queue);
