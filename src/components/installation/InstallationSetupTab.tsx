@@ -83,12 +83,13 @@ export function InstallationSetupTab({ copiedCode, onCopy, onNavigate }: Install
         <Button 
           variant="outline" 
           className="w-full justify-start"
-          onClick={() => window.open('/esp32-industrial.ino', '_blank')}
+          onClick={() => window.open(`/${meta.inoFile}`, '_blank')}
         >
           <Cpu className="h-4 w-4 mr-2" />
-          <span className="flex-1 text-left">ESP32 Industrial কোড ডাউনলোড (v8.0.0)</span>
-          <Badge variant="secondary">Production</Badge>
+          <span className="flex-1 text-left">ESP32 {version.toUpperCase()} কোড ডাউনলোড ({meta.firmware})</span>
+          <Badge variant="secondary">{meta.status}</Badge>
         </Button>
+
         <Button 
           variant="outline" 
           className="w-full justify-start"
