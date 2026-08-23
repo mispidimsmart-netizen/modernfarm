@@ -81,7 +81,7 @@ export function useOfflineSync() {
     if (navigator.onLine) {
       syncQueue();
     }
-  }, [getLocalQueue, saveLocalQueue]);
+  }, [getLocalQueue, saveLocalQueue, user?.id]);
 
   // Sync queue with server (Phase 3: TTL prune + retry counter)
   const syncQueue = useCallback(async () => {
