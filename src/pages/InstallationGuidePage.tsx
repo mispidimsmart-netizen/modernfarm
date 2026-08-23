@@ -41,14 +41,31 @@ function InstallationGuideContent() {
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-lg font-bold text-foreground">ইনস্টলেশন গাইড</h1>
-            <p className="text-xs text-muted-foreground">Installation Guide</p>
+            <p className="text-xs text-muted-foreground">Installation Guide · {meta.labelEn}</p>
           </div>
+          <Badge variant={version === 'v8' ? 'default' : 'secondary'} className="uppercase">{version}</Badge>
+        </div>
+
+        {/* Controller version switcher — সব ট্যাব এই ভার্সন অনুযায়ী দেখাবে */}
+        <div className="px-4 pb-3">
+          <Tabs value={version} onValueChange={(v) => setVersion(v as GuideVersion)}>
+            <TabsList className="grid w-full grid-cols-2">
+              {(['v8', 'v10'] as GuideVersion[]).map((v) => (
+                <TabsTrigger key={v} value={v} className="text-xs">
+                  <Cpu className="h-3 w-3 mr-1" />
+                  {guideVersionMeta[v].label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <p className="mt-2 text-[11px] text-muted-foreground">{meta.tagline}</p>
         </div>
       </header>
 
       <div className="p-4 space-y-6">
+
         {/* Quick link to Pin Map page */}
         <Button
           variant="outline"
