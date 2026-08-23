@@ -24,6 +24,52 @@ function isNewer(latest: number[], current: number[]): boolean {
     (latest[0] === current[0] && latest[1] === current[1] && latest[2] > current[2]);
 }
 
+// ─────────────────────────────────────────────
+// AuthN/AuthZ helpers for admin actions
+// ─────────────────────────────────────────────
+interface AuthedUser { id: string; isSuperAdmin: boolean }
+
+/** Resolve the caller's user id from the Authorization header (or null). */
+// deno-lint-ignore no-explicit-any
+async function resolveUser(req: Request, supabase: any): Promise<AuthedUser | null> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  const { data: isSuper } = await supabase.rpc('is_super_admin', { _user_id: user.id });
+  return { id: user.id, isSuperAdmin: !!isSuper };
+}
+
+/**
+ * Fleet-wide OTA actions (rollback, rollout start/advance, firmware list)
+ * are super-admin only — a single mistake here can brick every device.
+ */
+// deno-lint-ignore no-explicit-any
+async function requireSuperAdmin(req: Request, supabase: any): Promise<AuthedUser | Response> {
+  const user = await resolveUser(req, supabase);
+  if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  if (!user.isSuperAdmin) return jsonResponse({ error: 'Forbidden — super admin required' }, 403);
+  return user;
+}
+
+/** Per-device push: super admin, or an admin+ of the device's own farm. */
+// deno-lint-ignore no-explicit-any
+async function requireDeviceAdmin(
+  req: Request, supabase: any, farmId: string | null,
+): Promise<AuthedUser | Response> {
+  const user = await resolveUser(req, supabase);
+  if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  if (user.isSuperAdmin) return user;
+  if (!farmId) return jsonResponse({ error: 'Forbidden' }, 403);
+  const { data: allowed } = await supabase.rpc('has_farm_role', {
+    _user_id: user.id, _farm_id: farmId, _min_role: 'admin',
+  });
+  if (!allowed) return jsonResponse({ error: 'Forbidden' }, 403);
+  return user;
+}
+
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
