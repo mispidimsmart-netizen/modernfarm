@@ -476,12 +476,9 @@ async function handleReport(req: Request, supabase: any) {
 // POST /firmware/rollback — Admin triggers rollback
 // ─────────────────────────────────────────────
 async function handleRollback(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const gate = await requireSuperAdmin(req, supabase);
+  if (gate instanceof Response) return gate;
+  const user = gate;
 
   const body = await req.json();
   const { firmware_id, reason } = body;
@@ -510,21 +507,20 @@ async function handleRollback(req: Request, supabase: any) {
 // Admin: Push update to specific device
 // ─────────────────────────────────────────────
 async function handlePush(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
   const { device_token_id, firmware_id } = await req.json();
 
   const [{ data: device }, { data: firmware }] = await Promise.all([
-    supabase.from('device_tokens').select('*').eq('id', device_token_id).single(),
+    supabase.from('device_tokens').select('*').eq('id', device_token_id).maybeSingle(),
     supabase.from('ota_firmware').select('*').eq('id', firmware_id).maybeSingle(),
   ]);
 
   if (!device) return jsonResponse({ error: 'Device not found' }, 404);
+
+  // Farm-scoped authorization: caller must own/administer THIS device's farm.
+  const gate = await requireDeviceAdmin(req, supabase, device.farm_id ?? null);
+  if (gate instanceof Response) return gate;
+  const user = gate;
+
 
   // Try firmware_registry if not found in ota_firmware
   let firmwareData = firmware;
