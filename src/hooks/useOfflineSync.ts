@@ -72,6 +72,7 @@ export function useOfflineSync() {
       operation,
       record_data: recordData,
       created_at: new Date().toISOString(),
+      queued_by: user?.id,
     };
     queue.push(newItem);
     saveLocalQueue(queue);
