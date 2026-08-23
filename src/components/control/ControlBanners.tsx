@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Hand, Bot, Settings } from 'lucide-react';
+import { AlertTriangle, Hand, Bot, Settings, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface FarmGuardProps {
