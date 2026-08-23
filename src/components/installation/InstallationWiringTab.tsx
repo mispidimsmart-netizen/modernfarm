@@ -14,9 +14,11 @@ import {
 } from '@/components/installation/wiring/WiringReferenceCards';
 
 export function InstallationWiringTab() {
+  const { version } = useGuideVersion();
   return (
     <TabsContent value="wiring" className="mt-4 space-y-4">
-      <InstallationV10WiringNotice />
+      {version === 'v10' && <InstallationV10WiringNotice />}
+
       <WireColorLegendCard />
       <WiringDiagramCard />
       <SensorWiringAccordion />
