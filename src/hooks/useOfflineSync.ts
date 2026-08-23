@@ -104,16 +104,22 @@ export function useOfflineSync() {
     const failed: SyncQueueItem[] = [];
 
     for (const item of queue) {
-      // Attribute the row to whoever actually authored it offline.
+      // Attribute the row to whoever actually authored it offline, for the
+      // farm that was selected at enqueue time.
       const attribution = resolveQueueAttribution(item, user.id);
       if (attribution.action === 'defer') {
         console.warn(
-          `[offline-sync] deferring ${item.table_name} mutation authored by another user`,
+          `[offline-sync] deferring ${item.table_name} mutation (${attribution.reason})`,
         );
         failed.push(item); // keep queued, do NOT bump retry_count
         continue;
       }
       const authorId = attribution.authorId;
+      const payload = {
+        ...item.record_data,
+        user_id: authorId,
+        ...(attribution.farmId ? { farm_id: attribution.farmId } : {}),
+      };
 
       try {
         let ok = false;
@@ -121,7 +127,7 @@ export function useOfflineSync() {
           case 'INSERT': {
             const { error } = await supabase
               .from(item.table_name as 'egg_production')
-              .insert({ ...item.record_data, user_id: authorId });
+              .insert(payload as any);
             ok = !error;
             break;
           }
@@ -129,12 +135,13 @@ export function useOfflineSync() {
             const { error } = await supabase
               .from(item.table_name as 'egg_production')
               .upsert(
-                { ...item.record_data, user_id: authorId } as any,
+                payload as any,
                 item.on_conflict ? { onConflict: item.on_conflict } : undefined,
               );
             ok = !error;
             break;
           }
+
 
           case 'UPDATE': {
             const { id: recordId, ...updateData } = item.record_data;
