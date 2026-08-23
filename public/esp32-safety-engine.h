@@ -67,6 +67,8 @@ inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
 #define HEATER_MAX_CONTINUOUS_SEC    300       // 5 min max, then cooldown
 #define HEATER_COOLDOWN_SEC          120       // 2 min cooldown
 #define SENSOR_MISSING_TIMEOUT_MS    20000     // 20s → INV-7: survival mode
+#define NH3_FAN_TRIGGER_PPM          25.0f     // → INV-8: forced ventilation (matches v10)
+#define NH3_LETHAL_PPM               50.0f     // → INV-8: forced ventilation + alarm
 #define CLOUD_OFFLINE_TIMEOUT_MS     60000     // 60s → offline autonomous
 #define WDT_TIMEOUT_SEC              10
 #define RELAY_ACTIVE_LOW             LOW
@@ -373,12 +375,34 @@ public:
     }
     
     // ══════════════════════════════════════════════════════════════
+    // INV-8: HIGH AMMONIA → FORCED VENTILATION (parity with v10)
+    // ≥25 ppm ventilates; ≥50 ppm additionally sounds the alarm. The
+    // post-reboot NH3 mute silences the ALARM only — never the fan.
+    // ══════════════════════════════════════════════════════════════
+    if (!isnan(ammonia) && ammonia >= NH3_FAN_TRIGGER_PPM) {
+      result.forceFanOn = true;
+      result.safetyActive = true;
+      result.reason = "INV8_NH3_HIGH";
+      _directWriteRelay(fanPin, true);
+      if (ammonia >= NH3_LETHAL_PPM && !rebootSafety.nh3AlertsMuted) {
+        _setAlarm(true);
+        Serial.printf("[ARBITER] INV-8: NH3 %.1f ppm ≥ %.1f → vent + ALARM\n",
+                      ammonia, NH3_LETHAL_PPM);
+      }
+    }
+
+    // ── Sensor plausibility gate: an implausible reading must never be
+    // trusted to turn the HEATER on (thermal runaway risk). Ventilation
+    // stays allowed because it is the fail-safe direction.
+    bool trustForHeating = thermalModel.sensorPlausible;
+    
+    // ══════════════════════════════════════════════════════════════
     // INV-2: LETHAL LOW TEMPERATURE → HEATING ALLOWED
     // Heating bypasses cooldown timers, reboot lockout, and overrides.
     // Exception: if temp is ALSO above lethal high (impossible but safe).
     // ══════════════════════════════════════════════════════════════
     float heatingTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
-    if (heatingTemp < LETHAL_TEMP_LOW) {
+    if (heatingTemp < LETHAL_TEMP_LOW && trustForHeating) {
       bool allowed = true;
       if (rebootSafety.heaterLocked) {
         // Post-reboot lockout exists to avoid re-igniting a heater whose
@@ -404,6 +428,13 @@ public:
       // Don't return — fan control should still be evaluated
     } else {
       _survivalHeatReset();
+      if (heatingTemp < LETHAL_TEMP_LOW && !trustForHeating) {
+        result.forceHeaterOff = true;
+        result.safetyActive = true;
+        result.reason = "SENSOR_IMPLAUSIBLE_NO_HEAT";
+        _directWriteRelay(heaterPin, false);
+        _setAlarm(true);
+      }
     }
     
     // ── Reboot heater lockout (still enforced unless INV-2 overrides) ──
