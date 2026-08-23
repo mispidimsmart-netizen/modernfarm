@@ -2,14 +2,18 @@ import { ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TabsContent } from '@/components/ui/tabs';
-import { partsList } from '@/data/installationGuide';
+import { getPartsList } from '@/data/installationVersionMap';
+import { useGuideVersion } from '@/components/installation/GuideVersionContext';
 import { InstallationV10PartsNotice } from '@/components/installation/InstallationV10Updates';
 
 export function InstallationPartsTab() {
+  const { version } = useGuideVersion();
+  const parts = getPartsList(version);
   return (
     <TabsContent value="parts" className="mt-4 space-y-4">
-      <InstallationV10PartsNotice />
-      {partsList.map((category, idx) => (
+      {version === 'v10' && <InstallationV10PartsNotice />}
+      {parts.map((category, idx) => (
+
         <Card key={idx}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">

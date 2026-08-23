@@ -2,6 +2,8 @@ import { Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { InstallationV10WiringNotice } from '@/components/installation/InstallationV10Updates';
+import { useGuideVersion } from '@/components/installation/GuideVersionContext';
+
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 import { SensorWiringAccordion } from '@/components/installation/wiring/SensorWiringAccordion';
 import {
@@ -14,9 +16,11 @@ import {
 } from '@/components/installation/wiring/WiringReferenceCards';
 
 export function InstallationWiringTab() {
+  const { version } = useGuideVersion();
   return (
     <TabsContent value="wiring" className="mt-4 space-y-4">
-      <InstallationV10WiringNotice />
+      {version === 'v10' && <InstallationV10WiringNotice />}
+
       <WireColorLegendCard />
       <WiringDiagramCard />
       <SensorWiringAccordion />

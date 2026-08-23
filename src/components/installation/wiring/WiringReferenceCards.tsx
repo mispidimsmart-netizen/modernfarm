@@ -2,7 +2,10 @@ import { Cable, CheckCircle2, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { jumperWireTypes, wiringConnections } from '@/data/installationGuide';
+import { jumperWireTypes } from '@/data/installationGuide';
+import { getWiringConnections } from '@/data/installationVersionMap';
+import { useGuideVersion } from '@/components/installation/GuideVersionContext';
+
 import {
   WIRE_COLORS,
   ESP32_TEXT_DIAGRAM,
@@ -72,10 +75,12 @@ export function WiringDiagramCard() {
 }
 
 export function QuickReferenceTableCard() {
+  const { version } = useGuideVersion();
+  const connections = getWiringConnections(version);
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">🔌 দ্রুত রেফারেন্স টেবিল</CardTitle>
+        <CardTitle className="text-sm">🔌 দ্রুত রেফারেন্স টেবিল ({version} পিন ম্যাপ)</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -89,7 +94,8 @@ export function QuickReferenceTableCard() {
               </tr>
             </thead>
             <tbody>
-              {wiringConnections.map((conn, idx) => (
+              {connections.map((conn, idx) => (
+
                 <tr key={idx} className="border-b border-border/50">
                   <td className="py-2 px-1 font-medium">{conn.component}</td>
                   <td className="py-2 px-1">{conn.pin}</td>

@@ -9,31 +9,21 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { toast } from 'sonner';
 import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
 import { CurrentAutomationStatusBanner } from '@/components/admin/CurrentAutomationStatusBanner';
-import { partsList } from '@/data/installationGuide';
+import { getPartsTotals, guideVersionMeta, type GuideVersion } from '@/data/installationVersionMap';
+import { GuideVersionProvider, useGuideVersion } from '@/components/installation/GuideVersionContext';
+
 import { InstallationPartsTab } from '@/components/installation/InstallationPartsTab';
 import { InstallationWiringTab } from '@/components/installation/InstallationWiringTab';
 import { InstallationSetupTab } from '@/components/installation/InstallationSetupTab';
 
-export default function InstallationGuidePage() {
+function InstallationGuideContent() {
   const navigate = useNavigate();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const calculateTotal = (essentialOnly: boolean) => {
-    let min = 0;
-    let max = 0;
-    partsList.forEach(category => {
-      category.items.forEach(item => {
-        if (!essentialOnly || item.essential) {
-          min += item.priceRange[0] * (item.quantity || 1);
-          max += item.priceRange[1] * (item.quantity || 1);
-        }
-      });
-    });
-    return { min, max };
-  };
-
-  const essentialTotal = calculateTotal(true);
-  const fullTotal = calculateTotal(false);
+  const { version, setVersion } = useGuideVersion();
+  const meta = guideVersionMeta[version];
+  const totals = getPartsTotals(version);
+  const essentialTotal = totals.essential;
+  const fullTotal = totals.full;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -42,14 +32,6 @@ export default function InstallationGuidePage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const wifiConfigCode = `// WiFi কনফিগারেশন (esp32-industrial.ino v8.0.0)
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
-
-// ডিভাইস কনফিগারেশন  
-const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে কপি করুন
-const char* FARM_ID = "YOUR_FARM_ID";
-const char* SHED_ID = "YOUR_SHED_ID";`;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -59,14 +41,31 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-lg font-bold text-foreground">ইনস্টলেশন গাইড</h1>
-            <p className="text-xs text-muted-foreground">Installation Guide</p>
+            <p className="text-xs text-muted-foreground">Installation Guide · {meta.labelEn}</p>
           </div>
+          <Badge variant={version === 'v8' ? 'default' : 'secondary'} className="uppercase">{version}</Badge>
+        </div>
+
+        {/* Controller version switcher — সব ট্যাব এই ভার্সন অনুযায়ী দেখাবে */}
+        <div className="px-4 pb-3">
+          <Tabs value={version} onValueChange={(v) => setVersion(v as GuideVersion)}>
+            <TabsList className="grid w-full grid-cols-2">
+              {(['v8', 'v10'] as GuideVersion[]).map((v) => (
+                <TabsTrigger key={v} value={v} className="text-xs">
+                  <Cpu className="h-3 w-3 mr-1" />
+                  {guideVersionMeta[v].label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <p className="mt-2 text-[11px] text-muted-foreground">{meta.tagline}</p>
         </div>
       </header>
 
       <div className="p-4 space-y-6">
+
         {/* Quick link to Pin Map page */}
         <Button
           variant="outline"
@@ -120,23 +119,25 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
           </CardContent>
         </Card>
 
-        {/* Sensor Summary */}
+        {/* Sensor Summary — version aware */}
         <Card className="border-primary/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Cpu className="h-4 w-4 text-primary" />
-              ৫টি সেন্সর + ৮-চ্যানেল রিলে (v8.0.0)
+              {version === 'v8'
+                ? `৫টি সেন্সর + ৮-চ্যানেল রিলে (${meta.firmware})`
+                : `প্রিমিয়াম I²C সেন্সর সেট + ৮-চ্যানেল রিলে (${meta.firmware})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
                 <Thermometer className="h-4 w-4 text-green-500" />
-                <span>DHT22 ×2 (তাপ/আর্দ্রতা)</span>
+                <span>{version === 'v8' ? 'DHT22 ×2 (তাপ/আর্দ্রতা)' : 'SHT31 (তাপ/আর্দ্রতা, I²C)'}</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
                 <Wind className="h-4 w-4 text-yellow-500" />
-                <span>MQ-137 (অ্যামোনিয়া)</span>
+                <span>{version === 'v8' ? 'MQ-137 (অ্যামোনিয়া)' : 'ZE03-NH3 (অ্যামোনিয়া)'}</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10">
                 <Droplets className="h-4 w-4 text-blue-500" />
@@ -155,6 +156,7 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
             </div>
           </CardContent>
         </Card>
+
 
         {/* Quick Summary - Price */}
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
@@ -196,7 +198,6 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
           <InstallationSetupTab
             copiedCode={copiedCode}
             onCopy={copyToClipboard}
-            wifiConfigCode={wifiConfigCode}
             onNavigate={navigate}
           />
         </Tabs>
@@ -205,3 +206,12 @@ const char* SHED_ID = "YOUR_SHED_ID";`;
     </div>
   );
 }
+
+export default function InstallationGuidePage() {
+  return (
+    <GuideVersionProvider>
+      <InstallationGuideContent />
+    </GuideVersionProvider>
+  );
+}
+
