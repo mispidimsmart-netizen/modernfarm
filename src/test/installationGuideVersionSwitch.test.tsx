@@ -86,11 +86,14 @@ describe('installation guide version switching (e2e)', () => {
     const v8Text = bodyText();
     expect(v8Text).toContain('GPIO 19 (ESP32 RX)'); // v8 GSM RX
     expect(v8Text).not.toContain('GPIO 27 (ESP32 RX)'); // v10 GSM RX
-    V10_ONLY.forEach((k) => expect(v8Text).not.toContain(k));
+    // Category headings name both sensor families, so assert on v10-exclusive rows.
+    ['SCD41', 'PMS5003'].forEach((k) => expect(v8Text).not.toContain(k));
+    expect(v8Text).toContain('ILI9341'); // v8-only TFT wiring rows
 
     await switchToV10(user);
 
     const v10Text = bodyText();
+    expect(v10Text).not.toContain('ILI9341');
     expect(v10Text).toContain('GPIO 27 (ESP32 RX)');
     expect(v10Text).not.toContain('GPIO 19 (ESP32 RX)');
     expect(v10Text).toContain('SHT31');
