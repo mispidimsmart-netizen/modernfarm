@@ -48,13 +48,16 @@ let cachedUserId: string | null = null;
 /** Cached selected farm id, kept in sync by FarmContext. */
 let cachedFarmId: string | null = null;
 
-supabase.auth.getSession().then(({ data }) => {
-  cachedUserId = data.session?.user?.id ?? null;
-}, () => { /* ignore */ });
+// Guarded: tests may mock the client without an auth surface.
+try {
+  supabase.auth?.getSession?.().then(({ data }) => {
+    cachedUserId = data.session?.user?.id ?? null;
+  }, () => { /* ignore */ });
 
-supabase.auth.onAuthStateChange((_event, session) => {
-  cachedUserId = session?.user?.id ?? null;
-});
+  supabase.auth?.onAuthStateChange?.((_event, session) => {
+    cachedUserId = session?.user?.id ?? null;
+  });
+} catch { /* ignore — auth unavailable */ }
 
 /** Exposed for tests and for callers that already know the author. */
 export function getQueueAuthorId(): string | null {
