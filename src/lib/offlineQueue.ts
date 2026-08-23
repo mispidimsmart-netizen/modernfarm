@@ -28,7 +28,31 @@ interface QueueItem {
   created_at: string;
   retry_count?: number;
   max_age_minutes?: number;
+  /**
+   * The user who actually authored the mutation, captured at enqueue time.
+   * On a shared device the account can change before the queue drains, so
+   * the drainer MUST attribute rows to this id — never to whoever is
+   * logged in at sync time.
+   */
+  queued_by?: string;
 }
+
+/** Cached auth user id so the (synchronous) enqueue path can stamp authorship. */
+let cachedUserId: string | null = null;
+
+supabase.auth.getSession().then(({ data }) => {
+  cachedUserId = data.session?.user?.id ?? null;
+}, () => { /* ignore */ });
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  cachedUserId = session?.user?.id ?? null;
+});
+
+/** Exposed for tests and for callers that already know the author. */
+export function getQueueAuthorId(): string | null {
+  return cachedUserId;
+}
+
 
 function loadQueue(): QueueItem[] {
   try {
