@@ -30,7 +30,14 @@ export function ControlPage() {
         )}
 
         {/* ===== MODE INDICATOR BANNER ===== */}
-        <ControlModeBanner language={c.language} isManualMode={c.isManualMode} />
+        <ControlModeBanner
+          language={c.language}
+          isManualMode={c.isManualMode}
+          modeSyncPending={c.modeSyncPending}
+          isStatusStale={c.isStatusStale}
+          lastAckAt={c.lastAckAt}
+        />
+
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
         <div className="w-full">
