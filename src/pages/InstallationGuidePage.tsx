@@ -14,26 +14,14 @@ import { InstallationPartsTab } from '@/components/installation/InstallationPart
 import { InstallationWiringTab } from '@/components/installation/InstallationWiringTab';
 import { InstallationSetupTab } from '@/components/installation/InstallationSetupTab';
 
-export default function InstallationGuidePage() {
+function InstallationGuideContent() {
   const navigate = useNavigate();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const calculateTotal = (essentialOnly: boolean) => {
-    let min = 0;
-    let max = 0;
-    partsList.forEach(category => {
-      category.items.forEach(item => {
-        if (!essentialOnly || item.essential) {
-          min += item.priceRange[0] * (item.quantity || 1);
-          max += item.priceRange[1] * (item.quantity || 1);
-        }
-      });
-    });
-    return { min, max };
-  };
-
-  const essentialTotal = calculateTotal(true);
-  const fullTotal = calculateTotal(false);
+  const { version, setVersion } = useGuideVersion();
+  const meta = guideVersionMeta[version];
+  const totals = getPartsTotals(version);
+  const essentialTotal = totals.essential;
+  const fullTotal = totals.full;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -42,14 +30,6 @@ export default function InstallationGuidePage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const wifiConfigCode = `// WiFi কনফিগারেশন (esp32-industrial.ino v8.0.0)
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
-
-// ডিভাইস কনফিগারেশন  
-const char* DEVICE_TOKEN = "YOUR_DEVICE_TOKEN"; // অ্যাপ থেকে কপি করুন
-const char* FARM_ID = "YOUR_FARM_ID";
-const char* SHED_ID = "YOUR_SHED_ID";`;
 
   return (
     <div className="min-h-screen bg-background pb-20">
