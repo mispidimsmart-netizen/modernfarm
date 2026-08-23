@@ -4,27 +4,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { TabsContent } from '@/components/ui/tabs';
-import { setupSteps } from '@/data/installationGuide';
+import { getSetupSteps, getWifiConfigCode, guideVersionMeta } from '@/data/installationVersionMap';
+import { useGuideVersion } from '@/components/installation/GuideVersionContext';
 import { InstallationV10SetupNotice } from '@/components/installation/InstallationV10Updates';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 
 interface InstallationSetupTabProps {
   copiedCode: string | null;
   onCopy: (text: string, label: string) => void;
-  wifiConfigCode: string;
   onNavigate: (path: string) => void;
 }
 
-export function InstallationSetupTab({ copiedCode, onCopy, wifiConfigCode, onNavigate }: InstallationSetupTabProps) {
+export function InstallationSetupTab({ copiedCode, onCopy, onNavigate }: InstallationSetupTabProps) {
+  const { version } = useGuideVersion();
+  const meta = guideVersionMeta[version];
+  const steps = getSetupSteps(version);
+  const wifiConfigCode = getWifiConfigCode(version);
+
   return (
     <TabsContent value="setup" className="mt-4 space-y-4">
-      <InstallationV10SetupNotice />
+      {version === 'v10' && <InstallationV10SetupNotice />}
       {/* ESP32 Code Generator - Interactive */}
       <ESP32CodeGenerator language="bn" />
 
       {/* Setup Steps Accordion */}
       <Accordion type="single" collapsible className="w-full">
-        {setupSteps.map((step) => (
+        {steps.map((step) => (
+
           <AccordionItem key={step.step} value={`step-${step.step}`}>
             <AccordionTrigger className="hover:no-underline">
               <div className="flex items-center gap-3">
