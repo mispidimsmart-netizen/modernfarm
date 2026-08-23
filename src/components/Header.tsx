@@ -66,8 +66,9 @@ export function Header() {
 
   return (
     <header className="sticky top-7 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur-md pt-safe">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+
           {/* Back button - show on non-home pages */}
           {!isHomePage && (
             <Button
@@ -82,13 +83,14 @@ export function Header() {
           )}
           
           {/* FarmEye Logo & Name */}
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0 overflow-hidden border-2 border-border bg-white">
-            <img src={farmeyeLogo} alt="FarmEye" decoding="async" className="h-9 w-9 object-contain" />
+          <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl shrink-0 overflow-hidden border-2 border-border bg-white">
+            <img src={farmeyeLogo} alt="FarmEye" decoding="async" className="h-7 w-7 sm:h-9 sm:w-9 object-contain" />
           </div>
-          <span className="font-bold text-foreground text-base">FarmEye</span>
+          <span className="hidden sm:inline font-bold text-foreground text-base">FarmEye</span>
           
           {/* Divider */}
-          <div className="h-5 w-px bg-border mx-1" />
+          <div className="hidden sm:block h-5 w-px bg-border mx-1" />
+
           
           {/* Farm Name & Status */}
           <div className="min-w-0 flex-1">
@@ -198,7 +200,7 @@ export function Header() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <AlertBell />
           <ThemeToggle />
           
@@ -206,7 +208,7 @@ export function Header() {
             variant="ghost"
             size="sm"
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-            className="flex items-center gap-1 text-xs"
+            className="flex items-center gap-1 px-2 text-xs"
           >
             <Globe size={14} />
             {language === 'bn' ? 'EN' : 'বাং'}
@@ -215,14 +217,17 @@ export function Header() {
           {user && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={signOut}
-              className="text-muted-foreground"
+              aria-label={language === 'bn' ? 'লগআউট' : 'Log out'}
+              title={language === 'bn' ? 'লগআউট' : 'Log out'}
+              className="h-9 w-9 shrink-0 text-muted-foreground"
             >
               <LogOut size={18} />
             </Button>
           )}
         </div>
+
       </div>
     </header>
   );
