@@ -13,8 +13,8 @@ const corsHeaders = {
 };
 
 interface PublishRequest {
+  /** Required — the topic is always derived from this device. */
   device_token_id?: string;
-  topic?: string;
   payload: Record<string, unknown> | string;
   qos?: 0 | 1 | 2;
   retain?: boolean;
