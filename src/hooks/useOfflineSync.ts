@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { resolveQueueAttribution } from '@/lib/offlineAttribution';
 
 interface SyncQueueItem {
   id: string;
