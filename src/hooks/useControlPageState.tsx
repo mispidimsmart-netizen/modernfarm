@@ -57,7 +57,20 @@ export function useControlPageState() {
     !!rawStatus?.desired_manual_override ||
     !!rawStatus?.manual_override;
 
+  // Hardware truth vs cloud intent — the ESP32 mirrors desired_manual_override
+  // into manual_override once it applies the mode. Until then the banner must
+  // say "waiting for hardware", otherwise the UI lies about the live state.
+  const hardwareManualMode = !!rawStatus?.manual_override;
+  const modeSyncPending = isManualMode !== hardwareManualMode;
+
+  // Freshness of the whole device_status row (Hardware-as-Source-of-Truth).
+  const STALE_MS = 2 * 60 * 1000;
+  const lastAckRaw = (rawStatus?.last_device_ack_at ?? rawStatus?.updated_at) as string | undefined;
+  const lastAckAt = lastAckRaw ? new Date(lastAckRaw).getTime() : null;
+  const isStatusStale = !lastAckAt || Date.now() - lastAckAt > STALE_MS;
+
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
+
 
   const canTemporaryControl = perms.canChangeHardware;
   const canFullControl = perms.canChangeHardware;
@@ -417,14 +430,18 @@ export function useControlPageState() {
 
   const tempMax = Number(farmSettings?.temperature_max ?? 32);
   const ammoniaMax = Number(farmSettings?.ammonia_max ?? 25);
+  const safetyEngineOn = (farmSettings as any)?.safety_engine_enabled !== false;
   const safetyProtections = DEFAULT_SAFETY_PROTECTIONS.map(p => ({
     ...p,
-    isActive: p.key === 'heat_stress'
-      ? sensorData.temperature > tempMax
-      : p.key === 'gas_purge'
-        ? sensorData.ammonia > ammoniaMax
-        : true,
+    isActive: !safetyEngineOn
+      ? false
+      : p.key === 'heat_stress'
+        ? sensorData.temperature > tempMax
+        : p.key === 'gas_purge'
+          ? sensorData.ammonia > ammoniaMax
+          : true,
   }));
+
 
   return {
     language,
@@ -432,6 +449,11 @@ export function useControlPageState() {
     farmsLoading,
     farmNotReady,
     isManualMode,
+    hardwareManualMode,
+    modeSyncPending,
+    isStatusStale,
+    lastAckAt,
+
     isViewer,
     canFullControl,
     canTemporaryControl,

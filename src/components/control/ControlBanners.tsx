@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Hand, Bot, Settings } from 'lucide-react';
+import { AlertTriangle, Hand, Bot, Settings, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface FarmGuardProps {
@@ -49,16 +49,38 @@ export function FarmGuardBanner({ language, farmsLoading, farmCount }: FarmGuard
 interface ModeBannerProps {
   language: 'bn' | 'en';
   isManualMode: boolean;
+  /** Cloud intent not yet mirrored by the ESP32 (manual_override mismatch). */
+  modeSyncPending?: boolean;
+  /** device_status row older than the online threshold. */
+  isStatusStale?: boolean;
+  /** Timestamp (ms) of the last hardware ack, for the "last seen" hint. */
+  lastAckAt?: number | null;
+}
+
+function formatAgo(ms: number, language: 'bn' | 'en'): string {
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return language === 'bn' ? `${mins} মিনিট আগে` : `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return language === 'bn' ? `${hrs} ঘণ্টা আগে` : `${hrs} h ago`;
+  const days = Math.floor(hrs / 24);
+  return language === 'bn' ? `${days} দিন আগে` : `${days} d ago`;
 }
 
 /** Read-only indicator of the current automation mode (switching lives in Settings). */
-export function ControlModeBanner({ language, isManualMode }: ModeBannerProps) {
+export function ControlModeBanner({
+  language,
+  isManualMode,
+  modeSyncPending = false,
+  isStatusStale = false,
+  lastAckAt = null,
+}: ModeBannerProps) {
   return (
-    <div className={`rounded-2xl border-2 p-3 flex items-center justify-between ${
+    <div className={`rounded-2xl border-2 p-3 space-y-2 ${
       isManualMode
         ? 'border-amber-500/50 bg-gradient-to-r from-amber-500/10 to-amber-600/5'
         : 'border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10'
     }`}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
       <div className="flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
           isManualMode ? 'bg-amber-500/20 text-amber-600' : 'bg-primary/15 text-primary'
@@ -66,7 +88,7 @@ export function ControlModeBanner({ language, isManualMode }: ModeBannerProps) {
           {isManualMode ? <Hand className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
         </div>
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-bold">
               {isManualMode
                 ? (language === 'bn' ? '✋ ম্যানুয়াল মোড' : '✋ Manual Mode')
@@ -81,6 +103,11 @@ export function ControlModeBanner({ language, isManualMode }: ModeBannerProps) {
                 ? (language === 'bn' ? 'সরাসরি কন্ট্রোল' : 'Direct Control')
                 : (language === 'bn' ? 'টাইমার কন্ট্রোল' : 'Timer Control')}
             </Badge>
+            {modeSyncPending && (
+              <Badge variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                {language === 'bn' ? '⏳ ডিভাইস নিশ্চিত করেনি' : '⏳ Not confirmed by device'}
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {isManualMode
@@ -101,8 +128,28 @@ export function ControlModeBanner({ language, isManualMode }: ModeBannerProps) {
           <Settings className="h-4 w-4 text-muted-foreground" />
         </Link>
       </div>
+      </div>
+
+      {isStatusStale && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-xl border border-muted-foreground/30 bg-muted/40 px-3 py-2"
+        >
+          <WifiOff className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            {language === 'bn'
+              ? `ডিভাইস থেকে নতুন তথ্য আসছে না — নিচের ON/OFF অবস্থা সর্বশেষ জানা অবস্থা${
+                  lastAckAt ? ` (${formatAgo(Date.now() - lastAckAt, 'bn')})` : ''
+                }, লাইভ নয়।`
+              : `No fresh data from the device — the ON/OFF states below are the last known values${
+                  lastAckAt ? ` (${formatAgo(Date.now() - lastAckAt, 'en')})` : ''
+                }, not live.`}
+          </p>
+        </div>
+      )}
     </div>
   );
+
 }
 
 /** Offline-first reassurance footer. */
