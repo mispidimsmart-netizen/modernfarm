@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Phone, User, Building2, Crown, HardHat, Ticket, Egg, Eye, EyeOff, ChevronDown, Drumstick } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+
 import { IconInput, inputClass, Spinner } from '@/components/auth/AuthPrimitives';
 import { useSignupForm } from '@/hooks/useSignupForm';
 import type { FarmType } from '@/lib/authFormUtils';
@@ -170,8 +170,6 @@ export function SignupForm({ nextPath, isSignUp }: { nextPath: string; isSignUp:
             {s.isLoading ? <Spinner /> : 'নিরাপদ অ্যাকাউন্ট তৈরি করুন'}
           </Button>
         </div>
-
-        <GoogleSignInButton nextPath={nextPath} />
       </form>
 
       {/* Trust Indicators */}

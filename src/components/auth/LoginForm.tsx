@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+
 import { IconInput, inputClass, Spinner } from '@/components/auth/AuthPrimitives';
 import { isPhoneInput } from '@/lib/authFormUtils';
 import { useLoginForm } from '@/hooks/useLoginForm';
@@ -88,8 +88,6 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
                   {isLoading ? <Spinner /> : 'নিরাপদ লগইন'}
                 </Button>
               </div>
-
-              <GoogleSignInButton nextPath={nextPath} />
             </form>
           </motion.div>
         )}
