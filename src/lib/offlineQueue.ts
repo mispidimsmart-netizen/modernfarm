@@ -35,22 +35,42 @@ interface QueueItem {
    * logged in at sync time.
    */
   queued_by?: string;
+  /**
+   * The farm that was selected when the mutation was enqueued. Multi-farm
+   * users can switch farms before the queue drains; the drainer replays
+   * against this farm, never the currently selected one.
+   */
+  queued_farm_id?: string;
 }
 
 /** Cached auth user id so the (synchronous) enqueue path can stamp authorship. */
 let cachedUserId: string | null = null;
+/** Cached selected farm id, kept in sync by FarmContext. */
+let cachedFarmId: string | null = null;
 
-supabase.auth.getSession().then(({ data }) => {
-  cachedUserId = data.session?.user?.id ?? null;
-}, () => { /* ignore */ });
+// Guarded: tests may mock the client without an auth surface.
+try {
+  supabase.auth?.getSession?.().then(({ data }) => {
+    cachedUserId = data.session?.user?.id ?? null;
+  }, () => { /* ignore */ });
 
-supabase.auth.onAuthStateChange((_event, session) => {
-  cachedUserId = session?.user?.id ?? null;
-});
+  supabase.auth?.onAuthStateChange?.((_event, session) => {
+    cachedUserId = session?.user?.id ?? null;
+  });
+} catch { /* ignore — auth unavailable */ }
 
 /** Exposed for tests and for callers that already know the author. */
 export function getQueueAuthorId(): string | null {
   return cachedUserId;
+}
+
+/** Called by FarmContext whenever the selected farm changes. */
+export function setQueueFarmContext(farmId: string | null): void {
+  cachedFarmId = farmId;
+}
+
+export function getQueueFarmId(): string | null {
+  return cachedFarmId;
 }
 
 
@@ -74,10 +94,17 @@ function saveQueue(items: QueueItem[]) {
 export function queueInsert(
   tableName: string,
   data: Record<string, unknown>,
-  opts?: { operation?: Operation; onConflict?: string; maxAgeMinutes?: number; userId?: string | null },
+  opts?: {
+    operation?: Operation;
+    onConflict?: string;
+    maxAgeMinutes?: number;
+    userId?: string | null;
+    farmId?: string | null;
+  },
 ) {
   const items = loadQueue();
   const author = opts?.userId ?? (data.user_id as string | undefined) ?? cachedUserId ?? undefined;
+  const farm = opts?.farmId ?? (data.farm_id as string | undefined) ?? cachedFarmId ?? undefined;
   items.push({
     id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
     table_name: tableName,
@@ -87,9 +114,11 @@ export function queueInsert(
     created_at: new Date().toISOString(),
     max_age_minutes: opts?.maxAgeMinutes,
     queued_by: author,
+    queued_farm_id: farm,
   });
   saveQueue(items);
 }
+
 
 
 /**

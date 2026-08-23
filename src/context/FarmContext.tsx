@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { setQueueFarmContext } from '@/lib/offlineQueue';
 
 // Types
 export interface Farm {
@@ -95,6 +96,12 @@ export function FarmProvider({ children }: { children: ReactNode }) {
       setSelectedFarmId(farms[0].id);
     }
   }, [farms, selectedFarmId]);
+
+  // Keep the offline queue's farm snapshot in sync so mutations enqueued
+  // while offline are replayed against the farm that was selected then.
+  useEffect(() => {
+    setQueueFarmContext(selectedFarmId);
+  }, [selectedFarmId]);
 
   const currentFarm = farms.find(f => f.id === selectedFarmId) || null;
 

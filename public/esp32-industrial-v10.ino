@@ -554,14 +554,58 @@ static bool gsmRateOk(GsmAlertClass c) {
   return true;
 }
 
+// Non-blocking SMS pipeline: sendGsmSms() only enqueues; gsmSmsTick() walks
+// the AT sequence with millis() gaps so the 2s control cycle and the watchdog
+// are never starved by a blocking modem write.
+#define GSM_SMS_QUEUE_LEN 4
+static String   gsmSmsQueue[GSM_SMS_QUEUE_LEN];
+static uint8_t  gsmSmsHead = 0, gsmSmsCount = 0;
+
+enum class GsmSmsState : uint8_t { IDLE, SENT_CMGF, SENT_CMGS, SENT_BODY };
+static GsmSmsState gsmSmsState   = GsmSmsState::IDLE;
+static uint32_t    gsmSmsStepAt  = 0;
+
 static void sendGsmSms(GsmAlertClass c, const String& msg) {
   if (!gsmAvailable) return;                     // UART2 owned by ZE03-NH3
   if (gsmPhone.length() < 6) return;             // B6 — no phone configured
   if (!gsmRateOk(c)) return;
-  GSMSerial.println("AT+CMGF=1");          delay(100);
-  GSMSerial.printf("AT+CMGS=\"%s\"\r\n", gsmPhone.c_str()); delay(200);
-  GSMSerial.print(msg); GSMSerial.write(26); // Ctrl+Z
-  delay(500);
+  if (gsmSmsCount >= GSM_SMS_QUEUE_LEN) return;  // drop rather than block
+  gsmSmsQueue[(gsmSmsHead + gsmSmsCount) % GSM_SMS_QUEUE_LEN] = msg;
+  gsmSmsCount++;
+}
+
+static void gsmSmsTick() {
+  if (!gsmAvailable) return;
+  const uint32_t now = millis();
+  switch (gsmSmsState) {
+    case GsmSmsState::IDLE:
+      if (gsmSmsCount == 0) return;
+      GSMSerial.println("AT+CMGF=1");
+      gsmSmsState = GsmSmsState::SENT_CMGF;
+      gsmSmsStepAt = now;
+      break;
+    case GsmSmsState::SENT_CMGF:
+      if (now - gsmSmsStepAt < 100) return;
+      GSMSerial.printf("AT+CMGS=\"%s\"\r\n", gsmPhone.c_str());
+      gsmSmsState = GsmSmsState::SENT_CMGS;
+      gsmSmsStepAt = now;
+      break;
+    case GsmSmsState::SENT_CMGS:
+      if (now - gsmSmsStepAt < 200) return;
+      GSMSerial.print(gsmSmsQueue[gsmSmsHead]);
+      GSMSerial.write(26);                       // Ctrl+Z
+      gsmSmsState = GsmSmsState::SENT_BODY;
+      gsmSmsStepAt = now;
+      break;
+    case GsmSmsState::SENT_BODY:
+      if (now - gsmSmsStepAt < 500) return;      // modem settle time
+      gsmSmsQueue[gsmSmsHead] = String();
+      gsmSmsHead = (gsmSmsHead + 1) % GSM_SMS_QUEUE_LEN;
+      if (gsmSmsCount) gsmSmsCount--;
+      gsmSmsState = GsmSmsState::IDLE;
+      gsmSmsStepAt = now;
+      break;
+  }
 }
 
 // B5 — invariant #7: fire SMS for ANY critical condition, not just ESM.
@@ -675,6 +719,7 @@ void loop() {
   esp_task_wdt_reset();                   // B3 — pet the dog
   const uint32_t now = millis();
   wifiTick();
+  gsmSmsTick();                           // non-blocking SMS pipeline
 
   // 2s control cycle — sensors + safety arbiter + relay apply
   if (now - lastControl >= timing::CONTROL_CYCLE_MS) {

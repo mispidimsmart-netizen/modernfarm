@@ -67,6 +67,8 @@ inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
 #define HEATER_MAX_CONTINUOUS_SEC    300       // 5 min max, then cooldown
 #define HEATER_COOLDOWN_SEC          120       // 2 min cooldown
 #define SENSOR_MISSING_TIMEOUT_MS    20000     // 20s → INV-7: survival mode
+#define NH3_FAN_TRIGGER_PPM          25.0f     // → INV-8: forced ventilation (matches v10)
+#define NH3_LETHAL_PPM               50.0f     // → INV-8: forced ventilation + alarm
 #define CLOUD_OFFLINE_TIMEOUT_MS     60000     // 60s → offline autonomous
 #define WDT_TIMEOUT_SEC              10
 #define RELAY_ACTIVE_LOW             LOW
@@ -86,6 +88,23 @@ inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
 #define REBOOT_VENT_PURGE_MS         180000UL
 #define REBOOT_NH3_MUTE_MS           300000UL
 
+// ─── SURVIVAL HEAT (INV-2 during reboot lockout) ───
+// Lethal cold outranks the post-reboot heater lockout: chicks freeze in
+// minutes. The bypass is BOUNDED — heat is delivered for at most
+// SURVIVAL_HEAT_MAX_MS with the alarm asserted, then it stops so a stuck
+// relay or a bad sensor cannot cook the shed.
+#define SURVIVAL_HEAT_MAX_MS         600000UL  // 10 min hard cap
+#define SURVIVAL_HEAT_COOLDOWN_MS    300000UL  // 5 min before another window
+
+// ─── BROODING PULSE (INV-7 with no reliable sensor) ───
+// Cutting the heater dead during sensor loss kills day-old chicks in
+// winter. For brooding-age flocks the heater is pulsed on a fixed duty
+// cycle (open loop, alarm ON) instead of being latched OFF.
+#define BROODING_AGE_MAX_DAYS        10
+#define BROODING_PULSE_ON_MS         60000UL   // 1 min ON
+#define BROODING_PULSE_OFF_MS        180000UL  // 3 min OFF
+#define BROODING_PULSE_WINDOW_MS     1800000UL // 30 min total, then stop
+
 // ─── BIRD AGE VALIDATION ───
 #define AGE_MIN_DAYS                 0
 #define AGE_MAX_DAYS                 60
@@ -103,6 +122,8 @@ struct SafetyArbiterResult {
   bool forceHeaterOff;       // INV-1: heater MUST be off (overheat)
   bool forceHeaterOn;        // INV-2: heater MUST be on (cold)
   bool sensorSurvivalMode;   // INV-7: no reliable sensor data
+  bool survivalHeatActive;   // INV-2: bounded heat during reboot lockout
+  bool broodingPulseActive;  // INV-7: open-loop heater pulse for chicks
   bool safetyActive;         // Any invariant is currently being enforced
   const char* reason;        // Human-readable reason for safety action
 };
@@ -201,7 +222,7 @@ public:
     heaterPin = -1;
     alarmPin = -1;
     
-    lastResult = {false, false, false, false, false, "INIT"};
+    lastResult = {false, false, false, false, false, false, false, "INIT"};
   }
 
   // ─── INIT ───
@@ -289,7 +310,7 @@ public:
     lastArbiterTick = now;
     
     // Start fresh
-    SafetyArbiterResult result = {false, false, false, false, false, "NORMAL"};
+    SafetyArbiterResult result = {false, false, false, false, false, false, false, "NORMAL"};
     
     // ── Update worst-case sensors ──
     updateWorstCase(temperature, temp2, dht2ok);
@@ -309,16 +330,31 @@ public:
     // ══════════════════════════════════════════════════════════════
     if (_safeElapsed(now, _lastSensorUpdate) > SENSOR_MISSING_TIMEOUT_MS || !sensorValid) {
       result.forceFanOn = true;
-      result.forceHeaterOff = true;
       result.sensorSurvivalMode = true;
       result.safetyActive = true;
       result.reason = "INV7_SENSOR_MISSING";
-      _directWriteRelay(fanPin, true);     // Fan ON
-      _directWriteRelay(heaterPin, false); // Heater OFF
+      _directWriteRelay(fanPin, true);     // Fan ON — heat death is faster than cold death
+
+      // Brooding flocks cannot survive a dead heater. Deliver open-loop
+      // pulses (bounded window + alarm) instead of latching the heater OFF.
+      bool broodingHeat = _broodingPulseTick(now);
+      if (broodingHeat) {
+        result.broodingPulseActive = true;
+        result.forceHeaterOn = true;
+        result.reason = "INV7_BROODING_PULSE";
+        _directWriteRelay(heaterPin, true);
+        _setAlarm(true);
+      } else {
+        result.forceHeaterOff = true;
+        _directWriteRelay(heaterPin, false); // Heater OFF
+      }
       lastResult = result;
       return result;
     }
     
+    // Sensors are healthy again → arm a fresh brooding window for next time.
+    _broodingPulseReset();
+
     // ══════════════════════════════════════════════════════════════
     // INV-1: LETHAL HIGH TEMPERATURE → FORCED CONTINUOUS VENTILATION
     // If ANY sensor reads above lethal threshold, ALL fans ON.
@@ -339,19 +375,66 @@ public:
     }
     
     // ══════════════════════════════════════════════════════════════
+    // INV-8: HIGH AMMONIA → FORCED VENTILATION (parity with v10)
+    // ≥25 ppm ventilates; ≥50 ppm additionally sounds the alarm. The
+    // post-reboot NH3 mute silences the ALARM only — never the fan.
+    // ══════════════════════════════════════════════════════════════
+    if (!isnan(ammonia) && ammonia >= NH3_FAN_TRIGGER_PPM) {
+      result.forceFanOn = true;
+      result.safetyActive = true;
+      result.reason = "INV8_NH3_HIGH";
+      _directWriteRelay(fanPin, true);
+      if (ammonia >= NH3_LETHAL_PPM && !rebootSafety.nh3AlertsMuted) {
+        _setAlarm(true);
+        Serial.printf("[ARBITER] INV-8: NH3 %.1f ppm ≥ %.1f → vent + ALARM\n",
+                      ammonia, NH3_LETHAL_PPM);
+      }
+    }
+
+    // ── Sensor plausibility gate: an implausible reading must never be
+    // trusted to turn the HEATER on (thermal runaway risk). Ventilation
+    // stays allowed because it is the fail-safe direction.
+    bool trustForHeating = thermalModel.sensorPlausible;
+    
+    // ══════════════════════════════════════════════════════════════
     // INV-2: LETHAL LOW TEMPERATURE → HEATING ALLOWED
     // Heating bypasses cooldown timers, reboot lockout, and overrides.
     // Exception: if temp is ALSO above lethal high (impossible but safe).
     // ══════════════════════════════════════════════════════════════
     float heatingTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
-    if (heatingTemp < LETHAL_TEMP_LOW && !rebootSafety.heaterLocked) {
-      result.forceHeaterOn = true;
-      result.safetyActive = true;
-      result.reason = "INV2_LETHAL_COLD";
-      _directWriteRelay(heaterPin, true);  // Heater ON — bypasses all timers
-      Serial.printf("[ARBITER] INV-2: %.1f°C < %.1f°C → FORCED heating\n",
-                    heatingTemp, LETHAL_TEMP_LOW);
+    if (heatingTemp < LETHAL_TEMP_LOW && trustForHeating) {
+      bool allowed = true;
+      if (rebootSafety.heaterLocked) {
+        // Post-reboot lockout exists to avoid re-igniting a heater whose
+        // real state is unknown — but lethal cold outranks it. Grant a
+        // BOUNDED survival-heat window with the alarm on.
+        allowed = _survivalHeatTick(now);
+        if (allowed) {
+          result.survivalHeatActive = true;
+          _setAlarm(true);
+        }
+      } else {
+        _survivalHeatReset();
+      }
+
+      if (allowed) {
+        result.forceHeaterOn = true;
+        result.safetyActive = true;
+        result.reason = result.survivalHeatActive ? "INV2_SURVIVAL_HEAT" : "INV2_LETHAL_COLD";
+        _directWriteRelay(heaterPin, true);  // Heater ON — bypasses all timers
+        Serial.printf("[ARBITER] INV-2: %.1f°C < %.1f°C → FORCED heating (%s)\n",
+                      heatingTemp, LETHAL_TEMP_LOW, result.reason);
+      }
       // Don't return — fan control should still be evaluated
+    } else {
+      _survivalHeatReset();
+      if (heatingTemp < LETHAL_TEMP_LOW && !trustForHeating) {
+        result.forceHeaterOff = true;
+        result.safetyActive = true;
+        result.reason = "SENSOR_IMPLAUSIBLE_NO_HEAT";
+        _directWriteRelay(heaterPin, false);
+        _setAlarm(true);
+      }
     }
     
     // ── Reboot heater lockout (still enforced unless INV-2 overrides) ──
@@ -607,6 +690,89 @@ private:
   bool _heaterRunning;
   unsigned long _heaterStartedAt;
   unsigned long _heaterStoppedAt;
+
+  // Survival heat (INV-2 during reboot lockout)
+  bool _survivalHeatOn = false;
+  unsigned long _survivalHeatStartedAt = 0;
+  unsigned long _survivalHeatEndedAt = 0;
+
+  // Brooding pulse (INV-7 with no reliable sensor)
+  bool _broodingPulseOn = false;
+  unsigned long _broodingPulseChangedAt = 0;
+  unsigned long _broodingWindowStartedAt = 0;
+
+  /**
+   * Bounded survival heat: returns true while the heater may run despite
+   * the post-reboot lockout. Hard-capped at SURVIVAL_HEAT_MAX_MS with a
+   * mandatory cooldown so a stuck relay cannot heat indefinitely.
+   */
+  bool _survivalHeatTick(unsigned long now) {
+    if (_survivalHeatOn) {
+      if (_safeElapsed(now, _survivalHeatStartedAt) >= SURVIVAL_HEAT_MAX_MS) {
+        _survivalHeatOn = false;
+        _survivalHeatEndedAt = now;
+        _directWriteRelay(heaterPin, false);
+        Serial.println(F("[ARBITER] INV-2 survival heat window EXPIRED → heater off"));
+        return false;
+      }
+      return true;
+    }
+    if (_survivalHeatEndedAt > 0 &&
+        _safeElapsed(now, _survivalHeatEndedAt) < SURVIVAL_HEAT_COOLDOWN_MS) {
+      return false; // cooling down between windows
+    }
+    _survivalHeatOn = true;
+    _survivalHeatStartedAt = now;
+    Serial.println(F("[ARBITER] INV-2 LETHAL COLD during reboot lockout → SURVIVAL HEAT"));
+    return true;
+  }
+
+  void _survivalHeatReset() {
+    if (_survivalHeatOn) {
+      _survivalHeatOn = false;
+      _survivalHeatEndedAt = millis();
+    }
+  }
+
+  /**
+   * Open-loop brooding pulse used when no sensor is trustworthy.
+   * Only for brooding-age flocks, only inside a bounded window, and only
+   * on a low duty cycle — returns true while the heater should be ON.
+   */
+  bool _broodingPulseTick(unsigned long now) {
+    if (ageValidation.lastAcceptedAge > BROODING_AGE_MAX_DAYS) {
+      _broodingPulseOn = false;
+      return false;
+    }
+    if (_broodingWindowStartedAt == 0) {
+      _broodingWindowStartedAt = now;
+      _broodingPulseOn = true;
+      _broodingPulseChangedAt = now;
+      Serial.println(F("[ARBITER] INV-7 sensor loss at brooding age → PULSED heat"));
+      return true;
+    }
+    if (_safeElapsed(now, _broodingWindowStartedAt) >= BROODING_PULSE_WINDOW_MS) {
+      _broodingPulseOn = false;
+      return false; // window exhausted — sensor must be fixed
+    }
+    unsigned long phase = _safeElapsed(now, _broodingPulseChangedAt);
+    if (_broodingPulseOn && phase >= BROODING_PULSE_ON_MS) {
+      _broodingPulseOn = false;
+      _broodingPulseChangedAt = now;
+    } else if (!_broodingPulseOn && phase >= BROODING_PULSE_OFF_MS) {
+      _broodingPulseOn = true;
+      _broodingPulseChangedAt = now;
+    }
+    return _broodingPulseOn;
+  }
+
+  /** Reset the brooding window once sensors are healthy again. */
+  void _broodingPulseReset() {
+    _broodingPulseOn = false;
+    _broodingWindowStartedAt = 0;
+  }
+
+  void _setAlarm(bool on) { _directWriteRelay(alarmPin, on); }
 
   // Direct GPIO write — bypasses relay manager entirely
   void _directWriteRelay(int pin, bool on) {

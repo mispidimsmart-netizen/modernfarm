@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { resolveQueueAttribution } from '@/lib/offlineAttribution';
+import { getQueueFarmId } from '@/lib/offlineQueue';
 
 interface SyncQueueItem {
   id: string;
@@ -14,6 +15,8 @@ interface SyncQueueItem {
   max_age_minutes?: number;
   /** Author captured at enqueue time (see src/lib/offlineQueue.ts). */
   queued_by?: string;
+  /** Selected farm captured at enqueue time. */
+  queued_farm_id?: string;
 }
 
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
@@ -73,6 +76,7 @@ export function useOfflineSync() {
       record_data: recordData,
       created_at: new Date().toISOString(),
       queued_by: user?.id,
+      queued_farm_id: getQueueFarmId() ?? undefined,
     };
     queue.push(newItem);
     saveLocalQueue(queue);
@@ -104,16 +108,27 @@ export function useOfflineSync() {
     const failed: SyncQueueItem[] = [];
 
     for (const item of queue) {
-      // Attribute the row to whoever actually authored it offline.
+      // Attribute the row to whoever actually authored it offline, for the
+      // farm that was selected at enqueue time.
       const attribution = resolveQueueAttribution(item, user.id);
       if (attribution.action === 'defer') {
         console.warn(
-          `[offline-sync] deferring ${item.table_name} mutation authored by another user`,
+          `[offline-sync] deferring ${item.table_name} mutation (${attribution.reason})`,
         );
         failed.push(item); // keep queued, do NOT bump retry_count
         continue;
       }
       const authorId = attribution.authorId;
+      // Only re-stamp farm_id when the payload already carried one — some
+      // tables have no farm_id column.
+      const payload = {
+        ...item.record_data,
+        user_id: authorId,
+        ...(item.record_data.farm_id && attribution.farmId
+          ? { farm_id: attribution.farmId }
+          : {}),
+      };
+
 
       try {
         let ok = false;
@@ -121,7 +136,7 @@ export function useOfflineSync() {
           case 'INSERT': {
             const { error } = await supabase
               .from(item.table_name as 'egg_production')
-              .insert({ ...item.record_data, user_id: authorId });
+              .insert(payload as any);
             ok = !error;
             break;
           }
@@ -129,12 +144,13 @@ export function useOfflineSync() {
             const { error } = await supabase
               .from(item.table_name as 'egg_production')
               .upsert(
-                { ...item.record_data, user_id: authorId } as any,
+                payload as any,
                 item.on_conflict ? { onConflict: item.on_conflict } : undefined,
               );
             ok = !error;
             break;
           }
+
 
           case 'UPDATE': {
             const { id: recordId, ...updateData } = item.record_data;
