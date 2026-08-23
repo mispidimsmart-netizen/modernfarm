@@ -103,8 +103,14 @@ serve(async (req) => {
       return await handleBootReport(req, supabase);
     }
 
-    // ─── POST /firmware/auto-advance (cron only) ───
+    // ─── POST /firmware/auto-advance (cron / service-role, or super admin) ───
     if (action === 'auto-advance' && req.method === 'POST') {
+      const bearer = req.headers.get('Authorization')?.replace('Bearer ', '');
+      const isCron = !!bearer && bearer === supabaseServiceKey;
+      if (!isCron) {
+        const gate = await requireSuperAdmin(req, supabase);
+        if (gate instanceof Response) return gate;
+      }
       const { data, error } = await supabase.rpc('auto_advance_rollout');
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ success: true, result: data });
@@ -137,8 +143,10 @@ serve(async (req) => {
       return jsonResponse(data);
     }
 
-    // ─── Admin: list firmware ───
+    // ─── Admin: list firmware (authenticated users only) ───
     if (action === 'list') {
+      const caller = await resolveUser(req, supabase);
+      if (!caller) return jsonResponse({ error: 'Unauthorized' }, 401);
       const { data, error } = await supabase
         .from('ota_firmware')
         .select('*')
@@ -146,6 +154,7 @@ serve(async (req) => {
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ firmwares: data });
     }
+
 
     // ─── Legacy progress endpoint ───
     if (action === 'progress' && req.method === 'POST') {
