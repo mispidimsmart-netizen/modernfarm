@@ -74,9 +74,10 @@ function saveQueue(items: QueueItem[]) {
 export function queueInsert(
   tableName: string,
   data: Record<string, unknown>,
-  opts?: { operation?: Operation; onConflict?: string; maxAgeMinutes?: number },
+  opts?: { operation?: Operation; onConflict?: string; maxAgeMinutes?: number; userId?: string | null },
 ) {
   const items = loadQueue();
+  const author = opts?.userId ?? (data.user_id as string | undefined) ?? cachedUserId ?? undefined;
   items.push({
     id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
     table_name: tableName,
@@ -85,9 +86,11 @@ export function queueInsert(
     on_conflict: opts?.onConflict,
     created_at: new Date().toISOString(),
     max_age_minutes: opts?.maxAgeMinutes,
+    queued_by: author,
   });
   saveQueue(items);
 }
+
 
 /**
  * Try an insert online; queue for later if the network is down or the
