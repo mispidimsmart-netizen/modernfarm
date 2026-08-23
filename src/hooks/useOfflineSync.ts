@@ -115,11 +115,16 @@ export function useOfflineSync() {
         continue;
       }
       const authorId = attribution.authorId;
+      // Only re-stamp farm_id when the payload already carried one — some
+      // tables have no farm_id column.
       const payload = {
         ...item.record_data,
         user_id: authorId,
-        ...(attribution.farmId ? { farm_id: attribution.farmId } : {}),
+        ...(item.record_data.farm_id && attribution.farmId
+          ? { farm_id: attribution.farmId }
+          : {}),
       };
+
 
       try {
         let ok = false;
