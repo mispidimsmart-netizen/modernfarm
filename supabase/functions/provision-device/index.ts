@@ -12,12 +12,38 @@ const corsHeaders = {
 
 function randomCode(prefix = 'PAIR'): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  // CSPRNG — pairing codes must not be guessable from a seeded PRNG.
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
   let out = prefix + '-';
   for (let i = 0; i < 8; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
+    out += chars[bytes[i] % chars.length];
     if (i === 3) out += '-';
   }
   return out;
+}
+
+// ── Brute-force protection for /claim (sliding window, per client IP) ──
+const CLAIM_WINDOW_MS = 10 * 60 * 1000;
+const CLAIM_MAX_FAILURES = 10;
+const claimFailures = new Map<string, number[]>();
+
+function clientIp(req: Request): string {
+  return (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+}
+
+function isClaimRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const hits = (claimFailures.get(ip) || []).filter((t) => now - t < CLAIM_WINDOW_MS);
+  claimFailures.set(ip, hits);
+  return hits.length >= CLAIM_MAX_FAILURES;
+}
+
+function recordClaimFailure(ip: string): void {
+  const now = Date.now();
+  const hits = (claimFailures.get(ip) || []).filter((t) => now - t < CLAIM_WINDOW_MS);
+  hits.push(now);
+  claimFailures.set(ip, hits);
 }
 
 function randomSecret(bytes = 32): string {
