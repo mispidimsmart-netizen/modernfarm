@@ -84,15 +84,15 @@ describe('installation guide version switching (e2e)', () => {
     render(<GuideHarness tab="wiring" />);
 
     const v8Text = bodyText();
-    expect(v8Text).toContain('GPIO 19'); // v8 GSM RX
-    expect(v8Text).not.toContain('GPIO 27'); // v10 GSM RX
+    expect(v8Text).toContain('GPIO 19 (ESP32 RX)'); // v8 GSM RX
+    expect(v8Text).not.toContain('GPIO 27 (ESP32 RX)'); // v10 GSM RX
     V10_ONLY.forEach((k) => expect(v8Text).not.toContain(k));
 
     await switchToV10(user);
 
     const v10Text = bodyText();
-    expect(v10Text).toContain('GPIO 27');
-    expect(v10Text).not.toContain('GPIO 19');
+    expect(v10Text).toContain('GPIO 27 (ESP32 RX)');
+    expect(v10Text).not.toContain('GPIO 19 (ESP32 RX)');
     expect(v10Text).toContain('SHT31');
   });
 
