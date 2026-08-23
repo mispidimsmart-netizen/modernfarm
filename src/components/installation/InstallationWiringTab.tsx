@@ -2,6 +2,8 @@ import { Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { InstallationV10WiringNotice } from '@/components/installation/InstallationV10Updates';
+import { useGuideVersion } from '@/components/installation/GuideVersionContext';
+
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 import { SensorWiringAccordion } from '@/components/installation/wiring/SensorWiringAccordion';
 import {
