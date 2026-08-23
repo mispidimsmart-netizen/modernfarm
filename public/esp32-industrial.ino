@@ -4810,9 +4810,9 @@ void loop() {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // SAFETY ARBITER: Runs every 500ms in AUTO mode only.
-  // In full MANUAL mode, arbiter is intentionally skipped so
-  // relays stay exactly as the operator commands.
+  // SAFETY ARBITER: Runs every 500ms in BOTH Auto and Manual mode.
+  // In Manual mode the operator controls the relays, but the arbiter
+  // still evaluates INV-1..INV-8 and can force life-saving actions.
   // ═══════════════════════════════════════════════════════════════
   if (safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia, 
@@ -4835,7 +4835,7 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (AUTO mode only, when enabled) ---
+  // --- Safety Arbiter AGAIN after all processing (Auto + Manual, when enabled) ---
   if (safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia,
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
