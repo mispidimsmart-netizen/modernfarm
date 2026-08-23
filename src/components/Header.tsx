@@ -83,13 +83,14 @@ export function Header() {
           )}
           
           {/* FarmEye Logo & Name */}
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl shrink-0 overflow-hidden border-2 border-border bg-white">
-            <img src={farmeyeLogo} alt="FarmEye" decoding="async" className="h-9 w-9 object-contain" />
+          <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl shrink-0 overflow-hidden border-2 border-border bg-white">
+            <img src={farmeyeLogo} alt="FarmEye" decoding="async" className="h-7 w-7 sm:h-9 sm:w-9 object-contain" />
           </div>
-          <span className="font-bold text-foreground text-base">FarmEye</span>
+          <span className="hidden sm:inline font-bold text-foreground text-base">FarmEye</span>
           
           {/* Divider */}
-          <div className="h-5 w-px bg-border mx-1" />
+          <div className="hidden sm:block h-5 w-px bg-border mx-1" />
+
           
           {/* Farm Name & Status */}
           <div className="min-w-0 flex-1">
