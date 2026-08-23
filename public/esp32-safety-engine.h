@@ -86,6 +86,23 @@ inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
 #define REBOOT_VENT_PURGE_MS         180000UL
 #define REBOOT_NH3_MUTE_MS           300000UL
 
+// ─── SURVIVAL HEAT (INV-2 during reboot lockout) ───
+// Lethal cold outranks the post-reboot heater lockout: chicks freeze in
+// minutes. The bypass is BOUNDED — heat is delivered for at most
+// SURVIVAL_HEAT_MAX_MS with the alarm asserted, then it stops so a stuck
+// relay or a bad sensor cannot cook the shed.
+#define SURVIVAL_HEAT_MAX_MS         600000UL  // 10 min hard cap
+#define SURVIVAL_HEAT_COOLDOWN_MS    300000UL  // 5 min before another window
+
+// ─── BROODING PULSE (INV-7 with no reliable sensor) ───
+// Cutting the heater dead during sensor loss kills day-old chicks in
+// winter. For brooding-age flocks the heater is pulsed on a fixed duty
+// cycle (open loop, alarm ON) instead of being latched OFF.
+#define BROODING_AGE_MAX_DAYS        10
+#define BROODING_PULSE_ON_MS         60000UL   // 1 min ON
+#define BROODING_PULSE_OFF_MS        180000UL  // 3 min OFF
+#define BROODING_PULSE_WINDOW_MS     1800000UL // 30 min total, then stop
+
 // ─── BIRD AGE VALIDATION ───
 #define AGE_MIN_DAYS                 0
 #define AGE_MAX_DAYS                 60
@@ -103,6 +120,8 @@ struct SafetyArbiterResult {
   bool forceHeaterOff;       // INV-1: heater MUST be off (overheat)
   bool forceHeaterOn;        // INV-2: heater MUST be on (cold)
   bool sensorSurvivalMode;   // INV-7: no reliable sensor data
+  bool survivalHeatActive;   // INV-2: bounded heat during reboot lockout
+  bool broodingPulseActive;  // INV-7: open-loop heater pulse for chicks
   bool safetyActive;         // Any invariant is currently being enforced
   const char* reason;        // Human-readable reason for safety action
 };
@@ -201,7 +220,7 @@ public:
     heaterPin = -1;
     alarmPin = -1;
     
-    lastResult = {false, false, false, false, false, "INIT"};
+    lastResult = {false, false, false, false, false, false, false, "INIT"};
   }
 
   // ─── INIT ───
@@ -289,7 +308,7 @@ public:
     lastArbiterTick = now;
     
     // Start fresh
-    SafetyArbiterResult result = {false, false, false, false, false, "NORMAL"};
+    SafetyArbiterResult result = {false, false, false, false, false, false, false, "NORMAL"};
     
     // ── Update worst-case sensors ──
     updateWorstCase(temperature, temp2, dht2ok);
