@@ -11,6 +11,8 @@ interface SyncQueueItem {
   created_at: string;
   retry_count?: number;
   max_age_minutes?: number;
+  /** Author captured at enqueue time (see src/lib/offlineQueue.ts). */
+  queued_by?: string;
 }
 
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
