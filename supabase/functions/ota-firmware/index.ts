@@ -583,12 +583,9 @@ async function handlePush(req: Request, supabase: any) {
 // Admin: Start canary rollout (5% → 25% → 100%)
 // ─────────────────────────────────────────────
 async function handleStartRollout(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const gate = await requireSuperAdmin(req, supabase);
+  if (gate instanceof Response) return gate;
+  const user = gate;
 
   const { firmware_id, stages } = await req.json();
   const rolloutStages = stages || [5, 25, 100];
