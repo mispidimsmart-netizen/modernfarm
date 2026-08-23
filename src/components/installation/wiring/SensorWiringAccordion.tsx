@@ -2,7 +2,10 @@ import { Cable, AlertTriangle, Info, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { detailedWiringGuide, wiringCategories } from '@/data/installationGuide';
+import { detailedWiringGuide } from '@/data/installationGuide';
+import { getWiringCategories } from '@/data/installationVersionMap';
+import { useGuideVersion } from '@/components/installation/GuideVersionContext';
+
 import { BuzzerWiringSection } from '@/components/installation/wiring/BuzzerWiringSection';
 import { FoggerWiringSection } from '@/components/installation/wiring/FoggerWiringSection';
 import { SprinklerWiringSection } from '@/components/installation/wiring/SprinklerWiringSection';
@@ -141,22 +144,26 @@ function SensorWiringDetails({ sensor }: { sensor: Sensor }) {
 
 /** Category → sensor nested accordion with full per-sensor wiring instructions. */
 export function SensorWiringAccordion() {
+  const { version } = useGuideVersion();
+  const categories = getWiringCategories(version);
   return (
     <Card className="border-primary/30">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-primary" />
           ধাপে ধাপে ওয়্যারিং গাইড
+          <Badge variant="outline" className="ml-auto text-[10px] uppercase">{version}</Badge>
         </CardTitle>
-        <p className="text-xs text-muted-foreground">প্রতিটি সেন্সরের জন্য বিস্তারিত নির্দেশনা</p>
+        <p className="text-xs text-muted-foreground">শুধু {version} বোর্ডে প্রযোজ্য সেন্সরগুলোর বিস্তারিত নির্দেশনা</p>
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full">
-          {wiringCategories.map((cat) => {
+          {categories.map((cat) => {
             const sensors = cat.sensorIds
               .map((sid) => detailedWiringGuide.find((s) => s.id === sid))
               .filter((s): s is Sensor => Boolean(s));
             if (sensors.length === 0) return null;
+
             const CatIcon = cat.icon;
             return (
               <AccordionItem key={cat.id} value={cat.id}>
