@@ -328,12 +328,24 @@ public:
     // ══════════════════════════════════════════════════════════════
     if (_safeElapsed(now, _lastSensorUpdate) > SENSOR_MISSING_TIMEOUT_MS || !sensorValid) {
       result.forceFanOn = true;
-      result.forceHeaterOff = true;
       result.sensorSurvivalMode = true;
       result.safetyActive = true;
       result.reason = "INV7_SENSOR_MISSING";
-      _directWriteRelay(fanPin, true);     // Fan ON
-      _directWriteRelay(heaterPin, false); // Heater OFF
+      _directWriteRelay(fanPin, true);     // Fan ON — heat death is faster than cold death
+
+      // Brooding flocks cannot survive a dead heater. Deliver open-loop
+      // pulses (bounded window + alarm) instead of latching the heater OFF.
+      bool broodingHeat = _broodingPulseTick(now);
+      if (broodingHeat) {
+        result.broodingPulseActive = true;
+        result.forceHeaterOn = true;
+        result.reason = "INV7_BROODING_PULSE";
+        _directWriteRelay(heaterPin, true);
+        _setAlarm(true);
+      } else {
+        result.forceHeaterOff = true;
+        _directWriteRelay(heaterPin, false); // Heater OFF
+      }
       lastResult = result;
       return result;
     }
@@ -363,14 +375,32 @@ public:
     // Exception: if temp is ALSO above lethal high (impossible but safe).
     // ══════════════════════════════════════════════════════════════
     float heatingTemp = dualSensorAvailable ? worstCaseMinTemp : temperature;
-    if (heatingTemp < LETHAL_TEMP_LOW && !rebootSafety.heaterLocked) {
-      result.forceHeaterOn = true;
-      result.safetyActive = true;
-      result.reason = "INV2_LETHAL_COLD";
-      _directWriteRelay(heaterPin, true);  // Heater ON — bypasses all timers
-      Serial.printf("[ARBITER] INV-2: %.1f°C < %.1f°C → FORCED heating\n",
-                    heatingTemp, LETHAL_TEMP_LOW);
+    if (heatingTemp < LETHAL_TEMP_LOW) {
+      bool allowed = true;
+      if (rebootSafety.heaterLocked) {
+        // Post-reboot lockout exists to avoid re-igniting a heater whose
+        // real state is unknown — but lethal cold outranks it. Grant a
+        // BOUNDED survival-heat window with the alarm on.
+        allowed = _survivalHeatTick(now);
+        if (allowed) {
+          result.survivalHeatActive = true;
+          _setAlarm(true);
+        }
+      } else {
+        _survivalHeatReset();
+      }
+
+      if (allowed) {
+        result.forceHeaterOn = true;
+        result.safetyActive = true;
+        result.reason = result.survivalHeatActive ? "INV2_SURVIVAL_HEAT" : "INV2_LETHAL_COLD";
+        _directWriteRelay(heaterPin, true);  // Heater ON — bypasses all timers
+        Serial.printf("[ARBITER] INV-2: %.1f°C < %.1f°C → FORCED heating (%s)\n",
+                      heatingTemp, LETHAL_TEMP_LOW, result.reason);
+      }
       // Don't return — fan control should still be evaluated
+    } else {
+      _survivalHeatReset();
     }
     
     // ── Reboot heater lockout (still enforced unless INV-2 overrides) ──
