@@ -623,12 +623,8 @@ async function handleStartRollout(req: Request, supabase: any) {
 // Admin: Advance to next rollout batch
 // ─────────────────────────────────────────────
 async function handleAdvanceRollout(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const gate = await requireSuperAdmin(req, supabase);
+  if (gate instanceof Response) return gate;
 
   const { firmware_id } = await req.json();
 
