@@ -96,6 +96,12 @@ export function FarmProvider({ children }: { children: ReactNode }) {
     }
   }, [farms, selectedFarmId]);
 
+  // Keep the offline queue's farm snapshot in sync so mutations enqueued
+  // while offline are replayed against the farm that was selected then.
+  useEffect(() => {
+    setQueueFarmContext(selectedFarmId);
+  }, [selectedFarmId]);
+
   const currentFarm = farms.find(f => f.id === selectedFarmId) || null;
 
   return (
