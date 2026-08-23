@@ -24,6 +24,52 @@ function isNewer(latest: number[], current: number[]): boolean {
     (latest[0] === current[0] && latest[1] === current[1] && latest[2] > current[2]);
 }
 
+// ─────────────────────────────────────────────
+// AuthN/AuthZ helpers for admin actions
+// ─────────────────────────────────────────────
+interface AuthedUser { id: string; isSuperAdmin: boolean }
+
+/** Resolve the caller's user id from the Authorization header (or null). */
+// deno-lint-ignore no-explicit-any
+async function resolveUser(req: Request, supabase: any): Promise<AuthedUser | null> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  const { data: isSuper } = await supabase.rpc('is_super_admin', { _user_id: user.id });
+  return { id: user.id, isSuperAdmin: !!isSuper };
+}
+
+/**
+ * Fleet-wide OTA actions (rollback, rollout start/advance, firmware list)
+ * are super-admin only — a single mistake here can brick every device.
+ */
+// deno-lint-ignore no-explicit-any
+async function requireSuperAdmin(req: Request, supabase: any): Promise<AuthedUser | Response> {
+  const user = await resolveUser(req, supabase);
+  if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  if (!user.isSuperAdmin) return jsonResponse({ error: 'Forbidden — super admin required' }, 403);
+  return user;
+}
+
+/** Per-device push: super admin, or an admin+ of the device's own farm. */
+// deno-lint-ignore no-explicit-any
+async function requireDeviceAdmin(
+  req: Request, supabase: any, farmId: string | null,
+): Promise<AuthedUser | Response> {
+  const user = await resolveUser(req, supabase);
+  if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  if (user.isSuperAdmin) return user;
+  if (!farmId) return jsonResponse({ error: 'Forbidden' }, 403);
+  const { data: allowed } = await supabase.rpc('has_farm_role', {
+    _user_id: user.id, _farm_id: farmId, _min_role: 'admin',
+  });
+  if (!allowed) return jsonResponse({ error: 'Forbidden' }, 403);
+  return user;
+}
+
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -57,8 +103,14 @@ serve(async (req) => {
       return await handleBootReport(req, supabase);
     }
 
-    // ─── POST /firmware/auto-advance (cron only) ───
+    // ─── POST /firmware/auto-advance (cron / service-role, or super admin) ───
     if (action === 'auto-advance' && req.method === 'POST') {
+      const bearer = req.headers.get('Authorization')?.replace('Bearer ', '');
+      const isCron = !!bearer && bearer === supabaseServiceKey;
+      if (!isCron) {
+        const gate = await requireSuperAdmin(req, supabase);
+        if (gate instanceof Response) return gate;
+      }
       const { data, error } = await supabase.rpc('auto_advance_rollout');
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ success: true, result: data });
@@ -91,8 +143,10 @@ serve(async (req) => {
       return jsonResponse(data);
     }
 
-    // ─── Admin: list firmware ───
+    // ─── Admin: list firmware (authenticated users only) ───
     if (action === 'list') {
+      const caller = await resolveUser(req, supabase);
+      if (!caller) return jsonResponse({ error: 'Unauthorized' }, 401);
       const { data, error } = await supabase
         .from('ota_firmware')
         .select('*')
@@ -100,6 +154,7 @@ serve(async (req) => {
       if (error) return jsonResponse({ error: error.message }, 500);
       return jsonResponse({ firmwares: data });
     }
+
 
     // ─── Legacy progress endpoint ───
     if (action === 'progress' && req.method === 'POST') {
@@ -421,12 +476,9 @@ async function handleReport(req: Request, supabase: any) {
 // POST /firmware/rollback — Admin triggers rollback
 // ─────────────────────────────────────────────
 async function handleRollback(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const gate = await requireSuperAdmin(req, supabase);
+  if (gate instanceof Response) return gate;
+  const user = gate;
 
   const body = await req.json();
   const { firmware_id, reason } = body;
@@ -455,21 +507,20 @@ async function handleRollback(req: Request, supabase: any) {
 // Admin: Push update to specific device
 // ─────────────────────────────────────────────
 async function handlePush(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
   const { device_token_id, firmware_id } = await req.json();
 
   const [{ data: device }, { data: firmware }] = await Promise.all([
-    supabase.from('device_tokens').select('*').eq('id', device_token_id).single(),
+    supabase.from('device_tokens').select('*').eq('id', device_token_id).maybeSingle(),
     supabase.from('ota_firmware').select('*').eq('id', firmware_id).maybeSingle(),
   ]);
 
   if (!device) return jsonResponse({ error: 'Device not found' }, 404);
+
+  // Farm-scoped authorization: caller must own/administer THIS device's farm.
+  const gate = await requireDeviceAdmin(req, supabase, device.farm_id ?? null);
+  if (gate instanceof Response) return gate;
+  const user = gate;
+
 
   // Try firmware_registry if not found in ota_firmware
   let firmwareData = firmware;
@@ -532,12 +583,9 @@ async function handlePush(req: Request, supabase: any) {
 // Admin: Start canary rollout (5% → 25% → 100%)
 // ─────────────────────────────────────────────
 async function handleStartRollout(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const gate = await requireSuperAdmin(req, supabase);
+  if (gate instanceof Response) return gate;
+  const user = gate;
 
   const { firmware_id, stages } = await req.json();
   const rolloutStages = stages || [5, 25, 100];
@@ -575,12 +623,8 @@ async function handleStartRollout(req: Request, supabase: any) {
 // Admin: Advance to next rollout batch
 // ─────────────────────────────────────────────
 async function handleAdvanceRollout(req: Request, supabase: any) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  const gate = await requireSuperAdmin(req, supabase);
+  if (gate instanceof Response) return gate;
 
   const { firmware_id } = await req.json();
 

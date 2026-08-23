@@ -13,8 +13,8 @@ const corsHeaders = {
 };
 
 interface PublishRequest {
+  /** Required — the topic is always derived from this device. */
   device_token_id?: string;
-  topic?: string;
   payload: Record<string, unknown> | string;
   qos?: 0 | 1 | 2;
   retain?: boolean;
@@ -46,6 +46,23 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  // ── AuthN: a valid user JWT is required (no anonymous command injection) ──
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const jwt = authHeader.replace("Bearer ", "");
+  const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(jwt);
+  const userId = claimsData?.claims?.sub as string | undefined;
+  if (claimsErr || !userId) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
   let body: PublishRequest;
   try {
     body = await req.json();
@@ -57,24 +74,43 @@ Deno.serve(async (req) => {
     return json({ error: "payload required" }, 400);
   }
 
-  let topic = body.topic;
-  let farm_id: string | null = null;
+  // Arbitrary topic publishing is not allowed — the topic is always derived
+  // from a device the caller provably has access to.
   const device_token_id = body.device_token_id ?? null;
-
-  if (!topic && device_token_id) {
-    const { data: tok } = await supabase
-      .from("device_tokens")
-      .select("mqtt_topic_prefix, farm_id, mqtt_enabled")
-      .eq("id", device_token_id)
-      .maybeSingle();
-
-    if (!tok) return json({ error: "device_token not found" }, 404);
-    if (!tok.mqtt_enabled) return json({ error: "MQTT not enabled for device" }, 400);
-    topic = `${tok.mqtt_topic_prefix}/cmd`;
-    farm_id = tok.farm_id;
+  if (!device_token_id) {
+    return json({ error: "device_token_id required" }, 400);
   }
 
-  if (!topic) return json({ error: "topic or device_token_id required" }, 400);
+  const { data: tok } = await supabase
+    .from("device_tokens")
+    .select("mqtt_topic_prefix, farm_id, mqtt_enabled")
+    .eq("id", device_token_id)
+    .maybeSingle();
+
+  if (!tok) return json({ error: "device_token not found" }, 404);
+  if (!tok.mqtt_enabled) return json({ error: "MQTT not enabled for device" }, 400);
+
+  const farm_id: string | null = tok.farm_id;
+
+  // ── AuthZ: caller must have access to the device's farm ──
+  const { data: canAccess } = await supabase.rpc("user_can_access_farm", {
+    _user_id: userId,
+    _farm_id: farm_id,
+  });
+  if (!canAccess) {
+    await supabase.rpc("log_security_event", {
+      _event_type: "mqtt_publish_denied",
+      _user_id: userId,
+      _farm_id: farm_id,
+      _device_token_id: device_token_id,
+      _success: false,
+      _details: { reason: "no_farm_access" },
+    }).then(() => {}, () => {});
+    return json({ error: "Forbidden" }, 403);
+  }
+
+  const topic = `${tok.mqtt_topic_prefix}/cmd`;
+
 
   const payloadStr =
     typeof body.payload === "string"

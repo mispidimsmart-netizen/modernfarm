@@ -28,7 +28,31 @@ interface QueueItem {
   created_at: string;
   retry_count?: number;
   max_age_minutes?: number;
+  /**
+   * The user who actually authored the mutation, captured at enqueue time.
+   * On a shared device the account can change before the queue drains, so
+   * the drainer MUST attribute rows to this id — never to whoever is
+   * logged in at sync time.
+   */
+  queued_by?: string;
 }
+
+/** Cached auth user id so the (synchronous) enqueue path can stamp authorship. */
+let cachedUserId: string | null = null;
+
+supabase.auth.getSession().then(({ data }) => {
+  cachedUserId = data.session?.user?.id ?? null;
+}, () => { /* ignore */ });
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  cachedUserId = session?.user?.id ?? null;
+});
+
+/** Exposed for tests and for callers that already know the author. */
+export function getQueueAuthorId(): string | null {
+  return cachedUserId;
+}
+
 
 function loadQueue(): QueueItem[] {
   try {
@@ -50,9 +74,10 @@ function saveQueue(items: QueueItem[]) {
 export function queueInsert(
   tableName: string,
   data: Record<string, unknown>,
-  opts?: { operation?: Operation; onConflict?: string; maxAgeMinutes?: number },
+  opts?: { operation?: Operation; onConflict?: string; maxAgeMinutes?: number; userId?: string | null },
 ) {
   const items = loadQueue();
+  const author = opts?.userId ?? (data.user_id as string | undefined) ?? cachedUserId ?? undefined;
   items.push({
     id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`),
     table_name: tableName,
@@ -61,9 +86,11 @@ export function queueInsert(
     on_conflict: opts?.onConflict,
     created_at: new Date().toISOString(),
     max_age_minutes: opts?.maxAgeMinutes,
+    queued_by: author,
   });
   saveQueue(items);
 }
+
 
 /**
  * Try an insert online; queue for later if the network is down or the
