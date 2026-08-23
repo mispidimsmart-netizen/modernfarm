@@ -66,8 +66,9 @@ export function Header() {
 
   return (
     <header className="sticky top-7 z-40 border-b bg-card/95 px-4 py-3 backdrop-blur-md pt-safe">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+
           {/* Back button - show on non-home pages */}
           {!isHomePage && (
             <Button
