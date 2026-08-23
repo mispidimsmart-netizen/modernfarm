@@ -445,6 +445,11 @@ export function useControlPageState() {
     farmsLoading,
     farmNotReady,
     isManualMode,
+    hardwareManualMode,
+    modeSyncPending,
+    isStatusStale,
+    lastAckAt,
+
     isViewer,
     canFullControl,
     canTemporaryControl,
