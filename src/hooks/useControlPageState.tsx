@@ -430,14 +430,18 @@ export function useControlPageState() {
 
   const tempMax = Number(farmSettings?.temperature_max ?? 32);
   const ammoniaMax = Number(farmSettings?.ammonia_max ?? 25);
+  const safetyEngineOn = (farmSettings as any)?.safety_engine_enabled !== false;
   const safetyProtections = DEFAULT_SAFETY_PROTECTIONS.map(p => ({
     ...p,
-    isActive: p.key === 'heat_stress'
-      ? sensorData.temperature > tempMax
-      : p.key === 'gas_purge'
-        ? sensorData.ammonia > ammoniaMax
-        : true,
+    isActive: !safetyEngineOn
+      ? false
+      : p.key === 'heat_stress'
+        ? sensorData.temperature > tempMax
+        : p.key === 'gas_purge'
+          ? sensorData.ammonia > ammoniaMax
+          : true,
   }));
+
 
   return {
     language,
