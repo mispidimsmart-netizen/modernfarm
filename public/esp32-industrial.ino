@@ -1812,7 +1812,7 @@ void automationEngineTick() {
     }
 
     bool forceFan    = hardFloorActive || (safetyEngineEnabled && safetyEngine.lastResult.forceFanOn);
-    bool forceAlarm  = hardFloorActive || (safetyEngineEnabled && safetyEngine.lastResult.forceAlarmOn);
+    bool forceAlarm  = hardFloorActive;
     bool forceHeatOff = safetyEngineEnabled && safetyEngine.lastResult.forceHeaterOff;
     bool forceHeatOn  = safetyEngineEnabled && safetyEngine.lastResult.forceHeaterOn;
     bool safetyForcing = forceFan || forceAlarm || forceHeatOff || forceHeatOn;
