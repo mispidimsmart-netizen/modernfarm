@@ -106,7 +106,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.3.1-config-sync";
+const char* FIRMWARE_VERSION = "8.3.2-manual-safety";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -1781,13 +1781,15 @@ void automationEngineTick() {
   if (stabilizingMode) return;
 
   // ═══════════════════════════════════════════════════════════════
-  // MANUAL MODE = সম্পূর্ণ ম্যানুয়াল
-  // When localManualOverride is active, ALL automation and ALL
-  // safety overrides (INV-1 to INV-8) are DISABLED.
-  // User has full control — no automatic relay changes at all.
+  // MANUAL MODE = অপারেটর ডিভাইস চালায়, কিন্তু জীবন-রক্ষাকারী
+  // সেফটি সক্রিয় থাকে (অ্যাপের প্রতিশ্রুতির সাথে মিল)।
+  //   • HARD FLOOR (≥42°C → Fan+Alarm) — সবসময়, ইঞ্জিন OFF থাকলেও
+  //   • Safety Arbiter forces (INV-1..INV-8) — safetyEngineEnabled হলে
+  // অন্য কোনো অটোমেশন (schedule, hysteresis, fogger, lighting) চলে না।
+  // সেফটি ছেড়ে দিলে অপারেটরের আগের ইচ্ছা (relayTarget) ফেরত আসে।
   // ═══════════════════════════════════════════════════════════════
   if (localManualOverride) {
-    // Only expire manual overrides, do NOT run any automation or safety
+    // Only expire manual overrides, do NOT run any automation
     if (fanManualOverride && fanManualTime > 0 && (millis() - fanManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
       fanManualOverride = false; fanManualTime = 0;
       Serial.println("⏱️ Fan manual override EXPIRED");
@@ -1796,8 +1798,53 @@ void automationEngineTick() {
       heaterManualOverride = false; heaterManualTime = 0;
       Serial.println("⏱️ Heater manual override EXPIRED");
     }
-    return;  // সম্পূর্ণ ম্যানুয়াল — কোনো অটোমেশন বা সেফটি ওভাররাইড নেই
+
+    // --- Hard floor (always active, even with safety engine OFF) ---
+    float mTemp = dht2Available ? max(temperature, temperature2) : temperature;
+    if (mTemp >= HARD_FLOOR_TEMP_C) {
+      if (!hardFloorActive) {
+        hardFloorActive = true;
+        Serial.printf("🔥 [MANUAL] HARD FLOOR ENGAGED: T=%.1f°C → Fan+Alarm forced ON\n", mTemp);
+      }
+    } else if (hardFloorActive && mTemp <= (HARD_FLOOR_TEMP_C - HARD_FLOOR_HYST_C)) {
+      hardFloorActive = false;
+      Serial.printf("✅ [MANUAL] HARD FLOOR RELEASED: T=%.1f°C\n", mTemp);
+    }
+
+    bool forceFan    = hardFloorActive || (safetyEngineEnabled && safetyEngine.lastResult.forceFanOn);
+    bool forceAlarm  = hardFloorActive;
+    bool forceHeatOff = safetyEngineEnabled && safetyEngine.lastResult.forceHeaterOff;
+    bool forceHeatOn  = safetyEngineEnabled && safetyEngine.lastResult.forceHeaterOn;
+    bool safetyForcing = forceFan || forceAlarm || forceHeatOff || forceHeatOn;
+
+    // Snapshot the operator's intent the moment safety takes over, so we can
+    // hand control back exactly as they left it when the danger passes.
+    static bool manualSafetySnapshot = false;
+    static bool snapFan = false, snapAlarm = false, snapHeater = false;
+    static String snapFanSpeed = "OFF";
+    if (safetyForcing && !manualSafetySnapshot) {
+      snapFan = relayTarget.fan; snapAlarm = relayTarget.alarm;
+      snapHeater = relayTarget.heater; snapFanSpeed = relayTarget.fanSpeed;
+      manualSafetySnapshot = true;
+      Serial.println("🛡️ [MANUAL] Safety override engaged — operator intent saved");
+    }
+
+    if (forceFan)     requestFan(true, "HIGH");
+    if (forceAlarm)   requestAlarm(true);
+    if (forceHeatOff) requestHeater(false);
+    else if (forceHeatOn) requestHeater(true);
+
+    if (!safetyForcing && manualSafetySnapshot) {
+      requestFan(snapFan, snapFanSpeed);
+      requestAlarm(snapAlarm);
+      requestHeater(snapHeater);
+      manualSafetySnapshot = false;
+      Serial.println("✅ [MANUAL] Safety released — operator control restored");
+    }
+
+    return;  // ম্যানুয়াল — সেফটি ছাড়া আর কোনো অটোমেশন নেই
   }
+
 
   // ════ ALWAYS-ON HARD FLOOR (works even when safety engine OFF) ════
   // If actual temperature exceeds HARD_FLOOR_TEMP_C, force fan + alarm ON.
@@ -4763,11 +4810,11 @@ void loop() {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // SAFETY ARBITER: Runs every 500ms in AUTO mode only.
-  // In full MANUAL mode, arbiter is intentionally skipped so
-  // relays stay exactly as the operator commands.
+  // SAFETY ARBITER: Runs every 500ms in BOTH Auto and Manual mode.
+  // In Manual mode the operator controls the relays, but the arbiter
+  // still evaluates INV-1..INV-8 and can force life-saving actions.
   // ═══════════════════════════════════════════════════════════════
-  if (!localManualOverride && safetyEngineEnabled) {
+  if (safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia, 
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
   }
@@ -4788,8 +4835,8 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (AUTO mode only, when enabled) ---
-  if (!localManualOverride && safetyEngineEnabled) {
+  // --- Safety Arbiter AGAIN after all processing (Auto + Manual, when enabled) ---
+  if (safetyEngineEnabled) {
     safetyEngine.arbiterTick(temperature, humidity, ammonia,
       !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
   }
