@@ -162,7 +162,16 @@ bool installFirmware(JsonDocument& meta) {
 void setup() {
   Serial.begin(115200);
   WiFi.begin("YOUR_SSID", "YOUR_PSK");
-  while (WiFi.status() != WL_CONNECTED) delay(500);
+  // Bounded wait — never block the boot path forever on a missing AP.
+  const unsigned long WIFI_WAIT_MS = 30000UL;
+  unsigned long wifiWaitStart = millis();
+  while (WiFi.status() != WL_CONNECTED &&
+         (millis() - wifiWaitStart) < WIFI_WAIT_MS) {
+    delay(250);
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[OTA] WiFi not connected within 30s — continuing offline");
+  }
 
   // First check: if we just booted from a fresh OTA, mark provisional
   const esp_partition_t* running = esp_ota_get_running_partition();
@@ -176,7 +185,7 @@ void setup() {
 
   // Periodic update check
   StaticJsonDocument<2048> doc;
-  if (checkUpdate(doc)) {
+  if (WiFi.status() == WL_CONNECTED && checkUpdate(doc)) {
     Serial.printf("[OTA] Update available: %s\n", (const char*)doc["version"]);
     installFirmware(doc);
   }
