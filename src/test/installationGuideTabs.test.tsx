@@ -20,7 +20,7 @@ describe('Installation guide tabs render', () => {
     expect(document.body.textContent!.length).toBeGreaterThan(100);
   });
   it('setup tab', () => {
-    render(wrap(<InstallationSetupTab copiedCode={null} onCopy={() => {}} wifiConfigCode="x" onNavigate={() => {}} />, 'setup'));
+    render(wrap(<InstallationSetupTab copiedCode={null} onCopy={() => {}} onNavigate={() => {}} />, 'setup'));
     expect(document.body.textContent!.length).toBeGreaterThan(50);
   });
 });
