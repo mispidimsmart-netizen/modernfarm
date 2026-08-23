@@ -9,7 +9,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { toast } from 'sonner';
 import { LDRStatusBanner } from '@/components/lighting/LDRStatusBanner';
 import { CurrentAutomationStatusBanner } from '@/components/admin/CurrentAutomationStatusBanner';
-import { partsList } from '@/data/installationGuide';
+import { getPartsTotals, guideVersionMeta, type GuideVersion } from '@/data/installationVersionMap';
+import { GuideVersionProvider, useGuideVersion } from '@/components/installation/GuideVersionContext';
+
 import { InstallationPartsTab } from '@/components/installation/InstallationPartsTab';
 import { InstallationWiringTab } from '@/components/installation/InstallationWiringTab';
 import { InstallationSetupTab } from '@/components/installation/InstallationSetupTab';
