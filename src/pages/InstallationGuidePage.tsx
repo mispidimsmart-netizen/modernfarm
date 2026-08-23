@@ -100,23 +100,25 @@ function InstallationGuideContent() {
           </CardContent>
         </Card>
 
-        {/* Sensor Summary */}
+        {/* Sensor Summary — version aware */}
         <Card className="border-primary/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Cpu className="h-4 w-4 text-primary" />
-              ৫টি সেন্সর + ৮-চ্যানেল রিলে (v8.0.0)
+              {version === 'v8'
+                ? `৫টি সেন্সর + ৮-চ্যানেল রিলে (${meta.firmware})`
+                : `প্রিমিয়াম I²C সেন্সর সেট + ৮-চ্যানেল রিলে (${meta.firmware})`}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
                 <Thermometer className="h-4 w-4 text-green-500" />
-                <span>DHT22 ×2 (তাপ/আর্দ্রতা)</span>
+                <span>{version === 'v8' ? 'DHT22 ×2 (তাপ/আর্দ্রতা)' : 'SHT31 (তাপ/আর্দ্রতা, I²C)'}</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
                 <Wind className="h-4 w-4 text-yellow-500" />
-                <span>MQ-137 (অ্যামোনিয়া)</span>
+                <span>{version === 'v8' ? 'MQ-137 (অ্যামোনিয়া)' : 'ZE03-NH3 (অ্যামোনিয়া)'}</span>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10">
                 <Droplets className="h-4 w-4 text-blue-500" />
@@ -135,6 +137,7 @@ function InstallationGuideContent() {
             </div>
           </CardContent>
         </Card>
+
 
         {/* Quick Summary - Price */}
         <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
@@ -176,7 +179,6 @@ function InstallationGuideContent() {
           <InstallationSetupTab
             copiedCode={copiedCode}
             onCopy={copyToClipboard}
-            wifiConfigCode={wifiConfigCode}
             onNavigate={navigate}
           />
         </Tabs>
@@ -185,3 +187,12 @@ function InstallationGuideContent() {
     </div>
   );
 }
+
+export default function InstallationGuidePage() {
+  return (
+    <GuideVersionProvider>
+      <InstallationGuideContent />
+    </GuideVersionProvider>
+  );
+}
+
