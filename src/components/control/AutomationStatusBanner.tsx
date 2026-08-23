@@ -163,7 +163,7 @@ export function AutomationStatusBanner({
             <span className="text-xs text-muted-foreground">
               {language === 'bn'
                 ? (isOutOfBioRange
-                    ? '⚠️ জৈবিক সীমা অতিক্রম — ১৫ মিনিটে অটো ফিরবে'
+                    ? '⚠️ জৈবিক সীমা অতিক্রম — ২০ মিনিটে অটো ফিরবে'
                     : 'অটো মোডে ফিরে যাওয়ার সময় বাকি')
                 : (isOutOfBioRange
                     ? '⚠️ Bio limit exceeded — auto-revert in progress'
