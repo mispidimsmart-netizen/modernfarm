@@ -200,7 +200,7 @@ export function Header() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           <AlertBell />
           <ThemeToggle />
           
@@ -208,7 +208,7 @@ export function Header() {
             variant="ghost"
             size="sm"
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
-            className="flex items-center gap-1 text-xs"
+            className="flex items-center gap-1 px-2 text-xs"
           >
             <Globe size={14} />
             {language === 'bn' ? 'EN' : 'বাং'}
@@ -217,14 +217,17 @@ export function Header() {
           {user && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={signOut}
-              className="text-muted-foreground"
+              aria-label={language === 'bn' ? 'লগআউট' : 'Log out'}
+              title={language === 'bn' ? 'লগআউট' : 'Log out'}
+              className="h-9 w-9 shrink-0 text-muted-foreground"
             >
               <LogOut size={18} />
             </Button>
           )}
         </div>
+
       </div>
     </header>
   );
