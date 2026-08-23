@@ -156,12 +156,21 @@ Deno.serve(async (req) => {
     // /claim — ESP32 redeems a code (no auth)
     // ─────────────────────────────────────────
     if (path === 'claim' && req.method === 'POST') {
+      const ip = clientIp(req);
+      if (isClaimRateLimited(ip)) {
+        await logEvent(adminClient, 'provisioning_claim_rate_limited', null, null, null, false, { ip });
+        return new Response(JSON.stringify({ error: 'Too many attempts. Try again later.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '600' },
+        });
+      }
+
       const body = await req.json().catch(() => ({} as any));
       const code = (body.code as string | undefined)?.trim().toUpperCase();
       const macAddress = (body.mac_address as string | undefined) || null;
       const firmwareVersion = (body.firmware_version as string | undefined) || null;
 
       if (!code) {
+        recordClaimFailure(ip);
         return new Response(JSON.stringify({ error: 'code required' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -176,12 +185,14 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (pcErr || !pc) {
+        recordClaimFailure(ip);
         await logEvent(adminClient, 'provisioning_claim_failed', null, null, null, false,
-          { reason: 'invalid_or_expired', code });
+          { reason: 'invalid_or_expired', code, ip });
         return new Response(JSON.stringify({ error: 'Invalid or expired code' }), {
           status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
 
       // Generate token + secret
       const token = randomToken();
