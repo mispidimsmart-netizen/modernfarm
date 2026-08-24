@@ -104,6 +104,7 @@ export const partsList = [
     items: [
       { name: 'MCB মেইন (সার্কিট ব্রেকার) — 2P 32A C', nameEn: 'MCB Main Circuit Breaker 2P 32A C', quantity: 1, price: '৳৩৫০-৫৫০', priceRange: [350, 550], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
       { name: 'সাব MCB — 1P 6A (প্রতিটি রিলে লাইনের জন্য)', nameEn: 'Sub MCB 1P 6A (per relay line)', quantity: 8, price: '৳১২০-১৮০/পিস', priceRange: [960, 1440], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
+      { name: 'ফিউজ হোল্ডার ৫×২০ mm + ৫A ২৫০V ফিউজ (ESP32 বোর্ড রক্ষার জন্য)', nameEn: 'Fuse Holder 5x20mm + 5A 250V Fuse', quantity: 1, price: '৳৫০-১২০', priceRange: [50, 120], shop: 'ইলেকট্রিক্যাল দোকান', essential: true },
       { name: 'ম্যাগনেটিক কন্ট্যাক্টর CJX2-1210 (220VAC কয়েল) — ঐচ্ছিক', nameEn: 'Magnetic Contactor CJX2-1210 220VAC (Optional)', quantity: 1, price: '৳৪০০-৬৫০', priceRange: [400, 650], shop: 'ইলেকট্রিক্যাল দোকান', essential: false },
     ]
   },
@@ -206,6 +207,8 @@ export const wiringConnections = [
   { component: 'Relay IN8', pin: 'Circulation Fan', esp32Pin: 'GPIO 33', color: 'bg-indigo-500', note: '💨 সার্কুলেশন ফ্যান' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
+  { component: 'AC Fuse', pin: 'L (Line)', esp32Pin: '২২০V AC ইনপুট', color: 'bg-rose-600', note: '⚡ ৫A ২৫০V ফিউজ — ESP32 বক্সের আগে' },
+  { component: 'AC Fuse', pin: 'Load side', esp32Pin: 'LM2596 IN+ / Relay JD-VCC', color: 'bg-rose-500', note: '⚡ শর্ট-সার্কিট প্রোটেকশন' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'Relay IN6 (GPIO 13)', color: 'bg-amber-500', note: '🔔 পিজো বাজার (রিলে দিয়ে কন্ট্রোল)' },
   { component: 'TFT ILI9341', pin: 'SCK', esp32Pin: 'GPIO 21', color: 'bg-fuchsia-500', note: '🖥️ SPI ক্লক (v8.3.0)' },
   { component: 'TFT ILI9341', pin: 'MOSI (SDI)', esp32Pin: 'GPIO 22', color: 'bg-fuchsia-500', note: '🖥️ SPI ডেটা' },
@@ -231,6 +234,7 @@ export const detailedWiringGuide = [
     color: 'text-red-500',
     bgColor: 'bg-red-500/10',
     pins: [
+      { sensorPin: 'AC Fuse Holder', esp32Pin: '২২০V AC L (Line) → Fuse → Load', wireColor: 'লাল/কালো', wireNameEn: 'RED/BLACK', instruction: '⚡ ২২০V AC ইনপুটের L (ফেজ) লাইনে ৫A ২৫০V ফিউজ হোল্ডার সিরিজে লাগান। ফিউজের আউটপুট সাইড → 12V অ্যাডাপ্টার/রিলে বক্সে যাবে', warning: '⛔ ফিউজ ছাড়া ESP32 বোর্ড ও রিলে মডিউল শর্ট-সার্কিটে ক্ষতিগ্রস্ত হতে পারে!' },
       { sensorPin: 'DC Connector (+)', esp32Pin: '12V অ্যাডাপ্টার আউটপুট', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 12V অ্যাডাপ্টারের প্লাগ → DC Connector (5.5mm) এ ঢোকান। কানেক্টরের + টার্মিনাল থেকে লাল তার বের করুন', warning: null },
       { sensorPin: 'DC Connector (-)', esp32Pin: '12V অ্যাডাপ্টার GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ DC কানেক্টরের - টার্মিনাল থেকে কালো তার বের করুন → এটি কমন GND হবে', warning: null },
       { sensorPin: '12V (+) লাইন', esp32Pin: 'রিলে মডিউল JD-VCC', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 DC কানেক্টরের + থেকে লাল তার → রিলে মডিউলের JD-VCC পিনে সরাসরি দিন (12V)', warning: '⚠️ প্রথমে রিলে বোর্ডের JD-VCC ও VCC এর মাঝের হলুদ জাম্পার খুলে ফেলুন!' },
@@ -244,6 +248,7 @@ export const detailedWiringGuide = [
     extraNote: '⚡ এই সেটআপে একটি 12V অ্যাডাপ্টার দিয়ে পুরো সিস্টেম চলে: 12V সরাসরি রিলে কয়েলে যায় (শক্তিশালী ক্লিক), এবং LM2596 দিয়ে 5V বানিয়ে ESP32 ও সেন্সরে দেওয়া হয়।',
     resistorNote: null,
     tips: [
+      '⚡ ২২০V AC লাইনে ৫A ফিউজ হোল্ডার অবশ্যই লাগান — ESP32 বোর্ড ও রিলে মডিউল রক্ষা পাবে',
       '🔧 LM2596 স্ক্রু ঘুরিয়ে আউটপুট ভোল্টেজ 5.0V সেট করুন — ESP32 কানেক্টের আগে!',
       '📏 মাল্টিমিটারের লাল প্রোব OUT+ এ এবং কালো প্রোব OUT- এ ধরে ভোল্টেজ মাপুন',
       '⚠️ রিলে বোর্ডের JD-VCC জাম্পার অবশ্যই খুলুন — নইলে 12V ESP32 তে চলে যাবে!',
@@ -253,7 +258,15 @@ export const detailedWiringGuide = [
     hasPowerSetupDiagram: true,
     powerSetupInfo: {
       title: '🔌 12V পাওয়ার ডিস্ট্রিবিউশন ডায়াগ্রাম',
-      diagram: `12V 3A অ্যাডাপ্টার
+      diagram: `২২০V AC L (Line)
+       │
+       ▼
+  ┌─────────────┐
+  │ 5A 250V Fuse│ ← ফিউজ হোল্ডার (ESP32 বক্সের আগে)
+  └─────────────┘
+       │
+       ▼
+  12V 3A অ্যাডাপ্টার
        │
        ▼
   DC Connector 5.5mm
@@ -1268,6 +1281,7 @@ export const setupSteps = [
     icon: Cable,
     tasks: [
       'উপরের ওয়্যারিং ডায়াগ্রাম অনুযায়ী সব সেন্সর ও রিলে সংযোগ করুন',
+      '২২০V AC ইনপুট লাইনে ৫A ফিউজ হোল্ডার সিরিজে লাগান — ESP32 বক্সের আগে',
       '12V অ্যাডাপ্টার → DC Connector → LM2596 (5V সেট করুন) → ESP32 VIN; 12V সরাসরি → রিলে JD-VCC',
       'USB দিয়ে ESP32 কম্পিউটারে সংযোগ করুন',
       'সব সংযোগ দুইবার চেক করুন',
