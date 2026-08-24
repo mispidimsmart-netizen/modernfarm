@@ -37,7 +37,7 @@ const V8_ONLY_SENSOR_IDS = ['dht22-2', 'ldr', 'tft-display', 'panel-led'];
 const V10_ONLY_SENSOR_IDS = ['sht31', 'bh1750', 'ze03-nh3', 'scd41', 'pms5003'];
 
 /** Keyword match for free-text rows (parts items, quick-reference pin rows). */
-const V8_ONLY_KEYWORDS = ['TFT', 'ILI9341', 'ULN2803', 'DHT22 #২', 'DHT22 #2', 'প্যানেল মাউন্ট LED', 'panel LED'];
+const V8_ONLY_KEYWORDS = ['TFT', 'ILI9341', 'ULN2803', 'DHT22 #২', 'DHT22 #2', 'LDR', 'প্যানেল মাউন্ট LED', 'panel LED'];
 const V10_ONLY_KEYWORDS = ['SHT31', 'BH1750', 'ZE03', 'SCD41', 'PMS5003'];
 
 function matches(text: string, keywords: string[]) {
