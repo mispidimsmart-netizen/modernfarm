@@ -234,6 +234,7 @@ export const detailedWiringGuide = [
     color: 'text-red-500',
     bgColor: 'bg-red-500/10',
     pins: [
+      { sensorPin: 'AC Fuse Holder', esp32Pin: '২২০V AC L (Line) → Fuse → Load', wireColor: 'লাল/কালো', wireNameEn: 'RED/BLACK', instruction: '⚡ ২২০V AC ইনপুটের L (ফেজ) লাইনে ৫A ২৫০V ফিউজ হোল্ডার সিরিজে লাগান। ফিউজের আউটপুট সাইড → 12V অ্যাডাপ্টার/রিলে বক্সে যাবে', warning: '⛔ ফিউজ ছাড়া ESP32 বোর্ড ও রিলে মডিউল শর্ট-সার্কিটে ক্ষতিগ্রস্ত হতে পারে!' },
       { sensorPin: 'DC Connector (+)', esp32Pin: '12V অ্যাডাপ্টার আউটপুট', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 12V অ্যাডাপ্টারের প্লাগ → DC Connector (5.5mm) এ ঢোকান। কানেক্টরের + টার্মিনাল থেকে লাল তার বের করুন', warning: null },
       { sensorPin: 'DC Connector (-)', esp32Pin: '12V অ্যাডাপ্টার GND', wireColor: 'কালো', wireNameEn: 'BLACK', instruction: '⚫ DC কানেক্টরের - টার্মিনাল থেকে কালো তার বের করুন → এটি কমন GND হবে', warning: null },
       { sensorPin: '12V (+) লাইন', esp32Pin: 'রিলে মডিউল JD-VCC', wireColor: 'লাল', wireNameEn: 'RED', instruction: '🔴 DC কানেক্টরের + থেকে লাল তার → রিলে মডিউলের JD-VCC পিনে সরাসরি দিন (12V)', warning: '⚠️ প্রথমে রিলে বোর্ডের JD-VCC ও VCC এর মাঝের হলুদ জাম্পার খুলে ফেলুন!' },
