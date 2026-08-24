@@ -207,6 +207,8 @@ export const wiringConnections = [
   { component: 'Relay IN8', pin: 'Circulation Fan', esp32Pin: 'GPIO 33', color: 'bg-indigo-500', note: '💨 সার্কুলেশন ফ্যান' },
   { component: 'Relay Module', pin: 'VCC', esp32Pin: '5V (VIN)', color: 'bg-red-500', note: '' },
   { component: 'Relay Module', pin: 'GND', esp32Pin: 'GND', color: 'bg-gray-700', note: '' },
+  { component: 'AC Fuse', pin: 'L (Line)', esp32Pin: '২২০V AC ইনপুট', color: 'bg-rose-600', note: '⚡ ৫A ২৫০V ফিউজ — ESP32 বক্সের আগে' },
+  { component: 'AC Fuse', pin: 'Load side', esp32Pin: 'LM2596 IN+ / Relay JD-VCC', color: 'bg-rose-500', note: '⚡ শর্ট-সার্কিট প্রোটেকশন' },
   { component: 'Piezo Buzzer', pin: '+', esp32Pin: 'Relay IN6 (GPIO 13)', color: 'bg-amber-500', note: '🔔 পিজো বাজার (রিলে দিয়ে কন্ট্রোল)' },
   { component: 'TFT ILI9341', pin: 'SCK', esp32Pin: 'GPIO 21', color: 'bg-fuchsia-500', note: '🖥️ SPI ক্লক (v8.3.0)' },
   { component: 'TFT ILI9341', pin: 'MOSI (SDI)', esp32Pin: 'GPIO 22', color: 'bg-fuchsia-500', note: '🖥️ SPI ডেটা' },
