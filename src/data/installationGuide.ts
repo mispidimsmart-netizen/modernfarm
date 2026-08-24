@@ -257,7 +257,15 @@ export const detailedWiringGuide = [
     hasPowerSetupDiagram: true,
     powerSetupInfo: {
       title: '🔌 12V পাওয়ার ডিস্ট্রিবিউশন ডায়াগ্রাম',
-      diagram: `12V 3A অ্যাডাপ্টার
+      diagram: `২২০V AC L (Line)
+       │
+       ▼
+  ┌─────────────┐
+  │ 5A 250V Fuse│ ← ফিউজ হোল্ডার (ESP32 বক্সের আগে)
+  └─────────────┘
+       │
+       ▼
+  12V 3A অ্যাডাপ্টার
        │
        ▼
   DC Connector 5.5mm
