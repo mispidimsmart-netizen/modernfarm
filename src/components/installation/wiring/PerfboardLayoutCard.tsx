@@ -317,7 +317,11 @@ export function PerfboardLayoutCard() {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-[11px] text-muted-foreground">
+          💡 ডায়াগ্রামের যেকোনো কানেক্টর, রেল বা রিলে চ্যানেলের উপর মাউস নিন (মোবাইলে ট্যাপ করুন) — কোন তার কোন পিনে যাবে দেখা যাবে।
+        </p>
         <PerfboardSvg />
+
 
         <div className="grid gap-2">
           {PLACEMENT.map(([zone, detail]) => (
