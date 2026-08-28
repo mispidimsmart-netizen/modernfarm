@@ -204,7 +204,7 @@ function InstallationGuideContent() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="parts" className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as GuideTab)} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="parts" className="text-xs">
               <ShoppingCart className="h-3 w-3 mr-1" />
