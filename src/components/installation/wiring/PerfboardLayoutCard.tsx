@@ -73,11 +73,12 @@ function PerfboardSvg() {
 
         {/* Bus rails */}
         <line x1="168" y1="60" x2="168" y2="860" stroke="#111827" strokeWidth="6" />
-        <text x="150" y="99" fontSize="12" fill="#111827" fontWeight="bold">GND</text>
+        <rect x="140" y="86" width="82" height="18" rx="3" fill="#ffffff" opacity="0.92" />
+        <text x="146" y="99" fontSize="11" fill="#111827" fontWeight="bold">GND</text>
         <line x1="184" y1="60" x2="184" y2="860" stroke="#16a34a" strokeWidth="5" />
-        <text x="180" y="99" fontSize="11" fill="#16a34a" fontWeight="bold">3V3</text>
+        <text x="176" y="99" fontSize="11" fill="#16a34a" fontWeight="bold">3V3</text>
         <line x1="200" y1="60" x2="200" y2="860" stroke="#ef4444" strokeWidth="5" />
-        <text x="206" y="99" fontSize="12" fill="#ef4444" fontWeight="bold">5V</text>
+        <text x="203" y="99" fontSize="11" fill="#ef4444" fontWeight="bold">5V</text>
         <line x1="418" y1="200" x2="418" y2="860" stroke="#f97316" strokeWidth="5" />
         <text x="404" y="196" fontSize="11" fill="#f97316" fontWeight="bold">12V</text>
 
