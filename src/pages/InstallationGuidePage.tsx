@@ -96,18 +96,31 @@ function InstallationGuideContent() {
 
       <div className="p-4 space-y-6">
 
-        {/* Quick link to Pin Map page */}
-        <Button
-          variant="outline"
-          className="w-full justify-between border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 h-auto py-3"
-          onClick={() => navigate('/pin-map')}
-        >
-          <span className="flex flex-col items-start gap-0.5">
-            <span className="text-sm font-bold text-primary">পিন ম্যাপ & সেন্সর দেখুন</span>
-            <span className="text-[11px] text-muted-foreground font-normal">v8 / v10 দ্রুত toggle ও search</span>
-          </span>
-          <ArrowLeft className="h-4 w-4 rotate-180 text-primary" />
-        </Button>
+        {/* Quick links */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            className="w-full justify-between border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 h-auto py-3"
+            onClick={() => navigate('/pin-map')}
+          >
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-bold text-primary">পিন ম্যাপ & সেন্সর দেখুন</span>
+              <span className="text-[11px] text-muted-foreground font-normal">v8 / v10 দ্রুত toggle ও search</span>
+            </span>
+            <ArrowLeft className="h-4 w-4 rotate-180 text-primary" />
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-between border-2 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 h-auto py-3"
+            onClick={() => setActiveTab('wiring')}
+          >
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-bold text-amber-600 dark:text-amber-400">ওয়্যারিং গাইড দেখুন</span>
+              <span className="text-[11px] text-muted-foreground font-normal">রঙ, ডায়াগ্রাম, সেন্সর সংযোগ</span>
+            </span>
+            <Cable className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </Button>
+        </div>
 
         {/* Phase 1-9 live automation status (single source of truth) */}
         <CurrentAutomationStatusBanner />
