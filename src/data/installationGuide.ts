@@ -1283,6 +1283,7 @@ export const wiringCategories = [
   { id: 'light', name: '💡 আলো / Lux (LDR — v8 / BH1750 — v10)', nameEn: 'Light / Lux (LDR — v8 / BH1750 — v10)', icon: Lightbulb, color: 'text-amber-500', bgColor: 'bg-amber-500/10', sensorIds: ['ldr', 'bh1750'] },
   { id: 'water', name: '💧 ওয়াটার ফ্লো (YF-S201)', nameEn: 'Water Flow', icon: Droplets, color: 'text-blue-500', bgColor: 'bg-blue-500/10', sensorIds: ['yfs201'] },
   { id: 'power-monitor', name: '⚡ ভোল্টেজ মনিটর (ZMPT101B)', nameEn: 'Voltage Monitor', icon: Power, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10', sensorIds: ['zmpt101b'] },
+  { id: 'fuse', name: '⚡ ফিউজ ও প্রোটেকশন (FBH-01 / CH141)', nameEn: 'Fuse & Protection', icon: AlertTriangle, color: 'text-rose-500', bgColor: 'bg-rose-500/10', sensorIds: ['fuse-protection'] },
   { id: 'power', name: '🔌 পাওয়ার সাপ্লাই ও ক্যাপাসিটর', nameEn: 'Power Supply & Capacitors', icon: Zap, color: 'text-red-500', bgColor: 'bg-red-500/10', sensorIds: ['power-setup', 'capacitor'] },
   { id: 'output', name: '🎛️ রিলে আউটপুট ও MCB / কন্ট্যাক্টর', nameEn: 'Relay Output & Switching', icon: ToggleLeft, color: 'text-purple-500', bgColor: 'bg-purple-500/10', sensorIds: ['relay', 'mcb-contactor'] },
   { id: 'actuators', name: '💦 অ্যাকচুয়েটর (ফগার / স্প্রিংকলার / বাজার / পাম্প)', nameEn: 'Actuators (Fogger / Sprinkler / Buzzer / Pump)', icon: Droplets, color: 'text-blue-500', bgColor: 'bg-blue-500/10', sensorIds: ['fogger', 'sprinkler', 'buzzer', 'shared-pump'] },
