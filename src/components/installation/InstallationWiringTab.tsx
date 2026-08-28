@@ -23,7 +23,9 @@ export function InstallationWiringTab() {
 
       <WireColorLegendCard />
       <WiringDiagramCard />
+      {version === 'v8' && <PerfboardLayoutCard />}
       <SensorWiringAccordion />
+
       <QuickReferenceTableCard />
       <JumperWireGuideCard />
       <ImportantNotesCard />
