@@ -73,11 +73,11 @@ function PerfboardSvg() {
 
         {/* Bus rails */}
         <line x1="168" y1="60" x2="168" y2="860" stroke="#111827" strokeWidth="6" />
-        <text x="158" y="56" fontSize="12" fill="#111827" fontWeight="bold">GND</text>
+        <text x="150" y="99" fontSize="12" fill="#111827" fontWeight="bold">GND</text>
         <line x1="184" y1="60" x2="184" y2="860" stroke="#16a34a" strokeWidth="5" />
-        <text x="176" y="878" fontSize="11" fill="#16a34a" fontWeight="bold">3V3</text>
+        <text x="180" y="99" fontSize="11" fill="#16a34a" fontWeight="bold">3V3</text>
         <line x1="200" y1="60" x2="200" y2="860" stroke="#ef4444" strokeWidth="5" />
-        <text x="192" y="56" fontSize="12" fill="#ef4444" fontWeight="bold">5V</text>
+        <text x="206" y="99" fontSize="12" fill="#ef4444" fontWeight="bold">5V</text>
         <line x1="418" y1="200" x2="418" y2="860" stroke="#f97316" strokeWidth="5" />
         <text x="404" y="196" fontSize="11" fill="#f97316" fontWeight="bold">12V</text>
 
@@ -147,7 +147,7 @@ function PerfboardSvg() {
 
         {/* Relay header (right) */}
         <g>
-          <rect x="434" y={200} width="148" height={8 * 34 + 44} rx="4" fill="#1e40af" stroke="#1e3a8a" />
+          <rect x="434" y={200} width="148" height={8 * 34 + 74} rx="4" fill="#1e40af" stroke="#1e3a8a" />
           <text x="508" y="226" fontSize="12" fill="#fff" textAnchor="middle" fontWeight="bold">J2/J3 · রিলে IN1–IN8</text>
           {RELAY_ROWS.map((r, i) => {
             const y = 250 + i * 34;
@@ -160,7 +160,7 @@ function PerfboardSvg() {
               </g>
             );
           })}
-          <text x="508" y={200 + 8 * 34 + 34} fontSize="10" fill="#dbeafe" textAnchor="middle">VCC=5V · GND=বাস · JD-VCC আলাদা</text>
+          <text x="508" y={200 + 8 * 34 + 60} fontSize="10" fill="#dbeafe" textAnchor="middle">VCC=5V · GND=বাস · JD-VCC আলাদা</text>
         </g>
 
         {/* Buzzer / LED */}
