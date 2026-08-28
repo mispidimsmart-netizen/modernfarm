@@ -16,14 +16,44 @@ import { InstallationPartsTab } from '@/components/installation/InstallationPart
 import { InstallationWiringTab } from '@/components/installation/InstallationWiringTab';
 import { InstallationSetupTab } from '@/components/installation/InstallationSetupTab';
 
+type GuideTab = 'parts' | 'wiring' | 'setup';
+const VALID_TABS: GuideTab[] = ['parts', 'wiring', 'setup'];
+
 function InstallationGuideContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { version, setVersion } = useGuideVersion();
   const meta = guideVersionMeta[version];
   const totals = getPartsTotals(version);
   const essentialTotal = totals.essential;
   const fullTotal = totals.full;
+
+  const activeTab: GuideTab = VALID_TABS.includes(searchParams.get('tab') as GuideTab)
+    ? (searchParams.get('tab') as GuideTab)
+    : 'parts';
+
+  const setActiveTab = useCallback(
+    (tab: GuideTab) => {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', tab);
+        return next;
+      }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  // Sync version to URL so wiring links can be version-specific too
+  useEffect(() => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (next.get('version') !== version) {
+        next.set('version', version);
+      }
+      return next;
+    }, { replace: true });
+  }, [version, setSearchParams]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
