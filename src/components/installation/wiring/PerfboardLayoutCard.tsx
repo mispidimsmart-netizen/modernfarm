@@ -417,7 +417,7 @@ function PerfboardSvg() {
             onMouseMove={track(s)}
             onClick={track(s)}
           >
-            <title>{`${s.title}\n${s.rows.join('\n')}`}</title>
+            <title>{`${s.title}\n${s.rows.join('\n')}${s.wire ? '\n🧵 ' + s.wire.text : ''}`}</title>
           </rect>
         ))}
       </g>
@@ -427,14 +427,24 @@ function PerfboardSvg() {
 
     {hover && (
       <div
-        className="pointer-events-none absolute z-20 w-60 rounded-lg border border-border bg-popover p-2.5 shadow-lg"
+        className="pointer-events-none absolute z-20 w-64 rounded-lg border border-border bg-popover p-2.5 shadow-lg"
         style={{
-          left: Math.min(Math.max(hover.x + 14, 4), Math.max((wrapRef.current?.clientWidth ?? 300) - 248, 4)),
+          left: Math.min(Math.max(hover.x + 14, 4), Math.max((wrapRef.current?.clientWidth ?? 300) - 264, 4)),
           top: Math.max(hover.y - 10, 4),
         }}
       >
         <p className="text-[11px] font-bold text-primary">{hover.spot.title}</p>
-        <ul className="mt-1 space-y-0.5">
+        {hover.spot.wire && (
+          <div className="mt-1.5 flex items-center gap-1.5 rounded-md bg-muted/80 px-2 py-1">
+            <span
+              className="h-3 w-3 rounded-full border border-black/10 shrink-0"
+              style={{ backgroundColor: hover.spot.wire.color }}
+              aria-hidden="true"
+            />
+            <span className="text-[10.5px] font-medium leading-snug text-foreground">{hover.spot.wire.text}</span>
+          </div>
+        )}
+        <ul className="mt-1.5 space-y-0.5">
           {hover.spot.rows.map((r) => (
             <li key={r} className="text-[10.5px] leading-snug text-foreground/90">• {r}</li>
           ))}
