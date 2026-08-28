@@ -254,12 +254,52 @@ function PerfboardSvg() {
         <text x="300" y={870} fontSize="10.5" fill="#7f1d1d" textAnchor="middle">রিলে NO/COM/NC তার বোর্ডের বাইরে আলাদা স্ক্রু টার্মিনালে</text>
 
         <text x="300" y={-14} fontSize="13" fill="#111827" textAnchor="middle" fontWeight="bold">FarmEye v8 · FR-4 প্রোটোটাইপ বোর্ড 12 × 18 cm (2.54mm pitch)</text>
+
+        {/* Hover hotspots — প্রতিটি কানেক্টর/পিনের ওয়্যারিং তথ্য */}
+        {HOTSPOTS.map((s) => (
+          <rect
+            key={s.id}
+            x={s.x}
+            y={s.y}
+            width={s.w}
+            height={s.h}
+            rx="4"
+            fill="transparent"
+            stroke={hover?.spot.id === s.id ? '#fbbf24' : 'transparent'}
+            strokeWidth="3"
+            style={{ cursor: 'help' }}
+            onMouseEnter={track(s)}
+            onMouseMove={track(s)}
+            onClick={track(s)}
+          >
+            <title>{`${s.title}\n${s.rows.join('\n')}`}</title>
+          </rect>
+        ))}
       </g>
 
       <text x="330" y="956" fontSize="12" fill="#374151" textAnchor="middle">প্রস্থ 120 mm (≈47 হোল) × উচ্চতা 180 mm (≈70 হোল) · স্কেল 1:1 অনুপাতে আঁকা</text>
     </svg>
+
+    {hover && (
+      <div
+        className="pointer-events-none absolute z-20 w-60 rounded-lg border border-border bg-popover p-2.5 shadow-lg"
+        style={{
+          left: Math.min(Math.max(hover.x + 14, 4), Math.max((wrapRef.current?.clientWidth ?? 300) - 248, 4)),
+          top: Math.max(hover.y - 10, 4),
+        }}
+      >
+        <p className="text-[11px] font-bold text-primary">{hover.spot.title}</p>
+        <ul className="mt-1 space-y-0.5">
+          {hover.spot.rows.map((r) => (
+            <li key={r} className="text-[10.5px] leading-snug text-foreground/90">• {r}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    </div>
   );
 }
+
 
 export function PerfboardLayoutCard() {
   return (
