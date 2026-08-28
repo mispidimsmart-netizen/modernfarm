@@ -6,6 +6,8 @@ import { useGuideVersion } from '@/components/installation/GuideVersionContext';
 
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 import { SensorWiringAccordion } from '@/components/installation/wiring/SensorWiringAccordion';
+import { PerfboardLayoutCard } from '@/components/installation/wiring/PerfboardLayoutCard';
+
 import {
   WireColorLegendCard,
   WiringDiagramCard,
@@ -23,7 +25,9 @@ export function InstallationWiringTab() {
 
       <WireColorLegendCard />
       <WiringDiagramCard />
+      {version === 'v8' && <PerfboardLayoutCard />}
       <SensorWiringAccordion />
+
       <QuickReferenceTableCard />
       <JumperWireGuideCard />
       <ImportantNotesCard />
