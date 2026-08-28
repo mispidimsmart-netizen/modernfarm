@@ -1,4 +1,6 @@
+import { useRef, useState } from 'react';
 import { CircuitBoard } from 'lucide-react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -52,9 +54,58 @@ const STEPS = [
   'পাওয়ার দেওয়ার আগে মাল্টিমিটারে VIN↔GND ও 3V3↔GND এ শর্ট আছে কিনা চেক করুন।',
 ];
 
+type HotSpot = { id: string; x: number; y: number; w: number; h: number; title: string; rows: string[] };
+
+/** বোর্ড-কো-অর্ডিনেটে (translate 30,40 এর ভেতরে) হোভার-যোগ্য অঞ্চল */
+const HOTSPOTS: HotSpot[] = [
+  { id: 'ac', x: 18, y: 18, w: 140, h: 62, title: 'J1 · AC 220V ইনপুট', rows: ['পিন 1 = L (ফেজ) → ফিউজ হোল্ডার IN', 'পিন 2 = N (নিউট্রাল) → 12V অ্যাডাপ্টার N', 'তার: 1.5 mm² · আর্থ থাকলে এনক্লোজার বডিতে'] },
+  { id: 'fuse', x: 216, y: 18, w: 150, h: 62, title: 'FBH-01 / CH141 ফিউজ হোল্ডার', rows: ['IN ← J1 এর L টার্মিনাল', 'OUT → 12V অ্যাডাপ্টারের L', 'ফিউজ: 5A 250V · 5×20mm গ্লাস', 'শুধু ফেজ লাইনে, নিউট্রালে নয়'] },
+  { id: 'adapter', x: 424, y: 18, w: 158, h: 62, title: '12V 5A অ্যাডাপ্টার / SMPS', rows: ['L ← ফিউজ OUT · N ← J1 এর N', '12V+ → LM2596 IN+ ও 12V রেল', '12V− → GND রেল'] },
+  { id: 'lm2596', x: 216, y: 104, w: 200, h: 72, title: 'LM2596 বাক মডিউল', rows: ['IN+ ← 12V রেল · IN− ← GND রেল', 'OUT+ → 5V রেল ও ESP32 VIN', 'OUT− → GND রেল', 'ESP32 লাগানোর আগে OUT = 5.0V সেট করুন'] },
+  { id: 'esp32', x: 230, y: 240, w: 176, h: 360, title: 'ESP32-WROOM-32 DevKit V1 (38-pin)', rows: ['VIN ← LM2596 OUT+ (5V)', 'GND ← GND রেল (একাধিক পিন)', '3V3 → 3.3V রেল (সেন্সর/TFT)', 'ফিমেল হেডারে বসান — সরাসরি সোল্ডার নয়'] },
+  { id: 'cap', x: 252, y: 530, w: 30, h: 56, title: '1000µF ইলেক্ট্রোলাইটিক ক্যাপাসিটর', rows: ['+ (লম্বা পা) → ESP32 VIN', '− (ছোট পা / সাদা স্ট্রাইপ) → GND', 'ভোল্টেজ রেটিং ≥ 16V', 'পোলারিটি উল্টো দিলে ফেটে যাবে'] },
+  { id: 'buzzer', x: 434, y: 534, w: 148, h: 60, title: 'বাজার + স্ট্যাটাস LED', rows: ['LED অ্যানোড (+) → GPIO2 এর সাথে 220Ω রেজিস্টর', 'LED ক্যাথোড (−) → GND রেল', 'অ্যাক্টিভ বাজার + → 5V রেল, − → রিলে IN7/ALARM অথবা ULN2803A আউট'] },
+  { id: 'tft', x: 434, y: 614, w: 148, h: 150, title: 'ILI9341 2.8" SPI TFT ডিসপ্লে', rows: ['VCC → 3.3V রেল (5V দিলে নষ্ট হবে)', 'GND → GND রেল', 'CS → GPIO5 · DC/RS → GPIO17 · RST → GPIO22', 'SCK → GPIO18 · MOSI/SDI → GPIO19', 'LED/BL → 3.3V'] },
+  { id: 'uln', x: 216, y: 640, w: 176, h: 70, title: 'ULN2803A DIP-18 (ঐচ্ছিক ড্রাইভার)', rows: ['IN1–IN8 (পিন 1–8) ← ESP32 GPIO', 'OUT1–OUT8 (পিন 11–18) → প্যানেল LED এর − দিক', 'পিন 9 = GND রেল · পিন 10 (COM) = 12V', 'LED এর + দিক 12V রেলে'] },
+  { id: 'powerout', x: 216, y: 740, w: 176, h: 66, title: 'J13/J14 · পাওয়ার আউট টার্মিনাল', rows: ['5V ← LM2596 OUT+ (রিলে মডিউল VCC)', '3.3V ← ESP32 3V3 (সেন্সর/TFT)', '12V ← অ্যাডাপ্টার (JD-VCC / প্যানেল LED)', 'GND সব ডিভাইসে কমন হতে হবে'] },
+  { id: 'gnd-rail', x: 160, y: 110, w: 16, h: 740, title: 'GND বাস রেল (কালো)', rows: ['সব GND এখানেই আসবে — কমন গ্রাউন্ড', 'উৎস: LM2596 OUT− ও ESP32 GND', 'মোটা টিনের রেল/1 mm² তার ব্যবহার করুন'] },
+  { id: '3v3-rail', x: 178, y: 110, w: 12, h: 740, title: '3.3V রেল (সবুজ)', rows: ['উৎস: ESP32 এর 3V3 পিন', 'ব্যবহার: DHT22, LDR ডিভাইডার, TFT VCC', 'সর্বোচ্চ ~500 mA — রিলে চালাবেন না'] },
+  { id: '5v-rail', x: 194, y: 110, w: 12, h: 740, title: '5V রেল (লাল)', rows: ['উৎস: LM2596 OUT+', 'ব্যবহার: ESP32 VIN, রিলে মডিউল VCC, MQ-137, YF-S201'] },
+  { id: '12v-rail', x: 412, y: 210, w: 12, h: 640, title: '12V রেল (কমলা)', rows: ['উৎস: 12V অ্যাডাপ্টার +', 'ব্যবহার: LM2596 IN+, রিলে JD-VCC, ULN2803A COM, প্যানেল LED'] },
+  ...SENSOR_BLOCKS.map((b) => ({
+    id: `sensor-${b.y}`,
+    x: 18,
+    y: b.y,
+    w: 132,
+    h: 62,
+    title: b.label,
+    rows: [`সিগন্যাল: ${b.pin}`, 'VCC → রেল (DHT22/LDR = 3.3V · MQ-137/YF-S201 = 5V)', 'GND → GND রেল', 'অ্যানালগ তার AC/রিলে তার থেকে দূরে রাখুন'],
+  })),
+  ...RELAY_ROWS.map((r, i) => ({
+    id: `relay-${r.n}`,
+    x: 440,
+    y: 250 + i * 34 - 14,
+    w: 140,
+    h: 30,
+    title: `${r.n} · ${r.fn}`,
+    rows: [`ESP32 ${r.gpio} → রিলে মডিউলের ${r.n}`, 'অ্যাক্টিভ LOW (LOW = রিলে ON)', 'রিলে VCC = 5V · GND = GND রেল', 'JD-VCC জাম্পার খুলে আলাদা 12V/5V দিন'],
+  })),
+];
+
 function PerfboardSvg() {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<{ spot: HotSpot; x: number; y: number } | null>(null);
+
+  const track = (spot: HotSpot) => (e: React.MouseEvent) => {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setHover({ spot, x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
   return (
+    <div ref={wrapRef} className="relative" onMouseLeave={() => setHover(null)}>
     <svg viewBox="0 0 660 960" className="w-full h-auto rounded-lg border border-border bg-white" role="img" aria-label="FR-4 12x18cm প্রোটোটাইপ বোর্ডে ESP32 v8 ফুল ওয়্যারিং ও প্লেসমেন্ট ডায়াগ্রাম">
+
       <defs>
         <pattern id="holes" width="12.7" height="12.7" patternUnits="userSpaceOnUse">
           <circle cx="6.35" cy="6.35" r="1.6" fill="#0f5132" opacity="0.35" />
@@ -205,12 +256,52 @@ function PerfboardSvg() {
         <text x="300" y={870} fontSize="10.5" fill="#7f1d1d" textAnchor="middle">রিলে NO/COM/NC তার বোর্ডের বাইরে আলাদা স্ক্রু টার্মিনালে</text>
 
         <text x="300" y={-14} fontSize="13" fill="#111827" textAnchor="middle" fontWeight="bold">FarmEye v8 · FR-4 প্রোটোটাইপ বোর্ড 12 × 18 cm (2.54mm pitch)</text>
+
+        {/* Hover hotspots — প্রতিটি কানেক্টর/পিনের ওয়্যারিং তথ্য */}
+        {HOTSPOTS.map((s) => (
+          <rect
+            key={s.id}
+            x={s.x}
+            y={s.y}
+            width={s.w}
+            height={s.h}
+            rx="4"
+            fill="transparent"
+            stroke={hover?.spot.id === s.id ? '#fbbf24' : 'transparent'}
+            strokeWidth="3"
+            style={{ cursor: 'help' }}
+            onMouseEnter={track(s)}
+            onMouseMove={track(s)}
+            onClick={track(s)}
+          >
+            <title>{`${s.title}\n${s.rows.join('\n')}`}</title>
+          </rect>
+        ))}
       </g>
 
       <text x="330" y="956" fontSize="12" fill="#374151" textAnchor="middle">প্রস্থ 120 mm (≈47 হোল) × উচ্চতা 180 mm (≈70 হোল) · স্কেল 1:1 অনুপাতে আঁকা</text>
     </svg>
+
+    {hover && (
+      <div
+        className="pointer-events-none absolute z-20 w-60 rounded-lg border border-border bg-popover p-2.5 shadow-lg"
+        style={{
+          left: Math.min(Math.max(hover.x + 14, 4), Math.max((wrapRef.current?.clientWidth ?? 300) - 248, 4)),
+          top: Math.max(hover.y - 10, 4),
+        }}
+      >
+        <p className="text-[11px] font-bold text-primary">{hover.spot.title}</p>
+        <ul className="mt-1 space-y-0.5">
+          {hover.spot.rows.map((r) => (
+            <li key={r} className="text-[10.5px] leading-snug text-foreground/90">• {r}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    </div>
   );
 }
+
 
 export function PerfboardLayoutCard() {
   return (
@@ -226,7 +317,11 @@ export function PerfboardLayoutCard() {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-[11px] text-muted-foreground">
+          💡 ডায়াগ্রামের যেকোনো কানেক্টর, রেল বা রিলে চ্যানেলের উপর মাউস নিন (মোবাইলে ট্যাপ করুন) — কোন তার কোন পিনে যাবে দেখা যাবে।
+        </p>
         <PerfboardSvg />
+
 
         <div className="grid gap-2">
           {PLACEMENT.map(([zone, detail]) => (
