@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Cable, Settings, ShoppingCart, Bird, Egg, Cpu, Thermometer, Wind, Droplets, Power, Fan } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,44 @@ import { InstallationPartsTab } from '@/components/installation/InstallationPart
 import { InstallationWiringTab } from '@/components/installation/InstallationWiringTab';
 import { InstallationSetupTab } from '@/components/installation/InstallationSetupTab';
 
+type GuideTab = 'parts' | 'wiring' | 'setup';
+const VALID_TABS: GuideTab[] = ['parts', 'wiring', 'setup'];
+
 function InstallationGuideContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { version, setVersion } = useGuideVersion();
   const meta = guideVersionMeta[version];
   const totals = getPartsTotals(version);
   const essentialTotal = totals.essential;
   const fullTotal = totals.full;
+
+  const activeTab: GuideTab = VALID_TABS.includes(searchParams.get('tab') as GuideTab)
+    ? (searchParams.get('tab') as GuideTab)
+    : 'parts';
+
+  const setActiveTab = useCallback(
+    (tab: GuideTab) => {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', tab);
+        return next;
+      }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  // Sync version to URL so wiring links can be version-specific too
+  useEffect(() => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (next.get('version') !== version) {
+        next.set('version', version);
+      }
+      return next;
+    }, { replace: true });
+  }, [version, setSearchParams]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -66,18 +96,31 @@ function InstallationGuideContent() {
 
       <div className="p-4 space-y-6">
 
-        {/* Quick link to Pin Map page */}
-        <Button
-          variant="outline"
-          className="w-full justify-between border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 h-auto py-3"
-          onClick={() => navigate('/pin-map')}
-        >
-          <span className="flex flex-col items-start gap-0.5">
-            <span className="text-sm font-bold text-primary">পিন ম্যাপ & সেন্সর দেখুন</span>
-            <span className="text-[11px] text-muted-foreground font-normal">v8 / v10 দ্রুত toggle ও search</span>
-          </span>
-          <ArrowLeft className="h-4 w-4 rotate-180 text-primary" />
-        </Button>
+        {/* Quick links */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            className="w-full justify-between border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 h-auto py-3"
+            onClick={() => navigate('/pin-map')}
+          >
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-bold text-primary">পিন ম্যাপ & সেন্সর দেখুন</span>
+              <span className="text-[11px] text-muted-foreground font-normal">v8 / v10 দ্রুত toggle ও search</span>
+            </span>
+            <ArrowLeft className="h-4 w-4 rotate-180 text-primary" />
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-between border-2 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 h-auto py-3"
+            onClick={() => setActiveTab('wiring')}
+          >
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-sm font-bold text-amber-600 dark:text-amber-400">ওয়্যারিং গাইড দেখুন</span>
+              <span className="text-[11px] text-muted-foreground font-normal">রঙ, ডায়াগ্রাম, সেন্সর সংযোগ</span>
+            </span>
+            <Cable className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </Button>
+        </div>
 
         {/* Phase 1-9 live automation status (single source of truth) */}
         <CurrentAutomationStatusBanner />
@@ -174,7 +217,7 @@ function InstallationGuideContent() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="parts" className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as GuideTab)} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="parts" className="text-xs">
               <ShoppingCart className="h-3 w-3 mr-1" />

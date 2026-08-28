@@ -317,6 +317,47 @@ export const detailedWiringGuide = [
     },
   },
   {
+    id: 'fuse-protection',
+    name: '⚡ ফিউজ ও প্রোটেকশন (FBH-01 / CH141 + 5A Glass Fuse)',
+    nameEn: 'Fuse & Protection (FBH-01 / CH141 + 5A Glass Fuse)',
+    icon: AlertTriangle,
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-500/10',
+    pins: [
+      { sensorPin: 'ফিউজ হোল্ডার IN', esp32Pin: '২২০V AC L (Line) / MCB আউটপুট', wireColor: 'লাল/বাদামী', wireNameEn: 'RED/BROWN', instruction: '🔴 MCB বা মেইন সুইচ থেকে আসা AC লাইভ (ফেজ) তার → ফিউজ হোল্ডারের এক পিনে (IN/Load side যেকোনো)', warning: '⛔ নিরপেক্ষ (Neutral) লাইনে ফিউজ লাগাবেন না — শুধু ফেজ (L) লাইনে লাগান।' },
+      { sensorPin: 'ফিউজ হোল্ডার OUT', esp32Pin: '12V অ্যাডাপ্টার / রিলে বক্স AC ইনপুট', wireColor: 'লাল/বাদামী', wireNameEn: 'RED/BROWN', instruction: '🔴 ফিউজ হোল্ডারের অন্য পিন থেকে তার → 12V DC অ্যাডাপ্টারের AC ইনপুট বা রিলে বক্সের AC টার্মিনালে', warning: null },
+      { sensorPin: 'ফিউজ (৫×২০mm)', esp32Pin: 'হোল্ডারের ভেতরে ঢোকান', wireColor: '—', wireNameEn: '—', instruction: '📍 হোল্ডারের ঢাকনা খুলে 5A 250V 5×২০mm গ্লাস ফিউজ ঢোকান। দুই প্রান্তের ধাতব ক্যাপ স্প্রিং চাপে লাগবে।', warning: '⚠️ ফিউজের রেটিং: 5A 250V — তার চেয়ে বেশি অ্যাম্পিয়ারের ফিউজ দেবেন না; short-circuit সুরক্ষা কমে যাবে।' },
+      { sensorPin: 'Neutral (N)', esp32Pin: 'AC নিরপেক্ষ বাসবার', wireColor: 'নীল/কালো', wireNameEn: 'BLUE/BLACK', instruction: '🔵 12V অ্যাডাপ্টারের N পিন এবং রিলে বক্সের নিরপেক্ষ পয়েন্ট সরাসরি AC Neutral বাসবারে যুক্ত করুন — এটি ফিউজের মধ্য দিয়ে যাবে না', warning: null },
+    ],
+    extraNote: `⚡ কেন ফিউজ বাধ্যতামূলক:
+ESP32 বোর্ড, রিলে মডিউল এবং সেন্সরগুলো ২২০V AC লাইনের শর্ট-সার্কিট বা ওভারকারেন্ট থেকে রক্ষা পেতে ফিউজ লাগানো আবশ্যক।
+
+📌 সংযোগের ক্রম:
+২২০V AC মেইন → MCB (2P 32A) → FBH-01/CH141 Fuse Holder (5A) → 12V Adapter IN → LM2596 (5V) → ESP32 VIN
+                              ↓
+                        রিলে বক্স AC ইনপুট (রিলে JD-VCC এর জন্য 12V DC)
+
+📌 কেন FBH-01 / CH141:
+এটি ৫×২০mm panel mount fuse holder — বাংলাদেশে RoboticsBD/TechshopBD-তে সহজলভ্য।
+
+📌 ASCII ডায়াগ্রাম:
+
+   220V L ───►[ MCB 2P 32A ]───►[ FBH-01/CH141 ]───►[ 5A Fuse ]───► 12V Adapter L
+   220V N ───────────────────────────────────────────────────────► 12V Adapter N
+
+   12V DC(+) ───► LM2596 IN+ ──(5V OUT+)──► ESP32 VIN
+   12V DC(-) ───► LM2596 IN- ──(5V OUT-)──► ESP32 GND
+`,
+    resistorNote: null,
+    tips: [
+      'ফিউজ হোল্ডার ESP32 বক্সের বাইরে, AC ইনপুট লাইনে সিরিজে লাগান',
+      'ফিউজ ছাড়া কখনোই 220V প্লাগ ইন করবেন না',
+      'স্পেয়ার হিসেবে ৫-১০টি 5A 250V glass fuse রাখুন',
+      'ফিউজ ট্রিপ হলে প্রথমে শর্ট-সার্কিট খুঁজে বের করুন, তারপর নতুন ফিউজ দিন',
+      'MCB ও ফিউজ দুটোই থাকলে সবচেয়ে নিরাপদ — MCB ওভারলোডে, ফিউজ হার্ড শর্টে কাজ করে',
+    ],
+  },
+  {
     id: 'capacitor',
     name: '1000μF ক্যাপাসিটর (ESP32 পাওয়ার স্ট্যাবিলিটি — CRITICAL)',
     nameEn: '1000μF Capacitor (ESP32 Power Stability — CRITICAL)',
@@ -1242,6 +1283,7 @@ export const wiringCategories = [
   { id: 'light', name: '💡 আলো / Lux (LDR — v8 / BH1750 — v10)', nameEn: 'Light / Lux (LDR — v8 / BH1750 — v10)', icon: Lightbulb, color: 'text-amber-500', bgColor: 'bg-amber-500/10', sensorIds: ['ldr', 'bh1750'] },
   { id: 'water', name: '💧 ওয়াটার ফ্লো (YF-S201)', nameEn: 'Water Flow', icon: Droplets, color: 'text-blue-500', bgColor: 'bg-blue-500/10', sensorIds: ['yfs201'] },
   { id: 'power-monitor', name: '⚡ ভোল্টেজ মনিটর (ZMPT101B)', nameEn: 'Voltage Monitor', icon: Power, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10', sensorIds: ['zmpt101b'] },
+  { id: 'fuse', name: '⚡ ফিউজ ও প্রোটেকশন (FBH-01 / CH141)', nameEn: 'Fuse & Protection', icon: AlertTriangle, color: 'text-rose-500', bgColor: 'bg-rose-500/10', sensorIds: ['fuse-protection'] },
   { id: 'power', name: '🔌 পাওয়ার সাপ্লাই ও ক্যাপাসিটর', nameEn: 'Power Supply & Capacitors', icon: Zap, color: 'text-red-500', bgColor: 'bg-red-500/10', sensorIds: ['power-setup', 'capacitor'] },
   { id: 'output', name: '🎛️ রিলে আউটপুট ও MCB / কন্ট্যাক্টর', nameEn: 'Relay Output & Switching', icon: ToggleLeft, color: 'text-purple-500', bgColor: 'bg-purple-500/10', sensorIds: ['relay', 'mcb-contactor'] },
   { id: 'actuators', name: '💦 অ্যাকচুয়েটর (ফগার / স্প্রিংকলার / বাজার / পাম্প)', nameEn: 'Actuators (Fogger / Sprinkler / Buzzer / Pump)', icon: Droplets, color: 'text-blue-500', bgColor: 'bg-blue-500/10', sensorIds: ['fogger', 'sprinkler', 'buzzer', 'shared-pump'] },
