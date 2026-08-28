@@ -54,24 +54,160 @@ const STEPS = [
   'পাওয়ার দেওয়ার আগে মাল্টিমিটারে VIN↔GND ও 3V3↔GND এ শর্ট আছে কিনা চেক করুন।',
 ];
 
-type HotSpot = { id: string; x: number; y: number; w: number; h: number; title: string; rows: string[] };
+type HotSpot = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  title: string;
+  rows: string[];
+  /** সুপারিশকৃত তারের রং / কেবল টাইপ */
+  wire?: { color: string; text: string };
+};
 
 /** বোর্ড-কো-অর্ডিনেটে (translate 30,40 এর ভেতরে) হোভার-যোগ্য অঞ্চল */
 const HOTSPOTS: HotSpot[] = [
-  { id: 'ac', x: 18, y: 18, w: 140, h: 62, title: 'J1 · AC 220V ইনপুট', rows: ['পিন 1 = L (ফেজ) → ফিউজ হোল্ডার IN', 'পিন 2 = N (নিউট্রাল) → 12V অ্যাডাপ্টার N', 'তার: 1.5 mm² · আর্থ থাকলে এনক্লোজার বডিতে'] },
-  { id: 'fuse', x: 216, y: 18, w: 150, h: 62, title: 'FBH-01 / CH141 ফিউজ হোল্ডার', rows: ['IN ← J1 এর L টার্মিনাল', 'OUT → 12V অ্যাডাপ্টারের L', 'ফিউজ: 5A 250V · 5×20mm গ্লাস', 'শুধু ফেজ লাইনে, নিউট্রালে নয়'] },
-  { id: 'adapter', x: 424, y: 18, w: 158, h: 62, title: '12V 5A অ্যাডাপ্টার / SMPS', rows: ['L ← ফিউজ OUT · N ← J1 এর N', '12V+ → LM2596 IN+ ও 12V রেল', '12V− → GND রেল'] },
-  { id: 'lm2596', x: 216, y: 104, w: 200, h: 72, title: 'LM2596 বাক মডিউল', rows: ['IN+ ← 12V রেল · IN− ← GND রেল', 'OUT+ → 5V রেল ও ESP32 VIN', 'OUT− → GND রেল', 'ESP32 লাগানোর আগে OUT = 5.0V সেট করুন'] },
-  { id: 'esp32', x: 230, y: 240, w: 176, h: 360, title: 'ESP32-WROOM-32 DevKit V1 (38-pin)', rows: ['VIN ← LM2596 OUT+ (5V)', 'GND ← GND রেল (একাধিক পিন)', '3V3 → 3.3V রেল (সেন্সর/TFT)', 'ফিমেল হেডারে বসান — সরাসরি সোল্ডার নয়'] },
-  { id: 'cap', x: 252, y: 530, w: 30, h: 56, title: '1000µF ইলেক্ট্রোলাইটিক ক্যাপাসিটর', rows: ['+ (লম্বা পা) → ESP32 VIN', '− (ছোট পা / সাদা স্ট্রাইপ) → GND', 'ভোল্টেজ রেটিং ≥ 16V', 'পোলারিটি উল্টো দিলে ফেটে যাবে'] },
-  { id: 'buzzer', x: 434, y: 534, w: 148, h: 60, title: 'বাজার + স্ট্যাটাস LED', rows: ['LED অ্যানোড (+) → GPIO2 এর সাথে 220Ω রেজিস্টর', 'LED ক্যাথোড (−) → GND রেল', 'অ্যাক্টিভ বাজার + → 5V রেল, − → রিলে IN7/ALARM অথবা ULN2803A আউট'] },
-  { id: 'tft', x: 434, y: 614, w: 148, h: 150, title: 'ILI9341 2.8" SPI TFT ডিসপ্লে', rows: ['VCC → 3.3V রেল (5V দিলে নষ্ট হবে)', 'GND → GND রেল', 'CS → GPIO5 · DC/RS → GPIO17 · RST → GPIO22', 'SCK → GPIO18 · MOSI/SDI → GPIO19', 'LED/BL → 3.3V'] },
-  { id: 'uln', x: 216, y: 640, w: 176, h: 70, title: 'ULN2803A DIP-18 (ঐচ্ছিক ড্রাইভার)', rows: ['IN1–IN8 (পিন 1–8) ← ESP32 GPIO', 'OUT1–OUT8 (পিন 11–18) → প্যানেল LED এর − দিক', 'পিন 9 = GND রেল · পিন 10 (COM) = 12V', 'LED এর + দিক 12V রেলে'] },
-  { id: 'powerout', x: 216, y: 740, w: 176, h: 66, title: 'J13/J14 · পাওয়ার আউট টার্মিনাল', rows: ['5V ← LM2596 OUT+ (রিলে মডিউল VCC)', '3.3V ← ESP32 3V3 (সেন্সর/TFT)', '12V ← অ্যাডাপ্টার (JD-VCC / প্যানেল LED)', 'GND সব ডিভাইসে কমন হতে হবে'] },
-  { id: 'gnd-rail', x: 160, y: 110, w: 16, h: 740, title: 'GND বাস রেল (কালো)', rows: ['সব GND এখানেই আসবে — কমন গ্রাউন্ড', 'উৎস: LM2596 OUT− ও ESP32 GND', 'মোটা টিনের রেল/1 mm² তার ব্যবহার করুন'] },
-  { id: '3v3-rail', x: 178, y: 110, w: 12, h: 740, title: '3.3V রেল (সবুজ)', rows: ['উৎস: ESP32 এর 3V3 পিন', 'ব্যবহার: DHT22, LDR ডিভাইডার, TFT VCC', 'সর্বোচ্চ ~500 mA — রিলে চালাবেন না'] },
-  { id: '5v-rail', x: 194, y: 110, w: 12, h: 740, title: '5V রেল (লাল)', rows: ['উৎস: LM2596 OUT+', 'ব্যবহার: ESP32 VIN, রিলে মডিউল VCC, MQ-137, YF-S201'] },
-  { id: '12v-rail', x: 412, y: 210, w: 12, h: 640, title: '12V রেল (কমলা)', rows: ['উৎস: 12V অ্যাডাপ্টার +', 'ব্যবহার: LM2596 IN+, রিলে JD-VCC, ULN2803A COM, প্যানেল LED'] },
+  {
+    id: 'ac',
+    x: 18,
+    y: 18,
+    w: 140,
+    h: 62,
+    title: 'J1 · AC 220V ইনপুট',
+    rows: ['পিন 1 = L (ফেজ) → ফিউজ হোল্ডার IN', 'পিন 2 = N (নিউট্রাল) → 12V অ্যাডাপ্টার N', 'আর্থ থাকলে এনক্লোজার বডিতে'],
+    wire: { color: '#8B4513', text: 'L = বাদামী/লাল 1.5 mm² · N = নীল/কালো 1.5 mm² (RV কেবল)' },
+  },
+  {
+    id: 'fuse',
+    x: 216,
+    y: 18,
+    w: 150,
+    h: 62,
+    title: 'FBH-01 / CH141 ফিউজ হোল্ডার',
+    rows: ['IN ← J1 এর L টার্মিনাল', 'OUT → 12V অ্যাডাপ্টারের L', 'ফিউজ: 5A 250V · 5×20mm গ্লাস', 'শুধু ফেজ লাইনে, নিউট্রালে নয়'],
+    wire: { color: '#8B4513', text: 'ফিউজ IN/OUT = বাদামী/লাল 1.5 mm² · শর্ট লিংক নয়' },
+  },
+  {
+    id: 'adapter',
+    x: 424,
+    y: 18,
+    w: 158,
+    h: 62,
+    title: '12V 5A অ্যাডাপ্টার / SMPS',
+    rows: ['L ← ফিউজ OUT · N ← J1 এর N', '12V+ → LM2596 IN+ ও 12V রেল', '12V− → GND রেল'],
+    wire: { color: '#F97316', text: 'AC = বাদামী/নীল 1.5 mm² · 12V DC = কমলা/হলুদ 18 AWG' },
+  },
+  {
+    id: 'lm2596',
+    x: 216,
+    y: 104,
+    w: 200,
+    h: 72,
+    title: 'LM2596 বাক মডিউল',
+    rows: ['IN+ ← 12V রেল · IN− ← GND রেল', 'OUT+ → 5V রেল ও ESP32 VIN', 'OUT− → GND রেল', 'ESP32 লাগানোর আগে OUT = 5.0V সেট করুন'],
+    wire: { color: '#F97316', text: 'IN+ কমলা · IN− কালো · OUT+ লাল · OUT− কালো (22 AWG)' },
+  },
+  {
+    id: 'esp32',
+    x: 230,
+    y: 240,
+    w: 176,
+    h: 360,
+    title: 'ESP32-WROOM-32 DevKit V1 (38-pin)',
+    rows: ['VIN ← LM2596 OUT+ (5V)', 'GND ← GND রেল (একাধিক পিন)', '3V3 → 3.3V রেল (সেন্সর/TFT)', 'ফিমেল হেডারে বসান — সরাসরি সোল্ডার নয়'],
+    wire: { color: '#EF4444', text: 'VIN লাল · GND কালো · 3V3 সবুজ · ডুপন্ট কেবল 20 cm' },
+  },
+  {
+    id: 'cap',
+    x: 252,
+    y: 530,
+    w: 30,
+    h: 56,
+    title: '1000µF ইলেক্ট্রোলাইটিক ক্যাপাসিটর',
+    rows: ['+ (লম্বা পা) → ESP32 VIN', '− (ছোট পা / সাদা স্ট্রাইপ) → GND', 'ভোল্টেজ রেটিং ≥ 16V', 'পোলারিটি উল্টো দিলে ফেটে যাবে'],
+    wire: { color: '#EF4444', text: '+ লাল · − কালো · খুব ছোট তার, পাশেই সোল্ডার' },
+  },
+  {
+    id: 'buzzer',
+    x: 434,
+    y: 534,
+    w: 148,
+    h: 60,
+    title: 'বাজার + স্ট্যাটাস LED',
+    rows: ['LED অ্যানোড (+) → GPIO2 এর সাথে 220Ω রেজিস্টর', 'LED ক্যাথোড (−) → GND রেল', 'অ্যাক্টিভ বাজার + → 5V রেল, − → রিলে IN7/ALARM অথবা ULN2803A আউট'],
+    wire: { color: '#FDE047', text: 'LED সিগন্যাল হলুদ/সাদা · বাজার VCC লাল · GND কালো' },
+  },
+  {
+    id: 'tft',
+    x: 434,
+    y: 614,
+    w: 148,
+    h: 150,
+    title: 'ILI9341 2.8" SPI TFT ডিসপ্লে',
+    rows: ['VCC → 3.3V রেল (5V দিলে নষ্ট হবে)', 'GND → GND রেল', 'CS → GPIO5 · DC/RS → GPIO17 · RST → GPIO22', 'SCK → GPIO18 · MOSI/SDI → GPIO19', 'LED/BL → 3.3V'],
+    wire: { color: '#22C55E', text: 'VCC সবুজ · GND কালো · SPI সিগন্যাল নীল/হলুদ · 10 cm ডুপন্ট' },
+  },
+  {
+    id: 'uln',
+    x: 216,
+    y: 640,
+    w: 176,
+    h: 70,
+    title: 'ULN2803A DIP-18 (ঐচ্ছিক ড্রাইভার)',
+    rows: ['IN1–IN8 (পিন 1–8) ← ESP32 GPIO', 'OUT1–OUT8 (পিন 11–18) → প্যানেল LED এর − দিক', 'পিন 9 = GND রেল · পিন 10 (COM) = 12V', 'LED এর + দিক 12V রেলে'],
+    wire: { color: '#94A3B8', text: 'IN সাদা/ধূসর · OUT কমলা · COM কমলা · GND কালো' },
+  },
+  {
+    id: 'powerout',
+    x: 216,
+    y: 740,
+    w: 176,
+    h: 66,
+    title: 'J13/J14 · পাওয়ার আউট টার্মিনাল',
+    rows: ['5V ← LM2596 OUT+ (রিলে মডিউল VCC)', '3.3V ← ESP32 3V3 (সেন্সর/TFT)', '12V ← অ্যাডাপ্টার (JD-VCC / প্যানেল LED)', 'GND সব ডিভাইসে কমন হতে হবে'],
+    wire: { color: '#111827', text: '5V লাল · 3.3V সবুজ · 12V কমলা · GND কালো · 22 AWG' },
+  },
+  {
+    id: 'gnd-rail',
+    x: 160,
+    y: 110,
+    w: 16,
+    h: 740,
+    title: 'GND বাস রেল (কালো)',
+    rows: ['সব GND এখানেই আসবে — কমন গ্রাউন্ড', 'উৎস: LM2596 OUT− ও ESP32 GND', 'মোটা টিনের রেল/1 mm² তার ব্যবহার করুন'],
+    wire: { color: '#111827', text: 'GND = কালো · 1 mm² তার বা মোটা টিনের রেল · কমন স্টার পয়েন্ট' },
+  },
+  {
+    id: '3v3-rail',
+    x: 178,
+    y: 110,
+    w: 12,
+    h: 740,
+    title: '3.3V রেল (সবুজ)',
+    rows: ['উৎস: ESP32 এর 3V3 পিন', 'ব্যবহার: DHT22, LDR ডিভাইডার, TFT VCC', 'সর্বোচ্চ ~500 mA — রিলে চালাবেন না'],
+    wire: { color: '#22C55E', text: '3.3V = সবুজ · 22 AWG · শুধু সেন্সর/লজিক, রিলে নয়' },
+  },
+  {
+    id: '5v-rail',
+    x: 194,
+    y: 110,
+    w: 12,
+    h: 740,
+    title: '5V রেল (লাল)',
+    rows: ['উৎস: LM2596 OUT+', 'ব্যবহার: ESP32 VIN, রিলে মডিউল VCC, MQ-137, YF-S201'],
+    wire: { color: '#EF4444', text: '5V = লাল · 20–22 AWG · রিলে VCC ও ESP32 VIN এর জন্য যথেষ্ট মোটা' },
+  },
+  {
+    id: '12v-rail',
+    x: 412,
+    y: 210,
+    w: 12,
+    h: 640,
+    title: '12V রেল (কমলা)',
+    rows: ['উৎস: 12V অ্যাডাপ্টার +', 'ব্যবহার: LM2596 IN+, রিলে JD-VCC, ULN2803A COM, প্যানেল LED'],
+    wire: { color: '#F97316', text: '12V = কমলা · 18 AWG · অ্যাডাপ্টার থেকে সরাসরি, দীর্ঘ নয়' },
+  },
   ...SENSOR_BLOCKS.map((b) => ({
     id: `sensor-${b.y}`,
     x: 18,
@@ -80,6 +216,12 @@ const HOTSPOTS: HotSpot[] = [
     h: 62,
     title: b.label,
     rows: [`সিগন্যাল: ${b.pin}`, 'VCC → রেল (DHT22/LDR = 3.3V · MQ-137/YF-S201 = 5V)', 'GND → GND রেল', 'অ্যানালগ তার AC/রিলে তার থেকে দূরে রাখুন'],
+    wire:
+      b.label.includes('DHT22') || b.label.includes('LDR')
+        ? { color: '#22C55E', text: 'VCC সবুজ · GND কালো · সিগন্যাল হলুদ/নীল · 22 AWG ডুপন্ট' }
+        : b.label.includes('MQ-137') || b.label.includes('ZMPT101B') || b.label.includes('YF-S201')
+          ? { color: '#EF4444', text: 'VCC লাল · GND কালো · অ্যানালগ সিগন্যাল হলুদ/নীল · শিল্ডেড তার ভালো' }
+          : { color: '#64748B', text: 'সুইচ তার ধূসর/সাদা · GND কালো · PULLUP সহ সংযোগ' },
   })),
   ...RELAY_ROWS.map((r, i) => ({
     id: `relay-${r.n}`,
@@ -89,6 +231,7 @@ const HOTSPOTS: HotSpot[] = [
     h: 30,
     title: `${r.n} · ${r.fn}`,
     rows: [`ESP32 ${r.gpio} → রিলে মডিউলের ${r.n}`, 'অ্যাক্টিভ LOW (LOW = রিলে ON)', 'রিলে VCC = 5V · GND = GND রেল', 'JD-VCC জাম্পার খুলে আলাদা 12V/5V দিন'],
+    wire: { color: '#94A3B8', text: `সিগন্যাল ${r.n} = ধূসর/সাদা · VCC লাল · GND কালো · JD-VCC কমলা` },
   })),
 ];
 
