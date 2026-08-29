@@ -418,7 +418,7 @@ function PerfboardSvg() {
         <text x="300" y={852} fontSize="11.5" fill="#7f1d1d" textAnchor="middle" fontWeight="bold">⚠ AC কিপ-আউট জোন — 220V ট্র্যাক শুধু নিচের লেয়ারে, লো-ভোল্টেজ থেকে ≥ 3 mm দূরে</text>
         <text x="300" y={870} fontSize="10.5" fill="#7f1d1d" textAnchor="middle">রিলে NO/COM/NC তার বোর্ডের বাইরে আলাদা স্ক্রু টার্মিনালে</text>
 
-        <text x="300" y={-14} fontSize="13" fill="#111827" textAnchor="middle" fontWeight="bold">FarmEye v8 · FR-4 প্রোটোটাইপ বোর্ড 12 × 18 cm (2.54mm pitch)</text>
+        <text x="300" y={-26} fontSize="13" fill="#111827" textAnchor="middle" fontWeight="bold">FarmEye v8 · FR-4 প্রোটোটাইপ বোর্ড 12 × 18 cm (2.54mm pitch)</text>
 
         {/* Hover hotspots — প্রতিটি কানেক্টর/পিনের ওয়্যারিং তথ্য */}
         {HOTSPOTS.map((s) => (
@@ -442,7 +442,7 @@ function PerfboardSvg() {
         ))}
       </g>
 
-      <text x="330" y="956" fontSize="12" fill="#374151" textAnchor="middle">প্রস্থ 120 mm (≈47 হোল) × উচ্চতা 180 mm (≈70 হোল) · স্কেল 1:1 অনুপাতে আঁকা</text>
+      <text x="330" y="956" fontSize="12" fill="#374151" textAnchor="middle">প্রস্থ 120 mm (৪৭ হোল কলাম 0–46) × উচ্চতা 180 mm (৭০ হোল সারি 0–69) · উপরে/বামের নম্বর = হোল পজিশন — গুনে গুনে আসল বোর্ডে বসান · স্কেল 5px = 1mm</text>
     </svg>
 
     {hover && (
