@@ -250,8 +250,10 @@ function PerfboardSvg() {
     <svg viewBox="0 0 660 960" className="w-full h-auto rounded-lg border border-border bg-white" role="img" aria-label="FR-4 12x18cm প্রোটোটাইপ বোর্ডে ESP32 v8 ফুল ওয়্যারিং ও প্লেসমেন্ট ডায়াগ্রাম">
 
       <defs>
-        <pattern id="holes" width="12.7" height="12.7" patternUnits="userSpaceOnUse">
-          <circle cx="6.35" cy="6.35" r="1.6" fill="#0f5132" opacity="0.35" />
+        {/* আসল FR-4 ডাবল-সাইডেড পারফবোর্ডের মতো: সবুজ বোর্ডে কপার ডোনাট প্যাড + ড্রিল হোল (2.54mm pitch) */}
+        <pattern id="pads" width="12.7" height="12.7" patternUnits="userSpaceOnUse">
+          <circle cx="6.35" cy="6.35" r="3.6" fill="#c9932b" stroke="#8a6a14" strokeWidth="0.6" />
+          <circle cx="6.35" cy="6.35" r="1.5" fill="#09331f" />
         </pattern>
       </defs>
 
