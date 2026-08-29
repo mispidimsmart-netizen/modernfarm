@@ -261,10 +261,28 @@ function PerfboardSvg() {
 
       {/* Board */}
       <g transform="translate(30,40)">
-        <rect x="0" y="0" width="600" height="900" rx="10" fill="#0d7a4f" />
-        <rect x="8" y="8" width="584" height="884" rx="6" fill="url(#holes)" stroke="#0a5c3c" />
+        <rect x="0" y="0" width="600" height="900" rx="10" fill="#0d7a4f" stroke="#084d31" strokeWidth="2" />
+        <rect x="8" y="8" width="584" height="884" rx="6" fill="url(#pads)" />
         {[[20, 20], [580, 20], [20, 880], [580, 880]].map(([cx, cy], i) => (
           <circle key={i} cx={cx} cy={cy} r="9" fill="#ffffff" stroke="#9ca3af" />
+        ))}
+
+        {/* হোল-কোঅর্ডিনেট রুলার — হোল গুনে কম্পোনেন্ট বসানোর জন্য */}
+        {Array.from({ length: 47 }).map((_, i) => (
+          <g key={`col-${i}`}>
+            {i % 5 === 0 && <line x1={14.35 + i * 12.7} y1="0" x2={14.35 + i * 12.7} y2="-5" stroke="#374151" strokeWidth="1" />}
+            {i % 10 === 0 && (
+              <text x={14.35 + i * 12.7} y="-9" fontSize="9" fill="#374151" textAnchor="middle" fontWeight="bold">{i}</text>
+            )}
+          </g>
+        ))}
+        {Array.from({ length: 70 }).map((_, j) => (
+          <g key={`row-${j}`}>
+            {j % 5 === 0 && <line x1="0" y1={14.35 + j * 12.7} x2="-5" y2={14.35 + j * 12.7} stroke="#374151" strokeWidth="1" />}
+            {j % 10 === 0 && (
+              <text x="-9" y={14.35 + j * 12.7 + 3} fontSize="9" fill="#374151" textAnchor="end" fontWeight="bold">{j}</text>
+            )}
+          </g>
         ))}
 
         {/* Bus rails */}
