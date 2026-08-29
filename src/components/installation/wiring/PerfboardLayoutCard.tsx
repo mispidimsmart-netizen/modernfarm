@@ -16,19 +16,19 @@ const SENSOR_BLOCKS = [
   { y: 210, label: 'J5 · DHT22 #2', pin: 'DATA → GPIO16', color: '#22c55e' },
   { y: 300, label: 'J6 · MQ-137 NH₃', pin: 'AO → GPIO34', color: '#a855f7' },
   { y: 390, label: 'J7 · ZMPT101B', pin: 'AO → GPIO35', color: '#a855f7' },
-  { y: 480, label: 'J8 · YF-S201 ফ্লো', pin: 'PULSE → GPIO32', color: '#0ea5e9' },
+  { y: 480, label: 'J8 · YF-S201 ফ্লো', pin: 'PULSE → GPIO18', color: '#0ea5e9' },
   { y: 570, label: 'J9 · LDR + 10kΩ', pin: 'AO → GPIO36 (VP)', color: '#f59e0b' },
-  { y: 660, label: 'J10 · ম্যানুয়াল সুইচ', pin: 'GPIO23 (PULLUP)', color: '#64748b' },
+  { y: 660, label: 'J10 · ম্যানুয়াল সুইচ', pin: 'GPIO32 (PULLUP)', color: '#64748b' },
 ];
 
 const RELAY_ROWS = [
-  { n: 'IN1', gpio: 'GPIO25', fn: 'ফ্যান / এক্সহস্ট' },
-  { n: 'IN2', gpio: 'GPIO26', fn: 'লাইট' },
-  { n: 'IN3', gpio: 'GPIO27', fn: 'ফগার / কুলার' },
+  { n: 'IN1', gpio: 'GPIO25', fn: 'এক্সহস্ট ফ্যান' },
+  { n: 'IN2', gpio: 'GPIO26', fn: 'সিলিং ফ্যান' },
+  { n: 'IN3', gpio: 'GPIO27', fn: 'লাইট' },
   { n: 'IN4', gpio: 'GPIO14', fn: 'হিটার' },
-  { n: 'IN5', gpio: 'GPIO12', fn: 'পর্দা UP' },
-  { n: 'IN6', gpio: 'GPIO13', fn: 'পর্দা DOWN' },
-  { n: 'IN7', gpio: 'GPIO15', fn: 'অ্যালার্ম' },
+  { n: 'IN5', gpio: 'GPIO12', fn: 'ফগার' },
+  { n: 'IN6', gpio: 'GPIO13', fn: 'অ্যালার্ম' },
+  { n: 'IN7', gpio: 'GPIO15', fn: 'রুফ স্প্রিংকলার' },
   { n: 'IN8', gpio: 'GPIO33', fn: 'সার্কুলেশন ফ্যান' },
 ];
 
@@ -38,7 +38,7 @@ const PLACEMENT = [
   ['মাঝ বরাবর (48–115 mm)', 'ESP32-WROOM-32 DevKit V1 (38-পিন) — দুই সারি ফিমেল হেডারে বসান, সরাসরি সোল্ডার করবেন না।'],
   ['বাম কলাম', 'সব সেন্সর স্ক্রু টার্মিনাল (DHT22 ×2, MQ-137, ZMPT101B, YF-S201, LDR, ম্যানুয়াল সুইচ)।'],
   ['ডান কলাম', 'রিলে সিগন্যাল হেডার IN1–IN8 (+ VCC/GND), বাজার/স্ট্যাটাস LED, 5V/3.3V/12V আউট টার্মিনাল।'],
-  ['নিচে ডান (120–140 mm)', 'ILI9341 2.8" TFT SPI ডিসপ্লে হেডার — CS=GPIO5, DC=GPIO17, RST=GPIO22, SCK=GPIO18, MOSI=GPIO19, LED=3.3V।'],
+  ['নিচে ডান (120–140 mm)', 'ILI9341 2.8" TFT SPI ডিসপ্লে হেডার — CS=GPIO17, DC=GPIO5, SCK=GPIO21, MOSI=GPIO22, RST=ESP32 EN/3.3V, VCC+LED=3.3V।'],
   ['নিচে মাঝ (146–158 mm)', 'ULN2803A DIP-18 (ঐচ্ছিক ড্রাইভার) + 1000µF ক্যাপাসিটর ESP32 VIN–GND এর পাশে।'],
 ];
 
@@ -135,7 +135,7 @@ const HOTSPOTS: HotSpot[] = [
     w: 148,
     h: 60,
     title: 'বাজার + স্ট্যাটাস LED',
-    rows: ['LED অ্যানোড (+) → GPIO2 এর সাথে 220Ω রেজিস্টর', 'LED ক্যাথোড (−) → GND রেল', 'অ্যাক্টিভ বাজার + → 5V রেল, − → রিলে IN7/ALARM অথবা ULN2803A আউট'],
+    rows: ['LED অ্যানোড (+) → GPIO2 এর সাথে 220Ω রেজিস্টর', 'LED ক্যাথোড (−) → GND রেল', 'অ্যাক্টিভ বাজার + → 5V রেল, − → রিলে IN6/ALARM (GPIO13) অথবা ULN2803A আউট'],
     wire: { color: '#FDE047', text: 'LED সিগন্যাল হলুদ/সাদা · বাজার VCC লাল · GND কালো' },
   },
   {
@@ -145,7 +145,7 @@ const HOTSPOTS: HotSpot[] = [
     w: 148,
     h: 150,
     title: 'ILI9341 2.8" SPI TFT ডিসপ্লে',
-    rows: ['VCC → 3.3V রেল (5V দিলে নষ্ট হবে)', 'GND → GND রেল', 'CS → GPIO5 · DC/RS → GPIO17 · RST → GPIO22', 'SCK → GPIO18 · MOSI/SDI → GPIO19', 'LED/BL → 3.3V'],
+    rows: ['VCC → 3.3V রেল (5V দিলে নষ্ট হবে)', 'GND → GND রেল', 'CS → GPIO17 · DC/RS → GPIO5', 'SCK/SCL → GPIO21 · MOSI/SDI → GPIO22', 'RST → ESP32 EN (বা 3.3V) · LED/BL → 3.3V'],
     wire: { color: '#22C55E', text: 'VCC সবুজ · GND কালো · SPI সিগন্যাল নীল/হলুদ · 10 cm ডুপন্ট' },
   },
   {
@@ -371,8 +371,8 @@ function PerfboardSvg() {
           <rect x="446" y={626} width="124" height={86} rx="3" fill="#1d4ed8" />
           <text x="508" y={672} fontSize="12" fill="#fff" textAnchor="middle" fontWeight="bold">ILI9341 2.8&quot;</text>
           <text x="508" y={690} fontSize="10" fill="#bfdbfe" textAnchor="middle">SPI TFT · VCC = 3.3V</text>
-          <text x="508" y={730} fontSize="9.5" fill="#e2e8f0" textAnchor="middle">CS 5 · DC 17 · RST 22</text>
-          <text x="508" y={746} fontSize="9.5" fill="#e2e8f0" textAnchor="middle">SCK 18 · MOSI 19 · LED 3V3</text>
+          <text x="508" y={730} fontSize="9.5" fill="#e2e8f0" textAnchor="middle">CS 17 · DC 5 · RST → EN</text>
+          <text x="508" y={746} fontSize="9.5" fill="#e2e8f0" textAnchor="middle">SCK 21 · MOSI 22 · LED 3V3</text>
           <line x1="406" y1={660} x2="434" y2={660} stroke="#38bdf8" strokeWidth="3" />
         </g>
 
