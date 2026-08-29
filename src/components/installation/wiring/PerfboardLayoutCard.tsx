@@ -250,8 +250,10 @@ function PerfboardSvg() {
     <svg viewBox="0 0 660 960" className="w-full h-auto rounded-lg border border-border bg-white" role="img" aria-label="FR-4 12x18cm প্রোটোটাইপ বোর্ডে ESP32 v8 ফুল ওয়্যারিং ও প্লেসমেন্ট ডায়াগ্রাম">
 
       <defs>
-        <pattern id="holes" width="12.7" height="12.7" patternUnits="userSpaceOnUse">
-          <circle cx="6.35" cy="6.35" r="1.6" fill="#0f5132" opacity="0.35" />
+        {/* আসল FR-4 ডাবল-সাইডেড পারফবোর্ডের মতো: সবুজ বোর্ডে কপার ডোনাট প্যাড + ড্রিল হোল (2.54mm pitch) */}
+        <pattern id="pads" width="12.7" height="12.7" patternUnits="userSpaceOnUse">
+          <circle cx="6.35" cy="6.35" r="3.6" fill="#c9932b" stroke="#8a6a14" strokeWidth="0.6" />
+          <circle cx="6.35" cy="6.35" r="1.5" fill="#09331f" />
         </pattern>
       </defs>
 
@@ -259,10 +261,28 @@ function PerfboardSvg() {
 
       {/* Board */}
       <g transform="translate(30,40)">
-        <rect x="0" y="0" width="600" height="900" rx="10" fill="#0d7a4f" />
-        <rect x="8" y="8" width="584" height="884" rx="6" fill="url(#holes)" stroke="#0a5c3c" />
+        <rect x="0" y="0" width="600" height="900" rx="10" fill="#0d7a4f" stroke="#084d31" strokeWidth="2" />
+        <rect x="8" y="8" width="584" height="884" rx="6" fill="url(#pads)" />
         {[[20, 20], [580, 20], [20, 880], [580, 880]].map(([cx, cy], i) => (
           <circle key={i} cx={cx} cy={cy} r="9" fill="#ffffff" stroke="#9ca3af" />
+        ))}
+
+        {/* হোল-কোঅর্ডিনেট রুলার — হোল গুনে কম্পোনেন্ট বসানোর জন্য */}
+        {Array.from({ length: 47 }).map((_, i) => (
+          <g key={`col-${i}`}>
+            {i % 5 === 0 && <line x1={14.35 + i * 12.7} y1="0" x2={14.35 + i * 12.7} y2="-5" stroke="#374151" strokeWidth="1" />}
+            {i % 10 === 0 && (
+              <text x={14.35 + i * 12.7} y="-9" fontSize="9" fill="#374151" textAnchor="middle" fontWeight="bold">{i}</text>
+            )}
+          </g>
+        ))}
+        {Array.from({ length: 70 }).map((_, j) => (
+          <g key={`row-${j}`}>
+            {j % 5 === 0 && <line x1="0" y1={14.35 + j * 12.7} x2="-5" y2={14.35 + j * 12.7} stroke="#374151" strokeWidth="1" />}
+            {j % 10 === 0 && (
+              <text x="-9" y={14.35 + j * 12.7 + 3} fontSize="9" fill="#374151" textAnchor="end" fontWeight="bold">{j}</text>
+            )}
+          </g>
         ))}
 
         {/* Bus rails */}
@@ -398,7 +418,7 @@ function PerfboardSvg() {
         <text x="300" y={852} fontSize="11.5" fill="#7f1d1d" textAnchor="middle" fontWeight="bold">⚠ AC কিপ-আউট জোন — 220V ট্র্যাক শুধু নিচের লেয়ারে, লো-ভোল্টেজ থেকে ≥ 3 mm দূরে</text>
         <text x="300" y={870} fontSize="10.5" fill="#7f1d1d" textAnchor="middle">রিলে NO/COM/NC তার বোর্ডের বাইরে আলাদা স্ক্রু টার্মিনালে</text>
 
-        <text x="300" y={-14} fontSize="13" fill="#111827" textAnchor="middle" fontWeight="bold">FarmEye v8 · FR-4 প্রোটোটাইপ বোর্ড 12 × 18 cm (2.54mm pitch)</text>
+        <text x="300" y={-26} fontSize="13" fill="#111827" textAnchor="middle" fontWeight="bold">FarmEye v8 · FR-4 প্রোটোটাইপ বোর্ড 12 × 18 cm (2.54mm pitch)</text>
 
         {/* Hover hotspots — প্রতিটি কানেক্টর/পিনের ওয়্যারিং তথ্য */}
         {HOTSPOTS.map((s) => (
@@ -422,7 +442,7 @@ function PerfboardSvg() {
         ))}
       </g>
 
-      <text x="330" y="956" fontSize="12" fill="#374151" textAnchor="middle">প্রস্থ 120 mm (≈47 হোল) × উচ্চতা 180 mm (≈70 হোল) · স্কেল 1:1 অনুপাতে আঁকা</text>
+      <text x="330" y="956" fontSize="12" fill="#374151" textAnchor="middle">প্রস্থ 120 mm (৪৭ হোল কলাম 0–46) × উচ্চতা 180 mm (৭০ হোল সারি 0–69) · উপরে/বামের নম্বর = হোল পজিশন — গুনে গুনে আসল বোর্ডে বসান · স্কেল 5px = 1mm</text>
     </svg>
 
     {hover && (
