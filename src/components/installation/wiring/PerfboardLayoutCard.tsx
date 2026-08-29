@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { CircuitBoard } from 'lucide-react';
 
+import perfboardAssembled from '@/assets/perfboard-assembled.jpg';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -551,6 +552,20 @@ export function PerfboardLayoutCard() {
             <li>রিলে মডিউলের JD-VCC জাম্পার খুলে আলাদা সাপ্লাই দিন (অপ্টো-আইসোলেশন সক্রিয় থাকবে)</li>
             <li>বোর্ড ইনস্টল করার আগে ২৪ ঘণ্টা বার্ন-ইন টেস্ট করুন</li>
           </ul>
+        </div>
+        {/* বাস্তব অ্যাসেম্বলড ভিউ — সোল্ডারিং শেষে বোর্ড যেমন দেখাবে */}
+        <div className="rounded-lg border border-border overflow-hidden">
+          <img
+            src={perfboardAssembled}
+            alt="সম্পূর্ণ সোল্ডার করা FarmEye v8 FR-4 প্রোটোটাইপ বোর্ডের বাস্তব ভিউ — ESP32, ৮-চ্যানেল রিলে, ফিউজ, সেন্সর টার্মিনাল, TFT ডিসপ্লে"
+            loading="lazy"
+            width={1344}
+            height={768}
+            className="w-full h-auto"
+          />
+          <p className="text-[11px] text-muted-foreground p-2 bg-muted/40">
+            📸 রেফারেন্স ভিউ — সোল্ডারিং ও কানেকশন শেষে আপনার বোর্ড এমন দেখাবে: বামে AC ইন + ফিউজ, বাম-মাঝে ৮-চ্যানেল রিলে, কেন্দ্রে ESP32, ডানে TFT ডিসপ্লে ও LM2596 বাক কনভার্টার, নিচে সেন্সর স্ক্রু টার্মিনাল, কিনারায় রঙ-কোডেড পাওয়ার রেল (কালো GND / সবুজ 3.3V / লাল 5V / কমলা 12V)।
+          </p>
         </div>
       </CardContent>
     </Card>
