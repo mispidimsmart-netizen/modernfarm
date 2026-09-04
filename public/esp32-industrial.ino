@@ -4680,6 +4680,8 @@ unsigned long lastDisplayRefresh = 0;
 unsigned long lastDisplayPageSwap = 0;
 int lastHeaderState = -1;
 bool displayPageDirty = true;
+unsigned long displayWelcomeUntil = 0;   // welcome screen shown until this millis()
+#define DISPLAY_WELCOME_MS 3000UL        // welcome splash duration on boot
 
 static uint16_t displayHeaderColor() {
   if (currentState >= STATE_DANGER || emergencySurvivalMode) return ILI9341_RED;
@@ -4754,20 +4756,69 @@ static void displayPageSystem() {
   displayDrawRow(196, "Uptime",  String(millis() / 60000UL) + " min");
 }
 
+// Welcome splash shown at power-on before normal pages take over.
+static void displayShowWelcome() {
+  tft.fillScreen(ILI9341_BLACK);
+
+  // Brand title
+  tft.setTextSize(3);
+  tft.setTextColor(ILI9341_GREEN);
+  tft.setCursor(58, 64);
+  tft.print("FarmEye");
+
+  // Subtitle
+  tft.setTextSize(2);
+  tft.setTextColor(ILI9341_CYAN);
+  tft.setCursor(55, 104);
+  tft.print("Smart Poultry");
+  tft.setCursor(72, 126);
+  tft.print("Controller");
+
+  // Firmware version
+  tft.setTextSize(1);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setCursor(88, 168);
+  tft.print("Firmware v");
+  tft.print(FIRMWARE_VERSION);
+
+  // Boot tagline
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setCursor(110, 188);
+  tft.print("Starting...");
+
+  // Branding / copyright (always English, per project rules)
+  tft.setTextColor(ILI9341_LIGHTGREY);
+  tft.setCursor(95, 212);
+  tft.print("Nexiot Labs 2026");
+}
+
 void displayInit() {
   tftSPI.begin(TFT_SCK_PIN, -1, TFT_MOSI_PIN, TFT_CS_PIN);
   tft.begin();
   tft.setRotation(1);                 // landscape 320x240
-  tft.fillScreen(ILI9341_BLACK);
+
+  displayShowWelcome();                // welcome splash on power-on
+  displayWelcomeUntil = millis() + DISPLAY_WELCOME_MS;
+
   displayReady = true;
-  displayDrawHeader();
-  lastHeaderState = (int)currentState;
-  Serial.println("🖥️  TFT display initialized (ILI9341 320x240)");
+  displayPageDirty = true;
+  lastHeaderState = -1;               // forces header redraw after welcome
+  Serial.println("🖥️  TFT display initialized (ILI9341 320x240) — welcome splash shown");
 }
 
 void displayManagerTick() {
   if (!displayReady) return;
   unsigned long now = millis();
+
+  // Hold the welcome splash for DISPLAY_WELCOME_MS after boot, then switch
+  // to the normal sensor/device/system pages.
+  if (displayWelcomeUntil) {
+    if (now < displayWelcomeUntil) return;          // still showing welcome
+    displayWelcomeUntil = 0;                        // welcome finished
+    tft.fillScreen(ILI9341_BLACK);                  // clear splash
+    displayPageDirty = true;
+    lastHeaderState = -1;                           // force header redraw
+  }
 
   if (intervalPassed(now, lastDisplayPageSwap, DISPLAY_PAGE_MS)) {
     lastDisplayPageSwap = now;
