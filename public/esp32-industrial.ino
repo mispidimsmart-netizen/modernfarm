@@ -1436,15 +1436,21 @@ void sensorManagerTick() {
   // If sensors offline >90s, sensorErrorMode set by svlCheckSensorOffline()
 
   // Step 5: Ammonia pipeline (raw → moving avg → SVL → global)
-  float ammoniaRaw = readGasFiltered();
-  float ammMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
-  float ammOffset = ammMapped + farmConfig.nh3Offset;
-  if (ammOffset < 0) ammOffset = 0;
-  float ammAvg = calculateGasMovingAvg(ammOffset);
-  ammonia = svlProcessReading(svlAmmonia, ammAvg);  // SVL-validated only
-  
-  // Step 6: NH3 45-second confirmation before state escalation
-  svlCheckAmmoniaThreshold(ammonia, rules.ammoniaFan);
+  if (!mq135Available) {
+    ammonia = 0.0f;                 // sensor absent → report 0, never a fabricated value
+    nh3ThresholdBreached = false; nh3ThresholdBreachStart = 0; nh3VentilationConfirmed = false;
+  } else {
+    float ammoniaRaw = readGasFiltered();
+    float ammMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
+    float ammOffset = ammMapped + farmConfig.nh3Offset;
+    if (ammOffset < 0) ammOffset = 0;
+    float ammAvg = calculateGasMovingAvg(ammOffset);
+    ammonia = svlProcessReading(svlAmmonia, ammAvg);  // SVL-validated only
+
+    // Step 6: NH3 45-second confirmation before state escalation
+    svlCheckAmmoniaThreshold(ammonia, rules.ammoniaFan);
+  }
+
   
   // Step 7: Check all channels for 90s timeout
   svlCheckSensorOffline();
