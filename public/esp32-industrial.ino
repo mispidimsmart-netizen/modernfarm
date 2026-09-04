@@ -187,7 +187,11 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 #define CLOUD_SYNC_INTERVAL      30000UL
 #define COMMAND_CHECK_INTERVAL   1000UL   // ⚡ Reduced 5s→1s for near-realtime manual control (works with Supabase Realtime publication on device_commands)
 #define CONFIG_FETCH_INTERVAL    60000UL
-#define WIFI_RECONNECT_INTERVAL  60000UL
+#define WIFI_RECONNECT_INTERVAL  60000UL   // legacy constant (kept for compatibility)
+// --- WiFi auto-reconnect with exponential backoff ---
+#define WIFI_BACKOFF_MIN_MS      5000UL    // first retry 5s after a drop
+#define WIFI_BACKOFF_MAX_MS      300000UL  // cap at 5 min
+#define WIFI_RADIO_RESET_STREAK  6         // full radio power-cycle after N failed attempts
 #define CLOUD_TIMEOUT            300000UL
 #define SAFE_MODE_DURATION       30000UL
 #define GAS_WARMUP_DURATION      300000UL   // 5 min initial warmup (MQ-137 needs 24h for full accuracy)
