@@ -3248,7 +3248,10 @@ void handleCloudResponse(String response) {
   if (doc.containsKey("farm_type")) applyCloudFarmType(doc["farm_type"].as<String>());
   if (doc.containsKey("settings")) applyFarmSettingsObject(doc["settings"]);
   if (doc.containsKey("advanced_automation")) applyAdvancedAutomationObject(doc["advanced_automation"]);
-  if (doc.containsKey("broiler_age_days") && isBroiler()) {
+  // Bird age from cloud — layer farms use bird_age_days (weeks*7), broiler uses batch age.
+  if (doc.containsKey("bird_age_days")) {
+    updateAgeFromServer(doc["bird_age_days"]);
+  } else if (doc.containsKey("broiler_age_days") && isBroiler()) {
     updateAgeFromServer(doc["broiler_age_days"]);
   }
   // ═══ Water flow sensor calibration from cloud ═══
@@ -3434,7 +3437,8 @@ void fetchConfig() {
     syncedBaseMinuteOfDay = currentHour * 60 + currentMinute;
     lastTimeSync = millis(); timeValid = true;
   }
-  if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
+  if (doc.containsKey("bird_age_days")) updateAgeFromServer(doc["bird_age_days"]);
+  else if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
   if (doc.containsKey("temperature_min")) rules.tempMin = doc["temperature_min"];
   if (doc.containsKey("temperature_max")) rules.tempMax = doc["temperature_max"];
   if (doc.containsKey("ammonia_max")) rules.ammoniaAlarm = doc["ammonia_max"];
@@ -4835,7 +4839,11 @@ static void displayPageSystem() {
   displayDrawRow(40,  "Mode",    localManualOverride ? String("MANUAL") : String("AUTO"));
   displayDrawRow(66,  "Safety",  safetyEngineEnabled ? String("ON") : String("OFF"));
   displayDrawRow(92,  "Farm",    getFarmTypeStr());
-  displayDrawRow(118, "Age",     String(farmConfig.chickAgeDays) + " d");
+  // Layer flocks are managed in weeks; broiler in days.
+  String ageTxt = isBroiler()
+      ? (String(farmConfig.chickAgeDays) + " d")
+      : (String(farmConfig.chickAgeDays / 7) + " wk");
+  displayDrawRow(118, "Age",     ageTxt);
   displayDrawRow(144, "Cloud",   cloudConnected ? String("ONLINE") : String("OFFLINE"));
   displayDrawRow(170, "GSM",     gsmInitialized ? (gsmNetworkReady ? String("READY") : String("NO NET")) : String("N/A"));
   displayDrawRow(196, "Uptime",  String(millis() / 60000UL) + " min");
