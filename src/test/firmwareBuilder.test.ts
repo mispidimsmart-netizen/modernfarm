@@ -70,6 +70,12 @@ describe('firmwareBuilder — optional TFT display', () => {
     expect(out).toContain('Display: ON');
   });
 
+  it('does not silently turn an enabled display back off', () => {
+    const out = buildV8Firmware(V8_REAL_TEMPLATE, { ...base, hasDisplay: true });
+    expect(out).not.toMatch(/#undef\s+DISPLAY_ENABLED/);
+    expect(out).not.toContain('display disabled automatically');
+  });
+
   it('display flag does not alter relay/safety logic lines', () => {
     const off = buildV8Firmware(V8_REAL_TEMPLATE, base);
     const on = buildV8Firmware(V8_REAL_TEMPLATE, { ...base, hasDisplay: true });
