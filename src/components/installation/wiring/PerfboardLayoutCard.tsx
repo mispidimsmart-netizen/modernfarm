@@ -39,7 +39,7 @@ const PLACEMENT = [
   ['মাঝ বরাবর (48–115 mm)', 'ESP32-WROOM-32 DevKit V1 (38-পিন) — দুই সারি ফিমেল হেডারে বসান, সরাসরি সোল্ডার করবেন না।'],
   ['বাম কলাম', 'সব সেন্সর স্ক্রু টার্মিনাল (DHT22 ×2, MQ-137, ZMPT101B, YF-S201, LDR, ম্যানুয়াল সুইচ)।'],
   ['ডান কলাম', 'রিলে সিগন্যাল হেডার IN1–IN8 (+ VCC/GND), বাজার/স্ট্যাটাস LED, 5V/3.3V/12V আউট টার্মিনাল।'],
-  ['নিচে ডান (120–140 mm)', 'ILI9341 2.8" TFT SPI ডিসপ্লে হেডার — CS=GPIO17, DC=GPIO5, SCK=GPIO21, MOSI=GPIO22, RST=ESP32 EN/3.3V, VCC+LED=3.3V।'],
+  ['নিচে ডান (120–140 mm)', 'লাল ৯-পিন ILI9341 TFT হেডার — CS=GPIO17, DC=GPIO5, SCK=GPIO21, MOSI=GPIO22, RST=ESP32 EN, VCC=5V, LED=3.3V।'],
   ['নিচে মাঝ (146–158 mm)', 'ULN2803A DIP-18 (ঐচ্ছিক ড্রাইভার) + 1000µF ক্যাপাসিটর ESP32 VIN–GND এর পাশে।'],
 ];
 
@@ -51,7 +51,7 @@ const STEPS = [
   '12V DC → LM2596 IN+/IN− ; LM2596 OUT+ → ESP32 VIN, OUT− → GND রেল। VIN–GND এ 1000µF ক্যাপ (+ লম্বা পা VIN এ)।',
   'রিলে মডিউলের VCC = 5V রেল, GND = GND রেল, IN1–IN8 = উপরের GPIO টেবিল অনুযায়ী। JD-VCC জাম্পার খুলে আলাদা 12V/5V দিন।',
   'সেন্সরগুলো বাম টার্মিনাল থেকে সংক্ষিপ্ততম পথে ESP32 পিনে টানুন; অ্যানালগ তার (MQ-137, ZMPT101B, LDR) রিলে/AC তার থেকে দূরে রাখুন।',
-  'TFT ডিসপ্লের VCC অবশ্যই 3.3V — 5V দিলে মডিউল নষ্ট হবে।',
+  'ছবির লাল ৯-পিন TFT মডিউলে VCC=5V ও LED=3.3V দিন; VCC ও LED এক করবেন না।',
   'পাওয়ার দেওয়ার আগে মাল্টিমিটারে VIN↔GND ও 3V3↔GND এ শর্ট আছে কিনা চেক করুন।',
 ];
 
@@ -146,7 +146,7 @@ const HOTSPOTS: HotSpot[] = [
     w: 148,
     h: 150,
     title: 'ILI9341 2.8" SPI TFT ডিসপ্লে',
-    rows: ['VCC → 3.3V রেল (5V দিলে নষ্ট হবে)', 'GND → GND রেল', 'CS → GPIO17 · DC/RS → GPIO5', 'SCK/SCL → GPIO21 · MOSI/SDI → GPIO22', 'RST → ESP32 EN (বা 3.3V) · LED/BL → 3.3V'],
+    rows: ['লাল ৯-পিন মডিউল: VCC → 5V রেল', 'LED → 3.3V · GND → GND রেল', 'CS → GPIO17 · DC/RS → GPIO5', 'SCK/SCL → GPIO21 · MOSI/SDI → GPIO22', 'RST → ESP32 EN (বা 10kΩ দিয়ে 3.3V)'],
     wire: { color: '#22C55E', text: 'VCC সবুজ · GND কালো · SPI সিগন্যাল নীল/হলুদ · 10 cm ডুপন্ট' },
   },
   {
@@ -166,7 +166,7 @@ const HOTSPOTS: HotSpot[] = [
     w: 176,
     h: 66,
     title: 'J13/J14 · পাওয়ার আউট টার্মিনাল',
-    rows: ['5V ← LM2596 OUT+ (রিলে মডিউল VCC)', '3.3V ← ESP32 3V3 (সেন্সর/TFT)', '12V ← অ্যাডাপ্টার (JD-VCC / প্যানেল LED)', 'GND সব ডিভাইসে কমন হতে হবে'],
+    rows: ['5V ← LM2596 OUT+ (রিলে ও লাল TFT VCC)', '3.3V ← ESP32 3V3 (সেন্সর/TFT LED)', '12V ← অ্যাডাপ্টার (JD-VCC / প্যানেল LED)', 'GND সব ডিভাইসে কমন হতে হবে'],
     wire: { color: '#111827', text: '5V লাল · 3.3V সবুজ · 12V কমলা · GND কালো · 22 AWG' },
   },
   {
@@ -186,7 +186,7 @@ const HOTSPOTS: HotSpot[] = [
     w: 12,
     h: 740,
     title: '3.3V রেল (সবুজ)',
-    rows: ['উৎস: ESP32 এর 3V3 পিন', 'ব্যবহার: DHT22, LDR ডিভাইডার, TFT VCC', 'সর্বোচ্চ ~500 mA — রিলে চালাবেন না'],
+    rows: ['উৎস: ESP32 এর 3V3 পিন', 'ব্যবহার: DHT22, LDR ডিভাইডার, TFT LED', 'সর্বোচ্চ ~500 mA — রিলে চালাবেন না'],
     wire: { color: '#22C55E', text: '3.3V = সবুজ · 22 AWG · শুধু সেন্সর/লজিক, রিলে নয়' },
   },
   {
@@ -391,7 +391,7 @@ function PerfboardSvg() {
           <rect x="434" y={614} width="148" height={150} rx="4" fill="#0f172a" stroke="#334155" strokeWidth="2" />
           <rect x="446" y={626} width="124" height={86} rx="3" fill="#1d4ed8" />
           <text x="508" y={672} fontSize="12" fill="#fff" textAnchor="middle" fontWeight="bold">ILI9341 2.8&quot;</text>
-          <text x="508" y={690} fontSize="10" fill="#bfdbfe" textAnchor="middle">SPI TFT · VCC = 3.3V</text>
+          <text x="508" y={690} fontSize="10" fill="#bfdbfe" textAnchor="middle">SPI TFT · VCC 5V · LED 3V3</text>
           <text x="508" y={730} fontSize="9.5" fill="#e2e8f0" textAnchor="middle">CS 17 · DC 5 · RST → EN</text>
           <text x="508" y={746} fontSize="9.5" fill="#e2e8f0" textAnchor="middle">SCK 21 · MOSI 22 · LED 3V3</text>
           <line x1="406" y1={660} x2="434" y2={660} stroke="#38bdf8" strokeWidth="3" />
