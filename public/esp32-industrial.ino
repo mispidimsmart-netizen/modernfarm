@@ -1116,11 +1116,32 @@ float readHumidityFiltered() {
 }
 
 float readGasFiltered() {
+  if (!mq135Available) return 0;   // sensor not connected → no fake ppm from floating ADC pin
   if (millis() - gasWarmupStart < GAS_WARMUP_DURATION) return 0;
   float total = 0;
   for (int i = 0; i < 10; i++) { total += analogRead(MQ135_PIN); esp_task_wdt_reset(); delayMicroseconds(500); }
   return total / 10.0f;
 }
+
+// Auto-detect NH3 gas sensor on GPIO 34.
+// A connected MQ-137/MQ-135 always pulls the ADC to a mid-range value.
+// A floating (disconnected) pin sits at rail (≈0 or ≈4095) or jitters randomly.
+bool detectMQ135() {
+  pinMode(MQ135_PIN, INPUT);
+  int lo = 4095, hi = 0;
+  for (int i = 0; i < 16; i++) {
+    int r = analogRead(MQ135_PIN);
+    if (r < lo) lo = r;
+    if (r > hi) hi = r;
+    delay(5);
+  }
+  int mid = (lo + hi) / 2;
+  if (mid < 40 || mid > 4050) return false;     // stuck at a rail → nothing connected
+  if ((hi - lo) > 800) return false;            // wild jitter → floating pin
+  return true;
+}
+
+
 
 // --- LDR (Optional Ambient Light Sensor on GPIO 36) ---
 // Wiring: 3.3V → LDR → GPIO 36 → 10kΩ → GND
