@@ -189,7 +189,7 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 #define CONFIG_FETCH_INTERVAL    60000UL
 #define WIFI_RECONNECT_INTERVAL  60000UL   // legacy constant (kept for compatibility)
 // --- WiFi auto-reconnect with exponential backoff ---
-#define WIFI_BACKOFF_MIN_MS      5000UL    // first retry 5s after a drop
+#define WIFI_BACKOFF_MIN_MS      3000UL    // first retry ~3s after a drop (was 5s)
 #define WIFI_BACKOFF_MAX_MS      300000UL  // cap at 5 min
 #define WIFI_RADIO_RESET_STREAK  6         // full radio power-cycle after N failed attempts
 #define CLOUD_TIMEOUT            300000UL
