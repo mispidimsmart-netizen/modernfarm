@@ -2519,6 +2519,12 @@ void checkEmergencyRecovery() {
       emergencySurvivalMode = false;
       esmRecoveryStarted = false;
       invalidReadingsActive = false;
+      // Clear the thermal-plausibility strike counter so a stale count cannot
+      // immediately push the controller back into ESM.
+      thermalImplausibleCount = 0;
+      thermalModelPlausible = true;
+      thermalExpectedTemp = temperature;
+
       transitionTo(STATE_NORMAL, "ESM_RECOVERED_VERIFIED");
       gsmQueueAlert("temperature", "✅ Emergency survival ended - sensors stable for 2 min.");
       Serial.println("🟢 ESM: Recovery verified (2 min stable) → NORMAL");
@@ -4455,26 +4461,51 @@ void updateActuatorEffectTracking() {
 
 void updateThermalModel() {
   unsigned long now = millis();
-  if (lastThermalModelUpdate == 0) { thermalExpectedTemp = temperature; lastThermalModelUpdate = now; return; }
+  if (lastThermalModelUpdate == 0) {
+    thermalExpectedTemp = temperature;
+    lastThermalModelUpdate = now;
+    return;
+  }
   float elapsedMin = (now - lastThermalModelUpdate) / 60000.0f;
   if (elapsedMin < 1.0f) return;
+
+  // --- Actual slew rate (°C per minute) ---------------------------------
+  // A real poultry shed cannot change faster than a few °C per minute.
+  // Only a physically impossible slew (or an out-of-range reading) means the
+  // sensor itself is lying. Weather, doors opening, sun and birds can easily
+  // move the room several degrees away from an open-loop model, so model
+  // deviation alone must NEVER trigger Emergency Survival Mode.
+  float actualRate = (temperature - thermalExpectedTemp) / elapsedMin;
+
+  // Open-loop prediction, then blend the model toward reality so it can never
+  // drift permanently away from the true room temperature.
   float rate = 0.0f;
   if (heaterOn) rate = 0.06f;
   else if (fanOn) rate = -0.04f;
-  thermalExpectedTemp += rate * elapsedMin;
-  thermalExpectedTemp = constrain(thermalExpectedTemp, 0.0f, 55.0f);
-  thermalModelDeviation = abs(temperature - thermalExpectedTemp);
-  if (thermalModelDeviation > 3.0f) {
+  float predicted = constrain(thermalExpectedTemp + rate * elapsedMin, 0.0f, 55.0f);
+  thermalModelDeviation = fabs(temperature - predicted);
+
+  bool impossibleSlew = fabs(actualRate) > 6.0f;                 // >6°C/min
+  bool impossibleValue = (temperature < -10.0f || temperature > 60.0f);
+
+  if (impossibleSlew || impossibleValue) {
     thermalImplausibleCount++;
     thermalModelPlausible = false;
-    thermalModelReason = "Dev " + String(thermalModelDeviation,1) + "C (act=" + String(temperature,1) + " exp=" + String(thermalExpectedTemp,1) + ")";
+    thermalModelReason = impossibleValue
+      ? "Out of range " + String(temperature, 1) + "C"
+      : "Slew " + String(actualRate, 1) + "C/min";
     if (thermalImplausibleCount >= 3) enterESM("SENSOR_THERMAL_IMPLAUSIBLE");
   } else {
-    thermalImplausibleCount = 0; thermalModelPlausible = true;
-    thermalExpectedTemp = temperature; thermalModelReason = "";
+    thermalImplausibleCount = 0;
+    thermalModelPlausible = true;
+    thermalModelReason = "";
   }
+
+  // Complementary filter: follow the sensor, keep a little model inertia.
+  thermalExpectedTemp = constrain(0.7f * temperature + 0.3f * predicted, 0.0f, 55.0f);
   lastThermalModelUpdate = now;
 }
+
 
 void callBackendSafetyEngine() {
   if (!wifiConnected || emergencySurvivalMode) return;
