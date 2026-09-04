@@ -187,7 +187,11 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 #define CLOUD_SYNC_INTERVAL      30000UL
 #define COMMAND_CHECK_INTERVAL   1000UL   // ⚡ Reduced 5s→1s for near-realtime manual control (works with Supabase Realtime publication on device_commands)
 #define CONFIG_FETCH_INTERVAL    60000UL
-#define WIFI_RECONNECT_INTERVAL  60000UL
+#define WIFI_RECONNECT_INTERVAL  60000UL   // legacy constant (kept for compatibility)
+// --- WiFi auto-reconnect with exponential backoff ---
+#define WIFI_BACKOFF_MIN_MS      5000UL    // first retry 5s after a drop
+#define WIFI_BACKOFF_MAX_MS      300000UL  // cap at 5 min
+#define WIFI_RADIO_RESET_STREAK  6         // full radio power-cycle after N failed attempts
 #define CLOUD_TIMEOUT            300000UL
 #define SAFE_MODE_DURATION       30000UL
 #define GAS_WARMUP_DURATION      300000UL   // 5 min initial warmup (MQ-137 needs 24h for full accuracy)
@@ -544,6 +548,10 @@ unsigned long lightManualOverrideTime = 0;
 // --- Connection State ---
 bool wifiConnected = false, cloudConnected = false, failsafeMode = false;
 unsigned long lastCloudSync = 0, lastWifiAttempt = 0;
+// WiFi reconnect backoff state (reset to MIN on every successful link-up)
+unsigned long wifiBackoffMs = WIFI_BACKOFF_MIN_MS;
+uint16_t wifiFailStreak = 0;
+unsigned long wifiDownSince = 0;
 
 // --- Phase 3: Reliability counters ---
 uint16_t consecutiveFailedSyncs = 0;       // Increments on /sync failure, resets on success
@@ -2834,6 +2842,7 @@ void connectWiFi() {
   
   if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == activeWifiSSID) {
     wifiConnected = true;
+    wifiFailStreak = 0; wifiBackoffMs = WIFI_BACKOFF_MIN_MS; wifiDownSince = 0;
     Serial.printf("✓ WiFi already connected (IP: %s, RSSI: %d)\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
     return;
   }
@@ -2841,9 +2850,18 @@ void connectWiFi() {
   WiFi.persistent(false);      // Do not erase/rewrite flash credentials on reconnect
   WiFi.setAutoReconnect(true);
   WiFi.setSleep(false);
-  WiFi.disconnect(false, false);  // Reconnect radio only; do NOT wipe stored WiFi state
-  // Non-blocking wait (200ms) — honors "ZERO delay() in main loop" invariant
-  { unsigned long w = millis(); while (millis() - w < 200) { esp_task_wdt_reset(); yield(); } }
+
+  // After several failed attempts the radio/driver can get stuck — power-cycle it.
+  if (wifiFailStreak > 0 && wifiFailStreak % WIFI_RADIO_RESET_STREAK == 0) {
+    Serial.printf("♻️ WiFi radio reset (fail streak=%u)\n", wifiFailStreak);
+    WiFi.disconnect(true, false);
+    WiFi.mode(WIFI_OFF);
+    { unsigned long w = millis(); while (millis() - w < 500) { esp_task_wdt_reset(); yield(); } }
+  } else {
+    WiFi.disconnect(false, false);  // Reconnect radio only; do NOT wipe stored WiFi state
+    // Non-blocking wait (200ms) — honors "ZERO delay() in main loop" invariant
+    { unsigned long w = millis(); while (millis() - w < 200) { esp_task_wdt_reset(); yield(); } }
+  }
   WiFi.mode(WIFI_STA);
   WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
   Serial.printf("📡 WiFi: Attempting connection (max 10s)...\n");
@@ -2856,9 +2874,21 @@ void connectWiFi() {
   }
   wifiConnected = (WiFi.status() == WL_CONNECTED);
   if (wifiConnected) {
-    Serial.printf("✓ WiFi Connected (IP: %s, RSSI: %d)\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    unsigned long downMs = wifiDownSince ? (millis() - wifiDownSince) : 0;
+    wifiFailStreak = 0; wifiBackoffMs = WIFI_BACKOFF_MIN_MS; wifiDownSince = 0;
+    Serial.printf("✓ WiFi Connected (IP: %s, RSSI: %d, offline %lus)\n",
+                  WiFi.localIP().toString().c_str(), WiFi.RSSI(), downMs / 1000UL);
   } else {
-    Serial.printf("✗ WiFi Failed (status=%d) - local automation active\n", WiFi.status());
+    if (wifiFailStreak < 65000) wifiFailStreak++;
+    // Exponential backoff with ±15% jitter, capped — avoids hammering the AP
+    unsigned long next = wifiBackoffMs * 2UL;
+    if (next > WIFI_BACKOFF_MAX_MS) next = WIFI_BACKOFF_MAX_MS;
+    long jitter = (long)(next / 100UL) * (long)(random(-15, 16));
+    long jittered = (long)next + jitter;
+    if (jittered < (long)WIFI_BACKOFF_MIN_MS) jittered = (long)WIFI_BACKOFF_MIN_MS;
+    wifiBackoffMs = (unsigned long)jittered;
+    Serial.printf("✗ WiFi Failed (status=%d, streak=%u) - local automation active, retry in %lus\n",
+                  WiFi.status(), wifiFailStreak, wifiBackoffMs / 1000UL);
     failsafeMode = true;
   }
 }
@@ -4796,10 +4826,19 @@ void loop() {
     }
   }
 
-  // --- WiFi reconnect (overflow-safe) ---
+  // --- WiFi auto-reconnect with exponential backoff (overflow-safe) ---
   if (WiFi.status() != WL_CONNECTED) {
+    if (wifiConnected) {
+      // Fresh drop → retry quickly, then back off progressively
+      Serial.println("📴 WiFi link lost → fast reconnect scheduled");
+      wifiBackoffMs = WIFI_BACKOFF_MIN_MS;
+      wifiFailStreak = 0;
+      wifiDownSince = now;
+      lastWifiAttempt = now - WIFI_BACKOFF_MIN_MS;  // attempt on the next tick
+    }
     wifiConnected = false;
-    if (intervalPassed(now, lastWifiAttempt, WIFI_RECONNECT_INTERVAL)) {
+    if (wifiDownSince == 0) wifiDownSince = now;
+    if (intervalPassed(now, lastWifiAttempt, wifiBackoffMs)) {
       lastWifiAttempt = now; connectWiFi();
       // On successful (re)connect, force an immediate /config fetch so the
       // latest safety_engine_enabled from cloud overrides the NVS cache —
@@ -4813,6 +4852,7 @@ void loop() {
   } else if (!wifiConnected) {
     // Edge: link came back without our reconnect attempt (autoReconnect)
     wifiConnected = true;
+    wifiFailStreak = 0; wifiBackoffMs = WIFI_BACKOFF_MIN_MS; wifiDownSince = 0;
     Serial.println("🔄 WiFi link restored (auto) → forcing immediate /config sync");
     fetchConfig();
     lastConfigFetch = millis();
