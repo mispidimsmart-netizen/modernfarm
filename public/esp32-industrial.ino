@@ -491,6 +491,8 @@ float waterFlow = 0.0f, currentHSI = 0.0f;
 float powerVoltageRMS = 230.0f;
 float lightLux = -1.0f;          // -1 = LDR not detected/disabled
 bool ldrAvailable = false;       // auto-detected at boot
+bool mq135Available = false;     // NH3 (MQ-137/MQ-135) auto-detected at boot on GPIO 34
+
 bool powerOn = true, dht2Available = false;
 bool sensorErrorMode = false;
 unsigned long lastValidSensor = 0;
@@ -1114,11 +1116,32 @@ float readHumidityFiltered() {
 }
 
 float readGasFiltered() {
+  if (!mq135Available) return 0;   // sensor not connected → no fake ppm from floating ADC pin
   if (millis() - gasWarmupStart < GAS_WARMUP_DURATION) return 0;
   float total = 0;
   for (int i = 0; i < 10; i++) { total += analogRead(MQ135_PIN); esp_task_wdt_reset(); delayMicroseconds(500); }
   return total / 10.0f;
 }
+
+// Auto-detect NH3 gas sensor on GPIO 34.
+// A connected MQ-137/MQ-135 always pulls the ADC to a mid-range value.
+// A floating (disconnected) pin sits at rail (≈0 or ≈4095) or jitters randomly.
+bool detectMQ135() {
+  pinMode(MQ135_PIN, INPUT);
+  int lo = 4095, hi = 0;
+  for (int i = 0; i < 16; i++) {
+    int r = analogRead(MQ135_PIN);
+    if (r < lo) lo = r;
+    if (r > hi) hi = r;
+    delay(5);
+  }
+  int mid = (lo + hi) / 2;
+  if (mid < 40 || mid > 4050) return false;     // stuck at a rail → nothing connected
+  if ((hi - lo) > 800) return false;            // wild jitter → floating pin
+  return true;
+}
+
+
 
 // --- LDR (Optional Ambient Light Sensor on GPIO 36) ---
 // Wiring: 3.3V → LDR → GPIO 36 → 10kΩ → GND
@@ -1413,15 +1436,21 @@ void sensorManagerTick() {
   // If sensors offline >90s, sensorErrorMode set by svlCheckSensorOffline()
 
   // Step 5: Ammonia pipeline (raw → moving avg → SVL → global)
-  float ammoniaRaw = readGasFiltered();
-  float ammMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
-  float ammOffset = ammMapped + farmConfig.nh3Offset;
-  if (ammOffset < 0) ammOffset = 0;
-  float ammAvg = calculateGasMovingAvg(ammOffset);
-  ammonia = svlProcessReading(svlAmmonia, ammAvg);  // SVL-validated only
-  
-  // Step 6: NH3 45-second confirmation before state escalation
-  svlCheckAmmoniaThreshold(ammonia, rules.ammoniaFan);
+  if (!mq135Available) {
+    ammonia = 0.0f;                 // sensor absent → report 0, never a fabricated value
+    nh3ThresholdBreached = false; nh3ThresholdBreachStart = 0; nh3VentilationConfirmed = false;
+  } else {
+    float ammoniaRaw = readGasFiltered();
+    float ammMapped = map((int)ammoniaRaw, 0, 4095, 0, 100);
+    float ammOffset = ammMapped + farmConfig.nh3Offset;
+    if (ammOffset < 0) ammOffset = 0;
+    float ammAvg = calculateGasMovingAvg(ammOffset);
+    ammonia = svlProcessReading(svlAmmonia, ammAvg);  // SVL-validated only
+
+    // Step 6: NH3 45-second confirmation before state escalation
+    svlCheckAmmoniaThreshold(ammonia, rules.ammoniaFan);
+  }
+
   
   // Step 7: Check all channels for 90s timeout
   svlCheckSensorOffline();
@@ -2964,6 +2993,7 @@ void syncWithCloud() {
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
   if (ldrAvailable) doc["light_lux"] = lightLux;
+  doc["nh3_sensor_present"] = mq135Available;
   doc["power_on"] = powerOn;
   doc["fan_on"] = fanOn;
   doc["fan_speed"] = fanSpeed;
@@ -4355,6 +4385,8 @@ void setup() {
   lastWaterPulse = millis();
 
   // --- LDR Auto-Detection (optional sensor on GPIO 36) ---
+  mq135Available = detectMQ135();
+  Serial.printf("🧪 NH3 Sensor: %s\n", mq135Available ? "DETECTED on GPIO 34" : "Not connected (ammonia reported as 0)");
   ldrAvailable = detectLDR();
   Serial.printf("💡 LDR Sensor: %s\n", ldrAvailable ? "DETECTED on GPIO 36" : "Not connected (optional)");
 
@@ -4529,6 +4561,7 @@ void callBackendSafetyEngine() {
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
   if (ldrAvailable) doc["light_lux"] = lightLux;
+  doc["nh3_sensor_present"] = mq135Available;
   doc["temperature_sensor2"] = dht2Available ? temperature2 : (float)NAN;
   doc["worst_case_max_temp"] = worstCaseMaxTemp;
   doc["worst_case_min_temp"] = worstCaseMinTemp;
@@ -4640,6 +4673,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["water_usage"] = waterFlow;
   doc["hsi_value"] = currentHSI;
   if (ldrAvailable) doc["light_lux"] = lightLux;
+  doc["nh3_sensor_present"] = mq135Available;
   
   // Environment response deltas
   doc["temp_delta_1min"] = getTempDelta1min();
