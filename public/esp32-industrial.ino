@@ -4907,7 +4907,7 @@ void displayInit() {
   if (panelDiag == 0x00 || panelDiag == 0xFF) {
     Serial.println("⚠️  TFT: panel did not answer over SDO(MISO).");
     Serial.println("    → SDO(MISO) কি GPIO39-এ যুক্ত? না থাকলে এই চেকটি উপেক্ষা করুন।");
-    Serial.println("    → স্ক্রিন সাদা থাকলে দেখুন: VCC=3.3V, LED=3.3V, RESET=3.3V (ফ্লোটিং নয়),");
+    Serial.println("    → লাল 9-pin module: VCC=5V, LED=3.3V, RESET=EN/3.3V (floating নয়),");
     Serial.println("      CS=17, DC=5, SCK=21, SDI(MOSI)=22, GND কমন।");
   }
 
