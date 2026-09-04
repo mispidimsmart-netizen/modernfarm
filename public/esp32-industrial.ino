@@ -2842,6 +2842,7 @@ void connectWiFi() {
   
   if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == activeWifiSSID) {
     wifiConnected = true;
+    wifiFailStreak = 0; wifiBackoffMs = WIFI_BACKOFF_MIN_MS; wifiDownSince = 0;
     Serial.printf("✓ WiFi already connected (IP: %s, RSSI: %d)\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
     return;
   }
@@ -2849,9 +2850,18 @@ void connectWiFi() {
   WiFi.persistent(false);      // Do not erase/rewrite flash credentials on reconnect
   WiFi.setAutoReconnect(true);
   WiFi.setSleep(false);
-  WiFi.disconnect(false, false);  // Reconnect radio only; do NOT wipe stored WiFi state
-  // Non-blocking wait (200ms) — honors "ZERO delay() in main loop" invariant
-  { unsigned long w = millis(); while (millis() - w < 200) { esp_task_wdt_reset(); yield(); } }
+
+  // After several failed attempts the radio/driver can get stuck — power-cycle it.
+  if (wifiFailStreak > 0 && wifiFailStreak % WIFI_RADIO_RESET_STREAK == 0) {
+    Serial.printf("♻️ WiFi radio reset (fail streak=%u)\n", wifiFailStreak);
+    WiFi.disconnect(true, false);
+    WiFi.mode(WIFI_OFF);
+    { unsigned long w = millis(); while (millis() - w < 500) { esp_task_wdt_reset(); yield(); } }
+  } else {
+    WiFi.disconnect(false, false);  // Reconnect radio only; do NOT wipe stored WiFi state
+    // Non-blocking wait (200ms) — honors "ZERO delay() in main loop" invariant
+    { unsigned long w = millis(); while (millis() - w < 200) { esp_task_wdt_reset(); yield(); } }
+  }
   WiFi.mode(WIFI_STA);
   WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
   Serial.printf("📡 WiFi: Attempting connection (max 10s)...\n");
@@ -2864,9 +2874,21 @@ void connectWiFi() {
   }
   wifiConnected = (WiFi.status() == WL_CONNECTED);
   if (wifiConnected) {
-    Serial.printf("✓ WiFi Connected (IP: %s, RSSI: %d)\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    unsigned long downMs = wifiDownSince ? (millis() - wifiDownSince) : 0;
+    wifiFailStreak = 0; wifiBackoffMs = WIFI_BACKOFF_MIN_MS; wifiDownSince = 0;
+    Serial.printf("✓ WiFi Connected (IP: %s, RSSI: %d, offline %lus)\n",
+                  WiFi.localIP().toString().c_str(), WiFi.RSSI(), downMs / 1000UL);
   } else {
-    Serial.printf("✗ WiFi Failed (status=%d) - local automation active\n", WiFi.status());
+    if (wifiFailStreak < 65000) wifiFailStreak++;
+    // Exponential backoff with ±15% jitter, capped — avoids hammering the AP
+    unsigned long next = wifiBackoffMs * 2UL;
+    if (next > WIFI_BACKOFF_MAX_MS) next = WIFI_BACKOFF_MAX_MS;
+    long jitter = (long)(next / 100UL) * (long)(random(-15, 16));
+    long jittered = (long)next + jitter;
+    if (jittered < (long)WIFI_BACKOFF_MIN_MS) jittered = (long)WIFI_BACKOFF_MIN_MS;
+    wifiBackoffMs = (unsigned long)jittered;
+    Serial.printf("✗ WiFi Failed (status=%d, streak=%u) - local automation active, retry in %lus\n",
+                  WiFi.status(), wifiFailStreak, wifiBackoffMs / 1000UL);
     failsafeMode = true;
   }
 }
