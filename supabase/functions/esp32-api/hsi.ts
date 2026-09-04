@@ -43,7 +43,8 @@ export async function applyHSIAutomation(
       .from('farm_settings')
       .select('hsi_automation_enabled, automation_mode')
       .eq('user_id', userId)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!settings?.hsi_automation_enabled) {
       console.log('HSI automation disabled, skipping');
@@ -57,7 +58,10 @@ export async function applyHSIAutomation(
 
     let deviceQuery = supabase
       .from('device_status')
-      .select('id, manual_override, desired_manual_override, shed_id')
+      .select(
+        'id, manual_override, desired_manual_override, shed_id, ' +
+        'desired_fan_expires_at, desired_alarm_expires_at',
+      )
       .eq('user_id', userId);
 
     if (shedId) {
@@ -72,6 +76,20 @@ export async function applyHSIAutomation(
       console.log(`Manual override active for shed ${shedId || 'default'}, skipping HSI automation`);
       return;
     }
+
+    // Respect a still-running *timed* override from the Control page
+    // ("সাময়িক চালু/বন্ধ"). Without this, the next sensor push would stomp
+    // the farmer's desired_* value seconds after they set it.
+    const stillActive = (ts: unknown): boolean =>
+      !!ts && new Date(ts as string).getTime() > Date.now();
+    const fanOverridden = stillActive(deviceStatus?.desired_fan_expires_at);
+    const alarmOverridden = stillActive(deviceStatus?.desired_alarm_expires_at);
+    if (fanOverridden && alarmOverridden) {
+      console.log(`⏳ [HSI] Timed override active for shed ${shedId || 'default'}, skipping`);
+      return;
+    }
+
+
 
     // Cloud writes desired_* columns ONLY.
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -103,6 +121,18 @@ export async function applyHSIAutomation(
         console.log(`✅ [Shed: ${shedId || 'default'}] HSI NORMAL (${hsi.toFixed(1)}) → desired: Fan OFF`);
         break;
     }
+
+    // Never overwrite a device whose timed override is still counting down.
+    if (fanOverridden) {
+      delete updates.desired_fan_on;
+      delete updates.desired_fan_speed;
+    }
+    if (alarmOverridden) {
+      delete updates.desired_alarm_on;
+    }
+    if (Object.keys(updates).length <= 1) return; // only updated_at left
+
+
 
     let updateQuery = supabase
       .from('device_status')

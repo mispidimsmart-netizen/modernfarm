@@ -1261,6 +1261,15 @@ async function handleDeviceState(
       statusUpdate.alarm_on = body.alarm === 'ON';
     }
 
+    // Hardware-confirmed Auto/Manual mode. The ESP32 owns the actual mode;
+    // the cloud only writes `desired_manual_override`. Without mirroring this
+    // back the Control page shows "mode not confirmed by hardware" forever.
+    if (typeof (body as any).manual_override === 'boolean') {
+      statusUpdate.manual_override = (body as any).manual_override;
+    } else if (typeof (body as any).manual_override_active === 'boolean') {
+      statusUpdate.manual_override = (body as any).manual_override_active;
+    }
+
     // Handle safety_override from device
     if (typeof (body as any).safety_override === 'boolean') {
       statusUpdate.safety_override = (body as any).safety_override;
@@ -1269,6 +1278,7 @@ async function handleDeviceState(
         statusUpdate.safety_override_at = new Date().toISOString();
       }
     }
+
 
     // Compute state_mismatch between desired and actual
     // First get current desired state

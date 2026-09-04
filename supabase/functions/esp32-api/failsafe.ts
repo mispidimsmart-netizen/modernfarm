@@ -109,6 +109,13 @@ export async function handleFailsafeSync(
     if (body.circulation_fan_on !== undefined) deviceStatusUpdate.circulation_fan_on = body.circulation_fan_on;
     if (body.ceiling_fan_on !== undefined) deviceStatusUpdate.ceiling_fan_on = body.ceiling_fan_on;
     if (body.sprinkler_on !== undefined) deviceStatusUpdate.sprinkler_on = body.sprinkler_on;
+    // Hardware-confirmed Auto/Manual mode (ESP32 is source of truth).
+    if (typeof (body as any).manual_override === 'boolean') {
+      deviceStatusUpdate.manual_override = (body as any).manual_override;
+    } else if (typeof (body as any).manual_override_active === 'boolean') {
+      deviceStatusUpdate.manual_override = (body as any).manual_override_active;
+    }
+
     // Safety override from device
     if (typeof (body as any).safety_override === 'boolean') {
       deviceStatusUpdate.safety_override = (body as any).safety_override;
