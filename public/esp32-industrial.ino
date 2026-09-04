@@ -4250,6 +4250,12 @@ void setup() {
   Serial.println("╚═══════════════════════════════════════════════════════════════╝\n");
   Serial.printf("🖥️  Display: %s | Panel LEDs: passive (no firmware setting)\n",
                 DISPLAY_ENABLED ? "ENABLED (ILI9341 on 21/22/17/5)" : "DISABLED (optional — safe)");
+#if !DISPLAY_ENABLED
+  Serial.println("ℹ️  TFT screen will stay BLANK/WHITE: DISPLAY_ENABLED is false.");
+  Serial.println("    Fix: Settings -> firmware generator -> turn ON 'TFT display', re-flash;");
+  Serial.println("    also install 'Adafruit GFX Library' + 'Adafruit ILI9341' in Arduino IDE.");
+#endif
+
 
 
   // --- Credentials ---
