@@ -122,6 +122,18 @@ export async function applyHSIAutomation(
         break;
     }
 
+    // Never overwrite a device whose timed override is still counting down.
+    if (fanOverridden) {
+      delete updates.desired_fan_on;
+      delete updates.desired_fan_speed;
+    }
+    if (alarmOverridden) {
+      delete updates.desired_alarm_on;
+    }
+    if (Object.keys(updates).length <= 1) return; // only updated_at left
+
+
+
     let updateQuery = supabase
       .from('device_status')
       .update(updates)
