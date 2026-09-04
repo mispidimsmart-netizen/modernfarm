@@ -175,6 +175,7 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 #define TFT_MOSI_PIN         22
 #define TFT_CS_PIN           17
 #define TFT_DC_PIN           5
+#define TFT_MISO_PIN         39     // SDO(MISO) — input-only pin, needed for panel ID self-check
 #define DISPLAY_REFRESH_MS   1000UL   // redraw values once per second
 #define DISPLAY_PAGE_MS      5000UL   // auto-rotate pages every 5 seconds
 
@@ -4866,19 +4867,31 @@ static void displayShowWelcome() {
 void displayInit() {
   // Some ILI9341 breakout boards (with on-board level shifter) fail at the
   // default 40 MHz SPI clock and stay blank/white. Start conservatively.
-  tftSPI.begin(TFT_SCK_PIN, -1, TFT_MOSI_PIN, TFT_CS_PIN);
+  tftSPI.begin(TFT_SCK_PIN, TFT_MISO_PIN, TFT_MOSI_PIN, TFT_CS_PIN);
   pinMode(TFT_CS_PIN, OUTPUT);
   digitalWrite(TFT_CS_PIN, HIGH);
   pinMode(TFT_DC_PIN, OUTPUT);
-  tft.begin(20000000);                // 20 MHz — safe for long jumper wires
+  tft.begin(8000000);                 // 8 MHz — very tolerant of long dupont jumpers
+
   tft.setRotation(1);                 // landscape 320x240
 
   // --- Panel self-test: if wiring/SPI is OK you will see R -> G -> B flash ---
   tft.fillScreen(ILI9341_RED);   delay(120);
   tft.fillScreen(ILI9341_GREEN); delay(120);
   tft.fillScreen(ILI9341_BLUE);  delay(120);
-  Serial.printf("🖥️  TFT self-test done | CS=%d DC=%d SCK=%d MOSI=%d | ILI9341 ID=0x%02X\n",
-                TFT_CS_PIN, TFT_DC_PIN, TFT_SCK_PIN, TFT_MOSI_PIN, tft.readcommand8(ILI9341_RDSELFDIAG));
+  // --- Panel presence check over MISO (SDO) ---
+  uint8_t panelId   = tft.readcommand8(ILI9341_RDDID);      // expect 0x00 then mfg bytes
+  uint8_t panelDiag = tft.readcommand8(ILI9341_RDSELFDIAG); // expect 0xC0 on a healthy ILI9341
+  uint8_t panelPwr  = tft.readcommand8(ILI9341_RDMODE);
+  Serial.printf("🖥️  TFT self-test done | CS=%d DC=%d SCK=%d MOSI=%d MISO=%d | ID=0x%02X DIAG=0x%02X MODE=0x%02X\n",
+                TFT_CS_PIN, TFT_DC_PIN, TFT_SCK_PIN, TFT_MOSI_PIN, TFT_MISO_PIN,
+                panelId, panelDiag, panelPwr);
+  if (panelDiag == 0x00 || panelDiag == 0xFF) {
+    Serial.println("⚠️  TFT: panel did not answer over SDO(MISO).");
+    Serial.println("    → SDO(MISO) কি GPIO39-এ যুক্ত? না থাকলে এই চেকটি উপেক্ষা করুন।");
+    Serial.println("    → স্ক্রিন সাদা থাকলে দেখুন: VCC=3.3V, LED=3.3V, RESET=3.3V (ফ্লোটিং নয়),");
+    Serial.println("      CS=17, DC=5, SCK=21, SDI(MOSI)=22, GND কমন।");
+  }
 
   displayShowWelcome();                // welcome splash on power-on
   displayWelcomeUntil = millis() + DISPLAY_WELCOME_MS;
