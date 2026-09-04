@@ -179,30 +179,61 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
       }
 
       // ── v8 STABLE path ────────────────────────────────────────────────
-      await triggerDownload(
-        buildV8Firmware(template, buildOptions),
-        buildFilename('v8', firmwareMode, farmType),
-      );
+      let v8Code = buildV8Firmware(template, buildOptions);
+      let inlinedHeader = false;
 
-      // Then the required safety engine header (sequential — avoids popup blocking)
+      // Inline the safety engine header so Arduino IDE never reports
+      // "esp32-safety-engine.h: No such file or directory".
       try {
-        const headerResponse = await fetch('/esp32-safety-engine.h?t=' + Date.now());
+        const headerResponse = await fetch('/esp32-safety-engine.h?t=' + Date.now(), { cache: 'no-store' });
         if (headerResponse.ok) {
           const headerCode = await headerResponse.text();
-          await new Promise((r) => setTimeout(r, 800));
-          await triggerDownload(headerCode, 'esp32-safety-engine.h');
+          const includeRe = /^[ \t]*#include\s+"esp32-safety-engine\.h".*$/m;
+          if (includeRe.test(v8Code) && headerCode.length > 500) {
+            v8Code = v8Code.replace(
+              includeRe,
+              [
+                '// ===== BEGIN INLINED esp32-safety-engine.h =====',
+                '// (আলাদা হেডার ফাইলের দরকার নেই — সব কোড এই এক ফাইলেই আছে)',
+                headerCode.replace(/^[ \t]*#pragma\s+once.*$/m, ''),
+                '// ===== END INLINED esp32-safety-engine.h =====',
+              ].join('\n'),
+            );
+            inlinedHeader = true;
+          }
         }
       } catch (headerErr) {
-        console.warn('Could not download safety header:', headerErr);
+        console.warn('Could not inline safety header:', headerErr);
+      }
+
+      await triggerDownload(v8Code, buildFilename('v8', firmwareMode, farmType));
+
+      // Fallback: header could not be inlined → ship it as a second file
+      if (!inlinedHeader) {
+        try {
+          const headerResponse = await fetch('/esp32-safety-engine.h?t=' + Date.now(), { cache: 'no-store' });
+          if (headerResponse.ok) {
+            const headerCode = await headerResponse.text();
+            await new Promise((r) => setTimeout(r, 800));
+            await triggerDownload(headerCode, 'esp32-safety-engine.h');
+          }
+        } catch (headerErr) {
+          console.warn('Could not download safety header:', headerErr);
+        }
       }
 
       setVerifyError(null);
       toast.success(
-        language === 'bn'
-          ? '✅ ফার্মওয়্যার + Safety Engine হেডার ডাউনলোড হয়েছে! দুটি ফাইল একই ফোল্ডারে রাখুন।'
-          : '✅ Firmware + Safety Engine header downloaded! Keep both files in the same folder.',
+        inlinedHeader
+          ? (language === 'bn'
+            ? '✅ ফার্মওয়্যার ডাউনলোড হয়েছে! Safety Engine কোড ভিতরেই আছে — আলাদা হেডার ফাইল লাগবে না।'
+            : '✅ Firmware downloaded! Safety Engine is inlined — no extra header file needed.')
+          : (language === 'bn'
+            ? '✅ ফার্মওয়্যার + Safety Engine হেডার ডাউনলোড হয়েছে! দুটি ফাইল একই ফোল্ডারে রাখুন।'
+            : '✅ Firmware + Safety Engine header downloaded! Keep both files in the same folder.'),
         { duration: 6000 },
       );
+
     } catch (error) {
       console.error('Download error:', error);
       toast.error(t.downloadFailed);
