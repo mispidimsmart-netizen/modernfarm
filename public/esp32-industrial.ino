@@ -4408,17 +4408,32 @@ void setup() {
   // --- OTA Validation ---
   validateBootPartition();
 
-  // --- Test Sensors ---
-  float testT = dht.readTemperature();
-  float testH = dht.readHumidity();
-  bool sensorOK = !isnan(testT) && !isnan(testH);
+  // --- Test Sensors (retry: DHT22 often NaNs on the first reads after power-up) ---
+  float testT = NAN, testH = NAN;
+  bool sensorOK = false;
+  for (uint8_t attempt = 1; attempt <= 5 && !sensorOK; attempt++) {
+    testT = dht.readTemperature();
+    testH = dht.readHumidity();
+    sensorOK = !isnan(testT) && !isnan(testH);
+    if (!sensorOK) {
+      Serial.printf("  DHT#1 read attempt %u/5 failed — retrying...\n", attempt);
+      unsigned long rw = millis();
+      while (millis() - rw < 2500) { esp_task_wdt_reset(); yield(); }
+    }
+  }
   lastValidSensor = millis();
-  
+
   float testT2 = dht2.readTemperature();
+  if (isnan(testT2)) {
+    unsigned long rw = millis();
+    while (millis() - rw < 2500) { esp_task_wdt_reset(); yield(); }
+    testT2 = dht2.readTemperature();
+  }
   dht2Available = !isnan(testT2);
   Serial.printf("  DHT#1: %s  DHT#2: %s\n", sensorOK ? "OK" : "FAIL", dht2Available ? "OK" : "N/A");
 
   if (!sensorOK) { sensorErrorMode = true; failsafeMode = true; requestFan(true, "HIGH"); }
+
 
   // --- Gas Warmup ---
   gasWarmupStart = millis();
