@@ -81,16 +81,9 @@
 // ═══════════════════════════════════════════════════════════════════════
 #define DISPLAY_ENABLED false
 
-// AUTO-GUARD: যদি Adafruit GFX/ILI9341 লাইব্রেরি ইনস্টল করা না থাকে, ডিসপ্লে
-// নিজে থেকেই বন্ধ হয়ে যাবে — কম্পাইল এরর হবে না (বাকি ফার্মওয়্যার অপরিবর্তিত)।
-#if DISPLAY_ENABLED
-  #if !defined(__has_include) || !__has_include(<Adafruit_GFX.h>) || !__has_include(<Adafruit_ILI9341.h>)
-    #undef DISPLAY_ENABLED
-    #define DISPLAY_ENABLED false
-    #warning "Adafruit GFX/ILI9341 library not found -> TFT display disabled automatically."
-  #endif
-#endif
-
+// IMPORTANT: ডিসপ্লে ON করে firmware বানালে লাইব্রেরি না থাকলে compile অবশ্যই
+// fail করবে। আগে silently DISPLAY_ENABLED=false হয়ে যেত; ফলে upload সফল হলেও
+// panel শুধু সাদা থাকত। এখন ভুলটি upload-এর আগেই স্পষ্টভাবে ধরা পড়বে।
 #if DISPLAY_ENABLED
   #include <SPI.h>
   #include <Adafruit_GFX.h>
