@@ -372,6 +372,8 @@ export async function handleFailsafeSync(
       // 🐔 Farm type and broiler age for ESP32 auto-config (per-shed)
       farm_type: shedFarmType,
       broiler_age_days: broilerAgeDays,
+      bird_age_days: birdAgeDays,
+
       
       // Desired state (what cloud wants - ESP32 decides final)
       desired_state: currentStatus ? {
