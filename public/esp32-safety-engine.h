@@ -107,8 +107,8 @@ inline unsigned long _safeElapsed(unsigned long now, unsigned long since) {
 
 // ─── BIRD AGE VALIDATION ───
 #define AGE_MIN_DAYS                 0
-#define AGE_MAX_DAYS                 60
-#define AGE_MAX_JUMP_PER_24H         2
+#define AGE_MAX_DAYS                 900   // layer flocks run to ~120 weeks
+#define AGE_MAX_JUMP_PER_24H         7     // layer age arrives in whole weeks
 
 // ─── BACKEND SAFETY ENGINE ───
 #define SAFETY_ENGINE_CALL_INTERVAL_MS 60000UL

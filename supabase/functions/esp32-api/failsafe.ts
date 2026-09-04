@@ -230,8 +230,11 @@ export async function handleFailsafeSync(
       shedFarmType = profile?.farm_type || 'layer';
     }
 
-    // 🐔 4c. Get active broiler batch for age calculation (if broiler shed)
+    // 🐔 4c. Bird age for the device display / age-based automation.
+    // Broiler → active broiler batch start_date.
+    // Layer   → active layer batch (start_date + age_at_start_weeks), else flock_info.age_weeks.
     let broilerAgeDays = 1;
+    let birdAgeDays = 1;
     if (shedFarmType === 'broiler') {
       const { data: activeBatch } = await supabase
         .from('broiler_batches')
@@ -248,7 +251,37 @@ export async function handleFailsafeSync(
         broilerAgeDays = Math.max(1, Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
         console.log(`[Broiler] Active batch started ${activeBatch.start_date}, age: ${broilerAgeDays} days`);
       }
+      birdAgeDays = broilerAgeDays;
+    } else {
+      const { data: layerBatch } = await supabase
+        .from('layer_batches')
+        .select('start_date, age_at_start_weeks')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let ageWeeks: number | null = null;
+      if (layerBatch?.start_date) {
+        const startMs = new Date(layerBatch.start_date).getTime();
+        const weeksElapsed = Math.max(0, Math.floor((Date.now() - startMs) / (7 * 86400000)));
+        ageWeeks = (layerBatch.age_at_start_weeks ?? 0) + weeksElapsed;
+      } else {
+        const { data: flock } = await supabase
+          .from('flock_info')
+          .select('age_weeks')
+          .eq('user_id', userId)
+          .maybeSingle();
+        ageWeeks = flock?.age_weeks ?? null;
+      }
+
+      if (ageWeeks !== null && ageWeeks >= 0) {
+        birdAgeDays = Math.max(1, ageWeeks * 7);
+        console.log(`[Layer] Flock age: ${ageWeeks} weeks (${birdAgeDays} days)`);
+      }
     }
+
 
     // 5. Get lighting schedule
     const { data: lightingSchedule } = await supabase
@@ -339,6 +372,8 @@ export async function handleFailsafeSync(
       // 🐔 Farm type and broiler age for ESP32 auto-config (per-shed)
       farm_type: shedFarmType,
       broiler_age_days: broilerAgeDays,
+      bird_age_days: birdAgeDays,
+
       
       // Desired state (what cloud wants - ESP32 decides final)
       desired_state: currentStatus ? {
