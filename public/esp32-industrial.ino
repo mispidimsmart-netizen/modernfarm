@@ -4826,10 +4826,19 @@ void loop() {
     }
   }
 
-  // --- WiFi reconnect (overflow-safe) ---
+  // --- WiFi auto-reconnect with exponential backoff (overflow-safe) ---
   if (WiFi.status() != WL_CONNECTED) {
+    if (wifiConnected) {
+      // Fresh drop → retry quickly, then back off progressively
+      Serial.println("📴 WiFi link lost → fast reconnect scheduled");
+      wifiBackoffMs = WIFI_BACKOFF_MIN_MS;
+      wifiFailStreak = 0;
+      wifiDownSince = now;
+      lastWifiAttempt = now - WIFI_BACKOFF_MIN_MS;  // attempt on the next tick
+    }
     wifiConnected = false;
-    if (intervalPassed(now, lastWifiAttempt, WIFI_RECONNECT_INTERVAL)) {
+    if (wifiDownSince == 0) wifiDownSince = now;
+    if (intervalPassed(now, lastWifiAttempt, wifiBackoffMs)) {
       lastWifiAttempt = now; connectWiFi();
       // On successful (re)connect, force an immediate /config fetch so the
       // latest safety_engine_enabled from cloud overrides the NVS cache —
@@ -4843,6 +4852,7 @@ void loop() {
   } else if (!wifiConnected) {
     // Edge: link came back without our reconnect attempt (autoReconnect)
     wifiConnected = true;
+    wifiFailStreak = 0; wifiBackoffMs = WIFI_BACKOFF_MIN_MS; wifiDownSince = 0;
     Serial.println("🔄 WiFi link restored (auto) → forcing immediate /config sync");
     fetchConfig();
     lastConfigFetch = millis();
