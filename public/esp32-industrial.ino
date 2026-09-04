@@ -548,6 +548,10 @@ unsigned long lightManualOverrideTime = 0;
 // --- Connection State ---
 bool wifiConnected = false, cloudConnected = false, failsafeMode = false;
 unsigned long lastCloudSync = 0, lastWifiAttempt = 0;
+// WiFi reconnect backoff state (reset to MIN on every successful link-up)
+unsigned long wifiBackoffMs = WIFI_BACKOFF_MIN_MS;
+uint16_t wifiFailStreak = 0;
+unsigned long wifiDownSince = 0;
 
 // --- Phase 3: Reliability counters ---
 uint16_t consecutiveFailedSyncs = 0;       // Increments on /sync failure, resets on success
