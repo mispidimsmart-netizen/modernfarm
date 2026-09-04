@@ -2519,6 +2519,12 @@ void checkEmergencyRecovery() {
       emergencySurvivalMode = false;
       esmRecoveryStarted = false;
       invalidReadingsActive = false;
+      // Clear the thermal-plausibility strike counter so a stale count cannot
+      // immediately push the controller back into ESM.
+      thermalImplausibleCount = 0;
+      thermalModelPlausible = true;
+      thermalExpectedTemp = temperature;
+
       transitionTo(STATE_NORMAL, "ESM_RECOVERED_VERIFIED");
       gsmQueueAlert("temperature", "✅ Emergency survival ended - sensors stable for 2 min.");
       Serial.println("🟢 ESM: Recovery verified (2 min stable) → NORMAL");
