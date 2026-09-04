@@ -4759,8 +4759,13 @@ void recordRelayMismatch() {
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
 #if DISPLAY_ENABLED
-SPIClass tftSPI(HSPI);
-Adafruit_ILI9341 tft = Adafruit_ILI9341(&tftSPI, TFT_DC_PIN, TFT_CS_PIN, -1);
+// Use explicit-pin software SPI for the optional panel. Adafruit_SPITFT calls
+// SPIClass::begin() internally; on ESP32 that can silently restore the HSPI
+// default pins after a custom begin(21,39,22,17), leaving this panel white.
+// Explicit pins are slower but deterministic and do not affect safety logic.
+Adafruit_ILI9341 tft = Adafruit_ILI9341(
+  TFT_CS_PIN, TFT_DC_PIN, TFT_MOSI_PIN, TFT_SCK_PIN, -1, TFT_MISO_PIN
+);
 bool displayReady = false;
 uint8_t displayPage = 0;                 // 0 = sensors, 1 = devices, 2 = system
 unsigned long lastDisplayRefresh = 0;
@@ -4880,13 +4885,11 @@ static void displayShowWelcome() {
 }
 
 void displayInit() {
-  // Some ILI9341 breakout boards (with on-board level shifter) fail at the
-  // default 40 MHz SPI clock and stay blank/white. Start conservatively.
-  tftSPI.begin(TFT_SCK_PIN, TFT_MISO_PIN, TFT_MOSI_PIN, TFT_CS_PIN);
   pinMode(TFT_CS_PIN, OUTPUT);
   digitalWrite(TFT_CS_PIN, HIGH);
   pinMode(TFT_DC_PIN, OUTPUT);
-  tft.begin(8000000);                 // 8 MHz — very tolerant of long dupont jumpers
+  // Software SPI preserves the exact v8 pin map; frequency is ignored here.
+  tft.begin();
 
   tft.setRotation(1);                 // landscape 320x240
 
@@ -4898,7 +4901,7 @@ void displayInit() {
   uint8_t panelId   = tft.readcommand8(ILI9341_RDDID);      // expect 0x00 then mfg bytes
   uint8_t panelDiag = tft.readcommand8(ILI9341_RDSELFDIAG); // expect 0xC0 on a healthy ILI9341
   uint8_t panelPwr  = tft.readcommand8(ILI9341_RDMODE);
-  Serial.printf("🖥️  TFT self-test done | CS=%d DC=%d SCK=%d MOSI=%d MISO=%d | ID=0x%02X DIAG=0x%02X MODE=0x%02X\n",
+  Serial.printf("🖥️  TFT self-test done (explicit-pin SPI) | CS=%d DC=%d SCK=%d MOSI=%d MISO=%d | ID=0x%02X DIAG=0x%02X MODE=0x%02X\n",
                 TFT_CS_PIN, TFT_DC_PIN, TFT_SCK_PIN, TFT_MOSI_PIN, TFT_MISO_PIN,
                 panelId, panelDiag, panelPwr);
   if (panelDiag == 0x00 || panelDiag == 0xFF) {
