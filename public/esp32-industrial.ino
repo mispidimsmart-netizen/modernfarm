@@ -4810,6 +4810,16 @@ void displayManagerTick() {
   if (!displayReady) return;
   unsigned long now = millis();
 
+  // Hold the welcome splash for DISPLAY_WELCOME_MS after boot, then switch
+  // to the normal sensor/device/system pages.
+  if (displayWelcomeUntil) {
+    if (now < displayWelcomeUntil) return;          // still showing welcome
+    displayWelcomeUntil = 0;                        // welcome finished
+    tft.fillScreen(ILI9341_BLACK);                  // clear splash
+    displayPageDirty = true;
+    lastHeaderState = -1;                           // force header redraw
+  }
+
   if (intervalPassed(now, lastDisplayPageSwap, DISPLAY_PAGE_MS)) {
     lastDisplayPageSwap = now;
     displayPage = (displayPage + 1) % 3;
