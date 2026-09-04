@@ -4793,9 +4793,21 @@ static void displayShowWelcome() {
 }
 
 void displayInit() {
+  // Some ILI9341 breakout boards (with on-board level shifter) fail at the
+  // default 40 MHz SPI clock and stay blank/white. Start conservatively.
   tftSPI.begin(TFT_SCK_PIN, -1, TFT_MOSI_PIN, TFT_CS_PIN);
-  tft.begin();
+  pinMode(TFT_CS_PIN, OUTPUT);
+  digitalWrite(TFT_CS_PIN, HIGH);
+  pinMode(TFT_DC_PIN, OUTPUT);
+  tft.begin(20000000);                // 20 MHz — safe for long jumper wires
   tft.setRotation(1);                 // landscape 320x240
+
+  // --- Panel self-test: if wiring/SPI is OK you will see R -> G -> B flash ---
+  tft.fillScreen(ILI9341_RED);   delay(120);
+  tft.fillScreen(ILI9341_GREEN); delay(120);
+  tft.fillScreen(ILI9341_BLUE);  delay(120);
+  Serial.printf("🖥️  TFT self-test done | CS=%d DC=%d SCK=%d MOSI=%d | ILI9341 ID=0x%02X\n",
+                TFT_CS_PIN, TFT_DC_PIN, TFT_SCK_PIN, TFT_MOSI_PIN, tft.readcommand8(ILI9341_RDSELFDIAG));
 
   displayShowWelcome();                // welcome splash on power-on
   displayWelcomeUntil = millis() + DISPLAY_WELCOME_MS;
@@ -4805,6 +4817,7 @@ void displayInit() {
   lastHeaderState = -1;               // forces header redraw after welcome
   Serial.println("🖥️  TFT display initialized (ILI9341 320x240) — welcome splash shown");
 }
+
 
 void displayManagerTick() {
   if (!displayReady) return;
