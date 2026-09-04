@@ -2995,6 +2995,7 @@ void syncWithCloud() {
   doc["alarm_on"] = alarmOn;
   doc["hsi"] = currentHSI;
   doc["failsafe_mode"] = failsafeMode;
+  doc["manual_override"] = localManualOverride;   // hardware-confirmed Auto/Manual mode
   doc["sensor_error"] = sensorErrorMode;
   doc["farm_profile"] = farmConfig.farmType;
   doc["farm_type"] = getFarmTypeStr();
