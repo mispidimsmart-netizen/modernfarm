@@ -4680,6 +4680,8 @@ unsigned long lastDisplayRefresh = 0;
 unsigned long lastDisplayPageSwap = 0;
 int lastHeaderState = -1;
 bool displayPageDirty = true;
+unsigned long displayWelcomeUntil = 0;   // welcome screen shown until this millis()
+#define DISPLAY_WELCOME_MS 3000UL        // welcome splash duration on boot
 
 static uint16_t displayHeaderColor() {
   if (currentState >= STATE_DANGER || emergencySurvivalMode) return ILI9341_RED;
