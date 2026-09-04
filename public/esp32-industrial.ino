@@ -3500,7 +3500,7 @@ void checkCommands() {
             String ap; serializeJson(adoc, ap);
             attachSignature(ack, ap);
             ack.POST(ap); ack.end();
-            if (cri.length() > 0) markCommandApplied(cri);
+            if (cri.length() > 0) recordAppliedCommand(cri);
           }
           // Non-blocking wait so watchdog stays happy
           { unsigned long w = millis(); while (millis() - w < 1500) { esp_task_wdt_reset(); yield(); } }
@@ -4100,14 +4100,14 @@ void offlineBufferSync() {
       OfflineRecord &r = offlineBuffer[idx];
       JsonObject o = arr.createNestedObject();
       o["t_offset_ms"] = (long)(millis() - r.timestamp);
-      o["temperature"] = r.temp;
-      o["humidity"] = r.hum;
-      o["ammonia"] = r.nh3;
-      o["water_usage"] = r.water;
+      o["temperature"] = r.temperature;
+      o["humidity"] = r.humidity;
+      o["ammonia"] = r.ammonia;
+      o["water_usage"] = r.waterFlow;
       o["hsi"] = r.hsi;
-      o["power_on"] = r.power;
-      o["fan_speed"] = r.fanSpd;
-      o["state"] = r.state;
+      o["power_on"] = r.powerOn;
+      o["fan_speed"] = r.fanSpeed;
+      o["state"] = r.systemState;
     }
     String payload; serializeJson(doc, payload);
     attachSignature(http, payload);
