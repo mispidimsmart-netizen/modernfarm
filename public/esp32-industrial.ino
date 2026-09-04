@@ -491,6 +491,8 @@ float waterFlow = 0.0f, currentHSI = 0.0f;
 float powerVoltageRMS = 230.0f;
 float lightLux = -1.0f;          // -1 = LDR not detected/disabled
 bool ldrAvailable = false;       // auto-detected at boot
+bool mq135Available = false;     // NH3 (MQ-137/MQ-135) auto-detected at boot on GPIO 34
+
 bool powerOn = true, dht2Available = false;
 bool sensorErrorMode = false;
 unsigned long lastValidSensor = 0;
