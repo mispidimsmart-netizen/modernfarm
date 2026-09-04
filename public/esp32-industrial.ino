@@ -2993,6 +2993,7 @@ void syncWithCloud() {
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
   if (ldrAvailable) doc["light_lux"] = lightLux;
+  doc["nh3_sensor_present"] = mq135Available;
   doc["power_on"] = powerOn;
   doc["fan_on"] = fanOn;
   doc["fan_speed"] = fanSpeed;
@@ -4384,6 +4385,8 @@ void setup() {
   lastWaterPulse = millis();
 
   // --- LDR Auto-Detection (optional sensor on GPIO 36) ---
+  mq135Available = detectMQ135();
+  Serial.printf("🧪 NH3 Sensor: %s\n", mq135Available ? "DETECTED on GPIO 34" : "Not connected (ammonia reported as 0)");
   ldrAvailable = detectLDR();
   Serial.printf("💡 LDR Sensor: %s\n", ldrAvailable ? "DETECTED on GPIO 36" : "Not connected (optional)");
 
@@ -4558,6 +4561,7 @@ void callBackendSafetyEngine() {
   doc["ammonia"] = ammonia;
   doc["water_usage"] = waterFlow;
   if (ldrAvailable) doc["light_lux"] = lightLux;
+  doc["nh3_sensor_present"] = mq135Available;
   doc["temperature_sensor2"] = dht2Available ? temperature2 : (float)NAN;
   doc["worst_case_max_temp"] = worstCaseMaxTemp;
   doc["worst_case_min_temp"] = worstCaseMinTemp;
@@ -4669,6 +4673,7 @@ void recordForensicEntry(String eventType, String eventDetail) {
   doc["water_usage"] = waterFlow;
   doc["hsi_value"] = currentHSI;
   if (ldrAvailable) doc["light_lux"] = lightLux;
+  doc["nh3_sensor_present"] = mq135Available;
   
   // Environment response deltas
   doc["temp_delta_1min"] = getTempDelta1min();
