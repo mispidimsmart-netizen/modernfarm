@@ -156,7 +156,7 @@ export function useOfflineSync() {
             const { id: recordId, ...updateData } = item.record_data;
             const { error } = await supabase
               .from(item.table_name as 'egg_production')
-              .update(updateData)
+              .update(updateData as never)
               .eq('id', recordId as string);
             ok = !error;
             break;

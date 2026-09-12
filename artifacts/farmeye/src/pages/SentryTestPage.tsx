@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sentry, sentryEnabled, sentryEnvironment, sentryRelease, captureSupabaseError, captureEsp32AckIssue } from "@/lib/sentry";
 import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 
-function BomberChild(): JSX.Element {
+function BomberChild(): ReactElement {
   // Throws during render — caught by Sentry.ErrorBoundary
   throw new Error("Sentry test: render error from /sentry-test");
 }

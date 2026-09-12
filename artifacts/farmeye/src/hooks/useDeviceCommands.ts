@@ -176,7 +176,7 @@ export function useSendDeviceCommand() {
       if (Object.keys(desiredUpdate).length > 1) {
         let query = supabase
           .from('device_status')
-          .update(desiredUpdate)
+          .update(desiredUpdate as never)
           .eq('user_id', user.id);
 
         query = query.eq('farm_id', selectedFarmId);
@@ -420,7 +420,7 @@ export function useSendDeviceCommand() {
             if (commandId) {
               const { data: updated } = await supabase
                 .from('device_command_log')
-                .update(updatePayload)
+                .update(updatePayload as never)
                 .eq('command_id', commandId)
                 .select('id');
               // Fallback: if no pending row was found, insert one.

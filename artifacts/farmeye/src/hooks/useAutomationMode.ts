@@ -108,7 +108,7 @@ export function useSetAutomationMode() {
 
       let deviceQuery = supabase
         .from('device_status')
-        .update(deviceUpdate)
+        .update(deviceUpdate as never)
         .eq('user_id', user.id);
       
       if (selectedFarmId) {
