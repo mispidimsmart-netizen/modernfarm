@@ -78,43 +78,17 @@ USING (
   OR (farm_id IS NULL AND user_id = auth.uid())
 );
 
-REVOKE SELECT, INSERT, UPDATE, DELETE
+REVOKE ALL PRIVILEGES
   ON TABLE public.device_tokens
   FROM PUBLIC, anon, authenticated;
 
-REVOKE SELECT (
+REVOKE ALL PRIVILEGES (
   token,
   device_secret,
   previous_device_secret,
   device_secret_hash,
   previous_secret_hash,
   previous_secret_expires_at
-) ON public.device_tokens FROM PUBLIC, anon, authenticated;
-
-REVOKE UPDATE (
-  token,
-  device_secret,
-  previous_device_secret,
-  device_secret_hash,
-  previous_secret_hash,
-  previous_secret_expires_at,
-  secret_version,
-  secret_rotated_at,
-  last_signature_at,
-  signature_failure_count
-) ON public.device_tokens FROM PUBLIC, anon, authenticated;
-
-REVOKE INSERT (
-  token,
-  device_secret,
-  previous_device_secret,
-  device_secret_hash,
-  previous_secret_hash,
-  previous_secret_expires_at,
-  secret_version,
-  secret_rotated_at,
-  last_signature_at,
-  signature_failure_count
 ) ON public.device_tokens FROM PUBLIC, anon, authenticated;
 
 GRANT SELECT (
