@@ -11,6 +11,7 @@
     "moduleResolution": "bundler",
     "strict": false,
     "strictNullChecks": false,
+    "strictPropertyInitialization": false,
     "noImplicitReturns": false,
     "noImplicitAny": false,
     "noUnusedLocals": false,
