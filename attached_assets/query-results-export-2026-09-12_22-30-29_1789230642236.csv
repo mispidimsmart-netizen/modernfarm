@@ -1,0 +1,125 @@
+anon_can_execute;arguments;authenticated_can_execute;function_name;public_can_execute;schema_name;security_definer
+false;_invitation_id uuid;true;accept_org_invitation;false;public;true
+false;_device_token_id uuid, _user_id uuid, _farm_id uuid, _shed_id uuid, _readings jsonb;true;accept_sensor_batch;false;public;true
+false;_alert_id uuid;true;acknowledge_alert;false;public;true
+false;_id uuid;true;acknowledge_anomaly;false;public;true
+false;_q text;true;admin_search_users;false;public;true
+false;_request_id uuid;true;approve_payment_request;false;public;true
+false;_org_id uuid;true;assign_self_to_organization;false;public;true
+false;_target_user_id uuid, _role app_role, _assigner_id uuid;true;assign_user_role;false;public;true
+false;;true;audit_tenant_isolation;false;public;true
+false;;true;auto_assign_farm_organization;false;public;true
+false;;true;auto_log_medicine_expense;false;public;true
+false;;true;block_super_admin_farm_member;false;public;true
+false;_user_id uuid, _owner_id uuid;true;can_access_farm;false;public;true
+false;_user_id uuid, _farm_id uuid;true;can_change_hardware;false;public;true
+false;_user_id uuid, _farm_id uuid;true;can_log_daily_data;false;public;true
+false;_user_id uuid, _farm_id uuid;true;can_manage_farm;false;public;true
+false;_user_id uuid, _org_id uuid;true;can_manage_org;false;public;true
+false;_request_id uuid;true;cancel_payment_request;false;public;true
+false;p_farm_id uuid, p_shed_id uuid, p_co2 integer, p_pm25 numeric, p_pm10 numeric, p_nh3 numeric;true;check_air_quality_thresholds;false;public;true
+false;_device_token_id uuid, _firmware_id uuid;true;check_firmware_compatibility;false;public;true
+false;;true;cleanup_farm_members_on_super_admin;false;public;true
+false;_device_token_id uuid, _nonce text;true;consume_device_nonce;false;public;true
+false;_name text, _name_en text, _slug text;true;create_organization_trial;false;public;true
+false;_invitation_id uuid;true;decline_org_invitation;false;public;true
+false;_id uuid;true;dismiss_license_notification;false;public;true
+false;;true;enforce_finance_batch_scope;false;public;true
+false;;true;enforce_org_max_farms;false;public;true
+false;;true;enforce_org_max_users;false;public;true
+false;_farm_id uuid;true;evaluate_alert_rules;false;public;true
+false;_device_token_id uuid, _firmware_id uuid;true;evaluate_ota_safety_gates;false;public;true
+false;;true;fill_alert_ack_audit;false;public;true
+false;_primary_device_token_id uuid;true;generate_mesh_pairing_code;false;public;true
+false;_farm_id uuid, _days integer;true;get_ai_accuracy_summary;false;public;true
+false;_days integer;true;get_anonymized_benchmark;false;public;true
+false;p_farm_id uuid, p_shed_id uuid;true;get_best_sensor_reading;false;public;true
+false;_user_id uuid, _farm_id uuid;true;get_canonical_role;false;public;true
+false;_device_token_id uuid;true;get_device_secret;false;public;true
+false;_days integer;true;get_farm_benchmark;false;public;true
+false;_farm_id uuid, _days integer;true;get_farm_daily_rollup;false;public;true
+false;_farm_id uuid;true;get_farm_dashboard_snapshot;false;public;true
+false;_farm_id uuid;true;get_farm_organization_id;false;public;true
+false;_user_id uuid;true;get_farm_owner_id;false;public;true
+false;_farm_id uuid, _feed_type text;true;get_feed_avg_price;false;public;true
+false;;true;get_my_organizations;false;public;true
+false;;true;get_my_pending_invitations;false;public;true
+false;_org_id uuid, _from timestamp with time zone, _to timestamp with time zone, _entity_type text, _action_type text, _actor uuid, _search text, _limit integer, _offset integer;true;get_org_activity_audit;false;public;true
+false;_org_id uuid, _limit integer;true;get_org_license_audit;false;public;true
+false;_organization_id uuid, _days integer;true;get_org_usage_analytics;false;public;true
+false;_hours integer;true;get_performance_summary;false;public;true
+true;_slug text;true;get_public_batch_trace;true;public;true
+true;_slug text, _summary boolean, _fields text[];true;get_public_batch_trace;false;public;true
+false;_farm_id uuid, _hours integer;true;get_sensor_history;false;public;true
+false;_farm_id uuid, _hours integer;true;get_sensor_hourly_rollup;false;public;true
+false;p_farm_id uuid;true;get_sensor_upgrade_summary;false;public;true
+false;_user_id uuid;true;get_user_access_role;false;public;true
+false;_user_id uuid;true;get_user_organization_ids;false;public;true
+false;_user_id uuid, _farm_id uuid, _min_role app_role;true;has_farm_role;false;public;true
+false;_user_id uuid, _required_role text;true;has_min_role;false;public;true
+false;_user_id uuid, _role app_role;true;has_role;false;public;true
+false;_user_id uuid;true;is_farm_owner;false;public;true
+false;_user_id uuid, _org_id uuid;true;is_org_admin;false;public;true
+false;_user_id uuid, _org_id uuid;true;is_org_member;false;public;true
+false;_slug text;true;is_org_slug_available;false;public;true
+false;_org_id uuid;true;is_organization_license_valid;false;public;true
+false;_user_id uuid;true;is_super_admin;false;public;true
+false;_firmware_id uuid;true;is_within_update_window;false;public;true
+false;_user_id uuid, _farm_id uuid;true;is_worker_on_farm;false;public;true
+false;;true;list_active_organizations_for_signup;false;public;true
+false;;true;log_safety_engine_change;false;public;true
+false;_event_type text, _user_id uuid, _farm_id uuid, _device_token_id uuid, _success boolean, _details jsonb;true;log_security_event;false;public;true
+false;_id uuid;true;mark_license_notification_seen;false;public;true
+false;_org_id uuid, _identifier text, _role org_role;true;org_admin_add_member;false;public;true
+false;_invitation_id uuid;true;org_admin_cancel_invitation;false;public;true
+false;_org_id uuid, _identifier text, _role org_role, _expires_days integer;true;org_admin_create_invitation;false;public;true
+false;_org_id uuid;true;org_admin_list_invitations;false;public;true
+false;_org_id uuid, _user_id uuid;true;org_admin_remove_member;false;public;true
+false;_org_id uuid, _user_id uuid, _role org_role;true;org_admin_set_member_role;false;public;true
+false;;true;ota_hardening_summary;false;public;true
+false;_device_token_id uuid, _farm_id uuid, _latency_ms integer, _is_error boolean, _is_signature_failure boolean, _is_nonce_reuse boolean, _is_rate_limited boolean, _sensor_gap_seconds integer, _is_restart boolean;true;record_device_metric;false;public;true
+false;_function_name text, _path text, _method text, _status_code integer, _duration_ms integer, _device_token_id uuid, _farm_id uuid, _user_id uuid, _request_id uuid, _error_code text, _error_message text, _payload_size_bytes integer, _response_size_bytes integer;true;record_edge_request;false;public;true
+false;_code text;true;redeem_invitation;false;public;true
+false;;true;refresh_farm_daily_rollup;false;public;true
+false;;true;refresh_sensor_hourly_rollup;false;public;true
+false;_request_id uuid, _reason text;true;reject_payment_request;false;public;true
+false;_device_token_id uuid, _firmware_id uuid, _from_version text;true;report_boot_failure;false;public;true
+false;;true;resolve_escalation_on_ack;false;public;true
+false;_organization_id uuid, _new_type org_license_type, _new_expires_at timestamp with time zone;true;resume_organization_license;false;public;true
+false;;true;scale_readiness_summary;false;public;true
+false;;true;set_mqtt_topic_prefix;false;public;true
+false;_farm_id uuid, _pin text;true;set_worker_pin;false;public;true
+false;_user_id uuid, _farm_id uuid, _severity text, _channel text;true;should_deliver_notification;false;public;true
+false;_minutes integer, _farm_id uuid;true;snooze_notifications;false;public;true
+false;_organization_id uuid, _payment_method payment_method, _sender_account text, _transaction_id text, _amount_bdt numeric, _months_requested integer, _requested_license_type org_license_type, _notes text;true;submit_payment_request;false;public;true
+false;_org_id uuid, _identifier text, _role org_role;true;super_admin_add_org_member;false;public;true
+false;_user_id uuid, _payload jsonb;true;super_admin_apply_user_roles;false;public;true
+false;_name text, _name_en text, _slug text, _owner_user_id uuid, _license_type org_license_type, _max_farms integer, _max_users integer, _license_expires_at timestamp with time zone, _notes text;true;super_admin_create_organization;false;public;true
+false;_farm_id uuid;true;super_admin_delete_farm;false;public;true
+false;_org_id uuid;true;super_admin_delete_organization;false;public;true
+false;_user_id uuid;true;super_admin_get_user_role_summary;false;public;true
+false;;true;super_admin_list_deleted_farms;false;public;true
+false;_org_id uuid, _user_id uuid;true;super_admin_remove_org_member;false;public;true
+false;_user_id uuid;true;super_admin_repair_user_roles;false;public;true
+false;_farm_id uuid;true;super_admin_restore_farm;false;public;true
+false;_farm_id uuid, _user_id uuid, _role text;true;super_admin_set_farm_member_role;false;public;true
+false;_farm_id uuid, _org_id uuid;true;super_admin_set_farm_organization;false;public;true
+false;_org_id uuid, _user_id uuid, _role org_role;true;super_admin_set_org_member_role;false;public;true
+false;_user_id uuid, _enabled boolean;true;super_admin_set_super_admin;false;public;true
+false;_farm_id uuid;true;super_admin_soft_delete_farm;false;public;true
+false;_org_id uuid, _name text, _name_en text, _slug text, _notes text;true;super_admin_update_organization;false;public;true
+false;_org_id uuid, _license_type org_license_type, _license_expires_at timestamp with time zone, _max_farms integer, _max_users integer, _notes text;true;super_admin_update_organization_license;false;public;true
+false;_organization_id uuid, _reason text;true;suspend_organization_license;false;public;true
+false;;true;sync_feed_consumption_to_broiler_feed;false;public;true
+false;;true;sync_flock_info_from_batch;false;public;true
+false;;true;test_role_sync_invariants;false;public;true
+false;;true;test_role_write_invariants;false;public;true
+false;;true;tg_audit_org_members;false;public;true
+false;;true;tg_audit_organizations;false;public;true
+false;;true;tg_sync_user_roles_from_farm_members;false;public;true
+false;;true;tg_sync_user_roles_on_farm_owner_change;false;public;true
+false;;true;touch_phase_c_roadmap;false;public;true
+false;;true;trigger_mqtt_publish_command;false;public;true
+false;_user_id uuid, _farm_id uuid;true;user_can_access_farm;false;public;true
+false;_user_id uuid, _farm_id uuid;true;user_can_access_farm_v2;false;public;true
+false;_farm_id uuid, _pin text;true;verify_worker_pin;false;public;true
