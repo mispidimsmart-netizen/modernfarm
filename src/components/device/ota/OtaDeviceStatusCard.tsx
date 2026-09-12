@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 interface DeviceToken {
   id: string;
   device_name: string;
-  token: string;
 }
 
 interface OtaStatus {
@@ -36,7 +35,9 @@ export function OtaDeviceStatusCard({ language, deviceTokens, getDeviceOtaStatus
             <div key={device.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div>
                 <p className="font-medium text-sm">{device.device_name}</p>
-                <p className="text-xs text-muted-foreground font-mono">{device.token.substring(0, 12)}...</p>
+                <p className="text-xs text-muted-foreground">
+                  {language === 'bn' ? 'ক্রেডেনশিয়াল সুরক্ষিত' : 'Credential protected'}
+                </p>
               </div>
               <div className="text-right">
                 {otaStatus?.status === 'downloading' || otaStatus?.status === 'installing' ? (

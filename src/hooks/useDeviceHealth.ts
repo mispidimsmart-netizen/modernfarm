@@ -61,13 +61,19 @@ export interface DeviceHealth {
 export interface DeviceToken {
   id: string;
   user_id: string;
-  token: string;
   device_name: string;
   shed_id: string | null;
   is_active: boolean;
   last_seen_at: string | null;
   created_at: string;
+  mqtt_enabled: boolean;
+  secret_version: number;
 }
+
+type DeviceTokenUpdate = Partial<Pick<
+  DeviceToken,
+  'device_name' | 'shed_id' | 'is_active' | 'mqtt_enabled'
+>>;
 
 // Fetch all device tokens for a user
 export function useDeviceTokens() {
@@ -79,7 +85,7 @@ export function useDeviceTokens() {
       if (!user) return [];
       const { data, error } = await supabase
         .from('device_tokens')
-        .select('*')
+        .select('id, user_id, device_name, shed_id, is_active, last_seen_at, created_at, mqtt_enabled, secret_version')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -165,21 +171,23 @@ export function useAddDeviceToken() {
     mutationFn: async (device: { device_name: string; shed_id?: string }) => {
       if (!user) throw new Error('Not authenticated');
       
-      // Generate a unique token
-      const token = `ESP32_${crypto.randomUUID().replace(/-/g, '').substring(0, 24)}`;
-      
-      const { data, error } = await supabase
-        .from('device_tokens')
-        .insert({ 
-          token,
-          device_name: device.device_name,
-          shed_id: device.shed_id || null,
-          user_id: user.id 
-        })
-        .select()
-        .single();
+      const { data: farm, error: farmError } = await supabase
+        .from('farms')
+        .select('id')
+        .eq('owner_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      if (farmError) throw farmError;
+      if (!farm) throw new Error('No active owned farm found');
+
+      const { data, error } = await supabase.rpc('create_legacy_device_token', {
+        _farm_id: farm.id,
+        _shed_id: device.shed_id || undefined,
+        _device_name: device.device_name,
+      });
       if (error) throw error;
-      return data;
+      return data as { id: string; token: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device_tokens'] });
@@ -192,7 +200,7 @@ export function useUpdateDeviceToken() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<DeviceToken> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: DeviceTokenUpdate & { id: string }) => {
       const { error } = await supabase
         .from('device_tokens')
         .update(updates)

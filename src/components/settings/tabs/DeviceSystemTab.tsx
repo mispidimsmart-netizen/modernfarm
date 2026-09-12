@@ -119,7 +119,7 @@ export function DeviceSystemTab() {
               deviceTokens={device.deviceTokens as any}
               addDeviceToken={device.addDeviceToken}
               deleteDeviceToken={device.deleteDeviceToken}
-              onCopyToken={device.copyToClipboard}
+              onCopyToken={device.copyDeviceToken}
               onRestartDevice={device.restartDevice}
               onOpenSecurity={setSecurityDevice}
             />

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { generateDeviceToken } from '@/lib/esp32Api';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
@@ -110,7 +109,7 @@ export function useDeviceSystemData() {
       if (!selectedFarmId) return [];
       const { data, error } = await supabase
         .from('device_tokens')
-        .select('*')
+        .select('id, user_id, device_name, farm_id, shed_id, is_active, last_seen_at, created_at, secret_version, secret_rotated_at, mqtt_enabled, mesh_role, mesh_group_id')
         .eq('farm_id', selectedFarmId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -123,20 +122,21 @@ export function useDeviceSystemData() {
     mutationFn: async ({ name, shedId }: { name: string; shedId?: string }) => {
       if (!user) throw new Error('Not authenticated');
       if (!selectedFarmId) throw new Error('No farm selected');
-      const token = generateDeviceToken();
-      const { error } = await supabase.from('device_tokens').insert({
-        user_id: user.id,
-        farm_id: selectedFarmId,
-        device_name: name,
-        token,
-        shed_id: shedId || null,
+      const { data, error } = await supabase.rpc('create_legacy_device_token', {
+        _farm_id: selectedFarmId,
+        _device_name: name,
+        _shed_id: shedId || undefined,
       });
       if (error) throw error;
-      return token;
+      return (data as { token: string }).token;
     },
-    onSuccess: () => {
+    onSuccess: async (token) => {
       queryClient.invalidateQueries({ queryKey: ['device_tokens'] });
-      toast({ title: language === 'bn' ? 'ডিভাইস যোগ হয়েছে' : 'Device Added' });
+      await navigator.clipboard.writeText(token);
+      toast({
+        title: language === 'bn' ? 'ডিভাইস যোগ হয়েছে' : 'Device Added',
+        description: language === 'bn' ? 'নতুন টোকেন clipboard-এ কপি হয়েছে' : 'The new token was copied to the clipboard',
+      });
     },
   });
 
@@ -240,6 +240,22 @@ export function useDeviceSystemData() {
     }
   };
 
+  const copyDeviceToken = async (deviceTokenId: string) => {
+    const { data, error } = await supabase.rpc('get_device_provisioning_token', {
+      _device_token_id: deviceTokenId,
+    });
+    if (error) {
+      toast({
+        title: language === 'bn' ? 'টোকেন পাওয়া যায়নি' : 'Could not retrieve token',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    const token = (data as { token?: string } | null)?.token;
+    if (token) await copyToClipboard(token);
+  };
+
   return {
     // calibration
     tempOffset,
@@ -255,6 +271,7 @@ export function useDeviceSystemData() {
     addDeviceToken,
     deleteDeviceToken,
     copyToClipboard,
+    copyDeviceToken,
     restartDevice,
     factoryReset,
     // logs

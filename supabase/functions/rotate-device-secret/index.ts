@@ -1,5 +1,5 @@
 // Phase 1 Security — Rotate Device Secret
-// Authenticated farm member triggers rotation. Old secret kept for 24h grace.
+// Authenticated farm owner/super-admin triggers rotation. Old secret kept for 24h grace.
 // New secret returned ONCE.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -69,10 +69,11 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { data: canAccess } = await adminClient.rpc('user_can_access_farm', {
-    _user_id: userId, _farm_id: device.farm_id,
-  });
-  if (!canAccess) {
+  const [{ data: farm }, { data: isSuperAdmin }] = await Promise.all([
+    adminClient.from('farms').select('owner_id').eq('id', device.farm_id).maybeSingle(),
+    adminClient.rpc('is_super_admin', { _user_id: userId }),
+  ]);
+  if (!farm || (farm.owner_id !== userId && !isSuperAdmin)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

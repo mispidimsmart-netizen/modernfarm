@@ -117,11 +117,12 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Verify membership
-      const { data: canAccess } = await adminClient.rpc('user_can_access_farm', {
-        _user_id: userId, _farm_id: farmId,
-      });
-      if (!canAccess) {
+      // Only the farm owner or a super-admin may issue device credentials.
+      const [{ data: farm }, { data: isSuperAdmin }] = await Promise.all([
+        adminClient.from('farms').select('owner_id').eq('id', farmId).maybeSingle(),
+        adminClient.rpc('is_super_admin', { _user_id: userId }),
+      ]);
+      if (!farm || (farm.owner_id !== userId && !isSuperAdmin)) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), {
           status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
