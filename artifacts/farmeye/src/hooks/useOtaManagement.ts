@@ -51,7 +51,7 @@ export function useOtaManagement() {
       if (!user) return [];
       const { data, error } = await supabase
         .from('device_tokens')
-        .select('*')
+        .select('id, device_name, is_active')
         .eq('user_id', user.id)
         .eq('is_active', true);
       if (error) throw error;

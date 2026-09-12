@@ -8707,6 +8707,14 @@ export type Database = {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
       }
+      create_legacy_device_token: {
+        Args: {
+          _device_name?: string
+          _farm_id: string
+          _shed_id?: string
+        }
+        Returns: Json
+      }
       create_organization_trial: {
         Args: { _name: string; _name_en: string; _slug: string }
         Returns: Json
@@ -8790,6 +8798,10 @@ export type Database = {
           previous_expires: string
           secret_version: number
         }[]
+      }
+      get_device_provisioning_token: {
+        Args: { _device_token_id: string }
+        Returns: Json
       }
       get_farm_benchmark: {
         Args: { _days?: number }

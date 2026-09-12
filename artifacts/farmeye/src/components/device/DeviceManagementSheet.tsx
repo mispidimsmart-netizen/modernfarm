@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useDeviceTokens, useAddDeviceToken, useUpdateDeviceToken, useDeleteDeviceToken, useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { useSheds } from '@/hooks/useSheds';
+import { supabase } from '@/integrations/supabase/client';
 import { DeviceHealthCard } from './DeviceHealthCard';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,16 @@ export function DeviceManagementSheet() {
     }
   };
 
-  const handleCopyToken = async (token: string) => {
+  const handleCopyToken = async (deviceTokenId: string) => {
+    const { data, error } = await supabase.rpc('get_device_provisioning_token', {
+      _device_token_id: deviceTokenId,
+    });
+    if (error) {
+      toast.error(language === 'bn' ? 'টোকেন পাওয়া যায়নি' : 'Could not retrieve token');
+      return;
+    }
+    const token = (data as { token?: string } | null)?.token;
+    if (!token) return;
     await navigator.clipboard.writeText(token);
     toast.success(language === 'bn' ? 'টোকেন কপি হয়েছে' : 'Token copied');
   };
@@ -200,7 +210,7 @@ export function DeviceManagementSheet() {
                           <Button 
                             size="icon" 
                             variant="ghost" 
-                            onClick={() => handleCopyToken(device.token)}
+                            onClick={() => handleCopyToken(device.id)}
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
@@ -214,14 +224,14 @@ export function DeviceManagementSheet() {
                         </div>
                       </div>
                       
-                      {/* Token Display */}
+                      {/* Credential status */}
                       <div className="mb-3 rounded-lg bg-muted p-2">
                         <p className="text-xs text-muted-foreground">
-                          {language === 'bn' ? 'ডিভাইস টোকেন:' : 'Device Token:'}
+                          {language === 'bn' ? 'ডিভাইস ক্রেডেনশিয়াল:' : 'Device credential:'}
                         </p>
-                        <code className="mt-1 block truncate text-xs">
-                          {device.token}
-                        </code>
+                        <p className="mt-1 text-xs font-medium">
+                          {language === 'bn' ? 'সুরক্ষিত — কপি করতে উপরের বোতাম ব্যবহার করুন' : 'Protected — use the button above to copy'}
+                        </p>
                       </div>
 
                       {/* Shed Assignment */}

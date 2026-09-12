@@ -82,13 +82,23 @@ export function useFirmwareCredentials(showFarmSelector: boolean) {
         setShedId(sheds?.[0]?.id || '');
         setShedName(sheds?.[0]?.name || '');
 
-        const { data: tokens } = await supabase
+        const { data: devices } = await supabase
           .from('device_tokens')
-          .select('token')
+          .select('id')
           .eq('farm_id', farm.id)
           .eq('is_active', true)
           .limit(1);
-        setDeviceToken(tokens?.[0]?.token || '');
+        const deviceId = devices?.[0]?.id;
+        if (deviceId) {
+          const { data: credential, error: credentialError } = await supabase.rpc(
+            'get_device_provisioning_token',
+            { _device_token_id: deviceId },
+          );
+          if (credentialError) throw credentialError;
+          setDeviceToken((credential as { token?: string } | null)?.token || '');
+        } else {
+          setDeviceToken('');
+        }
 
         setAutoLoaded(true);
       } catch (err) {

@@ -14,7 +14,7 @@ interface Props {
   deviceTokens?: any[];
   addDeviceToken: { mutate: (v: { name: string; shedId?: string }, opts?: any) => void; isPending: boolean };
   deleteDeviceToken: { mutate: (id: string) => void };
-  onCopyToken: (token: string) => void;
+  onCopyToken: (deviceTokenId: string) => void;
   onRestartDevice: () => void;
   onOpenSecurity: (device: { id: string; name: string; version: number }) => void;
 }
@@ -128,9 +128,11 @@ export function DeviceManagementSection({
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground font-mono truncate">{device.token.substring(0, 16)}...</p>
+              <p className="text-xs text-muted-foreground">
+                {language === 'bn' ? 'ক্রেডেনশিয়াল সুরক্ষিত' : 'Credential protected'}
+              </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => onCopyToken(device.token)}>
+            <Button variant="ghost" size="icon" onClick={() => onCopyToken(device.id)}>
               <Copy size={14} />
             </Button>
             <Button

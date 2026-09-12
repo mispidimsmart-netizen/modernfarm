@@ -1,35 +1,26 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, Loader2, Wifi, RotateCcw, Download } from 'lucide-react';
+import { ChevronRight, Loader2, Wifi, Download } from 'lucide-react';
 import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateDeviceToken } from '@/data/setupWizardOptions';
 
 export function StepRegisterController({ onComplete }: { onComplete: () => void }) {
   const { user, language } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const [isRegistering, setIsRegistering] = useState(false);
   const [showFirmwareDownload, setShowFirmwareDownload] = useState(false);
-  const [generatedToken, setGeneratedToken] = useState('');
   const { toast } = useToast();
 
-  // Generate token on mount
-  useEffect(() => {
-    setGeneratedToken(generateDeviceToken());
-  }, []);
-
   const handleRegister = async () => {
-    if (!generatedToken || !user || !selectedFarmId) return;
+    if (!user || !selectedFarmId) return;
     setIsRegistering(true);
     try {
-      const { error } = await supabase.from('device_tokens').insert({
-        user_id: user.id,
-        token: generatedToken,
-        device_name: 'ESP32 Controller',
-        farm_id: selectedFarmId,
+      const { error } = await supabase.rpc('create_legacy_device_token', {
+        _farm_id: selectedFarmId,
+        _device_name: 'ESP32 Controller',
       });
       if (error) throw error;
       toast({ title: language === 'bn' ? '✅ কন্ট্রোলার রেজিস্টার হয়েছে!' : '✅ Controller registered!' });
@@ -43,13 +34,11 @@ export function StepRegisterController({ onComplete }: { onComplete: () => void 
 
   // Check if already has tokens
   const [hasToken, setHasToken] = useState(false);
-  const [existingToken, setExistingToken] = useState('');
   useEffect(() => {
     if (!user || !selectedFarmId) return;
-    supabase.from('device_tokens').select('id, token').eq('user_id', user.id).eq('farm_id', selectedFarmId).limit(1).then(({ data }) => {
+    supabase.from('device_tokens').select('id').eq('user_id', user.id).eq('farm_id', selectedFarmId).limit(1).then(({ data }) => {
       if (data && data.length > 0) {
         setHasToken(true);
-        setExistingToken(data[0].token);
       }
     });
   }, [user, selectedFarmId]);
@@ -64,8 +53,12 @@ export function StepRegisterController({ onComplete }: { onComplete: () => void 
           </h3>
           <Wifi className="mx-auto mt-2 h-8 w-8 text-primary" />
           <div className="mt-3 rounded-xl bg-background/80 p-3">
-            <p className="text-xs text-muted-foreground mb-1">{language === 'bn' ? 'ডিভাইস টোকেন' : 'Device Token'}</p>
-            <p className="font-mono text-sm font-bold text-foreground select-all">{existingToken}</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {language === 'bn' ? 'ডিভাইস ক্রেডেনশিয়াল' : 'Device credential'}
+            </p>
+            <p className="text-sm font-medium text-foreground">
+              {language === 'bn' ? 'সুরক্ষিতভাবে সংরক্ষিত' : 'Stored securely'}
+            </p>
           </div>
         </div>
 
@@ -122,35 +115,28 @@ export function StepRegisterController({ onComplete }: { onComplete: () => void 
       <div className="rounded-2xl bg-muted/50 border border-border p-6 text-center">
         <span className="text-5xl">🔑</span>
         <h3 className="mt-3 text-lg font-bold text-foreground">
-          {language === 'bn' ? 'অটো-জেনারেটেড ডিভাইস টোকেন' : 'Auto-Generated Device Token'}
+          {language === 'bn' ? 'সুরক্ষিত ডিভাইস রেজিস্ট্রেশন' : 'Secure Device Registration'}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {language === 'bn'
-            ? 'এই টোকেন আপনার ESP32 কন্ট্রোলারের জন্য তৈরি হয়েছে'
-            : 'This token is generated for your ESP32 controller'}
+            ? 'রেজিস্টার করলে সার্ভার আপনার ESP32 কন্ট্রোলারের টোকেন তৈরি করবে'
+            : 'The server will generate your ESP32 controller token when you register'}
         </p>
       </div>
 
-      {/* Show generated token */}
       <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4 text-center">
-        <p className="text-xs text-muted-foreground mb-2">{language === 'bn' ? 'আপনার ডিভাইস টোকেন' : 'Your Device Token'}</p>
-        <p className="font-mono text-xl font-bold text-primary select-all tracking-wider">{generatedToken}</p>
+        <p className="text-sm font-medium text-foreground">
+          {language === 'bn' ? 'টোকেন browser-এ আগে থেকে তৈরি বা সংরক্ষণ করা হবে না' : 'The token will not be pre-generated or stored in the browser'}
+        </p>
         <p className="mt-2 text-xs text-muted-foreground">
           {language === 'bn'
-            ? '⚡ ফার্মওয়্যার ডাউনলোডের সময় এটি অটো-এম্বেড হবে'
-            : '⚡ This will be auto-embedded when downloading firmware'}
+            ? 'রেজিস্ট্রেশনের পরে অনুমোদিত firmware download-এ এটি অটো-এম্বেড হবে'
+            : 'After registration it will be embedded through the authorized firmware download'}
         </p>
-        <button
-          onClick={() => setGeneratedToken(generateDeviceToken())}
-          className="mt-2 text-xs text-primary hover:underline flex items-center gap-1 mx-auto"
-        >
-          <RotateCcw className="h-3 w-3" />
-          {language === 'bn' ? 'নতুন টোকেন তৈরি করুন' : 'Generate new token'}
-        </button>
       </div>
 
       <Button onClick={handleRegister} disabled={isRegistering} className="w-full h-12 text-base rounded-xl">
-        {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 টোকেন রেজিস্টার করুন →' : '📱 Register Token →')}
+        {isRegistering ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'bn' ? '📱 কন্ট্রোলার রেজিস্টার করুন →' : '📱 Register Controller →')}
       </Button>
     </div>
   );
