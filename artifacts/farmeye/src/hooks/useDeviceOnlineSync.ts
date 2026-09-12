@@ -63,7 +63,7 @@ async function drainQueueForFarm(params: {
         };
         let q: any = supabase
           .from('device_status')
-          .update(update)
+          .update(update as never)
           .eq('user_id', item.user_id)
           .eq('farm_id', item.farm_id);
         if (item.shed_id) q = q.eq('shed_id', item.shed_id);
