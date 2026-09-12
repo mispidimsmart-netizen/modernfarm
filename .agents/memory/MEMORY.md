@@ -1,0 +1,1 @@
+- [Supabase migration scope](supabase-migration-scope.md) — Keep FarmEye on its existing Supabase backend unless the user explicitly requests a separate full migration.

@@ -1,0 +1,190 @@
+import { useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+import { QrCode, Download, Copy, ExternalLink, ChevronDown } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { useBatchTracePages, type BatchPage } from '@/hooks/useTraceability';
+import { useFarmContext } from '@/context/FarmContext';
+import { buildTraceUrl, type BatchKind } from '@/lib/traceQr';
+
+
+
+function QrCard({ page, farmId, onToggle }: { page: BatchPage; farmId: string; onToggle: (p: BatchPage, next: boolean) => void }) {
+  const [dataUrl, setDataUrl] = useState<string>('');
+  const url = useMemo(
+    () =>
+      buildTraceUrl({
+        slug: page.public_slug,
+        kind: page.batch_kind as BatchKind,
+        batchId: page.batch_id,
+        farmId,
+      }),
+    [page.public_slug, page.batch_kind, page.batch_id, farmId],
+  );
+  const { toast } = useToast();
+
+  useEffect(() => {
+    QRCode.toDataURL(url, { width: 512, margin: 2 }).then(setDataUrl).catch(() => setDataUrl(''));
+  }, [url]);
+
+  const download = () => {
+    if (!dataUrl) return;
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `qr-${page.batch_kind}-${page.batchName}-${page.public_slug}.png`;
+    a.click();
+  };
+
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex items-start gap-3">
+        {dataUrl ? (
+          <img src={dataUrl} alt={`${page.batchName} QR কোড`} className="h-20 w-20 rounded bg-background" loading="lazy" />
+        ) : (
+          <div className="h-20 w-20 animate-pulse rounded bg-muted" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate font-medium text-sm">{page.batchName}</span>
+            <Badge variant="secondary">{page.batch_kind === 'layer' ? 'লেয়ার' : 'ব্রয়লার'}</Badge>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{page.breed || 'জাত উল্লেখ নেই'}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <Switch checked={page.is_published} onCheckedChange={(v) => onToggle(page, v)} aria-label="পাবলিক করুন" />
+            <span className="text-xs">{page.is_published ? 'পাবলিক চালু' : 'পাবলিক বন্ধ'}</span>
+          </div>
+          {!page.is_published && (
+            <p className="mt-1 text-[11px] text-destructive">
+              পাবলিক বন্ধ থাকলে QR স্ক্যান করে কেউ তথ্য দেখতে পাবে না — আগে চালু করুন।
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={download} disabled={!dataUrl}>
+          <Download className="mr-1 h-4 w-4" /> QR ডাউনলোড
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            navigator.clipboard.writeText(url);
+            toast({ title: 'লিংক কপি হয়েছে' });
+          }}
+        >
+          <Copy className="mr-1 h-4 w-4" /> লিংক
+        </Button>
+        <Button size="sm" variant="ghost" asChild>
+          <a href={url} target="_blank" rel="noreferrer">
+            <ExternalLink className="mr-1 h-4 w-4" /> প্রিভিউ
+          </a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function BatchQrSection() {
+  const { selectedFarmId } = useFarmContext();
+  const [open, setOpen] = useState(false);
+  const { data = [], isLoading } = useBatchTracePages(selectedFarmId);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<string>('active');
+  const [kindFilter, setKindFilter] = useState<string>('all');
+
+  const activeCount = data.filter((p) => p.isActive).length;
+
+  const visible = useMemo(() => {
+    let rows = data;
+    if (kindFilter !== 'all') rows = rows.filter((p) => p.batch_kind === kindFilter);
+    if (statusFilter === 'all') return rows;
+    if (statusFilter === 'active') return activeCount ? rows.filter((p) => p.isActive) : rows;
+    return rows.filter((p) => p.batch_id === statusFilter);
+  }, [data, statusFilter, kindFilter, activeCount]);
+
+  const onToggle = async (page: BatchPage, next: boolean) => {
+    const { error } = await supabase.from('batch_public_pages').update({ is_published: next }).eq('id', page.id);
+    if (error) {
+      toast({ title: 'পরিবর্তন ব্যর্থ', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: next ? 'ব্যাচটি এখন পাবলিক' : 'পাবলিক বন্ধ করা হয়েছে' });
+    queryClient.invalidateQueries({ queryKey: ['batch-trace-pages', selectedFarmId] });
+  };
+
+  return (
+    <Card>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CardHeader className="pb-3">
+          <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-left">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <QrCode className="h-4 w-4 text-primary" />
+              ৩. ব্যাচ ট্রেসিবিলিটি ও QR
+            </CardTitle>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <p className="text-xs text-muted-foreground">
+            QR স্ক্যান করে যে কেউ (লগইন ছাড়াই) ব্যাচের তথ্য দেখতে ও PDF/ছবি ডাউনলোড করতে পারবে। খরচ, আয় বা ফোন নম্বর দেখানো হয় না।
+          </p>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">ব্যাচ ফিল্টার</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <SelectValue placeholder="ব্যাচ নির্বাচন" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">সক্রিয় ব্যাচ (ডিফল্ট)</SelectItem>
+                    <SelectItem value="all">সব ব্যাচ</SelectItem>
+                    {data.map((p) => (
+                      <SelectItem key={p.batch_id} value={p.batch_id}>
+                        {p.batchName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">ধরন</span>
+                <Select value={kindFilter} onValueChange={setKindFilter}>
+                  <SelectTrigger className="h-8 w-[140px] text-xs">
+                    <SelectValue placeholder="সব ধরন" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব ধরন</SelectItem>
+                    <SelectItem value="layer">লেয়ার</SelectItem>
+                    <SelectItem value="broiler">ব্রয়লার</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {statusFilter === 'active' && !activeCount && !!data.length && (
+              <p className="text-[11px] text-muted-foreground">কোনো সক্রিয় ব্যাচ নেই — সব ব্যাচ দেখানো হচ্ছে।</p>
+            )}
+
+            {isLoading && <p className="text-sm text-muted-foreground">লোড হচ্ছে…</p>}
+            {!isLoading && !visible.length && <p className="text-sm text-muted-foreground">কোনো ব্যাচ পাওয়া যায়নি।</p>}
+            {visible.map((p) => (
+              <QrCard key={p.id} page={p} farmId={selectedFarmId ?? ''} onToggle={onToggle} />
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+

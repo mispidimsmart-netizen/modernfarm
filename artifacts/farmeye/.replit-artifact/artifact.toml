@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "FarmEye"
+description = "A smart poultry farm monitoring and management platform for tracking sheds, sensors, equipment, alerts, production, and operational safety."
+version = "1.0.0"
+id = "artifacts/farmeye"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19393
+
+[services.development]
+run = "pnpm --filter @workspace/farmeye run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/farmeye", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/farmeye/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19393"
+BASE_PATH = "/"

@@ -1,0 +1,448 @@
+import { useState, lazy, Suspense } from 'react';
+import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Bell, BellOff, Settings, User, Shield, Crown, Users, Home, BarChart3, Cpu, ChevronDown, Download, Lightbulb, Building2, QrCode
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { useProfile, useUpdateProfile } from '@/hooks/useFarmData';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { usePlatformRole } from '@/hooks/usePlatformRole';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { Header } from '@/components/Header';
+import { BottomNav } from '@/components/BottomNav';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { ProfileAvatarUpload } from '@/components/settings/ProfileAvatarUpload';
+import { ProfileEditDialog } from '@/components/settings/ProfileEditDialog';
+import { SettingsInstallCard } from '@/components/pwa/SettingsInstallCard';
+import { NotificationSoundCard } from '@/components/settings/NotificationSoundCard';
+import { PushNotificationHelpDialog } from '@/components/settings/PushNotificationHelpDialog';
+import { WorkerManagementSheet } from '@/components/team/WorkerManagementSheet';
+import { SmsAlertSettingsCard } from '@/components/settings/SmsAlertSettingsCard';
+import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
+import { MeshNetworkCard } from '@/components/settings/MeshNetworkCard';
+import { GsmFallbackCard } from '@/components/settings/GsmFallbackCard';
+import { NotificationPriorityCard } from '@/components/settings/NotificationPriorityCard';
+import { QuietHoursAndSnoozeCard } from '@/components/settings/QuietHoursAndSnoozeCard';
+import { TestNotificationCard } from '@/components/settings/TestNotificationCard';
+
+// S5.3 — Tab-level code splitting. Each settings tab is loaded on demand,
+// trimming ~50KB gz from the initial SettingsPage bundle. The first (default)
+// tab still mounts immediately because users almost always land there first.
+const FarmSetupTab = lazy(() =>
+  import('@/components/settings/tabs/FarmSetupTab').then(m => ({ default: m.FarmSetupTab }))
+);
+const OperationPreferencesTab = lazy(() =>
+  import('@/components/settings/tabs/OperationPreferencesTab').then(m => ({ default: m.OperationPreferencesTab }))
+);
+const ReportsDataTab = lazy(() =>
+  import('@/components/settings/tabs/ReportsDataTab').then(m => ({ default: m.ReportsDataTab }))
+);
+const DeviceSystemTab = lazy(() =>
+  import('@/components/settings/tabs/DeviceSystemTab').then(m => ({ default: m.DeviceSystemTab }))
+);
+const LightingTab = lazy(() =>
+  import('@/components/settings/tabs/LightingTab').then(m => ({ default: m.LightingTab }))
+);
+const TraceabilityTab = lazy(() =>
+  import('@/components/settings/traceability/TraceabilityTab').then(m => ({ default: m.TraceabilityTab }))
+);
+
+function TabFallback() {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="h-7 w-7 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
+import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
+
+export function SettingsPage() {
+  const { language, user } = useAuth();
+  const navigate = useNavigate();
+  const { data: profile } = useProfile();
+  const updateProfile = useUpdateProfile();
+  const { data: userRole } = useUserRole();
+  const { data: permissions, isLoading: permissionsLoading } = useUserPermissions();
+  const isOwner = userRole?.role === 'owner';
+  const canEditSettings = permissions?.canEditFarmSettings ?? false;
+  const { isSupported, permission, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { data: platformRole } = usePlatformRole();
+  const isSuperAdmin = !!platformRole?.isSuperAdmin;
+  const myOrgs = (platformRole?.orgs || []).filter(
+    (o) => o.my_role === 'org_owner' || o.my_role === 'org_admin'
+  );
+  const isOrgAdmin = myOrgs.length > 0;
+  const { toast } = useToast();
+  // Phone-based logins get a synthetic e-mail (0170...@phone.layerfarm.app).
+  // Never show it — fall back to the number encoded in it instead.
+  const displayPhone = user?.email?.endsWith('@phone.layerfarm.app')
+    ? user.email.split('@')[0]
+    : '';
+  const [activeTab, setActiveTab] = useState('farm-setup');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const handlePushToggle = async () => {
+    if (isSubscribed) {
+      await unsubscribe();
+    } else {
+      await subscribe();
+    }
+  };
+
+
+  const t = {
+    settings: { bn: 'সেটিংস', en: 'Settings' },
+    owner: { bn: 'মালিক', en: 'Owner' },
+    worker: { bn: 'কর্মী', en: 'Worker' },
+    viewOnly: { bn: 'শুধুমাত্র দেখার অনুমতি', en: 'View only access' },
+    farmSetup: { bn: 'খামার সেটআপ', en: 'Farm Setup' },
+    operation: { bn: 'পরিচালনা', en: 'Operation' },
+    reports: { bn: 'রিপোর্ট', en: 'Reports' },
+    firmware: { bn: 'ফার্মওয়্যার', en: 'Firmware' },
+    device: { bn: 'ডিভাইস', en: 'Device' },
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+      <Header />
+
+      <main className="page-container px-4 pb-24">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          {/* Page Title */}
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Settings size={20} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">{t.settings[language]}</h1>
+              <p className="text-sm text-muted-foreground">
+                {language === 'bn' ? 'আপনার পছন্দ অনুযায়ী কাস্টমাইজ করুন' : 'Customize your preferences'}
+              </p>
+            </div>
+          </div>
+
+          {/* Profile Card - Hero Style */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary p-5 text-primary-foreground shadow-lg"
+          >
+            <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-primary-foreground/10" />
+            <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-primary-foreground/10" />
+            
+            <div className="relative flex items-center gap-4">
+              <ProfileAvatarUpload readOnly />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-lg font-bold text-primary-foreground truncate">{profile?.farm_name || 'Smart Farm'}</p>
+                  <Badge 
+                    className={`text-xs shrink-0 ${
+                      isSuperAdmin 
+                        ? 'bg-purple-500/20 text-purple-100 border-purple-400/30'
+                        : isOwner 
+                          ? 'bg-green-500/20 text-green-100 border-green-400/30' 
+                          : 'bg-yellow-500/20 text-yellow-100 border-yellow-400/30'
+                    }`}
+                  >
+                    <Shield className="h-3 w-3 mr-1" />
+                    {isSuperAdmin 
+                      ? (language === 'bn' ? 'অ্যাডমিন' : 'Admin')
+                      : isOwner 
+                        ? t.owner[language] 
+                        : t.worker[language]}
+                  </Badge>
+                </div>
+                {isOwner ? (
+                  <div className="flex items-center justify-between gap-2">
+                    {profile?.user_name ? (
+                      <p className="text-sm text-primary-foreground/90 truncate">
+                        <User size={12} className="inline mr-1 -mt-0.5" />
+                        {profile.user_name}
+                      </p>
+                    ) : (
+                      <span className="text-sm text-primary-foreground/60">
+                        {language === 'bn' ? 'মালিকের নাম যোগ করুন' : 'Add owner name'}
+                      </span>
+                    )}
+                    <ProfileEditDialog />
+                  </div>
+                ) : profile?.user_name ? (
+                  <p className="text-sm text-primary-foreground/90 truncate">
+                    <User size={12} className="inline mr-1 -mt-0.5" />
+                    {profile.user_name}
+                  </p>
+                ) : null}
+                <p className="text-sm text-primary-foreground/80">
+                  {profile?.phone || displayPhone || (language === 'bn' ? 'মোবাইল নং যোগ করুন' : 'Add mobile number')}
+                </p>
+                {!isOwner && (
+                  <p className="mt-1 text-xs text-yellow-200">
+                    ⚠️ {t.viewOnly[language]}
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* App Install & Team Management Row */}
+          <div className="grid grid-cols-2 gap-3">
+            <SettingsInstallCard />
+            
+            <button
+              onClick={() => navigate('/settings/members')}
+              className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-secondary to-secondary/80 p-3 shadow-md text-left w-full relative overflow-hidden"
+            >
+              <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-white/10 blur-xl" />
+              <div className="absolute -bottom-3 -left-3 h-14 w-14 rounded-full bg-white/10 blur-xl" />
+              <div className="relative flex items-center gap-2.5 w-full">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm shrink-0">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-sm">
+                    {language === 'bn' ? 'সদস্যবৃন্দ' : 'Members'}
+                  </h3>
+                  <p className="text-xs text-white/70">
+                    {isOwner
+                      ? (language === 'bn' ? 'আমন্ত্রণ ও রোল' : 'Invite & roles')
+                      : (language === 'bn' ? 'যোগ দিন / ছাড়ুন' : 'Join / leave')}
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {isOrgAdmin && !isSuperAdmin && (
+            <motion.a
+              href="/org-admin"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-700 p-4 shadow-sm transition-colors hover:from-emerald-700 hover:to-emerald-800 text-primary-foreground"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground/20">
+                <Building2 size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{language === 'bn' ? 'আমার কোম্পানি' : 'My Organization'}</p>
+                <p className="text-xs text-emerald-100 truncate">
+                  {myOrgs.length === 1
+                    ? myOrgs[0].name
+                    : (language === 'bn' ? `${myOrgs.length} টি কোম্পানি` : `${myOrgs.length} organizations`)}
+                </p>
+              </div>
+            </motion.a>
+          )}
+
+          {/* Quick Actions */}
+          {isSuperAdmin && (
+            <motion.a
+              href="/admin"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 p-4 shadow-sm transition-colors hover:from-purple-700 hover:to-purple-800 text-primary-foreground"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-foreground/20">
+                <Crown size={20} />
+              </div>
+              <div>
+                <p className="font-medium text-sm">{language === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Admin Dashboard'}</p>
+                <p className="text-xs text-purple-200">{language === 'bn' ? 'সিস্টেম ম্যানেজমেন্ট' : 'System management'}</p>
+              </div>
+            </motion.a>
+          )}
+
+          {/* Viewer Notice */}
+          {!canEditSettings && (
+            <Card className="border-dashed bg-muted/50">
+              <CardContent className="p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  🔒 {language === 'bn' 
+                    ? 'আপনি শুধুমাত্র দেখতে পারবেন — পরিবর্তন করতে অ্যাডমিন বা মালিকের অনুমতি প্রয়োজন' 
+                    : 'View only — admin or owner permission required to make changes'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Main Settings Tabs — visible to all; non-editors get a read-only overlay */}
+          <div className={!canEditSettings ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={!canEditSettings}>
+          {(canEditSettings || !permissionsLoading) && (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-6 mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl">
+                <TabsTrigger 
+                  value="farm-setup" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Home className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'খামার' : 'Farm'}</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="operation" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'পরিচালনা' : 'Ops'}</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="lighting" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Lightbulb className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'লাইটিং' : 'Light'}</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="reports" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <BarChart3 className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'রিপোর্ট' : 'Reports'}</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="device" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <Cpu className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'ডিভাইস' : 'Device'}</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="traceability" 
+                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                >
+                  <QrCode className="h-4 w-4 shrink-0" />
+                  <span>{language === 'bn' ? 'ট্রেস' : 'Trace'}</span>
+                </TabsTrigger>
+              </TabsList>
+
+
+              <TabsContent value="farm-setup" className="space-y-4">
+                <Suspense fallback={<TabFallback />}><FarmSetupTab /></Suspense>
+
+                {/* Notifications — only inside the Farm tab */}
+                <Collapsible open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardContent className="pt-6 pb-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                              <Bell size={20} />
+                            </div>
+                            <div>
+                              <p className="font-semibold">{language === 'bn' ? 'নোটিফিকেশন' : 'Notifications'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {isSubscribed
+                                  ? (language === 'bn' ? '✓ সক্রিয়' : '✓ Active')
+                                  : (language === 'bn' ? 'অ্যালার্ট ও আপডেট' : 'Alerts & updates')}
+                              </p>
+                            </div>
+                          </div>
+                          <motion.div
+                            animate={{ rotate: isNotificationsOpen ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          </motion.div>
+                        </div>
+                      </CardContent>
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 pb-6 space-y-4">
+                        {/* Push Notifications */}
+                        <div className="rounded-xl bg-muted/50 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {isSubscribed ? (
+                                <Bell className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <BellOff className="h-5 w-5 text-muted-foreground" />
+                              )}
+                              <div>
+                                <p className="font-medium">
+                                  {language === 'bn' ? 'পুশ নোটিফিকেশন' : 'Push Notifications'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {!isSupported
+                                    ? (language === 'bn' ? 'সমর্থিত নয়' : 'Not supported')
+                                    : permission === 'granted'
+                                      ? (language === 'bn' ? 'অনুমতি দেওয়া হয়েছে' : 'Permission granted')
+                                      : permission === 'denied'
+                                        ? (language === 'bn' ? 'অনুমতি প্রত্যাখ্যাত' : 'Permission denied')
+                                        : (language === 'bn' ? 'অনুমতি প্রয়োজন' : 'Permission required')
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {permission === 'denied' && <PushNotificationHelpDialog language={language} />}
+                              {isSupported && (
+                                <Switch
+                                  checked={isSubscribed}
+                                  onCheckedChange={handlePushToggle}
+                                  disabled={pushLoading || permission === 'denied'}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <NotificationPriorityCard />
+                        <QuietHoursAndSnoozeCard />
+                        <TestNotificationCard />
+                        <NotificationSoundCard />
+                        {isOwner && <SmsAlertSettingsCard />}
+                        <AlertRulesCard />
+                        <MeshNetworkCard />
+                        {isOwner && <GsmFallbackCard />}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              </TabsContent>
+
+              <TabsContent value="operation">
+                <Suspense fallback={<TabFallback />}><OperationPreferencesTab /></Suspense>
+              </TabsContent>
+
+              <TabsContent value="lighting">
+                <Suspense fallback={<TabFallback />}><LightingTab /></Suspense>
+              </TabsContent>
+
+              <TabsContent value="reports">
+                <Suspense fallback={<TabFallback />}><ReportsDataTab /></Suspense>
+              </TabsContent>
+
+              <TabsContent value="device">
+                <Suspense fallback={<TabFallback />}><DeviceSystemTab /></Suspense>
+              </TabsContent>
+
+              <TabsContent value="traceability">
+                <Suspense fallback={<TabFallback />}><TraceabilityTab /></Suspense>
+              </TabsContent>
+
+            </Tabs>
+          )}
+          </div>
+
+        </motion.div>
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}

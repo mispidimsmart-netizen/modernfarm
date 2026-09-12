@@ -1,0 +1,251 @@
+import { useState, useEffect } from 'react';
+import { Bird, Save, Sparkles } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useFlockInfo, useUpdateFlockInfo } from '@/hooks/useFarmManagement';
+import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+import { SmartDatePicker } from '@/components/ui/smart-date-picker';
+import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
+
+interface FlockInfoSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+interface LayerBreed {
+  value: string;
+  bn: string;
+  en: string;
+  keywords?: string;
+}
+
+const BREEDS: LayerBreed[] = [
+  { value: 'isa_brown', bn: 'আইএসএ ব্রাউন (ISA Brown)', en: 'ISA Brown', keywords: 'isa brown আইএসএ ব্রাউন' },
+  { value: 'hy_line_brown', bn: 'হাই-লাইন ব্রাউন (Hy-Line Brown)', en: 'Hy-Line Brown', keywords: 'hy-line hyline brown হাই-লাইন' },
+  { value: 'hy_line_w36', bn: 'হাই-লাইন W-36 (Hy-Line W-36)', en: 'Hy-Line W-36', keywords: 'hy-line hyline w36 হাই-লাইন' },
+  { value: 'lohmann_brown', bn: 'লোহম্যান ব্রাউন (Lohmann Brown)', en: 'Lohmann Brown', keywords: 'lohmann brown লোহম্যান' },
+  { value: 'lohmann_lsl', bn: 'লোহম্যান এলএসএল (Lohmann LSL)', en: 'Lohmann LSL', keywords: 'lohmann lsl লোহম্যান' },
+  { value: 'bovans_brown', bn: 'বোভান্স ব্রাউন (Bovans Brown)', en: 'Bovans Brown', keywords: 'bovans brown বোভান্স' },
+  { value: 'bovans_white', bn: 'বোভান্স হোয়াইট (Bovans White)', en: 'Bovans White', keywords: 'bovans white বোভান্স' },
+  { value: 'hisex_brown', bn: 'হাইসেক্স ব্রাউন (Hisex Brown)', en: 'Hisex Brown', keywords: 'hisex brown হাইসেক্স' },
+  { value: 'novogen_brown', bn: 'নোভোজেন ব্রাউন (Novogen Brown)', en: 'Novogen Brown', keywords: 'novogen brown নোভোজেন' },
+  { value: 'shaver', bn: 'শেভার (Shaver 579)', en: 'Shaver 579', keywords: 'shaver 579 শেভার' },
+  { value: 'bv300', bn: 'বিভি-৩০০ (BV-300)', en: 'BV-300', keywords: 'bv 300 বিভি' },
+  { value: 'sonali', bn: 'সোনালী (Sonali)', en: 'Sonali', keywords: 'sonali সোনালী' },
+  { value: 'local', bn: 'দেশি (Local)', en: 'Local', keywords: 'local desi দেশি' },
+  { value: 'other', bn: 'অন্যান্য', en: 'Other', keywords: 'অন্যান্য other' },
+];
+
+export function FlockInfoSheet({ open, onOpenChange }: FlockInfoSheetProps) {
+  const { language } = useAuth();
+  const { data: flockInfo, isLoading } = useFlockInfo();
+  const { data: activeBatch } = useActiveLayerBatch();
+  const updateFlockInfo = useUpdateFlockInfo();
+
+  const [formData, setFormData] = useState({
+    total_birds: 0,
+    breed: 'isa_brown',
+    purchase_date: '',
+  });
+  const [autoFilledFromBatch, setAutoFilledFromBatch] = useState(false);
+
+  // Map a free-text breed (from layer_batches) to the BREEDS list value
+  const mapBatchBreedToValue = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
+    const lower = raw.toLowerCase();
+    const match = BREEDS.find(
+      (b) =>
+        b.value === raw ||
+        b.en.toLowerCase() === lower ||
+        (b.keywords || '').toLowerCase().split(/\s+/).some((k) => k && lower.includes(k))
+    );
+    return match ? match.value : null;
+  };
+
+  useEffect(() => {
+    // Backward-compat: map removed legacy values to closest current option
+    const legacyMap: Record<string, string> = {
+      layer: 'isa_brown',
+      hy_line: 'hy_line_brown',
+      novogen: 'novogen_brown',
+    };
+
+    // Detect "empty" flock_info (default state from handle_new_user)
+    const isFlockEmpty =
+      !flockInfo ||
+      ((flockInfo.total_birds ?? 0) === 0 && !flockInfo.purchase_date);
+
+    if (isFlockEmpty && activeBatch) {
+      // Auto-fill from active batch
+      const breedValue =
+        mapBatchBreedToValue(activeBatch.breed) || 'isa_brown';
+      setFormData({
+        total_birds: activeBatch.current_bird_count || activeBatch.initial_bird_count || 0,
+        breed: breedValue,
+        purchase_date: activeBatch.start_date || '',
+      });
+      setAutoFilledFromBatch(true);
+      return;
+    }
+
+    if (flockInfo) {
+      const rawBreed = flockInfo.breed || 'isa_brown';
+      setFormData({
+        total_birds: flockInfo.total_birds,
+        breed: legacyMap[rawBreed] || rawBreed,
+        purchase_date: flockInfo.purchase_date || '',
+      });
+      setAutoFilledFromBatch(false);
+    }
+  }, [flockInfo, activeBatch]);
+
+  const t = {
+    title: { bn: 'মুরগির তথ্য', en: 'Flock Information' },
+    totalBirds: { bn: 'মোট মুরগি', en: 'Total Birds' },
+    breed: { bn: 'জাত', en: 'Breed' },
+    purchaseDate: { bn: 'ক্রয়ের তারিখ', en: 'Purchase Date' },
+    save: { bn: 'সংরক্ষণ করুন', en: 'Save' },
+    tips: { bn: 'পরামর্শ', en: 'Tips' },
+    ageNote: {
+      bn: 'বয়স সকল ফিচারে (লাইটিং, অটোমেশন) একসাথে আপডেট হবে',
+      en: 'Age updates everywhere (lighting, automation) at once',
+    },
+  };
+
+  const tips = language === 'bn' 
+    ? [
+        '২০-৭৮ সপ্তাহ বয়সে সর্বোচ্চ ডিম উৎপাদন হয়',
+        'প্রতি ১০০ মুরগিতে দৈনিক ১০-১২ কেজি খাদ্য লাগে',
+        '১৪-১৬ ঘন্টা আলো উৎপাদন বাড়ায়',
+      ]
+    : [
+        'Peak production is between 20-78 weeks of age',
+        '100 birds need 10-12 kg feed daily',
+        '14-16 hours of light increases production',
+      ];
+
+  const handleSubmit = () => {
+    updateFlockInfo.mutate({
+      ...formData,
+      purchase_date: formData.purchase_date || null,
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl overflow-y-auto">
+        <SheetHeader className="pb-4">
+          <SheetTitle className="flex items-center gap-2">
+            <Bird className="h-5 w-5 text-primary" />
+            {t.title[language]}
+          </SheetTitle>
+        </SheetHeader>
+
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : (
+          <div className="space-y-4 pb-8">
+            {/* 🐔 Unified Bird Age — single source of truth */}
+            <BirdAgeCard />
+
+            {activeBatch && (
+              <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="text-xs leading-relaxed">
+                  <p className="font-medium text-primary">
+                    {language === 'bn'
+                      ? `সক্রিয় ব্যাচ থেকে স্বয়ংক্রিয় সিঙ্ক: ${activeBatch.batch_name_bn || activeBatch.batch_name}`
+                      : `Auto-synced from active batch: ${activeBatch.batch_name_bn || activeBatch.batch_name}`}
+                  </p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {language === 'bn'
+                      ? 'মোট মুরগি, জাত ও তারিখ পরিবর্তন করতে ব্যাচ এডিট করুন। ব্যাচ-ই একমাত্র সত্য উৎস।'
+                      : 'To change bird count, breed or date, edit the batch. Batch is the source of truth.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>{t.totalBirds[language]}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={formData.total_birds || ''}
+                onChange={(e) => setFormData(p => ({ ...p, total_birds: parseInt(e.target.value) || 0 }))}
+                className="text-lg"
+                disabled={!!activeBatch}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t.breed[language]}</Label>
+              <BreedCombobox
+                options={BREEDS.map((b) => ({
+                  value: b.value,
+                  label: b[language],
+                  keywords: b.keywords,
+                }))}
+                value={formData.breed}
+                onChange={(v) => setFormData((p) => ({ ...p, breed: v }))}
+                disabled={!!activeBatch}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t.purchaseDate[language]}</Label>
+              <div className={activeBatch ? 'pointer-events-none opacity-60' : ''}>
+                <SmartDatePicker
+                  value={formData.purchase_date || null}
+                  onChange={(iso) => setFormData(p => ({ ...p, purchase_date: iso }))}
+                  placeholder={language === 'bn' ? 'তারিখ বাছাই করুন' : 'Pick a date'}
+                  disableFuture
+                  presets={[
+                    { labelBn: 'আজ', labelEn: 'Today', daysAgo: 0 },
+                    { labelBn: '১ সপ্তাহ আগে', labelEn: '1 week ago', daysAgo: 7 },
+                    { labelBn: '১ মাস আগে', labelEn: '1 month ago', daysAgo: 30 },
+                    { labelBn: '৩ মাস আগে', labelEn: '3 months ago', daysAgo: 90 },
+                    { labelBn: '৬ মাস আগে', labelEn: '6 months ago', daysAgo: 180 },
+                  ]}
+                />
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleSubmit} 
+              className="w-full"
+              disabled={updateFlockInfo.isPending || !!activeBatch}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {activeBatch
+                ? (language === 'bn' ? 'ব্যাচ থেকে নিয়ন্ত্রিত' : 'Controlled by batch')
+                : t.save[language]}
+            </Button>
+
+            {/* Tips Card */}
+            <Card className="mt-6 bg-primary/5">
+              <CardContent className="p-4">
+                <h4 className="mb-2 font-medium text-primary">{t.tips[language]}</h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {tips.map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
