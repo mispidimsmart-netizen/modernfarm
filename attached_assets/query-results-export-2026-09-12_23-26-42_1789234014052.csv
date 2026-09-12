@@ -1,0 +1,3 @@
+anon_execute;authenticated_execute;function_signature;public_execute
+false;true;create_legacy_device_token(uuid,uuid,text);false
+false;true;get_device_provisioning_token(uuid);false
