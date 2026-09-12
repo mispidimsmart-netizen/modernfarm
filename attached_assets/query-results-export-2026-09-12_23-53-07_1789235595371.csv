@@ -1,0 +1,6 @@
+check_name;result
+sensitive_column_privileges;[]
+browser_table_privileges;"[{""grantee"":""authenticated"",""privilege"":""DELETE""}]"
+service_role_table_privileges;"[{""grantee"":""service_role"",""privilege"":""DELETE""},{""grantee"":""service_role"",""privilege"":""INSERT""},{""grantee"":""service_role"",""privilege"":""REFERENCES""},{""grantee"":""service_role"",""privilege"":""SELECT""},{""grantee"":""service_role"",""privilege"":""TRIGGER""},{""grantee"":""service_role"",""privilege"":""TRUNCATE""},{""grantee"":""service_role"",""privilege"":""UPDATE""}]"
+device_tokens_policies;"[{""command"":""SELECT"",""name"":""Super admins view all device_tokens"",""roles"":[""authenticated""]},{""command"":""DELETE"",""name"":""device_tokens_owner_delete"",""roles"":[""authenticated""]},{""command"":""UPDATE"",""name"":""device_tokens_owner_update"",""roles"":[""authenticated""]},{""command"":""SELECT"",""name"":""device_tokens_safe_select"",""roles"":[""authenticated""]}]"
+provisioning_code_policies;"[{""command"":""DELETE"",""name"":""device_provisioning_codes_owner_delete"",""roles"":[""authenticated""]},{""command"":""INSERT"",""name"":""device_provisioning_codes_owner_insert"",""roles"":[""authenticated""]},{""command"":""SELECT"",""name"":""device_provisioning_codes_owner_select"",""roles"":[""authenticated""]}]"
