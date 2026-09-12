@@ -57,7 +57,7 @@ export async function insertExpense(row: Record<string, any>, userId: string, fa
 }
 
 export async function updateExpense(id: string, patch: Record<string, any>): Promise<void> {
-  const { error } = await supabase.from('expenses').update(patch).eq('id', id);
+  const { error } = await supabase.from('expenses').update(patch as never).eq('id', id);
   if (error) throw error;
 }
 
@@ -94,7 +94,7 @@ export async function insertIncome(row: Record<string, any>, userId: string, far
 }
 
 export async function updateIncome(id: string, patch: Record<string, any>): Promise<void> {
-  const { error } = await supabase.from('income').update(patch).eq('id', id);
+  const { error } = await supabase.from('income').update(patch as never).eq('id', id);
   if (error) throw error;
 }
 
