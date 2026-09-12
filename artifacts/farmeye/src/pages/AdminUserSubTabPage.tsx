@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactElement } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { PlatformRoleGuard } from '@/components/auth';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ type SubTab = 'admins' | 'orgs' | 'farms' | 'workers';
 const CONFIG: Record<SubTab, {
   title: string;
   require: 'super_admin' | 'org_admin';
-  render: (lang: 'bn' | 'en') => React.ReactElement;
+  render: (lang: 'bn' | 'en') => ReactElement;
 }> = {
   admins: {
     title: 'অ্যাডমিন ব্যবস্থাপনা',
