@@ -34,7 +34,8 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Current development scope is FarmEye automation software V8 only.
+- Treat V10 as a separate beta version. Do not modify, migrate, test, refactor, or otherwise work on V10 code, firmware, configuration, or behavior unless the user explicitly asks to begin V10 work.
 
 ## Gotchas
 
