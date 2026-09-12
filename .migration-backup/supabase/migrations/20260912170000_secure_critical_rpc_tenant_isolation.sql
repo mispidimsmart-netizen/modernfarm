@@ -1,6 +1,8 @@
 -- Phase 2: lock down privileged RPCs that can create cross-tenant side effects.
 -- Keep the existing signatures so deployed Edge Function callers remain compatible.
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.accept_sensor_batch(
   _device_token_id uuid,
   _user_id uuid,
@@ -369,3 +371,5 @@ REVOKE ALL ON FUNCTION public.get_device_secret(uuid)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_device_secret(uuid)
   TO service_role;
+
+COMMIT;
