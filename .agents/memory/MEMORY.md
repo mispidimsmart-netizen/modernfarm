@@ -1,1 +1,2 @@
 - [Lovable Cloud backend scope](supabase-migration-scope.md) — Keep FarmEye on its existing Lovable Cloud backend unless the user explicitly requests a separate full migration.
+- [FarmEye security phase boundaries](farmeye-security-phase-boundaries.md) — Separate RPC isolation from secret-storage and dispatcher authorization redesigns to preserve compatibility.

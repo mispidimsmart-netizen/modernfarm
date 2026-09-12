@@ -1,0 +1,4 @@
+anon_execute;authenticated_execute;function_signature;public_execute;service_role_execute
+false;false;accept_sensor_batch(uuid,uuid,uuid,uuid,jsonb);false;true
+false;false;evaluate_alert_rules(uuid);false;true
+false;false;get_device_secret(uuid);false;true
