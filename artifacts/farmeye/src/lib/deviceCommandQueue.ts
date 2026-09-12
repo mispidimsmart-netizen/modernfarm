@@ -14,11 +14,32 @@
 const KEY = 'farmeye_device_offline_queue';
 const DEFAULT_TTL_MIN = 60; // drop commands older than 1h
 
+function createQueueId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const hex = (length: number) =>
+    Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}`;
+}
+
+function legacyQueueId(value: unknown): string {
+  const text = String(value ?? '');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const hex = Math.abs(hash >>> 0).toString(16).padStart(8, '0');
+  return `${hex}-${hex.slice(0, 4)}-4${hex.slice(4, 7)}-a${hex.slice(1, 4)}-${hex}${hex.slice(0, 4)}`;
+}
+
 export interface QueuedDeviceCommand {
   id: string;
   user_id: string;
   farm_id: string;
   shed_id?: string | null;
+  device_token_id?: string | null;
+  /** Stable idempotency key reused by every replay attempt. */
+  client_request_id: string;
   device_name: string;
   command_type: string;
   command_value: boolean;
@@ -29,7 +50,18 @@ export interface QueuedDeviceCommand {
 function load(): QueuedDeviceCommand[] {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Older queue entries predate idempotency. Give them a stable key once;
+    // localStorage is only a replay hint, never an authority.
+    return parsed.map((item) => ({
+      ...item,
+      client_request_id:
+        typeof item.client_request_id === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.client_request_id)
+          ? item.client_request_id
+          : legacyQueueId(item.id),
+    }));
   } catch {
     return [];
   }
@@ -47,7 +79,9 @@ function save(items: QueuedDeviceCommand[]) {
 }
 
 export function enqueueDeviceCommand(
-  cmd: Omit<QueuedDeviceCommand, 'id' | 'queued_at'>,
+  cmd: Omit<QueuedDeviceCommand, 'id' | 'queued_at' | 'client_request_id'> & {
+    client_request_id?: string;
+  },
 ): QueuedDeviceCommand {
   const items = load().filter(
     (i) =>
@@ -60,9 +94,11 @@ export function enqueueDeviceCommand(
   );
   const entry: QueuedDeviceCommand = {
     ...cmd,
+    client_request_id:
+      cmd.client_request_id ??
+      createQueueId(),
     id:
-      globalThis.crypto?.randomUUID?.() ??
-      `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      createQueueId(),
     queued_at: new Date().toISOString(),
     max_age_minutes: cmd.max_age_minutes ?? DEFAULT_TTL_MIN,
   };

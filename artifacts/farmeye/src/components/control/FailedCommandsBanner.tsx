@@ -118,6 +118,7 @@ export function FailedCommandsBanner() {
       commandValue: latest.command_value,
       shedId: latest.shed_id ?? undefined,
       deviceName: latest.device_name,
+      clientRequestId: latest.client_request_id ?? undefined,
     });
     dismissOne(latest.command_id);
   };

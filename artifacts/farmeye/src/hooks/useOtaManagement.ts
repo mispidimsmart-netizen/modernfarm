@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
+import { sha256Hex } from '@/lib/firmwareChecksum';
 
 export interface Firmware {
   id: string;
@@ -17,6 +18,31 @@ export interface Firmware {
   release_notes_bn: string;
   farm_type: string;
   created_at: string;
+  checksum: string | null;
+  crc32: string | null;
+  sha256_hex: string | null;
+  signature_b64: string | null;
+  signing_public_key_b64: string | null;
+  signature_alg: string | null;
+  require_signature: boolean;
+}
+
+export interface V8OtaAssignmentResponse {
+  success: true;
+  assignment_id: string;
+  device_token_id: string;
+  firmware_id: string;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isV8OtaAssignmentResponse(value: unknown): value is V8OtaAssignmentResponse {
+  if (!value || typeof value !== 'object') return false;
+  const body = value as Record<string, unknown>;
+  return body.success === true &&
+    typeof body.assignment_id === 'string' && UUID_RE.test(body.assignment_id) &&
+    typeof body.device_token_id === 'string' && UUID_RE.test(body.device_token_id) &&
+    typeof body.firmware_id === 'string' && UUID_RE.test(body.firmware_id);
 }
 
 export function formatFileSize(bytes: number) {
@@ -81,6 +107,25 @@ export function useOtaManagement() {
       setIsUploading(true);
       setUploadProgress(10);
 
+      const firmwareBuffer = await selectedFile.arrayBuffer();
+      const sha256 = await sha256Hex(firmwareBuffer);
+      // Private signing keys never enter the browser. The server-side
+      // contract signs the digest and fails closed when the release key is
+      // not provisioned.
+      const { data: signingData, error: signingError } = await supabase.functions.invoke(
+        'ota-signing-contract-v8',
+        { body: { digest_sha256: sha256, version } },
+      );
+      if (
+        signingError ||
+        !signingData?.signature_b64 ||
+        !signingData?.public_key_b64 ||
+        signingData.signature_alg !== 'ed25519' ||
+        signingData.signed_payload !== 'sha256_digest_bytes'
+      ) {
+        throw new Error('V8 OTA signing service unavailable; firmware was not published');
+      }
+
       const filename = `${version.replace(/\./g, '_')}_${Date.now()}.bin`;
       const { error: uploadError } = await supabase.storage
         .from('firmware')
@@ -100,6 +145,11 @@ export function useOtaManagement() {
         filename,
         url: urlData.publicUrl,
         file_size_bytes: selectedFile.size,
+        sha256_hex: sha256,
+        signature_b64: signingData.signature_b64,
+        signing_public_key_b64: signingData.public_key_b64,
+        signature_alg: 'ed25519',
+        require_signature: true,
         is_stable: isStable,
         is_active: true,
         release_notes: releaseNotes,
@@ -161,7 +211,7 @@ export function useOtaManagement() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ota-firmware?action=push`;
+       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ota-firmware-v8?action=push`;
       const res = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -171,10 +221,15 @@ export function useOtaManagement() {
         body: JSON.stringify({ device_token_id: deviceTokenId, firmware_id: firmwareId }),
       });
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Push failed');
+      const result: unknown = await res.json();
+      if (!res.ok || !isV8OtaAssignmentResponse(result)) {
+        const error = result as { error?: unknown };
+        throw new Error(typeof error.error === 'string' ? error.error : 'Invalid V8 OTA assignment response');
       }
+      if (result.device_token_id !== deviceTokenId || result.firmware_id !== firmwareId) {
+        throw new Error('V8 OTA assignment response identity mismatch');
+      }
+      return result;
     },
     onSuccess: () => {
       toast({

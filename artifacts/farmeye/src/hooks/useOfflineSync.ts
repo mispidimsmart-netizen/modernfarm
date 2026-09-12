@@ -22,6 +22,18 @@ interface SyncQueueItem {
 const SYNC_QUEUE_KEY = 'smart_farm_offline_queue';
 const DEFAULT_MAX_AGE_MIN = 24 * 60; // 24h TTL — Phase 3
 const MAX_RETRY_COUNT = 5;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function legacyClientRequestId(value: unknown): string {
+  const text = String(value ?? '');
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const hex = Math.abs(hash >>> 0).toString(16).padStart(8, '0');
+  return `${hex}-${hex.slice(0, 4)}-4${hex.slice(4, 7)}-a${hex.slice(1, 4)}-${hex}${hex.slice(0, 4)}`;
+}
 
 /** Phase 3: drop items older than max_age_minutes or with too many failed retries */
 function pruneExpired(queue: SyncQueueItem[]): { kept: SyncQueueItem[]; dropped: number } {
@@ -119,11 +131,18 @@ export function useOfflineSync() {
         continue;
       }
       const authorId = attribution.authorId;
+      const rawClientRequestId = item.record_data.client_request_id;
+      const clientRequestId = UUID_RE.test(String(rawClientRequestId ?? ''))
+        ? String(rawClientRequestId)
+        : legacyClientRequestId(item.id);
       // Only re-stamp farm_id when the payload already carried one — some
       // tables have no farm_id column.
       const payload = {
         ...item.record_data,
         user_id: authorId,
+        ...(item.table_name === 'device_commands'
+          ? { client_request_id: clientRequestId }
+          : {}),
         ...(item.record_data.farm_id && attribution.farmId
           ? { farm_id: attribution.farmId }
           : {}),
@@ -132,7 +151,21 @@ export function useOfflineSync() {
 
       try {
         let ok = false;
-        switch (item.operation) {
+        // Actuator commands must replay through the idempotent server boundary.
+        // Never replay a localStorage-supplied device_name or desired-state
+        // mutation directly; localStorage is not an authorization boundary.
+        if (item.table_name === 'device_commands') {
+          const commandPayload = payload as Record<string, unknown>;
+          const { error } = await (supabase as any).rpc('queue_v8_actuator_command', {
+            p_farm_id: commandPayload.farm_id,
+            p_shed_id: commandPayload.shed_id ?? null,
+            p_device_token_id: commandPayload.device_token_id ?? null,
+            p_command_type: commandPayload.command_type,
+            p_command_value: commandPayload.command_value,
+            p_client_request_id: commandPayload.client_request_id,
+          });
+          ok = !error;
+        } else switch (item.operation) {
           case 'INSERT': {
             const { error } = await supabase
               .from(item.table_name as 'egg_production')

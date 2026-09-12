@@ -12,6 +12,15 @@ interface SendCommandParams {
   commandValue: boolean;
   deviceName?: string;
   shedId?: string;
+  deviceTokenId?: string;
+  clientRequestId?: string;
+}
+
+function createClientRequestId(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const hex = (length: number) =>
+    Array.from({ length }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}`;
 }
 
 // Module-level reference to the active mutate fn so failure-toast "Retry"
@@ -34,7 +43,7 @@ export function useSendDeviceCommand() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId }: SendCommandParams) => {
+    mutationFn: async ({ commandType, commandValue, deviceName = 'Shed A', shedId, deviceTokenId, clientRequestId }: SendCommandParams) => {
       if (!user) throw new Error('Not authenticated');
       // Hard guard: farm_id MUST be a non-empty UUID. Without a valid farm_id
       // the RLS policy on device_commands will silently reject the insert and
@@ -43,6 +52,28 @@ export function useSendDeviceCommand() {
       const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!farmId || !uuidRe.test(farmId)) {
         throw new Error('NO_FARM_SELECTED');
+      }
+      const stableRequestId = clientRequestId ?? createClientRequestId();
+      if (!uuidRe.test(stableRequestId)) {
+        throw new Error('INVALID_CLIENT_REQUEST_ID');
+      }
+      let resolvedDeviceTokenId = deviceTokenId ?? null;
+      // Resolve the device binding once while online. The server verifies it
+      // again; this only lets retries/offline queues carry an explicit target.
+      if (!resolvedDeviceTokenId && typeof navigator !== 'undefined' && navigator.onLine) {
+        let tokenQuery: any = supabase
+          .from('device_tokens')
+          .select('id')
+          .eq('farm_id', farmId)
+          .eq('is_active', true)
+          .limit(2);
+        if (shedId) tokenQuery = tokenQuery.eq('shed_id', shedId);
+        const { data: tokenRows, error: tokenError } = await tokenQuery;
+        if (tokenError) throw tokenError;
+        if (!tokenRows || tokenRows.length !== 1) {
+          throw new Error('DEVICE_BINDING_REQUIRED');
+        }
+        resolvedDeviceTokenId = tokenRows[0].id;
       }
 
       // ===== OFFLINE PATH =====
@@ -60,9 +91,12 @@ export function useSendDeviceCommand() {
           command_type: commandType,
           command_value: commandValue,
           executed: false,
-          farm_id: selectedFarmId,
+          farm_id: farmId,
+          shed_id: shedId ?? null,
+          device_token_id: resolvedDeviceTokenId,
+          client_request_id: stableRequestId,
         }, { maxAgeMinutes: 60 });
-        return { queued: true, queuedReason: 'browser_offline' } as any;
+        return { queued: true, queuedReason: 'browser_offline', clientRequestId: stableRequestId } as any;
       }
 
       // ===== DEVICE-OFFLINE PATH =====
@@ -74,7 +108,6 @@ export function useSendDeviceCommand() {
         const hq: any = supabase
           .from('device_health')
           .select('is_online,last_seen_at')
-          .eq('user_id', user.id)
           .eq('farm_id', farmId);
         const { data: dh } = await hq
           .order('last_seen_at', { ascending: false })
@@ -89,37 +122,19 @@ export function useSendDeviceCommand() {
             user_id: user.id,
             farm_id: farmId,
             shed_id: shedId ?? null,
+            device_token_id: resolvedDeviceTokenId,
             device_name: deviceName,
             command_type: commandType,
             command_value: commandValue,
+            client_request_id: stableRequestId,
           });
-          return { queued: true, queuedReason: 'device_offline' } as any;
+          return { queued: true, queuedReason: 'device_offline', clientRequestId: stableRequestId } as any;
         }
       } catch (e) {
         // If we cannot determine online status, fall through to normal send.
         console.warn('[useDeviceCommands] device-offline check failed', e);
       }
 
-      const { data: cmdRow, error } = await supabase
-        .from('device_commands')
-        .insert({
-          user_id: user.id,
-          device_name: deviceName,
-          command_type: commandType,
-          command_value: commandValue,
-          executed: false,
-          farm_id: selectedFarmId,
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-
-      // Update desired_state columns only (cloud never sets actual state)
-      const desiredUpdate: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
       // Map command → actual_col for ack-verification
       const ackActualCol: Partial<Record<CommandType, string>> = {
         fan: 'fan_on',
@@ -131,84 +146,28 @@ export function useSendDeviceCommand() {
         ceiling_fan: 'ceiling_fan_on',
         sprinkler: 'sprinkler_on',
       };
-      switch (commandType) {
-        case 'fan':
-          desiredUpdate.desired_fan_on = commandValue;
-          break;
-        case 'light':
-          desiredUpdate.desired_light_on = commandValue;
-          break;
-        case 'alarm':
-          desiredUpdate.desired_alarm_on = commandValue;
-          break;
-        case 'heater':
-          desiredUpdate.desired_heater_on = commandValue;
-          break;
-        case 'manual_override':
-        case 'stop_automation':
-          desiredUpdate.desired_manual_override = commandValue;
-          if (!commandValue) {
-            desiredUpdate.desired_fan_on = null;
-            desiredUpdate.desired_light_on = null;
-            desiredUpdate.desired_alarm_on = null;
-            desiredUpdate.desired_heater_on = null;
-            desiredUpdate.desired_circulation_fan_on = null;
-            desiredUpdate.desired_fogger_on = null;
-            desiredUpdate.desired_ceiling_fan_on = null;
-            desiredUpdate.desired_sprinkler_on = null;
-            desiredUpdate.desired_fan_speed = null;
-          }
-          break;
-        case 'circulation_fan':
-          desiredUpdate.desired_circulation_fan_on = commandValue;
-          break;
-        case 'fogger':
-          desiredUpdate.desired_fogger_on = commandValue;
-          break;
-        case 'ceiling_fan':
-          desiredUpdate.desired_ceiling_fan_on = commandValue;
-          break;
-        case 'sprinkler':
-          desiredUpdate.desired_sprinkler_on = commandValue;
-          break;
-      }
+      // The RPC resolves the authoritative device binding and applies desired
+      // state in one transaction. The legacy deviceName is never trusted.
+      const { data: rpcData, error: rpcError } = await (supabase as any).rpc(
+        'queue_v8_actuator_command',
+        {
+          p_farm_id: farmId,
+          p_shed_id: shedId ?? null,
+          p_device_token_id: resolvedDeviceTokenId,
+          p_command_type: commandType,
+          p_command_value: commandValue,
+          p_client_request_id: stableRequestId,
+        },
+      );
+      if (rpcError) throw rpcError;
+      if (!rpcData?.command_id) throw new Error('COMMAND_QUEUE_FAILED');
 
-      if (Object.keys(desiredUpdate).length > 1) {
-        let query = supabase
-          .from('device_status')
-          .update(desiredUpdate as never)
-          .eq('user_id', user.id);
-
-        query = query.eq('farm_id', selectedFarmId);
-
-        if (shedId) {
-          query = query.eq('shed_id', shedId);
-        }
-
-        await query;
-      }
-
-      // Log this command in device_command_log as 'pending' so EVERY command
-      // appears in the in-app history (success + failure).
-      const commandId = cmdRow?.id as string | undefined;
-      try {
-        await supabase.from('device_command_log').insert({
-          user_id: user.id,
-          farm_id: selectedFarmId ?? null,
-          shed_id: shedId ?? null,
-          command_id: commandId ?? `client-${Date.now()}`,
-          device_name: deviceName,
-          command_type: commandType,
-          command_value: commandValue,
-          status: 'pending',
-          source: 'app',
-          sent_at: new Date().toISOString(),
-        });
-      } catch (logErr) {
-        console.warn('[useDeviceCommands] failed to log pending command', logErr);
-      }
-
-      return { commandId, ackActualCol, shedId };
+      return {
+        commandId: rpcData.command_id as string,
+        clientRequestId: stableRequestId,
+        ackActualCol,
+        shedId: rpcData.shed_id ?? shedId,
+      };
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['device_status'] });
@@ -268,6 +227,7 @@ export function useSendDeviceCommand() {
       // warn the farmer (relay stuck, ESP32 offline, safety override, etc.)
       const actualCol = result?.ackActualCol?.[variables.commandType];
       const commandId = result?.commandId;
+      const resolvedShedId = result?.shedId ?? variables.shedId;
       if (!actualCol || !user) return;
 
       const ackToastId = `ack-${variables.commandType}-${state}`;
@@ -293,10 +253,10 @@ export function useSendDeviceCommand() {
         let actualUpdatedAt: number | null = null;
         let q: any = supabase
           .from('device_status')
-          .select(`${actualCol},updated_at`)
-          .eq('user_id', user.id);
+          .select(`${actualCol},updated_at`);
         if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
-        if (variables.shedId) q = q.eq('shed_id', variables.shedId);
+        else q = q.eq('user_id', user.id);
+        if (resolvedShedId) q = q.eq('shed_id', resolvedShedId);
         const { data: ds } = await q.order('updated_at', { ascending: false }).limit(1).maybeSingle();
         if (ds && (ds as any)[actualCol] !== undefined && (ds as any)[actualCol] !== null) {
           actual = !!(ds as any)[actualCol];
@@ -310,9 +270,9 @@ export function useSendDeviceCommand() {
         try {
           let hq: any = supabase
             .from('device_health')
-            .select('is_online')
-            .eq('user_id', user.id);
+            .select('is_online');
           if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
+          else hq = hq.eq('user_id', user.id);
           const { data: dh } = await hq.order('last_seen_at', { ascending: false }).limit(1).maybeSingle();
           isOnline = !!dh?.is_online;
         } catch { /* health lookup is best-effort */ }
@@ -357,9 +317,9 @@ export function useSendDeviceCommand() {
           try {
             let hq: any = supabase
               .from('device_health')
-              .select('is_online,last_seen_at')
-              .eq('user_id', user.id);
+              .select('is_online,last_seen_at');
             if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
+            else hq = hq.eq('user_id', user.id);
             const { data: dh } = await hq
               .order('last_seen_at', { ascending: false })
               .limit(1)
@@ -389,10 +349,10 @@ export function useSendDeviceCommand() {
               if (engineEnabled) {
                 let sq: any = supabase
                   .from('device_status')
-                  .select('safety_override,safety_override_reason')
-                  .eq('user_id', user.id);
+                  .select('safety_override,safety_override_reason');
                 if (selectedFarmId) sq = sq.eq('farm_id', selectedFarmId);
-                if (variables.shedId) sq = sq.eq('shed_id', variables.shedId);
+                else sq = sq.eq('user_id', user.id);
+                if (resolvedShedId) sq = sq.eq('shed_id', resolvedShedId);
                 const { data: ss } = await sq
                   .order('updated_at', { ascending: false })
                   .limit(1)
@@ -428,7 +388,8 @@ export function useSendDeviceCommand() {
                 await supabase.from('device_command_log').insert({
                   user_id: user.id,
                   farm_id: selectedFarmId ?? null,
-                  shed_id: variables.shedId ?? null,
+                  shed_id: resolvedShedId ?? null,
+                  client_request_id: result?.clientRequestId ?? null,
                   command_id: commandId,
                   device_name: variables.deviceName ?? 'Shed A',
                   command_type: variables.commandType,
@@ -445,7 +406,12 @@ export function useSendDeviceCommand() {
 
           const retryAction = {
             label: isBn ? 'আবার চেষ্টা' : 'Retry',
-            onClick: () => retryLastCommand(variables),
+            // Reuse the same idempotency key: retrying delivery must not
+            // enqueue a second actuator command.
+            onClick: () => retryLastCommand({
+              ...variables,
+              clientRequestId: result?.clientRequestId,
+            }),
           };
 
           if (isOffline) {

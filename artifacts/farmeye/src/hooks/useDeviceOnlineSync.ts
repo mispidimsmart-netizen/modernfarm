@@ -15,21 +15,7 @@ import {
   getQueuedDeviceCommands,
   removeDeviceCommand,
   clearExpiredDeviceCommands,
-  type QueuedDeviceCommand,
 } from '@/lib/deviceCommandQueue';
-
-const DESIRED_COL: Record<string, string | null> = {
-  fan: 'desired_fan_on',
-  light: 'desired_light_on',
-  alarm: 'desired_alarm_on',
-  heater: 'desired_heater_on',
-  circulation_fan: 'desired_circulation_fan_on',
-  fogger: 'desired_fogger_on',
-  ceiling_fan: 'desired_ceiling_fan_on',
-  sprinkler: 'desired_sprinkler_on',
-  manual_override: 'desired_manual_override',
-  stop_automation: 'desired_manual_override',
-};
 
 async function drainQueueForFarm(params: {
   userId: string;
@@ -45,30 +31,18 @@ async function drainQueueForFarm(params: {
   let sent = 0;
   for (const item of items) {
     try {
-      const { error: insErr } = await supabase.from('device_commands').insert({
-        user_id: item.user_id,
-        farm_id: item.farm_id,
-        device_name: item.device_name,
-        command_type: item.command_type as QueuedDeviceCommand['command_type'],
-        command_value: item.command_value,
-        executed: false,
+      // Replay through the same server-owned RPC as the online path. Values
+      // in localStorage are untrusted; in particular, device_name is ignored
+      // and the server resolves the farm/shed/device binding.
+      const { error } = await (supabase as any).rpc('queue_v8_actuator_command', {
+        p_farm_id: item.farm_id,
+        p_shed_id: item.shed_id ?? null,
+        p_device_token_id: item.device_token_id ?? null,
+        p_command_type: item.command_type,
+        p_command_value: item.command_value,
+        p_client_request_id: item.client_request_id,
       });
-      if (insErr) continue;
-
-      const desiredCol = DESIRED_COL[item.command_type];
-      if (desiredCol) {
-        const update: Record<string, unknown> = {
-          [desiredCol]: item.command_value,
-          updated_at: new Date().toISOString(),
-        };
-        let q: any = supabase
-          .from('device_status')
-          .update(update as never)
-          .eq('user_id', item.user_id)
-          .eq('farm_id', item.farm_id);
-        if (item.shed_id) q = q.eq('shed_id', item.shed_id);
-        await q;
-      }
+      if (error) throw error;
 
       removeDeviceCommand(item.id);
       sent += 1;
@@ -106,7 +80,6 @@ export function useDeviceOnlineSync() {
         const { data } = await supabase
           .from('device_health')
           .select('is_online,last_seen_at')
-          .eq('user_id', user.id)
           .eq('farm_id', selectedFarmId)
           .order('last_seen_at', { ascending: false })
           .limit(1)

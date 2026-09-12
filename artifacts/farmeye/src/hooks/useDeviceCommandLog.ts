@@ -17,6 +17,7 @@ export interface DeviceCommandLogFilters {
 export interface DeviceCommandLogEntry {
   id: string;
   command_id: string;
+  client_request_id: string | null;
   command_type: string;
   command_value: boolean;
   device_name: string;

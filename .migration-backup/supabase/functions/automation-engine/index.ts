@@ -539,7 +539,13 @@ Deno.serve(async (req) => {
 
       // Create alert if needed
       if (automationAction.alert) {
-        const { data: alertData } = await supabase.from('alerts').insert({
+        // The automation cycle can be retried by the scheduler while the
+        // alert dispatcher is processing the same farm. A stable, tenant-
+        // scoped event key makes that race converge on one alert row.
+        const eventKey = farm_id
+          ? `v8:automation:${farm_id}:${shed_id || 'farm'}:${automationAction.alert.type}:${Math.floor(Date.now() / (30 * 60 * 1000))}`
+          : null;
+        const alertPayload = {
           user_id,
           farm_id,
           shed_id,
@@ -547,29 +553,15 @@ Deno.serve(async (req) => {
           severity: automationAction.alert.severity,
           message: automationAction.alert.message,
           message_bn: automationAction.alert.messageBn,
-        }).select('id').single();
-
-        // Send push notification for this alert
-        try {
-          console.log(`📤 Sending push notification for alert: ${automationAction.alert.type}`);
-          
-          await supabase.functions.invoke('send-push-notification', {
-            body: {
-              user_id: user_id,
-              title: automationAction.alert.severity === 'danger' 
-                ? '🚨 জরুরি সতর্কতা!' 
-                : '⚠️ সতর্কতা',
-              body: automationAction.alert.messageBn,
-              severity: automationAction.alert.severity,
-              alert_id: alertData?.id,
-              url: '/alerts',
-            },
+          ...(eventKey ? { event_key: eventKey } : {}),
+        };
+        if (eventKey) {
+          await supabase.from('alerts').upsert(alertPayload, {
+            onConflict: 'farm_id,event_key',
+            ignoreDuplicates: true,
           });
-          
-          console.log(`✅ Push notification sent for alert`);
-        } catch (pushError) {
-          console.error('❌ Failed to send push notification:', pushError);
-          // Don't fail the automation if push fails
+        } else {
+          await supabase.from('alerts').insert(alertPayload);
         }
       }
 

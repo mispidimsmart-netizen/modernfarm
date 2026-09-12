@@ -67,8 +67,13 @@
 #include <Update.h>
 #include <esp_ota_ops.h>
 #include <HardwareSerial.h>
+#include <time.h>
+#include <string.h>
 #include "esp32-safety-engine.h"
 #include "mbedtls/md.h"
+#include "mbedtls/base64.h"
+#include <SHA256.h>
+#include <Ed25519.h>
 
 // ═══════════════════════════════════════════════════════════════════════
 // ON-BOARD TFT DISPLAY (OPTIONAL, read-only status panel)
@@ -108,7 +113,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.3.2-manual-safety";
+const char* FIRMWARE_VERSION = "8.3.3-ota-safety";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -121,9 +126,10 @@ const char* FIRMWARE_VERSION = "8.3.2-manual-safety";
 // ALWAYS-ON HARD FLOOR (cannot be disabled): T > HARD_FLOOR_TEMP_C
 //   → Fan HIGH + Alarm ON. This is firmware self-protection for livestock.
 // ═══════════════════════════════════════════════════════════════════════
-bool safetyEngineEnabled = true;            // default ON, set by /config (cached in NVS)
+bool safetyEngineEnabled = true;            // soft automation toggle; hard arbiter is always ON
 #define HARD_FLOOR_TEMP_C   42.0f           // never disabled — protects livestock
 #define HARD_FLOOR_HYST_C    2.0f           // turn off fan only after dropping 2°C below floor
+#define LEGACY_HMAC_COMPATIBILITY_GATE true // v8 secret_version=0 devices remain online during rollout
 bool hardFloorActive = false;
 // Cached config persistence — survives WiFi outage & reboot
 #define NVS_SAFETY_NS         "safety_cfg"
@@ -279,6 +285,7 @@ bool safetyCachedFromNvs = false;            // true if current value came from 
 
 // --- NVS ---
 #define NVS_NAMESPACE        "credentials"
+#define NVS_OTA_NAMESPACE    "ota_terminal"
 #define NVS_PROVISIONED_MAGIC 0x50524F56
 #define USE_HARDCODED_TOKEN  true
 
@@ -665,8 +672,28 @@ bool nvsProvisioned = false;
 bool otaInProgress = false;
 int otaProgress = 0;
 String otaStatus = "idle", otaAvailableVersion = "", otaPendingUrl = "", otaPendingChecksum = "";
+String otaPendingSha256 = "", otaPendingSignature = "", otaPendingSigningKey = "";
+String otaPendingAssignmentId = "", otaPendingFirmwareId = "";
 int otaPendingSize = 0;
 unsigned long lastOTACheck = 0;
+bool otaBootPendingHealthy = false;
+unsigned long otaBootValidationStart = 0;
+#define OTA_HEALTHY_BOOT_WINDOW_MS 60000UL
+// This identity remains in NVS across restart/rollback. It is cleared only
+// after ota-firmware-v8 acknowledges the terminal boot report.
+String otaTerminalAssignmentId = "", otaTerminalFirmwareId = "", otaTerminalTargetVersion = "", otaTerminalError = "";
+bool otaTerminalReportPending = false;
+bool otaTerminalReportSuccess = false;
+unsigned long lastOtaTerminalReportAttempt = 0;
+
+// This key is intentionally provisioned at release time, never generated in a
+// browser or stored in the OTA metadata. An all-zero key fails closed until the
+// production Ed25519 public key is inserted by the release owner.
+static const uint8_t OTA_TRUSTED_PUBLIC_KEY[32] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+static_assert(sizeof(OTA_TRUSTED_PUBLIC_KEY) == 32, "V8 OTA key must be 32 raw bytes");
 
 // --- OTA Environment Stability Tracking ---
 bool otaEnvironmentStable = false;
@@ -793,6 +820,7 @@ void loadCachedSafetyEngine();
 void saveCachedSafetyEngine(bool val);
 void checkCommands();
 void handleCloudResponse(String response);
+bool validateCloudConfig(JsonDocument& doc);
 
 // Farm Profile / EEPROM
 void loadFarmProfile();
@@ -813,6 +841,12 @@ void provisionFromHardcoded();
 void validateBootPartition();
 void checkOTAUpdate();
 void performOTAUpdate();
+void markHealthyBootIfReady();
+void loadOtaTerminalState();
+bool persistOtaAssignment();
+bool persistOtaValidated();
+bool persistOtaCancelled();
+void flushOtaTerminalReport();
 bool compareVersions(String current, String target);
 uint32_t calculateCRC32(uint8_t* data, size_t length);
 uint32_t calculateStreamCRC32(const esp_partition_t* partition, size_t size);
@@ -1632,6 +1666,31 @@ void updateLightingWithFade() {
 }
 
 void forceApplyManualRelay(String type, bool value) {
+  // Manual/stop_automation commands are operator intent, not a safety
+  // override. Refuse commands that would directly defeat an active hard
+  // safety output; the arbiter remains the final authority every loop.
+  if ((type == "fan" || type == "exhaust_fan") && !value &&
+      (hardFloorActive || currentState >= STATE_DANGER ||
+       currentState == STATE_SENSOR_FAIL || safetyEngine.lastResult.forceFanOn ||
+       emergencySurvivalMode)) {
+    Serial.println("🛑 Manual fan-OFF rejected by safety arbiter");
+    return;
+  }
+  if (type == "heater" &&
+      ((value && safetyEngine.lastResult.forceHeaterOff) ||
+       (!value && safetyEngine.lastResult.forceHeaterOn) ||
+       (value && (currentState >= STATE_DANGER ||
+                  currentState == STATE_SENSOR_FAIL ||
+                  emergencySurvivalMode)))) {
+    Serial.println("🛑 Manual heater command rejected by safety arbiter");
+    return;
+  }
+  if (type == "alarm" && !value &&
+      (hardFloorActive || currentState >= STATE_DANGER ||
+       currentState == STATE_SENSOR_FAIL || emergencySurvivalMode)) {
+    Serial.println("🛑 Manual alarm-OFF rejected by hard floor");
+    return;
+  }
   if (type == "fan" || type == "exhaust_fan") {
     relayTarget.fan = value; relayTarget.fanSpeed = value ? "HIGH" : "OFF";
     fanOn = value; fanSpeed = relayTarget.fanSpeed;
@@ -1695,8 +1754,10 @@ int evaluateHysteresisChannel(HystChannel &ch, float val, bool inv) {
   // is SKIPPED. Relays respond instantly to save lives.
   // ═══════════════════════════════════════════════════════════════
   // Hard floor always counts as emergency. Other emergency bypass requires safety engine ON.
+  // Critical arbiter paths are immutable. The cloud toggle only changes
+  // comfort automation; it can never remove a danger/sensor-fail bypass.
   bool emergencyBypass = hardFloorActive ||
-    (safetyEngineEnabled && (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode));
+    (currentState >= STATE_DANGER || currentState == STATE_SENSOR_FAIL || emergencySurvivalMode);
   
   for (int i = 0; i < ch.stageCount; i++) {
     HystStage &s = ch.stages[i];
@@ -1851,10 +1912,10 @@ void automationEngineTick() {
       Serial.printf("✅ [MANUAL] HARD FLOOR RELEASED: T=%.1f°C\n", mTemp);
     }
 
-    bool forceFan    = hardFloorActive || (safetyEngineEnabled && safetyEngine.lastResult.forceFanOn);
+    bool forceFan    = hardFloorActive || safetyEngine.lastResult.forceFanOn;
     bool forceAlarm  = hardFloorActive;
-    bool forceHeatOff = safetyEngineEnabled && safetyEngine.lastResult.forceHeaterOff;
-    bool forceHeatOn  = safetyEngineEnabled && safetyEngine.lastResult.forceHeaterOn;
+    bool forceHeatOff = safetyEngine.lastResult.forceHeaterOff;
+    bool forceHeatOn  = safetyEngine.lastResult.forceHeaterOn;
     bool safetyForcing = forceFan || forceAlarm || forceHeatOff || forceHeatOn;
 
     // Snapshot the operator's intent the moment safety takes over, so we can
@@ -1902,15 +1963,14 @@ void automationEngineTick() {
     Serial.printf("✅ HARD FLOOR RELEASED: T=%.1f°C\n", hfTemp);
   }
 
-  // AUTO mode: safety arbiter outputs (only when safety engine enabled)
-  if (safetyEngineEnabled) {
-    if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
-    if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
-    if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
-  }
+  // AUTO mode: safety arbiter outputs are always applied. Never allow a
+  // manual/stop_automation/config toggle to disable critical controls.
+  if (safetyEngine.lastResult.forceFanOn)    requestFan(true, "HIGH");
+  if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
+  if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
 
   // Emergency Survival overrides everything (only when safety engine enabled)
-  if (safetyEngineEnabled && emergencySurvivalMode) {
+  if (emergencySurvivalMode) {
     runEmergencySurvivalCycles();
     return;
   }
@@ -2926,7 +2986,7 @@ void connectWiFi() {
 // ║  Phase 1 Security: HMAC-SHA256 request signing                         ║
 // ║  Signature = HMAC( secret, "<ts>.<nonce>.<rawBody>" )                  ║
 // ║  Headers added: X-Timestamp, X-Nonce, X-Signature, X-Secret-Version    ║
-// ║  No-op when activeSecretVersion < 1 (legacy devices keep working).     ║
+// ║  Legacy compatibility is explicit; signed devices require NTP time.      ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 static String makeNonce() {
   // 16 hex chars: ts + counter + random — collision-safe per-device per-5min
@@ -2959,9 +3019,21 @@ static String hmacSha256Hex(const String& key, const String& msg) {
 // Attach signing headers. Call AFTER addHeader() but BEFORE http.POST/GET.
 // `body` should be the exact payload string for POSTs, or "" for GETs.
 static void attachSignature(HTTPClient& http, const String& body) {
-  if (activeSecretVersion < 1 || activeDeviceSecret.length() == 0) return; // legacy
-  String ts = String((unsigned long)(time(nullptr)));
-  if (ts == "0") ts = String((unsigned long)(millis() / 1000)); // fallback if NTP not synced
+  if (activeSecretVersion < 1 || activeDeviceSecret.length() == 0) {
+    if (!LEGACY_HMAC_COMPATIBILITY_GATE) {
+      Serial.println("🛑 HMAC: legacy compatibility gate is disabled");
+    }
+    return; // explicitly gated legacy compatibility
+  }
+  time_t now = time(nullptr);
+  if (now < 1700000000) {
+    // Never substitute uptime for unix time: the server must be able to
+    // enforce its ±300s replay window. The signed-device gate rejects this
+    // unsigned request; the next retry occurs after NTP.
+    Serial.println("⚠️ HMAC: NTP wall clock unavailable; request will be rejected");
+    return;
+  }
+  String ts = String((unsigned long)now);
   String nonce = makeNonce();
   String msg = ts + "." + nonce + "." + body;
   String sig = hmacSha256Hex(activeDeviceSecret, msg);
@@ -3204,10 +3276,207 @@ void applyCloudFarmType(const String& ft) {
   }
 }
 
+static bool configNumberIn(JsonObject obj, const char* key, float lo, float hi) {
+  if (!obj.containsKey(key)) return true;
+  float value = obj[key].as<float>();
+  return isfinite(value) && value >= lo && value <= hi;
+}
+
+static bool configPairOrdered(JsonObject obj, const char* lowKey, const char* highKey,
+                             float lo, float hi, float minimumGap) {
+  // A partial update of an ordered pair is unsafe: validating only the field
+  // present in the payload against hard bounds can leave it on the wrong side
+  // of the retained field. Reject it atomically instead of applying a
+  // relationship that was never checked.
+  if (obj.containsKey(lowKey) != obj.containsKey(highKey)) return false;
+  if (!obj.containsKey(lowKey)) return true;
+  float low = obj[lowKey].as<float>();
+  float high = obj[highKey].as<float>();
+  return isfinite(low) && isfinite(high) && low >= lo && high <= hi && high >= low + minimumGap;
+}
+
+// Validate the complete candidate before applying any field. This is
+// intentionally fail-closed: a malformed or cross-field-unsafe response
+// leaves the last known-good configuration untouched.
+bool validateCloudConfig(JsonDocument& doc) {
+  // /sync and older /config responses may expose farm thresholds at the
+  // document root instead of under `settings`/`thresholds`. Validate that
+  // representation before handleCloudResponse mutates any runtime rule.
+  JsonObject root = doc.as<JsonObject>();
+  if (root.containsKey("temperature_min") ||
+      root.containsKey("temperature_max") ||
+      root.containsKey("ammonia_max") ||
+      root.containsKey("hsi_mild_threshold") ||
+      root.containsKey("hsi_moderate_threshold") ||
+      root.containsKey("hsi_severe_threshold") ||
+      root.containsKey("hsi_emergency_threshold") ||
+      root.containsKey("fan_low_temp_min") ||
+      root.containsKey("fan_low_temp_max") ||
+      root.containsKey("fan_medium_temp_min") ||
+      root.containsKey("fan_medium_temp_max") ||
+      root.containsKey("fan_high_temp_min")) {
+    if (!configNumberIn(root, "temperature_min", 0, 60) ||
+        !configNumberIn(root, "temperature_max", 0, 60) ||
+        !configNumberIn(root, "fan_low_temp_min", 0, 60) ||
+        !configNumberIn(root, "fan_low_temp_max", 0, 60) ||
+        !configNumberIn(root, "fan_medium_temp_min", 0, 60) ||
+        !configNumberIn(root, "fan_medium_temp_max", 0, 60) ||
+        !configNumberIn(root, "fan_high_temp_min", 0, 60) ||
+        !configNumberIn(root, "ammonia_max", 0, 200) ||
+        !configNumberIn(root, "hsi_mild_threshold", 50, 100) ||
+        !configNumberIn(root, "hsi_moderate_threshold", 50, 100) ||
+        !configNumberIn(root, "hsi_severe_threshold", 50, 110) ||
+        !configNumberIn(root, "hsi_emergency_threshold", 50, 120) ||
+        !configPairOrdered(root, "temperature_min", "temperature_max", 0, 60, 0.5f) ||
+        !configPairOrdered(root, "fan_low_temp_min", "fan_low_temp_max", 0, 60, 0.1f) ||
+        !configPairOrdered(root, "fan_medium_temp_min", "fan_medium_temp_max", 0, 60, 0.1f) ||
+        !configPairOrdered(root, "hsi_mild_threshold", "hsi_moderate_threshold", 50, 120, 0.1f) ||
+        !configPairOrdered(root, "hsi_moderate_threshold", "hsi_severe_threshold", 50, 120, 0.1f) ||
+        !configPairOrdered(root, "hsi_severe_threshold", "hsi_emergency_threshold", 50, 120, 0.1f)) return false;
+  }
+  if (doc.containsKey("thresholds")) {
+    JsonObject th = doc["thresholds"];
+    if (!configNumberIn(th, "tempMin", 0, 60) ||
+        !configNumberIn(th, "tempMax", 0, 60) ||
+        !configNumberIn(th, "tempFanHigh", 0, 60) ||
+        !configNumberIn(th, "humidityMin", 10, 100) ||
+        !configNumberIn(th, "humidityMax", 10, 100) ||
+        !configNumberIn(th, "ammoniaMax", 0, 200) ||
+        !configNumberIn(th, "ammoniaAlarm", 0, 200) ||
+        !configPairOrdered(th, "tempMin", "tempMax", 0, 60, 0.5f) ||
+        !configPairOrdered(th, "humidityMin", "humidityMax", 10, 100, 1.0f) ||
+        !configPairOrdered(th, "ammoniaMax", "ammoniaAlarm", 0, 200, 0.1f)) return false;
+  }
+  if (doc.containsKey("hsi")) {
+    JsonObject h = doc["hsi"];
+    if (!configNumberIn(h, "mild", 50, 100) ||
+        !configNumberIn(h, "moderate", 50, 100) ||
+        !configNumberIn(h, "severe", 50, 110) ||
+        !configNumberIn(h, "emergency", 50, 120) ||
+        !configPairOrdered(h, "mild", "moderate", 50, 120, 0.1f) ||
+        !configPairOrdered(h, "moderate", "severe", 50, 120, 0.1f) ||
+        !configPairOrdered(h, "severe", "emergency", 50, 120, 0.1f)) return false;
+  }
+  if (doc.containsKey("heater")) {
+    JsonObject ht = doc["heater"];
+    if (!configNumberIn(ht, "onTemp", 0, 35) ||
+        !configNumberIn(ht, "offTemp", 0, 40) ||
+        !configNumberIn(ht, "tolerance", 0.1f, 5) ||
+        !configPairOrdered(ht, "onTemp", "offTemp", 0, 40, 0.5f)) return false;
+  }
+  if (doc.containsKey("minVent")) {
+    JsonObject mv = doc["minVent"];
+    if (!configNumberIn(mv, "tempThreshold", 0, 60) ||
+        !configNumberIn(mv, "cycleSeconds", 1, 900) ||
+        !configNumberIn(mv, "intervalMinutes", 1, 1440)) return false;
+  }
+  if (doc.containsKey("fogger")) {
+    JsonObject fg = doc["fogger"];
+    if (!configNumberIn(fg, "startTemp", 0, 60) ||
+        !configNumberIn(fg, "stopTemp", 0, 60) ||
+        !configNumberIn(fg, "startHumidityMax", 10, 100) ||
+        !configNumberIn(fg, "stopHumidity", 10, 100) ||
+        !configNumberIn(fg, "onSeconds", 1, 900) ||
+        !configNumberIn(fg, "pauseSeconds", 1, 3600) ||
+        !configPairOrdered(fg, "stopTemp", "startTemp", 0, 60, 0.5f)) return false;
+  }
+  if (doc.containsKey("settings")) {
+    JsonObject st = doc["settings"];
+    if (!configNumberIn(st, "temperature_min", 0, 60) ||
+        !configNumberIn(st, "temperature_max", 0, 60) ||
+        !configNumberIn(st, "fan_low_temp_min", 0, 60) ||
+        !configNumberIn(st, "fan_low_temp_max", 0, 60) ||
+        !configNumberIn(st, "fan_medium_temp_min", 0, 60) ||
+        !configNumberIn(st, "fan_medium_temp_max", 0, 60) ||
+        !configNumberIn(st, "fan_high_temp_min", 0, 60) ||
+        !configNumberIn(st, "humidity_min", 10, 100) ||
+        !configNumberIn(st, "humidity_max", 10, 100) ||
+        !configNumberIn(st, "ammonia_max", 0, 200) ||
+        !configNumberIn(st, "hsi_mild_threshold", 50, 100) ||
+        !configNumberIn(st, "hsi_moderate_threshold", 50, 100) ||
+        !configNumberIn(st, "hsi_severe_threshold", 50, 110) ||
+        !configNumberIn(st, "hsi_emergency_threshold", 50, 120) ||
+        !configPairOrdered(st, "temperature_min", "temperature_max", 0, 60, 0.5f) ||
+        !configPairOrdered(st, "fan_low_temp_min", "fan_low_temp_max", 0, 60, 0.1f) ||
+        !configPairOrdered(st, "fan_medium_temp_min", "fan_medium_temp_max", 0, 60, 0.1f) ||
+        !configPairOrdered(st, "humidity_min", "humidity_max", 10, 100, 1.0f) ||
+        !configPairOrdered(st, "hsi_mild_threshold", "hsi_moderate_threshold", 50, 120, 0.1f) ||
+        !configPairOrdered(st, "hsi_moderate_threshold", "hsi_severe_threshold", 50, 120, 0.1f) ||
+        !configPairOrdered(st, "hsi_severe_threshold", "hsi_emergency_threshold", 50, 120, 0.1f)) return false;
+  }
+  if (doc.containsKey("advanced_automation")) {
+    JsonObject adv = doc["advanced_automation"];
+    if (adv.containsKey("min_vent")) {
+      JsonObject mv = adv["min_vent"];
+      if (!configNumberIn(mv, "temp_threshold", 0, 60) ||
+          !configNumberIn(mv, "cycle_seconds", 1, 900) ||
+          !configNumberIn(mv, "interval_minutes", 1, 1440)) return false;
+    }
+    if (adv.containsKey("heater")) {
+      JsonObject ht = adv["heater"];
+      if (!configNumberIn(ht, "on_temp", 0, 35) ||
+          !configNumberIn(ht, "off_temp", 0, 40) ||
+          !configNumberIn(ht, "tolerance", 0.1f, 5) ||
+          !configPairOrdered(ht, "on_temp", "off_temp", 0, 40, 0.5f)) return false;
+    }
+    if (adv.containsKey("fogger")) {
+      JsonObject fg = adv["fogger"];
+      if (!configNumberIn(fg, "start_temp", 0, 60) ||
+          !configNumberIn(fg, "stop_temp", 0, 60) ||
+          !configNumberIn(fg, "start_humidity_max", 10, 100) ||
+          !configNumberIn(fg, "stop_humidity", 10, 100) ||
+          !configNumberIn(fg, "on_seconds", 1, 900) ||
+          !configNumberIn(fg, "pause_seconds", 1, 3600) ||
+          !configPairOrdered(fg, "stop_temp", "start_temp", 0, 60, 0.5f)) return false;
+    }
+    if (adv.containsKey("airflow")) {
+      JsonObject af = adv["airflow"];
+      if (!configNumberIn(af, "early_age_days", 0, 999) ||
+          !configNumberIn(af, "mid_age_days", 0, 999) ||
+          !configNumberIn(af, "mid_on_seconds", 1, 900) ||
+          !configNumberIn(af, "mid_interval_minutes", 1, 1440) ||
+          !configNumberIn(af, "night_on_seconds", 1, 900) ||
+          !configNumberIn(af, "night_interval_minutes", 1, 1440) ||
+          !configPairOrdered(af, "early_age_days", "mid_age_days", 0, 999, 1)) return false;
+    }
+  }
+  // Lighting is comfort-only, but malformed values can still create an
+  // uncontrolled relay schedule. Validate every numeric field before any
+  // lighting object is applied.
+  JsonObject lighting;
+  if (doc.containsKey("lighting_schedule")) {
+    lighting = doc["lighting_schedule"].as<JsonObject>();
+  } else if (doc.containsKey("lighting")) {
+    lighting = doc["lighting"].as<JsonObject>();
+  }
+  if (!lighting.isNull() &&
+      (!configNumberIn(lighting, "startHour", 0, 23) ||
+       !configNumberIn(lighting, "startMinute", 0, 59) ||
+       !configNumberIn(lighting, "endHour", 0, 23) ||
+       !configNumberIn(lighting, "endMinute", 0, 59) ||
+       !configNumberIn(lighting, "fadeInMinutes", 0, 1440) ||
+       !configNumberIn(lighting, "fadeOutMinutes", 0, 1440) ||
+       !configNumberIn(lighting, "minBrightness", 0, 100) ||
+       !configNumberIn(lighting, "maxBrightness", 0, 100) ||
+       !configNumberIn(lighting, "fade_circuits", 1, 3) ||
+       !configNumberIn(lighting, "fade_step_gap_minutes", 1, 30) ||
+       !configNumberIn(lighting, "layer_dark_hours", 4, 16) ||
+       !configNumberIn(lighting, "ldr_threshold_lux", 0, 200000) ||
+       !configNumberIn(lighting, "ldr_hysteresis_lux", 0, 200000) ||
+       !configNumberIn(lighting, "ldr_daylight_off_lux", 0, 200000))) return false;
+  if (doc.containsKey("currentHour") && ((int)doc["currentHour"] < 0 || (int)doc["currentHour"] > 23)) return false;
+  if (doc.containsKey("currentMinute") && ((int)doc["currentMinute"] < 0 || (int)doc["currentMinute"] > 59)) return false;
+  return true;
+}
+
 void handleCloudResponse(String response) {
   // 8 KB: /sync may include settings + advanced_automation + lighting blocks
   DynamicJsonDocument doc(8192);
   if (deserializeJson(doc, response) != DeserializationError::Ok) return;
+  if (!validateCloudConfig(doc)) {
+    Serial.println("🛑 [CONFIG] Unsafe cloud config rejected atomically; last-known-good retained");
+    return;
+  }
   
   // ═══════════════════════════════════════════════════════════════
   // AUTHORITATIVE MODE SYNC FROM CLOUD
@@ -3353,6 +3622,11 @@ void fetchConfig() {
   if (jerr) {
     configFetchFailStreak++;
     Serial.printf("⚠️ /config JSON parse failed (%s) — keeping cached safety state\n", jerr.c_str());
+    return;
+  }
+  if (!validateCloudConfig(doc)) {
+    configFetchFailStreak++;
+    Serial.println("🛑 /config rejected: unsafe threshold/timer cross-field combination; cache retained");
     return;
   }
 
@@ -3572,7 +3846,8 @@ void checkCommands() {
           ESP.restart();
           return; // unreachable but keeps compiler happy
         } else if (type == "stop_automation") {
-          // Full manual mode: disable automation + safety arbiter entirely until AUTO resumes
+          // Full manual mode stops comfort automation only. The hard floor,
+          // arbiter and emergency survival paths remain active.
           localManualOverride = value;
           manualCommandPending = false;
           if (value) {
@@ -3800,6 +4075,172 @@ uint32_t calculateStreamCRC32(const esp_partition_t* partition, size_t size) {
   return ~crc;
 }
 
+static bool trustedOtaKeyProvisioned() {
+  for (size_t i = 0; i < sizeof(OTA_TRUSTED_PUBLIC_KEY); i++) {
+    if (OTA_TRUSTED_PUBLIC_KEY[i] != 0) return true;
+  }
+  return false;
+}
+
+static size_t decodeBase64(const String& input, uint8_t* output, size_t outputSize) {
+  size_t decoded = 0;
+  if (mbedtls_base64_decode(output, outputSize, &decoded,
+      (const unsigned char*)input.c_str(), input.length()) != 0) return 0;
+  return decoded;
+}
+
+static bool verifyOtaSignature(const uint8_t* digest, const String& signatureB64) {
+  if (!trustedOtaKeyProvisioned() || signatureB64.length() == 0) return false;
+  uint8_t signature[64];
+  if (decodeBase64(signatureB64, signature, sizeof(signature)) != sizeof(signature)) return false;
+  // The signing contract signs the 32 raw SHA-256 digest bytes (not the
+  // firmware, hex text, or a JSON envelope).  Keep this exact contract in
+  // firmware so a valid signature can never be accidentally verified over a
+  // different representation.
+  return Ed25519::verify(signature, OTA_TRUSTED_PUBLIC_KEY, digest, 32);
+}
+
+static bool metadataUsesTrustedKey(const String& publicKeyB64) {
+  if (publicKeyB64.length() == 0) return false;
+  uint8_t metadataKey[32];
+  return decodeBase64(publicKeyB64, metadataKey, sizeof(metadataKey)) == sizeof(metadataKey) &&
+         memcmp(metadataKey, OTA_TRUSTED_PUBLIC_KEY, sizeof(metadataKey)) == 0;
+}
+
+void loadOtaTerminalState() {
+  Preferences otaPrefs;
+  otaPrefs.begin(NVS_OTA_NAMESPACE, true);
+  String phase = otaPrefs.getString("phase", "");
+  otaTerminalAssignmentId = otaPrefs.getString("assignment_id", "");
+  otaTerminalFirmwareId = otaPrefs.getString("firmware_id", "");
+  otaTerminalTargetVersion = otaPrefs.getString("target_version", "");
+  otaPrefs.end();
+
+  if (otaTerminalAssignmentId.length() != 36 ||
+      otaTerminalFirmwareId.length() == 0 || otaTerminalTargetVersion.length() == 0) {
+    otaTerminalAssignmentId = "";
+    otaTerminalFirmwareId = "";
+    otaTerminalTargetVersion = "";
+    return;
+  }
+
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  esp_ota_img_states_t imageState;
+  bool provisional = esp_ota_get_state_partition(running, &imageState) == ESP_OK &&
+                     imageState == ESP_OTA_IMG_PENDING_VERIFY;
+  if (phase == "validated") {
+    // The healthy gate completed before a previous report attempt failed or
+    // the device restarted. Retry the success report; do not clear NVS yet.
+    otaTerminalReportSuccess = true;
+    otaTerminalReportPending = true;
+    otaTerminalError = "";
+  } else if (phase == "pending" &&
+             otaTerminalTargetVersion == String(FIRMWARE_VERSION) && !provisional) {
+    // The image was marked valid but the phase update itself was interrupted.
+    otaTerminalReportSuccess = true;
+    otaTerminalReportPending = true;
+    otaTerminalError = "";
+  } else if (phase == "pending" &&
+             otaTerminalTargetVersion != String(FIRMWARE_VERSION)) {
+    // Running the previous image after a pending assignment is the
+    // detectable rollback path. Leave the exact identity intact for retry.
+    otaTerminalReportSuccess = false;
+    otaTerminalReportPending = true;
+    otaTerminalError = "ota_image_rolled_back_or_boot_failed";
+    otaStatus = "rollback";
+  }
+}
+
+bool persistOtaAssignment() {
+  if (otaPendingAssignmentId.length() != 36 ||
+      otaPendingFirmwareId.length() == 0 || otaAvailableVersion.length() == 0) return false;
+  Preferences otaPrefs;
+  if (!otaPrefs.begin(NVS_OTA_NAMESPACE, false)) return false;
+  size_t assignmentWritten = otaPrefs.putString("assignment_id", otaPendingAssignmentId);
+  size_t idWritten = otaPrefs.putString("firmware_id", otaPendingFirmwareId);
+  size_t versionWritten = otaPrefs.putString("target_version", otaAvailableVersion);
+  size_t phaseWritten = otaPrefs.putString("phase", "pending");
+  otaPrefs.end();
+  return assignmentWritten > 0 && idWritten > 0 && versionWritten > 0 && phaseWritten > 0;
+}
+
+bool persistOtaValidated() {
+  if (otaTerminalAssignmentId.length() != 36 ||
+      otaTerminalFirmwareId.length() == 0 || otaTerminalTargetVersion.length() == 0) return false;
+  Preferences otaPrefs;
+  if (!otaPrefs.begin(NVS_OTA_NAMESPACE, false)) return false;
+  size_t phaseWritten = otaPrefs.putString("phase", "validated");
+  otaPrefs.end();
+  return phaseWritten > 0;
+}
+
+bool persistOtaCancelled() {
+  Preferences otaPrefs;
+  if (!otaPrefs.begin(NVS_OTA_NAMESPACE, false)) return false;
+  size_t phaseWritten = otaPrefs.putString("phase", "cancelled");
+  otaPrefs.end();
+  return phaseWritten > 0;
+}
+
+static void clearOtaTerminalState() {
+  Preferences otaPrefs;
+  if (!otaPrefs.begin(NVS_OTA_NAMESPACE, false)) return;
+  bool cleared = otaPrefs.clear();
+  otaPrefs.end();
+  if (cleared) {
+    otaTerminalFirmwareId = "";
+    otaTerminalAssignmentId = "";
+    otaTerminalTargetVersion = "";
+    otaTerminalError = "";
+    otaTerminalReportPending = false;
+    otaTerminalReportSuccess = false;
+  }
+}
+
+void flushOtaTerminalReport() {
+  if (!otaTerminalReportPending || !wifiConnected ||
+      otaTerminalAssignmentId.length() != 36 || otaTerminalFirmwareId.length() == 0) return;
+  unsigned long now = millis();
+  if (lastOtaTerminalReportAttempt != 0 &&
+      !intervalPassed(now, lastOtaTerminalReportAttempt, 30000UL)) return;
+  lastOtaTerminalReportAttempt = now;
+
+  HTTPClient http;
+  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware-v8?action=boot-report";
+  http.begin(url);
+  http.setTimeout(5000);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-token", activeDeviceToken.c_str());
+
+  StaticJsonDocument<512> report;
+  report["assignment_id"] = otaTerminalAssignmentId;
+  report["firmware_id"] = otaTerminalFirmwareId;
+  report["boot_success"] = otaTerminalReportSuccess;
+  report["version"] = FIRMWARE_VERSION;
+  report["from_version"] = otaTerminalTargetVersion;
+  report["signature_validated"] = otaTerminalReportSuccess;
+  if (!otaTerminalReportSuccess) report["error_message"] = otaTerminalError;
+  String payload;
+  serializeJson(report, payload);
+  int code = http.POST(payload);
+  String response = http.getString();
+  http.end();
+
+  StaticJsonDocument<256> acknowledgement;
+  bool acknowledged = code >= 200 && code < 300 &&
+    deserializeJson(acknowledgement, response) == DeserializationError::Ok &&
+    acknowledgement["success"] == true;
+  if (acknowledged) {
+    bool reportedSuccess = otaTerminalReportSuccess;
+    clearOtaTerminalState();
+    otaStatus = reportedSuccess ? "validated_reported" : "rollback_reported";
+    Serial.printf("✅ OTA terminal report acknowledged (%s)\n",
+      reportedSuccess ? "boot_success" : "rollback");
+  } else {
+    Serial.printf("⚠️ OTA terminal report pending (HTTP %d); retaining NVS identity\n", code);
+  }
+}
+
 void validateBootPartition() {
   const esp_partition_t* running = esp_ota_get_running_partition();
   esp_ota_img_states_t state;
@@ -3819,10 +4260,16 @@ void validateBootPartition() {
         credOk ? "OK" : "FAIL", heapOk ? "OK" : "LOW", ESP.getFreeHeap(),
         sensorOk ? "OK" : "FAIL");
       
+      // Sensor startup can transiently return NaN; the normal sensor manager
+      // has retries. Credentials/heap gate the boot, while the healthy-boot
+      // window below evaluates sustained sensor and safety health.
       if (credOk && heapOk) {
-        esp_ota_mark_app_valid_cancel_rollback();
-        Serial.printf("✅ Firmware v%s validated and locked\n", FIRMWARE_VERSION);
-        otaStatus = "validated";
+        // Do not mark valid from setup: a booting image must survive a
+        // healthy-boot window first so dual-partition rollback remains useful.
+        otaBootPendingHealthy = true;
+        otaBootValidationStart = millis();
+        otaStatus = "pending_health";
+        Serial.println("🟡 OTA image passed boot probes; awaiting healthy-boot mark-valid");
       } else {
         Serial.println("❌ Firmware validation FAILED — initiating rollback");
         otaStatus = "rollback";
@@ -3835,8 +4282,40 @@ void validateBootPartition() {
   }
 }
 
+void markHealthyBootIfReady() {
+  if (!otaBootPendingHealthy ||
+      safeElapsed(millis(), otaBootValidationStart) < OTA_HEALTHY_BOOT_WINDOW_MS) return;
+  bool healthy = currentState != STATE_EMERGENCY &&
+                 currentState != STATE_SENSOR_FAIL &&
+                 !sensorErrorMode && !failsafeMode &&
+                 lastValidSensor != 0 &&
+                 safeElapsed(millis(), lastValidSensor) < SVL_LAST_GOOD_EXPIRE_MS &&
+                 !svlTemp.isOffline && !svlHumidity.isOffline &&
+                 ESP.getFreeHeap() >= 20000;
+  if (!healthy) {
+    Serial.println("❌ OTA healthy-boot gate failed — rolling back");
+    otaStatus = "rollback";
+    otaBootPendingHealthy = false;
+    esp_ota_mark_app_invalid_rollback_and_reboot();
+    return;
+  }
+  esp_ota_mark_app_valid_cancel_rollback();
+  otaBootPendingHealthy = false;
+  otaStatus = "validated";
+  // Record that the sustained healthy gate completed before attempting the
+  // network report. A restart after this point must still report success.
+  if (persistOtaValidated()) {
+    otaTerminalReportSuccess = true;
+    otaTerminalReportPending = true;
+  } else {
+    Serial.println("⚠️ OTA: healthy gate passed but terminal state NVS write failed");
+  }
+  Serial.printf("✅ Firmware v%s healthy for %lus; rollback cancelled\n",
+    FIRMWARE_VERSION, OTA_HEALTHY_BOOT_WINDOW_MS / 1000UL);
+}
+
 void checkOTAUpdate() {
-  if (otaInProgress || !wifiConnected) return;
+  if (otaInProgress || otaBootPendingHealthy || otaTerminalReportPending || !wifiConnected) return;
   // Don't check during critical states
   if (currentState == STATE_EMERGENCY || currentState == STATE_SENSOR_FAIL || purgeActive || emergencySurvivalMode) return;
   // Don't check during any active manual override
@@ -3874,7 +4353,7 @@ void checkOTAUpdate() {
   }
   
   HTTPClient http;
-  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware?action=check&current_version=" + String(FIRMWARE_VERSION);
+  String url = "https://hbwfuvqrfgtefozajyfu.supabase.co/functions/v1/ota-firmware-v8?action=check&current_version=" + String(FIRMWARE_VERSION);
   http.begin(url);
   http.addHeader("x-device-token", activeDeviceToken.c_str());
   http.setTimeout(10000);
@@ -3898,7 +4377,29 @@ void checkOTAUpdate() {
           otaPendingUrl = doc["url"] | "";
           otaPendingSize = doc["size"] | 0;
           otaPendingChecksum = doc["checksum"] | "";
+          otaPendingSha256 = doc["sha256"] | "";
+          otaPendingSignature = doc["signature"] | "";
+          otaPendingSigningKey = doc["signing_key"]["public_key"] | "";
+          otaPendingAssignmentId = doc["assignment_id"] | "";
+          otaPendingFirmwareId = doc["firmware_id"] | "";
           otaAvailableVersion = newVer;
+          // V8 production OTA is never allowed to fall back to unsigned or
+          // digest-less metadata. The trusted key is compiled into firmware;
+          // server metadata is only accepted when it identifies that key.
+          if (otaPendingSha256.length() != 64 ||
+              otaPendingSize <= 0 ||
+              otaPendingUrl.length() < 8 ||
+              otaPendingUrl.substring(0, 8) != "https://" ||
+              otaPendingSignature.length() == 0 ||
+              otaPendingAssignmentId.length() != 36 ||
+              otaPendingFirmwareId.length() == 0 ||
+              !trustedOtaKeyProvisioned() ||
+              !metadataUsesTrustedKey(otaPendingSigningKey)) {
+            Serial.println("🛑 OTA: missing digest/signature or trusted key — refusing update");
+            otaStatus = "signature_required";
+            http.end();
+            return;
+          }
           Serial.printf("🔄 OTA: Update available v%s → v%s (size=%d)\n", FIRMWARE_VERSION, newVer.c_str(), otaPendingSize);
           
           if (otaPendingUrl.length() > 0 && otaPendingSize > 0) {
@@ -3921,6 +4422,15 @@ void performOTAUpdate() {
   otaInProgress = true;
   otaStatus = "downloading";
   otaProgress = 0;
+  if (otaPendingSha256.length() != 64 || otaPendingSize <= 0 ||
+      otaPendingUrl.length() < 8 || otaPendingUrl.substring(0, 8) != "https://" ||
+      otaPendingSignature.length() == 0 || !trustedOtaKeyProvisioned() ||
+      otaPendingAssignmentId.length() != 36 || otaPendingFirmwareId.length() == 0 ||
+      !metadataUsesTrustedKey(otaPendingSigningKey)) {
+    Serial.println("🛑 OTA: signature and SHA-256 metadata are mandatory");
+    otaInProgress = false; otaStatus = "signature_required";
+    return;
+  }
   
   // RULE 3: Get the next OTA partition (dual-partition scheme)
   const esp_partition_t* updatePartition = esp_ota_get_next_update_partition(NULL);
@@ -3964,8 +4474,9 @@ void performOTAUpdate() {
   }
   
   int contentLen = http.getSize();
-  if (contentLen <= 0) {
-    Serial.println("❌ OTA: Invalid content length");
+  if (contentLen <= 0 || contentLen != otaPendingSize) {
+    Serial.printf("❌ OTA: Content length mismatch (received=%d, metadata=%d)\n",
+      contentLen, otaPendingSize);
     esp_ota_abort(otaHandle);
     otaInProgress = false; otaStatus = "error";
     http.end();
@@ -3978,6 +4489,7 @@ void performOTAUpdate() {
   size_t written = 0;
   uint8_t buf[1024];
   int lastPercent = 0;
+  SHA256 digest;
   
   while (written < (size_t)contentLen) {
     esp_task_wdt_reset();
@@ -4026,6 +4538,7 @@ void performOTAUpdate() {
       http.end();
       return;
     }
+    digest.update(buf, bytesRead);
     
     written += bytesRead;
     int percent = (written * 100) / contentLen;
@@ -4046,6 +4559,26 @@ void performOTAUpdate() {
   }
   
   Serial.printf("  Download complete: %d bytes written\n", written);
+
+  uint8_t computedDigest[32];
+  digest.finalize(computedDigest, sizeof(computedDigest));
+  char computedSha256[65];
+  for (int i = 0; i < 32; i++) snprintf(computedSha256 + i * 2, 3, "%02x", computedDigest[i]);
+  computedSha256[64] = 0;
+  if (strcasecmp(computedSha256, otaPendingSha256.c_str()) != 0) {
+    Serial.println("❌ OTA: SHA-256 digest mismatch — aborting");
+    esp_ota_abort(otaHandle);
+    otaInProgress = false; otaStatus = "digest_fail";
+    return;
+  }
+  if (!verifyOtaSignature(computedDigest, otaPendingSignature)) {
+    Serial.println("❌ OTA: Ed25519 signature invalid — aborting before activation");
+    esp_ota_abort(otaHandle);
+    otaInProgress = false; otaStatus = "signature_fail";
+    gsmQueueAlert("ota", "❌ OTA rejected: cryptographic signature verification failed");
+    return;
+  }
+  Serial.println("✅ OTA: SHA-256 and embedded-key signature verified");
   
   // RULE 2: Verify CRC32 checksum BEFORE finalizing
   if (otaPendingChecksum.length() > 0) {
@@ -4064,8 +4597,6 @@ void performOTAUpdate() {
       return;
     }
     Serial.printf("  ✅ CRC32 verified: 0x%08X\n", computedCRC);
-  } else {
-    Serial.println("  ⚠️ No checksum provided — skipping CRC verify (not recommended)");
   }
   
   // Finalize OTA write
@@ -4076,14 +4607,27 @@ void performOTAUpdate() {
     return;
   }
   
+  // Persist the exact server assignment before changing partitions. If the
+  // new image fails to boot and ESP-IDF rolls back, the previous image uses
+  // this identity to report the terminal failure to V8 OTA.
+  if (!persistOtaAssignment()) {
+    Serial.println("❌ OTA: Could not persist assignment identity; refusing reboot");
+    otaInProgress = false; otaStatus = "nvs_error";
+    return;
+  }
+  otaTerminalFirmwareId = otaPendingFirmwareId;
+  otaTerminalAssignmentId = otaPendingAssignmentId;
+  otaTerminalTargetVersion = otaAvailableVersion;
+
   // RULE 3+4: Set boot partition (pending verify — rollback if validation fails)
   err = esp_ota_set_boot_partition(updatePartition);
   if (err != ESP_OK) {
     Serial.printf("❌ OTA: Failed to set boot partition (0x%x)\n", err);
+    persistOtaCancelled();
     otaInProgress = false; otaStatus = "error";
     return;
   }
-  
+
   otaStatus = "rebooting";
   otaProgress = 100;
   Serial.println("╔═══════════════════════════════════════════════════════════╗");
@@ -4297,11 +4841,16 @@ void setup() {
   // ALWAYS provision from hardcoded on boot to ensure latest values are used
   // This prevents stale NVS credentials from blocking WiFi connection
   provisionFromHardcoded();
+  loadOtaTerminalState();
   Serial.printf("🔑 Credentials loaded:\n");
   Serial.printf("   SSID: [%s] (len=%d)\n", activeWifiSSID.c_str(), activeWifiSSID.length());
   Serial.printf("   Pass: [%s] (len=%d)\n", activeWifiPassword.length() > 0 ? "****" : "EMPTY", activeWifiPassword.length());
   Serial.printf("   Token: [%s]\n", activeDeviceToken.substring(0, 8).c_str());
   Serial.printf("   Farm: [%s] Shed: [%s]\n", activeFarmId.c_str(), activeShedId.c_str());
+  // Signed requests use only an NTP-derived unix timestamp. This is
+  // non-blocking; legacy secret_version=0 devices remain compatible while
+  // upgraded devices retry cloud authentication after time synchronization.
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
 
   // --- Restart Reason ---
   restartReason = detectRestartReason();
@@ -4419,7 +4968,7 @@ void setup() {
       while (millis() - rw < 2500) { esp_task_wdt_reset(); yield(); }
     }
   }
-  lastValidSensor = millis();
+  if (sensorOK) lastValidSensor = millis();
 
   float testT2 = dht2.readTemperature();
   if (isnan(testT2)) {
@@ -4450,7 +4999,11 @@ void setup() {
 
   // --- WiFi ---
   connectWiFi();
-  if (wifiConnected) { syncWithCloud(); fetchConfig(); }
+  if (wifiConnected) {
+    syncWithCloud();
+    fetchConfig();
+    flushOtaTerminalReport();
+  }
   else {
     Serial.printf("📴 Boot offline — safety=%s (cached), Hard Floor (>%.0f°C) armed\n",
       safetyEngineEnabled ? "ON" : "OFF", HARD_FLOOR_TEMP_C);
@@ -4976,6 +5529,8 @@ void displayManagerTick() {}
 void loop() {
   unsigned long now = millis();
   esp_task_wdt_reset();
+  markHealthyBootIfReady();
+  flushOtaTerminalReport();
 
   // --- NVS Heartbeat (alive timestamp for outage detection) ---
   nvsWriteAliveTimestamp();
@@ -5031,10 +5586,8 @@ void loop() {
   // In Manual mode the operator controls the relays, but the arbiter
   // still evaluates INV-1..INV-8 and can force life-saving actions.
   // ═══════════════════════════════════════════════════════════════
-  if (safetyEngineEnabled) {
-    safetyEngine.arbiterTick(temperature, humidity, ammonia, 
-      !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
-  }
+  safetyEngine.arbiterTick(temperature, humidity, ammonia,
+    !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 
   // --- Sensor Manager (read all sensors, filter, validate) ---
   if (intervalPassed(now, lastSensorRead, SENSOR_READ_INTERVAL)) {
@@ -5053,10 +5606,10 @@ void loop() {
   updateThermalModel();
 
   // --- Safety Arbiter AGAIN after all processing (Auto + Manual, when enabled) ---
-  if (safetyEngineEnabled) {
-    safetyEngine.arbiterTick(temperature, humidity, ammonia,
-      !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
-  }
+  // The arbiter is the final authority and is deliberately independent from
+  // cloud automation mode. Hard safety controls must survive MANUAL/STOP.
+  safetyEngine.arbiterTick(temperature, humidity, ammonia,
+    !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 
   // --- Relay Manager (single hardware write point) ---
   relayManagerApply();

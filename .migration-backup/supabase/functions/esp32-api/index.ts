@@ -11,6 +11,7 @@ import {
   acknowledgeCommandsV2,
   getCommandStatus,
   retryUnackedCommands,
+  type BoundDevice,
 } from "./commands.ts";
 import { handlePowerStatus, getPowerOutages, type PowerStatusPayload } from "./power.ts";
 import { handleFailsafeSync } from "./failsafe.ts";
@@ -191,37 +192,13 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (!deviceToken && bodyData.device_id) {
-        const { data: deviceByName } = await supabase
-          .from('device_tokens')
-          .select('token')
-          .eq('device_name', bodyData.device_id)
-          .eq('is_active', true)
-          .single();
-        if (deviceByName) deviceToken = deviceByName.token;
-      }
       if (!deviceToken && bodyData.device_token) {
         deviceToken = bodyData.device_token;
       }
     }
 
-    // For GET requests, support device_id from query params
-    if (req.method === 'GET') {
-      const queryDeviceId = url.searchParams.get('device_id');
-      if (!deviceToken && queryDeviceId) {
-        const { data: deviceByName } = await supabase
-          .from('device_tokens')
-          .select('token')
-          .eq('device_name', queryDeviceId)
-          .eq('is_active', true)
-          .single();
-        
-        if (deviceByName) {
-          deviceToken = deviceByName.token;
-        }
-      }
-    }
-    
+    // device_id is a legacy routing hint, never an authentication
+    // credential. A token is required even for the legacy V8 poll endpoint.
     if (!deviceToken) {
       // Audit log: missing token
       try {
@@ -240,7 +217,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // Verify device token, get user AND farm_id (multi-tenant isolation)
     const { data: device, error: deviceError } = await supabase
       .from('device_tokens')
-      .select('id, user_id, is_active, farm_id, shed_id')
+      .select('id, user_id, is_active, farm_id, shed_id, device_name')
       .eq('token', deviceToken)
       .single();
 
@@ -403,11 +380,19 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
 
     if (req.method === 'GET' && path === 'commands') {
       const deviceName = url.searchParams.get('device_id') || bodyData?.device_id;
-      return await getDeviceCommands(supabase, userId, deviceName);
+      return await getDeviceCommands(supabase, userId, deviceName, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     if (req.method === 'POST' && path === 'commands-ack') {
-      return await acknowledgeCommands(bodyData, supabase, userId);
+      return await acknowledgeCommands(bodyData, supabase, userId, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -417,24 +402,44 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // POST /command-retry    - Cloud retries unacknowledged commands
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'POST' && path === 'commands-ack-v2') {
-      return await acknowledgeCommandsV2(bodyData, supabase, userId);
+      return await acknowledgeCommandsV2(bodyData, supabase, userId, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     if (req.method === 'GET' && path === 'command-status') {
       const commandId = url.searchParams.get('command_id');
-      return await getCommandStatus(supabase, userId, commandId);
+      return await getCommandStatus(supabase, userId, commandId, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     if (req.method === 'POST' && path === 'command-retry') {
-      return await retryUnackedCommands(supabase, userId);
+      return await retryUnackedCommands(supabase, userId, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     if (req.method === 'POST' && path === 'control') {
-      return await handleControlCommand(bodyData, supabase, userId);
+      return await handleControlCommand(bodyData, supabase, userId, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     if (req.method === 'POST' && path === 'manual-control') {
-      return await handleManualControl(bodyData, supabase, userId);
+      return await handleManualControl(bodyData, supabase, userId, {
+        device_name: device.device_name,
+        farm_id: deviceFarmId,
+        shed_id: deviceShedId,
+      });
     }
 
     if (req.method === 'POST' && path === 'health') {
@@ -1780,9 +1785,21 @@ interface ControlPayload {
   mode?: 'AUTO' | 'MANUAL';
 }
 
-async function handleControlCommand(body: ControlPayload, supabase: any, userId: string) {
-  const deviceName = body.device_id || 'ESP32_LAYER_001';
-  const commands: { user_id: string; device_name: string; command_type: string; command_value: boolean }[] = [];
+async function handleControlCommand(
+  body: ControlPayload,
+  supabase: any,
+  userId: string,
+  boundDevice: BoundDevice,
+) {
+  const deviceName = boundDevice.device_name || 'ESP32_LAYER_001';
+  const commands: {
+    user_id: string;
+    farm_id?: string | null;
+    shed_id?: string | null;
+    device_name: string;
+    command_type: string;
+    command_value: boolean;
+  }[] = [];
 
   // Helper to parse ON/OFF or boolean
   const parseValue = (val: string | boolean | undefined): boolean | null => {
@@ -1797,25 +1814,34 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
   const powerValue = parseValue(body.power);
 
   if (fanValue !== null) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'fan', command_value: fanValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'fan', command_value: fanValue });
   }
   if (lightValue !== null) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'light', command_value: lightValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'light', command_value: lightValue });
   }
   if (alarmValue !== null) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'alarm', command_value: alarmValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'alarm', command_value: alarmValue });
   }
   if (powerValue !== null) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'power', command_value: powerValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'power', command_value: powerValue });
   }
 
   // Handle mode - write to desired_manual_override (cloud never sets actual)
   if (body.mode) {
     const manualOverride = body.mode === 'MANUAL';
-    await supabase
+    let modeQuery = supabase
       .from('device_status')
       .update({ desired_manual_override: manualOverride })
       .eq('user_id', userId);
+    if (boundDevice.farm_id) modeQuery = modeQuery.eq('farm_id', boundDevice.farm_id);
+    if (boundDevice.shed_id) modeQuery = modeQuery.eq('shed_id', boundDevice.shed_id);
+    const { data: modeRows, error: modeError } = await modeQuery.select('id');
+    if (modeError || !modeRows || modeRows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to update desired state', code: 'UPDATE_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
   }
 
   if (commands.length === 0) {
@@ -1827,17 +1853,23 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
 
   // ── Duplicate prevention: cancel pending commands for same device+type ──
   for (const cmd of commands) {
-    await supabase
+    let supersedeQuery = supabase
       .from('device_command_log')
       .update({ status: 'superseded', expired_at: new Date().toISOString() })
       .eq('user_id', userId)
       .eq('device_name', cmd.device_name)
       .eq('command_type', cmd.command_type)
       .in('status', ['pending', 'sent']);
+    if (boundDevice.farm_id) supersedeQuery = supersedeQuery.eq('farm_id', boundDevice.farm_id);
+    if (boundDevice.shed_id) supersedeQuery = supersedeQuery.eq('shed_id', boundDevice.shed_id);
+    await supersedeQuery;
   }
 
   // Insert into legacy device_commands table
-  const { error } = await supabase.from('device_commands').insert(commands);
+  const { data: insertedCommands, error } = await supabase
+    .from('device_commands')
+    .insert(commands)
+    .select('id, command_type, command_value, client_request_id');
 
   if (error) {
     console.error('Error inserting control commands:', error);
@@ -1848,12 +1880,15 @@ async function handleControlCommand(body: ControlPayload, supabase: any, userId:
   }
 
   // ── Also log to device_command_log with unique command_id ──
-  const commandLogs = commands.map(cmd => ({
+  const commandLogs = (insertedCommands || []).map((cmd: any) => ({
     user_id: userId,
-    command_id: `CMD_${Date.now()}_${cmd.command_type}_${Math.random().toString(36).substring(2, 8)}`,
-    device_name: cmd.device_name,
+    farm_id: boundDevice.farm_id,
+    shed_id: boundDevice.shed_id,
+    command_id: cmd.id,
+    device_name: deviceName,
     command_type: cmd.command_type,
     command_value: cmd.command_value,
+    client_request_id: cmd.client_request_id,
     status: 'pending',
     sent_at: new Date().toISOString(),
     source: 'cloud',
@@ -2020,8 +2055,13 @@ interface ManualControlPayload {
   manual_override?: boolean;
 }
 
-async function handleManualControl(body: ManualControlPayload, supabase: any, userId: string) {
-  const deviceName = body.device_id || 'ESP32_LAYER_001';
+async function handleManualControl(
+  body: ManualControlPayload,
+  supabase: any,
+  userId: string,
+  boundDevice: BoundDevice,
+) {
+  const deviceName = boundDevice.device_name || 'ESP32_LAYER_001';
   
   // Helper to parse boolean or ON/OFF string
   const parseValue = (val: boolean | string | undefined): boolean | undefined => {
@@ -2058,12 +2098,15 @@ async function handleManualControl(body: ManualControlPayload, supabase: any, us
   }
 
   // Update desired_state only (ESP32 decides final relay state)
-  const { error: updateError } = await supabase
+  let desiredQuery = supabase
     .from('device_status')
     .update(desiredUpdate)
     .eq('user_id', userId);
+  if (boundDevice.farm_id) desiredQuery = desiredQuery.eq('farm_id', boundDevice.farm_id);
+  if (boundDevice.shed_id) desiredQuery = desiredQuery.eq('shed_id', boundDevice.shed_id);
+  const { data: desiredRows, error: updateError } = await desiredQuery.select('id');
 
-  if (updateError) {
+  if (updateError || !desiredRows || desiredRows.length === 0) {
     console.error('Error updating desired state:', updateError);
     return new Response(
       JSON.stringify({ error: 'Failed to update desired state', code: 'UPDATE_FAILED' }),
@@ -2072,22 +2115,35 @@ async function handleManualControl(body: ManualControlPayload, supabase: any, us
   }
 
   // Also queue commands for ESP32 to pick up
-  const commands: { user_id: string; device_name: string; command_type: string; command_value: boolean }[] = [];
+  const commands: {
+    user_id: string;
+    farm_id?: string | null;
+    shed_id?: string | null;
+    device_name: string;
+    command_type: string;
+    command_value: boolean;
+  }[] = [];
   if (fanValue !== undefined) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'fan', command_value: fanValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'fan', command_value: fanValue });
   }
   if (lightValue !== undefined) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'light', command_value: lightValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'light', command_value: lightValue });
   }
   if (alarmValue !== undefined) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'alarm', command_value: alarmValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'alarm', command_value: alarmValue });
   }
   if (powerValue !== undefined) {
-    commands.push({ user_id: userId, device_name: deviceName, command_type: 'power', command_value: powerValue });
+    commands.push({ user_id: userId, farm_id: boundDevice.farm_id, shed_id: boundDevice.shed_id, device_name: deviceName, command_type: 'power', command_value: powerValue });
   }
 
   if (commands.length > 0) {
-    await supabase.from('device_commands').insert(commands);
+    const { error: queueError } = await supabase.from('device_commands').insert(commands);
+    if (queueError) {
+      return new Response(
+        JSON.stringify({ error: 'Failed to queue commands', code: 'INSERT_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
   }
 
   console.log(`Manual control desired_state: ${JSON.stringify(desiredUpdate)} for device ${deviceName}`);

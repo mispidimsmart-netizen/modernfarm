@@ -11,6 +11,8 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? SERVICE_ROLE;
+const CRON_SECRET = Deno.env.get("ALERT_DISPATCHER_CRON_SECRET") ?? "";
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const TWILIO_API_KEY = Deno.env.get("TWILIO_API_KEY") ?? "";
 const TWILIO_FROM_SMS = Deno.env.get("TWILIO_FROM_SMS") ?? "";
@@ -22,6 +24,13 @@ type ChannelStatus =
   | "queued" | "sent" | "failed" | "skipped_quiet"
   | "skipped_cooldown" | "skipped_disabled";
 
+function normalizeSeverity(value: unknown): "critical" | "warning" {
+  const severity = String(value ?? "").toLowerCase();
+  return severity === "danger" || severity === "critical" || severity === "high"
+    ? "critical"
+    : "warning";
+}
+
 function isInQuietHours(start?: string | null, end?: string | null): boolean {
   if (!start || !end) return false;
   const now = new Date();
@@ -32,22 +41,57 @@ function isInQuietHours(start?: string | null, end?: string | null): boolean {
   return cur >= start || cur <= end; // wrap around midnight
 }
 
-async function logDelivery(
+async function claimDelivery(
   supa: any,
-  alert_id: string,
-  farm_id: string | null,
+  alertId: string,
+  farmId: string,
   channel: string,
+  deliveryKey: string,
+): Promise<string | null> {
+  const { data, error } = await supa.rpc("claim_v8_alert_delivery", {
+    p_alert_id: alertId,
+    p_farm_id: farmId,
+    p_channel: channel,
+    p_delivery_key: deliveryKey,
+    p_is_escalation: false,
+  });
+  // A claim failure is fail-closed: sending without a durable claim would
+  // reintroduce duplicate sends during a cron race. SMS/WhatsApp claims can
+  // be reclaimed after their lease only because the provider request carries
+  // a stable delivery key; Web Push remains terminal after ambiguity.
+  if (error || typeof data !== "string") return null;
+  return data;
+}
+
+async function completeDelivery(
+  supa: any,
+  deliveryKey: string,
+  claimToken: string,
   status: ChannelStatus,
   recipient?: string | null,
-  provider_message_id?: string | null,
-  error_message?: string | null,
-  is_escalation = false,
+  providerMessageId?: string | null,
+  errorMessage?: string | null,
 ) {
-  await supa.from("alert_deliveries").insert({
-    alert_id, farm_id, channel, status, recipient,
-    provider_message_id, error_message, is_escalation,
-    sent_at: status === "sent" ? new Date().toISOString() : null,
+  await supa.rpc("complete_v8_alert_delivery", {
+    p_delivery_key: deliveryKey,
+    p_claim_token: claimToken,
+    p_status: status,
+    p_recipient: recipient ?? null,
+    p_provider_message_id: providerMessageId ?? null,
+    p_error_message: errorMessage ?? null,
   });
+}
+
+async function releaseDelivery(
+  supa: any,
+  deliveryKey: string,
+  claimToken: string,
+): Promise<boolean> {
+  const { data, error } = await supa.rpc("release_v8_alert_delivery_claim", {
+    p_delivery_key: deliveryKey,
+    p_claim_token: claimToken,
+  });
+  return !error && data === true;
 }
 
 async function sendTwilio(
@@ -55,11 +99,17 @@ async function sendTwilio(
   body: string,
   from: string,
   isWhatsApp = false,
-): Promise<{ ok: boolean; sid?: string; error?: string }> {
+): Promise<{ ok: boolean; sid?: string; error?: string; beforeSubmit?: boolean }> {
   if (!LOVABLE_API_KEY || !TWILIO_API_KEY) {
-    return { ok: false, error: "Twilio not configured" };
+    return { ok: false, error: "Twilio not configured", beforeSubmit: true };
   }
-  if (!from) return { ok: false, error: `Missing TWILIO_FROM_${isWhatsApp ? "WHATSAPP" : "SMS"}` };
+  if (!from) {
+    return {
+      ok: false,
+      error: `Missing TWILIO_FROM_${isWhatsApp ? "WHATSAPP" : "SMS"}`,
+      beforeSubmit: true,
+    };
+  }
 
   const params = new URLSearchParams({
     To: isWhatsApp ? `whatsapp:${to}` : to,
@@ -85,7 +135,6 @@ async function sendTwilio(
 }
 
 async function sendPush(
-  supa: any,
   user_id: string,
   alert_id: string,
   title: string,
@@ -113,11 +162,41 @@ async function sendPush(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
   const startedAt = Date.now();
+
+  const authHeader = req.headers.get("authorization") ?? "";
+  const bearer = authHeader.match(/^Bearer\s+(.+)$/i)?.[1] ?? "";
+  const isServiceCall = bearer.length > 0 && bearer === SERVICE_ROLE;
+  const isCronCall =
+    CRON_SECRET.length > 0 &&
+    req.headers.get("x-alert-dispatcher-cron-secret") === CRON_SECRET;
+  let callerUserId: string | null = null;
+
+  // Cron/service authentication is intentionally separate from frontend
+  // authentication. A user JWT must never be accepted as a service caller.
+  if (!isServiceCall && !isCronCall) {
+    if (!bearer) {
+      return new Response(JSON.stringify({ ok: false, error: "authorization required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerClient = createClient(SUPABASE_URL, ANON_KEY);
+    const { data: authData, error: authError } = await callerClient.auth.getUser(bearer);
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ ok: false, error: "invalid authentication" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    callerUserId = authData.user.id;
+  }
+
+  const supa = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   // Resend mode: { alert_id } in body bypasses evaluation + dedupe for that alert.
   let resendAlertId: string | null = null;
+  const resendRequestId = crypto.randomUUID();
   if (req.method === "POST") {
     try {
       const body = await req.json();
@@ -125,16 +204,60 @@ Deno.serve(async (req) => {
     } catch (_) { /* no body — cron call */ }
   }
 
+  // Authenticated frontend callers may only resend an existing alert. Rule
+  // evaluation and all other service-role work are service/cron-only.
+  if (!resendAlertId && callerUserId) {
+    return new Response(JSON.stringify({ ok: false, error: "service caller required" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   let evalCount = 0;
   let pending: any[] = [];
 
   if (resendAlertId) {
-    const { data } = await supa
+    if (!callerUserId && !isServiceCall && !isCronCall) {
+      return new Response(JSON.stringify({ ok: false, error: "authorization required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data, error: alertError } = await supa
       .from("alerts")
-      .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type")
+      .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type, farms!inner(owner_id)")
       .eq("id", resendAlertId)
       .maybeSingle();
-    if (data) pending = [data];
+    if (alertError) {
+      return new Response(JSON.stringify({ ok: false, error: "alert lookup failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!data) {
+      return new Response(JSON.stringify({ ok: false, error: "alert not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (callerUserId) {
+      const { data: membership } = await supa
+        .from("farm_members")
+        .select("role")
+        .eq("farm_id", data.farm_id)
+        .eq("user_id", callerUserId)
+        .in("role", ["owner", "admin"])
+        .maybeSingle();
+      const isFarmOwner = data.farms?.owner_id === callerUserId;
+      const { data: superAdmin } = await supa.rpc("is_super_admin", { _user_id: callerUserId });
+      if (!membership && !isFarmOwner && superAdmin !== true) {
+        return new Response(JSON.stringify({ ok: false, error: "resend not authorized for this farm" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+    pending = [data];
   } else {
     // 1. Evaluate rules for every farm that has rules enabled
     const { data: farms } = await supa
@@ -147,7 +270,7 @@ Deno.serve(async (req) => {
       if (!error && typeof data === "number") evalCount += data;
     }
 
-    // 2. Pick alerts that have NO delivery rows yet (treat as freshly created)
+    // 2. Pick recent alerts; each channel is claimed independently below.
     const { data: p } = await supa
       .from("alerts")
       .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type")
@@ -159,15 +282,7 @@ Deno.serve(async (req) => {
 
   let dispatched = 0;
   for (const a of pending) {
-    if (!resendAlertId) {
-      // Skip if any delivery already attempted for this alert
-      const { count } = await supa
-        .from("alert_deliveries")
-        .select("id", { count: "exact", head: true })
-        .eq("alert_id", a.id);
-      if ((count ?? 0) > 0) continue;
-    }
-
+    if (!a.farm_id) continue;
     // Load rule + config
     const { data: rule } = a.rule_id
       ? await supa.from("alert_rules").select("*").eq("id", a.rule_id).maybeSingle()
@@ -177,7 +292,8 @@ Deno.serve(async (req) => {
 
     const channels = rule?.channels ?? { push: true, in_app: true, sms: false, whatsapp: false };
     const quiet = isInQuietHours(cfg?.quiet_hours_start, cfg?.quiet_hours_end);
-    const isCritical = a.severity === "critical";
+    const normalizedSeverity = normalizeSeverity(a.severity);
+    const isCritical = normalizedSeverity === "critical";
     const bypassQuiet = isCritical && (cfg?.critical_bypass_quiet_hours ?? true);
 
     // Per-user preference helper
@@ -185,44 +301,88 @@ Deno.serve(async (req) => {
       const { data, error } = await supa.rpc("should_deliver_notification", {
         _user_id: a.user_id,
         _farm_id: a.farm_id,
-        _severity: a.severity,
+        _severity: normalizedSeverity,
         _channel: channel,
       });
       if (error) return true; // fail-open: don't lose alerts on RPC error
       return data === true;
     };
 
+    const deliver = async (
+      channel: "push" | "sms" | "whatsapp" | "in_app",
+      recipient: string | null,
+      operation: (deliveryKey: string) => Promise<{
+        status: ChannelStatus;
+        providerMessageId?: string | null;
+        errorMessage?: string | null;
+        releaseBeforeSubmit?: boolean;
+      }>,
+    ): Promise<boolean> => {
+      const deliveryKey = resendAlertId
+        ? `v8:resend:${a.id}:${channel}:${resendRequestId}`
+        : `v8:auto:${a.id}:${channel}`;
+      const claimToken = await claimDelivery(supa, a.id, a.farm_id, channel, deliveryKey);
+      if (!claimToken) {
+        return false;
+      }
+      const result = await operation(deliveryKey);
+      if (result.releaseBeforeSubmit) {
+        await releaseDelivery(supa, deliveryKey, claimToken);
+        return true;
+      }
+      await completeDelivery(
+        supa,
+        deliveryKey,
+        claimToken,
+        result.status,
+        recipient,
+        result.providerMessageId,
+        result.errorMessage,
+      );
+      return true;
+    };
+
     // in_app is implicit (alert row exists → realtime delivers)
-    await logDelivery(supa, a.id, a.farm_id, "in_app", "sent");
+    await deliver("in_app", null, async () => ({ status: "sent" }));
 
     // Push
     if (channels.push && (cfg?.push_enabled ?? true)) {
       if (quiet && !bypassQuiet) {
-        await logDelivery(supa, a.id, a.farm_id, "push", "skipped_quiet");
+        await deliver("push", null, async () => ({ status: "skipped_quiet" }));
       } else if (!(await checkUserPref("push"))) {
-        await logDelivery(supa, a.id, a.farm_id, "push", "skipped_disabled");
+        await deliver("push", null, async () => ({ status: "skipped_disabled" }));
       } else {
-        const r = await sendPush(supa, a.user_id, a.id,
+        await deliver("push", null, async () => {
+          const r = await sendPush(a.user_id, a.id,
           isCritical ? "🚨 জরুরি সতর্কতা" : "⚠️ সতর্কতা",
-          a.message_bn || a.message, a.severity);
-        await logDelivery(supa, a.id, a.farm_id, "push",
-          r.ok ? "sent" : "failed", null, null, r.error ?? null);
+            a.message_bn || a.message, normalizedSeverity);
+          return {
+            status: r.ok ? "sent" : "failed",
+            errorMessage: r.error ?? null,
+          };
+        });
       }
     }
 
     // SMS
     if (channels.sms && cfg?.sms_enabled && cfg?.phone_e164) {
       if (quiet && !bypassQuiet) {
-        await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_quiet", cfg.phone_e164);
+        await deliver("sms", cfg.phone_e164, async () => ({ status: "skipped_quiet" }));
       } else if (!(await checkUserPref("sms"))) {
-        await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_disabled", cfg.phone_e164);
+        await deliver("sms", cfg.phone_e164, async () => ({ status: "skipped_disabled" }));
       } else if (cfg?.sms_optin_status === "opted_out") {
-        await logDelivery(supa, a.id, a.farm_id, "sms", "skipped_optout", cfg.phone_e164);
+        await deliver("sms", cfg.phone_e164, async () => ({ status: "skipped_disabled" }));
       } else {
-        const smsBody = `${a.message_bn || a.message}\n\nবন্ধ: STOP | স্বীকার: ACK`;
-        const r = await sendTwilio(cfg.phone_e164, smsBody, TWILIO_FROM_SMS, false);
-        await logDelivery(supa, a.id, a.farm_id, "sms",
-          r.ok ? "sent" : "failed", cfg.phone_e164, r.sid ?? null, r.error ?? null);
+        await deliver("sms", cfg.phone_e164, async () => {
+          const smsBody = `${a.message_bn || a.message}\n\nবন্ধ: STOP | স্বীকার: ACK`;
+          const r = await sendTwilio(cfg.phone_e164, smsBody, TWILIO_FROM_SMS, false);
+          return {
+            status: r.ok ? "sent" : "failed",
+            providerMessageId: r.sid ?? null,
+            errorMessage: r.error ?? null,
+            releaseBeforeSubmit: r.beforeSubmit === true,
+          };
+        });
       }
     }
 
@@ -230,17 +390,23 @@ Deno.serve(async (req) => {
     const waNumber = cfg?.whatsapp_number || cfg?.phone_e164;
     if (channels.whatsapp && cfg?.whatsapp_enabled && waNumber) {
       if (quiet && !bypassQuiet) {
-        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_quiet", waNumber);
+        await deliver("whatsapp", waNumber, async () => ({ status: "skipped_quiet" }));
       } else if (!(await checkUserPref("whatsapp"))) {
-        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_disabled", waNumber);
+        await deliver("whatsapp", waNumber, async () => ({ status: "skipped_disabled" }));
       } else if (cfg?.whatsapp_optin_status === "opted_out") {
-        await logDelivery(supa, a.id, a.farm_id, "whatsapp", "skipped_optout", waNumber);
+        await deliver("whatsapp", waNumber, async () => ({ status: "skipped_disabled" }));
       } else {
-        const sevIcon = isCritical ? "🚨" : a.severity === "high" ? "⚠️" : "ℹ️";
-        const waBody = `${sevIcon} *Farmeye সতর্কতা*\n\n${a.message_bn || a.message}\n\n_স্বীকার করতে ACK, বন্ধ করতে STOP লিখে পাঠান।_`;
-        const r = await sendTwilio(waNumber, waBody, TWILIO_FROM_WHATSAPP, true);
-        await logDelivery(supa, a.id, a.farm_id, "whatsapp",
-          r.ok ? "sent" : "failed", waNumber, r.sid ?? null, r.error ?? null);
+        await deliver("whatsapp", waNumber, async () => {
+          const sevIcon = isCritical ? "🚨" : "ℹ️";
+          const waBody = `${sevIcon} *Farmeye সতর্কতা*\n\n${a.message_bn || a.message}\n\n_স্বীকার করতে ACK, বন্ধ করতে STOP লিখে পাঠান।_`;
+          const r = await sendTwilio(waNumber, waBody, TWILIO_FROM_WHATSAPP, true);
+          return {
+            status: r.ok ? "sent" : "failed",
+            providerMessageId: r.sid ?? null,
+            errorMessage: r.error ?? null,
+            releaseBeforeSubmit: r.beforeSubmit === true,
+          };
+        });
       }
     }
     dispatched++;
