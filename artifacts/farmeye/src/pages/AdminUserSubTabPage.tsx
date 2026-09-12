@@ -22,7 +22,7 @@ type SubTab = 'admins' | 'orgs' | 'farms' | 'workers';
 const CONFIG: Record<SubTab, {
   title: string;
   require: 'super_admin' | 'org_admin';
-  render: (lang: 'bn' | 'en') => JSX.Element;
+  render: (lang: 'bn' | 'en') => React.ReactElement;
 }> = {
   admins: {
     title: 'অ্যাডমিন ব্যবস্থাপনা',
