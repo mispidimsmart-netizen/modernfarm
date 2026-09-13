@@ -26,6 +26,9 @@ export function useRealtimeSensorData() {
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
   const selectedFarmId = useSafeSelectedFarmId();
+  // Unique per hook instance so two components mounting this hook never try to
+  // reuse (and re-bind callbacks on) the same already-subscribed realtime topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Seed initial state from localStorage so the UI shows the last known values
   // immediately on mount — even before the first network round-trip succeeds,
