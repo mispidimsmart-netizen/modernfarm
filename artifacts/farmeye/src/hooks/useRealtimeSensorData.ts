@@ -203,7 +203,7 @@ export function useRealtimeDeviceStatus() {
       ? `farm_id=eq.${selectedFarmId}`
       : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`device_status_${channelKey}`)
+      .channel(`device_status_${channelKey}_${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -337,7 +337,7 @@ export function useRealtimeAlerts() {
       ? `farm_id=eq.${selectedFarmId}`
       : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`alerts_${channelKey}`)
+      .channel(`alerts_${channelKey}_${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alerts', filter: aFilter },
