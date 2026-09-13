@@ -690,8 +690,10 @@ unsigned long lastOtaTerminalReportAttempt = 0;
 // browser or stored in the OTA metadata. An all-zero key fails closed until the
 // production Ed25519 public key is inserted by the release owner.
 static const uint8_t OTA_TRUSTED_PUBLIC_KEY[32] = {
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  0x37, 0x0B, 0x58, 0xEF, 0xEB, 0x2E, 0x18, 0x90,
+  0xBD, 0xB1, 0x0F, 0x91, 0x3A, 0x80, 0x2F, 0x29,
+  0xE3, 0x18, 0x40, 0xC9, 0x92, 0x8B, 0xDF, 0x23,
+  0x5A, 0x25, 0xF1, 0x3D, 0x0A, 0x8D, 0x62, 0x6F
 };
 static_assert(sizeof(OTA_TRUSTED_PUBLIC_KEY) == 32, "V8 OTA key must be 32 raw bytes");
 
