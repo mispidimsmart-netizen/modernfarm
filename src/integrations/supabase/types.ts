@@ -373,7 +373,10 @@ export type Database = {
         Row: {
           alert_id: string
           channel: string
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
+          delivery_key: string | null
           error_message: string | null
           farm_id: string | null
           id: string
@@ -386,7 +389,10 @@ export type Database = {
         Insert: {
           alert_id: string
           channel: string
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
+          delivery_key?: string | null
           error_message?: string | null
           farm_id?: string | null
           id?: string
@@ -399,7 +405,10 @@ export type Database = {
         Update: {
           alert_id?: string
           channel?: string
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
+          delivery_key?: string | null
           error_message?: string | null
           farm_id?: string | null
           id?: string
@@ -493,6 +502,7 @@ export type Database = {
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at: string
           escalated_at: string | null
+          event_key: string | null
           farm_id: string | null
           id: string
           message: string
@@ -511,6 +521,7 @@ export type Database = {
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at?: string
           escalated_at?: string | null
+          event_key?: string | null
           farm_id?: string | null
           id?: string
           message: string
@@ -529,6 +540,7 @@ export type Database = {
           alert_type?: Database["public"]["Enums"]["alert_type"]
           created_at?: string
           escalated_at?: string | null
+          event_key?: string | null
           farm_id?: string | null
           id?: string
           message?: string
@@ -8690,6 +8702,16 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      claim_v8_alert_delivery: {
+        Args: {
+          p_alert_id: string
+          p_channel: string
+          p_delivery_key: string
+          p_farm_id: string
+          p_is_escalation?: boolean
+        }
+        Returns: string
+      }
       cleanup_device_health_metrics: { Args: never; Returns: undefined }
       cleanup_device_security_artifacts: { Args: never; Returns: undefined }
       cleanup_edge_request_log: { Args: never; Returns: undefined }
@@ -8703,6 +8725,17 @@ export type Database = {
       }
       cleanup_performance_metrics: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
+      complete_v8_alert_delivery: {
+        Args: {
+          p_claim_token: string
+          p_delivery_key: string
+          p_error_message?: string
+          p_provider_message_id?: string
+          p_recipient?: string
+          p_status: string
+        }
+        Returns: boolean
+      }
       consume_device_nonce: {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
@@ -9136,6 +9169,10 @@ export type Database = {
       refresh_sensor_hourly_rollup: { Args: never; Returns: undefined }
       reject_payment_request: {
         Args: { _reason: string; _request_id: string }
+        Returns: boolean
+      }
+      release_v8_alert_delivery_claim: {
+        Args: { p_claim_token: string; p_delivery_key: string }
         Returns: boolean
       }
       report_boot_failure: {

@@ -18,7 +18,6 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH || '/';
 
-
 const pkg = JSON.parse(readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf-8'));
 const buildTime = new Date().toISOString();
 const buildId = buildTime.replace(/[^0-9]/g, '').slice(2, 12);
