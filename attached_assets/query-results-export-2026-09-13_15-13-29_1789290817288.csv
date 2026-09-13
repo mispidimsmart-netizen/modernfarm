@@ -1,0 +1,2 @@
+active;has_authorization_header;has_cron_secret_header;jobid;jobname;schedule
+true;false;true;8;alert-dispatcher-1m;* * * * *
