@@ -1308,6 +1308,7 @@ export type Database = {
       device_command_log: {
         Row: {
           acked_at: string | null
+          client_request_id: string | null
           command_id: string
           command_type: string
           command_value: boolean
@@ -1327,6 +1328,7 @@ export type Database = {
         }
         Insert: {
           acked_at?: string | null
+          client_request_id?: string | null
           command_id: string
           command_type: string
           command_value?: boolean
@@ -1346,6 +1348,7 @@ export type Database = {
         }
         Update: {
           acked_at?: string | null
+          client_request_id?: string | null
           command_id?: string
           command_type?: string
           command_value?: boolean
@@ -1395,6 +1398,7 @@ export type Database = {
           latency_to_ack_ms: number | null
           latency_to_device_ms: number | null
           retry_count: number
+          shed_id: string | null
           user_id: string
         }
         Insert: {
@@ -1411,6 +1415,7 @@ export type Database = {
           latency_to_ack_ms?: number | null
           latency_to_device_ms?: number | null
           retry_count?: number
+          shed_id?: string | null
           user_id: string
         }
         Update: {
@@ -1427,6 +1432,7 @@ export type Database = {
           latency_to_ack_ms?: number | null
           latency_to_device_ms?: number | null
           retry_count?: number
+          shed_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1435,6 +1441,13 @@ export type Database = {
             columns: ["farm_id"]
             isOneToOne: false
             referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_commands_shed_id_fkey"
+            columns: ["shed_id"]
+            isOneToOne: false
+            referencedRelation: "sheds"
             referencedColumns: ["id"]
           },
         ]
@@ -5060,8 +5073,13 @@ export type Database = {
           min_firmware_version: string | null
           release_notes: string | null
           release_notes_bn: string | null
+          require_signature: boolean
           rollout_percentage: number | null
           rollout_status: string | null
+          sha256_hex: string | null
+          signature_alg: string | null
+          signature_b64: string | null
+          signing_public_key_b64: string | null
           total_installs: number | null
           url: string
           version: string
@@ -5083,8 +5101,13 @@ export type Database = {
           min_firmware_version?: string | null
           release_notes?: string | null
           release_notes_bn?: string | null
+          require_signature?: boolean
           rollout_percentage?: number | null
           rollout_status?: string | null
+          sha256_hex?: string | null
+          signature_alg?: string | null
+          signature_b64?: string | null
+          signing_public_key_b64?: string | null
           total_installs?: number | null
           url: string
           version: string
@@ -5106,8 +5129,13 @@ export type Database = {
           min_firmware_version?: string | null
           release_notes?: string | null
           release_notes_bn?: string | null
+          require_signature?: boolean
           rollout_percentage?: number | null
           rollout_status?: string | null
+          sha256_hex?: string | null
+          signature_alg?: string | null
+          signature_b64?: string | null
+          signing_public_key_b64?: string | null
           total_installs?: number | null
           url?: string
           version?: string
@@ -9132,6 +9160,32 @@ export type Database = {
         Returns: Json
       }
       ota_hardening_summary: { Args: never; Returns: Json }
+      queue_v8_actuator_command:
+        | {
+            Args: {
+              p_client_request_id: string
+              p_command_type: string
+              p_command_value: boolean
+              p_farm_id: string
+              p_shed_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_client_request_id: string
+              p_command_type: string
+              p_command_value: boolean
+              p_device_token_id: string
+              p_farm_id: string
+              p_shed_id: string
+            }
+            Returns: Json
+          }
+      queue_v8_ota_assignment: {
+        Args: { _device_token_id: string; _firmware_id: string }
+        Returns: Json
+      }
       record_device_metric: {
         Args: {
           _device_token_id: string
