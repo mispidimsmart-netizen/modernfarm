@@ -373,7 +373,10 @@ export type Database = {
         Row: {
           alert_id: string
           channel: string
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
+          delivery_key: string | null
           error_message: string | null
           farm_id: string | null
           id: string
@@ -386,7 +389,10 @@ export type Database = {
         Insert: {
           alert_id: string
           channel: string
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
+          delivery_key?: string | null
           error_message?: string | null
           farm_id?: string | null
           id?: string
@@ -399,7 +405,10 @@ export type Database = {
         Update: {
           alert_id?: string
           channel?: string
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
+          delivery_key?: string | null
           error_message?: string | null
           farm_id?: string | null
           id?: string
@@ -493,6 +502,7 @@ export type Database = {
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at: string
           escalated_at: string | null
+          event_key: string | null
           farm_id: string | null
           id: string
           message: string
@@ -511,6 +521,7 @@ export type Database = {
           alert_type: Database["public"]["Enums"]["alert_type"]
           created_at?: string
           escalated_at?: string | null
+          event_key?: string | null
           farm_id?: string | null
           id?: string
           message: string
@@ -529,6 +540,7 @@ export type Database = {
           alert_type?: Database["public"]["Enums"]["alert_type"]
           created_at?: string
           escalated_at?: string | null
+          event_key?: string | null
           farm_id?: string | null
           id?: string
           message?: string
@@ -5061,13 +5073,13 @@ export type Database = {
           min_firmware_version: string | null
           release_notes: string | null
           release_notes_bn: string | null
-          sha256_hex: string | null
-          signature_b64: string | null
-          signing_public_key_b64: string | null
-          signature_alg: string | null
           require_signature: boolean
           rollout_percentage: number | null
           rollout_status: string | null
+          sha256_hex: string | null
+          signature_alg: string | null
+          signature_b64: string | null
+          signing_public_key_b64: string | null
           total_installs: number | null
           url: string
           version: string
@@ -5089,13 +5101,13 @@ export type Database = {
           min_firmware_version?: string | null
           release_notes?: string | null
           release_notes_bn?: string | null
-          sha256_hex?: string | null
-          signature_b64?: string | null
-          signing_public_key_b64?: string | null
-          signature_alg?: string | null
           require_signature?: boolean
           rollout_percentage?: number | null
           rollout_status?: string | null
+          sha256_hex?: string | null
+          signature_alg?: string | null
+          signature_b64?: string | null
+          signing_public_key_b64?: string | null
           total_installs?: number | null
           url: string
           version: string
@@ -5117,13 +5129,13 @@ export type Database = {
           min_firmware_version?: string | null
           release_notes?: string | null
           release_notes_bn?: string | null
-          sha256_hex?: string | null
-          signature_b64?: string | null
-          signing_public_key_b64?: string | null
-          signature_alg?: string | null
           require_signature?: boolean
           rollout_percentage?: number | null
           rollout_status?: string | null
+          sha256_hex?: string | null
+          signature_alg?: string | null
+          signature_b64?: string | null
+          signing_public_key_b64?: string | null
           total_installs?: number | null
           url?: string
           version?: string
@@ -8637,21 +8649,6 @@ export type Database = {
       }
     }
     Functions: {
-      queue_v8_ota_assignment: {
-        Args: { _device_token_id: string; _firmware_id: string }
-        Returns: Json
-      }
-      queue_v8_actuator_command: {
-        Args: {
-          p_client_request_id: string
-          p_command_type: string
-          p_command_value: boolean
-          p_farm_id: string
-          p_shed_id: string | null
-          p_device_token_id: string | null
-        }
-        Returns: Json
-      }
       accept_org_invitation: { Args: { _invitation_id: string }; Returns: Json }
       accept_sensor_batch: {
         Args: {
@@ -8733,6 +8730,16 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      claim_v8_alert_delivery: {
+        Args: {
+          p_alert_id: string
+          p_channel: string
+          p_delivery_key: string
+          p_farm_id: string
+          p_is_escalation?: boolean
+        }
+        Returns: string
+      }
       cleanup_device_health_metrics: { Args: never; Returns: undefined }
       cleanup_device_security_artifacts: { Args: never; Returns: undefined }
       cleanup_edge_request_log: { Args: never; Returns: undefined }
@@ -8746,16 +8753,23 @@ export type Database = {
       }
       cleanup_performance_metrics: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
+      complete_v8_alert_delivery: {
+        Args: {
+          p_claim_token: string
+          p_delivery_key: string
+          p_error_message?: string
+          p_provider_message_id?: string
+          p_recipient?: string
+          p_status: string
+        }
+        Returns: boolean
+      }
       consume_device_nonce: {
         Args: { _device_token_id: string; _nonce: string }
         Returns: boolean
       }
       create_legacy_device_token: {
-        Args: {
-          _device_name?: string
-          _farm_id: string
-          _shed_id?: string
-        }
+        Args: { _device_name?: string; _farm_id: string; _shed_id?: string }
         Returns: Json
       }
       create_organization_trial: {
@@ -8833,6 +8847,10 @@ export type Database = {
         Args: { _farm_id?: string; _user_id: string }
         Returns: Database["public"]["Enums"]["canonical_role"]
       }
+      get_device_provisioning_token: {
+        Args: { _device_token_id: string }
+        Returns: Json
+      }
       get_device_secret: {
         Args: { _device_token_id: string }
         Returns: {
@@ -8841,10 +8859,6 @@ export type Database = {
           previous_expires: string
           secret_version: number
         }[]
-      }
-      get_device_provisioning_token: {
-        Args: { _device_token_id: string }
-        Returns: Json
       }
       get_farm_benchmark: {
         Args: { _days?: number }
@@ -9146,6 +9160,32 @@ export type Database = {
         Returns: Json
       }
       ota_hardening_summary: { Args: never; Returns: Json }
+      queue_v8_actuator_command:
+        | {
+            Args: {
+              p_client_request_id: string
+              p_command_type: string
+              p_command_value: boolean
+              p_farm_id: string
+              p_shed_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_client_request_id: string
+              p_command_type: string
+              p_command_value: boolean
+              p_device_token_id: string
+              p_farm_id: string
+              p_shed_id: string
+            }
+            Returns: Json
+          }
+      queue_v8_ota_assignment: {
+        Args: { _device_token_id: string; _firmware_id: string }
+        Returns: Json
+      }
       record_device_metric: {
         Args: {
           _device_token_id: string
@@ -9183,6 +9223,10 @@ export type Database = {
       refresh_sensor_hourly_rollup: { Args: never; Returns: undefined }
       reject_payment_request: {
         Args: { _reason: string; _request_id: string }
+        Returns: boolean
+      }
+      release_v8_alert_delivery_claim: {
+        Args: { p_claim_token: string; p_delivery_key: string }
         Returns: boolean
       }
       report_boot_failure: {
