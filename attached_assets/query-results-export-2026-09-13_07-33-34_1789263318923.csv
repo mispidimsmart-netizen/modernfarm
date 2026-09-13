@@ -1,0 +1,2 @@
+verification
+"{""alert_event_key_column"":true,""claim_alert_delivery"":true,""command_request_id_column"":true,""command_shed_id_column"":true,""delivery_claim_token_column"":true,""delivery_key_column"":true,""duplicate_live_assignments"":0,""evaluate_alert_rules"":true,""ota_sha256_column"":true,""queue_actuator_command"":true,""queue_ota_assignment"":true}"
