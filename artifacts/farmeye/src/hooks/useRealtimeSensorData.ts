@@ -112,7 +112,7 @@ export function useRealtimeSensorData() {
       ? `farm_id=eq.${selectedFarmId}`
       : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`sensor_readings_${channelKey}`)
+      .channel(`sensor_readings_${channelKey}_${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
