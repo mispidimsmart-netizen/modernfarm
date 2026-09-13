@@ -26,6 +26,9 @@ export function useRealtimeSensorData() {
   const queryClient = useQueryClient();
   const browserOnline = useBrowserOnline();
   const selectedFarmId = useSafeSelectedFarmId();
+  // Unique per hook instance so two components mounting this hook never try to
+  // reuse (and re-bind callbacks on) the same already-subscribed realtime topic.
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
 
   // Seed initial state from localStorage so the UI shows the last known values
   // immediately on mount — even before the first network round-trip succeeds,
@@ -112,7 +115,7 @@ export function useRealtimeSensorData() {
       ? `farm_id=eq.${selectedFarmId}`
       : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`sensor_readings_${channelKey}`)
+      .channel(`sensor_readings_${channelKey}_${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -168,6 +171,7 @@ export function useRealtimeSensorData() {
 // when the ESP32 hasn't reported in (Hardware-as-Source-of-Truth: if the
 // device is silent, cloud-side relay flags cannot be trusted).
 export function useRealtimeDeviceStatus() {
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   const { user } = useAuth();
   const { data: initialStatus, isLoading } = useDeviceStatus();
   const queryClient = useQueryClient();
@@ -200,7 +204,7 @@ export function useRealtimeDeviceStatus() {
       ? `farm_id=eq.${selectedFarmId}`
       : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`device_status_${channelKey}`)
+      .channel(`device_status_${channelKey}_${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         {
@@ -320,6 +324,7 @@ export function useRealtimeDeviceStatus() {
 
 // Realtime alerts subscription with sound support
 export function useRealtimeAlerts() {
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { playSound } = useNotificationSound();
@@ -334,7 +339,7 @@ export function useRealtimeAlerts() {
       ? `farm_id=eq.${selectedFarmId}`
       : `user_id=eq.${user.id}`;
     const channel = supabase
-      .channel(`alerts_${channelKey}`)
+      .channel(`alerts_${channelKey}_${instanceIdRef.current}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alerts', filter: aFilter },
