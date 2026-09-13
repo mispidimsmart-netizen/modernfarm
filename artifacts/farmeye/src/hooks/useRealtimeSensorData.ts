@@ -171,6 +171,7 @@ export function useRealtimeSensorData() {
 // when the ESP32 hasn't reported in (Hardware-as-Source-of-Truth: if the
 // device is silent, cloud-side relay flags cannot be trusted).
 export function useRealtimeDeviceStatus() {
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   const { user } = useAuth();
   const { data: initialStatus, isLoading } = useDeviceStatus();
   const queryClient = useQueryClient();
@@ -323,6 +324,7 @@ export function useRealtimeDeviceStatus() {
 
 // Realtime alerts subscription with sound support
 export function useRealtimeAlerts() {
+  const instanceIdRef = useRef(Math.random().toString(36).slice(2));
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { playSound } = useNotificationSound();
