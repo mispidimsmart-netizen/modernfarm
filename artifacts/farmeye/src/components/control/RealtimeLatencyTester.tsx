@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useSelectedShed } from '@/hooks/useSheds';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 type Phase = 'idle' | 'sending' | 'awaiting-ack' | 'done' | 'timeout';
 
@@ -34,6 +35,7 @@ export function RealtimeLatencyTester() {
   const targetValueRef = useRef<boolean>(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rtId = useRealtimeInstanceId();
 
   const t = (bn: string, en: string) => (language === 'bn' ? bn : en);
 
@@ -42,7 +44,7 @@ export function RealtimeLatencyTester() {
     if (!user || !selectedShedId) return;
 
     const channel = supabase
-      .channel(`latency-test-${selectedShedId}`)
+      .channel(`latency-test-${selectedShedId}-${rtId}`)
       .on(
         'postgres_changes',
         {

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 /**
  * Subscribes to realtime changes on egg_production, feed_consumption,
@@ -17,6 +18,7 @@ export function useFarmDataRealtime() {
   const { user } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const lastInvalidatedAt = useRef(0);
+  const rtId = useRealtimeInstanceId();
 
   useEffect(() => {
     if (!user || !selectedFarmId) return;
@@ -36,7 +38,7 @@ export function useFarmDataRealtime() {
     };
 
     const channel = supabase
-      .channel(`farm-data-${selectedFarmId}`)
+      .channel(`farm-data-${selectedFarmId}-${rtId}`)
       .on(
         'postgres_changes',
         {

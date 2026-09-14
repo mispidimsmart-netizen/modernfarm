@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { useSelectedShed } from './useSheds';
 
 export interface ForensicEntry {
@@ -72,6 +73,7 @@ export function useForensicTimeline(filterMismatchOnly = false) {
   const { user } = useAuth();
   const { selectedShedId } = useSelectedShed();
   const queryClient = useQueryClient();
+  const rtId = useRealtimeInstanceId();
 
   const { data: entries, isLoading } = useQuery({
     queryKey: ['forensic-timeline', user?.id, selectedShedId, filterMismatchOnly],
@@ -110,7 +112,7 @@ export function useForensicTimeline(filterMismatchOnly = false) {
     if (!user?.id) return;
 
     const channel = supabase
-      .channel(`forensic_timeline_${user.id}`)
+      .channel(`forensic_timeline_${user.id}_${rtId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',

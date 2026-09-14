@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { SunDim, Sun, CloudSun, Activity, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { useLightingSchedule, useUpdateLightingSchedule } from '@/hooks/useFarmData';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -18,6 +19,7 @@ export function LDRSettingsCard() {
   const { data: schedule } = useLightingSchedule();
   const updateSchedule = useUpdateLightingSchedule();
   const { toast } = useToast();
+  const rtId = useRealtimeInstanceId();
 
   const [enabled, setEnabled] = useState(false);
   const [threshold, setThreshold] = useState(50);
@@ -65,7 +67,7 @@ export function LDRSettingsCard() {
 
     fetchLatest();
     const channel = supabase
-      .channel('ldr-lux-feed')
+      .channel(`ldr-lux-feed-${rtId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sensor_readings', filter: `user_id=eq.${user.id}` },
         (payload) => {
           const lux = (payload.new as any)?.light_lux;

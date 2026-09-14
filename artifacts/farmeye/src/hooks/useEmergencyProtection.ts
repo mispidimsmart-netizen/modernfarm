@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafetyStatus, type EmergencyPriority } from './useSafetyStatus';
 import { ShedContext, useSheds } from './useSheds';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 export type { EmergencyPriority };
 
@@ -58,6 +59,7 @@ export function useEmergencyProtection() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const safety = useSafetyStatus();
+  const rtId = useRealtimeInstanceId();
 
   // Multi-shed scoping: when an account has >1 shed AND a specific shed is selected,
   // only show events that belong to that shed (or are farm-wide / shed_id NULL).
@@ -110,7 +112,7 @@ export function useEmergencyProtection() {
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
-      .channel(`emergency_events_${user.id}`)
+      .channel(`emergency_events_${user.id}_${rtId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

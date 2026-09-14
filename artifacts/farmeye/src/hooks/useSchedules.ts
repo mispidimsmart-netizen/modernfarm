@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 export type ScheduleType = 'feed' | 'cleaning' | 'vaccination' | 'custom';
 export type RecurrenceType = 'once' | 'daily' | 'weekly' | 'monthly';
@@ -78,6 +79,7 @@ export function useSchedules() {
     enabled: !!user,
   });
 
+  const rtId = useRealtimeInstanceId();
   // Realtime subscription
   useEffect(() => {
     if (!user) return;
@@ -86,7 +88,7 @@ export function useSchedules() {
       : `user_id=eq.${user.id}`;
 
     const channel = supabase
-      .channel(`schedules-${selectedFarmId ?? user.id}`)
+      .channel(`schedules-${selectedFarmId ?? user.id}-${rtId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'schedules', filter },

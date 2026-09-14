@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,6 +59,7 @@ export function AdminDeviceHealthPanel({ language }: Props) {
   const [sort, setSort] = useState<SortKey>('last_seen');
   const [restartingId, setRestartingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const rtId = useRealtimeInstanceId();
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['admin-all-device-health'],
@@ -117,7 +119,7 @@ export function AdminDeviceHealthPanel({ language }: Props) {
     };
 
     const channel = supabase
-      .channel('admin-device-health-realtime')
+      .channel(`admin-device-health-realtime-${rtId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'device_health' },

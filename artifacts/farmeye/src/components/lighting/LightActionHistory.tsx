@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { cn } from '@/lib/utils';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 type LogRow = {
   id: string;
@@ -85,6 +86,7 @@ export function LightActionHistory() {
   const { user, language } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const t = labels[language === 'bn' ? 'bn' : 'en'];
+  const rtId = useRealtimeInstanceId();
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,7 +111,7 @@ export function LightActionHistory() {
     load();
 
     const channel = supabase
-      .channel(`light-action-history-${selectedFarmId}`)
+      .channel(`light-action-history-${selectedFarmId}-${rtId}`)
       .on(
         'postgres_changes',
         {

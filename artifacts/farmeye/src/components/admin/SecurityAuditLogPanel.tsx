@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +60,7 @@ export const SecurityAuditLogPanel = () => {
   const [search, setSearch] = useState('');
   const [liveCount, setLiveCount] = useState(0);
   const [isLive, setIsLive] = useState(false);
+  const rtId = useRealtimeInstanceId();
 
   const load = async () => {
     setLoading(true);
@@ -87,7 +89,7 @@ export const SecurityAuditLogPanel = () => {
   // Realtime subscription — new audit events stream in live
   useEffect(() => {
     const channel = supabase
-      .channel('security-audit-live')
+      .channel(`security-audit-live-${rtId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'security_audit_log' },

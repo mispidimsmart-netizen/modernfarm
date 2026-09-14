@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Zap, ZapOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 /**
  * Shows realtime WebSocket connection status & expected manual command latency.
@@ -10,10 +11,11 @@ import { useAuth } from '@/context/AuthContext';
 export function RealtimeLatencyBadge() {
   const { language } = useAuth();
   const [connected, setConnected] = useState(false);
+  const rtId = useRealtimeInstanceId();
 
   useEffect(() => {
     const channel = supabase
-      .channel('device-commands-status')
+      .channel(`device-commands-status-${rtId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'device_commands' }, () => {})
       .subscribe((status) => {
         setConnected(status === 'SUBSCRIBED');

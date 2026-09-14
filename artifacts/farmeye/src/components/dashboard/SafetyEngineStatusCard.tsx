@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 /**
  * Compact dashboard tile showing:
@@ -26,6 +27,7 @@ export function SafetyEngineStatusCard() {
   const { data: settings } = useFarmSettings();
   const { data: healthList } = useAllDeviceHealth();
   const queryClient = useQueryClient();
+  const rtId = useRealtimeInstanceId();
 
   const enabled = ((settings as any)?.safety_engine_enabled ?? true) as boolean;
 
@@ -33,7 +35,7 @@ export function SafetyEngineStatusCard() {
   useEffect(() => {
     if (!selectedFarmId) return;
     const channel = supabase
-      .channel(`safety-engine-${selectedFarmId}`)
+      .channel(`safety-engine-${selectedFarmId}-${rtId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'farm_settings', filter: `farm_id=eq.${selectedFarmId}` },

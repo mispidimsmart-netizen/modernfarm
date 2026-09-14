@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
 import { useFarmContextSafe } from '@/context/FarmContext';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export type SystemState = 'NORMAL' | 'WARNING' | 'DANGER' | 'EMERGENCY' | 'SURVIVAL' | 'SENSOR_FAIL';
@@ -138,6 +139,7 @@ export function useSafetyStatus() {
   const farmCtx = useFarmContextSafe();
   const selectedFarmId: string | null = farmCtx?.selectedFarmId ?? null;
   const queryClient = useQueryClient();
+  const rtId = useRealtimeInstanceId();
 
   // Fetch current safety status (RLS enforces farm membership)
   const { data: safetyStatus, isLoading } = useQuery({
@@ -176,7 +178,7 @@ export function useSafetyStatus() {
       : `user_id=eq.${user.id}`;
 
     const channel = supabase
-      .channel(`safety_status_${channelKey}`)
+      .channel(`safety_status_${channelKey}_${rtId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Sun, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { Badge } from '@/components/ui/badge';
 
 /**
@@ -15,6 +16,7 @@ export function LDRStatusBanner() {
   const [lux, setLux] = useState<number | null>(null);
   const [detected, setDetected] = useState<boolean | null>(null);
   const [lastSeen, setLastSeen] = useState<Date | null>(null);
+  const rtId = useRealtimeInstanceId();
 
   useEffect(() => {
     if (!user) return;
@@ -43,7 +45,7 @@ export function LDRStatusBanner() {
 
     fetchLatest();
     const channel = supabase
-      .channel('ldr-status-banner')
+      .channel(`ldr-status-banner-${rtId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'sensor_readings', filter: `user_id=eq.${user.id}` },
         (payload) => {
