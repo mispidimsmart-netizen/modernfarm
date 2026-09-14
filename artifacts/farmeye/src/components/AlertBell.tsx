@@ -7,12 +7,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 export function AlertBell() {
   const { user, language } = useAuth();
   const { selectedFarmId } = useFarmContext();
   const navigate = useNavigate();
   const [unack, setUnack] = useState<number>(0);
+  const rtId = useRealtimeInstanceId();
 
   async function loadCount() {
     if (!selectedFarmId) return;
@@ -28,7 +30,7 @@ export function AlertBell() {
     if (!user || !selectedFarmId) return;
     loadCount();
     const ch = supabase
-      .channel(`alerts-bell-${selectedFarmId}`)
+      .channel(`alerts-bell-${selectedFarmId}-${rtId}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'alerts', filter: `farm_id=eq.${selectedFarmId}` },
         (payload: any) => {
