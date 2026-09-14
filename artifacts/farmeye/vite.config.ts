@@ -24,6 +24,8 @@ const buildId = buildTime.replace(/[^0-9]/g, '').slice(2, 12);
 
 export default defineConfig(async ({ mode }) => ({
   base: basePath,
+  // .env lives at the repository root, not inside artifacts/farmeye
+  envDir: path.resolve(import.meta.dirname, '..', '..'),
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version || '0.0.0'),
     __BUILD_ID__: JSON.stringify(buildId),
