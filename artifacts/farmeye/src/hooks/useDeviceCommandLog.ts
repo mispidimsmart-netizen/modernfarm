@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 export type CommandLogStatus = 'pending' | 'sent' | 'acked' | 'failed' | 'expired';
 
@@ -43,11 +44,12 @@ export function useDeviceCommandLog(filters: DeviceCommandLogFilters = {}) {
   // Realtime: subscribe to device_command_log changes for the active farm
   // (or globally when no farm filter is set). Falls back gracefully via the
   // existing 5s polling if realtime drops.
+  const rtId = useRealtimeInstanceId();
   useEffect(() => {
     const farmId = filters.farmId;
     const channelKey = farmId ?? 'all';
     const ch = supabase
-      .channel(`device_command_log_${channelKey}`)
+      .channel(`device_command_log_${channelKey}_${rtId}`)
       .on(
         'postgres_changes',
         {

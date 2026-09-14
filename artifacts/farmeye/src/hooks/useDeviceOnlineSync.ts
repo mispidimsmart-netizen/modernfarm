@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { toast } from 'sonner';
 import {
   getQueuedDeviceCommands,
@@ -68,6 +69,7 @@ export function useDeviceOnlineSync() {
   const { selectedFarmId } = useFarmContext();
   const queryClient = useQueryClient();
   const lastOnlineRef = useRef<boolean | null>(null);
+  const rtId = useRealtimeInstanceId();
 
   useEffect(() => {
     if (!user || !selectedFarmId) return;
@@ -110,7 +112,7 @@ export function useDeviceOnlineSync() {
     const iv = setInterval(checkAndDrain, 20_000);
 
     const channel = supabase
-      .channel(`device-online-sync-${selectedFarmId}`)
+      .channel(`device-online-sync-${selectedFarmId}-${rtId}`)
       .on(
         'postgres_changes',
         {

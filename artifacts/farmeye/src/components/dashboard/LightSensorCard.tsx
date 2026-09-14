@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { SunDim, Plug, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 /**
  * Compact dashboard card showing current ambient light from the LDR sensor.
@@ -24,6 +25,7 @@ export function LightSensorCard() {
   const [hasData, setHasData] = useState<boolean | null>(null);
   const [recordedAt, setRecordedAt] = useState<Date | null>(null);
   const [now, setNow] = useState<Date>(new Date());
+  const rtId = useRealtimeInstanceId();
 
   useEffect(() => {
     if (!user) return;
@@ -52,7 +54,7 @@ export function LightSensorCard() {
 
     fetchLatest();
     const channel = supabase
-      .channel('dashboard-lux-card')
+      .channel(`dashboard-lux-card-${rtId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'sensor_readings', filter: `user_id=eq.${user.id}` },
         (payload) => {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 
 export interface DeviceHealth {
   id: string;
@@ -116,6 +117,7 @@ export function useAllDeviceHealth() {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
+  const rtId = useRealtimeInstanceId();
   // Subscribe to realtime updates (throttled to prevent UI freezes on bursty updates)
   useEffect(() => {
     if (!user?.id) return;
@@ -141,7 +143,7 @@ export function useAllDeviceHealth() {
     };
 
     const channel = supabase
-      .channel(`device_health_${user.id}`)
+      .channel(`device_health_${user.id}_${rtId}`)
       .on(
         'postgres_changes',
         {
