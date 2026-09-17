@@ -147,6 +147,7 @@ export function useFirmwareCredentials(showFarmSelector: boolean) {
     setShedName,
     deviceToken,
     setDeviceToken,
+    deviceSecret,
     autoLoaded,
   };
 }
