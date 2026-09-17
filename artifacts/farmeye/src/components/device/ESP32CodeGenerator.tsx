@@ -58,7 +58,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
   const {
     allFarms, selectedFarmId, selectFarm, farmId,
     shedId, setShedId, shedName, setShedName,
-    deviceToken, setDeviceToken, autoLoaded,
+    deviceToken, setDeviceToken, deviceSecret, autoLoaded,
   } = useFirmwareCredentials(showFarmSelector);
 
   // Auto-fill SSID next session (password intentionally NOT stored)
@@ -151,7 +151,7 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
       );
 
       const buildOptions = {
-        ssid, password, deviceToken, shedId, shedName, farmId,
+        ssid, password, deviceToken, deviceSecret, shedId, shedName, farmId,
         farmType, firmwareMode, includeSafetyEngine, hasDisplay,
       };
 
