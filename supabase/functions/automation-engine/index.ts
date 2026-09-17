@@ -378,7 +378,7 @@ Deno.serve(async (req) => {
     const cronSecret = Deno.env.get('AUTOMATION_ENGINE_CRON_SECRET') ?? '';
 
     // ================ CALLER AUTHENTICATION (P0) ================
-    // Three accepted caller types, никогда mixed:
+    // Three accepted caller types, never mixed:
     //   1. service-role bearer (internal / scheduler)
     //   2. cron secret header (scheduler without service key)
     //   3. authenticated user JWT — restricted to their own farms below
