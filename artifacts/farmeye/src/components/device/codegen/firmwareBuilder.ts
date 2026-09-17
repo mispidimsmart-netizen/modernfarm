@@ -9,6 +9,8 @@ export interface BuildOptions {
   ssid: string;
   password: string;
   deviceToken: string;
+  /** Per-device HMAC secret (Phase 1 request signing). Empty = unsigned legacy build. */
+  deviceSecret?: string;
   shedId: string;
   shedName: string;
   farmId: string;
@@ -22,9 +24,23 @@ export interface BuildOptions {
 }
 
 
+/**
+ * Inject the per-device HMAC secret so the board can sign every cloud request.
+ * Without it the firmware runs unsigned (legacy) and the cloud can only trust
+ * the device token.
+ */
+export function injectDeviceSecret(template: string, secret?: string): string {
+  const value = (secret || '').trim();
+  if (!value) return template;
+  return template.replace(
+    /const\s+char\*\s+DEVICE_SECRET\s*=\s*"[^"]*"\s*;/,
+    `const char* DEVICE_SECRET  = "${value}";  // Auto-provisioned (HMAC request signing)`,
+  );
+}
+
 /** v10 BETA: simpler config block, hardcoded mode only. */
 export function buildV10Firmware(template: string, o: BuildOptions): string {
-  let code = template;
+  let code = injectDeviceSecret(template, o.deviceSecret);
   code = code.replace(
     /const\s+char\*\s+WIFI_SSID\s*=\s*"[^"]*"\s*;/,
     `const char* WIFI_SSID      = "${o.ssid.trim()}";`,
@@ -62,7 +78,8 @@ export function buildV10Firmware(template: string, o: BuildOptions): string {
 
 /** v8 STABLE: hardcoded or OTA (NVS) mode. */
 export function buildV8Firmware(template: string, o: BuildOptions): string {
-  let code = template;
+  let code = injectDeviceSecret(template, o.deviceSecret);
+
 
   if (o.firmwareMode === 'hardcoded') {
     code = code.replace(

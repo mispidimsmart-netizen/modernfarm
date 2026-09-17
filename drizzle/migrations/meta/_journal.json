@@ -36,6 +36,13 @@
       "when": 1789664409354,
       "tag": "0004_fix_claim_device_commands_uuid_coalesce",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789665874672,
+      "tag": "0005_provision_device_secret",
+      "breakpoints": true
     }
   ]
 }

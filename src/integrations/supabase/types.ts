@@ -9182,6 +9182,10 @@ export type Database = {
         Returns: Json
       }
       ota_hardening_summary: { Args: never; Returns: Json }
+      provision_device_secret: {
+        Args: { _device_token_id: string }
+        Returns: string
+      }
       queue_v8_actuator_command:
         | {
             Args: {
