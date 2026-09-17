@@ -52,15 +52,12 @@ async function fetchWithRetry(
 }
 
 // ================ HEAT STRESS INDEX (HSI) CALCULATION ================
-// THI Formula: THI = 0.8 × T + (RH/100) × (T - 14.4) + 46.4
-// Or Simple: HSI = Temperature + (Humidity × 0.1)
-function calculateHSI(temperature: number, humidity: number, useSimpleFormula = false): number {
-  if (useSimpleFormula) {
-    // Simple formula (matches ESP32 local calculation)
-    return temperature + (humidity * 0.1);
-  }
-  // THI formula (more accurate for cloud)
-  return 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
+// P0 fix: the cloud used to run a THI formula here while the firmware and
+// esp32-api used Steadman — alerts and device behaviour could disagree.
+// Both now import the shared Steadman formula (_shared/hsi-formula.ts).
+// `simpleIndex` is kept only as a diagnostic mirror of the legacy value.
+function legacySimpleIndex(temperature: number, humidity: number): number {
+  return temperature + (humidity * 0.1);
 }
 
 type HSILevel = 'normal' | 'mild' | 'moderate' | 'severe' | 'emergency';
