@@ -8,6 +8,7 @@
  */
 import { corsHeaders } from './http.ts';
 import { calculateHSI, applyHSIAutomation } from './hsi.ts';
+import { classifyHSI, resolveHSIBands, toAutomationLevel } from '../_shared/hsi-bands.ts';
 import { computeQualityScore } from './domain.ts';
 
 export interface SensorPayload {
