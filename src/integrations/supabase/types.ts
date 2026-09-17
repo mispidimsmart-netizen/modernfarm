@@ -8743,7 +8743,7 @@ export type Database = {
         Returns: {
           client_request_id: string
           command_type: string
-          command_value: string
+          command_value: boolean
           created_at: string
           dispatched_at: string
           farm_id: string
