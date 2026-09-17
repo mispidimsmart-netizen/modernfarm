@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789662604268,
+      "tag": "0000_harden_device_tokens_secret_columns",
+      "breakpoints": true
+    }
+  ]
+}
