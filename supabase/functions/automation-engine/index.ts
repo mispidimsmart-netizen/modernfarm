@@ -138,7 +138,9 @@ interface AutomationAction {
 }
 
 function runAutomationRules(
-  sensorData: { temperature: number; humidity: number; ammonia: number; powerOn: boolean },
+  // powerOn === null → power state unknown/stale: Rule 0 must NOT fire, and we
+  // must NOT pretend the mains are up either (that was the old hardcoded bug).
+  sensorData: { temperature: number; humidity: number; ammonia: number; powerOn: boolean | null },
   settings: {
     temperature_max: number;
     ammonia_max: number;
@@ -163,7 +165,7 @@ function runAutomationRules(
   // ========================================
   // RULE 0: POWER OFF = ALARM ON
   // ========================================
-  if (!powerOn) {
+  if (powerOn === false) {
     action.alarm = true;
     action.alert = {
       type: 'power',
