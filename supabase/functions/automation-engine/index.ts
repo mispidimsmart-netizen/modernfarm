@@ -809,10 +809,11 @@ Deno.serve(async (req) => {
         .eq('user_id', user_id)
         .eq('is_active', true);
 
-      // Step 3: Run automation for each online shed
+      // Step 3: Run REAL automation for each online shed through the shared
+      // executor. Previously this only appended a success-looking result
+      // without evaluating a single rule (silent no-op).
       const shedResults = [];
       for (const shed of sheds || []) {
-        // Check if shed's device is online (not in fail-safe)
         const { data: health } = await supabase
           .from('device_health')
           .select('is_online, failsafe_mode')
@@ -820,25 +821,45 @@ Deno.serve(async (req) => {
           .eq('shed_id', shed.id)
           .maybeSingle();
 
-        if (health?.is_online && !health?.failsafe_mode) {
-          // Run automation for this shed (invoke internal logic)
-          console.log(`[Run All] Running automation for shed: ${shed.name}`);
-          shedResults.push({
-            shed_id: shed.id,
-            name: shed.name,
-            status: 'automation_run',
-            mode: 'AUTO',
-          });
-        } else {
+        if (!health?.is_online || health?.failsafe_mode) {
           console.log(`[Run All] Skipping shed ${shed.name} - offline or fail-safe`);
           shedResults.push({
             shed_id: shed.id,
             name: shed.name,
             status: health?.failsafe_mode ? 'fail_safe' : 'offline',
             mode: health?.failsafe_mode ? 'FAIL_SAFE' : 'OFFLINE',
+            executed: false,
           });
+          continue;
         }
+
+        console.log(`[Run All] Running automation for shed: ${shed.name}`);
+        const result = await executeAutomationForShed(supabase, {
+          user_id,
+          shed_id: shed.id,
+        });
+        shedResults.push({
+          shed_id: shed.id,
+          name: shed.name,
+          status: result.error
+            ? 'error'
+            : result.executed
+              ? 'automation_run'
+              : `skipped:${result.skipped_reason ?? 'unknown'}`,
+          mode: 'AUTO',
+          executed: result.executed,
+          skipped_reason: result.skipped_reason,
+          error: result.error,
+          sensor_timestamp: result.sensor_timestamp,
+          power_state: result.power_state,
+          action: result.action,
+          hsi: result.hsi,
+          mutations: result.mutations,
+          alert_created: result.alert_created,
+        });
       }
+
+      const executedCount = shedResults.filter((r) => r.executed).length;
 
       return new Response(
         JSON.stringify({
