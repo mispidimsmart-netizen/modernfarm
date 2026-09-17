@@ -79,7 +79,7 @@ function getHSIResult(temperature: number, humidity: number, thresholds: {
   emergency: number;
 }): HSIResult {
   const hsi = calculateHSI(temperature, humidity);
-  const simpleHsi = calculateHSI(temperature, humidity, true);
+  const simpleHsi = legacySimpleIndex(temperature, humidity);
   
   if (hsi >= thresholds.emergency) {
     return {
