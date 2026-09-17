@@ -17,10 +17,11 @@
 
 export type HSILevel = 'NORMAL' | 'MILD' | 'HIGH' | 'DANGER';
 
-/** Steadman heat-stress index. Mirrors firmware `calcHSI()` exactly. */
-export function calculateHSI(temperature: number, humidity: number): number {
-  return (1.8 * temperature + 32) - ((0.55 - 0.0055 * humidity) * (1.8 * temperature - 26));
-}
+/**
+ * Steadman heat-stress index. Mirrors firmware `calcHSI()` exactly.
+ * Shared with automation-engine so cloud alerts and device behaviour agree.
+ */
+export { calculateHSI } from '../_shared/hsi-formula.ts';
 
 /**
  * Apply HSI-driven ventilation intent for a farm/shed.

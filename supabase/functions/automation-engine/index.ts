@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { calculateHSI } from '../_shared/hsi-formula.ts';
 
 // CORS — restrict to known FarmEye origins. See safety-engine for rationale.
 const ALLOWED_ORIGINS = new Set<string>([
@@ -52,15 +53,12 @@ async function fetchWithRetry(
 }
 
 // ================ HEAT STRESS INDEX (HSI) CALCULATION ================
-// THI Formula: THI = 0.8 × T + (RH/100) × (T - 14.4) + 46.4
-// Or Simple: HSI = Temperature + (Humidity × 0.1)
-function calculateHSI(temperature: number, humidity: number, useSimpleFormula = false): number {
-  if (useSimpleFormula) {
-    // Simple formula (matches ESP32 local calculation)
-    return temperature + (humidity * 0.1);
-  }
-  // THI formula (more accurate for cloud)
-  return 0.8 * temperature + (humidity / 100) * (temperature - 14.4) + 46.4;
+// P0 fix: the cloud used to run a THI formula here while the firmware and
+// esp32-api used Steadman — alerts and device behaviour could disagree.
+// Both now import the shared Steadman formula (_shared/hsi-formula.ts).
+// `simpleIndex` is kept only as a diagnostic mirror of the legacy value.
+function legacySimpleIndex(temperature: number, humidity: number): number {
+  return temperature + (humidity * 0.1);
 }
 
 type HSILevel = 'normal' | 'mild' | 'moderate' | 'severe' | 'emergency';
@@ -81,7 +79,7 @@ function getHSIResult(temperature: number, humidity: number, thresholds: {
   emergency: number;
 }): HSIResult {
   const hsi = calculateHSI(temperature, humidity);
-  const simpleHsi = calculateHSI(temperature, humidity, true);
+  const simpleHsi = legacySimpleIndex(temperature, humidity);
   
   if (hsi >= thresholds.emergency) {
     return {
@@ -365,12 +363,51 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? supabaseKey;
+    const cronSecret = Deno.env.get('AUTOMATION_ENGINE_CRON_SECRET') ?? '';
+
+    // ================ CALLER AUTHENTICATION (P0) ================
+    // Three accepted caller types, never mixed:
+    //   1. service-role bearer (internal / scheduler)
+    //   2. cron secret header (scheduler without service key)
+    //   3. authenticated user JWT — restricted to their own farms below
+    const bearer = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+    const isServiceCall = bearer.length > 0 && bearer === supabaseKey;
+    const isCronCall =
+      cronSecret.length > 0 && req.headers.get('x-automation-engine-cron-secret') === cronSecret;
+
+    let callerUserId: string | null = null;
+    if (!isServiceCall && !isCronCall) {
+      if (!bearer) {
+        return json({ success: false, error: 'authorization required' }, 401);
+      }
+      const callerClient = createClient(supabaseUrl, anonKey);
+      const { data: authData, error: authError } = await callerClient.auth.getUser(bearer);
+      if (authError || !authData?.user) {
+        return json({ success: false, error: 'invalid authentication' }, 401);
+      }
+      callerUserId = authData.user.id;
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, shed_id, user_id, farm_id: bodyFarmId } = await req.json();
+    const { action, shed_id, user_id: bodyUserId, farm_id: bodyFarmId } = await req.json();
+
+    // A user JWT can only ever act on its own account. Cross-account access
+    // (running automation for another farm) requires service/cron auth.
+    if (callerUserId && bodyUserId && bodyUserId !== callerUserId) {
+      return json({ success: false, error: 'forbidden: user_id mismatch' }, 403);
+    }
+    const user_id = callerUserId ?? bodyUserId;
 
     // ========================================
     // ACTION: run-automation (Per-Shed Automation)
@@ -661,7 +698,7 @@ Deno.serve(async (req) => {
             temperature: latestSensor.temperature,
             humidity: latestSensor.humidity,
             ammonia: latestSensor.ammonia,
-            timestamp: latestSensor.timestamp,
+            timestamp: latestSensor.recorded_at,
           } : null,
           hsi: hsiResult ? {
             index: hsiResult.index,
