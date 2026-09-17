@@ -8730,6 +8730,28 @@ export type Database = {
         Args: { _device_token_id: string; _firmware_id: string }
         Returns: Json
       }
+      claim_device_commands: {
+        Args: {
+          _device_name?: string
+          _farm_id?: string
+          _freshness_seconds?: number
+          _lease_seconds?: number
+          _limit?: number
+          _shed_id?: string
+          _user_id: string
+        }
+        Returns: {
+          client_request_id: string
+          command_type: string
+          command_value: boolean
+          created_at: string
+          dispatched_at: string
+          farm_id: string
+          id: string
+          retry_count: number
+          shed_id: string
+        }[]
+      }
       claim_v8_alert_delivery: {
         Args: {
           p_alert_id: string

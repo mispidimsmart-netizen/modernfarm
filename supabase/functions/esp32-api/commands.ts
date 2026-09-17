@@ -32,62 +32,90 @@ export async function getDeviceCommands(
   const COMMAND_FRESHNESS_SECONDS = 5 * 60;
   const freshCutoff = new Date(Date.now() - COMMAND_FRESHNESS_SECONDS * 1000).toISOString();
 
-  // Auto-expire stale pending commands so they don't keep being polled
-  let staleQuery = supabase
-    .from('device_commands')
-    .update({ executed: true, executed_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .eq('executed', false)
-    .lt('created_at', freshCutoff);
-  if (authoritativeDeviceName) staleQuery = staleQuery.eq('device_name', authoritativeDeviceName);
-  if (boundDevice?.farm_id) staleQuery = staleQuery.eq('farm_id', boundDevice.farm_id);
-  // Include NULL shed_id rows for legacy V8 firmware; farm and authoritative
-  // device_name filters still keep the command scoped to this device.
-  if (boundDevice?.shed_id) staleQuery = staleQuery.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
-  await staleQuery;
+  // Preferred path: atomic, lease-based claim in a single DB call. This makes
+  // concurrent polls safe — a command is handed to exactly one poll per lease
+  // window instead of being returned to every request between select & update.
+  const COMMAND_LEASE_SECONDS = 20;
+  const claim = await supabase.rpc('claim_device_commands', {
+    _user_id: userId,
+    _device_name: authoritativeDeviceName ?? null,
+    _farm_id: boundDevice?.farm_id ?? null,
+    _shed_id: boundDevice?.shed_id ?? null,
+    _lease_seconds: COMMAND_LEASE_SECONDS,
+    _freshness_seconds: COMMAND_FRESHNESS_SECONDS,
+    _limit: 20,
+  });
 
-  // Get pending (unexecuted) commands for this device — only fresh ones
-  let query = supabase
-    .from('device_commands')
-    .select('id, farm_id, shed_id, command_type, command_value, created_at, client_request_id, dispatched_at, retry_count')
-    .eq('user_id', userId)
-    .eq('executed', false)
-    .gte('created_at', freshCutoff)
-    .order('created_at', { ascending: true });
-
-  if (authoritativeDeviceName) {
-    query = query.eq('device_name', authoritativeDeviceName);
-  }
-  if (boundDevice?.farm_id) query = query.eq('farm_id', boundDevice.farm_id);
-  if (boundDevice?.shed_id) query = query.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching device commands:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to get commands', code: 'FETCH_FAILED' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  let claimedCommands: any[] | null = null;
+  if (claim.error) {
+    console.error('claim_device_commands RPC failed, falling back to legacy path:', claim.error);
+  } else {
+    claimedCommands = claim.data || [];
   }
 
-  // Phase 3 idempotency: ensure each fetched command has a client_request_id
-  // (so ESP32 can echo it back in ack to dedupe), and track dispatch lifecycle.
-  const nowIso = new Date().toISOString();
-  if (data && data.length > 0) {
-    for (const cmd of data) {
-      const updates: any = {};
-      if (!cmd.client_request_id) {
-        cmd.client_request_id = cmd.id;          // reuse row id as idempotency key
-        updates.client_request_id = cmd.id;
-      }
-      if (!cmd.dispatched_at) {
-        updates.dispatched_at = nowIso;
-      } else {
-        updates.retry_count = (cmd.retry_count || 0) + 1;
-      }
-      if (Object.keys(updates).length > 0) {
-        await supabase.from('device_commands').update(updates).eq('id', cmd.id);
+  let data: any[] | null = claimedCommands;
+
+  if (claimedCommands === null) {
+    // Legacy fallback (only when the claim RPC is unavailable).
+    // Auto-expire stale pending commands so they don't keep being polled
+    let staleQuery = supabase
+      .from('device_commands')
+      .update({ executed: true, executed_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('executed', false)
+      .lt('created_at', freshCutoff);
+    if (authoritativeDeviceName) staleQuery = staleQuery.eq('device_name', authoritativeDeviceName);
+    if (boundDevice?.farm_id) staleQuery = staleQuery.eq('farm_id', boundDevice.farm_id);
+    // Include NULL shed_id rows for legacy V8 firmware; farm and authoritative
+    // device_name filters still keep the command scoped to this device.
+    if (boundDevice?.shed_id) staleQuery = staleQuery.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
+    await staleQuery;
+
+    // Get pending (unexecuted) commands for this device — only fresh ones
+    let query = supabase
+      .from('device_commands')
+      .select('id, farm_id, shed_id, command_type, command_value, created_at, client_request_id, dispatched_at, retry_count')
+      .eq('user_id', userId)
+      .eq('executed', false)
+      .gte('created_at', freshCutoff)
+      .order('created_at', { ascending: true });
+
+    if (authoritativeDeviceName) {
+      query = query.eq('device_name', authoritativeDeviceName);
+    }
+    if (boundDevice?.farm_id) query = query.eq('farm_id', boundDevice.farm_id);
+    if (boundDevice?.shed_id) query = query.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
+
+    const { data: legacyData, error } = await query;
+
+    if (error) {
+      console.error('Error fetching device commands:', error);
+      return new Response(
+        JSON.stringify({ error: 'Failed to get commands', code: 'FETCH_FAILED' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    data = legacyData;
+
+    // Phase 3 idempotency: ensure each fetched command has a client_request_id
+    // (so ESP32 can echo it back in ack to dedupe), and track dispatch lifecycle.
+    const nowIso = new Date().toISOString();
+    if (data && data.length > 0) {
+      for (const cmd of data) {
+        const updates: any = {};
+        if (!cmd.client_request_id) {
+          cmd.client_request_id = cmd.id;          // reuse row id as idempotency key
+          updates.client_request_id = cmd.id;
+        }
+        if (!cmd.dispatched_at) {
+          updates.dispatched_at = nowIso;
+        } else {
+          updates.retry_count = (cmd.retry_count || 0) + 1;
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('device_commands').update(updates).eq('id', cmd.id);
+        }
       }
     }
   }

@@ -1899,7 +1899,7 @@ async function handleControlCommand(
     console.error('Command log insert error (non-fatal):', logError);
   }
 
-  const commandIds = commandLogs.map(l => l.command_id);
+  const commandIds = commandLogs.map((l: any) => l.command_id);
   console.log(`Queued ${commands.length} commands for ${deviceName}: ${commandIds.join(', ')}`);
 
   return new Response(
