@@ -4028,7 +4028,7 @@ void saveCredentialsToNVS() {
 void provisionFromHardcoded() {
   activeDeviceToken = String(DEVICE_TOKEN);
   activeDeviceSecret = String(DEVICE_SECRET);
-  activeSecretVersion = SECRET_VERSION;
+  activeSecretVersion = (activeDeviceSecret.length() >= 32 && SECRET_VERSION < 1) ? 1 : SECRET_VERSION;
   activeWifiSSID = String(WIFI_SSID);
   activeWifiPassword = String(WIFI_PASSWORD);
   activeShedId = String(SHED_ID);
