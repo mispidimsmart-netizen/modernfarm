@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { calculateHSI } from '../_shared/hsi-formula.ts';
 
 // CORS — restrict to known FarmEye origins. See safety-engine for rationale.
 const ALLOWED_ORIGINS = new Set<string>([
