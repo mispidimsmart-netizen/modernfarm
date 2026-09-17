@@ -13,6 +13,7 @@ export function useFirmwareCredentials(showFarmSelector: boolean) {
   const [shedId, setShedId] = useState('');
   const [shedName, setShedName] = useState('');
   const [deviceToken, setDeviceToken] = useState('');
+  const [deviceSecret, setDeviceSecret] = useState('');
   const [autoLoaded, setAutoLoaded] = useState(false);
 
   // Admin: list of farms to pick from
