@@ -9,6 +9,8 @@ export interface BuildOptions {
   ssid: string;
   password: string;
   deviceToken: string;
+  /** Per-device HMAC secret (Phase 1 request signing). Empty = unsigned legacy build. */
+  deviceSecret?: string;
   shedId: string;
   shedName: string;
   farmId: string;
@@ -62,7 +64,8 @@ export function buildV10Firmware(template: string, o: BuildOptions): string {
 
 /** v8 STABLE: hardcoded or OTA (NVS) mode. */
 export function buildV8Firmware(template: string, o: BuildOptions): string {
-  let code = template;
+  let code = injectDeviceSecret(template, o.deviceSecret);
+
 
   if (o.firmwareMode === 'hardcoded') {
     code = code.replace(
