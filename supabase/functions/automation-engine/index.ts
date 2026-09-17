@@ -1,5 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { calculateHSI } from '../_shared/hsi-formula.ts';
+import {
+  classifyHSI,
+  HSI_FAN_SPEED,
+  resolveHSIBands,
+  type HSIBandLevel,
+  type HSIBands,
+} from '../_shared/hsi-bands.ts';
 
 // CORS — restrict to known FarmEye origins. See safety-engine for rationale.
 const ALLOWED_ORIGINS = new Set<string>([
@@ -164,12 +171,7 @@ function runAutomationRules(
   // ========================================
   // RULE 2: HEAT STRESS INDEX (PRIMARY DECISION)
   // ========================================
-  const hsiResult = getHSIResult(temperature, humidity, {
-    mild: settings.hsi_mild_threshold,
-    moderate: settings.hsi_moderate_threshold,
-    severe: settings.hsi_severe_threshold,
-    emergency: settings.hsi_emergency_threshold,
-  });
+  const hsiResult = getHSIResult(temperature, humidity, resolveHSIBands(settings));
   
   // Apply HSI-based fan speed
   if (hsiResult.level !== 'normal') {
@@ -436,12 +438,7 @@ async function executeAutomationForShed(
     },
   );
 
-  const hsiResult = getHSIResult(temperature, humidity, {
-    mild: settings.hsi_mild_threshold,
-    moderate: settings.hsi_moderate_threshold,
-    severe: settings.hsi_severe_threshold,
-    emergency: settings.hsi_emergency_threshold,
-  });
+  const hsiResult = getHSIResult(temperature, humidity, resolveHSIBands(settings));
 
   let mutations = 0;
   const isManualOverride = deviceStatus?.manual_override || deviceStatus?.desired_manual_override;
@@ -643,12 +640,7 @@ Deno.serve(async (req) => {
           hsiResult = getHSIResult(
             latestSensor.temperature,
             latestSensor.humidity,
-            {
-              mild: settings.hsi_mild_threshold,
-              moderate: settings.hsi_moderate_threshold,
-              severe: settings.hsi_severe_threshold,
-              emergency: settings.hsi_emergency_threshold,
-            }
+            resolveHSIBands(settings)
           );
         }
 
