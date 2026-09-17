@@ -72,60 +72,30 @@ interface HSIResult {
   message: { bn: string; en: string };
 }
 
-function getHSIResult(temperature: number, humidity: number, thresholds: {
-  mild: number;
-  moderate: number;
-  severe: number;
-  emergency: number;
-}): HSIResult {
+const HSI_MESSAGES: Record<HSILevel, { bn: string; en: string }> = {
+  emergency: { bn: 'জরুরি অবস্থা! মুরগির জীবন ঝুঁকিতে', en: 'Emergency! Bird lives at risk' },
+  severe: { bn: 'গুরুতর তাপ চাপ! জরুরি পদক্ষেপ নিন', en: 'Severe heat stress! Take immediate action' },
+  moderate: { bn: 'মাঝারি তাপ চাপ - অতিরিক্ত বায়ু চলাচল প্রয়োজন', en: 'Moderate heat stress - Extra ventilation needed' },
+  mild: { bn: 'হালকা তাপ চাপ - ফ্যান চালু করুন', en: 'Mild heat stress - Turn on fans' },
+  normal: { bn: 'স্বাভাবিক অবস্থা', en: 'Normal conditions' },
+};
+
+// P2 fix: band comparison semantics now come from `_shared/hsi-bands.ts`
+// (strict `>` at every boundary, exactly like the firmware). Previously this
+// used `>=` while esp32-api hardcoded 75/80/85 with a `>`/`>=` mix, so a
+// reading sitting exactly on a threshold could act differently per path.
+function getHSIResult(temperature: number, humidity: number, thresholds: HSIBands): HSIResult {
   const hsi = calculateHSI(temperature, humidity);
   const simpleHsi = legacySimpleIndex(temperature, humidity);
-  
-  if (hsi >= thresholds.emergency) {
-    return {
-      index: hsi,
-      simpleIndex: simpleHsi,
-      level: 'emergency',
-      fanSpeed: 'HIGH',
-      shouldAlert: true,
-      message: { bn: 'জরুরি অবস্থা! মুরগির জীবন ঝুঁকিতে', en: 'Emergency! Bird lives at risk' }
-    };
-  } else if (hsi >= thresholds.severe) {
-    return {
-      index: hsi,
-      simpleIndex: simpleHsi,
-      level: 'severe',
-      fanSpeed: 'HIGH',
-      shouldAlert: true,
-      message: { bn: 'গুরুতর তাপ চাপ! জরুরি পদক্ষেপ নিন', en: 'Severe heat stress! Take immediate action' }
-    };
-  } else if (hsi >= thresholds.moderate) {
-    return {
-      index: hsi,
-      simpleIndex: simpleHsi,
-      level: 'moderate',
-      fanSpeed: 'HIGH',
-      shouldAlert: true,
-      message: { bn: 'মাঝারি তাপ চাপ - অতিরিক্ত বায়ু চলাচল প্রয়োজন', en: 'Moderate heat stress - Extra ventilation needed' }
-    };
-  } else if (hsi >= thresholds.mild) {
-    return {
-      index: hsi,
-      simpleIndex: simpleHsi,
-      level: 'mild',
-      fanSpeed: 'LOW',
-      shouldAlert: false,
-      message: { bn: 'হালকা তাপ চাপ - ফ্যান চালু করুন', en: 'Mild heat stress - Turn on fans' }
-    };
-  }
-  
+  const level = classifyHSI(hsi, thresholds);
+
   return {
     index: hsi,
     simpleIndex: simpleHsi,
-    level: 'normal',
-    fanSpeed: 'OFF',
-    shouldAlert: false,
-    message: { bn: 'স্বাভাবিক অবস্থা', en: 'Normal conditions' }
+    level,
+    fanSpeed: HSI_FAN_SPEED[level],
+    shouldAlert: level === 'moderate' || level === 'severe' || level === 'emergency',
+    message: HSI_MESSAGES[level],
   };
 }
 
