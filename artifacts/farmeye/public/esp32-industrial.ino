@@ -3021,7 +3021,10 @@ static String hmacSha256Hex(const String& key, const String& msg) {
 // Attach signing headers. Call AFTER addHeader() but BEFORE http.POST/GET.
 // `body` should be the exact payload string for POSTs, or "" for GETs.
 static void attachSignature(HTTPClient& http, const String& body) {
-  if (activeSecretVersion < 1 || activeDeviceSecret.length() == 0) {
+  // Sign whenever a secret is provisioned. The cloud promotes the device to
+  // signed mode (secret_version 1) on the first valid signature, so a freshly
+  // flashed board enrols itself without any manual step.
+  if (activeDeviceSecret.length() < 32) {
     if (!LEGACY_HMAC_COMPATIBILITY_GATE) {
       Serial.println("🛑 HMAC: legacy compatibility gate is disabled");
     }
@@ -3997,6 +4000,7 @@ void loadCredentialsFromNVS() {
   activeDeviceToken = preferences.getString("device_token", "");
   activeDeviceSecret = preferences.getString("device_secret", "");
   activeSecretVersion = preferences.getInt("secret_ver", 0);
+  if (activeDeviceSecret.length() >= 32 && activeSecretVersion < 1) activeSecretVersion = 1;
   activeWifiSSID = preferences.getString("wifi_ssid", "");
   activeWifiPassword = preferences.getString("wifi_pass", "");
   activeShedId = preferences.getString("shed_id", "");
