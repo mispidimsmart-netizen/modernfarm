@@ -865,6 +865,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: true,
           sheds_processed: shedResults.length,
+          sheds_executed: executedCount,
           sheds: shedResults,
           stale_devices: staleDevices,
           timestamp: new Date().toISOString(),
