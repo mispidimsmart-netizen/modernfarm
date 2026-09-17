@@ -15,6 +15,13 @@
       "when": 1789662663440,
       "tag": "0001_fix_mortality_records_cross_farm_write",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789664310609,
+      "tag": "0002_atomic_claim_device_commands",
+      "breakpoints": true
     }
   ]
 }
