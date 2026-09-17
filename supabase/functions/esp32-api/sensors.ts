@@ -8,6 +8,7 @@
  */
 import { corsHeaders } from './http.ts';
 import { calculateHSI, applyHSIAutomation } from './hsi.ts';
+import { classifyHSI, resolveHSIBands, toAutomationLevel } from '../_shared/hsi-bands.ts';
 import { computeQualityScore } from './domain.ts';
 
 export interface SensorPayload {
@@ -241,13 +242,18 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // 🔥 HSI-BASED AUTOMATION (Cloud Side — THI Formula aligned with firmware v8.0.0)
     // Calculate THI: 0.8 × Temp + (Humidity / 100) × (Temp − 14.4) + 46.4
     const hsi = calculateHSI(body.temperature, body.humidity);
-    const hsiStatus = hsi > 85 ? 'DANGER' : hsi >= 80 ? 'HIGH' : hsi >= 75 ? 'MILD' : 'NORMAL';
+    // P2 fix: bands + comparison semantics come from the shared module
+    // (farmer's farm_settings values, strict `>` like the firmware). This path
+    // used to hardcode 75/80/85 with a mixed `>`/`>=` comparison.
+    const hsiBands = resolveHSIBands(settings);
+    const hsiLevel = classifyHSI(hsi, hsiBands);
+    const hsiStatus = toAutomationLevel(hsiLevel);
     
     console.log(`🔥 [${shedLabel}] THI = ${hsi.toFixed(1)} (Temp=${body.temperature}, Hum=${body.humidity}) → ${hsiStatus}`);
     
     // THI-based alert thresholds (aligned with firmware)
     // < 75: Normal, 75-80: Mild, 80-85: High Stress, > 85: Danger
-    if (hsi > 85) {
+    if (hsiStatus === 'DANGER') {
       const alertData: Record<string, any> = {
         user_id: userId,
         alert_type: 'temperature',
@@ -263,7 +269,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
       }
       
-    } else if (hsi >= 80) {
+    } else if (hsiStatus === 'HIGH') {
       const alertData: Record<string, any> = {
         user_id: userId,
         alert_type: 'temperature',
@@ -279,7 +285,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
       }
       
-    } else if (hsi >= 75) {
+    } else if (hsiStatus === 'MILD') {
       // Mild stress - fan LOW (no alert needed, just automation)
       if (settings?.safety_engine_enabled !== false) {
         await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
@@ -293,7 +299,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
 
     // Legacy temperature-only alerts (for backward compatibility)
     if (settings) {
-      if (body.temperature > Number(settings.temperature_max) && hsi <= 85) {
+      if (body.temperature > Number(settings.temperature_max) && hsiStatus !== 'DANGER') {
         // Only add if not already covered by HSI danger alert
         if (!alerts.some(a => a.severity === 'danger' && a.alert_type === 'temperature')) {
           const alertData: Record<string, any> = {
