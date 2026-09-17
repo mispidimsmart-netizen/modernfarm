@@ -151,9 +151,14 @@ export async function verifyDeviceSignature(
     return { ok: false, status: 409, error: 'Nonce already used', code: 'NONCE_REUSE' };
   }
 
-  await supabase.from('device_tokens')
-    .update({ last_signature_at: new Date().toISOString() })
-    .eq('id', device.id);
+  // Auto-enrol: a legacy device that proves it can sign is promoted to signed mode,
+  // after which unsigned requests from it are rejected.
+  const patch: Record<string, unknown> = { last_signature_at: new Date().toISOString() };
+  if (version < 1) {
+    patch.secret_version = 1;
+    audit('auto_enrolled_signed_mode', 'signature_enrolled', true);
+  }
+  await supabase.from('device_tokens').update(patch).eq('id', device.id);
 
   return { ok: true };
 }
