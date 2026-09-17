@@ -32,6 +32,27 @@ export async function getDeviceCommands(
   const COMMAND_FRESHNESS_SECONDS = 5 * 60;
   const freshCutoff = new Date(Date.now() - COMMAND_FRESHNESS_SECONDS * 1000).toISOString();
 
+  // Preferred path: atomic, lease-based claim in a single DB call. This makes
+  // concurrent polls safe — a command is handed to exactly one poll per lease
+  // window instead of being returned to every request between select & update.
+  const COMMAND_LEASE_SECONDS = 20;
+  const claim = await supabase.rpc('claim_device_commands', {
+    _user_id: userId,
+    _device_name: authoritativeDeviceName ?? null,
+    _farm_id: boundDevice?.farm_id ?? null,
+    _shed_id: boundDevice?.shed_id ?? null,
+    _lease_seconds: COMMAND_LEASE_SECONDS,
+    _freshness_seconds: COMMAND_FRESHNESS_SECONDS,
+    _limit: 20,
+  });
+
+  let claimedCommands: any[] | null = null;
+  if (claim.error) {
+    console.error('claim_device_commands RPC failed, falling back to legacy path:', claim.error);
+  } else {
+    claimedCommands = claim.data || [];
+  }
+
   // Auto-expire stale pending commands so they don't keep being polled
   let staleQuery = supabase
     .from('device_commands')
