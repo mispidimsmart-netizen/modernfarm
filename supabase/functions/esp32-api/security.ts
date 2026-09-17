@@ -65,27 +65,43 @@ export async function verifyDeviceSignature(
     .maybeSingle();
 
   const version = secretRow?.secret_version ?? 0;
-  if (version < 1) {
-    // Legacy device — signature not required.
-    return { ok: true };
-  }
 
   const sigHeader = headers.get('x-signature');
   const tsHeader = headers.get('x-timestamp');
   const nonce = headers.get('x-nonce');
 
-  const audit = (reason: string) => supabase.rpc('log_security_event', {
-    _event_type: 'signature_invalid',
-    _user_id: device.user_id,
-    _farm_id: device.farm_id,
-    _device_token_id: device.id,
-    _success: false,
-    _details: { reason },
-  }).then(() => {}, () => {});
+  const audit = (reason: string, eventType = 'signature_invalid', success = false) =>
+    supabase.rpc('log_security_event', {
+      _event_type: eventType,
+      _user_id: device.user_id,
+      _farm_id: device.farm_id,
+      _device_token_id: device.id,
+      _success: success,
+      _details: { reason, secret_version: version },
+    }).then(() => {}, () => {});
+
+  // Legacy device (secret_version 0): signature headers are optional, but when a
+  // device does send them we verify and auto-enrol it into signed mode so the
+  // legacy path closes by itself as firmware is updated.
+  const legacyUnsigned = version < 1 && (!sigHeader || !tsHeader || !nonce);
+  if (legacyUnsigned) {
+    // Global hard enforcement switch — flip once every board runs signed firmware.
+    if ((Deno.env.get('REQUIRE_DEVICE_SIGNATURES') || '').toLowerCase() === 'true') {
+      audit('legacy_unsigned_rejected');
+      return { ok: false, status: 401, error: 'Signature required', code: 'MISSING_SIGNATURE' };
+    }
+    audit('legacy_unsigned_request', 'legacy_unsigned_request', true);
+    return { ok: true };
+  }
 
   if (!sigHeader || !tsHeader || !nonce) {
     audit('missing_signature_headers');
     return { ok: false, status: 401, error: 'Missing signature headers', code: 'MISSING_SIGNATURE' };
+  }
+
+  if (!secretRow?.device_secret) {
+    audit('no_device_secret');
+    return { ok: false, status: 401, error: 'Device secret not provisioned', code: 'NO_SECRET' };
   }
 
   const ts = parseInt(tsHeader, 10);
@@ -135,9 +151,14 @@ export async function verifyDeviceSignature(
     return { ok: false, status: 409, error: 'Nonce already used', code: 'NONCE_REUSE' };
   }
 
-  await supabase.from('device_tokens')
-    .update({ last_signature_at: new Date().toISOString() })
-    .eq('id', device.id);
+  // Auto-enrol: a legacy device that proves it can sign is promoted to signed mode,
+  // after which unsigned requests from it are rejected.
+  const patch: Record<string, unknown> = { last_signature_at: new Date().toISOString() };
+  if (version < 1) {
+    patch.secret_version = 1;
+    audit('auto_enrolled_signed_mode', 'signature_enrolled', true);
+  }
+  await supabase.from('device_tokens').update(patch).eq('id', device.id);
 
   return { ok: true };
 }
