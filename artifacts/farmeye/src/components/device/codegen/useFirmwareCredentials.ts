@@ -97,8 +97,23 @@ export function useFirmwareCredentials(showFarmSelector: boolean) {
           );
           if (credentialError) throw credentialError;
           setDeviceToken((credential as { token?: string } | null)?.token || '');
+
+          // Provision (or reuse) the HMAC secret so the generated firmware signs
+          // every cloud request. The device promotes itself to signed mode on
+          // its first valid signature — no downtime for boards still unsigned.
+          const { data: secret, error: secretError } = await supabase.rpc(
+            'provision_device_secret',
+            { _device_token_id: deviceId },
+          );
+          if (secretError) {
+            console.warn('Could not provision device secret:', secretError);
+            setDeviceSecret('');
+          } else {
+            setDeviceSecret((secret as string | null) || '');
+          }
         } else {
           setDeviceToken('');
+          setDeviceSecret('');
         }
 
         setAutoLoaded(true);
@@ -115,6 +130,7 @@ export function useFirmwareCredentials(showFarmSelector: boolean) {
     setSelectedFarmId(id);
     setAutoLoaded(false);
     setDeviceToken('');
+    setDeviceSecret('');
     setShedId('');
     setShedName('');
     setFarmId('');
