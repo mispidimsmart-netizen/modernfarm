@@ -59,7 +59,12 @@ export default function MembersPage() {
   const { language } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const isOwner = useIsOwner();
+  const legacyIsOwner = useIsOwner();
+  const { canManageWorkers } = usePermissions();
+  // Defense-in-depth: member management UI requires BOTH the legacy owner flag
+  // and the canonical canManageWorkers capability. The route itself stays open
+  // so an invited worker can still redeem a join code below.
+  const isOwner = legacyIsOwner && canManageWorkers;
   const { logMemberAction } = useAuditLog();
   const actorRole: AppRole = isOwner ? 'owner' : 'worker';
 
