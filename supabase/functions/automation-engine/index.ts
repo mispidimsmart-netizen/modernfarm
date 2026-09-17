@@ -61,7 +61,7 @@ function legacySimpleIndex(temperature: number, humidity: number): number {
   return temperature + (humidity * 0.1);
 }
 
-type HSILevel = 'normal' | 'mild' | 'moderate' | 'severe' | 'emergency';
+type HSILevel = HSIBandLevel;
 
 interface HSIResult {
   index: number;
