@@ -698,7 +698,7 @@ Deno.serve(async (req) => {
             temperature: latestSensor.temperature,
             humidity: latestSensor.humidity,
             ammonia: latestSensor.ammonia,
-            timestamp: latestSensor.timestamp,
+            timestamp: latestSensor.recorded_at,
           } : null,
           hsi: hsiResult ? {
             index: hsiResult.index,
