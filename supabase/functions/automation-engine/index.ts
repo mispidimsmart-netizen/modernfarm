@@ -597,214 +597,31 @@ Deno.serve(async (req) => {
     // ========================================
     if (action === 'run-automation') {
       if (!user_id) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'user_id required' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return json({ success: false, error: 'user_id required' }, 400);
       }
 
-      // ★ FIX #2: Resolve farm_id from shed (multi-farm safety).
-      // Without this, settings/device_status from a different farm could be used.
-      let farm_id: string | null = bodyFarmId || null;
-      if (!farm_id && shed_id) {
-        const { data: shedRow } = await supabase
-          .from('sheds')
-          .select('farm_id')
-          .eq('id', shed_id)
-          .maybeSingle();
-        farm_id = shedRow?.farm_id || null;
-      }
+      const result = await executeAutomationForShed(supabase, {
+        user_id,
+        shed_id,
+        farm_id: bodyFarmId ?? null,
+      });
 
-      // Get farm settings — scoped by farm_id when available
-      let settingsQuery = supabase
-        .from('farm_settings')
-        .select('*')
-        .eq('user_id', user_id);
-      if (farm_id) settingsQuery = settingsQuery.eq('farm_id', farm_id);
-      const { data: settings } = await settingsQuery.maybeSingle();
-
-      if (!settings) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Settings not found' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // ========================================
-      // DUAL MODE CHECK: Skip automation if MANUAL mode
-      // Safety invariants (INV-1 to INV-8) remain on ESP32 hardware
-      // ========================================
-      if (settings.automation_mode === 'MANUAL') {
-        console.log(`⏸️ [MANUAL MODE] Skipping automation for user ${user_id} farm ${farm_id}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            skipped: true,
-            reason: 'MANUAL_MODE',
-            message: 'Automation skipped — manual mode active. Safety invariants remain on hardware.',
-            timestamp: new Date().toISOString(),
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // ========================================
-      // SAFETY ENGINE TOGGLE CHECK
-      // If farmer disabled Smart Safety Engine, cloud must NOT push
-      // safety-driven desired_* overrides (ammonia/heat/power → fan/alarm).
-      // ESP32 hardware invariants still enforce physical safety independently.
-      // Keeps behavior consistent with esp32-api /ingest gating.
-      // ========================================
-      const safetyEngineEnabled = (settings as any).safety_engine_enabled !== false;
-      if (!safetyEngineEnabled) {
-        console.log(`🛑 [SAFETY ENGINE OFF] Skipping cloud safety overrides for user ${user_id} farm ${farm_id}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            skipped: true,
-            reason: 'SAFETY_ENGINE_DISABLED',
-            message: 'Cloud safety automation off — hardware invariants still active on ESP32.',
-            timestamp: new Date().toISOString(),
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // ★ FIX #1: Get latest sensor data from sensor_readings (the actual table ESP32 writes to)
-      let sensorQuery = supabase
-        .from('sensor_readings')
-        .select('temperature, humidity, ammonia, recorded_at')
-        .eq('user_id', user_id)
-        .order('recorded_at', { ascending: false })
-        .limit(1);
-
-      if (farm_id) sensorQuery = sensorQuery.eq('farm_id', farm_id);
-      if (shed_id) sensorQuery = sensorQuery.eq('shed_id', shed_id);
-
-      const { data: sensorData } = await sensorQuery;
-
-      if (!sensorData || sensorData.length === 0) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'No sensor data available',
-            fallback: { fan: true, fanSpeed: 'HIGH', alarm: false, reason: 'No sensor data - Safe mode' }
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const latestSensor = sensorData[0];
-      
-      // Run automation rules
-      const automationAction = runAutomationRules(
-        {
-          temperature: Number(latestSensor.temperature) || 0,
-          humidity: Number(latestSensor.humidity) || 0,
-          ammonia: Number(latestSensor.ammonia) || 0,
-          powerOn: true, // sensor_readings has no power_status; ESP32 reports it via device_status
+      return json({
+        success: !result.error,
+        skipped: !result.executed,
+        reason: result.skipped_reason,
+        error: result.error,
+        automation: {
+          action: result.action,
+          hsi: result.hsi,
+          sensor: result.sensor,
+          power_state: result.power_state,
+          sensor_timestamp: result.sensor_timestamp,
+          mutations: result.mutations,
+          alert_created: result.alert_created,
+          timestamp: new Date().toISOString(),
         },
-        {
-          temperature_max: settings.temperature_max,
-          ammonia_max: settings.ammonia_max,
-          fan_low_temp_min: settings.fan_low_temp_min,
-          fan_medium_temp_min: settings.fan_medium_temp_min,
-          fan_high_temp_min: settings.fan_high_temp_min,
-          hsi_mild_threshold: settings.hsi_mild_threshold,
-          hsi_moderate_threshold: settings.hsi_moderate_threshold,
-          hsi_severe_threshold: settings.hsi_severe_threshold,
-          hsi_emergency_threshold: settings.hsi_emergency_threshold,
-        }
-      );
-
-      // Calculate HSI for response
-      const hsiResult = getHSIResult(
-        Number(latestSensor.temperature) || 0,
-        Number(latestSensor.humidity) || 0,
-        {
-          mild: settings.hsi_mild_threshold,
-          moderate: settings.hsi_moderate_threshold,
-          severe: settings.hsi_severe_threshold,
-          emergency: settings.hsi_emergency_threshold,
-        }
-      );
-
-      // ★ FIX #2 + #3: scope by farm_id AND only write desired_* columns
-      // (Hardware-as-Source-of-Truth — ESP32 owns actual relay state)
-      let dsQuery = supabase
-        .from('device_status')
-        .select('manual_override, desired_manual_override')
-        .eq('user_id', user_id);
-      if (farm_id) dsQuery = dsQuery.eq('farm_id', farm_id);
-      if (shed_id) dsQuery = dsQuery.eq('shed_id', shed_id);
-      const { data: deviceStatus } = await dsQuery.maybeSingle();
-
-      const isManualOverride = deviceStatus?.manual_override || deviceStatus?.desired_manual_override;
-
-      if (!isManualOverride) {
-        let updateQuery = supabase
-          .from('device_status')
-          .update({
-            // ★ FIX #3: desired_* only — never overwrite hardware actual state
-            desired_fan_on: automationAction.fan,
-            desired_fan_speed: automationAction.fanSpeed,
-            desired_alarm_on: automationAction.alarm,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', user_id);
-        if (farm_id) updateQuery = updateQuery.eq('farm_id', farm_id);
-        if (shed_id) updateQuery = updateQuery.eq('shed_id', shed_id);
-        await updateQuery;
-      }
-
-      // Create alert if needed
-      if (automationAction.alert) {
-        // The automation cycle can be retried by the scheduler while the
-        // alert dispatcher is processing the same farm. A stable, tenant-
-        // scoped event key makes that race converge on one alert row.
-        const eventKey = farm_id
-          ? `v8:automation:${farm_id}:${shed_id || 'farm'}:${automationAction.alert.type}:${Math.floor(Date.now() / (30 * 60 * 1000))}`
-          : null;
-        const alertPayload = {
-          user_id,
-          farm_id,
-          shed_id,
-          alert_type: automationAction.alert.type,
-          severity: automationAction.alert.severity,
-          message: automationAction.alert.message,
-          message_bn: automationAction.alert.messageBn,
-          ...(eventKey ? { event_key: eventKey } : {}),
-        };
-        if (eventKey) {
-          await supabase.from('alerts').upsert(alertPayload, {
-            onConflict: 'farm_id,event_key',
-            ignoreDuplicates: true,
-          });
-        } else {
-          await supabase.from('alerts').insert(alertPayload);
-        }
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          automation: {
-            action: automationAction,
-            hsi: {
-              index: hsiResult.index,
-              simpleIndex: hsiResult.simpleIndex,
-              level: hsiResult.level,
-            },
-            sensor: {
-              temperature: latestSensor.temperature,
-              humidity: latestSensor.humidity,
-              ammonia: latestSensor.ammonia,
-            },
-            timestamp: new Date().toISOString(),
-          },
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      });
     }
 
     // ========================================
