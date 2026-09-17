@@ -365,12 +365,51 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? supabaseKey;
+    const cronSecret = Deno.env.get('AUTOMATION_ENGINE_CRON_SECRET') ?? '';
+
+    // ================ CALLER AUTHENTICATION (P0) ================
+    // Three accepted caller types, никогда mixed:
+    //   1. service-role bearer (internal / scheduler)
+    //   2. cron secret header (scheduler without service key)
+    //   3. authenticated user JWT — restricted to their own farms below
+    const bearer = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+    const isServiceCall = bearer.length > 0 && bearer === supabaseKey;
+    const isCronCall =
+      cronSecret.length > 0 && req.headers.get('x-automation-engine-cron-secret') === cronSecret;
+
+    let callerUserId: string | null = null;
+    if (!isServiceCall && !isCronCall) {
+      if (!bearer) {
+        return json({ success: false, error: 'authorization required' }, 401);
+      }
+      const callerClient = createClient(supabaseUrl, anonKey);
+      const { data: authData, error: authError } = await callerClient.auth.getUser(bearer);
+      if (authError || !authData?.user) {
+        return json({ success: false, error: 'invalid authentication' }, 401);
+      }
+      callerUserId = authData.user.id;
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { action, shed_id, user_id, farm_id: bodyFarmId } = await req.json();
+    const { action, shed_id, user_id: bodyUserId, farm_id: bodyFarmId } = await req.json();
+
+    // A user JWT can only ever act on its own account. Cross-account access
+    // (running automation for another farm) requires service/cron auth.
+    if (callerUserId && bodyUserId && bodyUserId !== callerUserId) {
+      return json({ success: false, error: 'forbidden: user_id mismatch' }, 403);
+    }
+    const user_id = callerUserId ?? bodyUserId;
 
     // ========================================
     // ACTION: run-automation (Per-Shed Automation)
