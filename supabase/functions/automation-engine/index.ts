@@ -491,17 +491,19 @@ async function executeAutomationForShed(
   const hsiResult = getHSIResult(temperature, humidity, resolveHSIBands(settings));
 
   let mutations = 0;
-  const isManualOverride = deviceStatus?.manual_override || deviceStatus?.desired_manual_override;
-  if (!isManualOverride) {
+  if (gate.allow) {
     // Cloud writes desired_* ONLY — ESP32 owns actual relay state.
+    const desired: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (!gate.skipFan) {
+      desired.desired_fan_on = automationAction.fan;
+      desired.desired_fan_speed = automationAction.fanSpeed;
+    }
+    if (!gate.skipAlarm) {
+      desired.desired_alarm_on = automationAction.alarm;
+    }
     let updateQuery = supabase
       .from('device_status')
-      .update({
-        desired_fan_on: automationAction.fan,
-        desired_fan_speed: automationAction.fanSpeed,
-        desired_alarm_on: automationAction.alarm,
-        updated_at: new Date().toISOString(),
-      })
+      .update(desired)
       .eq('user_id', user_id);
     if (farm_id) updateQuery = updateQuery.eq('farm_id', farm_id);
     if (shed_id) updateQuery = updateQuery.eq('shed_id', shed_id);
@@ -516,6 +518,7 @@ async function executeAutomationForShed(
     }
     mutations += 1;
   }
+
 
   let alertCreated = false;
   if (automationAction.alert) {
