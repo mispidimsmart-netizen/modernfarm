@@ -236,12 +236,15 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       }
     }
 
-    // Check for alerts based on farm settings
-    const { data: settings } = await supabase
+    // Check for alerts based on farm settings (farm-scoped; `.single()` used to
+    // throw for owners with more than one farm_settings row).
+    let settingsQuery = supabase
       .from('farm_settings')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
+    if (farmId) settingsQuery = settingsQuery.eq('farm_id', farmId);
+    const { data: settings } = await settingsQuery.limit(1).maybeSingle();
+
 
     const alerts: Record<string, any>[] = [];
     const shedLabel = shedName || (shedId ? `Shed ${shedId.slice(0, 8)}` : 'Farm');
