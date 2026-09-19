@@ -10,6 +10,7 @@ import { ViewerRestrictionCard, TemporaryControlNoticeCard } from '@/components/
 import { ManualDeviceGrid } from '@/components/control/ManualDeviceGrid';
 import { AutoDeviceGrid } from '@/components/control/AutoDeviceGrid';
 import { ActiveTimersSummary } from '@/components/control/ActiveTimersSummary';
+import { useCommandProgress } from '@/hooks/useCommandProgress';
 import { useControlPageState } from '@/hooks/useControlPageState';
 
 export function ControlPage() {
@@ -57,6 +58,7 @@ export function ControlPage() {
               language={c.language}
               isDeviceActive={c.isDeviceActive}
               pendingCommands={c.pendingCommands}
+              commandProgress={commandProgress}
               onToggle={c.handleManualToggle}
               temperature={c.sensorData.temperature}
               ammonia={c.sensorData.ammonia}

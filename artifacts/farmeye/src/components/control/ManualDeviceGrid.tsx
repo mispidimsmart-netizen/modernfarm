@@ -5,12 +5,16 @@ import { Switch } from '@/components/ui/switch';
 import { getDeviceColors } from '@/data/deviceColors';
 import type { ControlDeviceMeta } from '@/data/controlDevices';
 import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
+import { CommandProgressPill } from '@/components/control/CommandProgressPill';
+import type { CommandProgressMap } from '@/hooks/useCommandProgress';
 
 interface Props {
   devices: ControlDeviceMeta[];
   language: 'bn' | 'en';
   isDeviceActive: (deviceKey: string) => boolean;
   pendingCommands: Record<string, { desired: boolean; startedAt: number }>;
+  /** Latest command lifecycle stage per device key (cloud → device → confirmed). */
+  commandProgress?: CommandProgressMap;
   onToggle: (deviceKey: string, next: boolean) => void;
   disabled: boolean;
   /** Live safety context — Safety Engine still applies in MANUAL mode when ON. */
@@ -30,6 +34,7 @@ export function ManualDeviceGrid({
   language,
   isDeviceActive,
   pendingCommands,
+  commandProgress = {},
   onToggle,
   disabled,
   temperature = 0,
@@ -44,6 +49,7 @@ export function ManualDeviceGrid({
         const active = isDeviceActive(device.key);
         const Icon = device.icon;
         const isPending = !!pendingCommands[device.key];
+        const progress = commandProgress[device.key];
         const c = getDeviceColors(device.key);
         const { isSafetyLocked, reason } = evaluateSafetyLock({
           deviceKey: device.key,
@@ -128,9 +134,12 @@ export function ManualDeviceGrid({
                       ? (language === 'bn' ? 'অপেক্ষায়…' : 'PENDING…')
                       : (active ? 'ON' : 'OFF')}
                   </span>
-                  {active && !isPending && (
-                    <span className={`h-1.5 w-1.5 rounded-full ${c.activeBg} animate-pulse`} />
-                  )}
+                  <span className="flex items-center gap-1">
+                    {progress && <CommandProgressPill stage={progress.stage} language={language} />}
+                    {active && !isPending && (
+                      <span className={`h-1.5 w-1.5 rounded-full ${c.activeBg} animate-pulse`} />
+                    )}
+                  </span>
                 </div>
               </CardContent>
             </Card>
