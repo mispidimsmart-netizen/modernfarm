@@ -276,7 +276,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       
       // Auto-enable fan HIGH + alarm for THIS SHED (skip if farmer disabled safety engine)
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId, farmId);
       }
       
     } else if (hsiStatus === 'HIGH') {
@@ -292,18 +292,18 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       
       // Auto-enable fan HIGH for THIS SHED (skip if disabled)
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId, farmId);
       }
       
     } else if (hsiStatus === 'MILD') {
       // Mild stress - fan LOW (no alert needed, just automation)
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId, farmId);
       }
     } else {
       // Normal - can turn off fan if no other issues
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId, farmId);
       }
     }
 
