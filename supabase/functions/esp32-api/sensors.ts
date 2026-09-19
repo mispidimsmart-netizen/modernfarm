@@ -63,12 +63,15 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // ═══════════════════════════════════════════════════════════════════════════
     let shedId: string | null = body.shed_id || null;
     let shedName: string | null = null;
+    // MODE-01 / multi-farm: every settings read and desired_* write below is
+    // scoped by farm, so a second farm of the same owner is never touched.
+    let farmId: string | null = body.farm_id || null;
     
     // If no shed_id in body, try to get from device_tokens based on device_id
     if (!shedId && body.device_id) {
       const { data: deviceInfo } = await supabase
         .from('device_tokens')
-        .select('shed_id, sheds(name, name_en)')
+        .select('shed_id, farm_id, sheds(name, name_en)')
         .eq('device_name', body.device_id)
         .eq('user_id', userId)
         .eq('is_active', true)
@@ -78,13 +81,14 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         shedId = deviceInfo.shed_id;
         shedName = deviceInfo.sheds?.name || deviceInfo.sheds?.name_en || null;
       }
+      if (deviceInfo?.farm_id) farmId = deviceInfo.farm_id;
     }
     
     // If shed_id provided, validate it belongs to user
     if (shedId) {
       const { data: shedInfo } = await supabase
         .from('sheds')
-        .select('id, name, name_en')
+        .select('id, name, name_en, farm_id')
         .eq('id', shedId)
         .eq('user_id', userId)
         .maybeSingle();
@@ -94,8 +98,11 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         shedId = null;
       } else {
         shedName = shedInfo.name || shedInfo.name_en;
+        // The shed's own farm wins over a body-supplied farm_id.
+        if (shedInfo.farm_id) farmId = shedInfo.farm_id;
       }
     }
+
 
     // Insert sensor reading with shed_id
     const sensorInsertData: Record<string, any> = {
@@ -144,9 +151,11 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
                           body.pm10_ugm3 != null || body.nh3_ppm_precise != null;
     if (hasAirQuality) {
       try {
-        const { data: farmRow } = await supabase
+        // Prefer the device/shed's own farm; only fall back to "first owned farm".
+        const { data: farmRow } = farmId ? { data: { id: farmId } } : await supabase
           .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
         if (farmRow?.id) {
+
           await supabase.rpc('check_air_quality_thresholds', {
             p_farm_id: farmRow.id,
             p_shed_id: shedId,
@@ -164,9 +173,10 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // Phase 9 — sensor inventory heartbeat (track which sensors active)
     if (body.sensor_source && body.device_id) {
       try {
-        const { data: farmRow } = await supabase
+        const { data: farmRow } = farmId ? { data: { id: farmId } } : await supabase
           .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
         if (farmRow?.id) {
+
           const SENSOR_TYPE_MAP: Record<string, string> = {
             temp: 'temp_humidity', humidity: 'temp_humidity',
             nh3: 'ammonia', light: 'light',
@@ -201,9 +211,13 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         .update({ power_on: powerOn, updated_at: new Date().toISOString() })
         .eq('user_id', userId);
       
+      if (farmId) {
+        powerQuery = powerQuery.eq('farm_id', farmId);
+      }
       if (shedId) {
         powerQuery = powerQuery.eq('shed_id', shedId);
       }
+
       
       await powerQuery;
 
@@ -229,12 +243,15 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       }
     }
 
-    // Check for alerts based on farm settings
-    const { data: settings } = await supabase
+    // Check for alerts based on farm settings (farm-scoped; `.single()` used to
+    // throw for owners with more than one farm_settings row).
+    let settingsQuery = supabase
       .from('farm_settings')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
+    if (farmId) settingsQuery = settingsQuery.eq('farm_id', farmId);
+    const { data: settings } = await settingsQuery.limit(1).maybeSingle();
+
 
     const alerts: Record<string, any>[] = [];
     const shedLabel = shedName || (shedId ? `Shed ${shedId.slice(0, 8)}` : 'Farm');
@@ -266,7 +283,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       
       // Auto-enable fan HIGH + alarm for THIS SHED (skip if farmer disabled safety engine)
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'DANGER', hsi, shedId, farmId);
       }
       
     } else if (hsiStatus === 'HIGH') {
@@ -282,18 +299,18 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       
       // Auto-enable fan HIGH for THIS SHED (skip if disabled)
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'HIGH', hsi, shedId, farmId);
       }
       
     } else if (hsiStatus === 'MILD') {
       // Mild stress - fan LOW (no alert needed, just automation)
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'MILD', hsi, shedId, farmId);
       }
     } else {
       // Normal - can turn off fan if no other issues
       if (settings?.safety_engine_enabled !== false) {
-        await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId);
+        await applyHSIAutomation(supabase, userId, 'NORMAL', hsi, shedId, farmId);
       }
     }
 

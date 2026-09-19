@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { calculateHSI } from '../_shared/hsi-formula.ts';
+import { evaluateModeGate } from '../_shared/mode-precedence.ts';
+
 import {
   classifyHSI,
   HSI_FAN_SPEED,
@@ -397,10 +399,9 @@ async function executeAutomationForShed(
   const { data: settings } = await settingsQuery.maybeSingle();
 
   if (!settings) return { ...base, skipped_reason: 'SETTINGS_NOT_FOUND' };
-  if (settings.automation_mode === 'MANUAL') return { ...base, skipped_reason: 'MANUAL_MODE' };
-  if ((settings as any).safety_engine_enabled === false) {
-    return { ...base, skipped_reason: 'SAFETY_ENGINE_DISABLED' };
-  }
+  // MODE-01: mode gating happens once, below, through the shared precedence
+  // contract (`_shared/mode-precedence.ts`) — no per-path ad-hoc checks.
+
 
   let sensorQuery = supabase
     .from('sensor_readings')
@@ -440,11 +441,26 @@ async function executeAutomationForShed(
   // Real, freshness-validated power state (never hardcoded).
   let dsQuery = supabase
     .from('device_status')
-    .select('manual_override, desired_manual_override, power_on, updated_at')
+    .select(
+      'manual_override, desired_manual_override, power_on, updated_at, mode, ' +
+      'desired_fan_expires_at, desired_alarm_expires_at',
+    )
     .eq('user_id', user_id);
   if (farm_id) dsQuery = dsQuery.eq('farm_id', farm_id);
   if (shed_id) dsQuery = dsQuery.eq('shed_id', shed_id);
   const { data: deviceStatus } = await dsQuery.maybeSingle();
+
+  // MODE-01 — single precedence ladder shared with esp32-api.
+  const gate = evaluateModeGate({
+    automationMode: settings.automation_mode,
+    deviceMode: deviceStatus?.mode,
+    safetyEngineEnabled: (settings as any).safety_engine_enabled,
+    manualOverride: deviceStatus?.manual_override,
+    desiredManualOverride: deviceStatus?.desired_manual_override,
+    fanOverrideUntil: deviceStatus?.desired_fan_expires_at,
+    alarmOverrideUntil: deviceStatus?.desired_alarm_expires_at,
+  });
+
 
   let powerOn: boolean | null = null;
   if (deviceStatus && typeof deviceStatus.power_on === 'boolean' && deviceStatus.updated_at) {
@@ -477,17 +493,19 @@ async function executeAutomationForShed(
   const hsiResult = getHSIResult(temperature, humidity, resolveHSIBands(settings));
 
   let mutations = 0;
-  const isManualOverride = deviceStatus?.manual_override || deviceStatus?.desired_manual_override;
-  if (!isManualOverride) {
+  if (gate.allow) {
     // Cloud writes desired_* ONLY — ESP32 owns actual relay state.
+    const desired: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (!gate.skipFan) {
+      desired.desired_fan_on = automationAction.fan;
+      desired.desired_fan_speed = automationAction.fanSpeed;
+    }
+    if (!gate.skipAlarm) {
+      desired.desired_alarm_on = automationAction.alarm;
+    }
     let updateQuery = supabase
       .from('device_status')
-      .update({
-        desired_fan_on: automationAction.fan,
-        desired_fan_speed: automationAction.fanSpeed,
-        desired_alarm_on: automationAction.alarm,
-        updated_at: new Date().toISOString(),
-      })
+      .update(desired)
       .eq('user_id', user_id);
     if (farm_id) updateQuery = updateQuery.eq('farm_id', farm_id);
     if (shed_id) updateQuery = updateQuery.eq('shed_id', shed_id);
@@ -502,6 +520,7 @@ async function executeAutomationForShed(
     }
     mutations += 1;
   }
+
 
   let alertCreated = false;
   if (automationAction.alert) {
@@ -530,8 +549,9 @@ async function executeAutomationForShed(
 
   return {
     ...base,
-    executed: !isManualOverride,
-    skipped_reason: isManualOverride ? 'DEVICE_MANUAL_OVERRIDE' : undefined,
+    executed: gate.allow,
+    skipped_reason: gate.allow ? undefined : gate.reason,
+
     sensor_timestamp: latestSensor.recorded_at,
     action: automationAction,
     hsi: { index: hsiResult.index, simpleIndex: hsiResult.simpleIndex, level: hsiResult.level },
