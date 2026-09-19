@@ -350,6 +350,20 @@ export interface ShedAutomationResult {
 
 const POWER_FRESHNESS_MS = 10 * 60 * 1000;
 
+// Safety TTL for telemetry: a reading older than this (or dated in the future)
+// is NOT current truth and must never drive actuation.
+const SENSOR_FRESHNESS_MS = 5 * 60 * 1000;
+const SENSOR_FUTURE_SKEW_MS = 2 * 60 * 1000;
+
+/** Finite + physically plausible, else null (explicit unknown — never 0). */
+function validSensor(value: unknown, min: number, max: number): number | null {
+  const n = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
+}
+
+
 // deno-lint-ignore no-explicit-any
 async function executeAutomationForShed(
   supabase: any,
@@ -403,6 +417,26 @@ async function executeAutomationForShed(
   }
   const latestSensor = sensorRows[0];
 
+  // ── Fail-safe telemetry gate (stale / future / invalid) ────────────────────
+  const recordedAtMs = latestSensor.recorded_at ? new Date(latestSensor.recorded_at).getTime() : NaN;
+  if (!Number.isFinite(recordedAtMs)) {
+    return { ...base, sensor_timestamp: latestSensor.recorded_at ?? null, skipped_reason: 'SENSOR_TIMESTAMP_INVALID' };
+  }
+  const sensorAge = Date.now() - recordedAtMs;
+  if (sensorAge > SENSOR_FRESHNESS_MS) {
+    return { ...base, sensor_timestamp: latestSensor.recorded_at, skipped_reason: 'SENSOR_STALE' };
+  }
+  if (sensorAge < -SENSOR_FUTURE_SKEW_MS) {
+    return { ...base, sensor_timestamp: latestSensor.recorded_at, skipped_reason: 'SENSOR_FUTURE_TIMESTAMP' };
+  }
+
+  const tempValid = validSensor(latestSensor.temperature, -20, 80);
+  const humValid = validSensor(latestSensor.humidity, 0, 100);
+  const ammoniaValid = validSensor(latestSensor.ammonia, 0, 500);
+  if (tempValid === null || humValid === null) {
+    return { ...base, sensor_timestamp: latestSensor.recorded_at, skipped_reason: 'SENSOR_VALUE_INVALID' };
+  }
+
   // Real, freshness-validated power state (never hardcoded).
   let dsQuery = supabase
     .from('device_status')
@@ -419,9 +453,11 @@ async function executeAutomationForShed(
   }
   base.power_state = powerOn === null ? 'unknown' : powerOn ? 'on' : 'off';
 
-  const temperature = Number(latestSensor.temperature) || 0;
-  const humidity = Number(latestSensor.humidity) || 0;
-  const ammonia = Number(latestSensor.ammonia) || 0;
+  const temperature = tempValid;
+  const humidity = humValid;
+  // Ammonia unknown → 0 is safe: a missing NH3 read must not raise NH3 actions.
+  const ammonia = ammoniaValid ?? 0;
+
 
   const automationAction = runAutomationRules(
     { temperature, humidity, ammonia, powerOn },

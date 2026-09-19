@@ -1085,8 +1085,16 @@ async function handleDeviceState(
       );
     }
 
-    const shedId = body.shed_id || deviceInfo.shed_id;
+    // GUARD (P1-01): device-bound shed wins; a mismatching body shed is rejected.
+    if (body.shed_id && deviceInfo.shed_id && body.shed_id !== deviceInfo.shed_id) {
+      return new Response(
+        JSON.stringify({ error: 'shed_id does not match device binding', code: 'SHED_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const shedId = deviceInfo.shed_id ?? body.shed_id ?? null;
     const deviceTokenId = deviceInfo.id;
+
 
     // Determine if device is in fail-safe mode
     const isFailSafe = body.mode === 'FAIL_SAFE' || body.system_state === 'FAIL_SAFE';
@@ -1491,8 +1499,18 @@ async function handleBufferSync(body: BufferSyncPayload, supabase: any, userId: 
       );
     }
 
-    const shedId = body.shed_id || deviceInfo.shed_id;
+    // GUARD (P1-01): never trust a body-provided shed. Telemetry is always
+    // written against the shed the device token is bound to; a mismatching
+    // body shed is rejected instead of silently contaminating another shed.
+    if (body.shed_id && deviceInfo.shed_id && body.shed_id !== deviceInfo.shed_id) {
+      return new Response(
+        JSON.stringify({ error: 'shed_id does not match device binding', code: 'SHED_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const shedId = deviceInfo.shed_id ?? null;
     const farmId = deviceInfo.farm_id;
+
     const records = body.records.slice(0, 50); // Max 50 records per sync
 
     // Insert buffered records into sensor_buffer table

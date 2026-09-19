@@ -94,17 +94,50 @@ export function StepAddShed({ onComplete }: { onComplete: () => void }) {
 
 export function StepSetChickAge({ onComplete }: { onComplete: () => void }) {
   const { user, language } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const [ageWeeks, setAgeWeeks] = useState('0');
   const [farmType, setFarmType] = useState<string>('layer');
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const handleSave = async () => {
     if (!user) return;
-    // Update flock_info age
-    await supabase.from('flock_info').update({ age_weeks: parseInt(ageWeeks) || 0 }).eq('user_id', user.id);
+    if (!selectedFarmId) {
+      toast({
+        title: language === 'bn' ? 'খামার নির্বাচন করুন' : 'Select a farm first',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setSaving(true);
+    // Scope the update to the selected farm — never all farms of this user.
+    const { data, error } = await supabase
+      .from('flock_info')
+      .update({ age_weeks: parseInt(ageWeeks) || 0 })
+      .eq('user_id', user.id)
+      .eq('farm_id', selectedFarmId)
+      .select('id');
+    setSaving(false);
+
+    if (error) {
+      toast({
+        title: language === 'bn' ? 'সংরক্ষণ ব্যর্থ হয়েছে' : 'Save failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!data || data.length === 0) {
+      toast({
+        title: language === 'bn' ? 'এই খামারের ফ্লক তথ্য পাওয়া যায়নি' : 'No flock record for this farm',
+        variant: 'destructive',
+      });
+      return;
+    }
     toast({ title: language === 'bn' ? '✅ বয়স সেট হয়েছে' : '✅ Age set' });
     onComplete();
   };
+
 
   return (
     <div className="space-y-4">
@@ -130,7 +163,7 @@ export function StepSetChickAge({ onComplete }: { onComplete: () => void }) {
           </p>
         </div>
       </div>
-      <Button onClick={handleSave} className="w-full h-12 text-base rounded-xl">
+      <Button onClick={handleSave} disabled={saving} className="w-full h-12 text-base rounded-xl">
         {language === 'bn' ? '🐣 বয়স সেট করুন →' : '🐣 Set Age →'}
       </Button>
     </div>
