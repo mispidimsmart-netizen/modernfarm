@@ -211,9 +211,13 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         .update({ power_on: powerOn, updated_at: new Date().toISOString() })
         .eq('user_id', userId);
       
+      if (farmId) {
+        powerQuery = powerQuery.eq('farm_id', farmId);
+      }
       if (shedId) {
         powerQuery = powerQuery.eq('shed_id', shedId);
       }
+
       
       await powerQuery;
 
