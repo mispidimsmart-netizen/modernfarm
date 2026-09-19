@@ -163,7 +163,7 @@ export function StepSetChickAge({ onComplete }: { onComplete: () => void }) {
           </p>
         </div>
       </div>
-      <Button onClick={handleSave} className="w-full h-12 text-base rounded-xl">
+      <Button onClick={handleSave} disabled={saving} className="w-full h-12 text-base rounded-xl">
         {language === 'bn' ? '🐣 বয়স সেট করুন →' : '🐣 Set Age →'}
       </Button>
     </div>
