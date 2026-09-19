@@ -173,9 +173,10 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // Phase 9 — sensor inventory heartbeat (track which sensors active)
     if (body.sensor_source && body.device_id) {
       try {
-        const { data: farmRow } = await supabase
+        const { data: farmRow } = farmId ? { data: { id: farmId } } : await supabase
           .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
         if (farmRow?.id) {
+
           const SENSOR_TYPE_MAP: Record<string, string> = {
             temp: 'temp_humidity', humidity: 'temp_humidity',
             nh3: 'ammonia', light: 'light',
