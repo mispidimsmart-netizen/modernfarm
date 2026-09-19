@@ -255,9 +255,11 @@ export async function acknowledgeCommandsV2(
       acked++;
     }
 
-    // Also mark legacy device_commands as executed
-    if (ack.success) {
-      // Find matching command by type from the log
+    // Mirror the outcome onto legacy device_commands. A FAILED execution is
+    // closed too (with a reason) — leaving it pending let the device pick the
+    // very same command up again within the freshness window and re-toggle
+    // the relay.
+    {
       let logLookup = supabase
         .from('device_command_log')
         .select('client_request_id, command_type, device_name, farm_id, shed_id')
@@ -273,9 +275,19 @@ export async function acknowledgeCommandsV2(
       const { data: logEntry } = await logLookup.maybeSingle();
 
       if (logEntry) {
+        const nowIso = new Date().toISOString();
+        const mirror = ack.success
+          ? { executed: true, executed_at: nowIso, lease_token: null, failed_at: null, failure_reason: null }
+          : {
+            executed: true,
+            executed_at: nowIso,
+            lease_token: null,
+            failed_at: nowIso,
+            failure_reason: ack.error || 'DEVICE_REPORTED_FAILURE',
+          };
         let legacyQuery = supabase
           .from('device_commands')
-          .update({ executed: true, executed_at: new Date().toISOString() })
+          .update(mirror)
           .eq('user_id', userId)
           .eq('executed', false);
         if (logEntry.client_request_id) {
@@ -291,6 +303,7 @@ export async function acknowledgeCommandsV2(
         await legacyQuery;
       }
     }
+
   }
 
   console.log(`ACK v2: ${acked} acked, ${failed} failed`);
