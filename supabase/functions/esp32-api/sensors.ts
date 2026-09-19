@@ -151,9 +151,11 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
                           body.pm10_ugm3 != null || body.nh3_ppm_precise != null;
     if (hasAirQuality) {
       try {
-        const { data: farmRow } = await supabase
+        // Prefer the device/shed's own farm; only fall back to "first owned farm".
+        const { data: farmRow } = farmId ? { data: { id: farmId } } : await supabase
           .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
         if (farmRow?.id) {
+
           await supabase.rpc('check_air_quality_thresholds', {
             p_farm_id: farmRow.id,
             p_shed_id: shedId,
