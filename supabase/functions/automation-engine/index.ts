@@ -350,6 +350,20 @@ export interface ShedAutomationResult {
 
 const POWER_FRESHNESS_MS = 10 * 60 * 1000;
 
+// Safety TTL for telemetry: a reading older than this (or dated in the future)
+// is NOT current truth and must never drive actuation.
+const SENSOR_FRESHNESS_MS = 5 * 60 * 1000;
+const SENSOR_FUTURE_SKEW_MS = 2 * 60 * 1000;
+
+/** Finite + physically plausible, else null (explicit unknown — never 0). */
+function validSensor(value: unknown, min: number, max: number): number | null {
+  const n = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n)) return null;
+  if (n < min || n > max) return null;
+  return n;
+}
+
+
 // deno-lint-ignore no-explicit-any
 async function executeAutomationForShed(
   supabase: any,
