@@ -547,8 +547,9 @@ async function executeAutomationForShed(
 
   return {
     ...base,
-    executed: !isManualOverride,
-    skipped_reason: isManualOverride ? 'DEVICE_MANUAL_OVERRIDE' : undefined,
+    executed: gate.allow,
+    skipped_reason: gate.allow ? undefined : gate.reason,
+
     sensor_timestamp: latestSensor.recorded_at,
     action: automationAction,
     hsi: { index: hsiResult.index, simpleIndex: hsiResult.simpleIndex, level: hsiResult.level },
