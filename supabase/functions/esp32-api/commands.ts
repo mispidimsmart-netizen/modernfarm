@@ -428,7 +428,15 @@ export async function retryUnackedCommands(
       // instead so the idempotency key remains stable.
       let commandQuery = supabase
         .from('device_commands')
-        .update({ executed: false, executed_at: null, dispatched_at: null })
+        .update({
+          executed: false,
+          executed_at: null,
+          dispatched_at: null,
+          lease_token: null,
+          failed_at: null,
+          failure_reason: null,
+        })
+
         .eq('user_id', userId)
         .eq('executed', false);
       if (cmd.client_request_id) {
