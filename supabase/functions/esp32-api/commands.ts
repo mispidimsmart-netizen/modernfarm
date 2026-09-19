@@ -30,7 +30,7 @@ export async function getDeviceCommands(
   // Stale commands (e.g. from offline period) are dangerous: a "fan_off"
   // issued at noon must NOT execute at 3 AM when the bird needs warmth.
   const COMMAND_FRESHNESS_SECONDS = 5 * 60;
-  const freshCutoff = new Date(Date.now() - COMMAND_FRESHNESS_SECONDS * 1000).toISOString();
+
 
   // Preferred path: atomic, lease-based claim in a single DB call. This makes
   // concurrent polls safe — a command is handed to exactly one poll per lease
@@ -46,79 +46,19 @@ export async function getDeviceCommands(
     _limit: 20,
   });
 
-  let claimedCommands: any[] | null = null;
+  // No silent legacy fallback: if the atomic claim is unavailable we fail the
+  // poll instead of degrading to the racy select-then-update path (which could
+  // hand the same relay command to two concurrent polls).
   if (claim.error) {
-    console.error('claim_device_commands RPC failed, falling back to legacy path:', claim.error);
-  } else {
-    claimedCommands = claim.data || [];
+    console.error('claim_device_commands RPC failed:', claim.error);
+    return new Response(
+      JSON.stringify({ error: 'Command claim unavailable', code: 'CLAIM_UNAVAILABLE' }),
+      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 
-  let data: any[] | null = claimedCommands;
+  const data: any[] | null = claim.data || [];
 
-  if (claimedCommands === null) {
-    // Legacy fallback (only when the claim RPC is unavailable).
-    // Auto-expire stale pending commands so they don't keep being polled
-    let staleQuery = supabase
-      .from('device_commands')
-      .update({ executed: true, executed_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('executed', false)
-      .lt('created_at', freshCutoff);
-    if (authoritativeDeviceName) staleQuery = staleQuery.eq('device_name', authoritativeDeviceName);
-    if (boundDevice?.farm_id) staleQuery = staleQuery.eq('farm_id', boundDevice.farm_id);
-    // Include NULL shed_id rows for legacy V8 firmware; farm and authoritative
-    // device_name filters still keep the command scoped to this device.
-    if (boundDevice?.shed_id) staleQuery = staleQuery.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
-    await staleQuery;
-
-    // Get pending (unexecuted) commands for this device — only fresh ones
-    let query = supabase
-      .from('device_commands')
-      .select('id, farm_id, shed_id, command_type, command_value, created_at, client_request_id, dispatched_at, retry_count')
-      .eq('user_id', userId)
-      .eq('executed', false)
-      .gte('created_at', freshCutoff)
-      .order('created_at', { ascending: true });
-
-    if (authoritativeDeviceName) {
-      query = query.eq('device_name', authoritativeDeviceName);
-    }
-    if (boundDevice?.farm_id) query = query.eq('farm_id', boundDevice.farm_id);
-    if (boundDevice?.shed_id) query = query.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
-
-    const { data: legacyData, error } = await query;
-
-    if (error) {
-      console.error('Error fetching device commands:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to get commands', code: 'FETCH_FAILED' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    data = legacyData;
-
-    // Phase 3 idempotency: ensure each fetched command has a client_request_id
-    // (so ESP32 can echo it back in ack to dedupe), and track dispatch lifecycle.
-    const nowIso = new Date().toISOString();
-    if (data && data.length > 0) {
-      for (const cmd of data) {
-        const updates: any = {};
-        if (!cmd.client_request_id) {
-          cmd.client_request_id = cmd.id;          // reuse row id as idempotency key
-          updates.client_request_id = cmd.id;
-        }
-        if (!cmd.dispatched_at) {
-          updates.dispatched_at = nowIso;
-        } else {
-          updates.retry_count = (cmd.retry_count || 0) + 1;
-        }
-        if (Object.keys(updates).length > 0) {
-          await supabase.from('device_commands').update(updates).eq('id', cmd.id);
-        }
-      }
-    }
-  }
 
   // Also fetch matching command_ids from device_command_log for ACK protocol
   let logQuery = supabase
@@ -172,47 +112,92 @@ export async function getDeviceCommands(
   );
 }
 
+/** Strict mode: reject ACKs that do not echo the lease token of the dispatch. */
+const REQUIRE_COMMAND_LEASE = Deno.env.get('REQUIRE_COMMAND_LEASE') === 'true';
+
+export interface AckLease {
+  command_id: string;
+  lease_token?: string | null;
+  success?: boolean;
+  error?: string | null;
+}
+
+/**
+ * Close a single device_commands row through the authorization-checked RPC.
+ * The lease token proves the ACK belongs to the dispatch the device received;
+ * a failed execution is terminal so the relay is not toggled again by a
+ * redelivery of the same command.
+ */
+async function completeCommand(
+  supabase: any,
+  userId: string,
+  ack: AckLease,
+  boundDevice?: BoundDevice,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('complete_device_command', {
+    _user_id: userId,
+    _command_id: ack.command_id,
+    _lease_token: ack.lease_token ?? null,
+    _success: ack.success !== false,
+    _error: ack.error ?? null,
+    _device_name: boundDevice?.device_name ?? null,
+    _farm_id: boundDevice?.farm_id ?? null,
+    _require_lease: REQUIRE_COMMAND_LEASE,
+  });
+  if (error) {
+    console.error('complete_device_command failed:', error);
+    return 'RPC_ERROR';
+  }
+  const result = String(data ?? 'UNKNOWN');
+  if (result !== 'OK') {
+    console.warn(`ACK for command ${ack.command_id} → ${result}`);
+  }
+  return result;
+}
+
 export async function acknowledgeCommands(
-  body: { command_ids: string[] },
+  body: {
+    command_ids?: string[];
+    acks?: AckLease[];
+    lease_tokens?: Record<string, string>;
+  },
   supabase: any,
   userId: string,
   boundDevice?: BoundDevice,
 ) {
-  if (!body.command_ids || !Array.isArray(body.command_ids) || body.command_ids.length === 0) {
+  // Preferred shape: acks[] carrying the lease token issued at dispatch.
+  // Legacy firmware sends command_ids[] only (tolerated unless strict mode).
+  const acks: AckLease[] = Array.isArray(body.acks) && body.acks.length > 0
+    ? body.acks.filter((a) => a && typeof a.command_id === 'string')
+    : (body.command_ids || []).map((id) => ({
+      command_id: id,
+      lease_token: body.lease_tokens?.[id] ?? null,
+    }));
+
+  if (acks.length === 0) {
     return new Response(
       JSON.stringify({ error: 'Missing command_ids array', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  let query = supabase
-    .from('device_commands')
-    .update({ 
-      executed: true, 
-      executed_at: new Date().toISOString() 
-    })
-    .eq('user_id', userId)
-    .in('id', body.command_ids);
-  if (boundDevice?.device_name) query = query.eq('device_name', boundDevice.device_name);
-  if (boundDevice?.farm_id) query = query.eq('farm_id', boundDevice.farm_id);
-  if (boundDevice?.shed_id) query = query.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
-  const { error } = await query;
+  let acknowledged = 0;
+  const rejected: { command_id: string; reason: string }[] = [];
 
-  if (error) {
-    console.error('Error acknowledging commands:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to acknowledge commands', code: 'UPDATE_FAILED' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  for (const ack of acks) {
+    const result = await completeCommand(supabase, userId, ack, boundDevice);
+    if (result === 'OK' || result === 'OK_NO_LEASE') acknowledged++;
+    else rejected.push({ command_id: ack.command_id, reason: result });
   }
 
-  console.log(`Acknowledged ${body.command_ids.length} commands`);
+  console.log(`Acknowledged ${acknowledged} commands, ${rejected.length} rejected`);
 
   return new Response(
-    JSON.stringify({ success: true, acknowledged: body.command_ids.length }),
+    JSON.stringify({ success: true, acknowledged, rejected }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔄 COMMAND ACK PROTOCOL v2 HANDLERS
@@ -270,9 +255,11 @@ export async function acknowledgeCommandsV2(
       acked++;
     }
 
-    // Also mark legacy device_commands as executed
-    if (ack.success) {
-      // Find matching command by type from the log
+    // Mirror the outcome onto legacy device_commands. A FAILED execution is
+    // closed too (with a reason) — leaving it pending let the device pick the
+    // very same command up again within the freshness window and re-toggle
+    // the relay.
+    {
       let logLookup = supabase
         .from('device_command_log')
         .select('client_request_id, command_type, device_name, farm_id, shed_id')
@@ -288,9 +275,19 @@ export async function acknowledgeCommandsV2(
       const { data: logEntry } = await logLookup.maybeSingle();
 
       if (logEntry) {
+        const nowIso = new Date().toISOString();
+        const mirror = ack.success
+          ? { executed: true, executed_at: nowIso, lease_token: null, failed_at: null, failure_reason: null }
+          : {
+            executed: true,
+            executed_at: nowIso,
+            lease_token: null,
+            failed_at: nowIso,
+            failure_reason: ack.error || 'DEVICE_REPORTED_FAILURE',
+          };
         let legacyQuery = supabase
           .from('device_commands')
-          .update({ executed: true, executed_at: new Date().toISOString() })
+          .update(mirror)
           .eq('user_id', userId)
           .eq('executed', false);
         if (logEntry.client_request_id) {
@@ -306,6 +303,7 @@ export async function acknowledgeCommandsV2(
         await legacyQuery;
       }
     }
+
   }
 
   console.log(`ACK v2: ${acked} acked, ${failed} failed`);
@@ -430,7 +428,15 @@ export async function retryUnackedCommands(
       // instead so the idempotency key remains stable.
       let commandQuery = supabase
         .from('device_commands')
-        .update({ executed: false, executed_at: null, dispatched_at: null })
+        .update({
+          executed: false,
+          executed_at: null,
+          dispatched_at: null,
+          lease_token: null,
+          failed_at: null,
+          failure_reason: null,
+        })
+
         .eq('user_id', userId)
         .eq('executed', false);
       if (cmd.client_request_id) {

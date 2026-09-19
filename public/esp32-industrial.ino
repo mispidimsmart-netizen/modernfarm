@@ -3764,6 +3764,8 @@ void checkCommands() {
         bool value = cmd["command_value"] | false;
         String id = cmd["id"] | "";
         String cri = cmd["client_request_id"] | "";
+        // Lease token proves this ACK belongs to the dispatch we just received.
+        String lease = cmd["lease_token"] | "";
 
         // Phase 3: idempotency — if already applied, skip execution but still ACK
         if (cri.length() > 0 && isCommandAlreadyApplied(cri)) {
@@ -3775,8 +3777,11 @@ void checkCommands() {
             ack.addHeader("Content-Type", "application/json");
             ack.addHeader("x-device-token", activeDeviceToken.c_str());
             ack.setTimeout(3000);
-            StaticJsonDocument<256> adoc;
+            StaticJsonDocument<320> adoc;
             adoc["command_ids"][0] = id;
+            adoc["acks"][0]["command_id"] = id;
+            if (lease.length() > 0) adoc["acks"][0]["lease_token"] = lease;
+            adoc["acks"][0]["success"] = true;
             String ap; serializeJson(adoc, ap);
             attachSignature(ack, ap);
             ack.POST(ap); ack.end();
@@ -3839,8 +3844,11 @@ void checkCommands() {
             ack.addHeader("Content-Type", "application/json");
             ack.addHeader("x-device-token", activeDeviceToken.c_str());
             ack.setTimeout(3000);
-            StaticJsonDocument<256> adoc;
+            StaticJsonDocument<320> adoc;
             adoc["command_ids"][0] = id;
+            adoc["acks"][0]["command_id"] = id;
+            if (lease.length() > 0) adoc["acks"][0]["lease_token"] = lease;
+            adoc["acks"][0]["success"] = true;
             String ap; serializeJson(adoc, ap);
             attachSignature(ack, ap);
             ack.POST(ap); ack.end();
@@ -3879,8 +3887,11 @@ void checkCommands() {
           ack.addHeader("Content-Type", "application/json");
           ack.addHeader("x-device-token", activeDeviceToken.c_str());
           ack.setTimeout(3000);
-          StaticJsonDocument<256> adoc;
+          StaticJsonDocument<320> adoc;
           adoc["command_ids"][0] = id;
+          adoc["acks"][0]["command_id"] = id;
+          if (lease.length() > 0) adoc["acks"][0]["lease_token"] = lease;
+          adoc["acks"][0]["success"] = true;
           String ap; serializeJson(adoc, ap);
           attachSignature(ack, ap);
           ack.POST(ap);
