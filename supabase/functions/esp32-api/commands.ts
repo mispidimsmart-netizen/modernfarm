@@ -112,47 +112,92 @@ export async function getDeviceCommands(
   );
 }
 
+/** Strict mode: reject ACKs that do not echo the lease token of the dispatch. */
+const REQUIRE_COMMAND_LEASE = Deno.env.get('REQUIRE_COMMAND_LEASE') === 'true';
+
+export interface AckLease {
+  command_id: string;
+  lease_token?: string | null;
+  success?: boolean;
+  error?: string | null;
+}
+
+/**
+ * Close a single device_commands row through the authorization-checked RPC.
+ * The lease token proves the ACK belongs to the dispatch the device received;
+ * a failed execution is terminal so the relay is not toggled again by a
+ * redelivery of the same command.
+ */
+async function completeCommand(
+  supabase: any,
+  userId: string,
+  ack: AckLease,
+  boundDevice?: BoundDevice,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('complete_device_command', {
+    _user_id: userId,
+    _command_id: ack.command_id,
+    _lease_token: ack.lease_token ?? null,
+    _success: ack.success !== false,
+    _error: ack.error ?? null,
+    _device_name: boundDevice?.device_name ?? null,
+    _farm_id: boundDevice?.farm_id ?? null,
+    _require_lease: REQUIRE_COMMAND_LEASE,
+  });
+  if (error) {
+    console.error('complete_device_command failed:', error);
+    return 'RPC_ERROR';
+  }
+  const result = String(data ?? 'UNKNOWN');
+  if (result !== 'OK') {
+    console.warn(`ACK for command ${ack.command_id} → ${result}`);
+  }
+  return result;
+}
+
 export async function acknowledgeCommands(
-  body: { command_ids: string[] },
+  body: {
+    command_ids?: string[];
+    acks?: AckLease[];
+    lease_tokens?: Record<string, string>;
+  },
   supabase: any,
   userId: string,
   boundDevice?: BoundDevice,
 ) {
-  if (!body.command_ids || !Array.isArray(body.command_ids) || body.command_ids.length === 0) {
+  // Preferred shape: acks[] carrying the lease token issued at dispatch.
+  // Legacy firmware sends command_ids[] only (tolerated unless strict mode).
+  const acks: AckLease[] = Array.isArray(body.acks) && body.acks.length > 0
+    ? body.acks.filter((a) => a && typeof a.command_id === 'string')
+    : (body.command_ids || []).map((id) => ({
+      command_id: id,
+      lease_token: body.lease_tokens?.[id] ?? null,
+    }));
+
+  if (acks.length === 0) {
     return new Response(
       JSON.stringify({ error: 'Missing command_ids array', code: 'INVALID_DATA' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
-  let query = supabase
-    .from('device_commands')
-    .update({ 
-      executed: true, 
-      executed_at: new Date().toISOString() 
-    })
-    .eq('user_id', userId)
-    .in('id', body.command_ids);
-  if (boundDevice?.device_name) query = query.eq('device_name', boundDevice.device_name);
-  if (boundDevice?.farm_id) query = query.eq('farm_id', boundDevice.farm_id);
-  if (boundDevice?.shed_id) query = query.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
-  const { error } = await query;
+  let acknowledged = 0;
+  const rejected: { command_id: string; reason: string }[] = [];
 
-  if (error) {
-    console.error('Error acknowledging commands:', error);
-    return new Response(
-      JSON.stringify({ error: 'Failed to acknowledge commands', code: 'UPDATE_FAILED' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  for (const ack of acks) {
+    const result = await completeCommand(supabase, userId, ack, boundDevice);
+    if (result === 'OK' || result === 'OK_NO_LEASE') acknowledged++;
+    else rejected.push({ command_id: ack.command_id, reason: result });
   }
 
-  console.log(`Acknowledged ${body.command_ids.length} commands`);
+  console.log(`Acknowledged ${acknowledged} commands, ${rejected.length} rejected`);
 
   return new Response(
-    JSON.stringify({ success: true, acknowledged: body.command_ids.length }),
+    JSON.stringify({ success: true, acknowledged, rejected }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
 }
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🔄 COMMAND ACK PROTOCOL v2 HANDLERS
