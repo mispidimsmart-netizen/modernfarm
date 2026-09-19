@@ -103,6 +103,7 @@ export function ControlPage() {
               onRunTemporarily={(d) => c.handleRunTemporarily(d.key, d.name, d.icon)}
               onStopTemporarily={(d) => c.handleStopTemporarily(d.key, d.name, d.icon)}
               onCancelOverride={c.handleCancelOverride}
+              commandProgress={commandProgress}
               disabled={c.farmNotReady || !c.canTemporaryControl}
             />
           </div>

@@ -1,6 +1,7 @@
 import { SafeDeviceCard, type DeviceMode } from '@/components/control';
 import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 import type { ControlDeviceMeta } from '@/data/controlDevices';
+import type { CommandProgressMap } from '@/hooks/useCommandProgress';
 
 interface Props {
   devices: ControlDeviceMeta[];
@@ -17,6 +18,8 @@ interface Props {
   onStopTemporarily: (device: ControlDeviceMeta) => void;
   onCancelOverride: (deviceKey: string) => void;
   disabled: boolean;
+  /** Latest command lifecycle stage per device key. */
+  commandProgress?: CommandProgressMap;
 }
 
 /**
@@ -38,6 +41,7 @@ export function AutoDeviceGrid({
   onStopTemporarily,
   onCancelOverride,
   disabled,
+  commandProgress = {},
 }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -65,6 +69,7 @@ export function AutoDeviceGrid({
             safetyReason={reason}
             hasOverride={Boolean(activeTimers[device.key])}
             isAutoMode
+            commandStage={commandProgress[device.key]?.stage}
             onRunTemporarily={() => onRunTemporarily(device)}
             onStopTemporarily={() => onStopTemporarily(device)}
             onCancelOverride={() => onCancelOverride(device.key)}
