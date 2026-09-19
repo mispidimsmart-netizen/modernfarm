@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { calculateHSI } from '../_shared/hsi-formula.ts';
+import { evaluateModeGate } from '../_shared/mode-precedence.ts';
+
 import {
   classifyHSI,
   HSI_FAN_SPEED,
