@@ -30,7 +30,7 @@ export async function getDeviceCommands(
   // Stale commands (e.g. from offline period) are dangerous: a "fan_off"
   // issued at noon must NOT execute at 3 AM when the bird needs warmth.
   const COMMAND_FRESHNESS_SECONDS = 5 * 60;
-  const freshCutoff = new Date(Date.now() - COMMAND_FRESHNESS_SECONDS * 1000).toISOString();
+
 
   // Preferred path: atomic, lease-based claim in a single DB call. This makes
   // concurrent polls safe — a command is handed to exactly one poll per lease
