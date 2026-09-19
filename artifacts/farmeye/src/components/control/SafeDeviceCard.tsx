@@ -13,6 +13,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { CommandProgressPill } from '@/components/control/CommandProgressPill';
+import type { CommandStage } from '@/hooks/useCommandProgress';
 
 export type DeviceMode = 'auto' | 'temporary' | 'safety_lock';
 
@@ -37,6 +39,8 @@ interface SafeDeviceCardProps {
   hasOverride?: boolean;
   /** True when the farm is in AUTO mode (affects Stop button semantics). */
   isAutoMode?: boolean;
+  /** Latest command lifecycle stage for this device, if any within ~3 minutes. */
+  commandStage?: CommandStage;
 }
 
 
@@ -56,6 +60,7 @@ export function SafeDeviceCard({
   disabled,
   hasOverride,
   isAutoMode,
+  commandStage,
 
 }: SafeDeviceCardProps) {
   const { language } = useAuth();
@@ -136,6 +141,9 @@ export function SafeDeviceCard({
             : (language === 'bn' ? 'বন্ধ' : 'Off')
           }
         </span>
+        {commandStage && (
+          <CommandProgressPill stage={commandStage} language={language} className="ml-auto" />
+        )}
       </div>
 
       {/* Action Buttons */}
