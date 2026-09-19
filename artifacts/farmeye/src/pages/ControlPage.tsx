@@ -10,11 +10,15 @@ import { ViewerRestrictionCard, TemporaryControlNoticeCard } from '@/components/
 import { ManualDeviceGrid } from '@/components/control/ManualDeviceGrid';
 import { AutoDeviceGrid } from '@/components/control/AutoDeviceGrid';
 import { ActiveTimersSummary } from '@/components/control/ActiveTimersSummary';
+import { useFarmContext } from '@/context/FarmContext';
 import { useCommandProgress } from '@/hooks/useCommandProgress';
 import { useControlPageState } from '@/hooks/useControlPageState';
 
 export function ControlPage() {
   const c = useControlPageState();
+  const { selectedFarmId } = useFarmContext();
+  // Per-device command lifecycle (sent → device received → confirmed/failed).
+  const commandProgress = useCommandProgress({ farmId: selectedFarmId ?? undefined });
 
   return (
     <div className="min-h-screen bg-background">
