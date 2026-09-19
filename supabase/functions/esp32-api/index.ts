@@ -1085,8 +1085,16 @@ async function handleDeviceState(
       );
     }
 
-    const shedId = body.shed_id || deviceInfo.shed_id;
+    // GUARD (P1-01): device-bound shed wins; a mismatching body shed is rejected.
+    if (body.shed_id && deviceInfo.shed_id && body.shed_id !== deviceInfo.shed_id) {
+      return new Response(
+        JSON.stringify({ error: 'shed_id does not match device binding', code: 'SHED_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const shedId = deviceInfo.shed_id ?? body.shed_id ?? null;
     const deviceTokenId = deviceInfo.id;
+
 
     // Determine if device is in fail-safe mode
     const isFailSafe = body.mode === 'FAIL_SAFE' || body.system_state === 'FAIL_SAFE';
