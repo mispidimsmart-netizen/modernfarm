@@ -63,12 +63,15 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // ═══════════════════════════════════════════════════════════════════════════
     let shedId: string | null = body.shed_id || null;
     let shedName: string | null = null;
+    // MODE-01 / multi-farm: every settings read and desired_* write below is
+    // scoped by farm, so a second farm of the same owner is never touched.
+    let farmId: string | null = body.farm_id || null;
     
     // If no shed_id in body, try to get from device_tokens based on device_id
     if (!shedId && body.device_id) {
       const { data: deviceInfo } = await supabase
         .from('device_tokens')
-        .select('shed_id, sheds(name, name_en)')
+        .select('shed_id, farm_id, sheds(name, name_en)')
         .eq('device_name', body.device_id)
         .eq('user_id', userId)
         .eq('is_active', true)
@@ -78,13 +81,14 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         shedId = deviceInfo.shed_id;
         shedName = deviceInfo.sheds?.name || deviceInfo.sheds?.name_en || null;
       }
+      if (deviceInfo?.farm_id) farmId = deviceInfo.farm_id;
     }
     
     // If shed_id provided, validate it belongs to user
     if (shedId) {
       const { data: shedInfo } = await supabase
         .from('sheds')
-        .select('id, name, name_en')
+        .select('id, name, name_en, farm_id')
         .eq('id', shedId)
         .eq('user_id', userId)
         .maybeSingle();
@@ -94,8 +98,11 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         shedId = null;
       } else {
         shedName = shedInfo.name || shedInfo.name_en;
+        // The shed's own farm wins over a body-supplied farm_id.
+        if (shedInfo.farm_id) farmId = shedInfo.farm_id;
       }
     }
+
 
     // Insert sensor reading with shed_id
     const sensorInsertData: Record<string, any> = {
