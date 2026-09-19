@@ -23,13 +23,20 @@ export type HSILevel = 'NORMAL' | 'MILD' | 'HIGH' | 'DANGER';
  */
 export { calculateHSI } from '../_shared/hsi-formula.ts';
 
+import { evaluateModeGate } from '../_shared/mode-precedence.ts';
+
 /**
  * Apply HSI-driven ventilation intent for a farm/shed.
  *
- * No-ops when HSI automation is disabled, the farm is in MANUAL mode, or a
- * manual override is active on either side (device or app). Failures are
- * swallowed on purpose: sensor ingestion must never fail because the
- * advisory rule engine could not run.
+ * Gating follows the single mode-precedence contract in
+ * `_shared/mode-precedence.ts` (FAIL_SAFE/OFFLINE > emergency > safety engine >
+ * MANUAL > manual override > HSI toggle > timed per-actuator overrides), so
+ * every cloud path agrees on when the cloud may express intent. Failures are
+ * swallowed on purpose: sensor ingestion must never fail because the advisory
+ * rule engine could not run.
+ *
+ * `farmId` scopes both the settings read and the `desired_*` write — without it
+ * an owner with more than one farm could have another farm's device updated.
  */
 // deno-lint-ignore no-explicit-any
 export async function applyHSIAutomation(
@@ -38,59 +45,46 @@ export async function applyHSIAutomation(
   level: HSILevel,
   hsi: number,
   shedId?: string | null,
+  farmId?: string | null,
 ): Promise<void> {
   try {
-    const { data: settings } = await supabase
+    let settingsQuery = supabase
       .from('farm_settings')
-      .select('hsi_automation_enabled, automation_mode')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle();
+      .select('hsi_automation_enabled, automation_mode, safety_engine_enabled')
+      .eq('user_id', userId);
+    if (farmId) settingsQuery = settingsQuery.eq('farm_id', farmId);
 
-    if (!settings?.hsi_automation_enabled) {
-      console.log('HSI automation disabled, skipping');
-      return;
-    }
-
-    if (settings.automation_mode === 'MANUAL') {
-      console.log(`⏸️ [HSI] MANUAL mode active for user ${userId}, skipping HSI automation`);
-      return;
-    }
+    const { data: settings } = await settingsQuery.limit(1).maybeSingle();
 
     let deviceQuery = supabase
       .from('device_status')
       .select(
-        'id, manual_override, desired_manual_override, shed_id, ' +
+        'id, mode, manual_override, desired_manual_override, shed_id, ' +
         'desired_fan_expires_at, desired_alarm_expires_at',
       )
       .eq('user_id', userId);
 
-    if (shedId) {
-      deviceQuery = deviceQuery.eq('shed_id', shedId);
-    }
+    if (farmId) deviceQuery = deviceQuery.eq('farm_id', farmId);
+    if (shedId) deviceQuery = deviceQuery.eq('shed_id', shedId);
 
-    const { data: deviceStatus } = await deviceQuery.maybeSingle();
+    const { data: deviceStatus } = await deviceQuery.limit(1).maybeSingle();
 
-    // Respect overrides from BOTH sides: ESP32 (`manual_override`) and app
-    // (`desired_manual_override`).
-    if (deviceStatus?.manual_override || deviceStatus?.desired_manual_override) {
-      console.log(`Manual override active for shed ${shedId || 'default'}, skipping HSI automation`);
+    const gate = evaluateModeGate({
+      automationMode: settings?.automation_mode,
+      deviceMode: deviceStatus?.mode,
+      safetyEngineEnabled: settings?.safety_engine_enabled,
+      hsiAutomationEnabled: settings?.hsi_automation_enabled,
+      manualOverride: deviceStatus?.manual_override,
+      desiredManualOverride: deviceStatus?.desired_manual_override,
+      fanOverrideUntil: deviceStatus?.desired_fan_expires_at,
+      alarmOverrideUntil: deviceStatus?.desired_alarm_expires_at,
+      requiresHSIAutomation: true,
+    });
+
+    if (!gate.allow) {
+      console.log(`⏸️ [HSI] skipped for shed ${shedId || 'default'} — ${gate.reason}`);
       return;
     }
-
-    // Respect a still-running *timed* override from the Control page
-    // ("সাময়িক চালু/বন্ধ"). Without this, the next sensor push would stomp
-    // the farmer's desired_* value seconds after they set it.
-    const stillActive = (ts: unknown): boolean =>
-      !!ts && new Date(ts as string).getTime() > Date.now();
-    const fanOverridden = stillActive(deviceStatus?.desired_fan_expires_at);
-    const alarmOverridden = stillActive(deviceStatus?.desired_alarm_expires_at);
-    if (fanOverridden && alarmOverridden) {
-      console.log(`⏳ [HSI] Timed override active for shed ${shedId || 'default'}, skipping`);
-      return;
-    }
-
-
 
     // Cloud writes desired_* columns ONLY.
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -123,28 +117,26 @@ export async function applyHSIAutomation(
         break;
     }
 
-    // Never overwrite a device whose timed override is still counting down.
-    if (fanOverridden) {
+    // Never overwrite an actuator whose timed override is still counting down.
+    if (gate.skipFan) {
       delete updates.desired_fan_on;
       delete updates.desired_fan_speed;
     }
-    if (alarmOverridden) {
+    if (gate.skipAlarm) {
       delete updates.desired_alarm_on;
     }
     if (Object.keys(updates).length <= 1) return; // only updated_at left
-
-
 
     let updateQuery = supabase
       .from('device_status')
       .update(updates)
       .eq('user_id', userId);
 
-    if (shedId) {
-      updateQuery = updateQuery.eq('shed_id', shedId);
-    }
+    if (farmId) updateQuery = updateQuery.eq('farm_id', farmId);
+    if (shedId) updateQuery = updateQuery.eq('shed_id', shedId);
 
     await updateQuery;
+
   } catch (error) {
     console.error('HSI automation error:', error);
   }
