@@ -397,10 +397,9 @@ async function executeAutomationForShed(
   const { data: settings } = await settingsQuery.maybeSingle();
 
   if (!settings) return { ...base, skipped_reason: 'SETTINGS_NOT_FOUND' };
-  if (settings.automation_mode === 'MANUAL') return { ...base, skipped_reason: 'MANUAL_MODE' };
-  if ((settings as any).safety_engine_enabled === false) {
-    return { ...base, skipped_reason: 'SAFETY_ENGINE_DISABLED' };
-  }
+  // MODE-01: mode gating happens once, below, through the shared precedence
+  // contract (`_shared/mode-precedence.ts`) — no per-path ad-hoc checks.
+
 
   let sensorQuery = supabase
     .from('sensor_readings')
