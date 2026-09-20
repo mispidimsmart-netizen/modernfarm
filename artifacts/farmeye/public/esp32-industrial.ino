@@ -4546,7 +4546,7 @@ void performOTAUpdate() {
   size_t written = 0;
   uint8_t buf[1024];
   int lastPercent = 0;
-  SHA256 digest;
+  Sha256Stream digest;
   
   while (written < (size_t)contentLen) {
     esp_task_wdt_reset();
