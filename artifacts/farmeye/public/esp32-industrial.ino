@@ -72,8 +72,41 @@
 #include "esp32-safety-engine.h"
 #include "mbedtls/md.h"
 #include "mbedtls/base64.h"
-#include <SHA256.h>
-#include <Ed25519.h>
+#include "mbedtls/sha256.h"
+// ── Ed25519 (OTA স্বাক্ষর যাচাই) ────────────────────────────────────────
+// rweather-এর "Crypto" লাইব্রেরি ইনস্টল থাকলে স্বাক্ষর যাচাই স্বয়ংক্রিয়ভাবে
+// চালু হয়। না থাকলেও ফার্মওয়্যার কম্পাইল হবে — শুধু OTA আপডেট নিরাপদভাবে
+// বন্ধ থাকবে (fail-closed), ফার্মের কোনো নিয়ন্ত্রণ/সেফটি প্রভাবিত হবে না।
+#if defined(__has_include)
+#  if __has_include(<Ed25519.h>)
+#    include <Ed25519.h>
+#    define FARMEYE_HAS_ED25519 1
+#  endif
+#endif
+#ifndef FARMEYE_HAS_ED25519
+#  define FARMEYE_HAS_ED25519 0
+#endif
+
+// SHA-256 স্ট্রিম হেল্পার — ESP32-এর নিজের mbedtls ব্যবহার করে, তাই কোনো
+// বাইরের লাইব্রেরি (SHA256.h) ইনস্টল করার দরকার নেই।
+class Sha256Stream {
+public:
+  Sha256Stream() {
+    mbedtls_sha256_init(&ctx_);
+    mbedtls_sha256_starts_ret(&ctx_, 0);
+  }
+  ~Sha256Stream() { mbedtls_sha256_free(&ctx_); }
+  void update(const void* data, size_t len) {
+    mbedtls_sha256_update_ret(&ctx_, (const unsigned char*)data, len);
+  }
+  void finalize(uint8_t* out, size_t outLen) {
+    uint8_t full[32];
+    mbedtls_sha256_finish_ret(&ctx_, full);
+    memcpy(out, full, outLen > 32 ? 32 : outLen);
+  }
+private:
+  mbedtls_sha256_context ctx_;
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // ON-BOARD TFT DISPLAY (OPTIONAL, read-only status panel)
@@ -4114,7 +4147,14 @@ static bool verifyOtaSignature(const uint8_t* digest, const String& signatureB64
   // firmware, hex text, or a JSON envelope).  Keep this exact contract in
   // firmware so a valid signature can never be accidentally verified over a
   // different representation.
+#if FARMEYE_HAS_ED25519
   return Ed25519::verify(signature, OTA_TRUSTED_PUBLIC_KEY, digest, 32);
+#else
+  // "Crypto" লাইব্রেরি ইনস্টল নেই — স্বাক্ষর যাচাই সম্ভব নয়, তাই OTA
+  // প্রত্যাখ্যাত (fail-closed)। চলমান ফার্মওয়্যার নিরাপদে চলতে থাকবে।
+  Serial.println("⚠️ OTA: Ed25519 library missing — signature check unavailable, OTA rejected");
+  return false;
+#endif
 }
 
 static bool metadataUsesTrustedKey(const String& publicKeyB64) {
@@ -4506,7 +4546,7 @@ void performOTAUpdate() {
   size_t written = 0;
   uint8_t buf[1024];
   int lastPercent = 0;
-  SHA256 digest;
+  Sha256Stream digest;
   
   while (written < (size_t)contentLen) {
     esp_task_wdt_reset();
