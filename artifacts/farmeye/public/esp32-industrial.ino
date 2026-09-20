@@ -4147,7 +4147,14 @@ static bool verifyOtaSignature(const uint8_t* digest, const String& signatureB64
   // firmware, hex text, or a JSON envelope).  Keep this exact contract in
   // firmware so a valid signature can never be accidentally verified over a
   // different representation.
+#if FARMEYE_HAS_ED25519
   return Ed25519::verify(signature, OTA_TRUSTED_PUBLIC_KEY, digest, 32);
+#else
+  // "Crypto" লাইব্রেরি ইনস্টল নেই — স্বাক্ষর যাচাই সম্ভব নয়, তাই OTA
+  // প্রত্যাখ্যাত (fail-closed)। চলমান ফার্মওয়্যার নিরাপদে চলতে থাকবে।
+  Serial.println("⚠️ OTA: Ed25519 library missing — signature check unavailable, OTA rejected");
+  return false;
+#endif
 }
 
 static bool metadataUsesTrustedKey(const String& publicKeyB64) {
