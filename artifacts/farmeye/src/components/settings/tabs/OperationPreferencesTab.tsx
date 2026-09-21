@@ -126,6 +126,7 @@ export function OperationPreferencesTab() {
   const { data: advSettings } = useRawAdvancedAutomationSettings();
   const updateAdvSettings = useUpdateAdvancedAutomationSettings();
   const { toast } = useToast();
+  const [isLightingOpen, setIsLightingOpen] = useState(false);
 
   // State for each control - default to 'auto', hydrated from DB
   const [controls, setControls] = useState<Record<string, ControlLevel>>({
