@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Sparkles, Loader2, CheckCircle2, Cpu, CloudDownload } from 'lucide-react';
+import { Download, Sparkles, Loader2, CheckCircle2, Cpu, CloudDownload, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -93,8 +93,20 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
 
   const isMismatch = hardwareVersion !== 'unknown' && hardwareVersion !== firmwareVersion;
 
+  // Strict signing is ON — firmware without an injected DEVICE_SECRET will be
+  // rejected by the cloud (401) on first contact. Block the download instead of
+  // letting the user flash an unsigned build.
+  const secretMissing = firmwareMode === 'hardcoded' && autoLoaded && !deviceSecret;
+
   /** Shared pre-flight checks for both the confirm dialog and the actual download. */
   const preflight = () => {
+    if (secretMissing) {
+      toast.error(language === 'bn'
+        ? '⚠️ এই ডিভাইসের নিরাপত্তা সিক্রেট তৈরি হয়নি — সিক্রেট ছাড়া ফার্মওয়্যার ফ্ল্যাশ করলে বোর্ড সার্ভারে ঢুকতে পারবে না (401)। ফার্ম/ডিভাইস আবার নির্বাচন করুন বা অ্যাডমিনকে জানান।'
+        : '⚠️ No device security secret was provisioned — flashing this firmware would lock the board out of the server (401). Re-select the farm/device or contact an admin.',
+        { duration: 9000 });
+      return false;
+    }
     if (!validateInputs()) {
       toast.error(t.fillAllFields);
       return false;
@@ -346,7 +358,17 @@ export function ESP32CodeGenerator({ language = 'bn', showFarmSelector = false }
           </div>
 
           <div className="pl-7 space-y-3">
-            <Button className="w-full gap-2" size="lg" disabled={!isValid || isDownloading} onClick={openConfirm}>
+            {secretMissing && (
+              <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/40 rounded-lg">
+                <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-destructive font-medium">
+                  {language === 'bn'
+                    ? 'এই ডিভাইসের নিরাপত্তা সিক্রেট এখনো তৈরি হয়নি। সিক্রেট ছাড়া ফার্মওয়্যার ডাউনলোড বন্ধ — ফ্ল্যাশ করলে বোর্ড সার্ভারে ঢুকতে পারবে না (401)। ফার্ম/ডিভাইস আবার নির্বাচন করুন; সমস্যা থাকলে অ্যাডমিনকে জানান।'
+                    : 'No security secret provisioned for this device yet. Download is blocked — flashing now would lock the board out of the server (401). Re-select the farm/device, or contact an admin.'}
+                </p>
+              </div>
+            )}
+            <Button className="w-full gap-2" size="lg" disabled={!isValid || isDownloading || secretMissing} onClick={openConfirm}>
               {isDownloading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
