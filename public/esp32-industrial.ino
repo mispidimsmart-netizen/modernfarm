@@ -5425,7 +5425,12 @@ void setup() {
   dht2Available = !isnan(testT2);
   Serial.printf("  DHT#1: %s  DHT#2: %s\n", sensorOK ? "OK" : "FAIL", dht2Available ? "OK" : "N/A");
 
-  if (!sensorOK) { sensorErrorMode = true; failsafeMode = true; requestFan(true, "HIGH"); }
+  if (!sensorOK) {
+    sensorErrorMode = true; failsafeMode = true;
+    if (!manualAbsolute()) requestFan(true, "HIGH");
+    else Serial.println("🟡 [MANUAL] Boot sensor-fail fan skipped (manual absolute)");
+  }
+
 
 
   // --- Gas Warmup ---
