@@ -85,6 +85,13 @@
       "when": 1789989326025,
       "tag": "0011_revoke_anon_claim_device_commands_overload",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789989404574,
+      "tag": "0012_restrict_device_token_secret_columns",
+      "breakpoints": true
     }
   ]
 }
