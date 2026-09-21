@@ -5176,6 +5176,8 @@ void setup() {
   // ALWAYS provision from hardcoded on boot to ensure latest values are used
   // This prevents stale NVS credentials from blocking WiFi connection
   provisionFromHardcoded();
+  // Double RESET press within ~8s opens the WiFi setup hotspot on demand.
+  checkDoubleResetPortalRequest();
   loadOtaTerminalState();
   Serial.printf("🔑 Credentials loaded:\n");
   Serial.printf("   SSID: [%s] (len=%d)\n", activeWifiSSID.c_str(), activeWifiSSID.length());
