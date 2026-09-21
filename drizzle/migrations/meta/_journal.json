@@ -78,6 +78,13 @@
       "when": 1789988607458,
       "tag": "0010_device_hardware_profiles_permissive_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789989326025,
+      "tag": "0011_revoke_anon_claim_device_commands_overload",
+      "breakpoints": true
     }
   ]
 }

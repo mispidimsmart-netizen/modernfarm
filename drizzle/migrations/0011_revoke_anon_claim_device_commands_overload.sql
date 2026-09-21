@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.claim_device_commands(uuid, text, uuid, uuid, integer, integer, integer) FROM anon;
