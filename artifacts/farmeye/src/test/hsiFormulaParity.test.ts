@@ -25,10 +25,10 @@ const CLOUD_FORMULA = resolve(REPO_ROOT, 'supabase/functions/_shared/hsi-formula
 const GOLDEN: Array<[number, number, number]> = [
   [25, 60, 72.8],
   [30, 70, 81.3],
-  [35, 80, 91.0],
+  [35, 80, 90.9],
   [40, 80, 98.9],
   [20, 40, 64.6],
-  [38, 90, 97.9],
+  [38, 90, 98.0],
 ];
 
 function readFirmwareFormula(path: string): string {
