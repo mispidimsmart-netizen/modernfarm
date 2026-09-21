@@ -111,6 +111,11 @@ export function DeviceSystemTab() {
             </CardContent>
           </Card>
 
+          {/* WiFi change (no re-flash) */}
+          <WifiChangeCard language={language as 'bn' | 'en'} />
+
+
+
           <CollapsibleSection
             title="Device Management"
             titleBn="ডিভাইস ম্যানেজমেন্ট"
