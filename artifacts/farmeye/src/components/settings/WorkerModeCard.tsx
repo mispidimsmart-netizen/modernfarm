@@ -2,22 +2,28 @@
  * WorkerModeCard — Settings panel for the farm owner to set/clear the
  * 4-digit Worker Mode PIN and link to /worker (S2.1).
  *
- * Visible only to the farm owner.
+ * Visible only to the farm owner. Collapsible (closed by default).
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, ExternalLink, Trash2, Save } from 'lucide-react';
+import { Lock, ExternalLink, Trash2, Save, ChevronDown } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import {
   useFarmHasWorkerPin,
   useSetWorkerPin,
 } from '@/hooks/useWorkerPin';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 
 export function WorkerModeCard() {
@@ -30,6 +36,7 @@ export function WorkerModeCard() {
 
   const [pin, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
+  const [open, setOpen] = useState(false);
 
   const t = {
     title:    { bn: 'কর্মী মোড (PIN)', en: 'Worker Mode (PIN)' },
@@ -80,91 +87,101 @@ export function WorkerModeCard() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Lock size={18} />
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="overflow-hidden">
+        <CollapsibleTrigger asChild>
+          <button className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Lock className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold">{t.title[language]}</div>
+                <div className="text-xs text-muted-foreground line-clamp-1">{t.desc[language]}</div>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-base">{t.title[language]}</CardTitle>
-              <CardDescription className="text-xs">{t.desc[language]}</CardDescription>
+            <div className="flex items-center gap-2">
+              <Badge variant={hasPin ? 'default' : 'secondary'}>
+                {hasPin ? t.enabled[language] : t.disabled[language]}
+              </Badge>
+              <motion.div animate={{ rotate: open ? 180 : 0 }}>
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              </motion.div>
             </div>
-          </div>
-          <Badge variant={hasPin ? 'default' : 'secondary'}>
-            {hasPin ? t.enabled[language] : t.disabled[language]}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {hasPin && (
-          <Button asChild variant="outline" className="w-full">
-            <Link to="/worker">
-              <ExternalLink size={14} className="mr-1.5" />
-              {t.open[language]}
-            </Link>
-          </Button>
-        )}
+          </button>
+        </CollapsibleTrigger>
 
-        {isOwner ? (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <Label htmlFor="worker-pin" className="text-xs">{t.set[language]}</Label>
-                <Input
-                  id="worker-pin"
-                  type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  value={pin}
-                  onChange={e => setPin1(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="••••"
-                  autoComplete="new-password"
-                />
-              </div>
-              <div>
-                <Label htmlFor="worker-pin2" className="text-xs">{t.confirm[language]}</Label>
-                <Input
-                  id="worker-pin2"
-                  type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  value={pin2}
-                  onChange={e => setPin2(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="••••"
-                  autoComplete="new-password"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSave}
-                disabled={setPin.isPending || pin.length !== 4}
-                className="flex-1"
-              >
-                <Save size={14} className="mr-1.5" />
-                {t.save[language]}
+        <CollapsibleContent>
+          <div className="border-t p-4 space-y-3">
+            {hasPin && (
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/worker">
+                  <ExternalLink size={14} className="mr-1.5" />
+                  {t.open[language]}
+                </Link>
               </Button>
-              {hasPin && (
-                <Button
-                  variant="outline"
-                  onClick={handleClear}
-                  disabled={setPin.isPending}
-                >
-                  <Trash2 size={14} className="mr-1.5 text-destructive" />
-                  {t.clear[language]}
-                </Button>
-              )}
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">{t.onlyOwner[language]}</p>
-        )}
-      </CardContent>
-    </Card>
+            )}
+
+            {isOwner ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="worker-pin" className="text-xs">{t.set[language]}</Label>
+                    <Input
+                      id="worker-pin"
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={pin}
+                      onChange={e => setPin1(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="worker-pin2" className="text-xs">{t.confirm[language]}</Label>
+                    <Input
+                      id="worker-pin2"
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={pin2}
+                      onChange={e => setPin2(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSave}
+                    disabled={setPin.isPending || pin.length !== 4}
+                    className="flex-1"
+                  >
+                    <Save size={14} className="mr-1.5" />
+                    {t.save[language]}
+                  </Button>
+                  {hasPin && (
+                    <Button
+                      variant="outline"
+                      onClick={handleClear}
+                      disabled={setPin.isPending}
+                    >
+                      <Trash2 size={14} className="mr-1.5 text-destructive" />
+                      {t.clear[language]}
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t.onlyOwner[language]}</p>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
