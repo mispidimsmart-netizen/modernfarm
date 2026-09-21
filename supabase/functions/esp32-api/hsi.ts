@@ -138,12 +138,15 @@ export async function applyHSIAutomation(
     }
     if (Object.keys(updates).length <= 1) return; // only updated_at left
 
+    // Unscoped writes would touch every farm of this user — skip instead.
+    if (!farmId) return;
+
     let updateQuery = supabase
       .from('device_status')
       .update(updates)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('farm_id', farmId);
 
-    if (farmId) updateQuery = updateQuery.eq('farm_id', farmId);
     if (shedId) updateQuery = updateQuery.eq('shed_id', shedId);
 
     await updateQuery;

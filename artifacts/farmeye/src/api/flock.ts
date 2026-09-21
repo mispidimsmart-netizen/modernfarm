@@ -16,8 +16,9 @@ const MAX_WEEK_JUMP = 4;
 const JUMP_WINDOW_HOURS = 24;
 
 export async function getFlockInfo(farmId: string | null): Promise<FlockInfo | null> {
-  let query = supabase.from('flock_info').select('*');
-  if (farmId) query = query.eq('farm_id', farmId);
+  // A missing farm is never a reason to read another farm's flock row.
+  if (!farmId) return null;
+  const query = supabase.from('flock_info').select('*').eq('farm_id', farmId);
   const { data, error } = await query.maybeSingle();
   if (error && error.code !== 'PGRST116') throw error;
   return data as FlockInfo | null;

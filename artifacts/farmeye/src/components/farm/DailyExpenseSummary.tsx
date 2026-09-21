@@ -1,4 +1,5 @@
 import { useAuth } from '@/context/AuthContext';
+import { today as farmToday } from '@/api/types';
 import { useExpenses, useIncome } from '@/hooks/useFarmManagement';
 import { useActiveBatchStart } from '@/hooks/useActiveBatchStart';
 import { useFarmType } from '@/hooks/useFarmType';
@@ -25,7 +26,7 @@ export function DailyExpenseSummary() {
       : null;
   const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart };
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = farmToday();
   const showData = !batchStart || today >= batchStart;
 
   const todayExpenses = useMemo(() => {

@@ -1849,11 +1849,14 @@ async function assertCloudWriteAllowed(
   farmId: string | null,
   shedId: string | null,
 ): Promise<{ allow: boolean; reason?: string }> {
+  // A token with no farm binding cannot be gated safely: deny instead of
+  // falling back to a user-wide read that could read another farm's mode.
+  if (!farmId) return { allow: false, reason: 'DEVICE_UNBOUND' };
   let settingsQuery = supabase
     .from('farm_settings')
     .select('automation_mode, safety_engine_enabled')
-    .eq('user_id', userId);
-  if (farmId) settingsQuery = settingsQuery.eq('farm_id', farmId);
+    .eq('user_id', userId)
+    .eq('farm_id', farmId);
   const { data: settings } = await settingsQuery.limit(1).maybeSingle();
 
   let statusQuery = supabase
@@ -1861,8 +1864,7 @@ async function assertCloudWriteAllowed(
     .select(
       'mode, manual_override, desired_manual_override, desired_fan_expires_at, desired_alarm_expires_at, updated_at',
     );
-  if (farmId) statusQuery = statusQuery.eq('farm_id', farmId);
-  else statusQuery = statusQuery.eq('user_id', userId);
+  statusQuery = statusQuery.eq('user_id', userId).eq('farm_id', farmId);
   if (shedId) statusQuery = statusQuery.eq('shed_id', shedId);
   // Without a shed the row order must be deterministic, otherwise a farm with
   // one shed in MANUAL and another in AUTO gets a random gate decision.
@@ -1874,8 +1876,8 @@ async function assertCloudWriteAllowed(
   let esmQuery = supabase
     .from('safety_status')
     .select('emergency_active, survival_mode')
-    .eq('user_id', userId);
-  if (farmId) esmQuery = esmQuery.eq('farm_id', farmId);
+    .eq('user_id', userId)
+    .eq('farm_id', farmId);
   if (shedId) esmQuery = esmQuery.eq('shed_id', shedId);
   const { data: safety } = await esmQuery.limit(1).maybeSingle();
 
@@ -1938,11 +1940,17 @@ async function handleControlCommand(
   // Handle mode - write to desired_manual_override (cloud never sets actual)
   if (body.mode) {
     const manualOverride = body.mode === 'MANUAL';
+    if (!boundDevice.farm_id) {
+      return new Response(
+        JSON.stringify({ error: 'Device is not bound to a farm', code: 'DEVICE_UNBOUND' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     let modeQuery = supabase
       .from('device_status')
       .update({ desired_manual_override: manualOverride })
-      .eq('user_id', userId);
-    if (boundDevice.farm_id) modeQuery = modeQuery.eq('farm_id', boundDevice.farm_id);
+      .eq('user_id', userId)
+      .eq('farm_id', boundDevice.farm_id);
     if (boundDevice.shed_id) modeQuery = modeQuery.eq('shed_id', boundDevice.shed_id);
     const { data: modeRows, error: modeError } = await modeQuery.select('id');
     if (modeError || !modeRows || modeRows.length === 0) {
@@ -2207,11 +2215,17 @@ async function handleManualControl(
   }
 
   // Update desired_state only (ESP32 decides final relay state)
+  if (!boundDevice.farm_id) {
+    return new Response(
+      JSON.stringify({ error: 'Device is not bound to a farm', code: 'DEVICE_UNBOUND' }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
   let desiredQuery = supabase
     .from('device_status')
     .update(desiredUpdate)
-    .eq('user_id', userId);
-  if (boundDevice.farm_id) desiredQuery = desiredQuery.eq('farm_id', boundDevice.farm_id);
+    .eq('user_id', userId)
+    .eq('farm_id', boundDevice.farm_id);
   if (boundDevice.shed_id) desiredQuery = desiredQuery.eq('shed_id', boundDevice.shed_id);
   const { data: desiredRows, error: updateError } = await desiredQuery.select('id');
 

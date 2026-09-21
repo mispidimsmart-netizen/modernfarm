@@ -12,10 +12,12 @@ import { daysAgoDate, type FeedConsumption, type FeedInventory } from './types';
 
 // ───────────────────────── Inventory ─────────────────────────
 
-export async function listFeedInventory(): Promise<FeedInventory[]> {
+export async function listFeedInventory(farmId: string | null): Promise<FeedInventory[]> {
+  if (!farmId) return [];
   const { data, error } = await supabase
     .from('feed_inventory')
     .select('*')
+    .eq('farm_id', farmId)
     .order('purchase_date', { ascending: false });
   if (error) throw error;
   return data as FeedInventory[];

@@ -101,7 +101,7 @@ export function VersionSelectors({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="v8">v8.8.2 — Stable (v8 GPIO: Exhaust=25, Heater=14 · TFT optional)</SelectItem>
+            <SelectItem value="v8">v8.9.0 — Stable (v8 GPIO: Exhaust=25, Heater=14 · TFT optional)</SelectItem>
             <SelectItem value="v10">v10.1.1-beta — Beta (Phase 9 sensors, Exhaust=5, Heater=21)</SelectItem>
           </SelectContent>
         </Select>

@@ -514,11 +514,19 @@ async function executeAutomationForShed(
     if (!gate.skipAlarm) {
       desired.desired_alarm_on = automationAction.alarm;
     }
+    // A missing farm must never widen the write to every farm of this user.
+    if (!farm_id) {
+      return {
+        ...base,
+        sensor_timestamp: latestSensor.recorded_at,
+        skipped_reason: 'NO_FARM_SCOPE',
+      };
+    }
     let updateQuery = supabase
       .from('device_status')
       .update(desired)
-      .eq('user_id', user_id);
-    if (farm_id) updateQuery = updateQuery.eq('farm_id', farm_id);
+      .eq('user_id', user_id)
+      .eq('farm_id', farm_id);
     if (shed_id) updateQuery = updateQuery.eq('shed_id', shed_id);
     const { error: updErr } = await updateQuery;
     if (updErr) {

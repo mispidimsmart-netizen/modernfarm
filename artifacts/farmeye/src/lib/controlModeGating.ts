@@ -111,7 +111,15 @@ export function shouldCloudApplySafetyAutomation(ctx: {
   return true;
 }
 
-/** Should the "Safety Locked Devices" panel be visible on the Control page? */
-export function shouldShowSafetyLockedPanel(safetyEngineEnabled: boolean): boolean {
+/**
+ * Should the "Safety Locked Devices" panel be visible on the Control page?
+ * Hidden in MANUAL: there the board never locks a relay, so the panel would
+ * claim a protection that does not exist.
+ */
+export function shouldShowSafetyLockedPanel(
+  safetyEngineEnabled: boolean,
+  mode?: AutomationMode,
+): boolean {
+  if (mode === 'MANUAL') return false;
   return safetyEngineEnabled;
 }

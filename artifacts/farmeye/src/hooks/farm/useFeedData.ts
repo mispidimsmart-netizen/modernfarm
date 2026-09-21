@@ -14,10 +14,11 @@ import { errorToast } from './farmMutationFeedback';
 
 export function useFeedInventory() {
   const { user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   return useQuery({
-    queryKey: ['feed-inventory', user?.id],
-    queryFn: () => feedApi.listFeedInventory(),
-    enabled: !!user,
+    queryKey: ['feed-inventory', user?.id, selectedFarmId],
+    queryFn: () => feedApi.listFeedInventory(selectedFarmId),
+    enabled: !!user && !!selectedFarmId,
   });
 }
 

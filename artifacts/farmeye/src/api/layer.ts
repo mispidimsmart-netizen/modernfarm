@@ -71,14 +71,15 @@ export async function getActiveLayerBatch(
   userId: string,
   farmId?: string | null,
 ): Promise<LayerBatch | null> {
-  let q = supabase
+  if (!farmId) return null;
+  const q = supabase
     .from('layer_batches' as any)
     .select('*')
     .eq('user_id', userId)
     .eq('status', 'active')
+    .eq('farm_id', farmId)
     .order('start_date', { ascending: false })
     .limit(1);
-  if (farmId) q = q.eq('farm_id', farmId);
 
   const { data, error } = await q.maybeSingle();
   if (error) throw error;
@@ -573,14 +574,17 @@ export async function editCompletedLayerBatch(userId: string, input: BatchEditIn
 /** Daily eggs + mortality series for a batch window (mini chart). */
 export async function getBatchTrend(
   userId: string,
+  farmId: string | null,
   startDate: string,
   endDate: string,
 ): Promise<BatchTrendPoint[]> {
+  if (!farmId) return [];
   const [eggsRes, mortRes] = await Promise.all([
     supabase
       .from('egg_production')
       .select('production_date,total_eggs')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .gte('production_date', startDate)
       .lte('production_date', endDate)
       .order('production_date', { ascending: true }),
@@ -588,6 +592,7 @@ export async function getBatchTrend(
       .from('daily_summary')
       .select('summary_date,mortality_count')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .gte('summary_date', startDate)
       .lte('summary_date', endDate)
       .order('summary_date', { ascending: true }),
