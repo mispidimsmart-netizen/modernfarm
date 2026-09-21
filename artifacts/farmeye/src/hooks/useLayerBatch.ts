@@ -234,7 +234,7 @@ export function useLayerBatchTrend(batch: LayerBatch | null | undefined) {
     queryFn: () => {
       if (!user || !batch) return [];
       const end = batch.actual_end_date || today();
-      return layerApi.getBatchTrend(user.id, batch.start_date, end);
+      return layerApi.getBatchTrend(user.id, batch.farm_id ?? null, batch.start_date, end);
     },
     enabled: !!user && !!batch,
   });
