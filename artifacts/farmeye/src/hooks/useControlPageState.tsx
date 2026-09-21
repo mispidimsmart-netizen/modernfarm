@@ -232,7 +232,7 @@ export function useControlPageState() {
   );
 
   const getDeviceMode = useCallback((deviceKey: string): DeviceMode => {
-    if (isManualMode) return manualOverrideKind(true) === 'permanent' ? 'temporary' : 'temporary';
+    if (isManualMode) return 'temporary';
     if (activeTimers[deviceKey]) return 'temporary';
     return 'auto';
   }, [activeTimers, isManualMode]);
