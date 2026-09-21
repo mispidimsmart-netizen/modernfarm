@@ -117,7 +117,6 @@ serve(async (req) => {
       if (body?.boot_success === true && body?.signature_validated !== true) {
         return json({ error: "Successful boot must report signature validation" }, 400);
       }
-      const status = body?.boot_success === true ? "completed" : "boot_failed";
       // assignment_id is the terminal-report idempotency key. Every
       // identity field is matched again so a valid token cannot report for a
       // different tenant/device/firmware.
