@@ -52,17 +52,22 @@ const TARGET_MIN_UPDATE_INTERVAL_MS = 120 * 1000; // Min 120s between target upd
 export function useDeviceStateModel() {
   const { user } = useAuth();
   const { selectedShedId } = useSelectedShed();
+  const selectedFarmId = useSafeFarmId();
   const lastAcceptedTarget = useRef<{ temp: number | null; time: number }>({ temp: null, time: 0 });
 
   return useQuery({
-    queryKey: ['device-state-model', user?.id, selectedShedId],
+    queryKey: ['device-state-model', user?.id, selectedFarmId, selectedShedId],
     queryFn: async (): Promise<DeviceStateModel | null> => {
       if (!user) return null;
 
       let query = supabase
         .from('device_status')
-        .select('*')
-        .eq('user_id', user.id);
+        .select('*');
+
+      // Farm is the tenant boundary: scope by farm_id whenever one is selected
+      // so a row written by another member of the same farm is still read.
+      if (selectedFarmId) query = query.eq('farm_id', selectedFarmId);
+      else query = query.eq('user_id', user.id);
 
       if (selectedShedId) {
         query = query.eq('shed_id', selectedShedId);
