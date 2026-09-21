@@ -5437,23 +5437,11 @@ void setup() {
   if (isBroiler()) { loadAgeTickTime(); lastAgeIncreaseMillis = millis(); }
   if (isLayer()) loadLayerRules(); else loadBroilerRules();
 
-  // --- Safety Engine cached state (offline-resilient) ---
-  // Restore last-known safety_engine_enabled from NVS BEFORE WiFi.
-  // This guarantees that even if cloud is unreachable, the engine respects
-  // the farmer's last choice. Hard Floor (>42°C) is hardcoded and unaffected.
-  loadCachedSafetyEngine();
+  // --- NOTE ---
+  // Safety-engine cache + sticky Auto/Manual mode are restored EARLIER in
+  // setup() (before the stabilizing/boot-ventilation block), so a MANUAL farm
+  // never sees a transient automation-driven fan burst after a reboot.
 
-  // --- Sticky Auto/Manual mode (offline-resilient) ---
-  // Restore the last mode + operator relay intent BEFORE WiFi, so a power cut,
-  // WiFi outage, sensor failure or watchdog reset can never silently flip a
-  // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
-  loadPersistedModeState();
-  if (manualAbsolute()) {
-    // MANUAL ABSOLUTE (engine OFF): boot ventilation / sensor-fail fan are
-    // automation. Apply the operator's stored relay intent right away instead.
-    relayManagerApply();
-    Serial.println("🟡 [MANUAL] Boot automation skipped — operator relay state restored");
-  }
 
 
   // --- WiFi ---
