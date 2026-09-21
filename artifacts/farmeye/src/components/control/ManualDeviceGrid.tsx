@@ -17,7 +17,7 @@ interface Props {
   commandProgress?: CommandProgressMap;
   onToggle: (deviceKey: string, next: boolean) => void;
   disabled: boolean;
-  /** Live safety context — Safety Engine still applies in MANUAL mode when ON. */
+  /** Live safety context — advisory only in MANUAL; nothing here blocks a toggle. */
   temperature?: number;
   ammonia?: number;
   tempMax?: number;
