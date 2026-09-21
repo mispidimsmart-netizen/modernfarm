@@ -50,15 +50,17 @@ export function isGasProtectionActive(ctx: SafetyContext): boolean {
 
 /**
  * Should the given device be treated as safety-locked (user cannot stop it)?
- * - MANUAL mode → never locked ("manual absolute"): the operator is the only
- *   authority; the board raises the siren instead of taking over relays.
+ * - MANUAL + engine OFF ("manual absolute") → never locked: the operator is
+ *   the only authority; the board raises the siren instead of taking over.
+ * - MANUAL + engine ON → locked exactly like AUTO: the board's life-safety
+ *   protections still act on the relays in danger conditions.
  * - Safety Engine OFF → nothing is locked, even in danger conditions.
  */
 export function isDeviceSafetyLocked(
   deviceKey: DeviceKey,
   ctx: SafetyContext,
 ): boolean {
-  if (ctx.mode === 'MANUAL') return false;
+  if (ctx.mode === 'MANUAL' && !ctx.safetyEngineEnabled) return false;
   const heat = isHeatProtectionActive(ctx);
   const gas = isGasProtectionActive(ctx);
   if (heat && (COOLING_DEVICES as readonly string[]).includes(deviceKey)) return true;
@@ -70,7 +72,7 @@ export function isDeviceSafetyLocked(
  * Can the user issue a manual command right now for this device?
  *
  * Matrix:
- *   MANUAL + engine OFF → always yes (raw control)
+ *   MANUAL + engine OFF → always yes (raw control, manual absolute)
  *   MANUAL + engine ON  → yes, but safety-locked devices cannot be turned OFF
  *   AUTO   + engine OFF → yes (temporary override only)
  *   AUTO   + engine ON  → yes, except safety-locked devices cannot be turned OFF
