@@ -6059,9 +6059,10 @@ void loop() {
 
   // ═══════════════════════════════════════════════════════════════
   // SAFETY ARBITER: Runs every 500ms in BOTH Auto and Manual mode.
-  // In Manual mode the operator controls the relays, but the arbiter
-  // still evaluates INV-1..INV-8 and can force life-saving actions.
+  // In MANUAL mode it still evaluates INV-1..INV-8 and raises the siren
+  // + cloud alerts, but it NEVER drives a relay — manual is absolute.
   // ═══════════════════════════════════════════════════════════════
+  safetyEngine.setManualAbsolute(manualAbsolute());
   safetyEngine.arbiterTick(temperature, humidity, ammonia,
     !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 

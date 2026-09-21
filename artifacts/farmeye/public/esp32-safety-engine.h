@@ -286,7 +286,8 @@ public:
   // the relay manager, automation engine, or any other abstraction.
   //
   // It CANNOT be blocked by:
-  //   - Manual override
+  //   - OTA update (see setManualAbsolute() for the one operator exception:
+  //     in MANUAL mode only the siren is actuated)
   //   - OTA update
   //   - Relay protection timers
   //   - Stabilizing mode
@@ -295,6 +296,17 @@ public:
   //
   // Call this from loop() BEFORE and AFTER all other processing.
   // ═══════════════════════════════════════════════════════════════════
+  /**
+   * MANUAL ABSOLUTE switch. While true the arbiter keeps evaluating every
+   * invariant (so telemetry, alerts and the siren stay live) but never drives
+   * fan/heater/other relays — the operator owns them.
+   */
+  void setManualAbsolute(bool on) {
+    if (_manualAbsolute != on) _manualSuppressLogged = false;
+    _manualAbsolute = on;
+  }
+  bool isManualAbsolute() const { return _manualAbsolute; }
+
   SafetyArbiterResult arbiterTick(
     float temperature, float humidity, float ammonia,
     bool sensorValid, bool fanCurrentlyOn, bool heaterCurrentlyOn,
@@ -774,11 +786,24 @@ private:
 
   void _setAlarm(bool on) { _directWriteRelay(alarmPin, on); }
 
-  // Direct GPIO write — bypasses relay manager entirely
+  // Direct GPIO write — bypasses relay manager entirely.
+  // MANUAL ABSOLUTE: when the operator holds manual mode, the arbiter may NOT
+  // drive any relay except the siren. Invariants are still evaluated and
+  // reported (lastResult / cloud alerts), only the actuation is suppressed.
   void _directWriteRelay(int pin, bool on) {
     if (pin < 0) return;
+    if (_manualAbsolute && pin != alarmPin) {
+      if (!_manualSuppressLogged) {
+        Serial.println("[SAFETY] 🖐️ MANUAL ABSOLUTE — relay actuation suppressed (siren only)");
+        _manualSuppressLogged = true;
+      }
+      return;
+    }
     digitalWrite(pin, on ? RELAY_ACTIVE_LOW : !RELAY_ACTIVE_LOW);
   }
+
+  bool _manualAbsolute = false;
+  bool _manualSuppressLogged = false;
 };
 
 #endif // SAFETY_ENGINE_H
