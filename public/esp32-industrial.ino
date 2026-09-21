@@ -4081,6 +4081,9 @@ void loadCredentialsFromNVS() {
   if (activeDeviceSecret.length() >= 32 && activeSecretVersion < 1) activeSecretVersion = 1;
   activeWifiSSID = preferences.getString("wifi_ssid", "");
   activeWifiPassword = preferences.getString("wifi_pass", "");
+  backupWifiSSID = preferences.getString("wifi_ssid2", "");
+  backupWifiPassword = preferences.getString("wifi_pass2", "");
+  wifiUserProvisioned = preferences.getBool("wifi_user", false);
   activeShedId = preferences.getString("shed_id", "");
   activeShedName = preferences.getString("shed_name", "");
   activeFarmId = preferences.getString("farm_id", "");
@@ -4095,6 +4098,9 @@ void saveCredentialsToNVS() {
   preferences.putInt("secret_ver", activeSecretVersion);
   preferences.putString("wifi_ssid", activeWifiSSID);
   preferences.putString("wifi_pass", activeWifiPassword);
+  preferences.putString("wifi_ssid2", backupWifiSSID);
+  preferences.putString("wifi_pass2", backupWifiPassword);
+  preferences.putBool("wifi_user", wifiUserProvisioned);
   preferences.putString("shed_id", activeShedId);
   preferences.putString("shed_name", activeShedName);
   preferences.putString("farm_id", activeFarmId);
@@ -4103,17 +4109,223 @@ void saveCredentialsToNVS() {
   nvsProvisioned = true;
 }
 
+/**
+ * Persist WiFi credentials only (token/secret/farm/shed untouched).
+ * `userSet=true` marks them as user-provisioned so a later re-flash of the
+ * same firmware does not overwrite them with the compiled-in defaults.
+ */
+void saveWifiCredentialsToNVS(const String& ssid, const String& pass, bool userSet) {
+  preferences.begin(NVS_NAMESPACE, false);
+  preferences.putString("wifi_ssid", ssid);
+  preferences.putString("wifi_pass", pass);
+  preferences.putString("wifi_ssid2", backupWifiSSID);
+  preferences.putString("wifi_pass2", backupWifiPassword);
+  preferences.putBool("wifi_user", userSet);
+  preferences.putUInt("magic", NVS_PROVISIONED_MAGIC);
+  preferences.end();
+}
+
 void provisionFromHardcoded() {
+  // WiFi saved by the user (setup hotspot or app) is loaded first so it always
+  // wins over the compiled-in SSID/password. Device identity (token/secret/
+  // farm/shed) still comes from the flashed firmware.
+  String savedSsid = "", savedPass = "";
+  bool userWifi = false;
+  preferences.begin(NVS_NAMESPACE, true);
+  userWifi = preferences.getBool("wifi_user", false);
+  savedSsid = preferences.getString("wifi_ssid", "");
+  savedPass = preferences.getString("wifi_pass", "");
+  backupWifiSSID = preferences.getString("wifi_ssid2", "");
+  backupWifiPassword = preferences.getString("wifi_pass2", "");
+  preferences.end();
+
   activeDeviceToken = String(DEVICE_TOKEN);
   activeDeviceSecret = String(DEVICE_SECRET);
   activeSecretVersion = (activeDeviceSecret.length() >= 32 && SECRET_VERSION < 1) ? 1 : SECRET_VERSION;
-  activeWifiSSID = String(WIFI_SSID);
-  activeWifiPassword = String(WIFI_PASSWORD);
+  if (userWifi && savedSsid.length() > 0 && savedSsid != "YOUR_WIFI_SSID") {
+    wifiUserProvisioned = true;
+    activeWifiSSID = savedSsid;
+    activeWifiPassword = savedPass;
+    Serial.printf("📶 WiFi from saved settings (no re-flash needed): [%s]\n", activeWifiSSID.c_str());
+  } else {
+    wifiUserProvisioned = false;
+    activeWifiSSID = String(WIFI_SSID);
+    activeWifiPassword = String(WIFI_PASSWORD);
+  }
   activeShedId = String(SHED_ID);
   activeShedName = String(SHED_NAME);
   activeFarmId = String(FARM_ID);
   saveCredentialsToNVS();
 }
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  WIFI SELF-SERVICE: setup hotspot + cloud "set_wifi" + safe revert     ║
+// ║  Safety: this code touches WiFi fields only. Relay authority, the      ║
+// ║  arbiter and all 8 hardcoded invariants are untouched.                 ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+/** Switch to new credentials, keeping the current ones as automatic fallback. */
+void applyNewWifiCredentials(const String& ssid, const String& pass, const char* source) {
+  if (ssid.length() == 0) return;
+  if (ssid == activeWifiSSID && pass == activeWifiPassword) {
+    Serial.printf("📶 WiFi change ignored (identical to active SSID) [%s]\n", source);
+    return;
+  }
+  if (activeWifiSSID.length() > 0 && activeWifiSSID != "YOUR_WIFI_SSID") {
+    backupWifiSSID = activeWifiSSID;
+    backupWifiPassword = activeWifiPassword;
+  }
+  activeWifiSSID = ssid;
+  activeWifiPassword = pass;
+  wifiUserProvisioned = true;
+  saveWifiCredentialsToNVS(activeWifiSSID, activeWifiPassword, true);
+  wifiTrialPending = true;
+  wifiTrialStartMs = millis();
+  wifiFailStreak = 0;
+  wifiBackoffMs = WIFI_BACKOFF_MIN_MS;
+  Serial.printf("📶 New WiFi accepted from %s → SSID=[%s] (backup=[%s])\n",
+                source, activeWifiSSID.c_str(), backupWifiSSID.c_str());
+  connectWiFi();
+}
+
+/** If the new network does not come up in time, silently return to the old one. */
+void checkWifiTrial() {
+  if (!wifiTrialPending) return;
+  if (wifiConnected) {
+    wifiTrialPending = false;
+    Serial.printf("✅ New WiFi confirmed working: [%s]\n", activeWifiSSID.c_str());
+    return;
+  }
+  if (millis() - wifiTrialStartMs < WIFI_TRIAL_TIMEOUT_MS) return;
+
+  wifiTrialPending = false;
+  if (backupWifiSSID.length() == 0) {
+    Serial.println("⚠️ New WiFi failed and no backup network stored → opening setup hotspot");
+    startWifiPortal("new_wifi_failed_no_backup");
+    return;
+  }
+  String failedSsid = activeWifiSSID;
+  activeWifiSSID = backupWifiSSID;
+  activeWifiPassword = backupWifiPassword;
+  backupWifiSSID = ""; backupWifiPassword = "";
+  saveWifiCredentialsToNVS(activeWifiSSID, activeWifiPassword, wifiUserProvisioned);
+  Serial.printf("↩️ WiFi [%s] did not connect in %lus → reverted to [%s]\n",
+                failedSsid.c_str(), WIFI_TRIAL_TIMEOUT_MS / 1000UL, activeWifiSSID.c_str());
+  connectWiFi();
+}
+
+static String wifiPortalApSsid() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "FarmEye-Setup-%02X%02X", mac[4], mac[5]);
+  return String(buf);
+}
+
+static String wifiPortalPage(const String& message) {
+  String html = F("<!DOCTYPE html><html lang='bn'><head><meta charset='utf-8'>"
+                  "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                  "<title>FarmEye WiFi</title><style>"
+                  "body{font-family:system-ui,sans-serif;background:#0f1a14;color:#e8f5ec;margin:0;padding:18px}"
+                  "h1{font-size:18px;color:#7fe0a5}label{display:block;margin:12px 0 4px;font-size:14px}"
+                  "input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #2d5c43;"
+                  "background:#14261c;color:#e8f5ec;font-size:15px}"
+                  "button{margin-top:16px;width:100%;padding:12px;border:0;border-radius:8px;"
+                  "background:#1F7A3E;color:#fff;font-size:16px}"
+                  ".m{margin:10px 0;padding:10px;border-radius:8px;background:#1d3a29;font-size:14px}"
+                  ".s{font-size:12px;color:#9ec2ac;margin-top:14px}"
+                  "</style></head><body><h1>FarmEye — ওয়াইফাই সেটআপ</h1>");
+  if (message.length() > 0) html += "<div class='m'>" + message + "</div>";
+  html += F("<form method='POST' action='/save'><label>ওয়াইফাই নাম (SSID)</label>"
+            "<input list='nets' name='ssid' required maxlength='32'><datalist id='nets'>");
+  int n = WiFi.scanComplete();
+  if (n <= 0) n = WiFi.scanNetworks(false, false, false, 200);
+  for (int i = 0; i < n && i < 15; i++) {
+    html += "<option value='" + WiFi.SSID(i) + "'>";
+  }
+  html += F("</datalist><label>পাসওয়ার্ড</label>"
+            "<input name='pass' type='text' maxlength='63' placeholder='খোলা নেটওয়ার্ক হলে ফাঁকা রাখুন'>"
+            "<button type='submit'>সেভ করুন ও সংযুক্ত হন</button></form>"
+            "<p class='s'>সেভ করলে কন্ট্রোলার রিস্টার্ট হয়ে নতুন ওয়াইফাইতে যুক্ত হবে। "
+            "ভুল পাসওয়ার্ড দিলে আগের ওয়াইফাইতে নিজেই ফিরে যাবে। "
+            "এই সময়েও ফ্যান/হিটার ও সব নিরাপত্তা নিয়ম চালু থাকে।</p></body></html>");
+  return html;
+}
+
+void startWifiPortal(const char* reason) {
+  if (wifiPortalActive) return;
+  wifiPortalActive = true;
+  wifiPortalStartMs = millis();
+  WiFi.mode(WIFI_AP_STA);
+  String ap = wifiPortalApSsid();
+  WiFi.softAP(ap.c_str(), WIFI_PORTAL_AP_PASSWORD);
+  if (wifiPortalServer == nullptr) wifiPortalServer = new WebServer(80);
+  wifiPortalServer->on("/", HTTP_GET, []() {
+    wifiPortalServer->send(200, "text/html; charset=utf-8", wifiPortalPage(""));
+  });
+  wifiPortalServer->on("/save", HTTP_POST, []() {
+    String ssid = wifiPortalServer->arg("ssid");
+    String pass = wifiPortalServer->arg("pass");
+    ssid.trim();
+    if (ssid.length() == 0) {
+      wifiPortalServer->send(200, "text/html; charset=utf-8",
+        wifiPortalPage("ওয়াইফাই নাম দিতে হবে।"));
+      return;
+    }
+    wifiPortalServer->send(200, "text/html; charset=utf-8",
+      wifiPortalPage("সেভ হয়েছে — কন্ট্রোলার এখন <b>" + ssid + "</b> এ যুক্ত হচ্ছে।"));
+    applyNewWifiCredentials(ssid, pass, "setup_portal");
+  });
+  wifiPortalServer->onNotFound([]() {
+    wifiPortalServer->send(200, "text/html; charset=utf-8", wifiPortalPage(""));
+  });
+  wifiPortalServer->begin();
+  Serial.printf("🛠️ WiFi setup hotspot OPEN: SSID=[%s] pass=[%s] → http://192.168.4.1 (reason=%s)\n",
+                ap.c_str(), WIFI_PORTAL_AP_PASSWORD, reason);
+}
+
+void stopWifiPortal(const char* reason) {
+  if (!wifiPortalActive) return;
+  if (wifiPortalServer != nullptr) wifiPortalServer->stop();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+  wifiPortalActive = false;
+  Serial.printf("🛠️ WiFi setup hotspot closed (%s)\n", reason);
+}
+
+void wifiPortalTick() {
+  if (!wifiPortalActive) return;
+  wifiPortalServer->handleClient();
+  if (wifiConnected && (millis() - wifiPortalStartMs > 30000UL)) {
+    stopWifiPortal("wifi_connected");
+    return;
+  }
+  if (millis() - wifiPortalStartMs > WIFI_PORTAL_TIMEOUT_MS) {
+    stopWifiPortal("timeout");
+  }
+}
+
+/**
+ * Double-press of the RESET button (two boots within ~8s) opens the setup
+ * hotspot on demand — useful when the old WiFi still exists but is wrong.
+ */
+void checkDoubleResetPortalRequest() {
+  preferences.begin("wifi_portal", false);
+  bool armed = preferences.getBool("armed", false);
+  preferences.putBool("armed", true);
+  preferences.end();
+  if (armed) {
+    Serial.println("🔁 Double reset detected → WiFi setup hotspot will open");
+    startWifiPortal("double_reset");
+  }
+}
+
+void clearDoubleResetFlag() {
+  preferences.begin("wifi_portal", false);
+  if (preferences.getBool("armed", false)) preferences.putBool("armed", false);
+  preferences.end();
+}
+
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  OTA: INDUSTRIAL SAFE UPDATE SYSTEM                                    ║
