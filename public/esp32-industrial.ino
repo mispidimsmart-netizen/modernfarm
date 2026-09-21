@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.4.0-wifi-selfservice";
+const char* FIRMWARE_VERSION = "8.5.0-sticky-manual";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -171,6 +171,9 @@ bool hardFloorActive = false;
 #define NVS_SAFETY_NS         "safety_cfg"
 #define NVS_SAFETY_KEY        "se_enabled"
 #define NVS_SAFETY_TS_KEY     "se_synced_at" // unix-ish (millis-since-epoch unknown offline → use uptime sec)
+// STICKY MANUAL MODE — mode + operator relay intent survive power loss, WiFi
+// loss, sensor failure and reboots. MANUAL never silently reverts to AUTO.
+#define NVS_MODE_NS           "mode_state"
 unsigned long lastConfigSyncMs = 0;          // millis() of last successful /config 200
 unsigned long lastConfigSyncEpoch = 0;       // saved alongside cached value (0 if never)
 uint16_t configFetchFailStreak = 0;          // consecutive failures (HTTP error / no WiFi)
@@ -1591,6 +1594,88 @@ void requestCirculationFan(bool on)    { relayTarget.circulationFan = on; }
 void requestCeilingFan(bool on)        { relayTarget.ceilingFan = on; }
 void requestSprinkler(bool on)         { relayTarget.sprinkler = on; }
 void requestLight(int brightness)      { targetBrightness = constrain(brightness, 0, 100); }
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  STICKY MANUAL MODE PERSISTENCE (NVS)                                  ║
+// ║  ম্যানুয়াল মোড সব পরিস্থিতিতে টেকে: কারেন্ট চলে গেলে, ওয়াইফাই/ইন্টারনেট      ║
+// ║  বন্ধ হলে, সেন্সর নষ্ট হলে, রিবুট বা ওয়াচডগ রিসেটেও।                      ║
+// ║  শুধু ক্লাউড/অ্যাপ/বাটন থেকে স্পষ্ট AUTO আদেশে মোড বদলায়।                  ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+void persistModeState() {
+  preferences.begin(NVS_MODE_NS, false);
+  preferences.putBool("manual",  localManualOverride);
+  preferences.putBool("r_fan",   relayTarget.fan);
+  preferences.putString("r_fspd", relayTarget.fanSpeed);
+  preferences.putBool("r_heat",  relayTarget.heater);
+  preferences.putBool("r_alarm", relayTarget.alarm);
+  preferences.putBool("r_fog",   relayTarget.fogger);
+  preferences.putBool("r_circ",  relayTarget.circulationFan);
+  preferences.putBool("r_ceil",  relayTarget.ceilingFan);
+  preferences.putBool("r_spr",   relayTarget.sprinkler);
+  preferences.putInt("r_light",  targetBrightness);
+  preferences.end();
+}
+
+// Called from loop(): only writes when something actually changed (NVS wear).
+void persistModeStateIfChanged() {
+  static bool  pManual = false, pFan = false, pHeat = false, pAlarm = false;
+  static bool  pFog = false, pCirc = false, pCeil = false, pSpr = false;
+  static int   pLight = -1;
+  static String pSpeed = "";
+  static bool  primed = false;
+  bool changed = !primed
+    || pManual != localManualOverride
+    || pFan != relayTarget.fan || pHeat != relayTarget.heater
+    || pAlarm != relayTarget.alarm || pFog != relayTarget.fogger
+    || pCirc != relayTarget.circulationFan || pCeil != relayTarget.ceilingFan
+    || pSpr != relayTarget.sprinkler || pLight != targetBrightness
+    || pSpeed != relayTarget.fanSpeed;
+  if (!changed) return;
+  pManual = localManualOverride;
+  pFan = relayTarget.fan; pHeat = relayTarget.heater; pAlarm = relayTarget.alarm;
+  pFog = relayTarget.fogger; pCirc = relayTarget.circulationFan;
+  pCeil = relayTarget.ceilingFan; pSpr = relayTarget.sprinkler;
+  pLight = targetBrightness; pSpeed = relayTarget.fanSpeed; primed = true;
+  persistModeState();
+}
+
+void loadPersistedModeState() {
+  preferences.begin(NVS_MODE_NS, true);
+  bool hasKey = preferences.isKey("manual");
+  bool manual = preferences.getBool("manual", false);
+  bool rFan   = preferences.getBool("r_fan", false);
+  String rSpd = preferences.getString("r_fspd", "OFF");
+  bool rHeat  = preferences.getBool("r_heat", false);
+  bool rAlarm = preferences.getBool("r_alarm", false);
+  bool rFog   = preferences.getBool("r_fog", false);
+  bool rCirc  = preferences.getBool("r_circ", false);
+  bool rCeil  = preferences.getBool("r_ceil", false);
+  bool rSpr   = preferences.getBool("r_spr", false);
+  int  rLight = preferences.getInt("r_light", 0);
+  preferences.end();
+
+  if (!hasKey) {
+    Serial.println("🧭 [MODE] No stored mode — starting in AUTO (first boot)");
+    return;
+  }
+
+  localManualOverride = manual;
+  if (manual) {
+    // Restore exactly what the operator left running before the outage.
+    relayTarget.fan = rFan;  relayTarget.fanSpeed = rFan ? rSpd : "OFF";
+    relayTarget.heater = rHeat; relayTarget.alarm = rAlarm;
+    relayTarget.fogger = rFog;  relayTarget.circulationFan = rCirc;
+    relayTarget.ceilingFan = rCeil; relayTarget.sprinkler = rSpr;
+    targetBrightness = constrain(rLight, 0, 100);
+    Serial.printf("🟡 [MODE] MANUAL restored from NVS → Fan=%s(%s) Heater=%s Alarm=%s Fogger=%s Light=%d%%\n",
+      rFan ? "ON" : "OFF", relayTarget.fanSpeed.c_str(), rHeat ? "ON" : "OFF",
+      rAlarm ? "ON" : "OFF", rFog ? "ON" : "OFF", targetBrightness);
+  } else {
+    Serial.println("🟢 [MODE] AUTO restored from NVS");
+  }
+}
+
+
 
 // Apply relay targets to hardware (called ONCE per loop iteration)
 // ╔═══════════════════════════════════════════════════════════════════════╗
@@ -3577,6 +3662,7 @@ void handleCloudResponse(String response) {
           fadeInProgress = false;
         }
       }
+      persistModeState();   // sticky: survives power/WiFi/sensor loss
     }
   }
 
@@ -3729,6 +3815,7 @@ void fetchConfig() {
           fadeInProgress = false;
         }
       }
+      persistModeState();   // sticky: survives power/WiFi/sensor loss
     }
   }
   // /config sends camelCase "farmType"; /sync sends "farm_type" — accept both
@@ -3944,6 +4031,7 @@ void checkCommands() {
             fadeInProgress = false;
             Serial.println("✅ MANUAL OVERRIDE DEACTIVATED → returning to AUTO mode");
           }
+          persistModeState();   // sticky across reboot / outage
         } else if (type == "set_wifi") {
           // WiFi change pushed from the app while the board is still online.
           // ACK first — the reconnect below drops the current link. If the new
@@ -5336,6 +5424,12 @@ void setup() {
   // the farmer's last choice. Hard Floor (>42°C) is hardcoded and unaffected.
   loadCachedSafetyEngine();
 
+  // --- Sticky Auto/Manual mode (offline-resilient) ---
+  // Restore the last mode + operator relay intent BEFORE WiFi, so a power cut,
+  // WiFi outage, sensor failure or watchdog reset can never silently flip a
+  // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
+  loadPersistedModeState();
+
   // --- WiFi ---
   connectWiFi();
   if (wifiConnected) {
@@ -6083,8 +6177,14 @@ void loop() {
       fadeInProgress = false;
     }
     Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
+    persistModeState();   // sticky across reboot / outage
     btnWasPressed = false;
   }
+
+  // --- Sticky mode: persist mode + operator relay intent when it changes ---
+  persistModeStateIfChanged();
+
+
 
   // --- Periodic Status Log (overflow-safe) ---
   if (intervalPassed(now, lastStatusLog, STATUS_LOG_INTERVAL)) {
