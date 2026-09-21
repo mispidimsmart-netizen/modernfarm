@@ -3898,6 +3898,45 @@ void fetchConfig() {
   }
   if (doc.containsKey("bird_age_days")) updateAgeFromServer(doc["bird_age_days"]);
   else if (doc.containsKey("broiler_age_days") && isBroiler()) updateAgeFromServer(doc["broiler_age_days"]);
+
+  // ═══ Per-device override release (AUTO mode only) ═══
+  // The cloud reports which timed overrides are still active. When the operator
+  // cancels one (or it expires) the board MUST drop its own 20-minute manual
+  // lock, otherwise automation stays locked out while the app says AUTO.
+  // Safety paths (hard floor, arbiter, ESM) are unaffected.
+  if (doc.containsKey("overrides") && !localManualOverride) {
+    JsonObject ov = doc["overrides"];
+    if (ov.containsKey("fan") && ov["fan"] == false && fanManualOverride) {
+      fanManualOverride = false; fanManualTime = 0;
+      Serial.println("☁️ [OVERRIDE] Fan override released by cloud → AUTO控");
+    }
+    if (ov.containsKey("heater") && ov["heater"] == false && heaterManualOverride) {
+      heaterManualOverride = false; heaterManualTime = 0;
+      Serial.println("☁️ [OVERRIDE] Heater override released by cloud → AUTO");
+    }
+    if (ov.containsKey("fogger") && ov["fogger"] == false && foggerManualOverride) {
+      foggerManualOverride = false; foggerManualTime = 0;
+      Serial.println("☁️ [OVERRIDE] Fogger override released by cloud → AUTO");
+    }
+    if (ov.containsKey("circulation_fan") && ov["circulation_fan"] == false && circulationFanManualOverride) {
+      circulationFanManualOverride = false; circulationFanManualTime = 0;
+      Serial.println("☁️ [OVERRIDE] Circulation fan override released by cloud → AUTO");
+    }
+    if (ov.containsKey("ceiling_fan") && ov["ceiling_fan"] == false && ceilingFanManualOverride) {
+      ceilingFanManualOverride = false; ceilingFanManualTime = 0;
+      Serial.println("☁️ [OVERRIDE] Ceiling fan override released by cloud → AUTO");
+    }
+    if (ov.containsKey("sprinkler") && ov["sprinkler"] == false && sprinklerManualOverride) {
+      sprinklerManualOverride = false; sprinklerManualTime = 0;
+      Serial.println("☁️ [OVERRIDE] Sprinkler override released by cloud → AUTO");
+    }
+    if (ov.containsKey("light") && ov["light"] == false && lightSchedule.manualOverride) {
+      lightSchedule.manualOverride = false; lightManualOverrideTime = 0;
+      fadeInProgress = false;
+      Serial.println("☁️ [OVERRIDE] Light override released by cloud → schedule resumes");
+    }
+  }
+
   if (doc.containsKey("temperature_min")) rules.tempMin = doc["temperature_min"];
   if (doc.containsKey("temperature_max")) rules.tempMax = doc["temperature_max"];
   if (doc.containsKey("ammonia_max")) rules.ammoniaAlarm = doc["ammonia_max"];
