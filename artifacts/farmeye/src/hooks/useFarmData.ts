@@ -63,13 +63,17 @@ export function useFarmSettings() {
     queryKey: ['farm_settings', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return null;
-      let query = supabase
-        .from('farm_settings')
-        .select('*')
-        .eq('user_id', user.id);
-      // Scope to the selected farm; legacy rows may have farm_id NULL.
+      // Scope by farm_id, NOT user_id: farm_settings holds ONE row per farm,
+      // owned by the farm owner. Filtering on the viewer's user_id made every
+      // non-owner (worker / org owner / super admin) read zero rows, so the app
+      // silently fell back to default thresholds and reported AUTO on a MANUAL
+      // farm. RLS already restricts which farms a user may read.
+      let query = supabase.from('farm_settings').select('*');
       if (selectedFarmId) {
-        query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+        query = query.eq('farm_id', selectedFarmId);
+      } else {
+        // No farm selected — legacy rows only, keep them owner-scoped.
+        query = query.eq('user_id', user.id);
       }
       const { data, error } = await query.order('farm_id', {
         ascending: false,
@@ -77,7 +81,7 @@ export function useFarmSettings() {
       });
       if (error) throw error;
       const rows = (data ?? []) as FarmSettings[];
-      const exact = rows.find((r) => r.farm_id === selectedFarmId);
+      const exact = selectedFarmId ? rows.find((r) => r.farm_id === selectedFarmId) : undefined;
       return (exact ?? rows[0] ?? null) as FarmSettings | null;
     },
     enabled: !!user,
@@ -103,10 +107,11 @@ export function useUpdateFarmSettings() {
       ])?.id;
 
       if (!rowId) {
+        // farm_id-scoped (not user_id): the row belongs to the farm owner, but
+        // org owners / super admins may legitimately edit it. RLS decides.
         const { data, error: readError } = await supabase
           .from('farm_settings')
           .select('id')
-          .eq('user_id', user.id)
           .eq('farm_id', selectedFarmId)
           .limit(1)
           .maybeSingle();
@@ -119,7 +124,6 @@ export function useUpdateFarmSettings() {
         .from('farm_settings')
         .update(settings)
         .eq('id', rowId)
-        .eq('user_id', user.id)
         .eq('farm_id', selectedFarmId);
       if (error) throw error;
     },
@@ -171,16 +175,35 @@ export function useUpdateDeviceStatus(shedId?: string | null) {
     mutationFn: async (status: Partial<DeviceStatus>) => {
       if (!user) throw new Error('Not authenticated');
       if (!selectedFarmId) throw new Error('No farm selected');
-      let query = supabase
-        .from('device_status')
-        .update(status)
-        .eq('farm_id', selectedFarmId);
-      
+
       if (shedId) {
-        query = query.eq('shed_id', shedId);
+        const { error } = await supabase
+          .from('device_status')
+          .update(status)
+          .eq('farm_id', selectedFarmId)
+          .eq('shed_id', shedId);
+        if (error) throw error;
+        return;
       }
 
-      const { error } = await query;
+      // No shed in context: a relay/desired_* write is ALWAYS per-shed, so it
+      // must never fan out to every shed of the farm. Resolve the single row;
+      // if the farm has more than one shed, refuse instead of guessing.
+      const { data, error: readError } = await supabase
+        .from('device_status')
+        .select('id')
+        .eq('farm_id', selectedFarmId)
+        .limit(2);
+      if (readError) throw readError;
+      const rows = (data ?? []) as { id: string }[];
+      if (rows.length === 0) throw new Error('DEVICE_STATUS_ROW_NOT_FOUND');
+      if (rows.length > 1) throw new Error('SHED_REQUIRED_FOR_DEVICE_WRITE');
+
+      const { error } = await supabase
+        .from('device_status')
+        .update(status)
+        .eq('id', rows[0].id)
+        .eq('farm_id', selectedFarmId);
       if (error) throw error;
     },
     onSuccess: () => {

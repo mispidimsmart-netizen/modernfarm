@@ -15,14 +15,20 @@ export function useAutomationMode() {
     queryFn: async (): Promise<AutomationMode> => {
       if (!user) return 'AUTO';
       
+      // Scope by farm_id only. farm_settings has ONE row per farm owned by the
+      // farm owner, so a user_id filter made workers / org owners read nothing
+      // and see 'AUTO' on a farm that is actually in MANUAL mode. RLS decides
+      // which farms this user may read.
       let query = supabase
         .from('farm_settings')
-        .select('automation_mode')
-        .eq('user_id', user.id);
-      
+        .select('automation_mode');
+
       if (selectedFarmId) {
         query = query.eq('farm_id', selectedFarmId);
+      } else {
+        query = query.eq('user_id', user.id);
       }
+      
       
       // Use maybeSingle() — new farms may have 0 farm_settings rows, and
       // .single() would throw and silently fall back to 'AUTO' even when
@@ -76,14 +82,12 @@ export function useSetAutomationMode() {
         manual_mode_since: isManual ? new Date().toISOString() : null,
       };
 
-      let settingsQuery = supabase
+      // farm_id-scoped only: the row belongs to the farm owner, so a user_id
+      // filter silently no-oped the mode flip for org owners / super admins.
+      const settingsQuery = supabase
         .from('farm_settings')
         .update(updatePayload as any)
-        .eq('user_id', user.id);
-      
-      if (selectedFarmId) {
-        settingsQuery = settingsQuery.eq('farm_id', selectedFarmId);
-      }
+        .eq('farm_id', selectedFarmId);
 
       const { error: settingsError } = await settingsQuery;
       if (settingsError) {
@@ -111,18 +115,12 @@ export function useSetAutomationMode() {
         desired_fan_speed: null,
       };
 
-      // Mode is farm-wide: scope by farm_id when a farm is selected, so rows
-      // created by another member of the same farm are updated too. Only fall
-      // back to user_id for legacy rows with no farm.
-      let deviceQuery = supabase
+      // Mode is farm-wide: strictly farm_id-scoped (never a user_id fallback),
+      // so rows created by another member of the same farm are updated too.
+      const deviceQuery = supabase
         .from('device_status')
-        .update(deviceUpdate as never);
-
-      if (selectedFarmId) {
-        deviceQuery = deviceQuery.eq('farm_id', selectedFarmId);
-      } else {
-        deviceQuery = deviceQuery.eq('user_id', user.id);
-      }
+        .update(deviceUpdate as never)
+        .eq('farm_id', selectedFarmId);
 
       const { error: deviceError } = await deviceQuery;
       if (deviceError) {
@@ -138,11 +136,10 @@ export function useSetAutomationMode() {
       // ═══════════════════════════════════════════════════════════
       let deviceName = 'Shed A';
       try {
-        let nameQ: any = supabase
+        const nameQ: any = supabase
           .from('device_status')
-          .select('device_name');
-        if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
-        else nameQ = nameQ.eq('user_id', user.id);
+          .select('device_name')
+          .eq('farm_id', selectedFarmId);
         // shedId ignored — pick any device row from this farm for its name.
         const { data: ds } = await nameQ.limit(1).maybeSingle();
         if (ds?.device_name) deviceName = ds.device_name as string;
@@ -175,17 +172,11 @@ export function useSetAutomationMode() {
       // ═══════════════════════════════════════════════════════════
       // STEP 4: Update device_health mode for dashboard display
       // ═══════════════════════════════════════════════════════════
-      let healthQuery = supabase
+      // Strictly farm-scoped (mode is farm-wide); never a user_id-only write.
+      await supabase
         .from('device_health')
         .update({ mode: mode } as any)
-        .eq('user_id', user.id);
-      
-      if (selectedFarmId) {
-        healthQuery = healthQuery.eq('farm_id', selectedFarmId);
-      }
-      // shedId ignored — mode is farm-wide, so update health rows for the whole farm.
-
-      await healthQuery;
+        .eq('farm_id', selectedFarmId);
 
       // ═══════════════════════════════════════════════════════════
       // STEP 5: Audit log

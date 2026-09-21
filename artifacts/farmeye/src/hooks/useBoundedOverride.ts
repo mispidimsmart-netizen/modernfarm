@@ -46,6 +46,12 @@ export function useBoundedOverride() {
   // Send override request to device_status — firmware enforces limits
   const startOverride = useCallback(async (request: OverrideRequest, _isOutOfRange: boolean) => {
     if (!user) return;
+    // Hard-fail without a farm: a user_id-only override write would hit every
+    // farm/shed this account owns.
+    if (!selectedFarmId) {
+      console.error('[useBoundedOverride] NO_FARM_SELECTED — override write skipped');
+      return;
+    }
 
     try {
       // Update device_status scoped to BOTH farm and shed when known so a
@@ -55,9 +61,8 @@ export function useBoundedOverride() {
         .update({
           desired_manual_override: true,
           updated_at: new Date().toISOString(),
-        });
-      if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
-      else upd = upd.eq('user_id', user.id);
+        })
+        .eq('farm_id', selectedFarmId);
       if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 
@@ -89,6 +94,10 @@ export function useBoundedOverride() {
   // Send end-override request — same farm+shed scoping as startOverride
   const endOverride = useCallback(async () => {
     if (!user) return;
+    if (!selectedFarmId) {
+      console.error('[useBoundedOverride] NO_FARM_SELECTED — end-override skipped');
+      return;
+    }
 
     try {
       let upd = supabase
@@ -96,9 +105,8 @@ export function useBoundedOverride() {
         .update({
           desired_manual_override: false,
           updated_at: new Date().toISOString(),
-        });
-      if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
-      else upd = upd.eq('user_id', user.id);
+        })
+        .eq('farm_id', selectedFarmId);
       if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 
