@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.7.0-manual-safety-option";
+const char* FIRMWARE_VERSION = "8.8.0-manual-absolute";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -579,10 +579,9 @@ bool manualCommandPending = false;      // Bypass relay protection for manual co
 
 // --- Manual Overrides ---
 bool localManualOverride = false;
-// v8.7.0: "Manual absolute" = MANUAL mode AND safety engine OFF.
-// MANUAL + engine ON = operator keeps relay control, but life-safety
-// protections (hard floor, ESM, sensor-fail vent, arbiter veto) still act.
-inline bool manualAbsolute() { return localManualOverride && !safetyEngineEnabled; }
+// v8.8.0: MANUAL mode is ALWAYS absolute — the safety engine has no role in
+// manual. The board never touches relays in manual; only the siren reacts.
+inline bool manualAbsolute() { return localManualOverride; }
 bool fanManualOverride = false;     unsigned long fanManualTime = 0;
 bool heaterManualOverride = false;  unsigned long heaterManualTime = 0;
 bool foggerManualOverride = false;  unsigned long foggerManualTime = 0;
@@ -2049,7 +2048,7 @@ void automationEngineTick() {
   if (stabilizingMode) return;
 
   // ═══════════════════════════════════════════════════════════════
-  // MANUAL MODE (v8.7.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত, অটোমেশন চলে না।
+  // MANUAL MODE (v8.8.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত, কোনো অটোমেশন/সুরক্ষা নেই।
   // সেফটি ইঞ্জিন OFF (manual absolute): বোর্ড কোনো রিলে নিজে চালু/বন্ধ করে না —
   //   কারেন্ট, ওয়াইফাই, সেন্সর, তাপমাত্রা, গ্যাস যেকোনো অবস্থায়ই না।
   //   একমাত্র ব্যতিক্রম: সাইরেন — বিপদ হলে বাজে, রিলে অপারেটরের রাখা অবস্থাতেই।
@@ -2098,18 +2097,8 @@ void automationEngineTick() {
       Serial.println("🔕 [MANUAL] Siren released — operator alarm intent restored");
     }
 
-    // v8.7.0: MANUAL + সেফটি ইঞ্জিন ON → জীবনরক্ষা সুরক্ষা রিলেতেও কাজ করে।
-    // অপারেটরের রিলে অবস্থা অক্ষত থাকে; শুধু বিপদ-অবস্থায় বোর্ড হস্তক্ষেপ করে।
-    if (safetyEngineEnabled) {
-      if (hardFloorActive || safetyEngine.lastResult.forceFanOn) {
-        requestFan(true, "HIGH");
-      }
-      if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
-      if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
-      if (emergencySurvivalMode) runEmergencySurvivalCycles();
-    }
+    return;  // ম্যানুয়াল — সাইরেন ছাড়া আর কোনো অটোমেশন/সুরক্ষা হস্তক্ষেপ নেই
 
-    return;  // ম্যানুয়াল — সাইরেন (+ ইঞ্জিন ON হলে সুরক্ষা) ছাড়া আর কোনো অটোমেশন নেই
   }
 
 
