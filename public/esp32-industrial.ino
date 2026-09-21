@@ -2654,6 +2654,17 @@ void checkEmergencyTriggers() {
 
 void enterESM(String reason) {
   if (emergencySurvivalMode) return;
+  // MANUAL ABSOLUTE: never take over relays in manual mode — siren + alert only.
+  if (localManualOverride) {
+    static unsigned long lastManualEsmAlert = 0;
+    requestAlarm(true);
+    if (millis() - lastManualEsmAlert > 300000UL) {
+      lastManualEsmAlert = millis();
+      gsmQueueAlert("temperature", "🚨 MANUAL MODE: danger detected (" + reason + ") — board will NOT act. Operator must respond.");
+      Serial.println("🚨 [MANUAL] ESM suppressed (manual absolute) — siren + alert only: " + reason);
+    }
+    return;
+  }
   emergencySurvivalMode = true;
   emergencySurvivalStart = millis();
   esmCycleOrigin = millis();  // Lock cycle timer origin (never reset after this)
@@ -2776,6 +2787,11 @@ void checkEmergencyRecovery() {
 
 void startPowerRecoveryPurge(unsigned long outageDuration) {
   if (purgeActive || emergencySurvivalMode || outageDuration < PURGE_OUTAGE_THRESHOLD) return;
+  // MANUAL ABSOLUTE: power-recovery purge is automation — skipped in manual mode.
+  if (localManualOverride) {
+    Serial.println("⏭️ [MANUAL] Power recovery purge skipped — operator keeps full control");
+    return;
+  }
   purgeActive = true;
   purgeStartTime = millis();
   measuredOutageDuration = outageDuration;
