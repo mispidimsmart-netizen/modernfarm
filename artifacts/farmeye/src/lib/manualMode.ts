@@ -55,14 +55,6 @@ export function shouldShowSafetyTiles(isManual: boolean): boolean {
   return !isManual;
 }
 
-/**
- * In MANUAL the operator's command is always sent; danger only produces an
- * advisory toast. Never gate the command itself on safety state.
- */
-export function isManualCommandAllowed(isManual: boolean): boolean {
-  return isManual ? true : true;
-}
-
 /** Override label shown for a device: MANUAL is a permanent operator hold. */
 export function manualOverrideKind(isManual: boolean): 'permanent' | 'temporary' {
   return isManual ? 'permanent' : 'temporary';
