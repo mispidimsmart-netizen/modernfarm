@@ -1,6 +1,6 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.1-manual-absolute            ║
+ * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.2-manual-absolute            ║
  * ║  Single Authority State Machine Architecture                          ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
  * ║  DESIGN PRINCIPLES:                                                    ║
@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.8.1-manual-absolute";
+const char* FIRMWARE_VERSION = "8.8.2-manual-absolute";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
