@@ -107,10 +107,11 @@ export function useUpdateFarmSettings() {
       ])?.id;
 
       if (!rowId) {
+        // farm_id-scoped (not user_id): the row belongs to the farm owner, but
+        // org owners / super admins may legitimately edit it. RLS decides.
         const { data, error: readError } = await supabase
           .from('farm_settings')
           .select('id')
-          .eq('user_id', user.id)
           .eq('farm_id', selectedFarmId)
           .limit(1)
           .maybeSingle();
@@ -123,7 +124,6 @@ export function useUpdateFarmSettings() {
         .from('farm_settings')
         .update(settings)
         .eq('id', rowId)
-        .eq('user_id', user.id)
         .eq('farm_id', selectedFarmId);
       if (error) throw error;
     },
