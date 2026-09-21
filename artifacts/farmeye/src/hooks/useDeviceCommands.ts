@@ -232,7 +232,10 @@ export function useSendDeviceCommand() {
 
       const ackToastId = `ack-${variables.commandType}-${state}`;
       const startedAt = Date.now();
-      const timeoutMs = 12000;
+      // The ESP32 polls device_commands on its own cadence; measured live
+      // execution delays reach ~20s. A 12s window falsely logged executed
+      // commands as "failed"/"expired", so allow 30s before reporting failure.
+      const timeoutMs = 30000;
       const pollMs = 1500;
       const poll = async () => {
         try {
