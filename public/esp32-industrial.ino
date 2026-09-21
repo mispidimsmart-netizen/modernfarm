@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.6.0-manual-absolute";
+const char* FIRMWARE_VERSION = "8.7.0-manual-safety-option";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -579,6 +579,10 @@ bool manualCommandPending = false;      // Bypass relay protection for manual co
 
 // --- Manual Overrides ---
 bool localManualOverride = false;
+// v8.7.0: "Manual absolute" = MANUAL mode AND safety engine OFF.
+// MANUAL + engine ON = operator keeps relay control, but life-safety
+// protections (hard floor, ESM, sensor-fail vent, arbiter veto) still act.
+inline bool manualAbsolute() { return localManualOverride && !safetyEngineEnabled; }
 bool fanManualOverride = false;     unsigned long fanManualTime = 0;
 bool heaterManualOverride = false;  unsigned long heaterManualTime = 0;
 bool foggerManualOverride = false;  unsigned long foggerManualTime = 0;
