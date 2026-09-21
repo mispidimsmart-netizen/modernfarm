@@ -63,7 +63,6 @@ export async function handlePowerStatus(
           .from('power_outages')
           .insert({
             user_id: userId,
-            farm_id: boundFarmId,
             device_token_id: device.id,
             shed_id: device.shed_id,
             power_source,
@@ -231,7 +230,6 @@ export async function getPowerOutages(supabase: any, userId: string, farmId: str
       .from('power_outages')
       .select('*')
       .eq('user_id', userId)
-      .eq('farm_id', farmId)
       .eq('shed_id', shedId)
       .gte('started_at', thirtyDaysAgo.toISOString())
       .order('started_at', { ascending: false })

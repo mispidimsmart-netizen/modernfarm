@@ -261,10 +261,6 @@ export async function getSystemStatus(
       .eq('farm_id', farmId)
       .eq('shed_id', shedId);
     
-    if (shedId) {
-      statusQuery = statusQuery.eq('shed_id', shedId);
-    }
-    
     const { data: deviceStatus } = await statusQuery.maybeSingle();
 
     // 3. Device Health (for monitoring)
@@ -273,10 +269,6 @@ export async function getSystemStatus(
       .select('*')
       .eq('farm_id', farmId)
       .eq('shed_id', shedId);
-    
-    if (shedId) {
-      healthQuery = healthQuery.eq('shed_id', shedId);
-    }
     
     const { data: deviceHealth } = await healthQuery.maybeSingle();
 
@@ -312,13 +304,8 @@ export async function getSystemStatus(
       .from('power_outages')
       .select('id, started_at, power_source, battery_level_start, is_ongoing')
       .eq('user_id', userId)
-      .eq('farm_id', farmId)
       .eq('shed_id', shedId)
       .eq('is_ongoing', true);
-    
-    if (shedId) {
-      outageQuery = outageQuery.eq('shed_id', shedId);
-    }
     
     const { data: activeOutage } = await outageQuery.maybeSingle();
 
@@ -331,10 +318,6 @@ export async function getSystemStatus(
       .eq('shed_id', shedId)
       .order('recorded_at', { ascending: false })
       .limit(1);
-    
-    if (shedId) {
-      sensorQuery = sensorQuery.eq('shed_id', shedId);
-    }
     
     const { data: latestSensor } = await sensorQuery.maybeSingle();
 

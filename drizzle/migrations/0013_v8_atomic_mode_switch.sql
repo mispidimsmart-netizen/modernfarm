@@ -10,7 +10,7 @@ AS $$
 DECLARE
   _uid uuid := auth.uid();
   _is_manual boolean;
-  _device_name text;
+  _device record;
   _settings_rows integer := 0;
   _device_rows integer := 0;
 BEGIN
@@ -58,14 +58,22 @@ BEGIN
      SET mode = _mode
    WHERE farm_id = _farm_id;
 
-  SELECT device_name INTO _device_name
-    FROM public.device_status
-   WHERE farm_id = _farm_id
-   ORDER BY updated_at DESC
-   LIMIT 1;
-
-  INSERT INTO public.device_commands (user_id, farm_id, command_type, command_value, device_name, executed)
-  VALUES (_uid, _farm_id, 'stop_automation', _is_manual, coalesce(_device_name, 'Shed A'), false);
+  -- Every active board gets its own command. Command polling is device_name
+  -- scoped, so selecting one arbitrary status row leaves other sheds behind.
+  FOR _device IN
+    SELECT DISTINCT user_id, device_name
+      FROM public.device_tokens
+     WHERE farm_id = _farm_id
+       AND is_active = true
+       AND device_name IS NOT NULL
+  LOOP
+    INSERT INTO public.device_commands (
+      user_id, farm_id, command_type, command_value, device_name, executed
+    ) VALUES (
+      _device.user_id, _farm_id, 'stop_automation', _is_manual,
+      _device.device_name, false
+    );
+  END LOOP;
 
   RETURN jsonb_build_object(
     'mode', _mode,
