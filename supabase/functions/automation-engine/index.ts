@@ -238,7 +238,7 @@ async function detectAndMarkStaleDevices(
     // Get all devices for this user
     let devicesQuery = supabase
       .from('device_health')
-      .select('id, device_token_id, shed_id, last_cloud_sync_at, failsafe_mode, is_online')
+      .select('id, device_token_id, farm_id, shed_id, last_cloud_sync_at, failsafe_mode, is_online')
       .eq('user_id', userId);
     if (farmId) devicesQuery = devicesQuery.eq('farm_id', farmId);
     const { data: devices } = await devicesQuery;
@@ -282,7 +282,7 @@ async function detectAndMarkStaleDevices(
               last_cloud_sync: device.last_cloud_sync_at,
             })
             .eq('user_id', userId)
-            .eq('farm_id', farmId)
+            .eq('farm_id', device.farm_id)
             .eq('shed_id', device.shed_id);
         }
         
@@ -294,50 +294,19 @@ async function detectAndMarkStaleDevices(
           marked_failsafe: true,
         });
       } else if (!isStale && device.failsafe_mode) {
-        // Device was fail-safe but now syncing again → recover.
-        // MANUAL is sticky: never promote a manually-operated shed back to AUTO.
-        let recoveredMode: 'AUTO' | 'MANUAL' = 'AUTO';
-        if (device.shed_id) {
-          const { data: statusRow } = await supabase
-            .from('device_status')
-            .select('mode, manual_override, desired_manual_override')
-            .eq('user_id', userId)
-            .eq('farm_id', farmId)
-            .eq('shed_id', device.shed_id)
-            .maybeSingle();
-          if (
-            statusRow?.mode === 'MANUAL' ||
-            statusRow?.manual_override === true ||
-            statusRow?.desired_manual_override === true
-          ) {
-            recoveredMode = 'MANUAL';
-          }
+        // Recover atomically in the database. The RPC shares the farm-level
+        // advisory lock used by mode switching, so MANUAL can never be lost to
+        // a read-then-write race while connectivity is restored.
+        const { data: recoveredMode, error: recoveryError } = await supabase.rpc(
+          'recover_device_from_failsafe',
+          { _device_health_id: device.id },
+        );
+        if (recoveryError || !recoveredMode) {
+          console.error('[Fail-Safe Recovery] Atomic recovery failed:', recoveryError);
+          continue;
         }
         console.log(`🟢 Device ${device.device_token_id} recovered from FAIL_SAFE → ${recoveredMode}`);
 
-        await supabase
-          .from('device_health')
-          .update({
-            failsafe_mode: false,
-            failsafe_activated_at: null,
-            is_online: true,
-            mode: recoveredMode,
-          })
-          .eq('id', device.id);
-        
-        if (device.shed_id) {
-          await supabase
-            .from('device_status')
-            .update({
-              mode: recoveredMode,
-              last_cloud_sync: new Date().toISOString(),
-            })
-            .eq('user_id', userId)
-            .eq('farm_id', farmId)
-            .eq('shed_id', device.shed_id);
-        }
-        
-        
         results.push({
           device_id: device.device_token_id,
           shed_id: device.shed_id,
@@ -651,12 +620,7 @@ Deno.serve(async (req) => {
 
     const { action, shed_id, user_id: bodyUserId, farm_id: bodyFarmId } = await req.json();
 
-    // A user JWT can only ever act on its own account. Cross-account access
-    // (running automation for another farm) requires service/cron auth.
-    if (callerUserId && bodyUserId && bodyUserId !== callerUserId) {
-      return json({ success: false, error: 'forbidden: user_id mismatch' }, 403);
-    }
-    const user_id = callerUserId ?? bodyUserId;
+    let user_id = callerUserId ?? bodyUserId;
 
     // Frontend callers are authorized against the farm boundary, not against
     // the legacy owner user_id. Internal service/cron calls retain scheduler
@@ -681,6 +645,17 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (!boundShed) return json({ success: false, error: 'shed/farm mismatch' }, 403);
       }
+    }
+    if (bodyFarmId) {
+      const { data: farm } = await supabase
+        .from('farms')
+        .select('owner_id')
+        .eq('id', bodyFarmId)
+        .maybeSingle();
+      if (!farm?.owner_id) return json({ success: false, error: 'farm not found' }, 404);
+      // Legacy telemetry rows use the farm owner's user_id. Farm authorization
+      // was already checked above; do not substitute an org member's user id.
+      user_id = farm.owner_id;
     }
 
     // ========================================
@@ -727,32 +702,39 @@ Deno.serve(async (req) => {
       }
 
       // Get all sheds
-      const { data: sheds } = await supabase
+      let shedsQuery = supabase
         .from('sheds')
-        .select('id, name, name_en, is_active')
+        .select('id, farm_id, name, name_en, is_active')
         .eq('user_id', user_id);
-      const scopedSheds = bodyFarmId ? (sheds || []).filter((shed: any) => shed.farm_id === bodyFarmId) : (sheds || []);
+      if (bodyFarmId) shedsQuery = shedsQuery.eq('farm_id', bodyFarmId);
+      const { data: sheds } = await shedsQuery;
+      const scopedSheds = sheds || [];
 
       // Get device health for all sheds
-      const { data: deviceHealth } = await supabase
+      let healthQuery = supabase
         .from('device_health')
         .select('*')
         .eq('user_id', user_id);
+      if (bodyFarmId) healthQuery = healthQuery.eq('farm_id', bodyFarmId);
+      const { data: deviceHealth } = await healthQuery;
 
       // ★ FIX #1: read sensor_readings (not sensor_logs which is empty/legacy)
-      const { data: sensorData } = await supabase
+      let sensorQuery = supabase
         .from('sensor_readings')
         .select('shed_id, temperature, humidity, ammonia, recorded_at')
         .eq('user_id', user_id)
         .order('recorded_at', { ascending: false })
         .limit(50);
+      if (bodyFarmId) sensorQuery = sensorQuery.eq('farm_id', bodyFarmId);
+      const { data: sensorData } = await sensorQuery;
 
       // Get settings
-      const { data: settings } = await supabase
+      let settingsQuery = supabase
         .from('farm_settings')
         .select('*')
-        .eq('user_id', user_id)
-        .maybeSingle();
+        .eq('user_id', user_id);
+      if (bodyFarmId) settingsQuery = settingsQuery.eq('farm_id', bodyFarmId);
+      const { data: settings } = await settingsQuery.maybeSingle();
 
       // Build status per shed
       const shedStatus = scopedSheds.map(shed => {
@@ -826,11 +808,12 @@ Deno.serve(async (req) => {
       const staleDevices = await detectAndMarkStaleDevices(supabase, user_id, bodyFarmId ?? null);
       
       // Also run check for all sheds status
-      const { data: deviceHealth } = await supabase
+      let healthQuery = supabase
         .from('device_health')
         .select('shed_id, failsafe_mode, is_online, last_cloud_sync_at, mode')
-        .eq('user_id', user_id)
-        .eq('farm_id', bodyFarmId);
+        .eq('user_id', user_id);
+      if (bodyFarmId) healthQuery = healthQuery.eq('farm_id', bodyFarmId);
+      const { data: deviceHealth } = await healthQuery;
 
       const summary = {
         total_devices: deviceHealth?.length || 0,
