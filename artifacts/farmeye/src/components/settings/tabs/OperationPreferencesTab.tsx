@@ -19,6 +19,7 @@ import { HapticSettingsCard } from '@/components/settings/HapticSettingsCard';
 import { ResetFirstRunHintsCard } from '@/components/settings/ResetFirstRunHintsCard';
 import { AutomationModeCard } from '@/components/settings/AutomationModeCard';
 import { SafetyEngineToggleCard } from '@/components/settings/SafetyEngineToggleCard';
+import { HardwareEditGuard } from '@/components/settings/HardwareEditGuard';
 import { SafetyEngineHistoryCard } from '@/components/settings/SafetyEngineHistoryCard';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -287,10 +288,14 @@ export function OperationPreferencesTab() {
   return (
     <div className="space-y-6">
       {/* ====== Dual Mode Switch (TOP) ====== */}
-      <AutomationModeCard />
+      <HardwareEditGuard>
+        <AutomationModeCard />
+      </HardwareEditGuard>
 
       {/* ====== Safety Engine Opt-Out (Layer + Broiler) ====== */}
-      <SafetyEngineToggleCard />
+      <HardwareEditGuard>
+        <SafetyEngineToggleCard />
+      </HardwareEditGuard>
       {!isManualMode && <SafetyEngineHistoryCard />}
 
       {/* Header with Mode Badge */}

@@ -57,6 +57,27 @@
       "when": 1789978035731,
       "tag": "0007_device_command_payload_and_wifi_change",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789988351169,
+      "tag": "0008_flock_info_farm_scoped_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789988573547,
+      "tag": "0009_revoke_anon_execute_on_privileged_rpcs",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789988607458,
+      "tag": "0010_device_hardware_profiles_permissive_policy",
+      "breakpoints": true
     }
   ]
 }

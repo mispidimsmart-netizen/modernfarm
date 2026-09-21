@@ -120,7 +120,7 @@ export function LightTrendChart() {
             <Line
               type="monotone"
               dataKey="lux"
-              stroke="#f59e0b"
+              stroke="hsl(var(--status-warning))"
               strokeWidth={2}
               dot={false}
             />

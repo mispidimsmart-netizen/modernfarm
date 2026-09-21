@@ -53,6 +53,10 @@
     --sensor-humidity: 197 74% 53%;
     --sensor-ammonia: 280 60% 55%;
     --sensor-water: 197 85% 45%;
+    /* Chart gradient end stops (paired with the sensor colors above) */
+    --chart-temperature-end: 0 72% 51%;
+    --chart-humidity-end: 217 91% 60%;
+    --chart-ammonia-end: 292 84% 61%;
 
     /* Gradient backgrounds - FarmEye branded */
     --gradient-hero: linear-gradient(135deg, hsl(163 59% 30%) 0%, hsl(197 74% 53%) 100%);

@@ -106,13 +106,17 @@ export function useSetAutomationMode() {
         desired_fan_speed: null,
       };
 
+      // Mode is farm-wide: scope by farm_id when a farm is selected, so rows
+      // created by another member of the same farm are updated too. Only fall
+      // back to user_id for legacy rows with no farm.
       let deviceQuery = supabase
         .from('device_status')
-        .update(deviceUpdate as never)
-        .eq('user_id', user.id);
-      
+        .update(deviceUpdate as never);
+
       if (selectedFarmId) {
         deviceQuery = deviceQuery.eq('farm_id', selectedFarmId);
+      } else {
+        deviceQuery = deviceQuery.eq('user_id', user.id);
       }
 
       const { error: deviceError } = await deviceQuery;
@@ -131,9 +135,9 @@ export function useSetAutomationMode() {
       try {
         let nameQ: any = supabase
           .from('device_status')
-          .select('device_name')
-          .eq('user_id', user.id);
+          .select('device_name');
         if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
+        else nameQ = nameQ.eq('user_id', user.id);
         // shedId ignored — pick any device row from this farm for its name.
         const { data: ds } = await nameQ.limit(1).maybeSingle();
         if (ds?.device_name) deviceName = ds.device_name as string;

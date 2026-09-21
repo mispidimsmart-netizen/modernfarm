@@ -55,9 +55,9 @@ export function useBoundedOverride() {
         .update({
           desired_manual_override: true,
           updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
+        });
       if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      else upd = upd.eq('user_id', user.id);
       if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 
@@ -96,9 +96,9 @@ export function useBoundedOverride() {
         .update({
           desired_manual_override: false,
           updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
+        });
       if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
+      else upd = upd.eq('user_id', user.id);
       if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 

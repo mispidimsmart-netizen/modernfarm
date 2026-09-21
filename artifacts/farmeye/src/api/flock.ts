@@ -60,7 +60,7 @@ export async function upsertFlockInfo(
     const { data: currentFlock } = await supabase
       .from('flock_info')
       .select('age_weeks, updated_at')
-      .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .maybeSingle();
 
     if (currentFlock) {
@@ -88,9 +88,11 @@ export async function upsertFlockInfo(
     await logAgeEvent(userId, 'info', 'farm', { new_age_weeks: patch.age_weeks, accepted: true });
   }
 
+  // One flock row per FARM (unique index on farm_id) — a multi-farm owner must
+  // never share bird age/breed between farms.
   const { error } = await supabase.from('flock_info').upsert(
     { ...patch, user_id: userId, farm_id: farmId, updated_at: new Date().toISOString() },
-    { onConflict: 'user_id' },
+    { onConflict: 'farm_id' },
   );
   if (error) throw error;
 }

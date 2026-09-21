@@ -114,7 +114,6 @@ export function StepSetChickAge({ onComplete }: { onComplete: () => void }) {
     const { data, error } = await supabase
       .from('flock_info')
       .update({ age_weeks: parseInt(ageWeeks) || 0 })
-      .eq('user_id', user.id)
       .eq('farm_id', selectedFarmId)
       .select('id');
     setSaving(false);

@@ -129,7 +129,6 @@ export function useDeviceStatus(shedId?: string | null) {
       let query = supabase
         .from('device_status')
         .select('*')
-        .eq('user_id', user.id)
         .eq('farm_id', selectedFarmId);
       
       if (shedId) {
@@ -163,7 +162,6 @@ export function useUpdateDeviceStatus(shedId?: string | null) {
       let query = supabase
         .from('device_status')
         .update(status)
-        .eq('user_id', user.id)
         .eq('farm_id', selectedFarmId);
       
       if (shedId) {

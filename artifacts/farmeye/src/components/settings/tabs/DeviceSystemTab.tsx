@@ -24,6 +24,7 @@ import { ESP32CodeGenerator } from '@/components/device/ESP32CodeGenerator';
 import { DeviceSecuritySheet } from '@/components/device/DeviceSecuritySheet';
 import { ThresholdSettingsCard } from '@/components/settings/ThresholdSettingsCard';
 import { AdvancedAutomationSettingsCard } from '@/components/settings/AdvancedAutomationSettingsCard';
+import { HardwareEditGuard } from '@/components/settings/HardwareEditGuard';
 import { OTAFirmwareTab } from './OTAFirmwareTab';
 import { CollapsibleSection } from '@/components/settings/device/CollapsibleSection';
 import { useDeviceSystemData } from '@/components/settings/device/useDeviceSystemData';
@@ -196,9 +197,13 @@ export function DeviceSystemTab() {
             language={language}
           >
             <div className="space-y-4">
-              <ThresholdSettingsCard />
+              <HardwareEditGuard>
+                <ThresholdSettingsCard />
+              </HardwareEditGuard>
               <Separator />
-              <AdvancedAutomationSettingsCard />
+              <HardwareEditGuard>
+                <AdvancedAutomationSettingsCard />
+              </HardwareEditGuard>
             </div>
           </CollapsibleSection>
 

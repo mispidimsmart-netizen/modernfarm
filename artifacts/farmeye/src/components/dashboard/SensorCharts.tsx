@@ -359,9 +359,9 @@ export function SensorCharts() {
           <TabsContent value="temperature" className="mt-0">
             {renderChart(
               'temperature',
-              '#f97316',
+              'hsl(var(--sensor-temperature))',
               'tempGradient',
-              ['#f97316', '#ef4444'],
+              ['hsl(var(--sensor-temperature))', 'hsl(var(--chart-temperature-end))'],
               ['dataMin - 2', 'dataMax + 2'],
               '°C',
               labels.temperature,
@@ -372,9 +372,9 @@ export function SensorCharts() {
           <TabsContent value="humidity" className="mt-0">
             {renderChart(
               'humidity',
-              '#06b6d4',
+              'hsl(var(--sensor-humidity))',
               'humidGradient',
-              ['#06b6d4', '#3b82f6'],
+              ['hsl(var(--sensor-humidity))', 'hsl(var(--chart-humidity-end))'],
               [0, 100],
               '%',
               labels.humidity
@@ -384,9 +384,9 @@ export function SensorCharts() {
           <TabsContent value="ammonia" className="mt-0">
             {renderChart(
               'ammonia',
-              '#8b5cf6',
+              'hsl(var(--sensor-ammonia))',
               'ammoniaGradient',
-              ['#8b5cf6', '#a855f7'],
+              ['hsl(var(--sensor-ammonia))', 'hsl(var(--chart-ammonia-end))'],
               [0, 50],
               'ppm',
               labels.ammonia,

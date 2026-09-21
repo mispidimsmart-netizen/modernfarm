@@ -1,6 +1,6 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.0-manual-absolute            ║
+ * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.1-manual-absolute            ║
  * ║  Single Authority State Machine Architecture                          ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
  * ║  DESIGN PRINCIPLES:                                                    ║
@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.8.0-manual-absolute";
+const char* FIRMWARE_VERSION = "8.8.1-manual-absolute";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -1829,10 +1829,10 @@ void updateLightingWithFade() {
 }
 
 void forceApplyManualRelay(String type, bool value) {
-  // MANUAL ABSOLUTE (manual + safety engine OFF): the operator is the final
-  // authority — no safety veto at all. Otherwise (AUTO, or MANUAL with the
-  // safety engine ON) the arbiter refuses commands that would defeat an
-  // active hard safety output.
+  // MANUAL ABSOLUTE (v8.8.0+): in MANUAL mode the operator is the final
+  // authority regardless of the safety-engine toggle — no safety veto at all,
+  // the board only raises the siren. In AUTO the arbiter refuses commands that
+  // would defeat an active hard safety output.
   if (!manualAbsolute()) {
     if ((type == "fan" || type == "exhaust_fan") && !value &&
         (hardFloorActive || currentState >= STATE_DANGER ||
@@ -5385,13 +5385,23 @@ void setup() {
   Serial.printf("💡 LDR Sensor: %s\n", ldrAvailable ? "DETECTED on GPIO 36" : "Not connected (optional)");
 
 
+  // --- Persisted safety-engine + sticky mode (MUST precede any relay action) ---
+  // Restored from NVS before the boot-ventilation burst so a MANUAL farm keeps
+  // the operator's relay intent from the very first millisecond after a reboot.
+  loadCachedSafetyEngine();
+  loadPersistedModeState();
+
   // --- Stabilizing Mode ---
   stabilizingMode = true;
   stabilizingEndTime = millis() + SAFE_MODE_DURATION;
   safeModeActive = true;
   safeModeEndTime = stabilizingEndTime;
   transitionTo(STATE_BOOT, "POWER_ON");
-  requestFan(true, "HIGH"); // Ventilation during boot
+  if (!manualAbsolute()) {
+    requestFan(true, "HIGH"); // Ventilation during boot (AUTO only)
+  } else {
+    Serial.println("🟡 [MANUAL] Boot ventilation skipped — operator relay state restored");
+  }
   relayManagerApply();
 
   // --- Sensors ---
@@ -5425,7 +5435,12 @@ void setup() {
   dht2Available = !isnan(testT2);
   Serial.printf("  DHT#1: %s  DHT#2: %s\n", sensorOK ? "OK" : "FAIL", dht2Available ? "OK" : "N/A");
 
-  if (!sensorOK) { sensorErrorMode = true; failsafeMode = true; requestFan(true, "HIGH"); }
+  if (!sensorOK) {
+    sensorErrorMode = true; failsafeMode = true;
+    if (!manualAbsolute()) requestFan(true, "HIGH");
+    else Serial.println("🟡 [MANUAL] Boot sensor-fail fan skipped (manual absolute)");
+  }
+
 
 
   // --- Gas Warmup ---
@@ -5437,23 +5452,11 @@ void setup() {
   if (isBroiler()) { loadAgeTickTime(); lastAgeIncreaseMillis = millis(); }
   if (isLayer()) loadLayerRules(); else loadBroilerRules();
 
-  // --- Safety Engine cached state (offline-resilient) ---
-  // Restore last-known safety_engine_enabled from NVS BEFORE WiFi.
-  // This guarantees that even if cloud is unreachable, the engine respects
-  // the farmer's last choice. Hard Floor (>42°C) is hardcoded and unaffected.
-  loadCachedSafetyEngine();
+  // --- NOTE ---
+  // Safety-engine cache + sticky Auto/Manual mode are restored EARLIER in
+  // setup() (before the stabilizing/boot-ventilation block), so a MANUAL farm
+  // never sees a transient automation-driven fan burst after a reboot.
 
-  // --- Sticky Auto/Manual mode (offline-resilient) ---
-  // Restore the last mode + operator relay intent BEFORE WiFi, so a power cut,
-  // WiFi outage, sensor failure or watchdog reset can never silently flip a
-  // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
-  loadPersistedModeState();
-  if (manualAbsolute()) {
-    // MANUAL ABSOLUTE (engine OFF): boot ventilation / sensor-fail fan are
-    // automation. Apply the operator's stored relay intent right away instead.
-    relayManagerApply();
-    Serial.println("🟡 [MANUAL] Boot automation skipped — operator relay state restored");
-  }
 
 
   // --- WiFi ---

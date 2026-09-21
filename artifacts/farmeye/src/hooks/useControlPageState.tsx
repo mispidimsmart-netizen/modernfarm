@@ -114,9 +114,10 @@ export function useControlPageState() {
     if (!col || !user) return;
     let q = supabase
       .from('device_status')
-      .update({ [col]: null, [expCol]: null, updated_at: new Date().toISOString() } as any)
-      .eq('user_id', user.id);
+      .update({ [col]: null, [expCol]: null, updated_at: new Date().toISOString() } as any);
+    // Farm is the tenant boundary — scope by farm_id when known.
     if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+    else q = q.eq('user_id', user.id);
     if (selectedShedId) q = q.eq('shed_id', selectedShedId);
     await q;
   }, [user, selectedFarmId, selectedShedId]);
@@ -356,9 +357,9 @@ export function useControlPageState() {
           [desiredCol]: targetValue,
           [expCol]: new Date(endTime).toISOString(),
           updated_at: new Date().toISOString(),
-        } as any)
-        .eq('user_id', user.id);
+        } as any);
       if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
+      else q = q.eq('user_id', user.id);
       if (selectedShedId) q = q.eq('shed_id', selectedShedId);
       await q;
     }

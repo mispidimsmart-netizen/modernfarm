@@ -234,11 +234,19 @@ export function useSendDeviceCommand() {
       const startedAt = Date.now();
       const timeoutMs = 12000;
       const pollMs = 1500;
-      const cancelled = false;
-
       const poll = async () => {
-        if (cancelled) return;
+        try {
+          await pollOnce();
+        } catch (pollErr) {
+          // A transient network/query error must not silently end verification:
+          // keep polling until the timeout, then fall through to the failure path.
+          console.warn('[useDeviceCommands] ack poll error', pollErr);
+          if (Date.now() - startedAt < timeoutMs) setTimeout(poll, pollMs);
+          else await reportAckFailure();
+        }
+      };
 
+      const pollOnce = async () => {
         let executed = false;
         if (commandId) {
           const { data: cmd } = await supabase
@@ -311,6 +319,12 @@ export function useSendDeviceCommand() {
         if (Date.now() - startedAt < timeoutMs) {
           setTimeout(poll, pollMs);
         } else {
+          await reportAckFailure();
+        }
+      };
+
+      const reportAckFailure = async () => {
+        {
           // Distinguish: offline device vs safety lock vs generic no-ack
           let isOffline = false;
           let safetyLocked = false;
@@ -378,13 +392,14 @@ export function useSendDeviceCommand() {
               expired_at: isOffline ? new Date().toISOString() : null,
             };
             if (commandId) {
-              const { data: updated } = await supabase
+              const { data: updated, error: updateErr } = await supabase
                 .from('device_command_log')
                 .update(updatePayload as never)
                 .eq('command_id', commandId)
                 .select('id');
+              if (updateErr) console.warn('[useDeviceCommands] log update failed', updateErr);
               // Fallback: if no pending row was found, insert one.
-              if (!updated || updated.length === 0) {
+              if (updateErr || !updated || updated.length === 0) {
                 await supabase.from('device_command_log').insert({
                   user_id: user.id,
                   farm_id: selectedFarmId ?? null,

@@ -137,7 +137,7 @@ export async function handleFailsafeSync(
         'desired_ceiling_fan_on',
         'desired_sprinkler_on',
       ].join(', '))
-      .eq('user_id', userId)
+      .eq('farm_id', device.farm_id)
       .eq('shed_id', device.shed_id)
       .maybeSingle();
 
@@ -168,7 +168,7 @@ export async function handleFailsafeSync(
     await supabase
       .from('device_status')
       .update(deviceStatusUpdate)
-      .eq('user_id', userId)
+      .eq('farm_id', device.farm_id)
       .eq('shed_id', device.shed_id);
 
     // 3. Update device health with failsafe status
@@ -211,8 +211,8 @@ export async function handleFailsafeSync(
     const { data: farmSettings } = await supabase
       .from('farm_settings')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('farm_id', device.farm_id)
+      .maybeSingle();
 
     // 4a. Check if cloud says MANUAL mode — force ESP32 to re-enter if needed
     const cloudAutomationMode = farmSettings?.automation_mode ?? 'AUTO';
@@ -246,7 +246,7 @@ export async function handleFailsafeSync(
       const { data: activeBatch } = await supabase
         .from('broiler_batches')
         .select('start_date')
-        .eq('user_id', userId)
+        .eq('farm_id', device.farm_id)
         .eq('status', 'active')
         .order('start_date', { ascending: false })
         .limit(1)
@@ -263,7 +263,7 @@ export async function handleFailsafeSync(
       const { data: layerBatch } = await supabase
         .from('layer_batches')
         .select('start_date, age_at_start_weeks')
-        .eq('user_id', userId)
+        .eq('farm_id', device.farm_id)
         .eq('status', 'active')
         .order('start_date', { ascending: false })
         .limit(1)
@@ -278,7 +278,7 @@ export async function handleFailsafeSync(
         const { data: flock } = await supabase
           .from('flock_info')
           .select('age_weeks')
-          .eq('user_id', userId)
+          .eq('farm_id', device.farm_id)
           .maybeSingle();
         ageWeeks = flock?.age_weeks ?? null;
       }
@@ -294,21 +294,21 @@ export async function handleFailsafeSync(
     const { data: lightingSchedule } = await supabase
       .from('lighting_schedule')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('farm_id', device.farm_id)
+      .maybeSingle();
 
     // 6. Get automation rules
     const { data: automationRules } = await supabase
       .from('automation_rules')
       .select('*')
-      .eq('user_id', userId)
+      .eq('farm_id', device.farm_id)
       .eq('enabled', true);
 
     // 6b. Get advanced automation settings
     let advSettingsQuery = supabase
       .from('advanced_automation_settings')
       .select('*')
-      .eq('user_id', userId);
+      .eq('farm_id', device.farm_id);
     
     if (device.shed_id) {
       advSettingsQuery = advSettingsQuery.eq('shed_id', device.shed_id);
@@ -322,7 +322,7 @@ export async function handleFailsafeSync(
     const { data: pendingCommands } = await supabase
       .from('device_commands')
       .select('id, command_type, command_value')
-      .eq('user_id', userId)
+      .eq('farm_id', device.farm_id)
       .eq('device_name', device.device_name)
       .eq('executed', false)
       .order('created_at', { ascending: true });
@@ -331,9 +331,9 @@ export async function handleFailsafeSync(
     const { data: currentStatus } = await supabase
       .from('device_status')
       .select('*')
-      .eq('user_id', userId)
+      .eq('farm_id', device.farm_id)
       .eq('shed_id', device.shed_id)
-      .single();
+      .maybeSingle();
 
     // Calculate settings version (hash-like for change detection)
     const settingsVersion = farmSettings ? 
