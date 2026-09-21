@@ -1,6 +1,6 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.0-manual-absolute                          ║
+ * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.0-manual-absolute            ║
  * ║  Single Authority State Machine Architecture                          ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
  * ║  DESIGN PRINCIPLES:                                                    ║
