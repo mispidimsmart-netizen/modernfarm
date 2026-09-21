@@ -43,6 +43,13 @@
       "when": 1789665874672,
       "tag": "0005_provision_device_secret",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789977052363,
+      "tag": "0006_fix_provision_device_secret_pgcrypto_path",
+      "breakpoints": true
     }
   ]
 }
