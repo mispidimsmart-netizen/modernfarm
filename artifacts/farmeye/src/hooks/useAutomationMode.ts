@@ -106,13 +106,17 @@ export function useSetAutomationMode() {
         desired_fan_speed: null,
       };
 
+      // Mode is farm-wide: scope by farm_id when a farm is selected, so rows
+      // created by another member of the same farm are updated too. Only fall
+      // back to user_id for legacy rows with no farm.
       let deviceQuery = supabase
         .from('device_status')
-        .update(deviceUpdate as never)
-        .eq('user_id', user.id);
-      
+        .update(deviceUpdate as never);
+
       if (selectedFarmId) {
         deviceQuery = deviceQuery.eq('farm_id', selectedFarmId);
+      } else {
+        deviceQuery = deviceQuery.eq('user_id', user.id);
       }
 
       const { error: deviceError } = await deviceQuery;
