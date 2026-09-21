@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSheds } from './useSheds';
 import { useAllDeviceHealth, DeviceHealth } from './useDeviceHealth';
+import { isDeviceOnline } from '@/lib/deviceFreshness';
+
 
 export interface ShedOverview {
   id: string;

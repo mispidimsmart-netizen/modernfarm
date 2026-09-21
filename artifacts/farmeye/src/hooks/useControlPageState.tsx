@@ -16,6 +16,8 @@ import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 import { deriveManualMode, isHardwareManualMode, isModeSyncPending, canUseTimedOverride } from '@/lib/manualMode';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
+import { DEVICE_ONLINE_THRESHOLD_MS } from '@/lib/deviceFreshness';
+
 import {
   DESIRED_COL_MAP,
   EXPIRES_COL_MAP,
