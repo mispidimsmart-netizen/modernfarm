@@ -92,23 +92,35 @@ export function useUpdateFarmSettings() {
   return useMutation({
     mutationFn: async (settings: Partial<FarmSettings>) => {
       if (!user) throw new Error('Not authenticated');
-      // Resolve the exact settings row for the selected farm to avoid
-      // updating every farm of a multi-farm account.
-      const current = queryClient.getQueryData<FarmSettings | null>([
+      if (!selectedFarmId) throw new Error('NO_FARM_SELECTED');
+      // Resolve the exact settings row for the selected farm. An unscoped
+      // update would flip settings on every farm of a multi-farm account, so
+      // a missing row is a hard error, never a wider write.
+      let rowId = queryClient.getQueryData<FarmSettings | null>([
         'farm_settings',
         user.id,
         selectedFarmId,
-      ]);
-      let query = supabase.from('farm_settings').update(settings);
-      if (current?.id) {
-        query = query.eq('id', current.id);
-      } else {
-        query = query.eq('user_id', user.id);
-        if (selectedFarmId) {
-          query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
-        }
+      ])?.id;
+
+      if (!rowId) {
+        const { data, error: readError } = await supabase
+          .from('farm_settings')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('farm_id', selectedFarmId)
+          .limit(1)
+          .maybeSingle();
+        if (readError) throw readError;
+        rowId = (data as { id: string } | null)?.id;
       }
-      const { error } = await query;
+      if (!rowId) throw new Error('FARM_SETTINGS_ROW_NOT_FOUND');
+
+      const { error } = await supabase
+        .from('farm_settings')
+        .update(settings)
+        .eq('id', rowId)
+        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId);
       if (error) throw error;
     },
     onSuccess: () => {
