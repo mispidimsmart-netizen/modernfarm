@@ -68,6 +68,11 @@ describe('ControlPage gating — Safety Engine ON', () => {
 
   it('shows Safety Locked Devices panel', () => {
     expect(shouldShowSafetyLockedPanel(true)).toBe(true);
+    expect(shouldShowSafetyLockedPanel(true, 'AUTO')).toBe(true);
+  });
+
+  it('hides the panel in MANUAL mode (board never locks a relay there)', () => {
+    expect(shouldShowSafetyLockedPanel(true, 'MANUAL')).toBe(false);
   });
 });
 
