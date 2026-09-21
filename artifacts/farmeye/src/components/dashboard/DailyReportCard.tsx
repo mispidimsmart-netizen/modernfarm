@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { today as farmToday } from '@/api/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, ThermometerSun, Droplets, Wind, AlertTriangle, 
@@ -28,7 +29,7 @@ export function DailyReportCard() {
   const { user, language } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = farmToday();
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 
   // Fetch today's and yesterday's summary

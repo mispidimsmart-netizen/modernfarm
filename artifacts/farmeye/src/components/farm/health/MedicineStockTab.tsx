@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { today as farmToday } from '@/api/types';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Plus, Trash2 } from 'lucide-react';
@@ -50,7 +51,7 @@ export function MedicineStockTab({
   const stockSummary = useMedicineStockSummary();
 
   const [stockForm, setStockForm] = useState({
-    purchase_date: format(new Date(), 'yyyy-MM-dd'),
+    purchase_date: farmToday(),
     medicine_name: '',
     medicine_type: 'medicine' as MedicineType,
     quantity: 0,
@@ -79,7 +80,7 @@ export function MedicineStockTab({
       {
         onSuccess: () =>
           setStockForm({
-            purchase_date: format(new Date(), 'yyyy-MM-dd'),
+            purchase_date: farmToday(),
             medicine_name: '',
             medicine_type: 'medicine',
             quantity: 0,

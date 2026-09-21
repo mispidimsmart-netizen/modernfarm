@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { today as farmToday } from '@/api/types';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Plus, Skull } from 'lucide-react';
@@ -29,7 +30,7 @@ export function MortalityTab({
   const addMortality = useAddMortalityRecord();
 
   const [mortForm, setMortForm] = useState({
-    record_date: format(new Date(), 'yyyy-MM-dd'),
+    record_date: farmToday(),
     count: 1,
     cause: 'unknown',
     notes: '',
@@ -47,7 +48,7 @@ export function MortalityTab({
       {
         onSuccess: () =>
           setMortForm({
-            record_date: format(new Date(), 'yyyy-MM-dd'),
+            record_date: farmToday(),
             count: 1,
             cause: 'unknown',
             notes: '',

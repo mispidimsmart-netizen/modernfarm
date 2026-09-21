@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { today as farmToday } from '@/api/types';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Egg, Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
@@ -32,7 +33,7 @@ export function EggProductionSheet({ open, onOpenChange }: EggProductionSheetPro
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    production_date: format(new Date(), 'yyyy-MM-dd'),
+    production_date: farmToday(),
     total_eggs: 0,
     grade_a: 0,
     grade_b: 0,

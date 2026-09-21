@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { today as farmToday } from '@/api/types';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Skull, Plus, Calendar, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
@@ -44,7 +45,7 @@ export function MortalitySheet({ open, onOpenChange }: MortalitySheetProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    record_date: format(new Date(), 'yyyy-MM-dd'),
+    record_date: farmToday(),
     count: 1,
     cause: 'unknown',
     age_weeks: flockInfo?.age_weeks ?? null,

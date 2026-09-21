@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { today as farmToday } from '@/api/types';
 import { format } from 'date-fns';
 import { bn, enUS } from 'date-fns/locale';
 import { Wheat, Plus, Package, TrendingDown, Pencil, Trash2, Coins } from 'lucide-react';
@@ -78,14 +79,14 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
     feed_type: defaultFeedType,
     quantity_kg: 0,
     unit_price: 0,
-    purchase_date: format(new Date(), 'yyyy-MM-dd'),
+    purchase_date: farmToday(),
     supplier: '',
     notes: '',
   });
   const [usageForm, setUsageForm] = useState({
     feed_type: defaultFeedType,
     quantity_kg: 0,
-    consumption_date: format(new Date(), 'yyyy-MM-dd'),
+    consumption_date: farmToday(),
     notes: '',
   });
 
@@ -145,7 +146,7 @@ export function FeedManagementSheet({ open, onOpenChange, mode = 'layer' }: Feed
   const totalUsed = consumption?.reduce((sum, i) => sum + Number(i.quantity_kg), 0) ?? 0;
 
   // Today's feed cost = sum of (today's usage × avg cost of its feed type)
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = farmToday();
   const todayCost = useMemo(() => {
     return (consumption ?? [])
       .filter((c) => c.consumption_date === todayStr)
