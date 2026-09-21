@@ -1595,14 +1595,19 @@ void calculateWaterFlow() {
 // ║  writes to hardware pins)                                             ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
-void requestFan(bool on, String speed) { relayTarget.fan = on; relayTarget.fanSpeed = speed; }
-void requestAlarm(bool on)             { relayTarget.alarm = on; }
-void requestHeater(bool on)            { relayTarget.heater = on; }
-void requestFogger(bool on)            { relayTarget.fogger = on; }
-void requestCirculationFan(bool on)    { relayTarget.circulationFan = on; }
-void requestCeilingFan(bool on)        { relayTarget.ceilingFan = on; }
-void requestSprinkler(bool on)         { relayTarget.sprinkler = on; }
-void requestLight(int brightness)      { targetBrightness = constrain(brightness, 0, 100); }
+// MANUAL ABSOLUTE choke point (v8.9.0+): every automation module expresses
+// relay intent through these request*() setters. While the operator holds
+// MANUAL, no automation intent is accepted — only the siren. Operator commands
+// (forceApplyManualRelay) and the NVS restore write relayTarget directly, so
+// they are unaffected by this guard.
+void requestFan(bool on, String speed) { if (manualAbsolute()) return; relayTarget.fan = on; relayTarget.fanSpeed = speed; }
+void requestAlarm(bool on)             { relayTarget.alarm = on; }   // siren always allowed
+void requestHeater(bool on)            { if (manualAbsolute()) return; relayTarget.heater = on; }
+void requestFogger(bool on)            { if (manualAbsolute()) return; relayTarget.fogger = on; }
+void requestCirculationFan(bool on)    { if (manualAbsolute()) return; relayTarget.circulationFan = on; }
+void requestCeilingFan(bool on)        { if (manualAbsolute()) return; relayTarget.ceilingFan = on; }
+void requestSprinkler(bool on)         { if (manualAbsolute()) return; relayTarget.sprinkler = on; }
+void requestLight(int brightness)      { if (manualAbsolute()) return; targetBrightness = constrain(brightness, 0, 100); }
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  STICKY MANUAL MODE PERSISTENCE (NVS)                                  ║
