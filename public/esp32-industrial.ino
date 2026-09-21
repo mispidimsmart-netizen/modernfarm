@@ -4270,8 +4270,9 @@ static String wifiPortalPage(const String& message) {
   if (message.length() > 0) html += "<div class='m'>" + message + "</div>";
   html += F("<form method='POST' action='/save'><label>ওয়াইফাই নাম (SSID)</label>"
             "<input list='nets' name='ssid' required maxlength='32'><datalist id='nets'>");
+  // Async scan results only — a blocking scan here could starve the watchdog.
   int n = WiFi.scanComplete();
-  if (n <= 0) n = WiFi.scanNetworks(false, false, false, 200);
+  if (n < 0) { WiFi.scanNetworks(true); n = 0; }
   for (int i = 0; i < n && i < 15; i++) {
     html += "<option value='" + WiFi.SSID(i) + "'>";
   }
