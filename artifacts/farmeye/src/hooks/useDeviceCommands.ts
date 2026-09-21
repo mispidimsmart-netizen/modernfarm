@@ -234,7 +234,7 @@ export function useSendDeviceCommand() {
       const startedAt = Date.now();
       const timeoutMs = 12000;
       const pollMs = 1500;
-      const cancelled = false;
+      let cancelled = false;
 
       const poll = async () => {
         if (cancelled) return;
