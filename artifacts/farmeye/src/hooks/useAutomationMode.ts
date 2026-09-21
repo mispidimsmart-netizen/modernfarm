@@ -75,111 +75,26 @@ export function useSetAutomationMode() {
       const isManual = mode === 'MANUAL';
 
       // ═══════════════════════════════════════════════════════════
-      // STEP 1: Update farm_settings.automation_mode (farm-wide)
+      // ATOMIC SWITCH (MODE-02)
+      // farm_settings + every shed's device_status (desired_* cleared) +
+      // device_health + the stop_automation command are written inside ONE
+      // transaction by `set_farm_automation_mode`. Previously these were four
+      // separate client writes: a failure in the middle left the UI, the cloud
+      // and the board in different modes. The RPC also enforces the
+      // hardware-change permission server-side (workers cannot flip the mode).
       // ═══════════════════════════════════════════════════════════
-      const updatePayload: Record<string, unknown> = {
-        automation_mode: mode,
-        manual_mode_since: isManual ? new Date().toISOString() : null,
-      };
+      const { error } = await supabase.rpc('set_farm_automation_mode' as any, {
+        _farm_id: selectedFarmId,
+        _mode: mode,
+      });
 
-      // farm_id-scoped only: the row belongs to the farm owner, so a user_id
-      // filter silently no-oped the mode flip for org owners / super admins.
-      const settingsQuery = supabase
-        .from('farm_settings')
-        .update(updatePayload as any)
-        .eq('farm_id', selectedFarmId);
-
-      const { error: settingsError } = await settingsQuery;
-      if (settingsError) {
-        console.error('Failed to update farm_settings:', settingsError);
-        throw settingsError;
+      if (error) {
+        console.error('Failed to switch automation mode atomically:', error);
+        throw error;
       }
 
       // ═══════════════════════════════════════════════════════════
-      // STEP 2: Clear desired_* on EVERY shed of this farm — mode is
-      // farm-wide, so leaving one shed with a stale desired_* would
-      // ghost-fire the moment the automation engine or ESP32 next reads it.
-      // ═══════════════════════════════════════════════════════════
-      const deviceUpdate: Record<string, any> = {
-        desired_manual_override: isManual,
-        mode: mode,
-        updated_at: new Date().toISOString(),
-        desired_fan_on: null,
-        desired_light_on: null,
-        desired_alarm_on: null,
-        desired_heater_on: null,
-        desired_circulation_fan_on: null,
-        desired_fogger_on: null,
-        desired_ceiling_fan_on: null,
-        desired_sprinkler_on: null,
-        desired_fan_speed: null,
-      };
-
-      // Mode is farm-wide: strictly farm_id-scoped (never a user_id fallback),
-      // so rows created by another member of the same farm are updated too.
-      const deviceQuery = supabase
-        .from('device_status')
-        .update(deviceUpdate as never)
-        .eq('farm_id', selectedFarmId);
-
-      const { error: deviceError } = await deviceQuery;
-      if (deviceError) {
-        console.error('Failed to update device_status:', deviceError);
-        // Non-fatal: continue even if device_status update fails
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // STEP 3: Send stop_automation command to ESP32.
-      // ESP32 polls device_commands every 1-5 seconds. Look up the
-      // farm-specific device_name from device_status so we don't
-      // hardcode 'ESP32_LAYER_001' for every farm.
-      // ═══════════════════════════════════════════════════════════
-      let deviceName = 'Shed A';
-      try {
-        const nameQ: any = supabase
-          .from('device_status')
-          .select('device_name')
-          .eq('farm_id', selectedFarmId);
-        // shedId ignored — pick any device row from this farm for its name.
-        const { data: ds } = await nameQ.limit(1).maybeSingle();
-        if (ds?.device_name) deviceName = ds.device_name as string;
-      } catch {
-        // fall back to default
-      }
-
-      const commandPayload: Record<string, any> = {
-        user_id: user.id,
-        command_type: 'stop_automation',
-        command_value: isManual,
-        device_name: deviceName,
-        executed: false,
-      };
-
-      if (selectedFarmId) {
-        commandPayload.farm_id = selectedFarmId;
-      }
-      // NOTE: device_commands table has NO shed_id column — do not add it.
-
-      const { error: cmdError } = await supabase
-        .from('device_commands')
-        .insert(commandPayload as any);
-
-      if (cmdError) {
-        console.error('Failed to insert stop_automation command:', cmdError);
-        // Non-fatal: ESP32 will still read desired_manual_override from config-poll
-      }
-
-      // ═══════════════════════════════════════════════════════════
-      // STEP 4: Update device_health mode for dashboard display
-      // ═══════════════════════════════════════════════════════════
-      // Strictly farm-scoped (mode is farm-wide); never a user_id-only write.
-      await supabase
-        .from('device_health')
-        .update({ mode: mode } as any)
-        .eq('farm_id', selectedFarmId);
-
-      // ═══════════════════════════════════════════════════════════
-      // STEP 5: Audit log
+      // Audit log (outside the transaction: never blocks the mode switch)
       // ═══════════════════════════════════════════════════════════
       logAction({
         action_type: 'automation_mode_change',
@@ -189,6 +104,7 @@ export function useSetAutomationMode() {
         severity: isManual ? 'warning' : 'info',
       });
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['automation_mode'] });
       queryClient.invalidateQueries({ queryKey: ['farm_settings'] });
