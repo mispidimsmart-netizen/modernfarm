@@ -63,13 +63,17 @@ export function useFarmSettings() {
     queryKey: ['farm_settings', user?.id, selectedFarmId],
     queryFn: async () => {
       if (!user) return null;
-      let query = supabase
-        .from('farm_settings')
-        .select('*')
-        .eq('user_id', user.id);
-      // Scope to the selected farm; legacy rows may have farm_id NULL.
+      // Scope by farm_id, NOT user_id: farm_settings holds ONE row per farm,
+      // owned by the farm owner. Filtering on the viewer's user_id made every
+      // non-owner (worker / org owner / super admin) read zero rows, so the app
+      // silently fell back to default thresholds and reported AUTO on a MANUAL
+      // farm. RLS already restricts which farms a user may read.
+      let query = supabase.from('farm_settings').select('*');
       if (selectedFarmId) {
-        query = query.or(`farm_id.eq.${selectedFarmId},farm_id.is.null`);
+        query = query.eq('farm_id', selectedFarmId);
+      } else {
+        // No farm selected — legacy rows only, keep them owner-scoped.
+        query = query.eq('user_id', user.id);
       }
       const { data, error } = await query.order('farm_id', {
         ascending: false,
@@ -77,7 +81,7 @@ export function useFarmSettings() {
       });
       if (error) throw error;
       const rows = (data ?? []) as FarmSettings[];
-      const exact = rows.find((r) => r.farm_id === selectedFarmId);
+      const exact = selectedFarmId ? rows.find((r) => r.farm_id === selectedFarmId) : undefined;
       return (exact ?? rows[0] ?? null) as FarmSettings | null;
     },
     enabled: !!user,
