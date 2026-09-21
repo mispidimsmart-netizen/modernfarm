@@ -51,6 +51,10 @@ export function SafetyEngineToggleCard() {
     }
   };
 
+  // MANUAL mode: safety engine does nothing (manual-absolute), so hide the
+  // toggle entirely. It reappears automatically when the farm switches to AUTO.
+  if (automationMode === 'MANUAL') return null;
+
   return (
     <Card className={enabled ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}>
       <CardHeader className="pb-3">
