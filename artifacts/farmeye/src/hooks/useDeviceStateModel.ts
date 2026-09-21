@@ -14,6 +14,16 @@ import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSelectedShed } from './useSheds';
+import { useFarmContext } from '@/context/FarmContext';
+
+// FarmProvider may not wrap every tree (e.g. standalone widgets/tests).
+function useSafeFarmId(): string | null {
+  try {
+    return useFarmContext().selectedFarmId;
+  } catch {
+    return null;
+  }
+}
 
 export interface DeviceStateLayer {
   fan_on: boolean;
