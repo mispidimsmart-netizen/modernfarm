@@ -641,13 +641,40 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
     const farmType = shedData?.farm_type || 'layer';
     const isBroiler = farmType === 'broiler';
 
-    // Calculate bird age for broilers
+    // Calculate bird age — broiler: active batch start_date; layer: active layer batch
+    // (start_date + age_at_start_weeks) with flock_info.age_weeks as fallback.
     let birdAge = 1;
     if (isBroiler && batch?.start_date) {
       const startDate = new Date(batch.start_date);
       const now = new Date();
       birdAge = Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / 86400000) + 1);
+    } else if (!isBroiler) {
+      const { data: layerBatch } = await supabase
+        .from('layer_batches')
+        .select('start_date, age_at_start_weeks')
+        .eq('farm_id', farmId)
+        .eq('status', 'active')
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let ageWeeks: number | null = null;
+      if (layerBatch?.start_date) {
+        const startMs = new Date(layerBatch.start_date).getTime();
+        const weeksElapsed = Math.max(0, Math.floor((Date.now() - startMs) / (7 * 86400000)));
+        ageWeeks = (layerBatch.age_at_start_weeks ?? 0) + weeksElapsed;
+      } else {
+        const { data: flock } = await supabase
+          .from('flock_info')
+          .select('age_weeks')
+          .eq('farm_id', farmId)
+          .maybeSingle();
+        ageWeeks = flock?.age_weeks ?? null;
+      }
+
+      if (ageWeeks !== null && ageWeeks >= 0) birdAge = Math.max(1, ageWeeks * 7);
     }
+
 
     // Get target temperature based on farm type and age
     let targetTemp: { min: number; max: number };
