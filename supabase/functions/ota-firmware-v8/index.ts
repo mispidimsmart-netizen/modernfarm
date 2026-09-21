@@ -123,7 +123,7 @@ serve(async (req) => {
       // different tenant/device/firmware.
       const { data: assignment, error: assignmentError } = await supabase
         .from("firmware_install_logs")
-        .select("id, status, boot_attempts")
+        .select("id, status, boot_attempts, to_version")
         .eq("id", assignmentId)
         .eq("device_token_id", device.id)
         .eq("firmware_id", firmwareId)
@@ -140,6 +140,37 @@ serve(async (req) => {
           return json({ success: true, should_rollback: body?.boot_success !== true, already_terminal: true });
         }
         return json({ error: "OTA assignment is already terminal" }, 409);
+      }
+
+      // ── Server-side success verification ──────────────────────────────────
+      // A client boolean alone must never mark an install complete. The running
+      // version the board reports (and its image digest when it sends one) is
+      // checked against the assigned firmware row; a mismatch is recorded as a
+      // failed install and the device is told to roll back.
+      let verificationError: string | null = null;
+      if (body?.boot_success === true) {
+        const { data: assignedFw, error: fwError } = await supabase
+          .from("ota_firmware")
+          .select("version, sha256_hex")
+          .eq("id", firmwareId)
+          .maybeSingle();
+        if (fwError) return json({ error: "Unable to resolve assigned firmware" }, 503);
+        if (!assignedFw) {
+          verificationError = "assigned firmware metadata missing";
+        } else {
+          const norm = (v: unknown) => String(v ?? "").trim().replace(/^v/i, "").toLowerCase();
+          const reported = norm(body?.version);
+          const expected = norm(assignedFw.version);
+          const target = norm(assignment.to_version);
+          if (!reported) {
+            verificationError = "running version not reported";
+          } else if (reported !== expected || (target && reported !== target)) {
+            verificationError = `running version ${reported} does not match assigned ${expected}`;
+          } else if (typeof body?.installed_sha256 === "string" && body.installed_sha256.length === 64 &&
+                     String(assignedFw.sha256_hex ?? "").toLowerCase() !== body.installed_sha256.toLowerCase()) {
+            verificationError = "installed image digest mismatch";
+          }
+        }
       }
       const { error: reportError } = await supabase.from("firmware_install_logs")
         .update({
