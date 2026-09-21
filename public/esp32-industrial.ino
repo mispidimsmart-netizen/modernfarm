@@ -3662,6 +3662,7 @@ void handleCloudResponse(String response) {
           fadeInProgress = false;
         }
       }
+      persistModeState();   // sticky: survives power/WiFi/sensor loss
     }
   }
 
