@@ -126,7 +126,7 @@ describe('Full 2×2 device-command matrix (fan under heat stress)', () => {
   }> = [
     { mode: 'AUTO', engine: true, canStopFan: false }, // locked
     { mode: 'AUTO', engine: false, canStopFan: true }, // engine off → unlocked
-    { mode: 'MANUAL', engine: true, canStopFan: false }, // still locked by client-side safety
+    { mode: 'MANUAL', engine: true, canStopFan: true }, // manual absolute → operator decides
     { mode: 'MANUAL', engine: false, canStopFan: true }, // raw manual control
   ];
 
