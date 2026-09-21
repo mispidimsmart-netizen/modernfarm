@@ -18,6 +18,7 @@ export function SafetyEngineToggleCard() {
   const { data: settings } = useFarmSettings();
   const updateSettings = useUpdateFarmSettings();
   const { toast } = useToast();
+  const { data: automationMode } = useAutomationMode();
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
