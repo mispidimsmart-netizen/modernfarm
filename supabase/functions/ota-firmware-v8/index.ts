@@ -172,22 +172,30 @@ serve(async (req) => {
           }
         }
       }
+      const verifiedSuccess = body?.boot_success === true && verificationError === null;
+      const finalStatus = verifiedSuccess ? "completed" : "boot_failed";
       const { error: reportError } = await supabase.from("firmware_install_logs")
         .update({
-          status,
+          status: finalStatus,
           boot_attempts: Number(assignment.boot_attempts ?? 0) + 1,
-          boot_succeeded: body?.boot_success === true,
-          signature_validated: body?.signature_validated === true,
+          boot_succeeded: verifiedSuccess,
+          signature_validated: verifiedSuccess && body?.signature_validated === true,
           last_boot_at: new Date().toISOString(),
-          completed_at: body?.boot_success === true ? new Date().toISOString() : null,
-          error_message: body?.boot_success === true ? null : "boot validation failed",
-          rollback_triggered: body?.boot_success !== true,
-          auto_rolled_back: body?.boot_success !== true,
+          completed_at: verifiedSuccess ? new Date().toISOString() : null,
+          error_message: verifiedSuccess
+            ? null
+            : (verificationError ?? "boot validation failed"),
+          rollback_triggered: !verifiedSuccess,
+          auto_rolled_back: !verifiedSuccess,
         })
         .eq("id", assignment.id)
         .eq("status", "pending");
       if (reportError) return json({ error: "Unable to record boot report" }, 503);
-      return json({ success: true, should_rollback: body?.boot_success !== true });
+      return json({
+        success: true,
+        should_rollback: !verifiedSuccess,
+        ...(verificationError ? { verification_error: verificationError } : {}),
+      });
     }
 
     if (action === "check") {
