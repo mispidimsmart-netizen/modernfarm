@@ -27,6 +27,8 @@ import {
   getAdvancedSettings,
   getDeviceConfig,
 } from "./reads.ts";
+import { handleSafetyEvaluate, handleForensicLog } from "./safety.ts";
+
 
 
 
@@ -95,36 +97,10 @@ interface DeviceStatePayload {
   circulation_fan_on?: boolean;
 }
 
-async function proxySafetyEngine(
-  action: 'evaluate' | 'forensic_log',
-  body: any,
-  userId: string,
-  deviceFarmId?: string | null,
-  deviceShedId?: string | null
-) {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const payload = {
-    ...body,
-    user_id: userId,
-    farm_id: deviceFarmId || body?.farm_id || null,
-    shed_id: deviceShedId || body?.shed_id || null,
-  };
+// Safety snapshot + forensic timeline are handled in-process by ./safety.ts.
+// (An earlier revision proxied them to a `safety-engine` function that does not
+// exist in this project, so every board call 404'd and nothing was stored.)
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/safety-engine?action=${action}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') ?? ''}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await response.text();
-  return new Response(text || JSON.stringify({ success: response.ok }), {
-    status: response.status,
-    headers: { ...corsHeaders, 'Content-Type': response.headers.get('Content-Type') || 'application/json' },
-  });
-}
 
 // ───── Phase 2: Observability wrapper ─────
 Deno.serve(async (req) => {
