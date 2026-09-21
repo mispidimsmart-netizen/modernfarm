@@ -352,6 +352,20 @@ export function useControlPageState() {
   const handleTimerConfirm = async (durationMinutes: number) => {
     if (!pendingDevice) return;
     if (!requireFarmSelected()) { setPendingDevice(null); setTimerDialogOpen(false); return; }
+    // Timed overrides are an AUTO-mode concept: they hand the device back to
+    // automation when the timer ends. In MANUAL nothing takes over, so never
+    // write a desired_*/expires_at pair there.
+    if (isManualMode) {
+      setPendingDevice(null);
+      setTimerDialogOpen(false);
+      toast({
+        title: language === 'bn' ? 'ম্যানুয়াল মোডে টাইমার নেই' : 'No timers in manual mode',
+        description: language === 'bn'
+          ? 'ম্যানুয়াল মোডে ডিভাইস আপনি নিজেই চালু/বন্ধ করবেন — সময় শেষে কেউ দখল নেয় না।'
+          : 'In manual mode you switch devices yourself — nothing takes over when a timer ends.',
+      });
+      return;
+    }
     const cmdType = pendingDevice.device as CommandType;
     const targetValue = pendingDevice.intent === 'on';
 
