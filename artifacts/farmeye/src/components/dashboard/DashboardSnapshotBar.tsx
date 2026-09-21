@@ -19,8 +19,10 @@ import { useFlockInfo } from '@/hooks/useFarmManagement';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import useSmartAlerts from '@/hooks/useSmartAlerts';
 import { cn } from '@/lib/utils';
+import { DEVICE_ONLINE_THRESHOLD_MS } from '@/lib/deviceFreshness';
 
-const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
+
+const ONLINE_THRESHOLD_MS = DEVICE_ONLINE_THRESHOLD_MS;
 
 interface ChipProps {
   icon: React.ReactNode;

@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useAllDeviceHealth, DeviceHealth } from '@/hooks/useDeviceHealth';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
+import { isDeviceOnline, isCloudSyncStale } from '@/lib/deviceFreshness';
+
 
 // Calculate time ago from a date string
 function getTimeAgo(dateStr: string | null, language: 'bn' | 'en'): string {
@@ -59,20 +61,10 @@ export function SystemModeCard() {
   const isFailSafe = primaryDevice?.failsafe_mode ?? false;
   const lastCloudSync = primaryDevice?.last_cloud_sync_at;
   const lastSeenAt = primaryDevice?.last_seen_at;
-  const isOnline = (() => {
-    if (!primaryDevice?.is_online) return false;
-    if (!primaryDevice?.last_seen_at) return false;
-    const diffMs = Date.now() - new Date(primaryDevice.last_seen_at).getTime();
-    return diffMs < 2 * 60 * 1000; // 2 minutes
-  })();
-  
-  // Calculate if cloud connection is stale (> 5 minutes)
-  const isCloudStale = (() => {
-    if (!lastCloudSync) return true;
-    const syncDate = new Date(lastCloudSync);
-    const now = new Date();
-    return (now.getTime() - syncDate.getTime()) > 5 * 60 * 1000; // 5 minutes
-  })();
+  // Unified freshness rule — see src/lib/deviceFreshness.ts
+  const isOnline = isDeviceOnline(primaryDevice ?? null);
+  const isCloudStale = isCloudSyncStale(lastCloudSync);
+
 
   if (isLoading) {
     return (

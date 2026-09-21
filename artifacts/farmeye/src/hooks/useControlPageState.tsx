@@ -16,6 +16,8 @@ import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 import { deriveManualMode, isHardwareManualMode, isModeSyncPending, canUseTimedOverride } from '@/lib/manualMode';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
+import { DEVICE_ONLINE_THRESHOLD_MS } from '@/lib/deviceFreshness';
+
 import {
   DESIRED_COL_MAP,
   EXPIRES_COL_MAP,
@@ -67,7 +69,7 @@ export function useControlPageState() {
   const modeSyncPending = isModeSyncPending(manualSources);
 
   // Freshness of the whole device_status row (Hardware-as-Source-of-Truth).
-  const STALE_MS = 2 * 60 * 1000;
+  const STALE_MS = DEVICE_ONLINE_THRESHOLD_MS;
   const lastAckRaw = (rawStatus?.last_device_ack_at ?? rawStatus?.updated_at) as string | undefined;
   const lastAckAt = lastAckRaw ? new Date(lastAckRaw).getTime() : null;
   const isStatusStale = !lastAckAt || Date.now() - lastAckAt > STALE_MS;

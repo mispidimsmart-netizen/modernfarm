@@ -27,6 +27,8 @@ import {
   getAdvancedSettings,
   getDeviceConfig,
 } from "./reads.ts";
+import { handleSafetyEvaluate, handleForensicLog } from "./safety.ts";
+
 
 
 
@@ -95,36 +97,10 @@ interface DeviceStatePayload {
   circulation_fan_on?: boolean;
 }
 
-async function proxySafetyEngine(
-  action: 'evaluate' | 'forensic_log',
-  body: any,
-  userId: string,
-  deviceFarmId?: string | null,
-  deviceShedId?: string | null
-) {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const payload = {
-    ...body,
-    user_id: userId,
-    farm_id: deviceFarmId || body?.farm_id || null,
-    shed_id: deviceShedId || body?.shed_id || null,
-  };
+// Safety snapshot + forensic timeline are handled in-process by ./safety.ts.
+// (An earlier revision proxied them to a `safety-engine` function that does not
+// exist in this project, so every board call 404'd and nothing was stored.)
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/safety-engine?action=${action}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') ?? ''}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await response.text();
-  return new Response(text || JSON.stringify({ success: response.ok }), {
-    status: response.status,
-    headers: { ...corsHeaders, 'Content-Type': response.headers.get('Content-Type') || 'application/json' },
-  });
-}
 
 // ───── Phase 2: Observability wrapper ─────
 Deno.serve(async (req) => {
@@ -465,16 +441,25 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
       return await handlePowerStatus(bodyData, supabase, userId, deviceToken);
     }
 
-    // ===== SAFETY ENGINE PROXY ENDPOINTS =====
+    // ===== SAFETY ENGINE ENDPOINTS (in-process) =====
     // ESP32 sends these through esp32-api so the same device-token auth,
     // farm isolation, and shed binding are used for safety + forensic logs.
     if (req.method === 'POST' && path === 'safety-evaluate') {
-      return await proxySafetyEngine('evaluate', bodyData, userId, deviceFarmId, deviceShedId);
+      return await handleSafetyEvaluate(bodyData, supabase, {
+        userId,
+        farmId: deviceFarmId ?? null,
+        shedId: deviceShedId ?? null,
+      });
     }
 
     if (req.method === 'POST' && path === 'forensic-log') {
-      return await proxySafetyEngine('forensic_log', bodyData, userId, deviceFarmId, deviceShedId);
+      return await handleForensicLog(bodyData, supabase, {
+        userId,
+        farmId: deviceFarmId ?? null,
+        shedId: deviceShedId ?? null,
+      });
     }
+
 
     if (req.method === 'GET' && path === 'power-outages') {
       return await getPowerOutages(supabase, userId);

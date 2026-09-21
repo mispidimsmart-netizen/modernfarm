@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useSheds } from './useSheds';
 import { useAllDeviceHealth, DeviceHealth } from './useDeviceHealth';
+import { isDeviceOnline } from '@/lib/deviceFreshness';
+
 
 export interface ShedOverview {
   id: string;
@@ -114,7 +116,9 @@ export function useMultiShedData() {
           lastReading: reading?.recorded_at || null,
           hsi,
           hsiLevel: getHSILevel(hsi),
-          isOnline: device?.is_online ?? false,
+          // Shared freshness rule: a stale board is offline everywhere in the UI.
+          isOnline: isDeviceOnline(device ?? null),
+
           mode,
           failsafeMode: device?.failsafe_mode ?? false,
           lastSyncAt: device?.last_cloud_sync_at || null,

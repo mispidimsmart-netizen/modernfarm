@@ -2,15 +2,15 @@ import { Wifi, WifiOff, Radio, Clock, AlertTriangle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { DeviceHealth } from '@/hooks/useDeviceHealth';
 
-const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+import { DEVICE_ONLINE_THRESHOLD_MS, isDeviceOnline } from '@/lib/deviceFreshness';
+
+const ONLINE_THRESHOLD_MS = DEVICE_ONLINE_THRESHOLD_MS;
 
 /** Check if device is truly online based on last_seen_at freshness */
 function isDeviceReallyOnline(device: DeviceHealth): boolean {
-  if (!device.is_online) return false;
-  if (!device.last_seen_at) return false;
-  const diffMs = Date.now() - new Date(device.last_seen_at).getTime();
-  return diffMs < ONLINE_THRESHOLD_MS;
+  return isDeviceOnline(device);
 }
+
 
 /** Convert Bengali numerals */
 function toBn(n: number | string, language: string): string {
