@@ -24,6 +24,23 @@ const int = (v: unknown): number | null => {
   return n === null ? null : Math.trunc(n);
 };
 
+/**
+ * `safety_status.system_state` is constrained to this exact set in the database.
+ * The board reports its own state machine names (including `BOOT`), so any value
+ * outside the set must be normalised — otherwise the upsert fails with a check
+ * constraint violation and NO safety snapshot is ever stored.
+ */
+const SAFETY_STATES = ['NORMAL', 'WARNING', 'DANGER', 'EMERGENCY', 'SURVIVAL', 'SENSOR_FAIL'] as const;
+
+function normalizeSystemState(v: unknown): string {
+  const s = typeof v === 'string' ? v.trim().toUpperCase() : '';
+  if ((SAFETY_STATES as readonly string[]).includes(s)) return s;
+  if (s === 'MONITORING' || s === 'BOOT' || s === 'OK' || s === '') return 'NORMAL';
+  if (s === 'ESM' || s === 'EMERGENCY_SURVIVAL') return 'SURVIVAL';
+  if (s === 'SENSOR_ERROR' || s === 'SENSOR_FAILURE') return 'SENSOR_FAIL';
+  return 'NORMAL';
+}
+
 export interface SafetyCtx {
   userId: string;
   farmId: string | null;
