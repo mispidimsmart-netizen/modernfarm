@@ -2042,69 +2042,58 @@ void automationEngineTick() {
   if (stabilizingMode) return;
 
   // ═══════════════════════════════════════════════════════════════
-  // MANUAL MODE = অপারেটর ডিভাইস চালায়, কিন্তু জীবন-রক্ষাকারী
-  // সেফটি সক্রিয় থাকে (অ্যাপের প্রতিশ্রুতির সাথে মিল)।
-  //   • HARD FLOOR (≥42°C → Fan+Alarm) — সবসময়, ইঞ্জিন OFF থাকলেও
-  //   • Safety Arbiter forces (INV-1..INV-8) — safetyEngineEnabled হলে
-  // অন্য কোনো অটোমেশন (schedule, hysteresis, fogger, lighting) চলে না।
-  // সেফটি ছেড়ে দিলে অপারেটরের আগের ইচ্ছা (relayTarget) ফেরত আসে।
+  // MANUAL ABSOLUTE (v8.6.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত।
+  // ম্যানুয়াল মোডে বোর্ড কোনো রিলে নিজে চালু/বন্ধ করে না — কারেন্ট,
+  // ওয়াইফাই, সেন্সর, তাপমাত্রা, গ্যাস যেকোনো অবস্থায়ই না।
+  // একমাত্র ব্যতিক্রম: সাইরেন/অ্যালার্ম — বিপদ হলে বাজে (সতর্ক করার জন্য),
+  // কিন্তু ফ্যান/হিটার/ফগার/লাইট অপারেটর যেভাবে রেখেছেন সেভাবেই থাকে।
+  // মালিকের স্পষ্ট অনুরোধে সেফটি ইঞ্জিনের স্বয়ংক্রিয় হস্তক্ষেপ বন্ধ।
   // ═══════════════════════════════════════════════════════════════
   if (localManualOverride) {
-    // Only expire manual overrides, do NOT run any automation
+    // Only expire per-device manual flags; no automation runs.
     if (fanManualOverride && fanManualTime > 0 && (millis() - fanManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
       fanManualOverride = false; fanManualTime = 0;
-      Serial.println("⏱️ Fan manual override EXPIRED");
     }
     if (heaterManualOverride && heaterManualTime > 0 && (millis() - heaterManualTime >= MANUAL_OVERRIDE_TIMEOUT)) {
       heaterManualOverride = false; heaterManualTime = 0;
-      Serial.println("⏱️ Heater manual override EXPIRED");
     }
 
-    // --- Hard floor (always active, even with safety engine OFF) ---
+    // Danger detection stays alive — for the siren, the display and the app.
     float mTemp = dht2Available ? max(temperature, temperature2) : temperature;
-    if (mTemp >= HARD_FLOOR_TEMP_C) {
+    if (!isnan(mTemp) && mTemp >= HARD_FLOOR_TEMP_C) {
       if (!hardFloorActive) {
         hardFloorActive = true;
-        Serial.printf("🔥 [MANUAL] HARD FLOOR ENGAGED: T=%.1f°C → Fan+Alarm forced ON\n", mTemp);
+        Serial.printf("🔥 [MANUAL] DANGER: T=%.1f°C ≥ %.1f°C → siren only (relays stay as operator set)\n",
+                      mTemp, HARD_FLOOR_TEMP_C);
       }
-    } else if (hardFloorActive && mTemp <= (HARD_FLOOR_TEMP_C - HARD_FLOOR_HYST_C)) {
+    } else if (hardFloorActive && !isnan(mTemp) && mTemp <= (HARD_FLOOR_TEMP_C - HARD_FLOOR_HYST_C)) {
       hardFloorActive = false;
-      Serial.printf("✅ [MANUAL] HARD FLOOR RELEASED: T=%.1f°C\n", mTemp);
+      Serial.printf("✅ [MANUAL] DANGER CLEARED: T=%.1f°C\n", mTemp);
     }
 
-    bool forceFan    = hardFloorActive || safetyEngine.lastResult.forceFanOn;
-    bool forceAlarm  = hardFloorActive;
-    bool forceHeatOff = safetyEngine.lastResult.forceHeaterOff;
-    bool forceHeatOn  = safetyEngine.lastResult.forceHeaterOn;
-    bool safetyForcing = forceFan || forceAlarm || forceHeatOff || forceHeatOn;
+    bool dangerNow = hardFloorActive || sensorErrorMode || nh3ThresholdBreached ||
+                     safetyEngine.lastResult.forceFanOn ||
+                     currentState >= STATE_DANGER;
 
-    // Snapshot the operator's intent the moment safety takes over, so we can
-    // hand control back exactly as they left it when the danger passes.
-    static bool manualSafetySnapshot = false;
-    static bool snapFan = false, snapAlarm = false, snapHeater = false;
-    static String snapFanSpeed = "OFF";
-    if (safetyForcing && !manualSafetySnapshot) {
-      snapFan = relayTarget.fan; snapAlarm = relayTarget.alarm;
-      snapHeater = relayTarget.heater; snapFanSpeed = relayTarget.fanSpeed;
-      manualSafetySnapshot = true;
-      Serial.println("🛡️ [MANUAL] Safety override engaged — operator intent saved");
-    }
-
-    if (forceFan)     requestFan(true, "HIGH");
-    if (forceAlarm)   requestAlarm(true);
-    if (forceHeatOff) requestHeater(false);
-    else if (forceHeatOn) requestHeater(true);
-
-    if (!safetyForcing && manualSafetySnapshot) {
-      requestFan(snapFan, snapFanSpeed);
+    // Siren is the only automatic output in manual mode.
+    static bool sirenForced = false;
+    static bool snapAlarm = false;
+    if (dangerNow && !sirenForced) {
+      snapAlarm = relayTarget.alarm;
+      sirenForced = true;
+      requestAlarm(true);
+      Serial.println("🚨 [MANUAL] Siren ON — operator action required (no relay takeover)");
+    } else if (dangerNow) {
+      requestAlarm(true);
+    } else if (sirenForced) {
+      sirenForced = false;
       requestAlarm(snapAlarm);
-      requestHeater(snapHeater);
-      manualSafetySnapshot = false;
-      Serial.println("✅ [MANUAL] Safety released — operator control restored");
+      Serial.println("🔕 [MANUAL] Siren released — operator alarm intent restored");
     }
 
-    return;  // ম্যানুয়াল — সেফটি ছাড়া আর কোনো অটোমেশন নেই
+    return;  // ম্যানুয়াল — সাইরেন ছাড়া আর কোনো স্বয়ংক্রিয় কাজ নেই
   }
+
 
 
   // ════ ALWAYS-ON HARD FLOOR (works even when safety engine OFF) ════
