@@ -15,15 +15,23 @@ import { daysAgoDate, type ActiveScope, type Expense, type Income } from './type
 export async function resolveActiveScope(farmId: string): Promise<ActiveScope> {
   try {
     const [layerRes, broilerRes] = await Promise.all([
-      supabase.from('layer_batches').select('id').eq('farm_id', farmId).eq('status', 'active')
+      supabase.from('layer_batches').select('id,start_date').eq('farm_id', farmId).eq('status', 'active')
         .order('start_date', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('broiler_batches').select('id').eq('farm_id', farmId).eq('status', 'active')
+      supabase.from('broiler_batches').select('id,start_date').eq('farm_id', farmId).eq('status', 'active')
         .order('start_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
-    const layerId = (layerRes.data as any)?.id ?? null;
-    const broilerId = (broilerRes.data as any)?.id ?? null;
-    if (layerId) return { activeBatchId: layerId, farmMode: 'layer' };
-    if (broilerId) return { activeBatchId: broilerId, farmMode: 'broiler' };
+    const layer = (layerRes.data as any) ?? null;
+    const broiler = (broilerRes.data as any) ?? null;
+    if (layer && broiler) {
+      // Mixed-mode farm: the batch that started most recently wins, instead of
+      // always tagging finance rows to the layer batch.
+      const layerWins = String(layer.start_date || '') >= String(broiler.start_date || '');
+      return layerWins
+        ? { activeBatchId: layer.id, farmMode: 'layer' }
+        : { activeBatchId: broiler.id, farmMode: 'broiler' };
+    }
+    if (layer) return { activeBatchId: layer.id, farmMode: 'layer' };
+    if (broiler) return { activeBatchId: broiler.id, farmMode: 'broiler' };
     return { activeBatchId: null, farmMode: null };
   } catch {
     return { activeBatchId: null, farmMode: null };

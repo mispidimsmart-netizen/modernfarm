@@ -7,6 +7,7 @@ import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
 import { format } from 'date-fns';
+import { today as farmToday } from '@/api/types';
 
 export interface TodaySummary {
   todayEggs: number;
@@ -40,7 +41,7 @@ export function useTodaySummary() {
       ? (activeBroilerBatch as any)?.start_date ?? null
       : null;
   const financeScope = { mode: getFinanceMode(isLayer, isBroiler), activeBatchId, batchStart: activeBatchStart };
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = farmToday();
 
   return useQuery({
     queryKey: [

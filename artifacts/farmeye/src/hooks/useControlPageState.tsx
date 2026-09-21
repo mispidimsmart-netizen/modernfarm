@@ -112,12 +112,16 @@ export function useControlPageState() {
     const col = DESIRED_COL_MAP[deviceKey as keyof typeof DESIRED_COL_MAP];
     const expCol = EXPIRES_COL_MAP[deviceKey as keyof typeof EXPIRES_COL_MAP];
     if (!col || !user) return;
+    // Farm is the tenant boundary. A user_id-only fallback would clear the
+    // override on EVERY farm of this user, so refuse to write without a farm.
+    if (!selectedFarmId) {
+      console.warn('[Control] clearDesiredColumn skipped — no farm selected');
+      return;
+    }
     let q = supabase
       .from('device_status')
-      .update({ [col]: null, [expCol]: null, updated_at: new Date().toISOString() } as any);
-    // Farm is the tenant boundary — scope by farm_id when known.
-    if (selectedFarmId) q = q.eq('farm_id', selectedFarmId);
-    else q = q.eq('user_id', user.id);
+      .update({ [col]: null, [expCol]: null, updated_at: new Date().toISOString() } as any)
+      .eq('farm_id', selectedFarmId);
     if (selectedShedId) q = q.eq('shed_id', selectedShedId);
     await q;
   }, [user, selectedFarmId, selectedShedId]);

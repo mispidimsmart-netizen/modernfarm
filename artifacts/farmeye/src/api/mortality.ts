@@ -7,13 +7,19 @@
 import { supabase } from '@/integrations/supabase/client';
 import { daysAgoDate, type MortalityRecord } from './types';
 
-/** Returns raw rows joined with shed farm/type so callers can scope-filter. */
-export async function listMortalityRecords(days: number): Promise<any[]> {
-  const { data, error } = await supabase
+/**
+ * Returns raw rows joined with shed farm/type so callers can scope-filter.
+ * `farmId` is filtered server-side — client-side filtering alone let a
+ * multi-farm account mix every farm's deaths into one mortality figure.
+ */
+export async function listMortalityRecords(days: number, farmId?: string | null): Promise<any[]> {
+  let q = supabase
     .from('mortality_records')
     .select('*, sheds:shed_id(farm_id, farm_type)')
     .gte('record_date', daysAgoDate(days))
     .order('record_date', { ascending: false });
+  if (farmId) q = q.eq('farm_id', farmId);
+  const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
 }

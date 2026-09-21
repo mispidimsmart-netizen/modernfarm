@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { today as farmToday } from '@/api/types';
 
 interface ActivityStat {
   icon: React.ElementType;
@@ -16,7 +17,7 @@ interface ActivityStat {
 
 function SystemActivityCardImpl() {
   const { language, user } = useAuth();
-  const today = new Date().toISOString().split('T')[0];
+  const today = farmToday();
 
   const { data: activityData } = useQuery({
     queryKey: ['system-activity', user?.id, today],

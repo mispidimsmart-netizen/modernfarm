@@ -178,6 +178,7 @@ export interface BatchInputs {
   feed: { quantity_kg: number }[];
   inventory: { unit_price: number; quantity_kg: number }[];
   expenses: { amount: number }[];
+  income?: { amount: number }[];
 }
 
 export interface ComputedBatchSummary {
@@ -240,8 +241,18 @@ export async function fetchBatchInputs(
     .lte('expense_date', endDate);
   if (farmId) expQ = expQ.eq('farm_id', farmId);
 
-  const [eggsRes, mortRes, feedRes, invRes, expRes] = await Promise.all([
-    eggsQ, mortalityQ, feedQ, invQ, expQ,
+  // Revenue (egg sales, spent hens, …) — without this the close-out report
+  // always showed total_revenue = 0 and a loss-only net profit.
+  let incQ = supabase
+    .from('income')
+    .select('amount,income_date')
+    .eq('user_id', userId)
+    .gte('income_date', startDate)
+    .lte('income_date', endDate);
+  if (farmId) incQ = incQ.eq('farm_id', farmId);
+
+  const [eggsRes, mortRes, feedRes, invRes, expRes, incRes] = await Promise.all([
+    eggsQ, mortalityQ, feedQ, invQ, expQ, incQ,
   ]);
 
   return {
@@ -250,6 +261,7 @@ export async function fetchBatchInputs(
     feed: (feedRes.data || []) as any,
     inventory: (invRes.data || []) as any,
     expenses: (expRes.data || []) as any,
+    income: (incRes.data || []) as any,
   };
 }
 
@@ -331,7 +343,7 @@ export function summarizeBatch(
   const fcr = eggMassKg > 0 ? totalFeedKg / eggMassKg : 0;
 
   const totalExpenses = inputs.expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-  const totalRevenue = 0;
+  const totalRevenue = (inputs.income || []).reduce((s, i) => s + Number(i.amount || 0), 0);
   const netProfit =
     totalRevenue -
     totalExpenses -

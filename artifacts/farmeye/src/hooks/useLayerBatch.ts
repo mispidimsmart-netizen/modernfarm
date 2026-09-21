@@ -14,6 +14,7 @@ import * as layerApi from '@/api/layer';
 
 export type { LayerBatch, LayerBatchSummary, BatchTrendPoint } from '@/api/layer';
 import type { LayerBatch } from '@/api/layer';
+import { today } from '@/api/types';
 
 /** Re-exported for the offline edit queue, which recomputes with the same logic. */
 export const computeBatchSummary = layerApi.computeBatchSummary;
@@ -232,7 +233,7 @@ export function useLayerBatchTrend(batch: LayerBatch | null | undefined) {
     queryKey: ['layer-batch-trend', batch?.id],
     queryFn: () => {
       if (!user || !batch) return [];
-      const end = batch.actual_end_date || new Date().toISOString().split('T')[0];
+      const end = batch.actual_end_date || today();
       return layerApi.getBatchTrend(user.id, batch.start_date, end);
     },
     enabled: !!user && !!batch,

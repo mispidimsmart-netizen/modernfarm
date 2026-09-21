@@ -7,6 +7,7 @@ import { useActiveBatch, useBatchStats } from '@/hooks/useBroilerData';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
+import { toFarmDate } from '@/api/types';
 
 interface SummaryCard {
   id: string;
@@ -49,8 +50,8 @@ export function SmartSummaryCards() {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const todayStr = today.toISOString().split('T')[0];
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const todayStr = toFarmDate(today);
+      const yesterdayStr = toFarmDate(yesterday);
 
       const [todayData, yesterdayData] = await Promise.all([
         supabase
