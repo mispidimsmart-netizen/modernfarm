@@ -1,10 +1,24 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Wind, Shield, Heart, Thermometer, Zap, 
+import {
+  Wind, Shield, Heart, Thermometer, Zap,
   Leaf, Activity, Droplets, Flame, Sun,
-  RotateCcw, Minus, Plus, Lock
+  RotateCcw, Minus, Plus, Lock, Lightbulb, ChevronDown
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+// Lazy-loaded to preserve tab-level code splitting.
+const LightingTab = lazy(() =>
+  import('@/components/settings/tabs/LightingTab').then(m => ({ default: m.LightingTab }))
+);
+
+function LightingFallback() {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="h-7 w-7 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
 import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
