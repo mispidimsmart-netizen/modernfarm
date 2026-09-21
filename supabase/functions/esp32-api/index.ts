@@ -15,6 +15,7 @@ import {
 } from "./commands.ts";
 import { handlePowerStatus, getPowerOutages, type PowerStatusPayload } from "./power.ts";
 import { handleFailsafeSync } from "./failsafe.ts";
+import { evaluateModeGate } from "../_shared/mode-precedence.ts";
 import { handleSensorData, handleSensorBatch, handleQualityUpdate, type SensorPayload } from "./sensors.ts";
 import {
   getSettings,
@@ -427,6 +428,13 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'POST' && path === 'control') {
+      const gate = await assertCloudWriteAllowed(supabase, userId, deviceFarmId ?? null, deviceShedId ?? null);
+      if (!gate.allow) {
+        return new Response(
+          JSON.stringify({ error: 'Cloud control blocked by mode precedence', code: gate.reason }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
       return await handleControlCommand(bodyData, supabase, userId, {
         device_name: device.device_name,
         farm_id: deviceFarmId,
@@ -435,6 +443,13 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'POST' && path === 'manual-control') {
+      const gate = await assertCloudWriteAllowed(supabase, userId, deviceFarmId ?? null, deviceShedId ?? null);
+      if (!gate.allow) {
+        return new Response(
+          JSON.stringify({ error: 'Cloud control blocked by mode precedence', code: gate.reason }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
       return await handleManualControl(bodyData, supabase, userId, {
         device_name: device.device_name,
         farm_id: deviceFarmId,
@@ -1820,6 +1835,43 @@ interface ControlPayload {
   alarm?: string | boolean;
   power?: string | boolean;
   mode?: 'AUTO' | 'MANUAL';
+}
+
+/**
+ * Legacy /control and /manual-control write desired_* directly. Every cloud
+ * writer must pass the single mode-precedence contract, otherwise a leaked
+ * device token could break the "manual is absolute" promise.
+ */
+// deno-lint-ignore no-explicit-any
+async function assertCloudWriteAllowed(
+  supabase: any,
+  userId: string,
+  farmId: string | null,
+  shedId: string | null,
+): Promise<{ allow: boolean; reason?: string }> {
+  let settingsQuery = supabase
+    .from('farm_settings')
+    .select('automation_mode, safety_engine_enabled')
+    .eq('user_id', userId);
+  if (farmId) settingsQuery = settingsQuery.eq('farm_id', farmId);
+  const { data: settings } = await settingsQuery.limit(1).maybeSingle();
+
+  let statusQuery = supabase
+    .from('device_status')
+    .select('mode, manual_override, desired_manual_override');
+  if (farmId) statusQuery = statusQuery.eq('farm_id', farmId);
+  else statusQuery = statusQuery.eq('user_id', userId);
+  if (shedId) statusQuery = statusQuery.eq('shed_id', shedId);
+  const { data: status } = await statusQuery.limit(1).maybeSingle();
+
+  const gate = evaluateModeGate({
+    automationMode: settings?.automation_mode,
+    deviceMode: status?.mode,
+    safetyEngineEnabled: settings?.safety_engine_enabled,
+    manualOverride: status?.manual_override,
+    desiredManualOverride: status?.desired_manual_override,
+  });
+  return { allow: gate.allow, reason: gate.reason };
 }
 
 async function handleControlCommand(
