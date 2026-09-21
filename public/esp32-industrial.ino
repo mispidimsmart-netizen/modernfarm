@@ -2098,7 +2098,18 @@ void automationEngineTick() {
       Serial.println("🔕 [MANUAL] Siren released — operator alarm intent restored");
     }
 
-    return;  // ম্যানুয়াল — সাইরেন ছাড়া আর কোনো স্বয়ংক্রিয় কাজ নেই
+    // v8.7.0: MANUAL + সেফটি ইঞ্জিন ON → জীবনরক্ষা সুরক্ষা রিলেতেও কাজ করে।
+    // অপারেটরের রিলে অবস্থা অক্ষত থাকে; শুধু বিপদ-অবস্থায় বোর্ড হস্তক্ষেপ করে।
+    if (safetyEngineEnabled) {
+      if (hardFloorActive || safetyEngine.lastResult.forceFanOn) {
+        requestFan(true, "HIGH");
+      }
+      if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
+      if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+      if (emergencySurvivalMode) runEmergencySurvivalCycles();
+    }
+
+    return;  // ম্যানুয়াল — সাইরেন (+ ইঞ্জিন ON হলে সুরক্ষা) ছাড়া আর কোনো অটোমেশন নেই
   }
 
 
