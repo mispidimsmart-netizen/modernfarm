@@ -234,11 +234,7 @@ export function useSendDeviceCommand() {
       const startedAt = Date.now();
       const timeoutMs = 12000;
       const pollMs = 1500;
-      let cancelled = false;
-
       const poll = async () => {
-        if (cancelled) return;
-
         let executed = false;
         if (commandId) {
           const { data: cmd } = await supabase
