@@ -49,19 +49,21 @@ export function useControlPageState() {
   const setAutomationMode = useSetAutomationMode();
   const { data: farmSettings } = useFarmSettings();
 
-  // FIX #1 (split-brain): mirror useDeviceControl's manual-mode logic so the
-  // banner and the underlying resolveState agree.
+  // FIX #1 (split-brain): one shared derivation (src/lib/manualMode) so the
+  // banner, resolveState and Dashboard tiles can never disagree.
   const rawStatus = rawDeviceStatus as Record<string, unknown> | undefined;
-  const isManualMode =
-    automationMode === 'MANUAL' ||
-    !!rawStatus?.desired_manual_override ||
-    !!rawStatus?.manual_override;
+  const manualSources = {
+    automationMode,
+    desiredManualOverride: !!rawStatus?.desired_manual_override,
+    manualOverride: !!rawStatus?.manual_override,
+  };
+  const isManualMode = deriveManualMode(manualSources);
 
   // Hardware truth vs cloud intent — the ESP32 mirrors desired_manual_override
   // into manual_override once it applies the mode. Until then the banner must
   // say "waiting for hardware", otherwise the UI lies about the live state.
-  const hardwareManualMode = !!rawStatus?.manual_override;
-  const modeSyncPending = isManualMode !== hardwareManualMode;
+  const hardwareManualMode = isHardwareManualMode(manualSources);
+  const modeSyncPending = isModeSyncPending(manualSources);
 
   // Freshness of the whole device_status row (Hardware-as-Source-of-Truth).
   const STALE_MS = 2 * 60 * 1000;
