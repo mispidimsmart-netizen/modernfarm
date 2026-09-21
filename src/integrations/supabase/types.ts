@@ -9280,6 +9280,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      recover_device_from_failsafe: {
+        Args: { _device_health_id: string }
+        Returns: string
+      }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       refresh_farm_daily_rollup: { Args: never; Returns: undefined }
       refresh_sensor_hourly_rollup: { Args: never; Returns: undefined }
