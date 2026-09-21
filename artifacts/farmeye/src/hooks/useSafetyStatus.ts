@@ -210,7 +210,12 @@ export function useSafetyStatus() {
 
     // Sensor
     sensorStates: status.sensor_state as Record<string, string>,
-    sensorIssues: status.sensor_issues as Array<{ sensor: string; type: string; message: string }>,
+    // Firmware may send an object (or null) instead of an array — normalize defensively
+    sensorIssues: (Array.isArray(status.sensor_issues)
+      ? status.sensor_issues
+      : status.sensor_issues && typeof status.sensor_issues === 'object'
+        ? Object.values(status.sensor_issues as Record<string, unknown>)
+        : []) as Array<{ sensor: string; type: string; message: string }>,
     sensorDriftDetected: status.sensor_drift_detected,
     tempSensorCritical: status.sensor_state?.temperature === 'FAILED' || status.sensor_state?.temperature === 'PHYSICALLY_IMPOSSIBLE',
 
