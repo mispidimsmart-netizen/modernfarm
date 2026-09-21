@@ -579,10 +579,9 @@ bool manualCommandPending = false;      // Bypass relay protection for manual co
 
 // --- Manual Overrides ---
 bool localManualOverride = false;
-// v8.7.0: "Manual absolute" = MANUAL mode AND safety engine OFF.
-// MANUAL + engine ON = operator keeps relay control, but life-safety
-// protections (hard floor, ESM, sensor-fail vent, arbiter veto) still act.
-inline bool manualAbsolute() { return localManualOverride && !safetyEngineEnabled; }
+// v8.8.0: MANUAL mode is ALWAYS absolute — the safety engine has no role in
+// manual. The board never touches relays in manual; only the siren reacts.
+inline bool manualAbsolute() { return localManualOverride; }
 bool fanManualOverride = false;     unsigned long fanManualTime = 0;
 bool heaterManualOverride = false;  unsigned long heaterManualTime = 0;
 bool foggerManualOverride = false;  unsigned long foggerManualTime = 0;
