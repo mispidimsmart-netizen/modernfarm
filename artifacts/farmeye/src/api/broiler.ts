@@ -73,14 +73,15 @@ export async function getActiveBatch(
   userId: string,
   farmId?: string | null,
 ): Promise<BroilerBatch | null> {
-  let q = supabase
+  if (!farmId) return null;
+  const q = supabase
     .from('broiler_batches')
     .select('*')
     .eq('user_id', userId)
     .eq('status', 'active')
+    .eq('farm_id', farmId)
     .order('start_date', { ascending: false })
     .limit(1);
-  if (farmId) q = q.eq('farm_id', farmId);
 
   const { data, error } = await q.maybeSingle();
   if (error) throw error;
