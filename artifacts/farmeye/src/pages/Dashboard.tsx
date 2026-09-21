@@ -307,9 +307,14 @@ export function Dashboard() {
                     : (isManualMode ? 'System Status' : 'Automation & Safety')}
                 </h3>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* MANUAL: the board never acts on its own, so Safety Engine
+                      and automation status tiles are hidden — they would imply
+                      protections that are deliberately inactive. */}
+                  <div className={isManualMode ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
                     <div className="min-w-0"><SystemModeCard /></div>
-                    <div className="min-w-0"><SafetyEngineStatusCard /></div>
+                    {!isManualMode && (
+                      <div className="min-w-0"><SafetyEngineStatusCard /></div>
+                    )}
                   </div>
                   {!isManualMode && (
                     <div className="min-w-0"><AutomationStatusCard /></div>

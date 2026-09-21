@@ -17,7 +17,7 @@ interface Props {
   commandProgress?: CommandProgressMap;
   onToggle: (deviceKey: string, next: boolean) => void;
   disabled: boolean;
-  /** Live safety context — Safety Engine still applies in MANUAL mode when ON. */
+  /** Live safety context — advisory only in MANUAL; nothing here blocks a toggle. */
   temperature?: number;
   ammonia?: number;
   tempMax?: number;
@@ -96,10 +96,12 @@ export function ManualDeviceGrid({
                     )}
                   </div>
                   <div className="relative">
+                    {/* MANUAL IS ABSOLUTE: never disable a switch for safety —
+                        the operator decides, the board only sounds the siren. */}
                     <Switch
                       checked={active}
                       onCheckedChange={(val) => onToggle(device.key, val)}
-                      disabled={disabled || isPending || (isSafetyLocked && active)}
+                      disabled={disabled || isPending}
                       className={`${!isPending ? c.switchOn : 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40'}`}
                     />
                     {isPending && (
@@ -117,8 +119,8 @@ export function ManualDeviceGrid({
                 </div>
 
                 {isSafetyLocked && reason && (
-                  <div className="flex items-start gap-1.5 rounded-md bg-red-500/10 border border-red-500/30 px-2 py-1">
-                    <ShieldAlert className="h-3 w-3 text-red-600 mt-0.5 shrink-0" />
+                  <div className="flex items-start gap-1.5 rounded-md bg-status-warning/10 border border-status-warning/30 px-2 py-1">
+                    <ShieldAlert className="h-3 w-3 text-status-warning mt-0.5 shrink-0" />
                     <p className="text-[10px] leading-tight text-muted-foreground">{reason[language]}</p>
                   </div>
                 )}
