@@ -6082,9 +6082,10 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (Auto + Manual, when enabled) ---
-  // The arbiter is the final authority and is deliberately independent from
-  // cloud automation mode. Hard safety controls must survive MANUAL/STOP.
+  // --- Safety Arbiter AGAIN after all processing ---
+  // The arbiter is the final authority in AUTO. In MANUAL it only detects and
+  // alarms (siren + cloud alert) — relay actuation stays with the operator.
+  safetyEngine.setManualAbsolute(manualAbsolute());
   safetyEngine.arbiterTick(temperature, humidity, ammonia,
     !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 
