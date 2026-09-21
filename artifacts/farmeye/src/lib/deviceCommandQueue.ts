@@ -133,15 +133,18 @@ export function removeDeviceCommand(id: string) {
   save(load().filter((i) => i.id !== id));
 }
 
-export function clearExpiredDeviceCommands() {
+export function clearExpiredDeviceCommands(): number {
   const now = Date.now();
-  const kept = load().filter((i) => {
+  const all = load();
+  const kept = all.filter((i) => {
     const ttl = i.max_age_minutes ?? DEFAULT_TTL_MIN;
     const ageMin = (now - new Date(i.queued_at).getTime()) / 60_000;
     return ageMin <= ttl;
   });
-  save(kept);
+  if (kept.length !== all.length) save(kept);
+  return all.length - kept.length;
 }
+
 
 export function getDeviceQueueCount(): number {
   return getQueuedDeviceCommands().length;
