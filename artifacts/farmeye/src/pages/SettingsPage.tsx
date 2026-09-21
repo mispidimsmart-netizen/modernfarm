@@ -51,9 +51,6 @@ const ReportsDataTab = lazy(() =>
 const DeviceSystemTab = lazy(() =>
   import('@/components/settings/tabs/DeviceSystemTab').then(m => ({ default: m.DeviceSystemTab }))
 );
-const LightingTab = lazy(() =>
-  import('@/components/settings/tabs/LightingTab').then(m => ({ default: m.LightingTab }))
-);
 const TraceabilityTab = lazy(() =>
   import('@/components/settings/traceability/TraceabilityTab').then(m => ({ default: m.TraceabilityTab }))
 );
@@ -410,10 +407,6 @@ export function SettingsPage() {
 
               <TabsContent value="operation">
                 <Suspense fallback={<TabFallback />}><OperationPreferencesTab /></Suspense>
-              </TabsContent>
-
-              <TabsContent value="lighting">
-                <Suspense fallback={<TabFallback />}><LightingTab /></Suspense>
               </TabsContent>
 
               <TabsContent value="reports">
