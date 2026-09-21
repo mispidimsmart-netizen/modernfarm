@@ -117,13 +117,12 @@ serve(async (req) => {
       if (body?.boot_success === true && body?.signature_validated !== true) {
         return json({ error: "Successful boot must report signature validation" }, 400);
       }
-      const status = body?.boot_success === true ? "completed" : "boot_failed";
       // assignment_id is the terminal-report idempotency key. Every
       // identity field is matched again so a valid token cannot report for a
       // different tenant/device/firmware.
       const { data: assignment, error: assignmentError } = await supabase
         .from("firmware_install_logs")
-        .select("id, status, boot_attempts")
+        .select("id, status, boot_attempts, to_version")
         .eq("id", assignmentId)
         .eq("device_token_id", device.id)
         .eq("firmware_id", firmwareId)
@@ -141,22 +140,61 @@ serve(async (req) => {
         }
         return json({ error: "OTA assignment is already terminal" }, 409);
       }
+
+      // ── Server-side success verification ──────────────────────────────────
+      // A client boolean alone must never mark an install complete. The running
+      // version the board reports (and its image digest when it sends one) is
+      // checked against the assigned firmware row; a mismatch is recorded as a
+      // failed install and the device is told to roll back.
+      let verificationError: string | null = null;
+      if (body?.boot_success === true) {
+        const { data: assignedFw, error: fwError } = await supabase
+          .from("ota_firmware")
+          .select("version, sha256_hex")
+          .eq("id", firmwareId)
+          .maybeSingle();
+        if (fwError) return json({ error: "Unable to resolve assigned firmware" }, 503);
+        if (!assignedFw) {
+          verificationError = "assigned firmware metadata missing";
+        } else {
+          const norm = (v: unknown) => String(v ?? "").trim().replace(/^v/i, "").toLowerCase();
+          const reported = norm(body?.version);
+          const expected = norm(assignedFw.version);
+          const target = norm(assignment.to_version);
+          if (!reported) {
+            verificationError = "running version not reported";
+          } else if (reported !== expected || (target && reported !== target)) {
+            verificationError = `running version ${reported} does not match assigned ${expected}`;
+          } else if (typeof body?.installed_sha256 === "string" && body.installed_sha256.length === 64 &&
+                     String(assignedFw.sha256_hex ?? "").toLowerCase() !== body.installed_sha256.toLowerCase()) {
+            verificationError = "installed image digest mismatch";
+          }
+        }
+      }
+      const verifiedSuccess = body?.boot_success === true && verificationError === null;
+      const finalStatus = verifiedSuccess ? "completed" : "boot_failed";
       const { error: reportError } = await supabase.from("firmware_install_logs")
         .update({
-          status,
+          status: finalStatus,
           boot_attempts: Number(assignment.boot_attempts ?? 0) + 1,
-          boot_succeeded: body?.boot_success === true,
-          signature_validated: body?.signature_validated === true,
+          boot_succeeded: verifiedSuccess,
+          signature_validated: verifiedSuccess && body?.signature_validated === true,
           last_boot_at: new Date().toISOString(),
-          completed_at: body?.boot_success === true ? new Date().toISOString() : null,
-          error_message: body?.boot_success === true ? null : "boot validation failed",
-          rollback_triggered: body?.boot_success !== true,
-          auto_rolled_back: body?.boot_success !== true,
+          completed_at: verifiedSuccess ? new Date().toISOString() : null,
+          error_message: verifiedSuccess
+            ? null
+            : (verificationError ?? "boot validation failed"),
+          rollback_triggered: !verifiedSuccess,
+          auto_rolled_back: !verifiedSuccess,
         })
         .eq("id", assignment.id)
         .eq("status", "pending");
       if (reportError) return json({ error: "Unable to record boot report" }, 503);
-      return json({ success: true, should_rollback: body?.boot_success !== true });
+      return json({
+        success: true,
+        should_rollback: !verifiedSuccess,
+        ...(verificationError ? { verification_error: verificationError } : {}),
+      });
     }
 
     if (action === "check") {

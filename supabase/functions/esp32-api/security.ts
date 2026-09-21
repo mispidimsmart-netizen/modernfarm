@@ -60,7 +60,7 @@ export async function verifyDeviceSignature(
 ): Promise<SignatureCheckResult> {
   const { data: secretRow } = await supabase
     .from('device_tokens')
-    .select('device_secret, previous_device_secret, previous_secret_expires_at, secret_version')
+    .select('device_secret, previous_device_secret, previous_secret_expires_at, secret_version, last_signature_at')
     .eq('id', device.id)
     .maybeSingle();
 
@@ -88,6 +88,14 @@ export async function verifyDeviceSignature(
     // Global hard enforcement switch — flip once every board runs signed firmware.
     if ((Deno.env.get('REQUIRE_DEVICE_SIGNATURES') || '').toLowerCase() === 'true') {
       audit('legacy_unsigned_rejected');
+      return { ok: false, status: 401, error: 'Signature required', code: 'MISSING_SIGNATURE' };
+    }
+    // Anti-downgrade: a device that has ALREADY proven it can sign may never
+    // fall back to unsigned requests, even while the global switch is off.
+    // This closes the fail-open window per device the moment signed firmware
+    // runs on it — a stolen token alone can no longer impersonate that board.
+    if (secretRow?.last_signature_at) {
+      audit('unsigned_after_signed_downgrade');
       return { ok: false, status: 401, error: 'Signature required', code: 'MISSING_SIGNATURE' };
     }
     audit('legacy_unsigned_request', 'legacy_unsigned_request', true);

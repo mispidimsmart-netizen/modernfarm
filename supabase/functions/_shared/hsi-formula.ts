@@ -14,7 +14,7 @@
  * the board. Every cloud path now uses the firmware formula.)
  *
  * Golden vectors (THI, 1 decimal) — keep in sync with firmware tests:
- *   25°C/60% -> 72.8 | 30°C/70% -> 81.3 | 35°C/80% -> 91.0 | 40°C/80% -> 98.9
+ *   25°C/60% -> 72.8 | 30°C/70% -> 81.3 | 35°C/80% -> 90.9 | 40°C/80% -> 98.9
  */
 export const HSI_FORMULA_VERSION = 'v8-thi-1';
 
