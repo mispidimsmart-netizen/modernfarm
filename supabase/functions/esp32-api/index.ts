@@ -323,15 +323,15 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'GET' && path === 'settings') {
-      return await getSettings(supabase, userId);
+      return await getSettings(supabase, deviceFarmId);
     }
 
     if (req.method === 'GET' && path === 'latest-data') {
-      return await getLatestSensorData(supabase, userId);
+      return await getLatestSensorData(supabase, userId, deviceFarmId, deviceShedId);
     }
 
     if (req.method === 'GET' && path === 'automation-rules') {
-      return await getAutomationRules(supabase, userId);
+      return await getAutomationRules(supabase, userId, deviceFarmId);
     }
 
     if (req.method === 'POST' && path === 'automation-rules') {
@@ -339,7 +339,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'GET' && path === 'lighting-schedule') {
-      return await getLightingSchedule(supabase, userId);
+      return await getLightingSchedule(supabase, userId, deviceFarmId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -353,7 +353,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     if (req.method === 'GET' && path === 'alerts') {
       const limit = parseInt(url.searchParams.get('limit') || '20');
       const unacknowledgedOnly = url.searchParams.get('unacknowledged') === 'true';
-      return await getAlerts(supabase, userId, limit, unacknowledgedOnly);
+      return await getAlerts(supabase, userId, deviceFarmId, deviceShedId, limit, unacknowledgedOnly);
     }
 
     if (req.method === 'GET' && path === 'commands') {

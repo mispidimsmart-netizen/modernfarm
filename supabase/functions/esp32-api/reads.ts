@@ -9,7 +9,7 @@ import { corsHeaders } from './http.ts';
 import { calculateCurrentBrightness } from './lighting.ts';
 import { getBroilerTargetTemp } from './domain.ts';
 
-export async function getSettings(supabase: any, userId: string) {
+export async function getSettings(supabase: any, farmId: string) {
   // Return ALL settings for fail-safe caching on ESP32
   const { data, error } = await supabase
     .from('farm_settings')
@@ -25,8 +25,8 @@ export async function getSettings(supabase: any, userId: string) {
       hsi_automation_enabled,
       water_anomaly_threshold
     `)
-    .eq('user_id', userId)
-    .single();
+    .eq('farm_id', farmId)
+    .maybeSingle();
 
   if (error) {
     console.error('Failed to get settings:', error);
@@ -49,11 +49,12 @@ export async function getSettings(supabase: any, userId: string) {
   );
 }
 
-export async function getAutomationRules(supabase: any, userId: string) {
+export async function getAutomationRules(supabase: any, userId: string, farmId: string) {
   const { data, error } = await supabase
     .from('automation_rules')
     .select('condition_sensor, condition_operator, condition_value, action_device, action_state, enabled')
     .eq('user_id', userId)
+    .eq('farm_id', farmId)
     .eq('enabled', true);
 
   if (error) {
@@ -69,12 +70,13 @@ export async function getAutomationRules(supabase: any, userId: string) {
   );
 }
 
-export async function getLightingSchedule(supabase: any, userId: string) {
+export async function getLightingSchedule(supabase: any, userId: string, farmId: string) {
   const { data, error } = await supabase
     .from('lighting_schedule')
     .select('start_time, end_time, total_hours, manual_override, gradual_enabled, fade_in_minutes, fade_out_minutes, min_brightness, max_brightness')
     .eq('user_id', userId)
-    .single();
+    .eq('farm_id', farmId)
+    .maybeSingle();
 
   if (error) {
     return new Response(
@@ -104,12 +106,14 @@ export async function getLightingSchedule(supabase: any, userId: string) {
 // Command delivery & ACK handlers live in ./commands.ts
 
 
-export async function getLatestSensorData(supabase: any, userId: string) {
+export async function getLatestSensorData(supabase: any, userId: string, farmId: string, shedId: string) {
   // Get latest sensor reading
   const { data: sensorData, error: sensorError } = await supabase
     .from('sensor_readings')
     .select('temperature, humidity, ammonia, water_usage, recorded_at')
     .eq('user_id', userId)
+    .eq('farm_id', farmId)
+    .eq('shed_id', shedId)
     .order('recorded_at', { ascending: false })
     .limit(1)
     .single();
@@ -119,14 +123,16 @@ export async function getLatestSensorData(supabase: any, userId: string) {
     .from('device_status')
     .select('power_on, fan_on, light_on, alarm_on, manual_override, updated_at')
     .eq('user_id', userId)
-    .single();
+    .eq('farm_id', farmId)
+    .eq('shed_id', shedId)
+    .maybeSingle();
 
   // Get farm settings for thresholds
   const { data: settings } = await supabase
     .from('farm_settings')
     .select('temperature_min, temperature_max, humidity_min, humidity_max, ammonia_max')
-    .eq('user_id', userId)
-    .single();
+    .eq('farm_id', farmId)
+    .maybeSingle();
 
   // Calculate status levels
   let temperatureStatus = 'normal';
@@ -181,11 +187,20 @@ export async function getLatestSensorData(supabase: any, userId: string) {
   );
 }
 
-export async function getAlerts(supabase: any, userId: string, limit: number, unacknowledgedOnly: boolean) {
+export async function getAlerts(
+  supabase: any,
+  userId: string,
+  farmId: string,
+  shedId: string,
+  limit: number,
+  unacknowledgedOnly: boolean,
+) {
   let query = supabase
     .from('alerts')
     .select('id, alert_type, severity, message, message_bn, acknowledged, created_at')
     .eq('user_id', userId)
+    .eq('farm_id', farmId)
+    .eq('shed_id', shedId)
     .order('created_at', { ascending: false })
     .limit(Math.min(limit, 100));
 
