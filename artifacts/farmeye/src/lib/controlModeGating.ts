@@ -50,17 +50,15 @@ export function isGasProtectionActive(ctx: SafetyContext): boolean {
 
 /**
  * Should the given device be treated as safety-locked (user cannot stop it)?
- * - MANUAL + engine OFF ("manual absolute") → never locked: the operator is
- *   the only authority; the board raises the siren instead of taking over.
- * - MANUAL + engine ON → locked exactly like AUTO: the board's life-safety
- *   protections still act on the relays in danger conditions.
+ * - MANUAL → never locked: the operator is the only authority; the board
+ *   raises the siren instead of taking over, regardless of the safety toggle.
  * - Safety Engine OFF → nothing is locked, even in danger conditions.
  */
 export function isDeviceSafetyLocked(
   deviceKey: DeviceKey,
   ctx: SafetyContext,
 ): boolean {
-  if (ctx.mode === 'MANUAL' && !ctx.safetyEngineEnabled) return false;
+  if (ctx.mode === 'MANUAL') return false;
   const heat = isHeatProtectionActive(ctx);
   const gas = isGasProtectionActive(ctx);
   if (heat && (COOLING_DEVICES as readonly string[]).includes(deviceKey)) return true;
