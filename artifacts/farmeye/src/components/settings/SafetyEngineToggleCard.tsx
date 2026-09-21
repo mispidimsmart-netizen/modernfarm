@@ -9,9 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Safety Engine Opt-Out toggle.
- * When OFF: ESP32 disables Arbiter, ESM, HSI auto-trigger, hysteresis emergency bypass.
- * Hard floor (>42°C → fan + alarm forced ON) ALWAYS remains active in firmware.
+ * Safety Engine opt-out toggle — AUTO mode only (v8.8.0+).
+ *
+ * AUTO + ON  : full arbiter, ESM, HSI auto-trigger, hysteresis emergency bypass.
+ * AUTO + OFF : only the >42°C hard floor (fan + alarm) stays armed in firmware.
+ * MANUAL     : the safety engine has no role at all — the board never touches a
+ *              relay, it only raises the siren — so the card is hidden.
  */
 export function SafetyEngineToggleCard() {
   const { language } = useAuth();
@@ -54,7 +57,6 @@ export function SafetyEngineToggleCard() {
   // ম্যানুয়াল মোডে সেফটি ইঞ্জিনের কোনো কাজ নেই (বোর্ড রিলে ছোঁয় না, শুধু সাইরেন),
   // তাই কার্ডটি লুকিয়ে রাখা হয়। অটো মোডে ফিরলেই আবার দেখা যাবে।
   if (automationMode === 'MANUAL') return null;
-  const isManual = false;
 
   return (
     <Card className={enabled ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}>
@@ -73,13 +75,9 @@ export function SafetyEngineToggleCard() {
           </Badge>
         </CardTitle>
         <CardDescription className="text-xs">
-          {isManual
-            ? (language === 'bn'
-                ? 'ম্যানুয়াল মোডে: চালু থাকলে জীবনরক্ষা নিয়ম কাজ করবে, বন্ধ থাকলে শুধু সাইরেন'
-                : 'In MANUAL mode: ON keeps life-safety rules active, OFF means siren only')
-            : (language === 'bn'
-                ? 'অটোমেটিক ফ্যান/হিটার/অ্যালার্ম, HSI সুরক্ষা, সেন্সর স্পাইক ফিল্টার'
-                : 'Auto fan/heater/alarm, HSI protection, sensor spike filter')}
+          {language === 'bn'
+            ? 'অটো মোডে: স্বয়ংক্রিয় ফ্যান/হিটার/অ্যালার্ম, HSI সুরক্ষা, সেন্সর স্পাইক ফিল্টার'
+            : 'In AUTO mode: auto fan/heater/alarm, HSI protection, sensor spike filter'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -90,56 +88,31 @@ export function SafetyEngineToggleCard() {
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {enabled
-                ? (isManual
-                    ? (language === 'bn'
-                        ? 'আপনার কন্ট্রোল অক্ষত, কিন্তু বিপদে বোর্ড ফ্যান/হিটার চালাবে'
-                        : 'You keep control, but the board will act on danger')
-                    : (language === 'bn'
-                        ? 'ESP32 স্বয়ংক্রিয় সুরক্ষা চালাচ্ছে'
-                        : 'ESP32 is running automatic protections'))
-                : (isManual
-                    ? (language === 'bn'
-                        ? 'সম্পূর্ণ ম্যানুয়াল — বিপদেও শুধু সাইরেন বাজবে'
-                        : 'Fully manual — on danger only the siren will sound')
-                    : (language === 'bn'
-                        ? 'শুধু ম্যানুয়াল কন্ট্রোল ও schedule কাজ করছে'
-                        : 'Only manual control and schedule are active'))}
+                ? (language === 'bn'
+                    ? 'ESP32 স্বয়ংক্রিয় সুরক্ষা চালাচ্ছে'
+                    : 'ESP32 is running automatic protections')
+                : (language === 'bn'
+                    ? 'শুধু ম্যানুয়াল কন্ট্রোল ও schedule কাজ করছে'
+                    : 'Only manual control and schedule are active')}
             </p>
           </div>
           <Switch checked={enabled} onCheckedChange={handleToggle} disabled={updateSettings.isPending} />
         </div>
 
-        {/* Hard floor guarantee — in MANUAL ABSOLUTE (manual + engine OFF) even
-            the hard floor is disarmed; show a plain danger warning instead. */}
-        {isManual && !enabled ? (
-          <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/30 p-3">
-            <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-            <div className="text-xs">
-              <p className="font-semibold text-red-700 dark:text-red-400">
-                {language === 'bn' ? '⚠️ সব স্বয়ংক্রিয় সুরক্ষা বন্ধ' : '⚠️ All automatic protection OFF'}
-              </p>
-              <p className="text-muted-foreground mt-1">
-                {language === 'bn'
-                  ? 'ম্যানুয়াল মোডে সেফটি ইঞ্জিন বন্ধ — ৪২°C বা গ্যাসেও বোর্ড ফ্যান চালাবে না, শুধু সাইরেন বাজবে। সাইরেন শুনলে সঙ্গে সঙ্গে ব্যবস্থা নিন।'
-                  : 'Manual mode with safety engine OFF — even at 42°C or high gas the board will only sound the siren. Act immediately when it sounds.'}
-              </p>
-            </div>
+        {/* Hard floor guarantee — armed in AUTO regardless of this toggle. */}
+        <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/30 p-3">
+          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+          <div className="text-xs">
+            <p className="font-semibold text-red-700 dark:text-red-400">
+              {language === 'bn' ? '🔥 হার্ড ফ্লোর সর্বদা সক্রিয়' : '🔥 Hard Floor Always Active'}
+            </p>
+            <p className="text-muted-foreground mt-1">
+              {language === 'bn'
+                ? 'অটো মোডে সেফটি ইঞ্জিন বন্ধ থাকলেও, তাপমাত্রা ৪২°C ছাড়ালে ফ্যান+অ্যালার্ম স্বয়ংক্রিয় চালু হবে — পাখি বাঁচানোর জন্য। ম্যানুয়াল মোডে বোর্ড কোনো ডিভাইস চালাবে না, শুধু সাইরেন বাজবে।'
+                : 'In AUTO, fan + alarm auto-trigger above 42°C even with the safety engine OFF. In MANUAL the board touches no relay — siren only.'}
+            </p>
           </div>
-        ) : (
-          <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/30 p-3">
-            <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-            <div className="text-xs">
-              <p className="font-semibold text-red-700 dark:text-red-400">
-                {language === 'bn' ? '🔥 হার্ড ফ্লোর সর্বদা সক্রিয়' : '🔥 Hard Floor Always Active'}
-              </p>
-              <p className="text-muted-foreground mt-1">
-                {language === 'bn'
-                  ? 'সেফটি ইঞ্জিন বন্ধ থাকলেও, তাপমাত্রা ৪২°C ছাড়ালে ফ্যান+অ্যালার্ম স্বয়ংক্রিয় চালু হবে — পাখি বাঁচানোর জন্য।'
-                  : 'Even with safety engine OFF, fan + alarm will auto-trigger when temperature exceeds 42°C — to protect livestock.'}
-              </p>
-            </div>
-          </div>
-        )}
+        </div>
 
         {!enabled && (
           <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-xs">
