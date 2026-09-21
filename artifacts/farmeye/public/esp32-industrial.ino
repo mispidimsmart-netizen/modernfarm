@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.6.0-manual-absolute";
+const char* FIRMWARE_VERSION = "8.7.0-manual-safety-option";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -579,6 +579,10 @@ bool manualCommandPending = false;      // Bypass relay protection for manual co
 
 // --- Manual Overrides ---
 bool localManualOverride = false;
+// v8.7.0: "Manual absolute" = MANUAL mode AND safety engine OFF.
+// MANUAL + engine ON = operator keeps relay control, but life-safety
+// protections (hard floor, ESM, sensor-fail vent, arbiter veto) still act.
+inline bool manualAbsolute() { return localManualOverride && !safetyEngineEnabled; }
 bool fanManualOverride = false;     unsigned long fanManualTime = 0;
 bool heaterManualOverride = false;  unsigned long heaterManualTime = 0;
 bool foggerManualOverride = false;  unsigned long foggerManualTime = 0;
@@ -1498,9 +1502,9 @@ void svlCheckSensorOffline() {
   // If any critical sensor offline → enter SENSOR_FAIL via sensorErrorMode
   if ((svlTemp.isOffline || svlHumidity.isOffline) && !sensorErrorMode) {
     sensorErrorMode = true;
-    if (localManualOverride) {
-      // MANUAL ABSOLUTE: no automatic relay action. Siren + status only.
-      Serial.println("🔴 SVL: Sensor offline → SENSOR_FAIL (MANUAL: siren only, relays untouched)");
+    if (manualAbsolute()) {
+      // MANUAL ABSOLUTE (engine OFF): no automatic relay action. Siren + status only.
+      Serial.println("🔴 SVL: Sensor offline → SENSOR_FAIL (MANUAL ABSOLUTE: siren only, relays untouched)");
       requestAlarm(true);
     } else {
       Serial.println("🔴 SVL: Sensor offline/expired → SENSOR_FAIL (fan ON for safety)");
@@ -1826,10 +1830,11 @@ void updateLightingWithFade() {
 }
 
 void forceApplyManualRelay(String type, bool value) {
-  // In MANUAL mode (v8.6.0 "manual absolute") the operator is the final
-  // authority — no safety veto at all. In AUTO mode the arbiter still
-  // refuses commands that would defeat an active hard safety output.
-  if (!localManualOverride) {
+  // MANUAL ABSOLUTE (manual + safety engine OFF): the operator is the final
+  // authority — no safety veto at all. Otherwise (AUTO, or MANUAL with the
+  // safety engine ON) the arbiter refuses commands that would defeat an
+  // active hard safety output.
+  if (!manualAbsolute()) {
     if ((type == "fan" || type == "exhaust_fan") && !value &&
         (hardFloorActive || currentState >= STATE_DANGER ||
          currentState == STATE_SENSOR_FAIL || safetyEngine.lastResult.forceFanOn ||
@@ -2044,12 +2049,12 @@ void automationEngineTick() {
   if (stabilizingMode) return;
 
   // ═══════════════════════════════════════════════════════════════
-  // MANUAL ABSOLUTE (v8.6.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত।
-  // ম্যানুয়াল মোডে বোর্ড কোনো রিলে নিজে চালু/বন্ধ করে না — কারেন্ট,
-  // ওয়াইফাই, সেন্সর, তাপমাত্রা, গ্যাস যেকোনো অবস্থায়ই না।
-  // একমাত্র ব্যতিক্রম: সাইরেন/অ্যালার্ম — বিপদ হলে বাজে (সতর্ক করার জন্য),
-  // কিন্তু ফ্যান/হিটার/ফগার/লাইট অপারেটর যেভাবে রেখেছেন সেভাবেই থাকে।
-  // মালিকের স্পষ্ট অনুরোধে সেফটি ইঞ্জিনের স্বয়ংক্রিয় হস্তক্ষেপ বন্ধ।
+  // MANUAL MODE (v8.7.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত, অটোমেশন চলে না।
+  // সেফটি ইঞ্জিন OFF (manual absolute): বোর্ড কোনো রিলে নিজে চালু/বন্ধ করে না —
+  //   কারেন্ট, ওয়াইফাই, সেন্সর, তাপমাত্রা, গ্যাস যেকোনো অবস্থায়ই না।
+  //   একমাত্র ব্যতিক্রম: সাইরেন — বিপদ হলে বাজে, রিলে অপারেটরের রাখা অবস্থাতেই।
+  // সেফটি ইঞ্জিন ON: অপারেটরের কন্ট্রোল অক্ষত, কিন্তু জীবনরক্ষা সুরক্ষা
+  //   (হার্ড ফ্লোর ফ্যান, ESM, হিটার ভেটো) বিপদ-অবস্থায় রিলেতে কাজ করে।
   // ═══════════════════════════════════════════════════════════════
   if (localManualOverride) {
     // Only expire per-device manual flags; no automation runs.
@@ -2093,7 +2098,18 @@ void automationEngineTick() {
       Serial.println("🔕 [MANUAL] Siren released — operator alarm intent restored");
     }
 
-    return;  // ম্যানুয়াল — সাইরেন ছাড়া আর কোনো স্বয়ংক্রিয় কাজ নেই
+    // v8.7.0: MANUAL + সেফটি ইঞ্জিন ON → জীবনরক্ষা সুরক্ষা রিলেতেও কাজ করে।
+    // অপারেটরের রিলে অবস্থা অক্ষত থাকে; শুধু বিপদ-অবস্থায় বোর্ড হস্তক্ষেপ করে।
+    if (safetyEngineEnabled) {
+      if (hardFloorActive || safetyEngine.lastResult.forceFanOn) {
+        requestFan(true, "HIGH");
+      }
+      if (safetyEngine.lastResult.forceHeaterOff) requestHeater(false);
+      if (safetyEngine.lastResult.forceHeaterOn)  requestHeater(true);
+      if (emergencySurvivalMode) runEmergencySurvivalCycles();
+    }
+
+    return;  // ম্যানুয়াল — সাইরেন (+ ইঞ্জিন ON হলে সুরক্ষা) ছাড়া আর কোনো অটোমেশন নেই
   }
 
 
@@ -2654,8 +2670,9 @@ void checkEmergencyTriggers() {
 
 void enterESM(String reason) {
   if (emergencySurvivalMode) return;
-  // MANUAL ABSOLUTE: never take over relays in manual mode — siren + alert only.
-  if (localManualOverride) {
+  // MANUAL ABSOLUTE (engine OFF): never take over relays — siren + alert only.
+  // MANUAL + engine ON: ESM engages normally to protect the flock.
+  if (manualAbsolute()) {
     static unsigned long lastManualEsmAlert = 0;
     requestAlarm(true);
     if (millis() - lastManualEsmAlert > 300000UL) {
@@ -2787,8 +2804,8 @@ void checkEmergencyRecovery() {
 
 void startPowerRecoveryPurge(unsigned long outageDuration) {
   if (purgeActive || emergencySurvivalMode || outageDuration < PURGE_OUTAGE_THRESHOLD) return;
-  // MANUAL ABSOLUTE: power-recovery purge is automation — skipped in manual mode.
-  if (localManualOverride) {
+  // MANUAL ABSOLUTE (engine OFF): power-recovery purge is automation — skipped.
+  if (manualAbsolute()) {
     Serial.println("⏭️ [MANUAL] Power recovery purge skipped — operator keeps full control");
     return;
   }
@@ -5442,9 +5459,9 @@ void setup() {
   // WiFi outage, sensor failure or watchdog reset can never silently flip a
   // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
   loadPersistedModeState();
-  if (localManualOverride) {
-    // MANUAL ABSOLUTE: boot ventilation / sensor-fail fan are automation.
-    // Apply the operator's stored relay intent right away instead.
+  if (manualAbsolute()) {
+    // MANUAL ABSOLUTE (engine OFF): boot ventilation / sensor-fail fan are
+    // automation. Apply the operator's stored relay intent right away instead.
     relayManagerApply();
     Serial.println("🟡 [MANUAL] Boot automation skipped — operator relay state restored");
   }
