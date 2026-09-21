@@ -290,16 +290,33 @@ async function detectAndMarkStaleDevices(
           marked_failsafe: true,
         });
       } else if (!isStale && device.failsafe_mode) {
-        // Device was fail-safe but now syncing again → restore to AUTO
-        console.log(`🟢 Device ${device.device_token_id} recovered from FAIL-SAFE`);
-        
+        // Device was fail-safe but now syncing again → recover.
+        // MANUAL is sticky: never promote a manually-operated shed back to AUTO.
+        let recoveredMode: 'AUTO' | 'MANUAL' = 'AUTO';
+        if (device.shed_id) {
+          const { data: statusRow } = await supabase
+            .from('device_status')
+            .select('mode, manual_override, desired_manual_override')
+            .eq('user_id', userId)
+            .eq('shed_id', device.shed_id)
+            .maybeSingle();
+          if (
+            statusRow?.mode === 'MANUAL' ||
+            statusRow?.manual_override === true ||
+            statusRow?.desired_manual_override === true
+          ) {
+            recoveredMode = 'MANUAL';
+          }
+        }
+        console.log(`🟢 Device ${device.device_token_id} recovered from FAIL_SAFE → ${recoveredMode}`);
+
         await supabase
           .from('device_health')
           .update({
             failsafe_mode: false,
             failsafe_activated_at: null,
             is_online: true,
-            mode: 'AUTO',
+            mode: recoveredMode,
           })
           .eq('id', device.id);
         
@@ -307,12 +324,13 @@ async function detectAndMarkStaleDevices(
           await supabase
             .from('device_status')
             .update({
-              mode: 'AUTO',
+              mode: recoveredMode,
               last_cloud_sync: new Date().toISOString(),
             })
             .eq('user_id', userId)
             .eq('shed_id', device.shed_id);
         }
+        
         
         results.push({
           device_id: device.device_token_id,
@@ -729,7 +747,7 @@ Deno.serve(async (req) => {
             failsafe_mode: health.failsafe_mode,
             last_cloud_sync: health.last_cloud_sync_at,
             last_seen: health.last_seen_at,
-            mode: health.failsafe_mode ? 'FAIL-SAFE' : 'AUTO',
+            mode: health.failsafe_mode ? 'FAIL_SAFE' : 'AUTO',
           } : null,
           sensor: latestSensor ? {
             temperature: latestSensor.temperature,
