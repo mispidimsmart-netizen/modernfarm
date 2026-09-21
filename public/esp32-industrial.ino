@@ -5869,6 +5869,19 @@ void loop() {
   markHealthyBootIfReady();
   flushOtaTerminalReport();
 
+  // --- WiFi self-service: portal clients, trial revert, offline fallback ----
+  // Non-blocking. Never touches relays or safety state.
+  static bool doubleResetCleared = false;
+  if (!doubleResetCleared && now > 8000UL) { clearDoubleResetFlag(); doubleResetCleared = true; }
+  wifiPortalTick();
+  checkWifiTrial();
+  if (!wifiPortalActive && !wifiConnected && wifiDownSince != 0 &&
+      (now - wifiDownSince) > WIFI_PORTAL_OFFLINE_MS) {
+    startWifiPortal("offline_2min");
+  }
+
+
+
   // --- NVS Heartbeat (alive timestamp for outage detection) ---
   nvsWriteAliveTimestamp();
   
