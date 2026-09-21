@@ -51,9 +51,10 @@ export function SafetyEngineToggleCard() {
     }
   };
 
-  // MANUAL mode: safety engine does nothing (manual-absolute), so hide the
-  // toggle entirely. It reappears automatically when the farm switches to AUTO.
-  if (automationMode === 'MANUAL') return null;
+  // v8.7.0: the toggle stays visible in MANUAL mode too.
+  //   MANUAL + ON  → operator keeps control, board's life-safety rules still act.
+  //   MANUAL + OFF → manual absolute: board never touches relays, siren only.
+  const isManual = automationMode === 'MANUAL';
 
   return (
     <Card className={enabled ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}>
