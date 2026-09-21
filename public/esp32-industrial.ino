@@ -4031,6 +4031,7 @@ void checkCommands() {
             fadeInProgress = false;
             Serial.println("✅ MANUAL OVERRIDE DEACTIVATED → returning to AUTO mode");
           }
+          persistModeState();   // sticky across reboot / outage
         } else if (type == "set_wifi") {
           // WiFi change pushed from the app while the board is still online.
           // ACK first — the reconnect below drops the current link. If the new
