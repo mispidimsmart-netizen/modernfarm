@@ -96,7 +96,7 @@ export function FailedCommandsBanner() {
       : 'Device offline — check WiFi/power.'
     : language === 'bn'
       ? 'ডিভাইস থেকে নিশ্চিতকরণ আসেনি (১২ সে.)।'
-      : 'No acknowledgement within 12s.';
+      : 'No acknowledgement within 30s.';
 
   const dismissOne = (id: string) => {
     const next = new Set(dismissed);

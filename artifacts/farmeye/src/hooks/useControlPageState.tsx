@@ -94,7 +94,7 @@ export function useControlPageState() {
   const [activeTimers, setActiveTimers] = useState<Record<string, { endTime: number; duration: number }>>({});
 
   // ===== HARDWARE-CONFIRMATION PENDING STATE =====
-  const PENDING_TIMEOUT_MS = 12000;
+  const PENDING_TIMEOUT_MS = 30000;
   const [pendingCommands, setPendingCommands] = useState<
     Record<string, { desired: boolean; startedAt: number }>
   >({});
