@@ -3010,7 +3010,8 @@ void connectWiFi() {
   WiFi.setSleep(false);
 
   // After several failed attempts the radio/driver can get stuck — power-cycle it.
-  if (wifiFailStreak > 0 && wifiFailStreak % WIFI_RADIO_RESET_STREAK == 0) {
+  // Skipped while the setup hotspot is open so the phone stays connected to it.
+  if (!wifiPortalActive && wifiFailStreak > 0 && wifiFailStreak % WIFI_RADIO_RESET_STREAK == 0) {
     Serial.printf("♻️ WiFi radio reset (fail streak=%u)\n", wifiFailStreak);
     WiFi.disconnect(true, false);
     WiFi.mode(WIFI_OFF);
@@ -3020,7 +3021,7 @@ void connectWiFi() {
     // Non-blocking wait (200ms) — honors "ZERO delay() in main loop" invariant
     { unsigned long w = millis(); while (millis() - w < 200) { esp_task_wdt_reset(); yield(); } }
   }
-  WiFi.mode(WIFI_STA);
+  WiFi.mode(wifiPortalActive ? WIFI_AP_STA : WIFI_STA);
   WiFi.begin(activeWifiSSID.c_str(), activeWifiPassword.c_str());
   Serial.printf("📡 WiFi: Attempting connection (max 10s)...\n");
   
