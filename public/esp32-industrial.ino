@@ -1502,9 +1502,9 @@ void svlCheckSensorOffline() {
   // If any critical sensor offline → enter SENSOR_FAIL via sensorErrorMode
   if ((svlTemp.isOffline || svlHumidity.isOffline) && !sensorErrorMode) {
     sensorErrorMode = true;
-    if (localManualOverride) {
-      // MANUAL ABSOLUTE: no automatic relay action. Siren + status only.
-      Serial.println("🔴 SVL: Sensor offline → SENSOR_FAIL (MANUAL: siren only, relays untouched)");
+    if (manualAbsolute()) {
+      // MANUAL ABSOLUTE (engine OFF): no automatic relay action. Siren + status only.
+      Serial.println("🔴 SVL: Sensor offline → SENSOR_FAIL (MANUAL ABSOLUTE: siren only, relays untouched)");
       requestAlarm(true);
     } else {
       Serial.println("🔴 SVL: Sensor offline/expired → SENSOR_FAIL (fan ON for safety)");
@@ -1830,10 +1830,11 @@ void updateLightingWithFade() {
 }
 
 void forceApplyManualRelay(String type, bool value) {
-  // In MANUAL mode (v8.6.0 "manual absolute") the operator is the final
-  // authority — no safety veto at all. In AUTO mode the arbiter still
-  // refuses commands that would defeat an active hard safety output.
-  if (!localManualOverride) {
+  // MANUAL ABSOLUTE (manual + safety engine OFF): the operator is the final
+  // authority — no safety veto at all. Otherwise (AUTO, or MANUAL with the
+  // safety engine ON) the arbiter refuses commands that would defeat an
+  // active hard safety output.
+  if (!manualAbsolute()) {
     if ((type == "fan" || type == "exhaust_fan") && !value &&
         (hardFloorActive || currentState >= STATE_DANGER ||
          currentState == STATE_SENSOR_FAIL || safetyEngine.lastResult.forceFanOn ||
@@ -2658,8 +2659,9 @@ void checkEmergencyTriggers() {
 
 void enterESM(String reason) {
   if (emergencySurvivalMode) return;
-  // MANUAL ABSOLUTE: never take over relays in manual mode — siren + alert only.
-  if (localManualOverride) {
+  // MANUAL ABSOLUTE (engine OFF): never take over relays — siren + alert only.
+  // MANUAL + engine ON: ESM engages normally to protect the flock.
+  if (manualAbsolute()) {
     static unsigned long lastManualEsmAlert = 0;
     requestAlarm(true);
     if (millis() - lastManualEsmAlert > 300000UL) {
@@ -2791,8 +2793,8 @@ void checkEmergencyRecovery() {
 
 void startPowerRecoveryPurge(unsigned long outageDuration) {
   if (purgeActive || emergencySurvivalMode || outageDuration < PURGE_OUTAGE_THRESHOLD) return;
-  // MANUAL ABSOLUTE: power-recovery purge is automation — skipped in manual mode.
-  if (localManualOverride) {
+  // MANUAL ABSOLUTE (engine OFF): power-recovery purge is automation — skipped.
+  if (manualAbsolute()) {
     Serial.println("⏭️ [MANUAL] Power recovery purge skipped — operator keeps full control");
     return;
   }
@@ -5446,9 +5448,9 @@ void setup() {
   // WiFi outage, sensor failure or watchdog reset can never silently flip a
   // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
   loadPersistedModeState();
-  if (localManualOverride) {
-    // MANUAL ABSOLUTE: boot ventilation / sensor-fail fan are automation.
-    // Apply the operator's stored relay intent right away instead.
+  if (manualAbsolute()) {
+    // MANUAL ABSOLUTE (engine OFF): boot ventilation / sensor-fail fan are
+    // automation. Apply the operator's stored relay intent right away instead.
     relayManagerApply();
     Serial.println("🟡 [MANUAL] Boot automation skipped — operator relay state restored");
   }
