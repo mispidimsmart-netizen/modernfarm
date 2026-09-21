@@ -9,7 +9,10 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { calculateHSI as appHSI } from '@/lib/heatStressIndex';
+import { calculateHSI as appHSIResult } from '@/lib/heatStressIndex';
+
+/** App returns a result object with the index rounded to 1 decimal. */
+const appHSI = (t: number, rh: number) => appHSIResult(t, rh).index;
 
 const REPO_ROOT = resolve(__dirname, '../../../..');
 const FIRMWARE_PATHS = [
@@ -74,7 +77,7 @@ describe('HSI formula parity (firmware ↔ cloud ↔ app)', () => {
     for (const [t, rh, expected] of GOLDEN) {
       const fw = evalFirmware(body, t, rh);
       expect(Number(fw.toFixed(1))).toBeCloseTo(expected, 1);
-      expect(appHSI(t, rh)).toBeCloseTo(fw, 5);
+      expect(appHSI(t, rh)).toBeCloseTo(Math.round(fw * 10) / 10, 5);
     }
   });
 
@@ -83,7 +86,7 @@ describe('HSI formula parity (firmware ↔ cloud ↔ app)', () => {
     for (let t = 15; t <= 45; t += 0.5) {
       for (let rh = 0; rh <= 100; rh += 10) {
         const fw = evalFirmware(body, t, rh);
-        expect(Math.abs(appHSI(t, rh) - fw)).toBeLessThan(1e-6);
+        expect(Math.abs(appHSI(t, rh) - fw)).toBeLessThanOrEqual(0.05001);
       }
     }
   });
