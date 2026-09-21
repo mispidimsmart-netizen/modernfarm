@@ -747,7 +747,7 @@ Deno.serve(async (req) => {
             failsafe_mode: health.failsafe_mode,
             last_cloud_sync: health.last_cloud_sync_at,
             last_seen: health.last_seen_at,
-            mode: health.failsafe_mode ? 'FAIL-SAFE' : 'AUTO',
+            mode: health.failsafe_mode ? 'FAIL_SAFE' : 'AUTO',
           } : null,
           sensor: latestSensor ? {
             temperature: latestSensor.temperature,
