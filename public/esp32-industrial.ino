@@ -1829,10 +1829,10 @@ void updateLightingWithFade() {
 }
 
 void forceApplyManualRelay(String type, bool value) {
-  // MANUAL ABSOLUTE (manual + safety engine OFF): the operator is the final
-  // authority — no safety veto at all. Otherwise (AUTO, or MANUAL with the
-  // safety engine ON) the arbiter refuses commands that would defeat an
-  // active hard safety output.
+  // MANUAL ABSOLUTE (v8.8.0+): in MANUAL mode the operator is the final
+  // authority regardless of the safety-engine toggle — no safety veto at all,
+  // the board only raises the siren. In AUTO the arbiter refuses commands that
+  // would defeat an active hard safety output.
   if (!manualAbsolute()) {
     if ((type == "fan" || type == "exhaust_fan") && !value &&
         (hardFloorActive || currentState >= STATE_DANGER ||
