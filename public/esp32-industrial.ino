@@ -5910,10 +5910,11 @@ void displayInit() {
 
   tft.setRotation(1);                 // landscape 320x240
 
-  // --- Panel self-test: if wiring/SPI is OK you will see R -> G -> B flash ---
-  tft.fillScreen(ILI9341_RED);   delay(120);
-  tft.fillScreen(ILI9341_GREEN); delay(120);
-  tft.fillScreen(ILI9341_BLUE);  delay(120);
+  // --- Panel self-test: non-blocking (no delay). Each fill is a real SPI write,
+  // so wiring faults still show up; boot is not slowed by 360 ms of waiting. ---
+  tft.fillScreen(ILI9341_RED);
+  tft.fillScreen(ILI9341_GREEN);
+  tft.fillScreen(ILI9341_BLUE);
   // --- Panel presence check over MISO (SDO) ---
   uint8_t panelId   = tft.readcommand8(ILI9341_RDDID);      // expect 0x00 then mfg bytes
   uint8_t panelDiag = tft.readcommand8(ILI9341_RDSELFDIAG); // expect 0xC0 on a healthy ILI9341
