@@ -3815,6 +3815,7 @@ void fetchConfig() {
           fadeInProgress = false;
         }
       }
+      persistModeState();   // sticky: survives power/WiFi/sensor loss
     }
   }
   // /config sends camelCase "farmType"; /sync sends "farm_type" — accept both
