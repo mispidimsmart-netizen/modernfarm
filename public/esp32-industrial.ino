@@ -4292,6 +4292,7 @@ void startWifiPortal(const char* reason) {
   WiFi.mode(WIFI_AP_STA);
   String ap = wifiPortalApSsid();
   WiFi.softAP(ap.c_str(), WIFI_PORTAL_AP_PASSWORD);
+  WiFi.scanNetworks(true);   // async scan so the portal can list nearby networks
   if (wifiPortalServer == nullptr) wifiPortalServer = new WebServer(80);
   wifiPortalServer->on("/", HTTP_GET, []() {
     wifiPortalServer->send(200, "text/html; charset=utf-8", wifiPortalPage(""));
