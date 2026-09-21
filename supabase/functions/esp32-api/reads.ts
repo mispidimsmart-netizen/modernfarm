@@ -697,6 +697,27 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
     // Current server time for ESP32 time sync
     const now = new Date();
 
+    // ── Per-device timed-override state (AUTO mode) ─────────────────────────
+    // The board sets its own per-device manual lock when it executes a command
+    // and only drops it after a 20-minute timeout. When the operator cancels a
+    // timed override (or it expires) the cloud nulls desired_*/expires_at — so
+    // the board must be told to release that device, otherwise automation stays
+    // locked out while the app already says "AUTO". `null` = no override.
+    const overrideDevices: Record<string, string> = {
+      fan: 'fan', heater: 'heater', fogger: 'fogger', light: 'light',
+      circulation_fan: 'circulation_fan', ceiling_fan: 'ceiling_fan',
+      sprinkler: 'sprinkler', alarm: 'alarm',
+    };
+    const overrides: Record<string, boolean> = {};
+    for (const key of Object.keys(overrideDevices)) {
+      const desired = (deviceStatus as any)?.[`desired_${key}_on`];
+      const expRaw = (deviceStatus as any)?.[`desired_${key}_expires_at`];
+      const expiresAt = expRaw ? new Date(expRaw).getTime() : null;
+      const stillValid = expiresAt === null ? true : expiresAt > now.getTime();
+      overrides[key] = desired !== null && desired !== undefined && stillValid;
+    }
+
+
     // Build config response - ONLY parameters, NEVER relay states
     const config = {
       // === Core Parameters ===
