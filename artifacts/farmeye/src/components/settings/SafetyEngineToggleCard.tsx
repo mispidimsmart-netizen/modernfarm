@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShieldAlert, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ export function SafetyEngineToggleCard() {
   const { data: settings } = useFarmSettings();
   const updateSettings = useUpdateFarmSettings();
   const { toast } = useToast();
+  const { data: automationMode } = useAutomationMode();
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
@@ -48,6 +50,10 @@ export function SafetyEngineToggleCard() {
       });
     }
   };
+
+  // MANUAL mode: safety engine does nothing (manual-absolute), so hide the
+  // toggle entirely. It reappears automatically when the farm switches to AUTO.
+  if (automationMode === 'MANUAL') return null;
 
   return (
     <Card className={enabled ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}>
