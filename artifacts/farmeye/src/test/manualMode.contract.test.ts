@@ -218,16 +218,19 @@ describe('MANUAL mode — ESP32 firmware source invariants', () => {
   });
 
   it('manual mode survives reboot via NVS restore before the display init', () => {
-    const load = appIno.indexOf('loadPersistedModeState()');
-    const apply = appIno.indexOf('relayManagerApply()', load);
-    const display = appIno.indexOf('displayInit()');
+    // Inspect setup() only — the top of the file holds forward declarations.
+    const setupStart = appIno.indexOf('void setup()');
+    const setupBody = appIno.slice(setupStart, appIno.indexOf('void loop()', setupStart));
+    const load = setupBody.indexOf('loadPersistedModeState()');
+    const apply = setupBody.indexOf('relayManagerApply()', load);
+    const display = setupBody.indexOf('displayInit()');
     expect(load).toBeGreaterThan(-1);
     expect(apply).toBeGreaterThan(load);
     expect(display).toBeGreaterThan(apply);
   });
 
   it('operator commands write relays directly (not through the guarded setters)', () => {
-    const start = appIno.indexOf('void forceApplyManualRelay');
+    const start = appIno.lastIndexOf('void forceApplyManualRelay'); // definition, not prototype
     expect(start).toBeGreaterThan(-1);
     const body = appIno.slice(start, start + 3000);
     expect(body).toContain('digitalWrite(FAN_RELAY_PIN');
