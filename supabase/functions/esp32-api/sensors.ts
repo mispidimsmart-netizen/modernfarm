@@ -39,7 +39,14 @@ export interface SensorPayload {
   fw_channel?: string;
 }
 
-export async function handleSensorData(body: SensorPayload, supabase: any, userId: string) {
+export async function handleSensorData(
+  body: SensorPayload,
+  supabase: any,
+  userId: string,
+  boundFarmId: string,
+  boundShedId: string,
+  boundDeviceName: string,
+) {
   try {
     // Support both water_usage and water_flow field names
     const waterUsage = body.water_usage ?? body.water_flow ?? 0;
@@ -61,52 +68,51 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // Each shed is an independent fail-safe unit
     // shed_id can come from: body.shed_id OR device_tokens.shed_id
     // ═══════════════════════════════════════════════════════════════════════════
-    let shedId: string | null = body.shed_id || null;
+    if (body.farm_id && body.farm_id !== boundFarmId) {
+      return new Response(
+        JSON.stringify({ error: 'farm_id does not match device binding', code: 'FARM_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    if (body.shed_id && body.shed_id !== boundShedId) {
+      return new Response(
+        JSON.stringify({ error: 'shed_id does not match device binding', code: 'SHED_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    if (body.device_id && body.device_id !== boundDeviceName) {
+      return new Response(
+        JSON.stringify({ error: 'device_id does not match device binding', code: 'DEVICE_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const shedId = boundShedId;
     let shedName: string | null = null;
     // MODE-01 / multi-farm: every settings read and desired_* write below is
     // scoped by farm, so a second farm of the same owner is never touched.
-    let farmId: string | null = body.farm_id || null;
-    
-    // If no shed_id in body, try to get from device_tokens based on device_id
-    if (!shedId && body.device_id) {
-      const { data: deviceInfo } = await supabase
-        .from('device_tokens')
-        .select('shed_id, farm_id, sheds(name, name_en)')
-        .eq('device_name', body.device_id)
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      if (deviceInfo?.shed_id) {
-        shedId = deviceInfo.shed_id;
-        shedName = deviceInfo.sheds?.name || deviceInfo.sheds?.name_en || null;
-      }
-      if (deviceInfo?.farm_id) farmId = deviceInfo.farm_id;
+    const farmId = boundFarmId;
+
+    const { data: shedInfo } = await supabase
+      .from('sheds')
+      .select('id, name, name_en')
+      .eq('id', shedId)
+      .eq('farm_id', farmId)
+      .maybeSingle();
+    if (!shedInfo) {
+      return new Response(
+        JSON.stringify({ error: 'Device shed binding is invalid', code: 'INVALID_SHED_BINDING' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
-    
-    // If shed_id provided, validate it belongs to user
-    if (shedId) {
-      const { data: shedInfo } = await supabase
-        .from('sheds')
-        .select('id, name, name_en, farm_id')
-        .eq('id', shedId)
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (!shedInfo) {
-        console.warn(`Invalid shed_id ${shedId} for user ${userId}, ignoring shed assignment`);
-        shedId = null;
-      } else {
-        shedName = shedInfo.name || shedInfo.name_en;
-        // The shed's own farm wins over a body-supplied farm_id.
-        if (shedInfo.farm_id) farmId = shedInfo.farm_id;
-      }
-    }
+    shedName = shedInfo.name || shedInfo.name_en;
 
 
     // Insert sensor reading with shed_id
     const sensorInsertData: Record<string, any> = {
       user_id: userId,
+      farm_id: farmId,
+      shed_id: shedId,
       temperature: body.temperature,
       humidity: body.humidity,
       ammonia: body.ammonia,
@@ -130,10 +136,6 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       sensorInsertData.sensor_source = body.sensor_source;
     }
 
-    if (shedId) {
-      sensorInsertData.shed_id = shedId;
-    }
-    
     const { error: insertError } = await supabase
       .from('sensor_readings')
       .insert(sensorInsertData);
@@ -152,8 +154,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     if (hasAirQuality) {
       try {
         // Prefer the device/shed's own farm; only fall back to "first owned farm".
-        const { data: farmRow } = farmId ? { data: { id: farmId } } : await supabase
-          .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
+        const farmRow = { id: farmId };
         if (farmRow?.id) {
 
           await supabase.rpc('check_air_quality_thresholds', {
@@ -173,8 +174,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     // Phase 9 — sensor inventory heartbeat (track which sensors active)
     if (body.sensor_source && body.device_id) {
       try {
-        const { data: farmRow } = farmId ? { data: { id: farmId } } : await supabase
-          .from('farms').select('id').eq('owner_id', userId).limit(1).maybeSingle();
+        const farmRow = { id: farmId };
         if (farmRow?.id) {
 
           const SENSOR_TYPE_MAP: Record<string, string> = {
@@ -188,7 +188,7 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
             if (!sType || seen.has(`${sType}|${model}`)) continue;
             seen.add(`${sType}|${model}`);
             await supabase.from('device_sensor_inventory').upsert({
-              device_id: body.device_id,
+              device_id: boundDeviceName,
               farm_id: farmRow.id,
               sensor_type: sType,
               sensor_model: String(model),
@@ -206,17 +206,11 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     if (body.power_status) {
       const powerOn = body.power_status.toUpperCase() === 'ON';
       
-      let powerQuery = supabase
+      const powerQuery = supabase
         .from('device_status')
         .update({ power_on: powerOn, updated_at: new Date().toISOString() })
-        .eq('user_id', userId);
-      
-      if (farmId) {
-        powerQuery = powerQuery.eq('farm_id', farmId);
-      }
-      if (shedId) {
-        powerQuery = powerQuery.eq('shed_id', shedId);
-      }
+        .eq('farm_id', farmId)
+        .eq('shed_id', shedId);
 
       
       await powerQuery;
@@ -225,6 +219,8 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       if (!powerOn) {
         const alertData: Record<string, any> = {
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           alert_type: 'power',
           severity: 'danger',
           message: shedName 
@@ -235,21 +231,16 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
             : 'বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!',
         };
         
-        if (shedId) {
-          alertData.shed_id = shedId;
-        }
-        
         await supabase.from('alerts').insert(alertData);
       }
     }
 
     // Check for alerts based on farm settings (farm-scoped; `.single()` used to
     // throw for owners with more than one farm_settings row).
-    let settingsQuery = supabase
+    const settingsQuery = supabase
       .from('farm_settings')
       .select('*')
-      .eq('user_id', userId);
-    if (farmId) settingsQuery = settingsQuery.eq('farm_id', farmId);
+      .eq('farm_id', farmId);
     const { data: settings } = await settingsQuery.limit(1).maybeSingle();
 
 
@@ -273,12 +264,13 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     if (hsiStatus === 'DANGER') {
       const alertData: Record<string, any> = {
         user_id: userId,
+        farm_id: farmId,
+        shed_id: shedId,
         alert_type: 'temperature',
         severity: 'danger',
         message: `🚨 [${shedLabel}] DANGER! Heat Stress Index: ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
         message_bn: `🚨 [${shedLabel}] বিপদ! হিট স্ট্রেস ইন্ডেক্স: ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
       };
-      if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
       // Auto-enable fan HIGH + alarm for THIS SHED (skip if farmer disabled safety engine)
@@ -289,12 +281,13 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
     } else if (hsiStatus === 'HIGH') {
       const alertData: Record<string, any> = {
         user_id: userId,
+        farm_id: farmId,
+        shed_id: shedId,
         alert_type: 'temperature',
         severity: 'warning',
         message: `⚠️ [${shedLabel}] High Heat Stress: THI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
         message_bn: `⚠️ [${shedLabel}] উচ্চ হিট স্ট্রেস: THI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
       };
-      if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
       // Auto-enable fan HIGH for THIS SHED (skip if disabled)
@@ -321,12 +314,13 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         if (!alerts.some(a => a.severity === 'danger' && a.alert_type === 'temperature')) {
           const alertData: Record<string, any> = {
             user_id: userId,
+            farm_id: farmId,
+            shed_id: shedId,
             alert_type: 'temperature',
             severity: body.temperature > Number(settings.temperature_max) + 5 ? 'danger' : 'warning',
             message: `[${shedLabel}] High temperature: ${body.temperature.toFixed(1)}°C`,
             message_bn: `[${shedLabel}] উচ্চ তাপমাত্রা: ${body.temperature.toFixed(1)}°সে`,
           };
-          if (shedId) alertData.shed_id = shedId;
           alerts.push(alertData);
         }
       }
@@ -334,24 +328,26 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
       if (body.ammonia > Number(settings.ammonia_max)) {
         const alertData: Record<string, any> = {
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           alert_type: 'ammonia',
           severity: body.ammonia > Number(settings.ammonia_max) + 10 ? 'danger' : 'warning',
           message: `[${shedLabel}] High ammonia level: ${body.ammonia.toFixed(0)} ppm`,
           message_bn: `[${shedLabel}] উচ্চ অ্যামোনিয়া মাত্রা: ${body.ammonia.toFixed(0)} পিপিএম`,
         };
-        if (shedId) alertData.shed_id = shedId;
         alerts.push(alertData);
       }
 
       if (waterUsage < 10) {
         const alertData: Record<string, any> = {
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           alert_type: 'water',
           severity: waterUsage < 5 ? 'danger' : 'warning',
           message: `[${shedLabel}] Low water usage: ${waterUsage.toFixed(1)} L/hr`,
           message_bn: `[${shedLabel}] কম পানি ব্যবহার: ${waterUsage.toFixed(1)} লি/ঘন্টা`,
         };
-        if (shedId) alertData.shed_id = shedId;
         alerts.push(alertData);
       }
     }
@@ -393,10 +389,10 @@ export async function handleSensorData(body: SensorPayload, supabase: any, userI
         success: true, 
         message: 'Sensor data saved',
         alerts_created: alerts.length,
-        farm_id: body.farm_id || null,
+        farm_id: farmId,
         shed_id: shedId,
         shed_name: shedName,
-        device_id: body.device_id || null,
+        device_id: boundDeviceName,
         hsi: parseFloat(hsi.toFixed(1)),
         hsi_status: hsiStatus,
         received_at: new Date().toISOString()

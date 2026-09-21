@@ -241,16 +241,12 @@ Deno.serve(async (req) => {
       });
     }
     if (callerUserId) {
-      const { data: membership } = await supa
-        .from("farm_members")
-        .select("role")
-        .eq("farm_id", data.farm_id)
-        .eq("user_id", callerUserId)
-        .in("role", ["owner", "admin"])
-        .maybeSingle();
-      const isFarmOwner = data.farms?.owner_id === callerUserId;
+      const { data: canManage } = await supa.rpc("can_manage_farm", {
+        _user_id: callerUserId,
+        _farm_id: data.farm_id,
+      });
       const { data: superAdmin } = await supa.rpc("is_super_admin", { _user_id: callerUserId });
-      if (!membership && !isFarmOwner && superAdmin !== true) {
+      if (canManage !== true && superAdmin !== true) {
         return new Response(JSON.stringify({ ok: false, error: "resend not authorized for this farm" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -271,13 +267,22 @@ Deno.serve(async (req) => {
     }
 
     // 2. Pick recent alerts; each channel is claimed independently below.
-    const { data: p } = await supa
-      .from("alerts")
-      .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type")
-      .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
-      .order("created_at", { ascending: true })
-      .limit(100);
-    pending = p ?? [];
+    // Bound each farm independently so one noisy tenant cannot starve every
+    // other farm's life-safety notifications from the cron delivery window.
+    const recentCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const perFarm = await Promise.all(farmIds.filter(Boolean).map(async (farmId) => {
+      const { data } = await supa
+        .from("alerts")
+        .select("id, farm_id, user_id, severity, message_bn, message, rule_id, alert_type, created_at")
+        .eq("farm_id", farmId)
+        .gte("created_at", recentCutoff)
+        .order("created_at", { ascending: true })
+        .limit(25);
+      return data ?? [];
+    }));
+    pending = perFarm.flat().sort((a, b) =>
+      String(a.created_at).localeCompare(String(b.created_at))
+    );
   }
 
   let dispatched = 0;

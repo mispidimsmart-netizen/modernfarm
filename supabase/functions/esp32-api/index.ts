@@ -256,10 +256,12 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // and the user has access to that farm via farm_members
     // Cross-farm API access is blocked at this layer
     // ═══════════════════════════════════════════════════════════════════════════
-    if (!deviceFarmId) {
-      console.warn(`Device token ${deviceToken.substring(0, 8)}... has no farm_id bound`);
-      // Allow legacy devices without farm_id for backward compatibility
-      // but log for monitoring
+    if (!deviceFarmId || !deviceShedId) {
+      console.warn(`Device token ${deviceToken.substring(0, 8)}... has incomplete farm/shed binding`);
+      return new Response(
+        JSON.stringify({ error: 'Device must be bound to a farm and shed', code: 'DEVICE_UNBOUND' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     } else {
       // Verify farm membership OR farm ownership
       // Owner is not always duplicated in farm_members, so both must be accepted
@@ -313,7 +315,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     
     // Route handling - support both legacy and /api/iot/* prefix
     if (req.method === 'POST' && (path === 'sensor-data' || path === 'data')) {
-      return await handleSensorData(bodyData, supabase, userId);
+      return await handleSensorData(bodyData, supabase, userId, deviceFarmId, deviceShedId, device.device_name);
     }
 
     if (req.method === 'POST' && path === 'device-status') {
@@ -321,15 +323,15 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'GET' && path === 'settings') {
-      return await getSettings(supabase, userId);
+      return await getSettings(supabase, deviceFarmId);
     }
 
     if (req.method === 'GET' && path === 'latest-data') {
-      return await getLatestSensorData(supabase, userId);
+      return await getLatestSensorData(supabase, userId, deviceFarmId, deviceShedId);
     }
 
     if (req.method === 'GET' && path === 'automation-rules') {
-      return await getAutomationRules(supabase, userId);
+      return await getAutomationRules(supabase, userId, deviceFarmId);
     }
 
     if (req.method === 'POST' && path === 'automation-rules') {
@@ -337,7 +339,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'GET' && path === 'lighting-schedule') {
-      return await getLightingSchedule(supabase, userId);
+      return await getLightingSchedule(supabase, userId, deviceFarmId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -345,14 +347,13 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // Returns: min_vent, heater, fogger, airflow, curtain, water, lighting settings
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'GET' && path === 'advanced-settings') {
-      const shedId = url.searchParams.get('shed_id');
-      return await getAdvancedSettings(supabase, userId, shedId);
+      return await getAdvancedSettings(supabase, userId, deviceShedId, deviceFarmId);
     }
 
     if (req.method === 'GET' && path === 'alerts') {
       const limit = parseInt(url.searchParams.get('limit') || '20');
       const unacknowledgedOnly = url.searchParams.get('unacknowledged') === 'true';
-      return await getAlerts(supabase, userId, limit, unacknowledgedOnly);
+      return await getAlerts(supabase, userId, deviceFarmId, deviceShedId, limit, unacknowledgedOnly);
     }
 
     if (req.method === 'GET' && path === 'commands') {
@@ -434,11 +435,11 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'POST' && path === 'health') {
-      return await handleDeviceHealth(bodyData, supabase, userId, deviceToken);
+      return await handleDeviceHealth(bodyData, supabase, userId, deviceToken, deviceFarmId, deviceShedId);
     }
 
     if (req.method === 'POST' && path === 'power-status') {
-      return await handlePowerStatus(bodyData, supabase, userId, deviceToken);
+      return await handlePowerStatus(bodyData, supabase, userId, deviceToken, deviceFarmId, deviceShedId);
     }
 
     // ===== SAFETY ENGINE ENDPOINTS (in-process) =====
@@ -462,7 +463,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
 
 
     if (req.method === 'GET' && path === 'power-outages') {
-      return await getPowerOutages(supabase, userId);
+      return await getPowerOutages(supabase, userId, deviceFarmId, deviceShedId);
     }
 
     // ===== FAIL-SAFE SYNC ENDPOINT =====
@@ -519,8 +520,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // ===== GET DEVICE STATE ENDPOINT =====
     // Get current state for a specific device/shed
     if (req.method === 'GET' && path === 'state') {
-      const shedId = url.searchParams.get('shed_id');
-      return await getDeviceState(supabase, userId, shedId, deviceFarmId ?? null);
+      return await getDeviceState(supabase, userId, deviceShedId, deviceFarmId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -529,8 +529,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // Cloud NEVER directly controls relays.
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'GET' && path === 'config') {
-      const shedId = url.searchParams.get('shed_id');
-      return await getDeviceConfig(supabase, userId, shedId);
+      return await getDeviceConfig(supabase, userId, deviceShedId, deviceFarmId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -539,9 +538,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // This is the "one-call-gets-all" endpoint for ESP32 boot/sync
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'GET' && path === 'system-status') {
-      const shedId = url.searchParams.get('shed_id');
-      const deviceName = url.searchParams.get('device_id');
-      return await getSystemStatus(supabase, userId, shedId, deviceName);
+      return await getSystemStatus(supabase, userId, deviceShedId, device.device_name, deviceFarmId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -550,7 +547,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // POST /set-farm-profile { "farm_profile": 0 or 1, "broiler_age_days": 14 }
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'POST' && path === 'set-farm-profile') {
-      return await handleSetFarmProfile(bodyData, supabase, userId);
+      return await handleSetFarmProfile(bodyData, supabase, userId, deviceFarmId, deviceShedId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -559,7 +556,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // POST /update-age { "age_days": 14 }
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'POST' && path === 'update-age') {
-      return await handleUpdateAge(bodyData, supabase, userId);
+      return await handleUpdateAge(bodyData, supabase, userId, deviceFarmId, deviceShedId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -631,7 +628,13 @@ interface SetFarmProfilePayload {
   shed_id?: string;
 }
 
-async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, userId: string) {
+async function handleSetFarmProfile(
+  body: SetFarmProfilePayload,
+  supabase: any,
+  userId: string,
+  boundFarmId: string,
+  boundShedId: string,
+) {
   try {
     const { farm_profile, broiler_age_days } = body;
     
@@ -649,8 +652,14 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
     const farmType = farm_profile === 0 ? 'layer' : 'broiler';
     
     // Update shed's farm_type (per-shed farm type support)
-    const shedId = body.shed_id;
-    if (shedId) {
+    if (body.shed_id && body.shed_id !== boundShedId) {
+      return new Response(
+        JSON.stringify({ error: 'shed_id does not match device binding', code: 'SHED_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const shedId = boundShedId;
+    {
       const { error: shedError } = await supabase
         .from('sheds')
         .update({ 
@@ -658,28 +667,11 @@ async function handleSetFarmProfile(body: SetFarmProfilePayload, supabase: any, 
           updated_at: new Date().toISOString()
         })
         .eq('id', shedId)
-        .eq('user_id', userId);
+        .eq('farm_id', boundFarmId);
       
       if (shedError) {
         console.error('Error updating shed farm_type:', shedError);
       }
-    }
-    
-    // Also update profile for backward compatibility
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ 
-        farm_type: farmType,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId);
-    
-    if (profileError) {
-      console.error('Error updating farm profile:', profileError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to update farm profile', code: 'UPDATE_FAILED' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
     
     console.log(`✓ Farm profile set: ${farmType.toUpperCase()}${farm_profile === 1 ? ` (Day ${broiler_age_days || 1})` : ''}`);
@@ -807,7 +799,13 @@ async function handleHardwareProfile(
   }
 }
 
-async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: string) {
+async function handleUpdateAge(
+  body: UpdateAgePayload,
+  supabase: any,
+  userId: string,
+  farmId: string,
+  shedId: string,
+) {
   try {
     const { age_days, batch_id } = body;
     
@@ -824,6 +822,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       // Log rejection
       await supabase.from('farm_audit_logs').insert({
         user_id: userId,
+        farm_id: farmId,
+        shed_id: shedId,
         action_type: 'age_override_event',
         action_category: 'safety',
         severity: 'warning',
@@ -850,6 +850,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       .from('broiler_batches')
       .select('start_date, updated_at')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('status', 'active')
       .order('start_date', { ascending: false })
       .limit(1)
@@ -869,6 +871,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
         // Log rejection
         await supabase.from('farm_audit_logs').insert({
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           action_type: 'age_override_event',
           action_category: 'safety',
           severity: 'warning',
@@ -899,6 +903,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       .from('broiler_batches')
       .select('shed_id')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('status', 'active')
       .order('start_date', { ascending: false })
       .limit(1)
@@ -909,7 +915,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       const { data: shed } = await supabase
         .from('sheds')
         .select('farm_type')
-        .eq('id', activeBatchCheck.shed_id)
+        .eq('id', shedId)
+        .eq('farm_id', farmId)
         .single();
       isBroilerShed = shed?.farm_type === 'broiler';
     }
@@ -946,6 +953,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
         updated_at: new Date().toISOString()
       })
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('status', 'active');
     
     if (batch_id) {
@@ -961,6 +970,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
     // Log successful age update
     await supabase.from('farm_audit_logs').insert({
       user_id: userId,
+      farm_id: farmId,
+      shed_id: shedId,
       action_type: 'age_override_event',
       action_category: 'farm',
       severity: 'info',
@@ -2285,12 +2296,19 @@ interface DeviceHealthPayload {
   shed_id?: string;
 }
 
-async function handleDeviceHealth(body: DeviceHealthPayload, supabase: any, userId: string, deviceToken: string) {
+async function handleDeviceHealth(
+  body: DeviceHealthPayload,
+  supabase: any,
+  userId: string,
+  deviceToken: string,
+  farmId: string,
+  shedId: string,
+) {
   try {
     // Get the device token ID
     const { data: device } = await supabase
       .from('device_tokens')
-      .select('id, shed_id')
+      .select('id, shed_id, farm_id, user_id')
       .eq('token', deviceToken)
       .single();
 
@@ -2300,11 +2318,19 @@ async function handleDeviceHealth(body: DeviceHealthPayload, supabase: any, user
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    if (device.user_id !== userId || device.farm_id !== farmId || device.shed_id !== shedId ||
+        (body.shed_id && body.shed_id !== shedId)) {
+      return new Response(
+        JSON.stringify({ error: 'Device binding mismatch', code: 'DEVICE_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     const healthData = {
       device_token_id: device.id,
       user_id: userId,
-      shed_id: body.shed_id || device.shed_id || null,
+      farm_id: farmId,
+      shed_id: shedId,
       wifi_signal_strength: body.wifi_signal_strength ?? null,
       uptime_seconds: body.uptime_seconds ?? null,
       free_memory_bytes: body.free_memory_bytes ?? null,

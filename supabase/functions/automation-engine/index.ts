@@ -229,16 +229,19 @@ interface StaleDeviceResult {
 
 async function detectAndMarkStaleDevices(
   supabase: any,
-  userId: string
+  userId: string,
+  farmId?: string | null,
 ): Promise<StaleDeviceResult[]> {
   const results: StaleDeviceResult[] = [];
   
   try {
     // Get all devices for this user
-    const { data: devices } = await supabase
+    let devicesQuery = supabase
       .from('device_health')
       .select('id, device_token_id, shed_id, last_cloud_sync_at, failsafe_mode, is_online')
       .eq('user_id', userId);
+    if (farmId) devicesQuery = devicesQuery.eq('farm_id', farmId);
+    const { data: devices } = await devicesQuery;
     
     if (!devices || devices.length === 0) {
       return results;
@@ -279,6 +282,7 @@ async function detectAndMarkStaleDevices(
               last_cloud_sync: device.last_cloud_sync_at,
             })
             .eq('user_id', userId)
+            .eq('farm_id', farmId)
             .eq('shed_id', device.shed_id);
         }
         
@@ -298,6 +302,7 @@ async function detectAndMarkStaleDevices(
             .from('device_status')
             .select('mode, manual_override, desired_manual_override')
             .eq('user_id', userId)
+            .eq('farm_id', farmId)
             .eq('shed_id', device.shed_id)
             .maybeSingle();
           if (
@@ -328,6 +333,7 @@ async function detectAndMarkStaleDevices(
               last_cloud_sync: new Date().toISOString(),
             })
             .eq('user_id', userId)
+            .eq('farm_id', farmId)
             .eq('shed_id', device.shed_id);
         }
         
@@ -652,6 +658,31 @@ Deno.serve(async (req) => {
     }
     const user_id = callerUserId ?? bodyUserId;
 
+    // Frontend callers are authorized against the farm boundary, not against
+    // the legacy owner user_id. Internal service/cron calls retain scheduler
+    // access but still use farm filters whenever a farm is supplied.
+    if (callerUserId) {
+      if (!bodyFarmId) {
+        return json({ success: false, error: 'farm_id required' }, 400);
+      }
+      const { data: canAccess } = await supabase.rpc('user_can_access_farm', {
+        _user_id: callerUserId,
+        _farm_id: bodyFarmId,
+      });
+      if (canAccess !== true) {
+        return json({ success: false, error: 'forbidden: farm access required' }, 403);
+      }
+      if (shed_id) {
+        const { data: boundShed } = await supabase
+          .from('sheds')
+          .select('id')
+          .eq('id', shed_id)
+          .eq('farm_id', bodyFarmId)
+          .maybeSingle();
+        if (!boundShed) return json({ success: false, error: 'shed/farm mismatch' }, 403);
+      }
+    }
+
     // ========================================
     // ACTION: run-automation (Per-Shed Automation)
     // ========================================
@@ -700,6 +731,7 @@ Deno.serve(async (req) => {
         .from('sheds')
         .select('id, name, name_en, is_active')
         .eq('user_id', user_id);
+      const scopedSheds = bodyFarmId ? (sheds || []).filter((shed: any) => shed.farm_id === bodyFarmId) : (sheds || []);
 
       // Get device health for all sheds
       const { data: deviceHealth } = await supabase
@@ -723,7 +755,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       // Build status per shed
-      const shedStatus = (sheds || []).map(shed => {
+      const shedStatus = scopedSheds.map(shed => {
         const health = deviceHealth?.find(d => d.shed_id === shed.id);
         const sensors = sensorData?.filter(s => s.shed_id === shed.id) || [];
         const latestSensor = sensors[0];
@@ -767,7 +799,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: true,
           sheds: shedStatus,
-          total_sheds: sheds?.length || 0,
+          total_sheds: scopedSheds.length,
           sheds_online: shedStatus.filter(s => s.device?.is_online).length,
           sheds_failsafe: shedStatus.filter(s => s.device?.failsafe_mode).length,
           timestamp: new Date().toISOString(),
@@ -791,13 +823,14 @@ Deno.serve(async (req) => {
 
       console.log(`[Fail-Safe Check] Running for user ${user_id}`);
       
-      const staleDevices = await detectAndMarkStaleDevices(supabase, user_id);
+      const staleDevices = await detectAndMarkStaleDevices(supabase, user_id, bodyFarmId ?? null);
       
       // Also run check for all sheds status
       const { data: deviceHealth } = await supabase
         .from('device_health')
         .select('shed_id, failsafe_mode, is_online, last_cloud_sync_at, mode')
-        .eq('user_id', user_id);
+        .eq('user_id', user_id)
+        .eq('farm_id', bodyFarmId);
 
       const summary = {
         total_devices: deviceHealth?.length || 0,
@@ -834,35 +867,17 @@ Deno.serve(async (req) => {
 
       console.log(`[Run All] Starting full automation cycle for user ${user_id}`);
 
-      // Check automation mode first
-      const { data: runAllSettings } = await supabase
-        .from('farm_settings')
-        .select('automation_mode')
-        .eq('user_id', user_id)
-        .single();
-
-      if (runAllSettings?.automation_mode === 'MANUAL') {
-        console.log(`⏸️ [Run All] Skipping — MANUAL mode active for user ${user_id}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            skipped: true,
-            reason: 'MANUAL_MODE',
-            timestamp: new Date().toISOString(),
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
       // Step 1: Check for stale devices
-      const staleDevices = await detectAndMarkStaleDevices(supabase, user_id);
+      const staleDevices = await detectAndMarkStaleDevices(supabase, user_id, bodyFarmId ?? null);
       
       // Step 2: Get all active sheds
-      const { data: sheds } = await supabase
+      let shedsQuery = supabase
         .from('sheds')
         .select('id, name')
         .eq('user_id', user_id)
         .eq('is_active', true);
+      if (bodyFarmId) shedsQuery = shedsQuery.eq('farm_id', bodyFarmId);
+      const { data: sheds } = await shedsQuery;
 
       // Step 3: Run REAL automation for each online shed through the shared
       // executor. Previously this only appended a success-looking result
