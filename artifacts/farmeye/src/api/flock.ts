@@ -60,7 +60,7 @@ export async function upsertFlockInfo(
     const { data: currentFlock } = await supabase
       .from('flock_info')
       .select('age_weeks, updated_at')
-      .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .maybeSingle();
 
     if (currentFlock) {
