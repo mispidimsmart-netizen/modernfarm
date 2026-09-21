@@ -101,15 +101,33 @@ export interface ActiveScope {
   farmMode: 'layer' | 'broiler' | null;
 }
 
+/**
+ * Farm calendar timezone. Every day-log date MUST be resolved in Asia/Dhaka:
+ * with plain `toISOString()` an entry made between 00:00–05:59 local time lands
+ * on the previous day's row (UTC is 6 hours behind) and can overwrite it.
+ */
+export const FARM_TIME_ZONE = 'Asia/Dhaka';
+
+/** ISO date (YYYY-MM-DD) of a moment, in farm-local (Asia/Dhaka) time. */
+export function toFarmDate(value: Date | string | number = new Date()): string {
+  const d = value instanceof Date ? value : new Date(value);
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: FARM_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
 /** ISO date (YYYY-MM-DD) for "N days ago", used by every list query. */
 export function daysAgoDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().split('T')[0];
+  return toFarmDate(Date.now() - days * 86_400_000);
 }
 
 /** Today's ISO date (YYYY-MM-DD) — default for every day-log style insert. */
 export function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return toFarmDate();
 }
+
 

@@ -17,6 +17,7 @@ import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useActiveBatch as useActiveBroilerBatch } from '@/hooks/useBroilerData';
 import { useFarmType } from '@/hooks/useFarmType';
 import { getFinanceMode, matchesActiveFinanceScope } from '@/lib/financeScope';
+import { today } from '@/api/types';
 
 /**
  * Central state + derived data for the FinanceSheet.
@@ -61,14 +62,14 @@ export function useFinanceSheet() {
   const availableEggStock = Math.max(0, totalEggsProduced - totalEggsSold);
 
   const [expenseForm, setExpenseForm] = useState({
-    expense_date: format(new Date(), 'yyyy-MM-dd'),
+    expense_date: today(),
     category: 'feed',
     amount: 0,
     description: '',
   });
 
   const [incomeForm, setIncomeForm] = useState({
-    income_date: format(new Date(), 'yyyy-MM-dd'),
+    income_date: today(),
     category: 'eggs',
     amount: 0,
     quantity: 0,

@@ -5,6 +5,7 @@ import { useFlockInfo, useUpdateFlockInfo } from '@/hooks/useFarmManagement';
 import { useActiveBatch, useUpdateBatch } from '@/hooks/useBroilerData';
 import { useActiveLayerBatch } from '@/hooks/useLayerBatch';
 import { useDailyTick } from '@/hooks/useDailyTick';
+import { toFarmDate } from '@/api/types';
 
 /**
  * Unified Bird Age — single source of truth.
@@ -128,7 +129,7 @@ export function useUpdateBirdAge() {
       const startDate =
         input.startDate ??
         (input.ageWeeks !== undefined
-          ? new Date(Date.now() - input.ageWeeks * 7 * 86_400_000).toISOString().split('T')[0]
+          ? toFarmDate(Date.now() - input.ageWeeks * 7 * 86_400_000)
           : undefined);
       if (!startDate) throw new Error('startDate or ageWeeks is required');
       const result = await updateBatch.mutateAsync({ id: activeBatch.id, start_date: startDate });

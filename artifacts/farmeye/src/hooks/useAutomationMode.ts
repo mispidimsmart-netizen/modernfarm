@@ -29,13 +29,18 @@ export function useAutomationMode() {
       // MANUAL was set. maybeSingle returns null cleanly.
       const { data, error } = await query.maybeSingle();
       if (error) {
+        // Never answer 'AUTO' on a transient read failure — that would claim a
+        // MANUAL farm is automated. Throw so react-query retries and keeps the
+        // last known mode on screen.
         console.warn('[useAutomationMode] read failed:', error);
-        return 'AUTO';
+        throw error;
       }
       return (data?.automation_mode as AutomationMode) ?? 'AUTO';
     },
     enabled: !!user,
     staleTime: 5000,
+    retry: 3,
+    placeholderData: (prev) => prev,
   });
 }
 

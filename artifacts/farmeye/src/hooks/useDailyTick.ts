@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { today } from '@/api/types';
 
 /**
  * Returns the current local ISO date (YYYY-MM-DD) and re-renders
@@ -9,7 +10,7 @@ import { useEffect, useState } from 'react';
  * displayed value updates without a manual refresh.
  */
 export function useDailyTick(): string {
-  const [today, setToday] = useState(() => new Date().toISOString().split('T')[0]);
+  const [today, setToday] = useState(() => today());
 
   useEffect(() => {
     let timer: number | undefined;
@@ -20,14 +21,14 @@ export function useDailyTick(): string {
       next.setHours(24, 0, 5, 0); // 5s after midnight to be safe
       const ms = next.getTime() - now.getTime();
       timer = window.setTimeout(() => {
-        setToday(new Date().toISOString().split('T')[0]);
+        setToday(today());
         scheduleNextMidnight();
       }, ms);
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        const cur = new Date().toISOString().split('T')[0];
+        const cur = today();
         setToday((prev) => (prev !== cur ? cur : prev));
       }
     };

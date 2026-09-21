@@ -133,7 +133,30 @@ export async function updateBatch(id: string, patch: Partial<BroilerBatch>) {
     .select()
     .single();
   if (error) throw error;
+
+  // Completing a batch must clear the dashboard bird count, exactly like the
+  // layer close-out does — otherwise the finished batch's birds linger.
+  if (patch.status === 'completed') {
+    await resetFlockInfoIfNoActiveBatch((data as any)?.farm_id ?? null);
+  }
   return data;
+}
+
+/** Zeroes flock_info when the farm has no active broiler batch left. */
+export async function resetFlockInfoIfNoActiveBatch(farmId: string | null): Promise<void> {
+  if (!farmId) return;
+  const { data: stillActive } = await supabase
+    .from('broiler_batches')
+    .select('id')
+    .eq('farm_id', farmId)
+    .eq('status', 'active')
+    .limit(1);
+  if (stillActive && stillActive.length > 0) return;
+
+  await supabase
+    .from('flock_info')
+    .update({ total_birds: 0, purchase_date: null } as any)
+    .eq('farm_id', farmId);
 }
 
 /** No FK cascade exists — child tables must be cleared before the parent row. */

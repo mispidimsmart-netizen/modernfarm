@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DeviceCommandLogTab } from '@/components/audit/DeviceCommandLogTab';
 import { TroubleshootingTips, getTroubleshootingKey } from '@/components/audit/TroubleshootingTips';
 import { ExportLogButton } from '@/components/audit/ExportLogButton';
+import { today as farmToday } from '@/api/types';
 
 const categoryConfig: Record<string, { icon: typeof Shield; label: string; labelBn: string; color: string }> = {
   settings: { icon: Settings, label: 'Settings', labelBn: 'সেটিংস', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -86,7 +87,7 @@ export function AuditLogPage() {
 
   const stats = useMemo(() => {
     if (!logs) return { total: 0, critical: 0, warning: 0, today: 0 };
-    const today = new Date().toISOString().split('T')[0];
+    const today = farmToday();
     return {
       total: logs.length,
       critical: logs.filter(l => l.severity === 'critical').length,

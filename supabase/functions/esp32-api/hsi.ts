@@ -69,6 +69,16 @@ export async function applyHSIAutomation(
 
     const { data: deviceStatus } = await deviceQuery.limit(1).maybeSingle();
 
+    // Emergency Survival Mode is precedence rule #2 — it must be read, not
+    // assumed false, or the cloud keeps writing desired_* during an emergency.
+    let esmQuery = supabase
+      .from('safety_status')
+      .select('emergency_active, survival_mode')
+      .eq('user_id', userId);
+    if (farmId) esmQuery = esmQuery.eq('farm_id', farmId);
+    if (shedId) esmQuery = esmQuery.eq('shed_id', shedId);
+    const { data: safety } = await esmQuery.limit(1).maybeSingle();
+
     const gate = evaluateModeGate({
       automationMode: settings?.automation_mode,
       deviceMode: deviceStatus?.mode,
@@ -78,6 +88,7 @@ export async function applyHSIAutomation(
       desiredManualOverride: deviceStatus?.desired_manual_override,
       fanOverrideUntil: deviceStatus?.desired_fan_expires_at,
       alarmOverrideUntil: deviceStatus?.desired_alarm_expires_at,
+      emergencyActive: safety?.emergency_active === true || safety?.survival_mode === true,
       requiresHSIAutomation: true,
     });
 

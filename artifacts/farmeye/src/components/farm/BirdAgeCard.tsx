@@ -13,6 +13,7 @@ import { useFarmType } from '@/hooks/useFarmType';
 import { useBirdAge, useUpdateBirdAge } from '@/hooks/useBirdAge';
 import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { cn } from '@/lib/utils';
+import { today } from '@/api/types';
 
 /**
  * Single source of truth for bird age — works for both broiler & layer.
@@ -51,7 +52,7 @@ export function BirdAgeCard() {
 
   useEffect(() => {
     if (startDate) setDraftDate(startDate);
-    else if (isBroiler) setDraftDate(new Date().toISOString().split('T')[0]);
+    else if (isBroiler) setDraftDate(today());
   }, [startDate, isBroiler]);
 
   useEffect(() => {

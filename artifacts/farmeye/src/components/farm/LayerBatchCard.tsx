@@ -51,6 +51,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { EditCompletedBatchDialog } from '@/components/farm/EditCompletedBatchDialog';
+import { today as farmToday } from '@/api/types';
 
 
 
@@ -75,7 +76,7 @@ export function LayerBatchCard() {
   const [newForm, setNewForm] = useState({
     batch_name_bn: '',
     breed: 'Hy-Line Brown',
-    start_date: new Date().toISOString().split('T')[0],
+    start_date: farmToday(),
     initial_bird_count: 0,
     age_at_start_weeks: 0,
     chick_cost_per_bird: 0,
@@ -84,7 +85,7 @@ export function LayerBatchCard() {
 
   // Close form
   const [closeForm, setCloseForm] = useState({
-    end_date: new Date().toISOString().split('T')[0],
+    end_date: farmToday(),
     notes: '',
   });
 
@@ -133,7 +134,7 @@ export function LayerBatchCard() {
           setNewForm({
             batch_name_bn: '',
             breed: 'Hy-Line Brown',
-            start_date: new Date().toISOString().split('T')[0],
+            start_date: farmToday(),
             initial_bird_count: 0,
             age_at_start_weeks: 0,
             chick_cost_per_bird: 0,

@@ -36,6 +36,15 @@ export async function getDeviceCommands(
   // concurrent polls safe — a command is handed to exactly one poll per lease
   // window instead of being returned to every request between select & update.
   const COMMAND_LEASE_SECONDS = 20;
+  // A token with no farm binding must never claim commands: the RPC treats a
+  // NULL _farm_id as "any farm", which would leak another farm's relay commands.
+  if (boundDevice && !boundDevice.farm_id) {
+    console.warn('Unbound device token polled for commands — refusing (no farm binding)');
+    return new Response(
+      JSON.stringify({ commands: [], error: 'Device token has no farm binding', code: 'DEVICE_UNBOUND' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
   const claim = await supabase.rpc('claim_device_commands', {
     _user_id: userId,
     _device_name: authoritativeDeviceName ?? null,
@@ -71,7 +80,13 @@ export async function getDeviceCommands(
   if (authoritativeDeviceName) {
     logQuery = logQuery.eq('device_name', authoritativeDeviceName);
   }
-  if (boundDevice?.farm_id) logQuery = logQuery.eq('farm_id', boundDevice.farm_id);
+  if (boundDevice?.farm_id) {
+    logQuery = logQuery.eq('farm_id', boundDevice.farm_id);
+  } else {
+    // Unbound legacy token: never hand it another farm's commands — restrict to
+    // rows that are themselves farm-less.
+    logQuery = logQuery.is('farm_id', null);
+  }
   if (boundDevice?.shed_id) logQuery = logQuery.or(`shed_id.eq.${boundDevice.shed_id},shed_id.is.null`);
 
   const { data: logData } = await logQuery;

@@ -24,7 +24,7 @@ export function useMortalityRecords(days: number = 30) {
       days,
     ],
     queryFn: async () => {
-      const rows = await mortalityApi.listMortalityRecords(days);
+      const rows = await mortalityApi.listMortalityRecords(days, selectedFarmId);
       const activeMode = isLayer ? 'layer' : isBroiler ? 'broiler' : null;
       return rows.filter((record: any) => {
         // Prefer direct farm_id/farm_mode; fall back to the joined shed.

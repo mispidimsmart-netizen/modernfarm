@@ -138,6 +138,12 @@ export async function updateFeedConsumption(
   const avgCost = await getWeightedAvgCostPerKg(r.feed_type, farmId);
   const totalCost = Number(r.quantity_kg || 0) * avgCost;
   if (totalCost > 0) {
+    // Re-tag the regenerated expense with batch + mode, otherwise editing a
+    // feed entry silently drops its cost out of the active batch's report.
+    const { resolveActiveScope } = await import('./finance');
+    const scope = r.farm_id
+      ? await resolveActiveScope(r.farm_id)
+      : { activeBatchId: null, farmMode: null as 'layer' | 'broiler' | null };
     await supabase.from('expenses').insert({
       user_id: r.user_id,
       farm_id: r.farm_id,
@@ -145,6 +151,8 @@ export async function updateFeedConsumption(
       category: 'feed',
       amount: Number(totalCost.toFixed(2)),
       description: `[Auto-Feed-Usage:${id}] ${r.feed_type} • ${r.quantity_kg}kg @ ৳${avgCost.toFixed(2)}/kg`,
+      batch_id: r.batch_id ?? scope.activeBatchId,
+      farm_mode: scope.farmMode,
     } as any);
   }
 }

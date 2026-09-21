@@ -23,6 +23,7 @@ import { SmartDatePicker } from '@/components/ui/smart-date-picker';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+import { today } from '@/api/types';
 
 const LAYER_BREEDS: BreedOption[] = [
   { value: 'ISA Brown', label: 'ISA Brown (আইএসএ ব্রাউন)', keywords: 'isa brown আইএসএ' },
@@ -62,7 +63,7 @@ export function EditCompletedBatchDialog({
     breed: batch.breed || 'Hy-Line Brown',
     age_at_start_weeks: batch.age_at_start_weeks ?? 0,
     start_date: batch.start_date,
-    actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
+    actual_end_date: batch.actual_end_date || today(),
     initial_bird_count: batch.initial_bird_count,
     current_bird_count: batch.current_bird_count,
     chick_cost_per_bird: batch.chick_cost_per_bird,
@@ -80,7 +81,7 @@ export function EditCompletedBatchDialog({
         breed: batch.breed || 'Hy-Line Brown',
         age_at_start_weeks: batch.age_at_start_weeks ?? 0,
         start_date: batch.start_date,
-        actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
+        actual_end_date: batch.actual_end_date || today(),
         initial_bird_count: batch.initial_bird_count,
         current_bird_count: batch.current_bird_count,
         chick_cost_per_bird: batch.chick_cost_per_bird,
@@ -176,7 +177,7 @@ export function EditCompletedBatchDialog({
       breed: batch.breed || 'Hy-Line Brown',
       age_at_start_weeks: batch.age_at_start_weeks ?? 0,
       start_date: batch.start_date,
-      actual_end_date: batch.actual_end_date || new Date().toISOString().split('T')[0],
+      actual_end_date: batch.actual_end_date || today(),
       initial_bird_count: batch.initial_bird_count,
       current_bird_count: batch.current_bird_count,
       chick_cost_per_bird: batch.chick_cost_per_bird,

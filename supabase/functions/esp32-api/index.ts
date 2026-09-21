@@ -1858,11 +1858,26 @@ async function assertCloudWriteAllowed(
 
   let statusQuery = supabase
     .from('device_status')
-    .select('mode, manual_override, desired_manual_override');
+    .select(
+      'mode, manual_override, desired_manual_override, desired_fan_expires_at, desired_alarm_expires_at, updated_at',
+    );
   if (farmId) statusQuery = statusQuery.eq('farm_id', farmId);
   else statusQuery = statusQuery.eq('user_id', userId);
   if (shedId) statusQuery = statusQuery.eq('shed_id', shedId);
-  const { data: status } = await statusQuery.limit(1).maybeSingle();
+  // Without a shed the row order must be deterministic, otherwise a farm with
+  // one shed in MANUAL and another in AUTO gets a random gate decision.
+  const { data: status } = await statusQuery
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let esmQuery = supabase
+    .from('safety_status')
+    .select('emergency_active, survival_mode')
+    .eq('user_id', userId);
+  if (farmId) esmQuery = esmQuery.eq('farm_id', farmId);
+  if (shedId) esmQuery = esmQuery.eq('shed_id', shedId);
+  const { data: safety } = await esmQuery.limit(1).maybeSingle();
 
   const gate = evaluateModeGate({
     automationMode: settings?.automation_mode,
@@ -1870,6 +1885,11 @@ async function assertCloudWriteAllowed(
     safetyEngineEnabled: settings?.safety_engine_enabled,
     manualOverride: status?.manual_override,
     desiredManualOverride: status?.desired_manual_override,
+    // Control-page timed overrides must win here too, exactly like in
+    // hsi.ts / automation-engine.
+    fanOverrideUntil: status?.desired_fan_expires_at,
+    alarmOverrideUntil: status?.desired_alarm_expires_at,
+    emergencyActive: safety?.emergency_active === true || safety?.survival_mode === true,
   });
   return { allow: gate.allow, reason: gate.reason };
 }

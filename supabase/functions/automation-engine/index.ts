@@ -450,6 +450,16 @@ async function executeAutomationForShed(
   if (shed_id) dsQuery = dsQuery.eq('shed_id', shed_id);
   const { data: deviceStatus } = await dsQuery.maybeSingle();
 
+  // Emergency Survival Mode (precedence rule #2) — read it instead of assuming
+  // false, so the cloud stays silent while the board is in survival cycles.
+  let esmQuery = supabase
+    .from('safety_status')
+    .select('emergency_active, survival_mode')
+    .eq('user_id', user_id);
+  if (farm_id) esmQuery = esmQuery.eq('farm_id', farm_id);
+  if (shed_id) esmQuery = esmQuery.eq('shed_id', shed_id);
+  const { data: safetyRow } = await esmQuery.limit(1).maybeSingle();
+
   // MODE-01 — single precedence ladder shared with esp32-api.
   const gate = evaluateModeGate({
     automationMode: settings.automation_mode,
@@ -459,6 +469,7 @@ async function executeAutomationForShed(
     desiredManualOverride: deviceStatus?.desired_manual_override,
     fanOverrideUntil: deviceStatus?.desired_fan_expires_at,
     alarmOverrideUntil: deviceStatus?.desired_alarm_expires_at,
+    emergencyActive: safetyRow?.emergency_active === true || safetyRow?.survival_mode === true,
   });
 
 

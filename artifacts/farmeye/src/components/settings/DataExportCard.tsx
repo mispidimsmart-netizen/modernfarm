@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { today, toFarmDate } from '@/api/types';
 
 const TYPES = [
   { v: 'all', bn: 'সব ডেটা (সম্পূর্ণ এক্সপোর্ট)', en: 'All data (complete)' },
@@ -29,7 +30,7 @@ const QUICK_RANGES = [
 function isoDaysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return toFarmDate(d);
 }
 
 export function DataExportCard() {
@@ -39,7 +40,7 @@ export function DataExportCard() {
   const [type, setType] = useState('all');
   const [range, setRange] = useState('30');
   const [start, setStart] = useState(isoDaysAgo(30));
-  const [end, setEnd] = useState(new Date().toISOString().slice(0, 10));
+  const [end, setEnd] = useState(today());
   const [busy, setBusy] = useState(false);
 
   function applyRange(r: string) {
@@ -47,7 +48,7 @@ export function DataExportCard() {
     if (r === 'custom') return;
     const days = Number(r);
     setStart(isoDaysAgo(days));
-    setEnd(new Date().toISOString().slice(0, 10));
+    setEnd(today());
   }
 
   async function exportNow() {

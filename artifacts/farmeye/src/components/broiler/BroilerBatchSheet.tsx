@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BreedCombobox, type BreedOption } from '@/components/farm/BreedCombobox';
+import { today } from '@/api/types';
 
 const BROILER_BREEDS: BreedOption[] = [
   { value: 'Cobb 500', label: 'Cobb 500 (কব ৫০০)', keywords: 'কব cobb 500' },
@@ -46,7 +47,7 @@ const emptyForm = {
   batch_name: '',
   batch_name_bn: '',
   shed_id: '',
-  start_date: new Date().toISOString().split('T')[0],
+  start_date: today(),
   initial_bird_count: '',
   current_bird_count: '',
   chick_cost_per_bird: '',
@@ -128,7 +129,7 @@ export function BroilerBatchSheet({ open, onOpenChange }: BroilerBatchSheetProps
     await updateBatch.mutateAsync({
       id: batch.id,
       status: 'completed',
-      actual_end_date: new Date().toISOString().split('T')[0],
+      actual_end_date: today(),
     });
   };
 
