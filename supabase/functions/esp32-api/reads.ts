@@ -728,6 +728,9 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
       ...(isBroiler ? { broiler_age_days: birdAge } : {}),
 
       mode: mode,
+      // Active per-device timed overrides; false = board must release its lock.
+      overrides: overrides,
+
       targetTemp: (targetTemp.min + targetTemp.max) / 2,
       targetTempMin: targetTemp.min,
       targetTempMax: targetTemp.max,
