@@ -94,6 +94,10 @@ export function useBoundedOverride() {
   // Send end-override request — same farm+shed scoping as startOverride
   const endOverride = useCallback(async () => {
     if (!user) return;
+    if (!selectedFarmId) {
+      console.error('[useBoundedOverride] NO_FARM_SELECTED — end-override skipped');
+      return;
+    }
 
     try {
       let upd = supabase
@@ -101,9 +105,8 @@ export function useBoundedOverride() {
         .update({
           desired_manual_override: false,
           updated_at: new Date().toISOString(),
-        });
-      if (selectedFarmId) upd = upd.eq('farm_id', selectedFarmId);
-      else upd = upd.eq('user_id', user.id);
+        })
+        .eq('farm_id', selectedFarmId);
       if (selectedShedId) upd = upd.eq('shed_id', selectedShedId);
       await upd;
 
