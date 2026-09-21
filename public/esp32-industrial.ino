@@ -5424,6 +5424,12 @@ void setup() {
   // the farmer's last choice. Hard Floor (>42°C) is hardcoded and unaffected.
   loadCachedSafetyEngine();
 
+  // --- Sticky Auto/Manual mode (offline-resilient) ---
+  // Restore the last mode + operator relay intent BEFORE WiFi, so a power cut,
+  // WiFi outage, sensor failure or watchdog reset can never silently flip a
+  // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
+  loadPersistedModeState();
+
   // --- WiFi ---
   connectWiFi();
   if (wifiConnected) {
