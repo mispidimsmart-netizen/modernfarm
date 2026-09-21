@@ -173,17 +173,11 @@ export function useSetAutomationMode() {
       // ═══════════════════════════════════════════════════════════
       // STEP 4: Update device_health mode for dashboard display
       // ═══════════════════════════════════════════════════════════
-      let healthQuery = supabase
+      // Strictly farm-scoped (mode is farm-wide); never a user_id-only write.
+      await supabase
         .from('device_health')
         .update({ mode: mode } as any)
-        .eq('user_id', user.id);
-      
-      if (selectedFarmId) {
-        healthQuery = healthQuery.eq('farm_id', selectedFarmId);
-      }
-      // shedId ignored — mode is farm-wide, so update health rows for the whole farm.
-
-      await healthQuery;
+        .eq('farm_id', selectedFarmId);
 
       // ═══════════════════════════════════════════════════════════
       // STEP 5: Audit log
