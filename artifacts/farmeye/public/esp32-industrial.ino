@@ -3908,7 +3908,7 @@ void fetchConfig() {
     JsonObject ov = doc["overrides"];
     if (ov.containsKey("fan") && ov["fan"] == false && fanManualOverride) {
       fanManualOverride = false; fanManualTime = 0;
-      Serial.println("☁️ [OVERRIDE] Fan override released by cloud → AUTO控");
+      Serial.println("☁️ [OVERRIDE] Fan override released by cloud → AUTO");
     }
     if (ov.containsKey("heater") && ov["heater"] == false && heaterManualOverride) {
       heaterManualOverride = false; heaterManualTime = 0;
