@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useAllDeviceHealth, DeviceHealth } from '@/hooks/useDeviceHealth';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
+import { isDeviceOnline, isCloudSyncStale } from '@/lib/deviceFreshness';
+
 
 // Calculate time ago from a date string
 function getTimeAgo(dateStr: string | null, language: 'bn' | 'en'): string {
