@@ -294,50 +294,19 @@ async function detectAndMarkStaleDevices(
           marked_failsafe: true,
         });
       } else if (!isStale && device.failsafe_mode) {
-        // Device was fail-safe but now syncing again → recover.
-        // MANUAL is sticky: never promote a manually-operated shed back to AUTO.
-        let recoveredMode: 'AUTO' | 'MANUAL' = 'AUTO';
-        if (device.shed_id) {
-          const { data: statusRow } = await supabase
-            .from('device_status')
-            .select('mode, manual_override, desired_manual_override')
-            .eq('user_id', userId)
-            .eq('farm_id', device.farm_id)
-            .eq('shed_id', device.shed_id)
-            .maybeSingle();
-          if (
-            statusRow?.mode === 'MANUAL' ||
-            statusRow?.manual_override === true ||
-            statusRow?.desired_manual_override === true
-          ) {
-            recoveredMode = 'MANUAL';
-          }
+        // Recover atomically in the database. The RPC shares the farm-level
+        // advisory lock used by mode switching, so MANUAL can never be lost to
+        // a read-then-write race while connectivity is restored.
+        const { data: recoveredMode, error: recoveryError } = await supabase.rpc(
+          'recover_device_from_failsafe',
+          { _device_health_id: device.id },
+        );
+        if (recoveryError || !recoveredMode) {
+          console.error('[Fail-Safe Recovery] Atomic recovery failed:', recoveryError);
+          continue;
         }
         console.log(`🟢 Device ${device.device_token_id} recovered from FAIL_SAFE → ${recoveredMode}`);
 
-        await supabase
-          .from('device_health')
-          .update({
-            failsafe_mode: false,
-            failsafe_activated_at: null,
-            is_online: true,
-            mode: recoveredMode,
-          })
-          .eq('id', device.id);
-        
-        if (device.shed_id) {
-          await supabase
-            .from('device_status')
-            .update({
-              mode: recoveredMode,
-              last_cloud_sync: new Date().toISOString(),
-            })
-            .eq('user_id', userId)
-            .eq('farm_id', device.farm_id)
-            .eq('shed_id', device.shed_id);
-        }
-        
-        
         results.push({
           device_id: device.device_token_id,
           shed_id: device.shed_id,
