@@ -441,16 +441,25 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
       return await handlePowerStatus(bodyData, supabase, userId, deviceToken);
     }
 
-    // ===== SAFETY ENGINE PROXY ENDPOINTS =====
+    // ===== SAFETY ENGINE ENDPOINTS (in-process) =====
     // ESP32 sends these through esp32-api so the same device-token auth,
     // farm isolation, and shed binding are used for safety + forensic logs.
     if (req.method === 'POST' && path === 'safety-evaluate') {
-      return await proxySafetyEngine('evaluate', bodyData, userId, deviceFarmId, deviceShedId);
+      return await handleSafetyEvaluate(bodyData, supabase, {
+        userId,
+        farmId: deviceFarmId ?? null,
+        shedId: deviceShedId ?? null,
+      });
     }
 
     if (req.method === 'POST' && path === 'forensic-log') {
-      return await proxySafetyEngine('forensic_log', bodyData, userId, deviceFarmId, deviceShedId);
+      return await handleForensicLog(bodyData, supabase, {
+        userId,
+        farmId: deviceFarmId ?? null,
+        shedId: deviceShedId ?? null,
+      });
     }
+
 
     if (req.method === 'GET' && path === 'power-outages') {
       return await getPowerOutages(supabase, userId);
