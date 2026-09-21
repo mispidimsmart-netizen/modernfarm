@@ -704,6 +704,27 @@ int    activeSecretVersion = 0;
 String activeShedId = "", activeShedName = "", activeFarmId = "";
 bool nvsProvisioned = false;
 
+// --- WiFi self-service (setup hotspot + cloud "set_wifi" command) ---------
+// Goal: changing the router/password must NEVER require re-flashing.
+//  * Credentials saved by the user (portal or cloud) win over the compiled-in
+//    WIFI_SSID/WIFI_PASSWORD, so a re-flash does not silently undo them.
+//  * The previous working network is kept as a backup: a wrong new password
+//    reverts automatically instead of stranding the board.
+//  * Relays, sensors and every hardcoded safety invariant keep running while
+//    the setup hotspot is open — the portal only writes WiFi fields.
+String backupWifiSSID = "", backupWifiPassword = "";
+bool   wifiUserProvisioned = false;
+bool   wifiPortalActive = false;
+unsigned long wifiPortalStartMs = 0;
+bool   wifiTrialPending = false;
+unsigned long wifiTrialStartMs = 0;
+WebServer* wifiPortalServer = nullptr;
+#define WIFI_PORTAL_AP_PASSWORD   "farmeye2026"
+#define WIFI_PORTAL_TIMEOUT_MS    (15UL * 60UL * 1000UL)   // auto-close after 15 min
+#define WIFI_PORTAL_OFFLINE_MS    (2UL * 60UL * 1000UL)    // open after 2 min offline
+#define WIFI_TRIAL_TIMEOUT_MS     (90UL * 1000UL)          // new creds must connect in 90s
+
+
 // --- OTA ---
 bool otaInProgress = false;
 int otaProgress = 0;
