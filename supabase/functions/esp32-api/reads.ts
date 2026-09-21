@@ -226,7 +226,8 @@ export async function getSystemStatus(
   supabase: any, 
   userId: string, 
   shedId: string | null,
-  deviceName: string | null
+  deviceName: string,
+  farmId: string,
 ) {
   try {
     const now = new Date().toISOString();
@@ -235,14 +236,15 @@ export async function getSystemStatus(
     const { data: farmSettings } = await supabase
       .from('farm_settings')
       .select('*')
-      .eq('user_id', userId)
-      .single();
+      .eq('farm_id', farmId)
+      .maybeSingle();
 
     // 2. Device Status (for specific shed if provided)
     let statusQuery = supabase
       .from('device_status')
       .select('*')
-      .eq('user_id', userId);
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId);
     
     if (shedId) {
       statusQuery = statusQuery.eq('shed_id', shedId);
@@ -254,7 +256,8 @@ export async function getSystemStatus(
     let healthQuery = supabase
       .from('device_health')
       .select('*')
-      .eq('user_id', userId);
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId);
     
     if (shedId) {
       healthQuery = healthQuery.eq('shed_id', shedId);
@@ -267,6 +270,8 @@ export async function getSystemStatus(
       .from('automation_rules')
       .select('id, condition_sensor, condition_operator, condition_value, action_device, action_state')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('enabled', true);
 
     // 5. Lighting Schedule
@@ -274,14 +279,17 @@ export async function getSystemStatus(
       .from('lighting_schedule')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
+      .maybeSingle();
 
     // 6. Pending Commands (for specific device)
-    const targetDeviceName = deviceName || 'ESP32_LAYER_001';
+    const targetDeviceName = deviceName;
     const { data: pendingCommands } = await supabase
       .from('device_commands')
       .select('id, command_type, command_value, created_at')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .eq('device_name', targetDeviceName)
       .eq('executed', false)
       .order('created_at', { ascending: true });
@@ -291,6 +299,8 @@ export async function getSystemStatus(
       .from('power_outages')
       .select('id, started_at, power_source, battery_level_start, is_ongoing')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('is_ongoing', true);
     
     if (shedId) {
@@ -304,6 +314,8 @@ export async function getSystemStatus(
       .from('sensor_readings')
       .select('temperature, humidity, ammonia, water_usage, hsi, recorded_at')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .order('recorded_at', { ascending: false })
       .limit(1);
     
@@ -463,14 +475,16 @@ export async function getSystemStatus(
 export async function getAdvancedSettings(
   supabase: any, 
   userId: string, 
-  shedId: string | null
+  shedId: string,
+  farmId: string,
 ) {
   try {
     // Build query for advanced automation settings
     let query = supabase
       .from('advanced_automation_settings')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('farm_id', farmId);
 
     if (shedId) {
       query = query.eq('shed_id', shedId);
@@ -608,24 +622,16 @@ export async function getAdvancedSettings(
 // Response format matches the user's specification:
 // { targetTemp, minVentilationPercent, birdAge, mode, ... }
 // ═══════════════════════════════════════════════════════════════════════════
-export async function getDeviceConfig(supabase: any, userId: string, shedId: string | null) {
+export async function getDeviceConfig(supabase: any, userId: string, shedId: string, farmId: string) {
   try {
     // Fetch all config sources in parallel (shed-aware)
     const [shedRes, settingsRes, advancedRes, batchRes, deviceStatusRes, lightingRes] = await Promise.all([
-      shedId 
-        ? supabase.from('sheds').select('farm_type').eq('id', shedId).single()
-        : supabase.from('profiles').select('farm_type').eq('id', userId).single(),
-      supabase.from('farm_settings').select('*').eq('user_id', userId).single(),
-      shedId
-        ? supabase.from('advanced_automation_settings').select('*').eq('user_id', userId).eq('shed_id', shedId).maybeSingle()
-        : supabase.from('advanced_automation_settings').select('*').eq('user_id', userId).is('shed_id', null).maybeSingle(),
-      shedId
-        ? supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('shed_id', shedId).eq('status', 'active').maybeSingle()
-        : supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('user_id', userId).eq('status', 'active').maybeSingle(),
-      shedId
-        ? supabase.from('device_status').select('manual_override, desired_manual_override, mode').eq('user_id', userId).eq('shed_id', shedId).maybeSingle()
-        : supabase.from('device_status').select('manual_override, desired_manual_override, mode').eq('user_id', userId).maybeSingle(),
-      supabase.from('lighting_schedule').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('sheds').select('farm_type').eq('id', shedId).eq('farm_id', farmId).single(),
+      supabase.from('farm_settings').select('*').eq('farm_id', farmId).maybeSingle(),
+      supabase.from('advanced_automation_settings').select('*').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
+      supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('farm_id', farmId).eq('shed_id', shedId).eq('status', 'active').maybeSingle(),
+      supabase.from('device_status').select('manual_override, desired_manual_override, mode').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
+      supabase.from('lighting_schedule').select('*').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
     ]);
 
     const shedData = shedRes.data;

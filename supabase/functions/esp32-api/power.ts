@@ -15,14 +15,21 @@ export interface PowerStatusPayload {
   battery_level?: number;
 }
 
-export async function handlePowerStatus(body: PowerStatusPayload, supabase: any, userId: string, deviceToken: string) {
+export async function handlePowerStatus(
+  body: PowerStatusPayload,
+  supabase: any,
+  userId: string,
+  deviceToken: string,
+  boundFarmId: string,
+  boundShedId: string,
+) {
   try {
     const { power_on, power_source = 'mains', battery_level } = body;
 
     // Get device info
     const { data: device, error: deviceError } = await supabase
       .from('device_tokens')
-      .select('id, shed_id')
+      .select('id, shed_id, farm_id, user_id')
       .eq('token', deviceToken)
       .single();
 
@@ -30,6 +37,12 @@ export async function handlePowerStatus(body: PowerStatusPayload, supabase: any,
       return new Response(
         JSON.stringify({ error: 'Device not found', code: 'DEVICE_NOT_FOUND' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (device.user_id !== userId || device.farm_id !== boundFarmId || device.shed_id !== boundShedId) {
+      return new Response(
+        JSON.stringify({ error: 'Device binding mismatch', code: 'DEVICE_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -182,7 +195,8 @@ export async function handlePowerStatus(body: PowerStatusPayload, supabase: any,
     await supabase
       .from('device_status')
       .update({ power_on })
-      .eq('user_id', userId);
+      .eq('farm_id', boundFarmId)
+      .eq('shed_id', boundShedId);
 
     return new Response(
       JSON.stringify({ 
