@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShieldAlert, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
+import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
