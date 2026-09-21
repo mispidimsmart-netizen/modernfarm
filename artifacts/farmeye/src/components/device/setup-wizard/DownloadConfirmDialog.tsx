@@ -74,6 +74,13 @@ export function DownloadConfirmDialog({
                 verify করা হবে। mismatch হলে ডাউনলোড <strong>বাতিল</strong> হয়ে যাবে।
               </div>
 
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs">
+                ⛔ এই ফাইলে WiFi, ডিভাইস টোকেন ও নিরাপত্তা সিক্রেট <strong>নেই</strong> — এটি শুধু রেফারেন্স টেমপ্লেট।
+                এটা flash করলে বোর্ড সার্ভারে ঢুকতে পারবে না (401)।
+                লাইভ ডিভাইসের জন্য অবশ্যই <strong>সেটিংস → ডিভাইস</strong> পেজের জেনারেটর থেকে
+                সিক্রেট-বসানো ফার্মওয়্যার ডাউনলোড করুন।
+              </div>
+
               <label className="flex items-start gap-2 cursor-pointer rounded-lg border p-2 hover:bg-accent">
                 <Checkbox
                   checked={finalAck}
