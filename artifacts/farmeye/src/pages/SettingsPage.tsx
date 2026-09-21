@@ -283,27 +283,20 @@ export function SettingsPage() {
           <div className={!canEditSettings ? 'pointer-events-none opacity-60 select-none' : ''} aria-disabled={!canEditSettings}>
           {(canEditSettings || !permissionsLoading) && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-6 mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl">
-                <TabsTrigger 
-                  value="farm-setup" 
+              <TabsList className="grid w-full grid-cols-5 mb-4 h-auto p-1 gap-1 bg-muted/60 rounded-xl">
+                <TabsTrigger
+                  value="farm-setup"
                   className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                 >
                   <Home className="h-4 w-4 shrink-0" />
                   <span>{language === 'bn' ? 'খামার' : 'Farm'}</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="operation" 
+                <TabsTrigger
+                  value="operation"
                   className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
                 >
                   <Settings className="h-4 w-4 shrink-0" />
                   <span>{language === 'bn' ? 'পরিচালনা' : 'Ops'}</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="lighting" 
-                  className="flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg text-[10px] data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                >
-                  <Lightbulb className="h-4 w-4 shrink-0" />
-                  <span>{language === 'bn' ? 'লাইটিং' : 'Light'}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="reports" 
