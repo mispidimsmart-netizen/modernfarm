@@ -3824,7 +3824,7 @@ void checkCommands() {
   esp_task_wdt_reset();
   if (code == 200) {
     String resp = http.getString();
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(4096);  // payload (e.g. set_wifi) needs extra room
     if (deserializeJson(doc, resp) == DeserializationError::Ok && doc.containsKey("commands")) {
       JsonArray cmds = doc["commands"];
       for (JsonObject cmd : cmds) {
