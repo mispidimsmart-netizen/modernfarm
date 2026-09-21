@@ -8,7 +8,7 @@ import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
-type FarmState = 'normal' | 'adjusting' | 'cooling' | 'cooling_needed' | 'emergency' | 'emergency_no_action' | 'sensor_fail' | 'purge';
+type FarmState = 'normal' | 'adjusting' | 'cooling' | 'cooling_needed' | 'emergency' | 'emergency_no_action' | 'manual_hot' | 'sensor_fail' | 'purge';
 
 interface StateConfig {
   id: FarmState;
@@ -68,6 +68,20 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
     gradient: 'from-red-700 via-red-600 to-rose-700',
     borderColor: 'border-red-300',
   } as StateConfig,
+  // MANUAL mode: the operator is in full control, so "no device responding" is
+  // wrong — the relays are OFF because the operator chose that. Show the real
+  // condition and ask the operator to act instead of blaming the hardware.
+  manual_hot: {
+    id: 'manual_hot' as FarmState,
+    icon: AlertTriangle,
+    explanation: {
+      bn: '🔥 গরম বেশি — ম্যানুয়াল মোড চালু, নিজে ফ্যান/ফগার চালু করুন',
+      en: '🔥 Too hot — MANUAL mode is on, switch on fan/fogger yourself',
+    },
+    systemLabel: 'MANUAL_ACTION_NEEDED',
+    gradient: 'from-orange-700 via-red-600 to-orange-700',
+    borderColor: 'border-orange-300',
+  } as StateConfig,
   sensor_fail: {
     id: 'sensor_fail',
     icon: Wrench,
@@ -89,7 +103,7 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
 export function StateExplanationHeader() {
   const { language } = useAuth();
   const { sensorData, hasRealData } = useRealtimeSensorData();
-  const { status: deviceStatus, isDeviceOnline } = useRealtimeDeviceStatus();
+  const { status: deviceStatus, isDeviceOnline, manualOverride } = useRealtimeDeviceStatus();
   const { selectedShedId } = useSelectedShed();
   const { data: deviceHealth } = useAllDeviceHealth();
 
@@ -130,17 +144,23 @@ export function StateExplanationHeader() {
       deviceStatus.circulation_fan
     );
 
+    // MANUAL mode is absolute: relays are OFF because the operator chose that,
+    // not because hardware failed. Never claim "no device responding" then.
+    const manualInControl = manualOverride && isDeviceOnline;
+
     // Emergency conditions
     if (temp > 38 || ammonia > 25 || hsi > 85) {
-      return coolingActive ? STATE_MAP.emergency : STATE_MAP.emergency_no_action;
+      if (coolingActive) return STATE_MAP.emergency;
+      return manualInControl ? STATE_MAP.manual_hot : STATE_MAP.emergency_no_action;
     }
     // Cooling-needed conditions
     if (temp > 32 || hsi > 70) {
-      return coolingActive ? STATE_MAP.cooling : STATE_MAP.cooling_needed;
+      if (coolingActive) return STATE_MAP.cooling;
+      return manualInControl ? STATE_MAP.manual_hot : STATE_MAP.cooling_needed;
     }
     if (temp < 18) return STATE_MAP.adjusting;
     return STATE_MAP.normal;
-  }, [sensorData, hsiResult, hasRealData, deviceStatus, isDeviceOnline]);
+  }, [sensorData, hsiResult, hasRealData, deviceStatus, isDeviceOnline, manualOverride]);
 
   const Icon = currentState.icon;
   const isEmergency = currentState.id === 'emergency';
