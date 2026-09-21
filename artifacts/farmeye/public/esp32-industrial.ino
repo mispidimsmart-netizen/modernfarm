@@ -4159,21 +4159,24 @@ void updateAge(int newAge) {
 }
 
 void updateAgeFromServer(int newAge) {
-  if (!isBroiler() || newAge <= 0) return;
-  
-  // Bird age validation: reject if outside 0-60 or jump >2 days in 24h
+  // Layer farms also need cloud age (weeks*7) for the display and lighting logic.
+  if (newAge <= 0) return;
+
+  // Bird age validation: reject if outside range or jump too large in 24h
   if (!safetyEngine.validateAgeChange(newAge, farmConfig.chickAgeDays)) {
     Serial.printf("⚠️ AGE REJECTED by safety engine: %d → %d\n", farmConfig.chickAgeDays, newAge);
     return; // Keep current age
   }
-  
+
   if (newAge != farmConfig.chickAgeDays) {
-    farmConfig.chickAgeDays = newAge; loadBroilerRules();
+    farmConfig.chickAgeDays = newAge;
+    if (isBroiler()) loadBroilerRules();
   }
   ageFromServer = true; ageSource = "SERVER";
   lastAgeSyncMillis = millis(); lastAgeIncreaseMillis = millis();
   saveFarmProfile();
 }
+
 
 void checkOfflineAgeIncrement() {
   if (!isBroiler()) return;
