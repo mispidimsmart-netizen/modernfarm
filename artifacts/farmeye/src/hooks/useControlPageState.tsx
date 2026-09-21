@@ -13,6 +13,7 @@ import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode, useSetAutomationMode } from '@/hooks/useAutomationMode';
 import { useToast } from '@/hooks/use-toast';
 import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
+import { deriveManualMode, isHardwareManualMode, isModeSyncPending, canUseTimedOverride, manualOverrideKind } from '@/lib/manualMode';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
 import {
@@ -231,7 +232,7 @@ export function useControlPageState() {
   );
 
   const getDeviceMode = useCallback((deviceKey: string): DeviceMode => {
-    if (isManualMode) return 'temporary';
+    if (isManualMode) return manualOverrideKind(true) === 'permanent' ? 'temporary' : 'temporary';
     if (activeTimers[deviceKey]) return 'temporary';
     return 'auto';
   }, [activeTimers, isManualMode]);
@@ -357,7 +358,7 @@ export function useControlPageState() {
     // Timed overrides are an AUTO-mode concept: they hand the device back to
     // automation when the timer ends. In MANUAL nothing takes over, so never
     // write a desired_*/expires_at pair there.
-    if (isManualMode) {
+    if (!canUseTimedOverride(isManualMode)) {
       setPendingDevice(null);
       setTimerDialogOpen(false);
       toast({
