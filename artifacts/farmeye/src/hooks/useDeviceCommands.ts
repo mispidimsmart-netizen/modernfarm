@@ -223,7 +223,7 @@ export function useSendDeviceCommand() {
 
       // === ACK / READ-BACK VERIFICATION ===
       // After sending, poll device_status until ESP32 reports matching actual_state
-      // OR the command row is marked executed=true. If neither happens within ~12s,
+      // OR the command row is marked executed=true. If neither happens within ~30s,
       // warn the farmer (relay stuck, ESP32 offline, safety override, etc.)
       const actualCol = result?.ackActualCol?.[variables.commandType];
       const commandId = result?.commandId;
@@ -384,10 +384,10 @@ export function useSendDeviceCommand() {
           // Log failure to device_command_log so it shows up in the in-app history.
           const failureStatus = isOffline ? 'expired' : 'failed';
           const errMsg = isOffline
-            ? 'Device offline — command not delivered (no ack within 12s)'
+            ? 'Device offline — command not delivered (no ack within 30s)'
             : safetyLocked
               ? 'Blocked by Safety Engine'
-              : 'No device acknowledgement within 12s';
+              : 'No device acknowledgement within 30s';
           try {
             const updatePayload: Record<string, any> = {
               status: failureStatus,
