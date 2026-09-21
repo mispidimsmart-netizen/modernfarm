@@ -3,6 +3,7 @@ import { LayoutGroup } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 
+import { deriveManualMode } from '@/lib/manualMode';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useFarmType } from '@/hooks/useFarmType';
 import { useRealtimeSensorData, useRealtimeAlerts } from '@/hooks/useRealtimeSensorData';
@@ -90,7 +91,7 @@ export function Dashboard() {
   const { sensorData } = useRealtimeSensorData();
 
   const { data: automationMode } = useAutomationMode();
-  const isManualMode = automationMode === 'MANUAL';
+  const isManualMode = deriveManualMode({ automationMode });
   const { isLayer, isBroiler } = useFarmType();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<string>('summary');

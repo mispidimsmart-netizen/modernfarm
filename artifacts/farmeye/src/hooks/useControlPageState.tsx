@@ -13,6 +13,7 @@ import { useSelectedShed } from '@/hooks/useSheds';
 import { useAutomationMode, useSetAutomationMode } from '@/hooks/useAutomationMode';
 import { useToast } from '@/hooks/use-toast';
 import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
+import { deriveManualMode, isHardwareManualMode, isModeSyncPending, canUseTimedOverride } from '@/lib/manualMode';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
 import {
@@ -49,19 +50,21 @@ export function useControlPageState() {
   const setAutomationMode = useSetAutomationMode();
   const { data: farmSettings } = useFarmSettings();
 
-  // FIX #1 (split-brain): mirror useDeviceControl's manual-mode logic so the
-  // banner and the underlying resolveState agree.
+  // FIX #1 (split-brain): one shared derivation (src/lib/manualMode) so the
+  // banner, resolveState and Dashboard tiles can never disagree.
   const rawStatus = rawDeviceStatus as Record<string, unknown> | undefined;
-  const isManualMode =
-    automationMode === 'MANUAL' ||
-    !!rawStatus?.desired_manual_override ||
-    !!rawStatus?.manual_override;
+  const manualSources = {
+    automationMode,
+    desiredManualOverride: !!rawStatus?.desired_manual_override,
+    manualOverride: !!rawStatus?.manual_override,
+  };
+  const isManualMode = deriveManualMode(manualSources);
 
   // Hardware truth vs cloud intent — the ESP32 mirrors desired_manual_override
   // into manual_override once it applies the mode. Until then the banner must
   // say "waiting for hardware", otherwise the UI lies about the live state.
-  const hardwareManualMode = !!rawStatus?.manual_override;
-  const modeSyncPending = isManualMode !== hardwareManualMode;
+  const hardwareManualMode = isHardwareManualMode(manualSources);
+  const modeSyncPending = isModeSyncPending(manualSources);
 
   // Freshness of the whole device_status row (Hardware-as-Source-of-Truth).
   const STALE_MS = 2 * 60 * 1000;
@@ -355,7 +358,7 @@ export function useControlPageState() {
     // Timed overrides are an AUTO-mode concept: they hand the device back to
     // automation when the timer ends. In MANUAL nothing takes over, so never
     // write a desired_*/expires_at pair there.
-    if (isManualMode) {
+    if (!canUseTimedOverride(isManualMode)) {
       setPendingDevice(null);
       setTimerDialogOpen(false);
       toast({
