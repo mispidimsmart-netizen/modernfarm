@@ -340,7 +340,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'POST' && path === 'device-status') {
-      return await handleDeviceStatus(bodyData, supabase, userId);
+      return await handleDeviceStatus(bodyData, supabase, userId, deviceFarmId ?? null, deviceShedId ?? null);
     }
 
     if (req.method === 'GET' && path === 'settings') {
@@ -520,7 +520,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // Get current state for a specific device/shed
     if (req.method === 'GET' && path === 'state') {
       const shedId = url.searchParams.get('shed_id');
-      return await getDeviceState(supabase, userId, shedId);
+      return await getDeviceState(supabase, userId, shedId, deviceFarmId ?? null);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1006,7 +1006,13 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
 
 
 // Sensor ingestion lives in ./sensors.ts
-async function handleDeviceStatus(body: DeviceStatusPayload, supabase: any, userId: string) {
+async function handleDeviceStatus(
+  body: DeviceStatusPayload,
+  supabase: any,
+  userId: string,
+  farmId?: string | null,
+  shedId?: string | null,
+) {
   try {
     const updateData: Record<string, boolean> = {};
     if (typeof body.power_on === 'boolean') updateData.power_on = body.power_on;
@@ -1021,10 +1027,15 @@ async function handleDeviceStatus(body: DeviceStatusPayload, supabase: any, user
       );
     }
 
-    const { error: updateError } = await supabase
+    // Farm/shed are the tenant boundary — never fan a single shed's report out
+    // across every row owned by this user.
+    let statusUpd = supabase
       .from('device_status')
-      .update(updateData)
-      .eq('user_id', userId);
+      .update(updateData);
+    if (farmId) statusUpd = statusUpd.eq('farm_id', farmId);
+    else statusUpd = statusUpd.eq('user_id', userId);
+    if (shedId) statusUpd = statusUpd.eq('shed_id', shedId);
+    const { error: updateError } = await statusUpd;
 
     if (updateError) {
       console.error('Device status update error:', updateError);
@@ -1074,7 +1085,7 @@ async function handleDeviceState(
     // Get device info including shed_id
     const { data: deviceInfo } = await supabase
       .from('device_tokens')
-      .select('id, device_name, shed_id')
+      .select('id, device_name, shed_id, farm_id')
       .eq('token', deviceToken)
       .single();
 
@@ -1297,8 +1308,9 @@ async function handleDeviceState(
     // First get current desired state
     let desiredQuery = supabase
       .from('device_status')
-      .select('desired_fan_on, desired_light_on, desired_alarm_on, desired_heater_on, desired_fogger_on, desired_circulation_fan_on')
-      .eq('user_id', userId);
+      .select('desired_fan_on, desired_light_on, desired_alarm_on, desired_heater_on, desired_fogger_on, desired_circulation_fan_on');
+    if (deviceInfo.farm_id) desiredQuery = desiredQuery.eq('farm_id', deviceInfo.farm_id);
+    else desiredQuery = desiredQuery.eq('user_id', userId);
     if (shedId) {
       desiredQuery = desiredQuery.eq('shed_id', shedId);
     }
@@ -1321,8 +1333,9 @@ async function handleDeviceState(
     // Update device_status (actual state)
     let statusQuery = supabase
       .from('device_status')
-      .update(statusUpdate)
-      .eq('user_id', userId);
+      .update(statusUpdate);
+    if (deviceInfo.farm_id) statusQuery = statusQuery.eq('farm_id', deviceInfo.farm_id);
+    else statusQuery = statusQuery.eq('user_id', userId);
 
     if (shedId) {
       statusQuery = statusQuery.eq('shed_id', shedId);
@@ -1579,13 +1592,19 @@ async function handleBufferSync(body: BufferSyncPayload, supabase: any, userId: 
 // 🔍 GET DEVICE STATE
 // GET /state?shed_id=xxx - Get current state for a specific shed
 // ═══════════════════════════════════════════════════════════════════════════
-async function getDeviceState(supabase: any, userId: string, shedId: string | null) {
+async function getDeviceState(
+  supabase: any,
+  userId: string,
+  shedId: string | null,
+  farmId: string | null = null,
+) {
+  const scope = (q: any) => (farmId ? q.eq('farm_id', farmId) : q.eq('user_id', userId));
   try {
     // Get latest sensor reading
     let sensorQuery = supabase
       .from('sensor_readings')
-      .select('temperature, humidity, ammonia, water_usage, recorded_at')
-      .eq('user_id', userId)
+      .select('temperature, humidity, ammonia, water_usage, recorded_at');
+    sensorQuery = scope(sensorQuery)
       .order('recorded_at', { ascending: false })
       .limit(1);
 
@@ -1598,8 +1617,8 @@ async function getDeviceState(supabase: any, userId: string, shedId: string | nu
     // Get device status
     let statusQuery = supabase
       .from('device_status')
-      .select('fan_on, fan_speed, light_on, alarm_on, power_on, manual_override, desired_manual_override')
-      .eq('user_id', userId);
+      .select('fan_on, fan_speed, light_on, alarm_on, power_on, manual_override, desired_manual_override');
+    statusQuery = scope(statusQuery);
 
     if (shedId) {
       statusQuery = statusQuery.eq('shed_id', shedId);
@@ -1610,8 +1629,8 @@ async function getDeviceState(supabase: any, userId: string, shedId: string | nu
     // Get device health (for online status and fail-safe info)
     let healthQuery = supabase
       .from('device_health')
-      .select('is_online, failsafe_mode, power_source, battery_percentage, uptime_seconds, last_seen_at, last_cloud_sync_at')
-      .eq('user_id', userId);
+      .select('is_online, failsafe_mode, power_source, battery_percentage, uptime_seconds, last_seen_at, last_cloud_sync_at');
+    healthQuery = scope(healthQuery);
 
     if (shedId) {
       healthQuery = healthQuery.eq('shed_id', shedId);
