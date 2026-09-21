@@ -62,11 +62,12 @@ export function useSensorValidation(_sensorData: SensorData, _options?: SensorVa
 
   // Map backend safety_status to the display interfaces expected by UI components
   const issues = useMemo((): SensorIssue[] => {
-    return (safety.sensorIssues || []).map((issue) => ({
-      sensor: issue.sensor as SensorIssue['sensor'],
-      type: (issue.type || 'invalid') as SensorIssue['type'],
+    const raw = Array.isArray(safety.sensorIssues) ? safety.sensorIssues : [];
+    return raw.map((issue) => ({
+      sensor: issue?.sensor as SensorIssue['sensor'],
+      type: (issue?.type || 'invalid') as SensorIssue['type'],
       severity: 'danger' as const,
-      message: { bn: issue.message, en: issue.message },
+      message: { bn: String(issue?.message ?? ''), en: String(issue?.message ?? '') },
       detectedAt: new Date(),
       shouldIgnoreSensor: true,
     }));
