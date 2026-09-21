@@ -271,7 +271,6 @@ export async function getSystemStatus(
       .select('id, condition_sensor, condition_operator, condition_value, action_device, action_state')
       .eq('user_id', userId)
       .eq('farm_id', farmId)
-      .eq('shed_id', shedId)
       .eq('enabled', true);
 
     // 5. Lighting Schedule
@@ -280,7 +279,6 @@ export async function getSystemStatus(
       .select('*')
       .eq('user_id', userId)
       .eq('farm_id', farmId)
-      .eq('shed_id', shedId)
       .maybeSingle();
 
     // 6. Pending Commands (for specific device)

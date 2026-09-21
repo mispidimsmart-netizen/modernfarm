@@ -219,6 +219,8 @@ export async function handleSensorData(
       if (!powerOn) {
         const alertData: Record<string, any> = {
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           alert_type: 'power',
           severity: 'danger',
           message: shedName 
@@ -228,10 +230,6 @@ export async function handleSensorData(
             ? `${shedName}-এ বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!`
             : 'বিদ্যুৎ বিভ্রাট সনাক্ত হয়েছে!',
         };
-        
-        if (shedId) {
-          alertData.shed_id = shedId;
-        }
         
         await supabase.from('alerts').insert(alertData);
       }
@@ -266,12 +264,13 @@ export async function handleSensorData(
     if (hsiStatus === 'DANGER') {
       const alertData: Record<string, any> = {
         user_id: userId,
+        farm_id: farmId,
+        shed_id: shedId,
         alert_type: 'temperature',
         severity: 'danger',
         message: `🚨 [${shedLabel}] DANGER! Heat Stress Index: ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
         message_bn: `🚨 [${shedLabel}] বিপদ! হিট স্ট্রেস ইন্ডেক্স: ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
       };
-      if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
       // Auto-enable fan HIGH + alarm for THIS SHED (skip if farmer disabled safety engine)
@@ -282,12 +281,13 @@ export async function handleSensorData(
     } else if (hsiStatus === 'HIGH') {
       const alertData: Record<string, any> = {
         user_id: userId,
+        farm_id: farmId,
+        shed_id: shedId,
         alert_type: 'temperature',
         severity: 'warning',
         message: `⚠️ [${shedLabel}] High Heat Stress: THI ${hsi.toFixed(1)} (Temp: ${body.temperature.toFixed(1)}°C, Humidity: ${body.humidity.toFixed(0)}%)`,
         message_bn: `⚠️ [${shedLabel}] উচ্চ হিট স্ট্রেস: THI ${hsi.toFixed(1)} (তাপ: ${body.temperature.toFixed(1)}°সে, আর্দ্রতা: ${body.humidity.toFixed(0)}%)`,
       };
-      if (shedId) alertData.shed_id = shedId;
       alerts.push(alertData);
       
       // Auto-enable fan HIGH for THIS SHED (skip if disabled)
@@ -314,12 +314,13 @@ export async function handleSensorData(
         if (!alerts.some(a => a.severity === 'danger' && a.alert_type === 'temperature')) {
           const alertData: Record<string, any> = {
             user_id: userId,
+            farm_id: farmId,
+            shed_id: shedId,
             alert_type: 'temperature',
             severity: body.temperature > Number(settings.temperature_max) + 5 ? 'danger' : 'warning',
             message: `[${shedLabel}] High temperature: ${body.temperature.toFixed(1)}°C`,
             message_bn: `[${shedLabel}] উচ্চ তাপমাত্রা: ${body.temperature.toFixed(1)}°সে`,
           };
-          if (shedId) alertData.shed_id = shedId;
           alerts.push(alertData);
         }
       }
@@ -327,24 +328,26 @@ export async function handleSensorData(
       if (body.ammonia > Number(settings.ammonia_max)) {
         const alertData: Record<string, any> = {
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           alert_type: 'ammonia',
           severity: body.ammonia > Number(settings.ammonia_max) + 10 ? 'danger' : 'warning',
           message: `[${shedLabel}] High ammonia level: ${body.ammonia.toFixed(0)} ppm`,
           message_bn: `[${shedLabel}] উচ্চ অ্যামোনিয়া মাত্রা: ${body.ammonia.toFixed(0)} পিপিএম`,
         };
-        if (shedId) alertData.shed_id = shedId;
         alerts.push(alertData);
       }
 
       if (waterUsage < 10) {
         const alertData: Record<string, any> = {
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           alert_type: 'water',
           severity: waterUsage < 5 ? 'danger' : 'warning',
           message: `[${shedLabel}] Low water usage: ${waterUsage.toFixed(1)} L/hr`,
           message_bn: `[${shedLabel}] কম পানি ব্যবহার: ${waterUsage.toFixed(1)} লি/ঘন্টা`,
         };
-        if (shedId) alertData.shed_id = shedId;
         alerts.push(alertData);
       }
     }
@@ -386,10 +389,10 @@ export async function handleSensorData(
         success: true, 
         message: 'Sensor data saved',
         alerts_created: alerts.length,
-        farm_id: body.farm_id || null,
+        farm_id: farmId,
         shed_id: shedId,
         shed_name: shedName,
-        device_id: body.device_id || null,
+        device_id: boundDeviceName,
         hsi: parseFloat(hsi.toFixed(1)),
         hsi_status: hsiStatus,
         received_at: new Date().toISOString()

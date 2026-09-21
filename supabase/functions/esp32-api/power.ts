@@ -63,6 +63,7 @@ export async function handlePowerStatus(
           .from('power_outages')
           .insert({
             user_id: userId,
+            farm_id: boundFarmId,
             device_token_id: device.id,
             shed_id: device.shed_id,
             power_source,
@@ -80,6 +81,7 @@ export async function handlePowerStatus(
           // Send initial alert
           await supabase.from('alerts').insert({
             user_id: userId,
+            farm_id: boundFarmId,
             shed_id: device.shed_id,
             alert_type: 'power',
             severity: 'danger',
@@ -130,6 +132,7 @@ export async function handlePowerStatus(
           // Send critical alert
           await supabase.from('alerts').insert({
             user_id: userId,
+            farm_id: boundFarmId,
             shed_id: device.shed_id,
             alert_type: 'power',
             severity: 'danger',
@@ -181,6 +184,7 @@ export async function handlePowerStatus(
         if (durationSeconds > 60) {
           await supabase.from('alerts').insert({
             user_id: userId,
+            farm_id: boundFarmId,
             shed_id: device.shed_id,
             alert_type: 'power',
             severity: 'warning',
@@ -217,7 +221,7 @@ export async function handlePowerStatus(
   }
 }
 
-export async function getPowerOutages(supabase: any, userId: string) {
+export async function getPowerOutages(supabase: any, userId: string, farmId: string, shedId: string) {
   try {
     // Get last 30 days of outages
     const thirtyDaysAgo = new Date();
@@ -227,6 +231,8 @@ export async function getPowerOutages(supabase: any, userId: string) {
       .from('power_outages')
       .select('*')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .gte('started_at', thirtyDaysAgo.toISOString())
       .order('started_at', { ascending: false })
       .limit(100);

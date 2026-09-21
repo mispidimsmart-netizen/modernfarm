@@ -435,7 +435,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     }
 
     if (req.method === 'POST' && path === 'health') {
-      return await handleDeviceHealth(bodyData, supabase, userId, deviceToken);
+      return await handleDeviceHealth(bodyData, supabase, userId, deviceToken, deviceFarmId, deviceShedId);
     }
 
     if (req.method === 'POST' && path === 'power-status') {
@@ -463,7 +463,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
 
 
     if (req.method === 'GET' && path === 'power-outages') {
-      return await getPowerOutages(supabase, userId);
+      return await getPowerOutages(supabase, userId, deviceFarmId, deviceShedId);
     }
 
     // ===== FAIL-SAFE SYNC ENDPOINT =====
@@ -556,7 +556,7 @@ async function handleEsp32Request(req: Request, obs: ObsCtx & { supabase?: any }
     // POST /update-age { "age_days": 14 }
     // ═══════════════════════════════════════════════════════════════════════════
     if (req.method === 'POST' && path === 'update-age') {
-      return await handleUpdateAge(bodyData, supabase, userId);
+      return await handleUpdateAge(bodyData, supabase, userId, deviceFarmId, deviceShedId);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -799,7 +799,13 @@ async function handleHardwareProfile(
   }
 }
 
-async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: string) {
+async function handleUpdateAge(
+  body: UpdateAgePayload,
+  supabase: any,
+  userId: string,
+  farmId: string,
+  shedId: string,
+) {
   try {
     const { age_days, batch_id } = body;
     
@@ -816,6 +822,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       // Log rejection
       await supabase.from('farm_audit_logs').insert({
         user_id: userId,
+        farm_id: farmId,
+        shed_id: shedId,
         action_type: 'age_override_event',
         action_category: 'safety',
         severity: 'warning',
@@ -842,6 +850,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       .from('broiler_batches')
       .select('start_date, updated_at')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('status', 'active')
       .order('start_date', { ascending: false })
       .limit(1)
@@ -861,6 +871,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
         // Log rejection
         await supabase.from('farm_audit_logs').insert({
           user_id: userId,
+          farm_id: farmId,
+          shed_id: shedId,
           action_type: 'age_override_event',
           action_category: 'safety',
           severity: 'warning',
@@ -891,6 +903,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       .from('broiler_batches')
       .select('shed_id')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('status', 'active')
       .order('start_date', { ascending: false })
       .limit(1)
@@ -901,7 +915,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
       const { data: shed } = await supabase
         .from('sheds')
         .select('farm_type')
-        .eq('id', activeBatchCheck.shed_id)
+        .eq('id', shedId)
+        .eq('farm_id', farmId)
         .single();
       isBroilerShed = shed?.farm_type === 'broiler';
     }
@@ -938,6 +953,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
         updated_at: new Date().toISOString()
       })
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
+      .eq('shed_id', shedId)
       .eq('status', 'active');
     
     if (batch_id) {
@@ -953,6 +970,8 @@ async function handleUpdateAge(body: UpdateAgePayload, supabase: any, userId: st
     // Log successful age update
     await supabase.from('farm_audit_logs').insert({
       user_id: userId,
+      farm_id: farmId,
+      shed_id: shedId,
       action_type: 'age_override_event',
       action_category: 'farm',
       severity: 'info',
@@ -2277,12 +2296,19 @@ interface DeviceHealthPayload {
   shed_id?: string;
 }
 
-async function handleDeviceHealth(body: DeviceHealthPayload, supabase: any, userId: string, deviceToken: string) {
+async function handleDeviceHealth(
+  body: DeviceHealthPayload,
+  supabase: any,
+  userId: string,
+  deviceToken: string,
+  farmId: string,
+  shedId: string,
+) {
   try {
     // Get the device token ID
     const { data: device } = await supabase
       .from('device_tokens')
-      .select('id, shed_id')
+      .select('id, shed_id, farm_id, user_id')
       .eq('token', deviceToken)
       .single();
 
@@ -2292,11 +2318,19 @@ async function handleDeviceHealth(body: DeviceHealthPayload, supabase: any, user
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    if (device.user_id !== userId || device.farm_id !== farmId || device.shed_id !== shedId ||
+        (body.shed_id && body.shed_id !== shedId)) {
+      return new Response(
+        JSON.stringify({ error: 'Device binding mismatch', code: 'DEVICE_BINDING_MISMATCH' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     const healthData = {
       device_token_id: device.id,
       user_id: userId,
-      shed_id: body.shed_id || device.shed_id || null,
+      farm_id: farmId,
+      shed_id: shedId,
       wifi_signal_strength: body.wifi_signal_strength ?? null,
       uptime_seconds: body.uptime_seconds ?? null,
       free_memory_bytes: body.free_memory_bytes ?? null,
