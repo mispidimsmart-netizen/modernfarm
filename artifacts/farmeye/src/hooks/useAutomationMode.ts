@@ -82,14 +82,12 @@ export function useSetAutomationMode() {
         manual_mode_since: isManual ? new Date().toISOString() : null,
       };
 
-      let settingsQuery = supabase
+      // farm_id-scoped only: the row belongs to the farm owner, so a user_id
+      // filter silently no-oped the mode flip for org owners / super admins.
+      const settingsQuery = supabase
         .from('farm_settings')
         .update(updatePayload as any)
-        .eq('user_id', user.id);
-      
-      if (selectedFarmId) {
-        settingsQuery = settingsQuery.eq('farm_id', selectedFarmId);
-      }
+        .eq('farm_id', selectedFarmId);
 
       const { error: settingsError } = await settingsQuery;
       if (settingsError) {
