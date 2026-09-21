@@ -5442,6 +5442,13 @@ void setup() {
   // WiFi outage, sensor failure or watchdog reset can never silently flip a
   // MANUAL farm back to AUTO. Hard Floor (>42°C) & ESM stay armed regardless.
   loadPersistedModeState();
+  if (localManualOverride) {
+    // MANUAL ABSOLUTE: boot ventilation / sensor-fail fan are automation.
+    // Apply the operator's stored relay intent right away instead.
+    relayManagerApply();
+    Serial.println("🟡 [MANUAL] Boot automation skipped — operator relay state restored");
+  }
+
 
   // --- WiFi ---
   connectWiFi();
