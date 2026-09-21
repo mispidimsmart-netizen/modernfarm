@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.5.0-sticky-manual";
+const char* FIRMWARE_VERSION = "8.6.0-manual-absolute";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -1498,8 +1498,14 @@ void svlCheckSensorOffline() {
   // If any critical sensor offline → enter SENSOR_FAIL via sensorErrorMode
   if ((svlTemp.isOffline || svlHumidity.isOffline) && !sensorErrorMode) {
     sensorErrorMode = true;
-    Serial.println("🔴 SVL: Sensor offline/expired → SENSOR_FAIL (fan ON for safety)");
-    requestFan(true, "HIGH");
+    if (localManualOverride) {
+      // MANUAL ABSOLUTE: no automatic relay action. Siren + status only.
+      Serial.println("🔴 SVL: Sensor offline → SENSOR_FAIL (MANUAL: siren only, relays untouched)");
+      requestAlarm(true);
+    } else {
+      Serial.println("🔴 SVL: Sensor offline/expired → SENSOR_FAIL (fan ON for safety)");
+      requestFan(true, "HIGH");
+    }
   }
   // Recovery: if sensors come back online, clear error
   if (!svlTemp.isOffline && !svlHumidity.isOffline && sensorErrorMode) {
