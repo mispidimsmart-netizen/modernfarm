@@ -8,7 +8,7 @@ import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 
-type FarmState = 'normal' | 'adjusting' | 'cooling' | 'cooling_needed' | 'emergency' | 'emergency_no_action' | 'sensor_fail' | 'purge';
+type FarmState = 'normal' | 'adjusting' | 'cooling' | 'cooling_needed' | 'emergency' | 'emergency_no_action' | 'manual_hot' | 'sensor_fail' | 'purge';
 
 interface StateConfig {
   id: FarmState;
@@ -67,6 +67,20 @@ const STATE_MAP: Record<FarmState, StateConfig> = {
     systemLabel: 'EMERGENCY_NO_ACTION',
     gradient: 'from-red-700 via-red-600 to-rose-700',
     borderColor: 'border-red-300',
+  } as StateConfig,
+  // MANUAL mode: the operator is in full control, so "no device responding" is
+  // wrong — the relays are OFF because the operator chose that. Show the real
+  // condition and ask the operator to act instead of blaming the hardware.
+  manual_hot: {
+    id: 'manual_hot' as FarmState,
+    icon: AlertTriangle,
+    explanation: {
+      bn: '🔥 গরম বেশি — ম্যানুয়াল মোড চালু, নিজে ফ্যান/ফগার চালু করুন',
+      en: '🔥 Too hot — MANUAL mode is on, switch on fan/fogger yourself',
+    },
+    systemLabel: 'MANUAL_ACTION_NEEDED',
+    gradient: 'from-orange-700 via-red-600 to-orange-700',
+    borderColor: 'border-orange-300',
   } as StateConfig,
   sensor_fail: {
     id: 'sensor_fail',
