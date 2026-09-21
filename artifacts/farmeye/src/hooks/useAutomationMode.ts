@@ -135,9 +135,9 @@ export function useSetAutomationMode() {
       try {
         let nameQ: any = supabase
           .from('device_status')
-          .select('device_name')
-          .eq('user_id', user.id);
+          .select('device_name');
         if (selectedFarmId) nameQ = nameQ.eq('farm_id', selectedFarmId);
+        else nameQ = nameQ.eq('user_id', user.id);
         // shedId ignored — pick any device row from this farm for its name.
         const { data: ds } = await nameQ.limit(1).maybeSingle();
         if (ds?.device_name) deviceName = ds.device_name as string;
