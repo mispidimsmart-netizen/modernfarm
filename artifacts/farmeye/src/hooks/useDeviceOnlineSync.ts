@@ -25,9 +25,17 @@ async function drainQueueForFarm(params: {
   queryClient: ReturnType<typeof useQueryClient>;
 }) {
   const { userId, farmId, language, queryClient } = params;
-  clearExpiredDeviceCommands();
+  const dropped = clearExpiredDeviceCommands();
+  if (dropped > 0) {
+    toast.warning(
+      language === 'bn'
+        ? `⏱️ ${dropped}টি পুরোনো কমান্ড বাতিল — নিরাপত্তার জন্য নিজে আবার চালু করুন`
+        : `⏱️ ${dropped} stale command${dropped > 1 ? 's' : ''} cancelled for safety — send again if still needed`,
+    );
+  }
   const items = getQueuedDeviceCommands({ user_id: userId, farm_id: farmId });
   if (items.length === 0) return;
+
 
   let sent = 0;
   for (const item of items) {

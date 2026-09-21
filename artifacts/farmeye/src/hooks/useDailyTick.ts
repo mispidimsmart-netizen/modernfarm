@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { today } from '@/api/types';
+import { today as farmToday } from '@/api/types';
 
 /**
- * Returns the current local ISO date (YYYY-MM-DD) and re-renders
- * subscribers automatically when the local date changes (midnight cross)
+ * Returns the current farm-local ISO date (YYYY-MM-DD) and re-renders
+ * subscribers automatically when the date changes (midnight cross)
  * or when the tab returns to foreground after a day change.
  *
  * Used by any UI that derives "current age" from a start_date so the
  * displayed value updates without a manual refresh.
  */
 export function useDailyTick(): string {
-  const [today, setToday] = useState(() => today());
+  const [date, setDate] = useState(() => farmToday());
 
   useEffect(() => {
     let timer: number | undefined;
@@ -21,15 +21,15 @@ export function useDailyTick(): string {
       next.setHours(24, 0, 5, 0); // 5s after midnight to be safe
       const ms = next.getTime() - now.getTime();
       timer = window.setTimeout(() => {
-        setToday(today());
+        setDate(farmToday());
         scheduleNextMidnight();
       }, ms);
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        const cur = today();
-        setToday((prev) => (prev !== cur ? cur : prev));
+        const cur = farmToday();
+        setDate((prev) => (prev !== cur ? cur : prev));
       }
     };
 
@@ -44,5 +44,5 @@ export function useDailyTick(): string {
     };
   }, []);
 
-  return today;
+  return date;
 }

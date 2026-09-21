@@ -82,7 +82,7 @@ export function useSendDeviceCommand() {
       // network returns. We deliberately skip the desired_* status update and
       // ACK polling (both need live cloud access); replay handles the insert
       // and the ESP32 will pick it up from device_commands as normal.
-      // Short TTL (60 min) so a stale ON/OFF doesn't fire hours later.
+      // Short TTL (10 min) so a stale ON/OFF doesn't fire hours later.
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const { queueInsert } = await import('@/lib/offlineQueue');
         queueInsert('device_commands', {
@@ -95,7 +95,7 @@ export function useSendDeviceCommand() {
           shed_id: shedId ?? null,
           device_token_id: resolvedDeviceTokenId,
           client_request_id: stableRequestId,
-        }, { maxAgeMinutes: 60 });
+        }, { maxAgeMinutes: 10 });
         return { queued: true, queuedReason: 'browser_offline', clientRequestId: stableRequestId } as any;
       }
 

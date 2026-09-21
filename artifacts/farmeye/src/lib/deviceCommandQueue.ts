@@ -9,10 +9,16 @@
  * Dedup rule: only the LATEST desired state per
  * (user_id, farm_id, shed_id, command_type) is kept — an older ON is replaced
  * by a newer OFF (or vice-versa) so a stale toggle never fires hours later.
+ *
+ * Safety rule: the replay window is intentionally SHORT. A relay must never
+ * switch on long after the operator left the app, so anything older than
+ * `DEFAULT_TTL_MIN` is dropped instead of replayed and the operator is told to
+ * issue the command again.
  */
 
 const KEY = 'farmeye_device_offline_queue';
-const DEFAULT_TTL_MIN = 60; // drop commands older than 1h
+const DEFAULT_TTL_MIN = 10; // drop commands older than 10 minutes (safety)
+
 
 function createQueueId(): string {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -127,15 +133,18 @@ export function removeDeviceCommand(id: string) {
   save(load().filter((i) => i.id !== id));
 }
 
-export function clearExpiredDeviceCommands() {
+export function clearExpiredDeviceCommands(): number {
   const now = Date.now();
-  const kept = load().filter((i) => {
+  const all = load();
+  const kept = all.filter((i) => {
     const ttl = i.max_age_minutes ?? DEFAULT_TTL_MIN;
     const ageMin = (now - new Date(i.queued_at).getTime()) / 60_000;
     return ageMin <= ttl;
   });
-  save(kept);
+  if (kept.length !== all.length) save(kept);
+  return all.length - kept.length;
 }
+
 
 export function getDeviceQueueCount(): number {
   return getQueuedDeviceCommands().length;
