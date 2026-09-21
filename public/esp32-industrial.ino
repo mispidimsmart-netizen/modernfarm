@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.7.0-manual-safety-option";
+const char* FIRMWARE_VERSION = "8.8.0-manual-absolute";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -2048,7 +2048,7 @@ void automationEngineTick() {
   if (stabilizingMode) return;
 
   // ═══════════════════════════════════════════════════════════════
-  // MANUAL MODE (v8.7.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত, অটোমেশন চলে না।
+  // MANUAL MODE (v8.8.0) — অপারেটরের সিদ্ধান্তই চূড়ান্ত, কোনো অটোমেশন/সুরক্ষা নেই।
   // সেফটি ইঞ্জিন OFF (manual absolute): বোর্ড কোনো রিলে নিজে চালু/বন্ধ করে না —
   //   কারেন্ট, ওয়াইফাই, সেন্সর, তাপমাত্রা, গ্যাস যেকোনো অবস্থায়ই না।
   //   একমাত্র ব্যতিক্রম: সাইরেন — বিপদ হলে বাজে, রিলে অপারেটরের রাখা অবস্থাতেই।
