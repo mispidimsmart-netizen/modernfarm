@@ -1826,30 +1826,32 @@ void updateLightingWithFade() {
 }
 
 void forceApplyManualRelay(String type, bool value) {
-  // Manual/stop_automation commands are operator intent, not a safety
-  // override. Refuse commands that would directly defeat an active hard
-  // safety output; the arbiter remains the final authority every loop.
-  if ((type == "fan" || type == "exhaust_fan") && !value &&
-      (hardFloorActive || currentState >= STATE_DANGER ||
-       currentState == STATE_SENSOR_FAIL || safetyEngine.lastResult.forceFanOn ||
-       emergencySurvivalMode)) {
-    Serial.println("🛑 Manual fan-OFF rejected by safety arbiter");
-    return;
-  }
-  if (type == "heater" &&
-      ((value && safetyEngine.lastResult.forceHeaterOff) ||
-       (!value && safetyEngine.lastResult.forceHeaterOn) ||
-       (value && (currentState >= STATE_DANGER ||
-                  currentState == STATE_SENSOR_FAIL ||
-                  emergencySurvivalMode)))) {
-    Serial.println("🛑 Manual heater command rejected by safety arbiter");
-    return;
-  }
-  if (type == "alarm" && !value &&
-      (hardFloorActive || currentState >= STATE_DANGER ||
-       currentState == STATE_SENSOR_FAIL || emergencySurvivalMode)) {
-    Serial.println("🛑 Manual alarm-OFF rejected by hard floor");
-    return;
+  // In MANUAL mode (v8.6.0 "manual absolute") the operator is the final
+  // authority — no safety veto at all. In AUTO mode the arbiter still
+  // refuses commands that would defeat an active hard safety output.
+  if (!localManualOverride) {
+    if ((type == "fan" || type == "exhaust_fan") && !value &&
+        (hardFloorActive || currentState >= STATE_DANGER ||
+         currentState == STATE_SENSOR_FAIL || safetyEngine.lastResult.forceFanOn ||
+         emergencySurvivalMode)) {
+      Serial.println("🛑 Manual fan-OFF rejected by safety arbiter");
+      return;
+    }
+    if (type == "heater" &&
+        ((value && safetyEngine.lastResult.forceHeaterOff) ||
+         (!value && safetyEngine.lastResult.forceHeaterOn) ||
+         (value && (currentState >= STATE_DANGER ||
+                    currentState == STATE_SENSOR_FAIL ||
+                    emergencySurvivalMode)))) {
+      Serial.println("🛑 Manual heater command rejected by safety arbiter");
+      return;
+    }
+    if (type == "alarm" && !value &&
+        (hardFloorActive || currentState >= STATE_DANGER ||
+         currentState == STATE_SENSOR_FAIL || emergencySurvivalMode)) {
+      Serial.println("🛑 Manual alarm-OFF rejected by hard floor");
+      return;
+    }
   }
   if (type == "fan" || type == "exhaust_fan") {
     relayTarget.fan = value; relayTarget.fanSpeed = value ? "HIGH" : "OFF";
