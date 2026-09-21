@@ -171,6 +171,9 @@ bool hardFloorActive = false;
 #define NVS_SAFETY_NS         "safety_cfg"
 #define NVS_SAFETY_KEY        "se_enabled"
 #define NVS_SAFETY_TS_KEY     "se_synced_at" // unix-ish (millis-since-epoch unknown offline → use uptime sec)
+// STICKY MANUAL MODE — mode + operator relay intent survive power loss, WiFi
+// loss, sensor failure and reboots. MANUAL never silently reverts to AUTO.
+#define NVS_MODE_NS           "mode_state"
 unsigned long lastConfigSyncMs = 0;          // millis() of last successful /config 200
 unsigned long lastConfigSyncEpoch = 0;       // saved alongside cached value (0 if never)
 uint16_t configFetchFailStreak = 0;          // consecutive failures (HTTP error / no WiFi)
