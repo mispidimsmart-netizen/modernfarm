@@ -626,7 +626,7 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
       supabase.from('farm_settings').select('*').eq('farm_id', farmId).maybeSingle(),
       supabase.from('advanced_automation_settings').select('*').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
       supabase.from('broiler_batches').select('start_date, current_bird_count, breed, status').eq('farm_id', farmId).eq('shed_id', shedId).eq('status', 'active').maybeSingle(),
-      supabase.from('device_status').select('manual_override, desired_manual_override, mode').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
+      supabase.from('device_status').select('*').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
       supabase.from('lighting_schedule').select('*').eq('farm_id', farmId).eq('shed_id', shedId).maybeSingle(),
     ]);
 
