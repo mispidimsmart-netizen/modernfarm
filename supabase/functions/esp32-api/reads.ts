@@ -702,6 +702,10 @@ export async function getDeviceConfig(supabase: any, userId: string, shedId: str
       // === Core Parameters ===
       farmType: isBroiler ? 'BROILER' : 'LAYER',
       birdAge: birdAge,
+      // Firmware reads snake_case keys for the display / age-based automation.
+      bird_age_days: birdAge,
+      ...(isBroiler ? { broiler_age_days: birdAge } : {}),
+
       mode: mode,
       targetTemp: (targetTemp.min + targetTemp.max) / 2,
       targetTempMin: targetTemp.min,
