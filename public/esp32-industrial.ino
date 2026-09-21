@@ -5385,13 +5385,23 @@ void setup() {
   Serial.printf("💡 LDR Sensor: %s\n", ldrAvailable ? "DETECTED on GPIO 36" : "Not connected (optional)");
 
 
+  // --- Persisted safety-engine + sticky mode (MUST precede any relay action) ---
+  // Restored from NVS before the boot-ventilation burst so a MANUAL farm keeps
+  // the operator's relay intent from the very first millisecond after a reboot.
+  loadCachedSafetyEngine();
+  loadPersistedModeState();
+
   // --- Stabilizing Mode ---
   stabilizingMode = true;
   stabilizingEndTime = millis() + SAFE_MODE_DURATION;
   safeModeActive = true;
   safeModeEndTime = stabilizingEndTime;
   transitionTo(STATE_BOOT, "POWER_ON");
-  requestFan(true, "HIGH"); // Ventilation during boot
+  if (!manualAbsolute()) {
+    requestFan(true, "HIGH"); // Ventilation during boot (AUTO only)
+  } else {
+    Serial.println("🟡 [MANUAL] Boot ventilation skipped — operator relay state restored");
+  }
   relayManagerApply();
 
   // --- Sensors ---
