@@ -56,9 +56,12 @@
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <WebServer.h>
+#include <DNSServer.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
+
 #include <DHT.h>
 #include <EEPROM.h>
 #include <esp_task_wdt.h>
