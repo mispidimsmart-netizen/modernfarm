@@ -96,10 +96,12 @@ export function ManualDeviceGrid({
                     )}
                   </div>
                   <div className="relative">
+                    {/* MANUAL IS ABSOLUTE: never disable a switch for safety —
+                        the operator decides, the board only sounds the siren. */}
                     <Switch
                       checked={active}
                       onCheckedChange={(val) => onToggle(device.key, val)}
-                      disabled={disabled || isPending || (isSafetyLocked && active)}
+                      disabled={disabled || isPending}
                       className={`${!isPending ? c.switchOn : 'data-[state=checked]:bg-amber-500 data-[state=unchecked]:bg-amber-500/40'}`}
                     />
                     {isPending && (

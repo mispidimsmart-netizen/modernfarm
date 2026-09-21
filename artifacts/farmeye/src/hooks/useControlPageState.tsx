@@ -262,8 +262,10 @@ export function useControlPageState() {
   };
 
   // ===== MANUAL MODE: Direct ON/OFF toggle =====
-  // Fully manual: no automation runs. Safety Engine ON still enforces the
-  // hard protections (heat/gas) — OFF gives raw, unrestricted control.
+  // MANUAL IS ABSOLUTE (v8.9.0): the operator owns every relay. Neither the
+  // cloud nor the board may veto a manual command — the board only sounds the
+  // siren on danger. So we never block here; when conditions are dangerous we
+  // warn and still send the command.
   const handleManualToggle = (deviceKey: string, newValue: boolean) => {
     if (!requireFarmSelected()) return;
     if (!canFullControl) {
@@ -287,12 +289,15 @@ export function useControlPageState() {
         engineEnabled: (farmSettings as any)?.safety_engine_enabled,
       });
       if (isSafetyLocked) {
+        // Advisory only — the command still goes through.
         toast({
-          title: language === 'bn' ? '🛡️ সেফটি ইঞ্জিন সক্রিয়' : '🛡️ Safety Engine active',
-          description: reason ? reason[language] : undefined,
-          variant: 'destructive',
+          title: language === 'bn' ? '⚠️ ঝুঁকিপূর্ণ অবস্থা' : '⚠️ Risky conditions',
+          description: reason
+            ? reason[language]
+            : (language === 'bn'
+              ? 'ম্যানুয়াল মোডে সিদ্ধান্ত আপনারই — কমান্ড পাঠানো হয়েছে।'
+              : 'In manual mode the decision is yours — command sent.'),
         });
-        return;
       }
     }
 
