@@ -30,6 +30,7 @@ import { useDeviceSystemData } from '@/components/settings/device/useDeviceSyste
 import { DeviceManagementSection } from '@/components/settings/device/DeviceManagementSection';
 import { SensorCalibrationSection } from '@/components/settings/device/SensorCalibrationSection';
 import { LogsDebugSection } from '@/components/settings/device/LogsDebugSection';
+import { WifiChangeCard } from '@/components/settings/device/WifiChangeCard';
 
 /**
  * Settings → Device & System tab shell.
