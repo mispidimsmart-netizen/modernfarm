@@ -15,14 +15,20 @@ export function useAutomationMode() {
     queryFn: async (): Promise<AutomationMode> => {
       if (!user) return 'AUTO';
       
+      // Scope by farm_id only. farm_settings has ONE row per farm owned by the
+      // farm owner, so a user_id filter made workers / org owners read nothing
+      // and see 'AUTO' on a farm that is actually in MANUAL mode. RLS decides
+      // which farms this user may read.
       let query = supabase
         .from('farm_settings')
-        .select('automation_mode')
-        .eq('user_id', user.id);
-      
+        .select('automation_mode');
+
       if (selectedFarmId) {
         query = query.eq('farm_id', selectedFarmId);
+      } else {
+        query = query.eq('user_id', user.id);
       }
+      
       
       // Use maybeSingle() — new farms may have 0 farm_settings rows, and
       // .single() would throw and silently fall back to 'AUTO' even when
