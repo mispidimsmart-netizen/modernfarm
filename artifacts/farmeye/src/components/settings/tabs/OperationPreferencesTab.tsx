@@ -1,10 +1,24 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Wind, Shield, Heart, Thermometer, Zap, 
+import {
+  Wind, Shield, Heart, Thermometer, Zap,
   Leaf, Activity, Droplets, Flame, Sun,
-  RotateCcw, Minus, Plus, Lock
+  RotateCcw, Minus, Plus, Lock, Lightbulb, ChevronDown
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+// Lazy-loaded to preserve tab-level code splitting.
+const LightingTab = lazy(() =>
+  import('@/components/settings/tabs/LightingTab').then(m => ({ default: m.LightingTab }))
+);
+
+function LightingFallback() {
+  return (
+    <div className="flex items-center justify-center py-10">
+      <div className="h-7 w-7 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+}
 import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { useRealtimeSensorData } from '@/hooks/useRealtimeSensorData';
@@ -112,6 +126,7 @@ export function OperationPreferencesTab() {
   const { data: advSettings } = useRawAdvancedAutomationSettings();
   const updateAdvSettings = useUpdateAdvancedAutomationSettings();
   const { toast } = useToast();
+  const [isLightingOpen, setIsLightingOpen] = useState(false);
 
   // State for each control - default to 'auto', hydrated from DB
   const [controls, setControls] = useState<Record<string, ControlLevel>>({
@@ -497,6 +512,48 @@ export function OperationPreferencesTab() {
 
       {/* S4.3 — replay one-shot onboarding hints */}
       <ResetFirstRunHintsCard />
+
+      {/* ====== Lighting (collapsed by default) ====== */}
+      <Collapsible open={isLightingOpen} onOpenChange={setIsLightingOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardContent className="pt-6 pb-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
+                    <Lightbulb size={20} />
+                  </div>
+                  <div>
+                    <p className="font-semibold">
+                      {language === 'bn' ? '💡 লাইটিং ব্যবস্থাপনা' : '💡 Lighting Management'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'bn'
+                        ? 'সময়সূচী, কার্ভ, প্রোফাইল ও LDR সেন্সর সেটিংস'
+                        : 'Schedule, curve, profile and LDR sensor settings'}
+                    </p>
+                  </div>
+                </div>
+                <motion.div
+                  animate={{ rotate: isLightingOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                </motion.div>
+              </div>
+            </CardContent>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-6">
+              <Suspense fallback={<LightingFallback />}>
+                <LightingTab hideHeader />
+              </Suspense>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import { LDRSettingsCard } from '@/components/lighting/LDRSettingsCard';
 import { LDRInstallationGuide } from '@/components/lighting/LDRInstallationGuide';
 import { BirdAgeCard } from '@/components/farm/BirdAgeCard';
 
-export function LightingTab() {
+export function LightingTab({ hideHeader = false }: { hideHeader?: boolean }) {
   const { language } = useAuth();
 
   return (
@@ -18,21 +18,23 @@ export function LightingTab() {
       className="space-y-4"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 py-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
-          <Lightbulb size={20} />
+      {!hideHeader && (
+        <div className="flex items-center gap-3 py-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
+            <Lightbulb size={20} />
+          </div>
+          <div>
+            <h3 className="text-base font-bold">
+              {language === 'bn' ? '💡 লাইটিং ব্যবস্থাপনা' : '💡 Lighting Management'}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {language === 'bn'
+                ? 'সময়সূচী, কার্ভ, প্রোফাইল ও LDR সেন্সর সেটিংস'
+                : 'Schedule, curve, profile and LDR sensor settings'}
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-base font-bold">
-            {language === 'bn' ? '💡 লাইটিং ব্যবস্থাপনা' : '💡 Lighting Management'}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {language === 'bn'
-              ? 'সময়সূচী, কার্ভ, প্রোফাইল ও LDR সেন্সর সেটিংস'
-              : 'Schedule, curve, profile and LDR sensor settings'}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* 🐔 Unified Bird Age (single source of truth — used by lighting suggestion below) */}
       <BirdAgeCard />
