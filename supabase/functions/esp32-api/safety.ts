@@ -65,7 +65,7 @@ export async function handleSafetyEvaluate(body: any, supabase: any, ctx: Safety
     user_id: ctx.userId,
     farm_id: ctx.farmId,
     shed_id: ctx.shedId,
-    system_state: typeof body?.system_state === "string" ? body.system_state : "MONITORING",
+    system_state: normalizeSystemState(body?.system_state),
     sensor_state: {
       temperature,
       temperature2: num(body?.temperature_sensor2),
