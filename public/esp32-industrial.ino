@@ -873,6 +873,16 @@ unsigned long nvsReadOutageDuration();
 
 // Network
 void connectWiFi();
+// WiFi self-service
+void saveWifiCredentialsToNVS(const String& ssid, const String& pass, bool userSet);
+void applyNewWifiCredentials(const String& ssid, const String& pass, const char* source);
+void checkWifiTrial();
+void startWifiPortal(const char* reason);
+void stopWifiPortal(const char* reason);
+void wifiPortalTick();
+void checkDoubleResetPortalRequest();
+void clearDoubleResetFlag();
+
 void syncWithCloud();
 void fetchConfig();
 void loadCachedSafetyEngine();
