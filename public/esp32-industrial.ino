@@ -3944,6 +3944,37 @@ void checkCommands() {
             fadeInProgress = false;
             Serial.println("✅ MANUAL OVERRIDE DEACTIVATED → returning to AUTO mode");
           }
+        } else if (type == "set_wifi") {
+          // WiFi change pushed from the app while the board is still online.
+          // ACK first — the reconnect below drops the current link. If the new
+          // network does not come up, checkWifiTrial() reverts automatically.
+          manualCommandPending = false;
+          String newSsid = cmd["payload"]["ssid"] | "";
+          String newPass = cmd["payload"]["password"] | "";
+          newSsid.trim();
+          if (newSsid.length() == 0) {
+            Serial.println("⚠️ set_wifi received without SSID — ignored");
+          } else {
+            if (id.length() > 0) {
+              HTTPClient ack;
+              String ackUrl = String(API_URL) + "/commands-ack";
+              ack.begin(ackUrl);
+              ack.addHeader("Content-Type", "application/json");
+              ack.addHeader("x-device-token", activeDeviceToken.c_str());
+              ack.setTimeout(3000);
+              StaticJsonDocument<320> adoc;
+              adoc["command_ids"][0] = id;
+              adoc["acks"][0]["command_id"] = id;
+              if (lease.length() > 0) adoc["acks"][0]["lease_token"] = lease;
+              adoc["acks"][0]["success"] = true;
+              String ap; serializeJson(adoc, ap);
+              attachSignature(ack, ap);
+              ack.POST(ap); ack.end();
+              if (cri.length() > 0) recordAppliedCommand(cri);
+            }
+            applyNewWifiCredentials(newSsid, newPass, "cloud_command");
+            continue;
+          }
         } else {
           manualCommandPending = false; // Unknown command type
         }
