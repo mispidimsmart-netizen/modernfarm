@@ -60,7 +60,7 @@ export async function verifyDeviceSignature(
 ): Promise<SignatureCheckResult> {
   const { data: secretRow } = await supabase
     .from('device_tokens')
-    .select('device_secret, previous_device_secret, previous_secret_expires_at, secret_version')
+    .select('device_secret, previous_device_secret, previous_secret_expires_at, secret_version, last_signature_at')
     .eq('id', device.id)
     .maybeSingle();
 
