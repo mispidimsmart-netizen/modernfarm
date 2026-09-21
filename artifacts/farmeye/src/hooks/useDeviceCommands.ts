@@ -95,7 +95,7 @@ export function useSendDeviceCommand() {
           shed_id: shedId ?? null,
           device_token_id: resolvedDeviceTokenId,
           client_request_id: stableRequestId,
-        }, { maxAgeMinutes: 60 });
+        }, { maxAgeMinutes: 10 });
         return { queued: true, queuedReason: 'browser_offline', clientRequestId: stableRequestId } as any;
       }
 
