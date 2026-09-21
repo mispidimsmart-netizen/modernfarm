@@ -61,16 +61,16 @@ BEGIN
   -- Every active board gets its own command. Command polling is device_name
   -- scoped, so selecting one arbitrary status row leaves other sheds behind.
   FOR _device IN
-    SELECT DISTINCT user_id, device_name
+    SELECT DISTINCT user_id, shed_id, device_name
       FROM public.device_tokens
      WHERE farm_id = _farm_id
        AND is_active = true
        AND device_name IS NOT NULL
   LOOP
     INSERT INTO public.device_commands (
-      user_id, farm_id, command_type, command_value, device_name, executed
+      user_id, farm_id, shed_id, command_type, command_value, device_name, executed
     ) VALUES (
-      _device.user_id, _farm_id, 'stop_automation', _is_manual,
+      _device.user_id, _farm_id, _device.shed_id, 'stop_automation', _is_manual,
       _device.device_name, false
     );
   END LOOP;

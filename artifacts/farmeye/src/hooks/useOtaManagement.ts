@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import { sha256Hex } from '@/lib/firmwareChecksum';
+import { useFarmContext } from '@/context/FarmContext';
 
 export interface Firmware {
   id: string;
@@ -53,6 +54,7 @@ export function formatFileSize(bytes: number) {
 
 export function useOtaManagement() {
   const { language, user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: deviceHealthList } = useAllDeviceHealth();
@@ -72,18 +74,18 @@ export function useOtaManagement() {
   const [selectedDeviceForPush, setSelectedDeviceForPush] = useState<string>('');
 
   const { data: deviceTokens } = useQuery({
-    queryKey: ['device_tokens', user?.id],
+    queryKey: ['device_tokens', user?.id, selectedFarmId],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user || !selectedFarmId) return [];
       const { data, error } = await supabase
         .from('device_tokens')
         .select('id, device_name, is_active')
-        .eq('user_id', user.id)
+        .eq('farm_id', selectedFarmId)
         .eq('is_active', true);
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!selectedFarmId,
   });
 
   const { data: firmwares, isLoading } = useQuery({
