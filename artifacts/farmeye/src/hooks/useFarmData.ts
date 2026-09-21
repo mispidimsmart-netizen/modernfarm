@@ -175,16 +175,35 @@ export function useUpdateDeviceStatus(shedId?: string | null) {
     mutationFn: async (status: Partial<DeviceStatus>) => {
       if (!user) throw new Error('Not authenticated');
       if (!selectedFarmId) throw new Error('No farm selected');
-      let query = supabase
-        .from('device_status')
-        .update(status)
-        .eq('farm_id', selectedFarmId);
-      
+
       if (shedId) {
-        query = query.eq('shed_id', shedId);
+        const { error } = await supabase
+          .from('device_status')
+          .update(status)
+          .eq('farm_id', selectedFarmId)
+          .eq('shed_id', shedId);
+        if (error) throw error;
+        return;
       }
 
-      const { error } = await query;
+      // No shed in context: a relay/desired_* write is ALWAYS per-shed, so it
+      // must never fan out to every shed of the farm. Resolve the single row;
+      // if the farm has more than one shed, refuse instead of guessing.
+      const { data, error: readError } = await supabase
+        .from('device_status')
+        .select('id')
+        .eq('farm_id', selectedFarmId)
+        .limit(2);
+      if (readError) throw readError;
+      const rows = (data ?? []) as { id: string }[];
+      if (rows.length === 0) throw new Error('DEVICE_STATUS_ROW_NOT_FOUND');
+      if (rows.length > 1) throw new Error('SHED_REQUIRED_FOR_DEVICE_WRITE');
+
+      const { error } = await supabase
+        .from('device_status')
+        .update(status)
+        .eq('id', rows[0].id)
+        .eq('farm_id', selectedFarmId);
       if (error) throw error;
     },
     onSuccess: () => {
