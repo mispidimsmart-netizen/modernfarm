@@ -5590,6 +5590,7 @@ void callBackendSafetyEngine() {
   DynamicJsonDocument doc(2048);
   doc["farm_id"] = activeFarmId;
   doc["shed_id"] = activeShedId;
+  doc["system_state"] = stateNames[currentState];
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
   doc["ammonia"] = ammonia;
