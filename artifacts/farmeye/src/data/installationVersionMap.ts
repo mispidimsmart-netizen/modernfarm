@@ -16,7 +16,7 @@ export const guideVersionMeta: Record<GuideVersion, {
     label: 'v8 কন্ট্রোলার',
     labelEn: 'v8 Controller',
     tagline: 'লাইভ প্রোডাকশন বোর্ড — ৮-চ্যানেল রিলে, DHT22 ×2, MQ-137',
-    firmware: 'v8.8.2',
+    firmware: 'v8.9.0',
     inoFile: 'esp32-industrial.ino',
     status: 'Production',
     gsm: { rx: 'GPIO 19', tx: 'GPIO 23' },

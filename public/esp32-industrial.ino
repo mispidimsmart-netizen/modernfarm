@@ -1,6 +1,6 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.8.2-manual-absolute            ║
+ * ║  SMART FARM - INDUSTRIAL CONTROLLER v8.9.0-manual-absolute            ║
  * ║  Single Authority State Machine Architecture                          ║
  * ╠═══════════════════════════════════════════════════════════════════════╣
  * ║  DESIGN PRINCIPLES:                                                    ║
@@ -149,7 +149,7 @@ inline bool intervalPassed(unsigned long now, unsigned long since, unsigned long
 }
 
 // --- Firmware ---
-const char* FIRMWARE_VERSION = "8.8.2-manual-absolute";
+const char* FIRMWARE_VERSION = "8.9.0-manual-absolute";
 
 // Production safety: never energize AC relays during boot.
 // Use a separate bench-test sketch for relay/channel verification.
@@ -6059,9 +6059,10 @@ void loop() {
 
   // ═══════════════════════════════════════════════════════════════
   // SAFETY ARBITER: Runs every 500ms in BOTH Auto and Manual mode.
-  // In Manual mode the operator controls the relays, but the arbiter
-  // still evaluates INV-1..INV-8 and can force life-saving actions.
+  // In MANUAL mode it still evaluates INV-1..INV-8 and raises the siren
+  // + cloud alerts, but it NEVER drives a relay — manual is absolute.
   // ═══════════════════════════════════════════════════════════════
+  safetyEngine.setManualAbsolute(manualAbsolute());
   safetyEngine.arbiterTick(temperature, humidity, ammonia,
     !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 
@@ -6081,9 +6082,10 @@ void loop() {
   updateActuatorEffectTracking();
   updateThermalModel();
 
-  // --- Safety Arbiter AGAIN after all processing (Auto + Manual, when enabled) ---
-  // The arbiter is the final authority and is deliberately independent from
-  // cloud automation mode. Hard safety controls must survive MANUAL/STOP.
+  // --- Safety Arbiter AGAIN after all processing ---
+  // The arbiter is the final authority in AUTO. In MANUAL it only detects and
+  // alarms (siren + cloud alert) — relay actuation stays with the operator.
+  safetyEngine.setManualAbsolute(manualAbsolute());
   safetyEngine.arbiterTick(temperature, humidity, ammonia,
     !sensorErrorMode, fanOn, heaterOn, temperature2, dht2Available);
 
