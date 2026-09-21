@@ -20,7 +20,7 @@ import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
 import useSmartAlerts from '@/hooks/useSmartAlerts';
 import { cn } from '@/lib/utils';
 
-const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
+const ONLINE_THRESHOLD_MS = DEVICE_ONLINE_THRESHOLD_MS;
 
 interface ChipProps {
   icon: React.ReactNode;
