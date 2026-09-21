@@ -6171,8 +6171,14 @@ void loop() {
       fadeInProgress = false;
     }
     Serial.printf("🔘 Manual Override: %s\n", localManualOverride ? "ON" : "OFF");
+    persistModeState();   // sticky across reboot / outage
     btnWasPressed = false;
   }
+
+  // --- Sticky mode: persist mode + operator relay intent when it changes ---
+  persistModeStateIfChanged();
+
+
 
   // --- Periodic Status Log (overflow-safe) ---
   if (intervalPassed(now, lastStatusLog, STATUS_LOG_INTERVAL)) {
