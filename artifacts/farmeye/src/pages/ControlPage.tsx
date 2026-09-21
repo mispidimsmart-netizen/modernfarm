@@ -5,7 +5,7 @@ import { SafetyLockedDevices } from '@/components/control';
 import { StateExplanationHeader } from '@/components/control/StateExplanationHeader';
 import { WhyFanRunning } from '@/components/control/WhyFanRunning';
 import { AutomationDecisionLog } from '@/components/control/AutomationDecisionLog';
-import { FarmGuardBanner, ControlModeBanner, ControlSafetyFooter } from '@/components/control/ControlBanners';
+import { FarmGuardBanner, ControlSafetyFooter } from '@/components/control/ControlBanners';
 import { ViewerRestrictionCard, TemporaryControlNoticeCard } from '@/components/control/ControlNotices';
 import { ManualDeviceGrid } from '@/components/control/ManualDeviceGrid';
 import { AutoDeviceGrid } from '@/components/control/AutoDeviceGrid';
@@ -33,16 +33,6 @@ export function ControlPage() {
             farmCount={c.farms?.length ?? 0}
           />
         )}
-
-        {/* ===== MODE INDICATOR BANNER ===== */}
-        <ControlModeBanner
-          language={c.language}
-          isManualMode={c.isManualMode}
-          modeSyncPending={c.modeSyncPending}
-          isStatusStale={c.isStatusStale}
-          lastAckAt={c.lastAckAt}
-        />
-
 
         {/* ===== 1. STATE EXPLANATION HEADER ===== */}
         <div className="w-full">
