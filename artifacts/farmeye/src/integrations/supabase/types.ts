@@ -1393,10 +1393,14 @@ export type Database = {
           dispatched_at: string | null
           executed: boolean
           executed_at: string | null
+          failed_at: string | null
+          failure_reason: string | null
           farm_id: string | null
           id: string
           latency_to_ack_ms: number | null
           latency_to_device_ms: number | null
+          lease_token: string | null
+          payload: Json | null
           retry_count: number
           shed_id: string | null
           user_id: string
@@ -1410,10 +1414,14 @@ export type Database = {
           dispatched_at?: string | null
           executed?: boolean
           executed_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
           farm_id?: string | null
           id?: string
           latency_to_ack_ms?: number | null
           latency_to_device_ms?: number | null
+          lease_token?: string | null
+          payload?: Json | null
           retry_count?: number
           shed_id?: string | null
           user_id: string
@@ -1427,10 +1435,14 @@ export type Database = {
           dispatched_at?: string | null
           executed?: boolean
           executed_at?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
           farm_id?: string | null
           id?: string
           latency_to_ack_ms?: number | null
           latency_to_device_ms?: number | null
+          lease_token?: string | null
+          payload?: Json | null
           retry_count?: number
           shed_id?: string | null
           user_id?: string
@@ -8748,6 +8760,8 @@ export type Database = {
           dispatched_at: string
           farm_id: string
           id: string
+          lease_token: string
+          payload: Json
           retry_count: number
           shed_id: string
         }[]
@@ -8775,6 +8789,19 @@ export type Database = {
       }
       cleanup_performance_metrics: { Args: never; Returns: undefined }
       cleanup_worker_farm: { Args: { _farm_owner_id: string }; Returns: Json }
+      complete_device_command: {
+        Args: {
+          _command_id: string
+          _device_name?: string
+          _error?: string
+          _farm_id?: string
+          _lease_token?: string
+          _require_lease?: boolean
+          _success?: boolean
+          _user_id: string
+        }
+        Returns: string
+      }
       complete_v8_alert_delivery: {
         Args: {
           p_claim_token: string
@@ -9184,6 +9211,15 @@ export type Database = {
       ota_hardening_summary: { Args: never; Returns: Json }
       provision_device_secret: {
         Args: { _device_token_id: string }
+        Returns: string
+      }
+      queue_device_wifi_change: {
+        Args: {
+          _device_name?: string
+          _farm_id: string
+          _password?: string
+          _ssid: string
+        }
         Returns: string
       }
       queue_v8_actuator_command:

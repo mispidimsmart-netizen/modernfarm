@@ -50,6 +50,13 @@
       "when": 1789977052363,
       "tag": "0006_fix_provision_device_secret_pgcrypto_path",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789978035731,
+      "tag": "0007_device_command_payload_and_wifi_change",
+      "breakpoints": true
     }
   ]
 }

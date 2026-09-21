@@ -30,6 +30,7 @@ import { useDeviceSystemData } from '@/components/settings/device/useDeviceSyste
 import { DeviceManagementSection } from '@/components/settings/device/DeviceManagementSection';
 import { SensorCalibrationSection } from '@/components/settings/device/SensorCalibrationSection';
 import { LogsDebugSection } from '@/components/settings/device/LogsDebugSection';
+import { WifiChangeCard } from '@/components/settings/device/WifiChangeCard';
 
 /**
  * Settings → Device & System tab shell.
@@ -74,6 +75,11 @@ export function DeviceSystemTab() {
             </CardContent>
           </Card>
 
+          {/* WiFi change (no re-flash) — self-hidden unless user can change hardware */}
+          <WifiChangeCard language={language as 'bn' | 'en'} />
+
+
+
           <CollapsibleSection
             title="OTA Firmware"
             titleBn="OTA ফার্মওয়্যার"
@@ -104,6 +110,11 @@ export function DeviceSystemTab() {
               </div>
             </CardContent>
           </Card>
+
+          {/* WiFi change (no re-flash) */}
+          <WifiChangeCard language={language as 'bn' | 'en'} />
+
+
 
           <CollapsibleSection
             title="Device Management"
