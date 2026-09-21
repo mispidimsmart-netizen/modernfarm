@@ -9312,6 +9312,10 @@ export type Database = {
         Returns: number
       }
       scale_readiness_summary: { Args: never; Returns: Json }
+      set_farm_automation_mode: {
+        Args: { _farm_id: string; _mode: string }
+        Returns: Json
+      }
       set_worker_pin: {
         Args: { _farm_id: string; _pin: string }
         Returns: boolean
