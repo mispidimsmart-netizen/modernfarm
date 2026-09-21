@@ -75,6 +75,11 @@ export function DeviceSystemTab() {
             </CardContent>
           </Card>
 
+          {/* WiFi change (no re-flash) — self-hidden unless user can change hardware */}
+          <WifiChangeCard language={language as 'bn' | 'en'} />
+
+
+
           <CollapsibleSection
             title="OTA Firmware"
             titleBn="OTA ফার্মওয়্যার"
