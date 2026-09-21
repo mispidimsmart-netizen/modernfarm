@@ -97,21 +97,28 @@ BEGIN
     RAISE EXCEPTION 'forbidden_service_role_required' USING ERRCODE = '42501';
   END IF;
 
+  SELECT farm_id
+    INTO _health
+    FROM public.device_health
+   WHERE id = _device_health_id;
+
+  IF NOT FOUND OR _health.farm_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(_health.farm_id::text, 0));
+
   SELECT id, user_id, farm_id, shed_id, failsafe_mode, last_cloud_sync_at
     INTO _health
     FROM public.device_health
    WHERE id = _device_health_id
    FOR UPDATE;
 
-  IF NOT FOUND OR _health.farm_id IS NULL OR _health.failsafe_mode IS DISTINCT FROM true THEN
-    RETURN NULL;
-  END IF;
-  IF _health.last_cloud_sync_at IS NULL
+  IF NOT FOUND OR _health.failsafe_mode IS DISTINCT FROM true
+     OR _health.last_cloud_sync_at IS NULL
      OR _health.last_cloud_sync_at < now() - interval '5 minutes' THEN
     RETURN NULL;
   END IF;
-
-  PERFORM pg_advisory_xact_lock(hashtextextended(_health.farm_id::text, 0));
 
   SELECT mode, manual_override, desired_manual_override
     INTO _status
