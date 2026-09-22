@@ -5,6 +5,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useProfile, useDeviceStatus } from '@/hooks/useFarmData';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
+import { useRealtimeDeviceStatus } from '@/hooks/useRealtimeSensorData';
+import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePlatformRole } from '@/hooks/usePlatformRole';
 import { useFarmContext } from '@/context/FarmContext';
@@ -48,10 +50,14 @@ export function Header() {
     );
   }, [farms, farmSearch]);
 
-  const isConnected = (deviceHealth || []).some((d) => {
-    if (!d.is_online || !d.last_seen_at) return false;
-    return Date.now() - new Date(d.last_seen_at).getTime() < ONLINE_THRESHOLD_MS;
-  });
+  // Single source of truth for "online": the shared freshness helper, evaluated
+  // against BOTH heartbeat rows (device_health) and the live ack stream
+  // (device_status). Previously the badge read only device_health while the
+  // reconnect toast read device_status, so the two could contradict each other.
+  const healthOnline = (deviceHealth || [])
+    .filter((d: any) => !selectedFarmId || !d.farm_id || d.farm_id === selectedFarmId)
+    .some((d: any) => isDeviceOnlineFresh(d));
+  const isConnected = healthOnline || realtimeDeviceOnline;
   const isHomePage = location.pathname === '/' || location.pathname === '/dashboard';
   const farmDisplayName =
     (currentFarm && (language === 'bn' ? currentFarm.name : currentFarm.name_en)) ||
