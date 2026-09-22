@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ShieldAlert, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmSettings, useUpdateFarmSettings } from '@/hooks/useFarmData';
 import { useAutomationMode } from '@/hooks/useAutomationMode';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 
 /**
@@ -23,6 +24,7 @@ export function SafetyEngineToggleCard() {
   const { toast } = useToast();
   const { data: automationMode } = useAutomationMode();
   const [enabled, setEnabled] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -59,34 +61,36 @@ export function SafetyEngineToggleCard() {
   if (automationMode === 'MANUAL') return null;
 
   return (
-    <Card className={enabled ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          {enabled ? (
-            <ShieldCheck className="h-5 w-5 text-green-600" />
-          ) : (
-            <ShieldAlert className="h-5 w-5 text-amber-600" />
-          )}
-          {language === 'bn' ? 'স্মার্ট সেফটি ইঞ্জিন' : 'Smart Safety Engine'}
-          <Badge variant={enabled ? 'default' : 'secondary'} className="ml-auto">
-            {enabled
-              ? (language === 'bn' ? 'চালু' : 'ON')
-              : (language === 'bn' ? 'বন্ধ' : 'OFF')}
-          </Badge>
-        </CardTitle>
-        <CardDescription className="text-xs">
-          {language === 'bn'
-            ? 'অটো মোডে: স্বয়ংক্রিয় ফ্যান/হিটার/অ্যালার্ম, HSI সুরক্ষা, সেন্সর স্পাইক ফিল্টার'
-            : 'In AUTO mode: auto fan/heater/alarm, HSI protection, sensor spike filter'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
+      <Card className={enabled ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/40 bg-amber-500/5'}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              {enabled ? (
+                <ShieldCheck className="h-5 w-5 text-green-600" />
+              ) : (
+                <ShieldAlert className="h-5 w-5 text-amber-600" />
+              )}
+              {language === 'bn' ? 'স্মার্ট সেফটি ইঞ্জিন' : 'Smart Safety Engine'}
+              <Badge variant={enabled ? 'default' : 'secondary'} className="ml-auto">
+                {enabled
+                  ? (language === 'bn' ? 'চালু' : 'ON')
+                  : (language === 'bn' ? 'বন্ধ' : 'OFF')}
+              </Badge>
+              <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {language === 'bn'
+                ? 'অটো মোডে: স্বয়ংক্রিয় ফ্যান/হিটার/অ্যালার্ম, HSI সুরক্ষা, সেন্সর স্পাইক ফিল্টার'
+                : 'In AUTO mode: auto fan/heater/alarm, HSI protection, sensor spike filter'}
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-3">
         <div className="flex items-center justify-between rounded-lg bg-background p-3">
           <div className="flex-1">
-            <p className="text-sm font-medium">
-              {language === 'bn' ? 'সেফটি ইঞ্জিন সক্রিয়' : 'Safety Engine Active'}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground">
               {enabled
                 ? (language === 'bn'
                     ? 'ESP32 স্বয়ংক্রিয় সুরক্ষা চালাচ্ছে'
@@ -134,7 +138,9 @@ export function SafetyEngineToggleCard() {
             ? 'পরিবর্তন ১ মিনিটের মধ্যে ESP32 তে পৌঁছে যাবে।'
             : 'Change reaches ESP32 within 1 minute.'}
         </p>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
