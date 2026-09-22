@@ -9089,6 +9089,17 @@ export type Database = {
         Args: { p_farm_id?: string }
         Returns: Json
       }
+      get_today_device_runtime: {
+        Args: { p_farm_id: string; p_shed_id?: string }
+        Returns: {
+          ceiling_fan_seconds: number
+          fan_seconds: number
+          fogger_seconds: number
+          heater_seconds: number
+          sample_count: number
+          sprinkler_seconds: number
+        }[]
+      }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       get_user_organization_ids: {
         Args: { _user_id: string }
@@ -9280,6 +9291,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      recover_device_from_failsafe: {
+        Args: { _device_health_id: string }
+        Returns: string
+      }
       redeem_invitation: { Args: { _code: string }; Returns: Json }
       refresh_farm_daily_rollup: { Args: never; Returns: undefined }
       refresh_sensor_hourly_rollup: { Args: never; Returns: undefined }
@@ -9312,6 +9327,10 @@ export type Database = {
         Returns: number
       }
       scale_readiness_summary: { Args: never; Returns: Json }
+      set_farm_automation_mode: {
+        Args: { _farm_id: string; _mode: string }
+        Returns: Json
+      }
       set_worker_pin: {
         Args: { _farm_id: string; _pin: string }
         Returns: boolean

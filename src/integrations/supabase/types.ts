@@ -9089,6 +9089,17 @@ export type Database = {
         Args: { p_farm_id?: string }
         Returns: Json
       }
+      get_today_device_runtime: {
+        Args: { p_farm_id: string; p_shed_id?: string }
+        Returns: {
+          ceiling_fan_seconds: number
+          fan_seconds: number
+          fogger_seconds: number
+          heater_seconds: number
+          sample_count: number
+          sprinkler_seconds: number
+        }[]
+      }
       get_user_access_role: { Args: { _user_id: string }; Returns: string }
       get_user_organization_ids: {
         Args: { _user_id: string }

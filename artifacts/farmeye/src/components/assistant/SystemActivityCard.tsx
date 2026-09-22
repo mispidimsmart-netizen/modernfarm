@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Fan, Flame, Bell, Droplets, Activity, Clock, ArrowUpFromDot } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmContext } from '@/context/FarmContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,95 +16,101 @@ interface ActivityStat {
   bgColor: string;
 }
 
+/** Runtime seconds → compact "Xh" / "Xm" label. */
+function runtimeLabel(seconds: number, bn: boolean): string {
+  if (seconds <= 0) return bn ? '০ মিনিট' : '0m';
+  if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))}${bn ? ' মিনিট' : 'm'}`;
+  return `${Math.round((seconds / 3600) * 10) / 10}${bn ? ' ঘণ্টা' : 'h'}`;
+}
+
 function SystemActivityCardImpl() {
   const { language, user } = useAuth();
+  const { selectedFarmId } = useFarmContext();
   const today = farmToday();
 
   const { data: activityData } = useQuery({
-    queryKey: ['system-activity', user?.id, today],
+    queryKey: ['system-activity', selectedFarmId, today],
     queryFn: async () => {
-      // Fetch real data from device_health and alerts in parallel
-      const [healthRes, alertsRes] = await Promise.all([
-        supabase
-          .from('device_health')
-          .select('motor_total_runtime_seconds, heater_total_runtime_seconds, ceiling_fan_total_runtime_seconds, sprinkler_total_runtime_seconds, fogger_last_cycle_at, sprinkler_last_cycle_at')
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+      // Real per-device on-time for the farm day, derived from the board's own
+      // forensic timeline (device_health.*_total_runtime_seconds is never written).
+      const [runtimeRes, alertsRes] = await Promise.all([
+        supabase.rpc('get_today_device_runtime', {
+          p_farm_id: selectedFarmId!,
+          p_shed_id: null,
+        }),
         supabase
           .from('alerts')
           .select('id')
-          .gte('created_at', `${today}T00:00:00`)
-          .lte('created_at', `${today}T23:59:59`),
+          .eq('farm_id', selectedFarmId!)
+          .gte('created_at', `${today}T00:00:00+06:00`)
+          .lte('created_at', `${today}T23:59:59+06:00`),
       ]);
 
-      const health = healthRes.data;
-
-      const fanSeconds = health?.motor_total_runtime_seconds ?? 0;
-      const heaterSeconds = health?.heater_total_runtime_seconds ?? 0;
-      const ceilingSeconds = health?.ceiling_fan_total_runtime_seconds ?? 0;
-      const sprinklerSeconds = health?.sprinkler_total_runtime_seconds ?? 0;
+      const r = Array.isArray(runtimeRes.data) ? runtimeRes.data[0] : runtimeRes.data;
 
       return {
-        fanRuntimeHours: Math.round((fanSeconds / 3600) * 10) / 10,
-        heatingHours: Math.round((heaterSeconds / 3600) * 10) / 10,
-        ceilingHours: Math.round((ceilingSeconds / 3600) * 10) / 10,
-        sprinklerMinutes: Math.round(sprinklerSeconds / 60),
+        fanSeconds: r?.fan_seconds ?? 0,
+        ceilingSeconds: r?.ceiling_fan_seconds ?? 0,
+        heaterSeconds: r?.heater_seconds ?? 0,
+        foggerSeconds: r?.fogger_seconds ?? 0,
+        sprinklerSeconds: r?.sprinkler_seconds ?? 0,
+        hasSamples: (r?.sample_count ?? 0) > 0,
         alertsCount: alertsRes.data?.length || 0,
       };
     },
-    enabled: !!user,
-    staleTime: 1000 * 60 * 5, // 5min — runtime stats don't move that fast
+    enabled: !!user && !!selectedFarmId,
+    staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 30,
-    refetchInterval: 300000,
-    refetchOnMount: false,
+    refetchInterval: 120000,
   });
 
   const stats = useMemo((): ActivityStat[] => {
-    const data = activityData || { fanRuntimeHours: 0, heatingHours: 0, ceilingHours: 0, sprinklerMinutes: 0, alertsCount: 0 };
+    const bn = language === 'bn';
+    const data = activityData;
+    const show = (seconds: number) => (data?.hasSamples ? runtimeLabel(seconds, bn) : '--');
 
     return [
       {
         icon: Fan,
         label: { bn: 'এক্সজস্ট ফ্যান', en: 'Exhaust Fan' },
-        value: `${data.fanRuntimeHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
+        value: show(data?.fanSeconds ?? 0),
         color: 'text-cyan-600 dark:text-cyan-400',
         bgColor: 'bg-cyan-50 dark:bg-cyan-950/50',
       },
       {
         icon: Fan,
         label: { bn: 'সিলিং ফ্যান', en: 'Ceiling Fan' },
-        value: `${data.ceilingHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
+        value: show(data?.ceilingSeconds ?? 0),
         color: 'text-violet-600 dark:text-violet-400',
         bgColor: 'bg-violet-50 dark:bg-violet-950/50',
       },
       {
         icon: Flame,
         label: { bn: 'হিটার', en: 'Heater' },
-        value: `${data.heatingHours}${language === 'bn' ? ' ঘণ্টা' : 'h'}`,
+        value: show(data?.heaterSeconds ?? 0),
         color: 'text-orange-600 dark:text-orange-400',
         bgColor: 'bg-orange-50 dark:bg-orange-950/50',
       },
       {
         icon: ArrowUpFromDot,
         label: { bn: 'স্প্রিংকলার', en: 'Sprinkler' },
-        value: `${data.sprinklerMinutes}${language === 'bn' ? ' মিনিট' : 'm'}`,
+        value: show(data?.sprinklerSeconds ?? 0),
         color: 'text-sky-600 dark:text-sky-400',
         bgColor: 'bg-sky-50 dark:bg-sky-950/50',
       },
       {
         icon: Droplets,
         label: { bn: 'ফগার', en: 'Fogger' },
-        value: '--',
+        value: show(data?.foggerSeconds ?? 0),
         color: 'text-blue-600 dark:text-blue-400',
         bgColor: 'bg-blue-50 dark:bg-blue-950/50',
       },
       {
         icon: Bell,
         label: { bn: 'এলার্ট', en: 'Alerts' },
-        value: `${data.alertsCount}${language === 'bn' ? ' টি' : ''}`,
-        color: data.alertsCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400',
-        bgColor: data.alertsCount > 0 ? 'bg-red-50 dark:bg-red-950/50' : 'bg-emerald-50 dark:bg-emerald-950/50',
+        value: `${data?.alertsCount ?? 0}${bn ? ' টি' : ''}`,
+        color: (data?.alertsCount ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400',
+        bgColor: (data?.alertsCount ?? 0) > 0 ? 'bg-red-50 dark:bg-red-950/50' : 'bg-emerald-50 dark:bg-emerald-950/50',
       },
     ];
   }, [activityData, language]);
