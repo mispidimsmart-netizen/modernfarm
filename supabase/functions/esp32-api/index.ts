@@ -1255,12 +1255,13 @@ async function handleDeviceState(
       healthUpdate.offline_duration_seconds = body.offline_duration_seconds;
     }
 
-    // Upsert device health
+    // Upsert device health (farm_id MUST be set — farm-scoped readers filter on it)
     const { error: healthError } = await supabase
       .from('device_health')
       .upsert({
         device_token_id: deviceTokenId,
         user_id: userId,
+        farm_id: deviceInfo.farm_id ?? null,
         shed_id: shedId,
         ...healthUpdate,
       }, {

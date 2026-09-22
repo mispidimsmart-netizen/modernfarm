@@ -203,6 +203,7 @@ export async function handleFailsafeSync(
         ...healthUpdate,
         device_token_id: device.id,
         user_id: userId,
+        farm_id: device.farm_id ?? null,
         shed_id: device.shed_id,
       });
     }
