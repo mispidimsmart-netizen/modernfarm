@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { History, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { History, ShieldCheck, ShieldAlert, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { formatDistanceToNow, format } from 'date-fns';
 import { bn } from 'date-fns/locale';
 
@@ -30,10 +32,11 @@ interface AuditRow {
 export function SafetyEngineHistoryCard() {
   const { language } = useAuth();
   const { selectedFarmId } = useFarmContext();
+  const [isOpen, setIsOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['safety-engine-audit', selectedFarmId],
-    enabled: !!selectedFarmId,
+    enabled: !!selectedFarmId && isOpen,
     queryFn: async (): Promise<AuditRow[]> => {
       const { data, error } = await (supabase as any)
         .from('safety_engine_audit_log')
@@ -50,19 +53,24 @@ export function SafetyEngineHistoryCard() {
   const locale = isBn ? bn : undefined;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <History className="h-5 w-5 text-muted-foreground" />
-          {isBn ? 'সেফটি ইঞ্জিন হিস্ট্রি' : 'Safety Engine History'}
-        </CardTitle>
-        <CardDescription className="text-xs">
-          {isBn
-            ? 'কখন কে চালু/বন্ধ করেছেন তার সম্পূর্ণ লগ (সর্বশেষ ৫০টি)'
-            : 'Full ON/OFF audit trail (latest 50 entries)'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-5 w-5 text-muted-foreground" />
+              {isBn ? 'সেফটি ইঞ্জিন হিস্ট্রি' : 'Safety Engine History'}
+              <ChevronDown className={`ml-auto h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </CardTitle>
+            <CardDescription className="text-xs">
+              {isBn
+                ? 'কখন কে চালু/বন্ধ করেছেন তার সম্পূর্ণ লগ (সর্বশেষ ৫০টি)'
+                : 'Full ON/OFF audit trail (latest 50 entries)'}
+            </CardDescription>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent>
         {isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
@@ -119,7 +127,9 @@ export function SafetyEngineHistoryCard() {
             </ul>
           </ScrollArea>
         )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
