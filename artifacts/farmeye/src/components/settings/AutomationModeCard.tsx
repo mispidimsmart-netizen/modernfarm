@@ -232,14 +232,6 @@ export function AutomationModeCard() {
                             : 'Automation engine is off. You manually control fans, lights, foggers, etc.'}
                         </p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <ShieldCheck className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                        <p className="text-xs text-green-700 dark:text-green-400">
-                          {language === 'bn'
-                            ? '🛡️ জীবন-রক্ষাকারী সেফটি সিস্টেম (INV-1 থেকে INV-8) সবসময় সক্রিয় থাকবে।'
-                            : '🛡️ Life-saving safety system (INV-1 to INV-8) always stays active.'}
-                        </p>
-                      </div>
                     </div>
                   ) : (
                     <div className="rounded-xl bg-primary/5 border border-primary/15 p-3">
