@@ -25,13 +25,12 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AlertBell } from '@/components/AlertBell';
 
-const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
-
 export function Header() {
   const { language, setLanguage, user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: deviceStatus } = useDeviceStatus();
   const { data: deviceHealth } = useAllDeviceHealth();
+  const { isDeviceOnline: realtimeDeviceOnline } = useRealtimeDeviceStatus();
   const { data: userRole } = useUserRole();
   const { data: platformRole } = usePlatformRole();
   const primaryOrg = platformRole?.orgs?.[0];
