@@ -127,6 +127,7 @@ export function OperationPreferencesTab() {
   const updateAdvSettings = useUpdateAdvancedAutomationSettings();
   const { toast } = useToast();
   const [isLightingOpen, setIsLightingOpen] = useState(false);
+  const [isOperationControlOpen, setIsOperationControlOpen] = useState(false);
 
   // State for each control - default to 'auto', hydrated from DB
   const [controls, setControls] = useState<Record<string, ControlLevel>>({
@@ -313,199 +314,223 @@ export function OperationPreferencesTab() {
       </HardwareEditGuard>
       {!isManualMode && <SafetyEngineHistoryCard />}
 
-      {/* Header with Mode Badge */}
-      <div className={`text-center ${isManualMode ? 'opacity-50' : ''}`}>
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Zap className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">
-            {language === 'bn' ? 'পরিচালনা নিয়ন্ত্রণ' : 'Operation Control'}
-          </h3>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {isManualMode
-            ? (language === 'bn' ? '⚠️ ম্যানুয়াল মোডে এই সেটিংস নিষ্ক্রিয়' : '⚠️ These settings are inactive in Manual mode')
-            : (language === 'bn' ? '✅ পরিবর্তন সঙ্গে সঙ্গে অটোমেশনে কার্যকর হয়' : '✅ Changes apply to automation immediately')
-          }
-        </p>
-      </div>
-
-      {/* Current Mode Summary */}
-      <div className={isManualMode ? 'opacity-40 pointer-events-none select-none' : ''}>
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`flex items-center justify-between py-4 px-4 rounded-xl ${currentModeSummary.color}`}
-      >
-        <div>
-          <p className="text-lg font-semibold">{currentModeSummary.mode}</p>
-          <p className="text-sm opacity-80">{currentModeSummary.description}</p>
-        </div>
-        {hasManualOverride && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleResetAll}
-            className="gap-1.5 bg-background/50"
-          >
-            <RotateCcw className="h-4 w-4" />
-            {language === 'bn' ? 'রিসেট' : 'Reset'}
-          </Button>
-        )}
-      </motion.div>
-
-      {/* Control Cards */}
-      <div className="space-y-3">
-        {CONTROL_SETTINGS.map((setting, index) => {
-          const Icon = setting.icon;
-          const currentLevel = controls[setting.id];
-          const isAuto = currentLevel === 'auto';
-          
-          return (
-            <motion.div
-              key={setting.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card className={`border ${getLevelColor(currentLevel)}`}>
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-background shadow-sm ${setting.color}`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="font-medium truncate">{setting.title[language]}</p>
-                        {!isAuto && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleResetSingle(setting.id)}
-                            className="h-6 px-2 text-xs gap-1"
-                          >
-                            <Lock className="h-3 w-3" />
-                            {language === 'bn' ? 'অটো' : 'Auto'}
-                          </Button>
-                        )}
-                      </div>
-                      
-                      <p className="text-xs text-muted-foreground mb-3">
-                        {setting.description[language]}
-                      </p>
-
-                      {/* Control Buttons */}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 w-9 p-0"
-                          onClick={() => handleControlChange(setting.id, 'decrease')}
-                          disabled={currentLevel === 'low'}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-
-                        <div className="flex-1 text-center">
-                          <Badge 
-                            variant={isAuto ? 'default' : 'secondary'}
-                            className={`min-w-[100px] justify-center ${isAuto ? 'bg-primary' : ''}`}
-                          >
-                            {setting.levels[currentLevel][language]}
-                          </Badge>
-                          {isAuto && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              → {getAutoValue(setting.id)}
-                            </p>
-                          )}
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-9 w-9 p-0"
-                          onClick={() => handleControlChange(setting.id, 'increase')}
-                          disabled={currentLevel === 'high'}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Level Indicator */}
-                      <div className="flex justify-between text-xs mt-2 px-1">
-                        <span className={currentLevel === 'low' ? 'font-bold text-primary' : 'text-muted-foreground'}>
-                          {setting.levels.low[language]}
-                        </span>
-                        <span className={currentLevel === 'auto' ? 'font-bold text-primary' : 'text-muted-foreground'}>
-                          {setting.levels.auto[language]}
-                        </span>
-                        <span className={currentLevel === 'high' ? 'font-bold text-primary' : 'text-muted-foreground'}>
-                          {setting.levels.high[language]}
-                        </span>
-                      </div>
-                    </div>
+      {/* ====== Operation Control — AUTO only, collapsible ======
+          In MANUAL mode the operator drives relays directly, so these
+          preference sliders have no effect and are hidden to avoid
+          confusion. They reappear as soon as the farm switches back to
+          AUTO. */}
+      {!isManualMode && (
+        <Collapsible open={isOperationControlOpen} onOpenChange={setIsOperationControlOpen}>
+          <Card className="overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <button className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <Zap size={20} />
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
+                  <div>
+                    <p className="font-semibold">
+                      {language === 'bn' ? 'পরিচালনা নিয়ন্ত্রণ' : 'Operation Control'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {language === 'bn'
+                        ? '✅ পরিবর্তন সঙ্গে সঙ্গে অটোমেশনে কার্যকর হয়'
+                        : '✅ Changes apply to automation immediately'}
+                    </p>
+                  </div>
+                </div>
+                <motion.div
+                  animate={{ rotate: isOperationControlOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                </motion.div>
+              </button>
+            </CollapsibleTrigger>
 
-      {/* Live Sensor Summary */}
-      <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            {language === 'bn' ? 'বর্তমান সেন্সর ডেটা' : 'Current Sensor Data'}
-          </CardTitle>
-          <CardDescription>
-            {language === 'bn' 
-              ? 'অটো মোডে এই ডেটা থেকে সেটিংস নির্ধারিত হয়' 
-              : 'Auto mode settings are based on this data'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-background rounded-lg p-3 text-center">
-              <Thermometer className="h-5 w-5 mx-auto mb-1 text-destructive" />
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'তাপমাত্রা' : 'Temperature'}
-              </p>
-              <p className="text-lg font-bold">
-                {sensorData?.temperature?.toFixed(1) ?? '--'}°C
-              </p>
-            </div>
-            <div className="bg-background rounded-lg p-3 text-center">
-              <Droplets className="h-5 w-5 mx-auto mb-1 text-primary" />
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'আর্দ্রতা' : 'Humidity'}
-              </p>
-              <p className="text-lg font-bold">
-                {sensorData?.humidity?.toFixed(0) ?? '--'}%
-              </p>
-            </div>
-            <div className="bg-background rounded-lg p-3 text-center">
-              <Wind className="h-5 w-5 mx-auto mb-1 text-secondary-foreground" />
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'অ্যামোনিয়া' : 'Ammonia'}
-              </p>
-              <p className="text-lg font-bold">
-                {sensorData?.ammonia?.toFixed(0) ?? '--'} ppm
-              </p>
-            </div>
-            <div className="bg-background rounded-lg p-3 text-center">
-              <Leaf className="h-5 w-5 mx-auto mb-1 text-accent-foreground" />
-              <p className="text-xs text-muted-foreground">
-                {language === 'bn' ? 'বাইরের তাপ' : 'Outside Temp'}
-              </p>
-              <p className="text-lg font-bold">
-                {weatherData?.temperature?.toFixed(1) ?? '--'}°C
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            <CollapsibleContent>
+              <div className="border-t p-4 space-y-6">
+                {/* Current Mode Summary */}
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex items-center justify-between py-4 px-4 rounded-xl ${currentModeSummary.color}`}
+                >
+                  <div>
+                    <p className="text-lg font-semibold">{currentModeSummary.mode}</p>
+                    <p className="text-sm opacity-80">{currentModeSummary.description}</p>
+                  </div>
+                  {hasManualOverride && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetAll}
+                      className="gap-1.5 bg-background/50"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {language === 'bn' ? 'রিসেট' : 'Reset'}
+                    </Button>
+                  )}
+                </motion.div>
+
+                {/* Control Cards */}
+                <div className="space-y-3">
+                  {CONTROL_SETTINGS.map((setting, index) => {
+                    const Icon = setting.icon;
+                    const currentLevel = controls[setting.id];
+                    const isAuto = currentLevel === 'auto';
+                    
+                    return (
+                      <motion.div
+                        key={setting.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <Card className={`border ${getLevelColor(currentLevel)}`}>
+                          <CardContent className="py-4">
+                            <div className="flex items-start gap-3">
+                              <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-background shadow-sm ${setting.color}`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                  <p className="font-medium truncate">{setting.title[language]}</p>
+                                  {!isAuto && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleResetSingle(setting.id)}
+                                      className="h-6 px-2 text-xs gap-1"
+                                    >
+                                      <Lock className="h-3 w-3" />
+                                      {language === 'bn' ? 'অটো' : 'Auto'}
+                                    </Button>
+                                  )}
+                                </div>
+                                
+                                <p className="text-xs text-muted-foreground mb-3">
+                                  {setting.description[language]}
+                                </p>
+
+                                {/* Control Buttons */}
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
+                                    onClick={() => handleControlChange(setting.id, 'decrease')}
+                                    disabled={currentLevel === 'low'}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </Button>
+
+                                  <div className="flex-1 text-center">
+                                    <Badge 
+                                      variant={isAuto ? 'default' : 'secondary'}
+                                      className={`min-w-[100px] justify-center ${isAuto ? 'bg-primary' : ''}`}
+                                    >
+                                      {setting.levels[currentLevel][language]}
+                                    </Badge>
+                                    {isAuto && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        → {getAutoValue(setting.id)}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 p-0"
+                                    onClick={() => handleControlChange(setting.id, 'increase')}
+                                    disabled={currentLevel === 'high'}
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+
+                                {/* Level Indicator */}
+                                <div className="flex justify-between text-xs mt-2 px-1">
+                                  <span className={currentLevel === 'low' ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                                    {setting.levels.low[language]}
+                                  </span>
+                                  <span className={currentLevel === 'auto' ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                                    {setting.levels.auto[language]}
+                                  </span>
+                                  <span className={currentLevel === 'high' ? 'font-bold text-primary' : 'text-muted-foreground'}>
+                                    {setting.levels.high[language]}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Live Sensor Summary */}
+                <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-primary" />
+                      {language === 'bn' ? 'বর্তমান সেন্সর ডেটা' : 'Current Sensor Data'}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'bn' 
+                        ? 'অটো মোডে এই ডেটা থেকে সেটিংস নির্ধারিত হয়' 
+                        : 'Auto mode settings are based on this data'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-background rounded-lg p-3 text-center">
+                        <Thermometer className="h-5 w-5 mx-auto mb-1 text-destructive" />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn' ? 'তাপমাত্রা' : 'Temperature'}
+                        </p>
+                        <p className="text-lg font-bold">
+                          {sensorData?.temperature?.toFixed(1) ?? '--'}°C
+                        </p>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 text-center">
+                        <Droplets className="h-5 w-5 mx-auto mb-1 text-primary" />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn' ? 'আর্দ্রতা' : 'Humidity'}
+                        </p>
+                        <p className="text-lg font-bold">
+                          {sensorData?.humidity?.toFixed(0) ?? '--'}%
+                        </p>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 text-center">
+                        <Wind className="h-5 w-5 mx-auto mb-1 text-secondary-foreground" />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn' ? 'অ্যামোনিয়া' : 'Ammonia'}
+                        </p>
+                        <p className="text-lg font-bold">
+                          {sensorData?.ammonia?.toFixed(0) ?? '--'} ppm
+                        </p>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 text-center">
+                        <Leaf className="h-5 w-5 mx-auto mb-1 text-accent-foreground" />
+                        <p className="text-xs text-muted-foreground">
+                          {language === 'bn' ? 'বাইরের তাপ' : 'Outside Temp'}
+                        </p>
+                        <p className="text-lg font-bold">
+                          {weatherData?.temperature?.toFixed(1) ?? '--'}°C
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
       {/* Haptic Feedback Settings */}
       <HapticSettingsCard />
@@ -553,8 +578,6 @@ export function OperationPreferencesTab() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
-
-      </div>
     </div>
   );
 }
