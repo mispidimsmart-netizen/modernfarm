@@ -95,7 +95,7 @@ export function useMultiShedData() {
         // Determine mode based on device health
         let mode: ShedOverview['mode'] = 'OFFLINE';
         if (device) {
-          if (!device.is_online) {
+          if (!isDeviceOnline(device as any)) {
             mode = 'OFFLINE';
           } else if (device.failsafe_mode) {
             mode = 'FAIL_SAFE';

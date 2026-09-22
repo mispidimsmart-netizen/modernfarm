@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
+import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
 
 type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'stop_automation' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
 
@@ -113,9 +114,9 @@ export function useSendDeviceCommand() {
           .order('last_seen_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        const lastSeen = dh?.last_seen_at ? new Date(dh.last_seen_at).getTime() : 0;
-        const stale = Date.now() - lastSeen > 90 * 1000;
-        const deviceOffline = dh ? (dh.is_online === false || stale) : true;
+        // Shared freshness rule (see lib/deviceFreshness) — never trust
+        // is_online or a seeded last_seen_at on its own.
+        const deviceOffline = !isDeviceOnlineFresh(dh as any);
         if (deviceOffline) {
           const { enqueueDeviceCommand } = await import('@/lib/deviceCommandQueue');
           enqueueDeviceCommand({
@@ -281,11 +282,12 @@ export function useSendDeviceCommand() {
         try {
           let hq: any = supabase
             .from('device_health')
-            .select('is_online');
+            .select('is_online,last_seen_at');
           if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
           else hq = hq.eq('user_id', user.id);
           const { data: dh } = await hq.order('last_seen_at', { ascending: false }).limit(1).maybeSingle();
-          isOnline = !!dh?.is_online;
+          // Shared freshness rule — is_online alone can be a stale/seeded flag.
+          isOnline = isDeviceOnlineFresh(dh as any);
         } catch { /* health lookup is best-effort */ }
 
         // Only accept actual-match if it was updated AFTER we sent the command
@@ -341,13 +343,7 @@ export function useSendDeviceCommand() {
               .order('last_seen_at', { ascending: false })
               .limit(1)
               .maybeSingle();
-            if (dh) {
-              const lastSeen = dh.last_seen_at ? new Date(dh.last_seen_at).getTime() : 0;
-              const stale = Date.now() - lastSeen > 90 * 1000; // >90s = offline
-              isOffline = dh.is_online === false || stale;
-            } else {
-              isOffline = true;
-            }
+            isOffline = !isDeviceOnlineFresh(dh as any);
 
             if (!isOffline) {
               // Respect the Settings → Smart Safety Engine toggle. When the

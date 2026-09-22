@@ -16,7 +16,7 @@ import { evaluateSafetyLock } from '@/lib/deviceSafetyLock';
 import { deriveManualMode, isHardwareManualMode, isModeSyncPending, canUseTimedOverride } from '@/lib/manualMode';
 import { DEFAULT_SAFETY_PROTECTIONS, type DeviceMode } from '@/components/control';
 import { BROILER_DEVICES, LAYER_DEVICES } from '@/data/controlDevices';
-import { DEVICE_ONLINE_THRESHOLD_MS } from '@/lib/deviceFreshness';
+import { isDeviceStatusOnline } from '@/lib/deviceFreshness';
 
 import {
   DESIRED_COL_MAP,
@@ -69,10 +69,11 @@ export function useControlPageState() {
   const modeSyncPending = isModeSyncPending(manualSources);
 
   // Freshness of the whole device_status row (Hardware-as-Source-of-Truth).
-  const STALE_MS = DEVICE_ONLINE_THRESHOLD_MS;
-  const lastAckRaw = (rawStatus?.last_device_ack_at ?? rawStatus?.updated_at) as string | undefined;
+  // NOTE: `updated_at` is NEVER an online signal — cloud writes and the signup
+  // seed row bump it. Only the board's own ack proves the hardware is alive.
+  const lastAckRaw = (rawStatus?.last_device_ack_at ?? null) as string | null;
   const lastAckAt = lastAckRaw ? new Date(lastAckRaw).getTime() : null;
-  const isStatusStale = !lastAckAt || Date.now() - lastAckAt > STALE_MS;
+  const isStatusStale = !isDeviceStatusOnline(rawStatus as any);
 
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
 

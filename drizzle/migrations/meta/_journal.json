@@ -148,6 +148,13 @@
       "when": 1790097987100,
       "tag": "0020_fix_auto_assign_farm_organization_min_uuid",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790098436403,
+      "tag": "0021_device_health_last_seen_no_default",
+      "breakpoints": true
     }
   ]
 }

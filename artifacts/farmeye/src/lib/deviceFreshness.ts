@@ -31,10 +31,30 @@ export function isDeviceOnline(
   now = Date.now(),
 ): boolean {
   if (!device) return false;
-  if (device.is_online === false) return false;
+  // A row that has never reported (or reports is_online null/false) is offline.
+  // `last_seen_at` alone is not proof: the signup trigger seeds a device_health
+  // row whose default last_seen_at is now(), so "fresh" must be paired with an
+  // explicit online flag from the board's heartbeat.
+  if (device.is_online !== true) return false;
   return isFresh(device.last_seen_at, DEVICE_ONLINE_THRESHOLD_MS, now);
 }
 
 export function isCloudSyncStale(lastCloudSync: string | null | undefined, now = Date.now()): boolean {
   return !isFresh(lastCloudSync, CLOUD_SYNC_STALE_MS, now);
+}
+
+/**
+ * Unified online check for a `device_status` row.
+ *
+ * `last_device_ack_at` is the ONLY trustworthy signal: it is written solely by
+ * the ESP32 heartbeat. `updated_at` must never be used as a fallback — cloud
+ * writes (and the row the signup trigger seeds for every brand-new account)
+ * bump it, which made accounts with no controller at all read "লাইভ সংযুক্ত".
+ */
+export function isDeviceStatusOnline(
+  status: { last_device_ack_at?: string | null } | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (!status) return false;
+  return isFresh(status.last_device_ack_at, DEVICE_ONLINE_THRESHOLD_MS, now);
 }

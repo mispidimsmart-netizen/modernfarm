@@ -12,6 +12,7 @@ import { useFarmContext } from '@/context/FarmContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { toast } from 'sonner';
+import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
 import {
   getQueuedDeviceCommands,
   removeDeviceCommand,
@@ -94,11 +95,8 @@ export function useDeviceOnlineSync() {
           .order('last_seen_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        const lastSeen = data?.last_seen_at
-          ? new Date(data.last_seen_at).getTime()
-          : 0;
-        const fresh = Date.now() - lastSeen < 90 * 1000;
-        const online = !!data?.is_online && fresh;
+        // Shared freshness rule — see lib/deviceFreshness.
+        const online = isDeviceOnlineFresh(data as any);
 
         const wasOffline = lastOnlineRef.current === false;
         lastOnlineRef.current = online;
