@@ -12,8 +12,8 @@ import { useFarmContext } from '@/context/FarmContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { toast } from 'sonner';
-import {
 import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
+import {
   getQueuedDeviceCommands,
   removeDeviceCommand,
   clearExpiredDeviceCommands,
