@@ -34,10 +34,8 @@ export function HeroFarmBanner() {
   const { selectedShedId } = useSelectedShed();
   const { data: deviceHealth } = useAllDeviceHealth();
   
-  const isAnyDeviceOnline = (deviceHealth || []).some((d) => {
-    if (!d.is_online || !d.last_seen_at) return false;
-    return Date.now() - new Date(d.last_seen_at).getTime() < 2 * 60 * 1000;
-  });
+  // Shared freshness rule — see lib/deviceFreshness.
+  const isAnyDeviceOnline = (deviceHealth || []).some((d) => isDeviceOnlineFresh(d as any));
 
   // Broiler data
   const { data: activeBatch } = useActiveBatch();
