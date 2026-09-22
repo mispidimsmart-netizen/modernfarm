@@ -281,11 +281,12 @@ export function useSendDeviceCommand() {
         try {
           let hq: any = supabase
             .from('device_health')
-            .select('is_online');
+            .select('is_online,last_seen_at');
           if (selectedFarmId) hq = hq.eq('farm_id', selectedFarmId);
           else hq = hq.eq('user_id', user.id);
           const { data: dh } = await hq.order('last_seen_at', { ascending: false }).limit(1).maybeSingle();
-          isOnline = !!dh?.is_online;
+          // Shared freshness rule — is_online alone can be a stale/seeded flag.
+          isOnline = isDeviceOnlineFresh(dh as any);
         } catch { /* health lookup is best-effort */ }
 
         // Only accept actual-match if it was updated AFTER we sent the command
