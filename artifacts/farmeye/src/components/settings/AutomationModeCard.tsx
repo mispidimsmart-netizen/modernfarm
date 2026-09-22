@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Hand, ShieldCheck, AlertTriangle, ArrowLeftRight, Loader2, Timer } from 'lucide-react';
+import { Bot, Hand, AlertTriangle, ArrowLeftRight, Loader2, Timer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode, useSetAutomationMode, AutomationMode } from '@/hooks/useAutomationMode';
 import { Switch } from '@/components/ui/switch';
@@ -230,14 +230,6 @@ export function AutomationModeCard() {
                           {language === 'bn'
                             ? 'ম্যানুয়াল মোডে অটোমেশন ইঞ্জিন বন্ধ। আপনি নিজে ফ্যান, লাইট, ফগার ইত্যাদি চালু/বন্ধ করবেন।'
                             : 'Automation engine is off. You manually control fans, lights, foggers, etc.'}
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <ShieldCheck className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                        <p className="text-xs text-green-700 dark:text-green-400">
-                          {language === 'bn'
-                            ? '🛡️ জীবন-রক্ষাকারী সেফটি সিস্টেম (INV-1 থেকে INV-8) সবসময় সক্রিয় থাকবে।'
-                            : '🛡️ Life-saving safety system (INV-1 to INV-8) always stays active.'}
                         </p>
                       </div>
                     </div>
