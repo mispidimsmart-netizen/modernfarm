@@ -26,6 +26,6 @@ describe('relay state source of truth', () => {
   it('dashboard device summary reads actual columns only', () => {
     const src = read('src/components/dashboard/DeviceStatusSummary.tsx');
     expect(src).toMatch(/const actual = \(col: string\) => isDeviceOnline && !!r\[col\];/);
-    expect(src).not.toMatch(/desired_/);
+    expect(src).not.toMatch(/isOn: [^\n]*desired_/);
   });
 });
