@@ -113,9 +113,9 @@ export function useSendDeviceCommand() {
           .order('last_seen_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        const lastSeen = dh?.last_seen_at ? new Date(dh.last_seen_at).getTime() : 0;
-        const stale = Date.now() - lastSeen > 90 * 1000;
-        const deviceOffline = dh ? (dh.is_online === false || stale) : true;
+        // Shared freshness rule (see lib/deviceFreshness) — never trust
+        // is_online or a seeded last_seen_at on its own.
+        const deviceOffline = !isDeviceOnlineFresh(dh as any);
         if (deviceOffline) {
           const { enqueueDeviceCommand } = await import('@/lib/deviceCommandQueue');
           enqueueDeviceCommand({
@@ -342,13 +342,7 @@ export function useSendDeviceCommand() {
               .order('last_seen_at', { ascending: false })
               .limit(1)
               .maybeSingle();
-            if (dh) {
-              const lastSeen = dh.last_seen_at ? new Date(dh.last_seen_at).getTime() : 0;
-              const stale = Date.now() - lastSeen > 90 * 1000; // >90s = offline
-              isOffline = dh.is_online === false || stale;
-            } else {
-              isOffline = true;
-            }
+            isOffline = !isDeviceOnlineFresh(dh as any);
 
             if (!isOffline) {
               // Respect the Settings → Smart Safety Engine toggle. When the
