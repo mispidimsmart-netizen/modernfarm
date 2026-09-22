@@ -261,13 +261,12 @@ export function useRealtimeDeviceStatus() {
   }, [browserOnline, refreshDeviceStatus]);
 
   // ── Online/offline detection ──
-  // Prefer `last_device_ack_at` (set by ESP32 heartbeat) and fall back to
-  // `updated_at`. Anything older than 3 minutes is treated as offline.
+  // ONLY `last_device_ack_at` (written by the ESP32 heartbeat) proves a board
+  // is alive. `updated_at` must NEVER be used as a fallback: cloud-side writes
+  // (and the signup trigger that seeds a device_status row) bump it, which made
+  // brand-new accounts with no controller at all appear "লাইভ সংযুক্ত".
   const DEVICE_FRESH_WINDOW_MS = 3 * 60 * 1000;
-  const ackRaw =
-    (initialStatus as any)?.last_device_ack_at ??
-    (initialStatus as any)?.updated_at ??
-    null;
+  const ackRaw = (initialStatus as any)?.last_device_ack_at ?? null;
   const lastAckAt = ackRaw ? new Date(ackRaw) : null;
   const ageMs = lastAckAt ? Date.now() - lastAckAt.getTime() : null;
   const isDeviceOnline =
