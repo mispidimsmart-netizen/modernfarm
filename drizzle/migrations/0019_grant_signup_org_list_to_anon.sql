@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.list_active_organizations_for_signup() TO anon, authenticated;
