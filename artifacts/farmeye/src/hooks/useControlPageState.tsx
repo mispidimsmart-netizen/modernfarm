@@ -71,6 +71,8 @@ export function useControlPageState() {
   // Freshness of the whole device_status row (Hardware-as-Source-of-Truth).
   // NOTE: `updated_at` is NEVER an online signal — cloud writes and the signup
   // seed row bump it. Only the board's own ack proves the hardware is alive.
+  const lastAckRaw = (rawStatus?.last_device_ack_at ?? null) as string | null;
+  const lastAckAt = lastAckRaw ? new Date(lastAckRaw).getTime() : null;
   const isStatusStale = !isDeviceStatusOnline(rawStatus as any);
 
   const DEVICES = isBroiler ? BROILER_DEVICES : LAYER_DEVICES;
