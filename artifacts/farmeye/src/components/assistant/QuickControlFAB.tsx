@@ -97,7 +97,7 @@ export function QuickControlFAB() {
   const activeCount = [deviceStatus.fan, deviceStatus.heater, deviceStatus.light, deviceStatus.ceilingFan, deviceStatus.sprinkler].filter(Boolean).length;
 
   return (
-    <div className="fixed bottom-safe-dock right-safe z-50">{/* above SmartActionDock + BottomNav, respects safe-area */}
+    <div className="fixed bottom-safe-dock right-safe z-50">{/* above BottomNav, respects safe-area */}
       <AnimatePresence>
         {isOpen && (
           <motion.div

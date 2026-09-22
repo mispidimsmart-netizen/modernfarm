@@ -77,7 +77,6 @@ const OAuthConsentPage = lazyRetry(() => import("./pages/OAuthConsentPage"));
 import { GlobalActionFAB } from "./components/GlobalActionFAB";
 import { OperationsHealthStrip } from "./components/dashboard/OperationsHealthStrip";
 import { CriticalAlertBanner } from "./components/dashboard/CriticalAlertBanner";
-import { SmartActionDock } from "./components/dashboard/SmartActionDock";
 
 
 // Optimized QueryClient with better caching
@@ -449,7 +448,6 @@ const App = () => {
                   <AppWithRoutes />
                 </main>
                 <KioskGate>
-                  <SmartActionDock />
                   <GlobalActionFAB />
                 </KioskGate>
               </BrowserRouter>
