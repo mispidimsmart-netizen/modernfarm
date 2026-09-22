@@ -1572,6 +1572,18 @@ void sensorManagerTick() {
 
   calculateWaterFlow();
   currentHSI = calculateHSI(temperature, humidity);
+  // LDR: re-detect every 5 min while missing (boot in darkness reads ~0 and
+  // looks "not connected"; also covers wiring fixed without a reboot).
+  if (!ldrAvailable) {
+    static unsigned long lastLdrProbe = 0;
+    if (millis() - lastLdrProbe >= 300000UL) {
+      lastLdrProbe = millis();
+      if (detectLDR()) {
+        ldrAvailable = true;
+        Serial.println("💡 LDR Sensor: DETECTED on GPIO 36 (late detect)");
+      }
+    }
+  }
   if (ldrAvailable) lightLux = readLightLux();
 }
 
