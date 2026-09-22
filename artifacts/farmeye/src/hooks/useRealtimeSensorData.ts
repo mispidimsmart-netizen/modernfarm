@@ -266,6 +266,9 @@ export function useRealtimeDeviceStatus() {
   // is alive. `updated_at` must NEVER be used as a fallback: cloud-side writes
   // (and the signup trigger that seeds a device_status row) bump it, which made
   // brand-new accounts with no controller at all appear "লাইভ সংযুক্ত".
+  const ackRaw = (initialStatus as any)?.last_device_ack_at ?? null;
+  const lastAckAt = ackRaw ? new Date(ackRaw) : null;
+  const ageMs = lastAckAt ? Date.now() - lastAckAt.getTime() : null;
   const isDeviceOnline = isDeviceStatusOnline(initialStatus as any);
 
   // Hardware-as-Source-of-Truth: relay state is ALWAYS the actual column the

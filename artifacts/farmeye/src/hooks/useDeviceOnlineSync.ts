@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRealtimeInstanceId } from '@/lib/realtimeChannel';
 import { toast } from 'sonner';
 import {
+import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
   getQueuedDeviceCommands,
   removeDeviceCommand,
   clearExpiredDeviceCommands,

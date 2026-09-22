@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { toast } from 'sonner';
+import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
 
 type CommandType = 'fan' | 'light' | 'alarm' | 'heater' | 'manual_override' | 'stop_automation' | 'circulation_fan' | 'fogger' | 'ceiling_fan' | 'sprinkler';
 

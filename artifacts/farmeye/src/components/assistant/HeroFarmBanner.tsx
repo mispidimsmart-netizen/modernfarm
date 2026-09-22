@@ -13,6 +13,7 @@ import { useFlockInfo } from '@/hooks/useFarmManagement';
 import { useHeatStressAutomation } from '@/hooks/useHeatStressAutomation';
 import { useSelectedShed } from '@/hooks/useSheds';
 import { useAllDeviceHealth } from '@/hooks/useDeviceHealth';
+import { isDeviceOnline as isDeviceOnlineFresh } from '@/lib/deviceFreshness';
 
 type FarmHealthState = 'good' | 'hot' | 'cold' | 'danger';
 
