@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Hand, ShieldCheck, AlertTriangle, ArrowLeftRight, Loader2, Timer } from 'lucide-react';
+import { Bot, Hand, AlertTriangle, ArrowLeftRight, Loader2, Timer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAutomationMode, useSetAutomationMode, AutomationMode } from '@/hooks/useAutomationMode';
 import { Switch } from '@/components/ui/switch';
