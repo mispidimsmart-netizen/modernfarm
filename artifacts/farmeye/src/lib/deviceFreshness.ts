@@ -31,7 +31,11 @@ export function isDeviceOnline(
   now = Date.now(),
 ): boolean {
   if (!device) return false;
-  if (device.is_online === false) return false;
+  // A row that has never reported (or reports is_online null/false) is offline.
+  // `last_seen_at` alone is not proof: the signup trigger seeds a device_health
+  // row whose default last_seen_at is now(), so "fresh" must be paired with an
+  // explicit online flag from the board's heartbeat.
+  if (device.is_online !== true) return false;
   return isFresh(device.last_seen_at, DEVICE_ONLINE_THRESHOLD_MS, now);
 }
 
