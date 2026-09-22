@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -92,15 +93,22 @@ export function DataExportCard() {
     }
   }
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Download className="h-5 w-5 text-primary" />
-          {t('ডেটা এক্সপোর্ট (CSV)', 'Data Export (CSV)')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Download className="h-5 w-5 text-primary" />
+              {t('ডেটা এক্সপোর্ট (CSV)', 'Data Export (CSV)')}
+              <ChevronDown className={`h-5 w-5 text-muted-foreground ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         <div>
           <Label className="text-xs">{t('ধরণ', 'Type')}</Label>
           <Select value={type} onValueChange={setType}>
@@ -151,7 +159,9 @@ export function DataExportCard() {
           {t('Excel/Google Sheets-এ খোলা যাবে। বাংলা টেক্সট সঠিকভাবে দেখানোর জন্য UTF-8 BOM সহ।',
             'Opens in Excel/Google Sheets. Includes UTF-8 BOM for Bengali text.')}
         </p>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
