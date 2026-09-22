@@ -43,12 +43,13 @@ export function useDeviceControl(shedId?: string | null) {
     deviceStatus?.manual_override ||
     false;
 
-  const resolveState = (actual: boolean, desired: boolean | null | undefined) => {
-    if (isManualMode && desired !== null && desired !== undefined) {
-      return desired;
-    }
-    return actual;
-  };
+  // Hardware-as-Source-of-Truth: the relay state shown is ALWAYS the actual
+  // column reported by the ESP32 — in MANUAL as well as AUTO. Substituting
+  // `desired_*` in MANUAL made the Control page disagree with the Dashboard
+  // device summary (which reads actual), so a relay the board reported ON
+  // appeared OFF here. Pending intent is surfaced separately via the
+  // per-device "অপেক্ষায়…" spinner until the board confirms.
+  const resolveState = (actual: boolean, _desired?: boolean | null) => actual;
 
   const status: DeviceStatus = deviceStatus ? {
     power: deviceStatus.power_on,

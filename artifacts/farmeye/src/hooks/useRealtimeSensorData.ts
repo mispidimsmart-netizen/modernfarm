@@ -273,17 +273,14 @@ export function useRealtimeDeviceStatus() {
   const isDeviceOnline =
     !!initialStatus && ageMs !== null && ageMs < DEVICE_FRESH_WINDOW_MS;
 
-  // In MANUAL mode, show desired_* states (what user commanded) when explicitly set
-  // In AUTO mode, show actual states from ESP32
-  const isManualMode = initialStatus?.desired_manual_override || initialStatus?.manual_override;
-
-  const resolveState = (actual: boolean, desired: boolean | null | undefined): boolean => {
+  // Hardware-as-Source-of-Truth: relay state is ALWAYS the actual column the
+  // ESP32 reports — in MANUAL and AUTO alike. (Previously MANUAL substituted
+  // `desired_*`, which made the Control page show OFF while the Dashboard
+  // device summary — reading actual — showed ON for the same relay.)
+  const resolveState = (actual: boolean, _desired?: boolean | null): boolean => {
     // Device offline → cannot trust ANY relay state. Force OFF/false so UI
     // never shows misleading "চালু" while ESP32 is silent.
     if (!isDeviceOnline) return false;
-    if (isManualMode && desired !== null && desired !== undefined) {
-      return desired;
-    }
     return actual;
   };
 
