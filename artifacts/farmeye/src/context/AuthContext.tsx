@@ -142,8 +142,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : 'An account with this phone already exists') 
           };
         }
+        if (error.message.toLowerCase().includes('weak') || error.message.toLowerCase().includes('easy to guess')) {
+          return { error: new Error(language === 'bn'
+            ? 'এই পাসওয়ার্ডটি খুব সহজ ও অনিরাপদ (আগে ফাঁস হওয়া পাসওয়ার্ড)। অন্তত ৮ অক্ষরের নতুন পাসওয়ার্ড দিন — বড়-ছোট হাতের অক্ষর, সংখ্যা ও একটি চিহ্ন (যেমন: Khamar#2026) মিশিয়ে দিন।'
+            : 'This password is too weak or known to be leaked. Use at least 8 characters mixing upper/lowercase letters, numbers and a symbol.')
+          };
+        }
+        if (error.message.toLowerCase().includes('password')) {
+          return { error: new Error(language === 'bn'
+            ? 'পাসওয়ার্ড গ্রহণযোগ্য নয়। আরও শক্তিশালী পাসওয়ার্ড দিন (অক্ষর + সংখ্যা + চিহ্ন)।'
+            : error.message)
+          };
+        }
         return { error };
       }
+
 
       toast({
         title: language === 'bn' ? 'সফল!' : 'Success!',
