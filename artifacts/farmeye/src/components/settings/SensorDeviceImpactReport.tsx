@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Activity, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Activity, FileSpreadsheet, Loader2, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmContext } from '@/context/FarmContext';
 import { useToast } from '@/hooks/use-toast';
@@ -80,21 +81,28 @@ export function SensorDeviceImpactReport() {
     }
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <div className="space-y-4">
-      <Card className="border-primary/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            {bn ? 'সেন্সর ↔ ডিভাইস ↔ প্রভাব রিপোর্ট' : 'Sensor ↔ Device ↔ Impact Report'}
-          </CardTitle>
-          <CardDescription>
-            {bn
-              ? 'কোন সেন্সর ডাটায় কোন ডিভাইস কখন চলেছে এবং ফার্মে কী প্রভাব পড়েছে'
-              : 'See which devices ran in response to sensor data and the resulting farm impact'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
+        <Card className="border-primary/30">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                {bn ? 'সেন্সর ↔ ডিভাইস ↔ প্রভাব রিপোর্ট' : 'Sensor ↔ Device ↔ Impact Report'}
+                <ChevronDown className={`h-5 w-5 text-muted-foreground ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </CardTitle>
+              <CardDescription>
+                {bn
+                  ? 'কোন সেন্সর ডাটায় কোন ডিভাইস কখন চলেছে এবং ফার্মে কী প্রভাব পড়েছে'
+                  : 'See which devices ran in response to sensor data and the resulting farm impact'}
+              </CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-1 min-w-[160px]">
               <Label className="text-xs">{bn ? 'সময়সীমা' : 'Time range'}</Label>
@@ -146,8 +154,10 @@ export function SensorDeviceImpactReport() {
               ? '💡 Excel ফাইলে ১০+ শীট থাকবে: সেন্সর-ডিভাইস কোরিলেশন, ঘণ্টাভিত্তিক বিশ্লেষণ, ডিভাইস ON/OFF ট্রানজিশন লগ, রানটাইম, সারাংশ পরিসংখ্যান, এবং খামার ব্যবস্থাপনার সকল ডেটা।'
               : '💡 Excel file includes 10+ sheets: Sensor-Device correlation, hourly analysis, device ON/OFF transitions, runtime, summary stats, and all farm management data.'}
           </p>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }

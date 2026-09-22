@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Mail, Download, Loader2 } from "lucide-react";
+import { Mail, Download, Loader2, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -76,15 +77,22 @@ export function WeeklyReportCard() {
     }
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Mail className="h-5 w-5 text-primary" />
-          সাপ্তাহিক ইমেইল রিপোর্ট
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              সাপ্তাহিক ইমেইল রিপোর্ট
+              <ChevronDown className={`h-5 w-5 text-muted-foreground ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           প্রতি সোমবার সকাল ৮টায় (এশিয়া/ঢাকা) আপনার খামারের গত ৭ দিনের সারাংশ
           CSV হিসেবে তৈরি হবে। ইমেইল ডোমেইন সেটআপ সম্পন্ন হলে স্বয়ংক্রিয়ভাবে ইমেইলে পাঠানো হবে; এর আগ পর্যন্ত
@@ -134,7 +142,9 @@ export function WeeklyReportCard() {
             </Button>
           )}
         </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
